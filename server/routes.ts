@@ -8,13 +8,15 @@ import { ObjectPermission } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema } from "@shared/schema";
 import { z } from "zod";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+// Initialize Stripe only if secret key is available
+let stripe: Stripe | null = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2025-08-27.basil",
+  });
+} else {
+  console.warn('STRIPE_SECRET_KEY not found - Stripe functionality will be disabled');
 }
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-08-27.basil",
-});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -368,6 +370,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (owner.subscriptionStatus === 'active') {
         return res.json({ message: "Already subscribed" });
+      }
+
+      // Check if Stripe is available
+      if (!stripe) {
+        // For development, just mark as active without payment processing
+        await storage.updateOwnerSubscription(owner.id, 'active', 'dev_subscription_' + Date.now());
+        return res.json({ 
+          subscriptionId: 'dev_subscription', 
+          clientSecret: 'dev_client_secret',
+          message: "Development mode: Subscription activated without payment processing"
+        });
       }
 
       if (!user.stripeCustomerId) {

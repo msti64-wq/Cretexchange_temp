@@ -11,10 +11,13 @@ import { apiRequest } from "@/lib/queryClient";
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
-if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
+// Initialize Stripe only if public key is available
+let stripePromise: Promise<any> | null = null;
+if (import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+  stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+} else {
+  console.warn('VITE_STRIPE_PUBLIC_KEY not found - Stripe UI will be disabled');
 }
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 const SubscribeForm = ({ clientSecret, onSuccess }: { clientSecret: string; onSuccess: () => void }) => {
   const stripe = useStripe();
@@ -274,21 +277,48 @@ export default function OwnerSubscribe() {
             </Card>
           </>
         ) : (
-          /* Payment Form */
+          /* Payment Form or Development Mode */
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <CreditCard className="w-5 h-5 mr-2" />
-                Complete Your Subscription
+                {clientSecret === 'dev_client_secret' ? 'Development Mode' : 'Complete Your Subscription'}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <SubscribeForm 
-                  clientSecret={clientSecret} 
-                  onSuccess={handleSubscriptionSuccess}
-                />
-              </Elements>
+              {clientSecret === 'dev_client_secret' ? (
+                <div className="text-center space-y-4">
+                  <p className="text-green-600 font-medium">
+                    Your subscription has been activated in development mode!
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    In production, this would require payment processing through Stripe.
+                  </p>
+                  <Button 
+                    onClick={handleSubscriptionSuccess} 
+                    className="w-full"
+                    data-testid="button-dev-continue"
+                  >
+                    Continue to Dashboard
+                  </Button>
+                </div>
+              ) : stripePromise ? (
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <SubscribeForm 
+                    clientSecret={clientSecret} 
+                    onSuccess={handleSubscriptionSuccess}
+                  />
+                </Elements>
+              ) : (
+                <div className="text-center space-y-4">
+                  <p className="text-yellow-600 font-medium">
+                    Stripe is not configured
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Payment processing is disabled in development mode.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
