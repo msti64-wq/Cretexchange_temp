@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import Register from "@/pages/register";
 
 // Driver pages
 import DriverDashboard from "@/pages/driver/dashboard";
@@ -48,8 +49,18 @@ function Router() {
     );
   }
 
+  // If user is authenticated but doesn't have a role, show registration
+  if (!(user as any).role) {
+    return (
+      <Switch>
+        <Route path="/" component={Register} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+
   // Role-based routing
-  if (user.role === 'driver') {
+  if ((user as any).role === 'driver') {
     return (
       <Switch>
         <Route path="/" component={DriverDashboard} />
@@ -62,7 +73,7 @@ function Router() {
     );
   }
 
-  if (user.role === 'owner') {
+  if ((user as any).role === 'owner') {
     return (
       <Switch>
         <Route path="/" component={OwnerDashboard} />
@@ -76,7 +87,7 @@ function Router() {
     );
   }
 
-  if (user.role === 'admin') {
+  if ((user as any).role === 'admin') {
     return (
       <Switch>
         <Route path="/" component={AdminDashboard} />
