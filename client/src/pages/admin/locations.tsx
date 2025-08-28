@@ -1,0 +1,339 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { MobileNav } from "@/components/MobileNav";
+import { StatCard } from "@/components/StatCard";
+import { Building, Search, Filter, Eye, EyeOff, MapPin, DollarSign } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
+
+export default function AdminLocations() {
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterOwnerStatus, setFilterOwnerStatus] = useState("all");
+
+  const { data: locations, isLoading, error } = useQuery({
+    queryKey: ['/api/admin/locations'],
+    retry: false,
+  });
+
+  // Handle unauthorized error
+  useEffect(() => {
+    if (error && isUnauthorizedError(error as Error)) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [error, toast]);
+
+  const toggleVisibilityMutation = useMutation({
+    mutationFn: async ({ locationId, isVisible }: { locationId: string; isVisible: boolean }) => {
+      const response = await apiRequest("PUT", `/api/admin/locations/${locationId}/visibility`, { isVisible });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Visibility Updated",
+        description: "Location visibility has been updated successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/locations'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <div className="animate-pulse space-y-4 p-4">
+          <div className="h-20 bg-muted rounded-lg" />
+          <div className="h-32 bg-muted rounded-lg" />
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-32 bg-muted rounded-lg" />
+            ))}
+          </div>
+        </div>
+        <MobileNav role="admin" />
+      </div>
+    );
+  }
+
+  const filteredLocations = locations?.filter((location: any) => {
+    const matchesSearch = 
+      location.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      location.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      location.owner?.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      location.owner?.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      location.owner?.companyName?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = filterStatus === "all" || 
+      (filterStatus === "visible" && location.isVisible && location.isActive) ||
+      (filterStatus === "hidden" && (!location.isVisible || !location.isActive));
+    
+    const matchesOwnerStatus = filterOwnerStatus === "all" ||
+      (filterOwnerStatus === "approved" && location.owner?.isApproved) ||
+      (filterOwnerStatus === "pending" && !location.owner?.isApproved);
+
+    return matchesSearch && matchesStatus && matchesOwnerStatus;
+  }) || [];
+
+  const stats = {
+    totalLocations: locations?.length || 0,
+    visibleLocations: locations?.filter((l: any) => l.isVisible && l.isActive).length || 0,
+    hiddenLocations: locations?.filter((l: any) => !l.isVisible || !l.isActive).length || 0,
+    avgRate: locations?.length ? 
+      locations.reduce((sum: number, l: any) => sum + Number(l.rate), 0) / locations.length : 0,
+  };
+
+  return (
+    <div className="min-h-screen bg-background pb-20">
+      {/* Header */}
+      <header className="gradient-bg text-white p-4 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <Building className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="font-semibold text-lg">Location Management</h1>
+              <p className="text-white/80 text-sm">Monitor washout sites</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="p-4 space-y-4">
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard title="Total Sites" className="text-center">
+            <div className="text-2xl font-bold text-primary" data-testid="text-total-locations">
+              {stats.totalLocations}
+            </div>
+            <div className="text-xs text-muted-foreground">Registered</div>
+          </StatCard>
+
+          <StatCard title="Visible" className="text-center">
+            <div className="text-2xl font-bold text-green-600" data-testid="text-visible-locations">
+              {stats.visibleLocations}
+            </div>
+            <div className="text-xs text-muted-foreground">Active Sites</div>
+          </StatCard>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard title="Hidden" className="text-center">
+            <div className="text-xl font-bold text-yellow-600" data-testid="text-hidden-locations">
+              {stats.hiddenLocations}
+            </div>
+            <div className="text-xs text-muted-foreground">Inactive</div>
+          </StatCard>
+
+          <StatCard title="Avg Rate" className="text-center">
+            <div className="text-xl font-bold text-accent" data-testid="text-avg-rate">
+              {formatCurrency(stats.avgRate)}
+            </div>
+            <div className="text-xs text-muted-foreground">Per Washout</div>
+          </StatCard>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Filters</span>
+              </div>
+              
+              <div className="relative">
+                <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search locations or owners..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                  data-testid="input-search-locations"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1 block">Visibility</label>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger data-testid="select-filter-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Locations</SelectItem>
+                      <SelectItem value="visible">Visible</SelectItem>
+                      <SelectItem value="hidden">Hidden</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1 block">Owner Status</label>
+                  <Select value={filterOwnerStatus} onValueChange={setFilterOwnerStatus}>
+                    <SelectTrigger data-testid="select-filter-owner">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Owners</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Location List */}
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center">
+            <Building className="w-5 h-5 mr-2" />
+            Washout Locations ({filteredLocations.length})
+          </h2>
+
+          {filteredLocations.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <Building className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No locations found matching your criteria</p>
+              </CardContent>
+            </Card>
+          ) : (
+            filteredLocations.map((location: any, index: number) => (
+              <Card key={location.id} className="hover:shadow-md transition-shadow" data-testid={`card-location-${index}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-lg" data-testid={`text-location-name-${index}`}>
+                          {location.name}
+                        </h3>
+                        <Badge 
+                          variant={location.isVisible && location.isActive ? "default" : "secondary"}
+                          data-testid={`badge-location-visibility-${index}`}
+                        >
+                          {location.isVisible && location.isActive ? (
+                            <>
+                              <Eye className="w-3 h-3 mr-1" />
+                              Visible
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="w-3 h-3 mr-1" />
+                              Hidden
+                            </>
+                          )}
+                        </Badge>
+                      </div>
+                      
+                      <p className="text-sm text-muted-foreground mb-2" data-testid={`text-location-address-${index}`}>
+                        <MapPin className="w-4 h-4 inline mr-1" />
+                        {location.address}
+                      </p>
+                      
+                      <div className="text-sm text-muted-foreground">
+                        Owner: <span className="font-medium" data-testid={`text-owner-name-${index}`}>
+                          {location.owner?.user?.firstName} {location.owner?.user?.lastName}
+                          {location.owner?.companyName && ` (${location.owner.companyName})`}
+                        </span>
+                        <Badge 
+                          variant={location.owner?.isApproved ? "default" : "secondary"}
+                          className="ml-2 text-xs"
+                          data-testid={`badge-owner-status-${index}`}
+                        >
+                          {location.owner?.isApproved ? 'Approved' : 'Pending'}
+                        </Badge>
+                      </div>
+                      
+                      {location.description && (
+                        <p className="text-sm text-muted-foreground mt-2" data-testid={`text-location-description-${index}`}>
+                          {location.description}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="text-xl font-bold text-accent mb-1" data-testid={`text-location-rate-${index}`}>
+                        {formatCurrency(Number(location.rate))}
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-3">per washout</div>
+                      
+                      <Button
+                        size="sm"
+                        variant={location.isVisible ? "outline" : "default"}
+                        onClick={() => toggleVisibilityMutation.mutate({ 
+                          locationId: location.id, 
+                          isVisible: !location.isVisible 
+                        })}
+                        disabled={toggleVisibilityMutation.isPending}
+                        data-testid={`button-toggle-visibility-${index}`}
+                      >
+                        {location.isVisible ? (
+                          <>
+                            <EyeOff className="w-4 h-4 mr-1" />
+                            Hide
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-4 h-4 mr-1" />
+                            Show
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {location.amenities && location.amenities.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {location.amenities.map((amenity: string, amenityIndex: number) => (
+                        <Badge key={amenityIndex} variant="outline" className="text-xs">
+                          {amenity}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-3 border-t border-border text-sm text-muted-foreground">
+                    <div>
+                      Created: {new Date(location.createdAt).toLocaleDateString()}
+                    </div>
+                    <div className="flex items-center">
+                      <DollarSign className="w-4 h-4 mr-1" />
+                      GPS: {location.latitude}, {location.longitude}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      </main>
+
+      <MobileNav role="admin" />
+    </div>
+  );
+}

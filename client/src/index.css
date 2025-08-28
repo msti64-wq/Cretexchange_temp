@@ -1,0 +1,264 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(210, 40%, 98%);
+  --foreground: hsl(222.2, 84%, 4.9%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(222.2, 84%, 4.9%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(222.2, 84%, 4.9%);
+  --primary: hsl(210, 90%, 48%);
+  --primary-foreground: hsl(210, 40%, 98%);
+  --secondary: hsl(174, 60%, 51%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --muted: hsl(210, 40%, 96%);
+  --muted-foreground: hsl(215.4, 16.3%, 46.9%);
+  --accent: hsl(33, 100%, 50%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  --border: hsl(214.3, 31.8%, 91.4%);
+  --input: hsl(214.3, 31.8%, 91.4%);
+  --ring: hsl(210, 90%, 48%);
+  --chart-1: hsl(210, 90%, 48%);
+  --chart-2: hsl(174, 60%, 51%);
+  --chart-3: hsl(33, 100%, 50%);
+  --chart-4: hsl(280, 65%, 60%);
+  --chart-5: hsl(340, 75%, 55%);
+  --sidebar: hsl(180, 6.6667%, 97.0588%);
+  --sidebar-foreground: hsl(210, 25%, 7.8431%);
+  --sidebar-primary: hsl(203.8863, 88.2845%, 53.1373%);
+  --sidebar-primary-foreground: hsl(0, 0%, 100%);
+  --sidebar-accent: hsl(211.5789, 51.3514%, 92.7451%);
+  --sidebar-accent-foreground: hsl(203.8863, 88.2845%, 53.1373%);
+  --sidebar-border: hsl(205.0000, 25.0000%, 90.5882%);
+  --sidebar-ring: hsl(202.8169, 89.1213%, 53.1373%);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --radius: 12px;
+  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00), 0px 1px 2px -1px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00), 0px 1px 2px -1px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00), 0px 2px 4px -1px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00), 0px 4px 6px -1px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00), 0px 8px 10px -1px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --background: hsl(0, 0%, 0%);
+  --foreground: hsl(200, 6.6667%, 91.1765%);
+  --card: hsl(228, 9.8039%, 10%);
+  --card-foreground: hsl(0, 0%, 85.0980%);
+  --popover: hsl(0, 0%, 0%);
+  --popover-foreground: hsl(200, 6.6667%, 91.1765%);
+  --primary: hsl(210, 90%, 48%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(174, 60%, 51%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --muted: hsl(0, 0%, 9.4118%);
+  --muted-foreground: hsl(210, 3.3898%, 46.2745%);
+  --accent: hsl(33, 100%, 50%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --border: hsl(210, 5.2632%, 14.9020%);
+  --input: hsl(207.6923, 27.6596%, 18.4314%);
+  --ring: hsl(202.8169, 89.1213%, 53.1373%);
+  --chart-1: hsl(203.8863, 88.2845%, 53.1373%);
+  --chart-2: hsl(159.7826, 100%, 36.0784%);
+  --chart-3: hsl(42.0290, 92.8251%, 56.2745%);
+  --chart-4: hsl(147.1429, 78.5047%, 41.9608%);
+  --chart-5: hsl(341.4894, 75.2000%, 50.9804%);
+  --sidebar: hsl(228, 9.8039%, 10%);
+  --sidebar-foreground: hsl(0, 0%, 85.0980%);
+  --sidebar-primary: hsl(202.8169, 89.1213%, 53.1373%);
+  --sidebar-primary-foreground: hsl(0, 0%, 100%);
+  --sidebar-accent: hsl(205.7143, 70%, 7.8431%);
+  --sidebar-accent-foreground: hsl(203.7736, 87.6033%, 52.5490%);
+  --sidebar-border: hsl(205.7143, 15.7895%, 26.0784%);
+  --sidebar-ring: hsl(202.8169, 89.1213%, 53.1373%);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --radius: 12px;
+  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00), 0px 1px 2px -1px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00), 0px 1px 2px -1px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00), 0px 2px 4px -1px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00), 0px 4px 6px -1px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00), 0px 8px 10px -1px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169, 89.1213%, 53.1373%, 0.00);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* Custom styles for WashOut Pro - matching design reference */
+.gradient-bg {
+  background: linear-gradient(135deg, hsl(210, 90%, 48%) 0%, hsl(174, 60%, 51%) 100%);
+}
+
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -8px hsl(210, 90%, 48%, 0.3);
+}
+
+.check-in-button {
+  background: linear-gradient(135deg, var(--accent) 0%, hsl(33, 100%, 40%) 100%);
+  transition: all 0.2s ease;
+}
+
+.check-in-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px -6px hsl(33, 100%, 50%, 0.4);
+}
+
+.mobile-nav {
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+
+.nav-item {
+  transition: color 0.2s ease;
+}
+
+.nav-item.active {
+  color: var(--primary);
+}
+
+.location-badge {
+  background: hsl(142, 76%, 36%, 0.1);
+  color: hsl(142, 76%, 36%);
+}
+
+.earnings-trend {
+  color: hsl(142, 76%, 36%);
+}
+
+/* Uppy modal customizations to match app theme */
+.uppy-DashboardModal-modal {
+  border-radius: var(--radius) !important;
+}
+
+.uppy-Dashboard-inner {
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.uppy-u-reset.uppy-Dashboard-overlay {
+  background-color: hsl(0, 0%, 0%, 0.5) !important;
+}
+
+.uppy-Dashboard-AddFiles {
+  background-color: var(--muted) !important;
+  border: 2px dashed var(--border) !important;
+  border-radius: var(--radius) !important;
+}
+
+.uppy-Dashboard-AddFiles-title {
+  color: var(--foreground) !important;
+  font-family: var(--font-sans) !important;
+}
+
+.uppy-Dashboard-browse {
+  color: var(--primary) !important;
+}
+
+.uppy-Dashboard-Item {
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.uppy-ProviderBrowserItem {
+  border-radius: var(--radius) !important;
+}
+
+/* Button styling within Uppy */
+.uppy-c-btn {
+  border-radius: var(--radius) !important;
+  font-family: var(--font-sans) !important;
+}
+
+.uppy-c-btn-primary {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.uppy-c-btn-primary:hover {
+  background-color: hsl(210, 90%, 45%) !important;
+}
+
+/* Progress bar styling */
+.uppy-ProgressBar {
+  background-color: var(--muted) !important;
+  border-radius: var(--radius) !important;
+}
+
+.uppy-ProgressBar-inner {
+  background-color: var(--primary) !important;
+}
+
+/* Status text styling */
+.uppy-StatusBar {
+  background-color: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+  font-family: var(--font-sans) !important;
+  border-radius: 0 0 var(--radius) var(--radius) !important;
+}
+
+/* File preview styling */
+.uppy-Dashboard-Item-preview {
+  border-radius: var(--radius) !important;
+}
+
+.uppy-Dashboard-Item-name {
+  color: var(--foreground) !important;
+  font-family: var(--font-sans) !important;
+}
+
+.uppy-Dashboard-Item-status {
+  color: var(--muted-foreground) !important;
+  font-family: var(--font-sans) !important;
+}
+
+/* Remove file button */
+.uppy-Dashboard-Item-action--remove {
+  background-color: var(--destructive) !important;
+  color: var(--destructive-foreground) !important;
+}
+
+.uppy-Dashboard-Item-action--remove:hover {
+  background-color: hsl(0, 84.2%, 55%) !important;
+}
+
+/* Retry button */
+.uppy-Dashboard-Item-action--retry {
+  background-color: var(--secondary) !important;
+  color: var(--secondary-foreground) !important;
+}
+
+.uppy-Dashboard-Item-action--retry:hover {
+  background-color: hsl(174, 60%, 45%) !important;
+}

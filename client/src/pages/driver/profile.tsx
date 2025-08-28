@@ -1,0 +1,312 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { DriverHeader } from "@/components/DriverHeader";
+import { MobileNav } from "@/components/MobileNav";
+import { User, Truck, CreditCard, Save, LogOut } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+
+export default function DriverProfile() {
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+
+  const { data: user, isLoading, refetch } = useQuery({
+    queryKey: ['/api/auth/user'],
+  });
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await apiRequest("PUT", "/api/drivers/profile", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been successfully updated.",
+      });
+      setIsEditing(false);
+      refetch();
+    },
+    onError: (error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    paymentMethod: "check",
+    paymentFrequency: "weekly",
+    employerName: "",
+    employerAddress: "",
+    employerPhone: "",
+  });
+
+  // Update form data when user data loads
+  useState(() => {
+    if (user && user.roleData) {
+      setFormData({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        address: user.address || "",
+        paymentMethod: user.paymentMethod || "check",
+        paymentFrequency: user.paymentFrequency || "weekly",
+        employerName: user.roleData.employerName || "",
+        employerAddress: user.roleData.employerAddress || "",
+        employerPhone: user.roleData.employerPhone || "",
+      });
+    }
+  }, [user]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfileMutation.mutate(formData);
+  };
+
+  const handleLogout = () => {
+    window.location.href = '/api/logout';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <DriverHeader />
+        <div className="animate-pulse p-4 space-y-4">
+          <div className="h-32 bg-muted rounded-lg" />
+          <div className="h-48 bg-muted rounded-lg" />
+          <div className="h-48 bg-muted rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background pb-20">
+      <DriverHeader />
+      
+      <div className="p-4 space-y-4">
+        {/* Profile Header */}
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="w-10 h-10 text-primary" />
+            </div>
+            <h2 className="text-xl font-semibold mb-1" data-testid="text-user-name">
+              {user?.firstName} {user?.lastName}
+            </h2>
+            <p className="text-muted-foreground" data-testid="text-user-role">Concrete Truck Driver</p>
+            <div className="flex justify-center gap-2 mt-4">
+              <Button 
+                variant={isEditing ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsEditing(!isEditing)}
+                data-testid="button-edit-profile"
+              >
+                {isEditing ? "Cancel" : "Edit Profile"}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleLogout}
+                data-testid="button-logout"
+              >
+                <LogOut className="w-4 h-4 mr-1" />
+                Logout
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Personal Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <User className="w-5 h-5 mr-2" />
+                Personal Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                    disabled={!isEditing}
+                    data-testid="input-first-name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                    disabled={!isEditing}
+                    data-testid="input-last-name"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="input-email"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="input-phone"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="address">Address</Label>
+                <Textarea
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="textarea-address"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Employment Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Truck className="w-5 h-5 mr-2" />
+                Employment Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="employerName">Employer Name</Label>
+                <Input
+                  id="employerName"
+                  value={formData.employerName}
+                  onChange={(e) => setFormData({...formData, employerName: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="input-employer-name"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="employerAddress">Employer Address</Label>
+                <Textarea
+                  id="employerAddress"
+                  value={formData.employerAddress}
+                  onChange={(e) => setFormData({...formData, employerAddress: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="textarea-employer-address"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="employerPhone">Employer Phone</Label>
+                <Input
+                  id="employerPhone"
+                  value={formData.employerPhone}
+                  onChange={(e) => setFormData({...formData, employerPhone: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="input-employer-phone"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <CreditCard className="w-5 h-5 mr-2" />
+                Payment Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="paymentMethod">Payment Method</Label>
+                <Select 
+                  value={formData.paymentMethod}
+                  onValueChange={(value) => setFormData({...formData, paymentMethod: value})}
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger data-testid="select-payment-method">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="check">Check</SelectItem>
+                    <SelectItem value="venmo">Venmo</SelectItem>
+                    <SelectItem value="zelle">Zelle</SelectItem>
+                    <SelectItem value="ach">ACH Transfer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="paymentFrequency">Payment Frequency</Label>
+                <Select 
+                  value={formData.paymentFrequency}
+                  onValueChange={(value) => setFormData({...formData, paymentFrequency: value})}
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger data-testid="select-payment-frequency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {isEditing && (
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={updateProfileMutation.isPending}
+              data-testid="button-save-profile"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          )}
+        </form>
+      </div>
+
+      <MobileNav role="driver" />
+    </div>
+  );
+}
