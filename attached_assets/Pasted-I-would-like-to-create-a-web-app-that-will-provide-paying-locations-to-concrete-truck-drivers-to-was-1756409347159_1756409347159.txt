@@ -1,0 +1,86 @@
+I would like to create a web app that will provide paying locations to concrete truck drivers to washout the mixing drum before returning to the concrete plant for a new load.
+
+This app should have three primary users with associated dashboards: Concrete Truck Drivers, Owners of Wash-out location & a SuperUser 
+
+The dashboards should be secure and only allow the authenticated person to see their specific data. 
+
+The Concrete Truck Driver dashboard should include the following: 
+Customized to have the drivers name
+View their daily site visits 
+Enable GPS tracking
+Amount earned over the past 7 days 
+A button to check-in at an available location to complete another wash out.
+Ability to have the drivers take a photo of the completed washout and upload it to validated by the washout location owner or the actual washout 
+An area to view and download in a CSV format a complete history of all previous activity and associated payments. 
+An area to allow them to change any personal details that were initially set in the registration area such as Address, email, phone number, employer, employer address, phone number  and Payment methodology such as check, Venmo or Zelle on a weekly, bi-weekly or monthly basis.  
+
+I would also like to add an owners dashboard that will have the following:
+Add new clean-out locations.
+Allow them to monitor the driver clean-out frequency of the individual drivers along with a total of all over a 7, 14, month period. 
+The owners should have the ability to set a rate of $0 or more dollars for each clean-out with a default of $10. 
+The owners should also be able to view all payments made to drivers over time as well as having the ability to download that data in a CSV format. 
+Owners should be able to also view the photos associated with any washouts being recorded at their sites.
+A section for the washout owner to modify or update their personal or company details including the payment methodologies such as ACH, credit card for the Concrete Truck Drivers. As well as an optional field to upload any permits or certifications to prove compliance for Environmental or Regulatory Compliance .
+Make automated payments to the Concrete Truck Drivers based on their payment preferences leveraging Stripe
+
+The super admin dashboard should include the following:
+An overall view activity for all locations and drivers.
+The activity view should have an adjustable date range.
+A section to see all washout locations
+A section to see all registered Concrete Truck Drivers and washout owner.
+A section to hide a site from the Concrete Truck Drivers locations list due to non-payment of the monthly or annual subscription payment by the washout owners. If a registered owner suggests an non-registered or paid site, the system will not pay them.
+Ability to provide approval to owners to proceed with adding a new washout location after payment has been received. 
+Ability to remove any user from the registered persons list. 
+Ability to move to any registered user dashboard and back to super-admin dashboard.
+Area to have payment history of all registered washout owners including the ability to download a comprehensive CSV 
+ Ability to create additional Super-admins
+Registration for a superadmin
+Personalized dashboard
+Ability to pull money from Washout owner payment funds for subscription payments based off of owner preference leveraging Stripe
+Charge a 1% processing fee to the Washout site owners per transaction leveraging Stripe
+
+
+The database should be comprehensive and link all data. The database should include but not limited to:
+Concrete Truck Driver name
+Concrete Truck Driver address
+Concrete Truck Driver Email
+Concrete Truck Driver Phone number
+Concrete Truck Driver Payment methodology preference
+Concrete Truck Driver Employer
+Concrete Truck Driver Employer address
+Concrete Truck Driver Employer phone number
+Concrete Truck Driver Washout locations
+Concrete Truck Driver Washout history count
+Concrete Truck Driver Washout photos associated with each wash-out
+Washout owner name
+Washout Company name
+Washout address
+Washout email 
+Washout phone number
+Washout site address
+Washout activities by driver
+Washout activities photos by driver
+Washout payment methodology
+
+
+
+The flow should be as follows for Concrete Truck Drivers:
+Registration of of all details such as name, address, email, phone number, payment methodology preference, employer, employer address, employer phone number. Create a user name and password, email or phone number option for 2-factor authentication. Press save and be placed at the sign-in screen. 
+Sign-in with user name and password. And validate with 2-factor authentication.
+They are forwarded to their personalized Truck driver dashboard
+Identify a location
+Begin washout
+Take photo after completion 
+Finish the washout which will have a timestamp and associated photo uploaded and saved.
+View their recent activity. 
+Repeat
+Receive payment either weekly, bi-weekly or monthly.  
+
+
+The flow for Owners will be as follows:
+Complete registration of of all details such as name, company name, address, email, phone number, payment to truck drivers methodology preference, employer, employer address, employer phone number. Create a user name and password, email or phone number option for 2-factor authentication. Press save and be placed at the sign-in screen. 
+Sign-in with user name and password. And validate with 2-factor authentication.
+They are forwarded to their personalized owner dashboard 
+The limited access will only show registered truck drivers and their locations. 
+For full use, they will be required to make the license agreement payment and provide preference of a monthly or annual subscription fee.
+Upon confirmation from super-admin, owner will be enabled by the super-admin to begin entering sites.
