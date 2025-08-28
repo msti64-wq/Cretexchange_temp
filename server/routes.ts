@@ -13,7 +13,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
+  apiVersion: "2025-08-27.basil",
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -489,7 +489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Object storage endpoints for photo uploads
-  app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
+  app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {
     const userId = req.user?.claims?.sub;
     const objectStorageService = new ObjectStorageService();
     try {
@@ -518,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ uploadURL });
   });
 
-  app.put("/api/washout-photos", isAuthenticated, async (req, res) => {
+  app.put("/api/washout-photos", isAuthenticated, async (req: any, res) => {
     if (!req.body.photoURL) {
       return res.status(400).json({ error: "photoURL is required" });
     }
