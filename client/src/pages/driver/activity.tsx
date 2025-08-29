@@ -203,17 +203,17 @@ export default function DriverActivity() {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="font-semibold mb-1" data-testid={`text-activity-location-${index}`}>
-                        {activity.location?.name || 'Unknown Location'}
+                        {activity.washout_locations?.name || activity.location?.name || 'Unknown Location'}
                       </h3>
                       <p className="text-sm text-muted-foreground mb-2" data-testid={`text-activity-address-${index}`}>
-                        {activity.location?.address}
+                        {activity.washout_locations?.address || activity.location?.address || ''}
                       </p>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
                           <span data-testid={`text-activity-date-${index}`}>
-                            {new Date(activity.checkInTime).toLocaleDateString()} at{' '}
-                            {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
+                            {new Date(activity.washout_activities?.checkInTime || activity.checkInTime).toLocaleDateString()} at{' '}
+                            {new Date(activity.washout_activities?.checkInTime || activity.checkInTime).toLocaleTimeString('en-US', {
                               hour: 'numeric',
                               minute: '2-digit',
                               hour12: true
@@ -224,31 +224,31 @@ export default function DriverActivity() {
                     </div>
                     <div className="text-right">
                       <div className="text-xl font-bold text-foreground mb-1" data-testid={`text-activity-amount-${index}`}>
-                        {formatCurrency(Number(activity.amount))}
+                        {formatCurrency(Number(activity.washout_activities?.amount || activity.amount || 0))}
                       </div>
                       <Badge 
                         variant={
-                          activity.status === 'verified' ? 'default' : 
-                          activity.status === 'pending' ? 'secondary' : 'destructive'
+                          (activity.washout_activities?.status || activity.status) === 'verified' ? 'default' : 
+                          (activity.washout_activities?.status || activity.status) === 'pending' ? 'secondary' : 'destructive'
                         }
                         data-testid={`badge-activity-status-${index}`}
                       >
-                        {activity.status === 'verified' ? 'Verified' : 
-                         activity.status === 'pending' ? 'Pending' : 'Rejected'}
+                        {(activity.washout_activities?.status || activity.status) === 'verified' ? 'Verified' : 
+                         (activity.washout_activities?.status || activity.status) === 'pending' ? 'Pending' : 'Rejected'}
                       </Badge>
                     </div>
                   </div>
 
-                  {activity.notes && (
+                  {(activity.washout_activities?.notes || activity.notes) && (
                     <p className="text-sm text-muted-foreground mb-3" data-testid={`text-activity-notes-${index}`}>
-                      {activity.notes}
+                      {activity.washout_activities?.notes || activity.notes}
                     </p>
                   )}
 
-                  {activity.photoUrls && activity.photoUrls.length > 0 && (
+                  {(activity.washout_activities?.photoUrls || activity.photoUrls) && (activity.washout_activities?.photoUrls || activity.photoUrls).length > 0 && (
                     <div className="flex items-center text-sm text-muted-foreground">
                       <ImageIcon className="w-4 h-4 mr-1" />
-                      <span>{activity.photoUrls.length} photo(s) attached</span>
+                      <span>{(activity.washout_activities?.photoUrls || activity.photoUrls).length} photo(s) attached</span>
                     </div>
                   )}
 
