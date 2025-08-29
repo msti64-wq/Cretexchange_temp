@@ -84,12 +84,19 @@ export default function OwnerDashboard() {
 
       <main className="p-4 space-y-6">
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <StatCard title="Locations" className="text-center">
             <div className="text-3xl font-bold text-primary mb-1" data-testid="text-total-locations">
               {locations || 0}
             </div>
             <div className="text-sm text-muted-foreground">Active Sites</div>
+          </StatCard>
+
+          <StatCard title="Daily Visits" className="text-center">
+            <div className="text-3xl font-bold text-accent mb-1" data-testid="text-daily-visits">
+              {weekStats?.totalWashouts || 0}
+            </div>
+            <div className="text-sm text-muted-foreground">Today</div>
           </StatCard>
 
           <StatCard title="Pending Payments" className="text-center">
