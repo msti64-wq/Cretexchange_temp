@@ -64,22 +64,39 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     for (const file of uploadedFiles) {
       // Set ACL policy for the uploaded photo
       try {
+        console.log("Processing photo upload:", file);
         const response = await apiRequest("PUT", "/api/washout-photos", {
           photoURL: file.uploadURL,
         });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Photo ACL response error:", errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
         const data = await response.json();
         urls.push(data.objectPath);
       } catch (error) {
         console.error("Failed to set photo ACL:", error);
+        toast({
+          title: "Photo Processing Error",
+          description: error instanceof Error ? error.message : "Failed to process uploaded photo",
+          variant: "destructive",
+        });
+        // Continue processing other photos even if one fails
+        continue;
       }
     }
 
-    setPhotoUrls([...photoUrls, ...urls]);
-    
-    toast({
-      title: "Photo Uploaded",
-      description: `${uploadedFiles.length} photo(s) uploaded successfully.`,
-    });
+    if (urls.length > 0) {
+      setPhotoUrls([...photoUrls, ...urls]);
+      
+      toast({
+        title: "Photo Uploaded",
+        description: `${urls.length} photo(s) uploaded successfully.`,
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
