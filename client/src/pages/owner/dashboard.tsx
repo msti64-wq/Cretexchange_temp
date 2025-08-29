@@ -161,23 +161,23 @@ export default function OwnerDashboard() {
                     </div>
                     <div>
                       <div className="font-medium" data-testid={`text-driver-name-${index}`}>
-                        {activity.driver?.user?.firstName} {activity.driver?.user?.lastName}
+                        {activity.users?.firstName} {activity.users?.lastName}
                       </div>
                       <div className="text-sm text-muted-foreground" data-testid={`text-location-name-${index}`}>
-                        {activity.location?.name}
+                        {activity.washout_locations?.name}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
-                      {formatCurrency(Number(activity.amount))}
+                      {formatCurrency(Number(activity.washout_activities?.amount || 0))}
                     </div>
                     <Badge 
-                      variant={activity.status === 'verified' ? 'default' : 'secondary'}
+                      variant={activity.washout_activities?.status === 'verified' ? 'default' : 'secondary'}
                       className="text-xs"
                       data-testid={`badge-activity-status-${index}`}
                     >
-                      {activity.status === 'verified' ? 'Verified' : 'Pending'}
+                      {activity.washout_activities?.status === 'verified' ? 'Verified' : 'Pending'}
                     </Badge>
                   </div>
                 </div>
