@@ -385,6 +385,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/owners/locations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      
+      const owner = await storage.getOwner(userId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Verify the location belongs to this owner before deleting
+      const location = await storage.getWashoutLocation(id);
+      if (!location) {
+        return res.status(404).json({ message: "Location not found" });
+      }
+
+      if (location.ownerId !== owner.id) {
+        return res.status(403).json({ message: "Not authorized to delete this location" });
+      }
+
+      const deleted = await storage.deleteWashoutLocation(id, owner.id);
+      
+      if (deleted) {
+        res.json({ message: "Location deleted successfully" });
+      } else {
+        res.status(404).json({ message: "Location not found or already deleted" });
+      }
+    } catch (error) {
+      console.error("Error deleting location:", error);
+      res.status(500).json({ message: "Failed to delete location" });
+    }
+  });
+
   app.get('/api/owners/activities', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;

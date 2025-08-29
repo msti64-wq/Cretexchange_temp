@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building2, Plus, MapPin, DollarSign, Edit, Eye, EyeOff } from "lucide-react";
+import { Building2, Plus, MapPin, DollarSign, Edit, Eye, EyeOff, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -18,6 +18,7 @@ export default function OwnerLocations() {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<any>(null);
+  const [locationToDelete, setLocationToDelete] = useState<any>(null);
 
   const { data: locations, isLoading } = useQuery({
     queryKey: ['/api/owners/locations'],
@@ -62,6 +63,29 @@ export default function OwnerLocations() {
     onError: (error) => {
       toast({
         title: "Failed to Update Rate",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteLocationMutation = useMutation({
+    mutationFn: async (locationId: string) => {
+      const response = await apiRequest("DELETE", `/api/owners/locations/${locationId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Location Deleted",
+        description: "The washout location has been permanently removed.",
+      });
+      setLocationToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/locations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to Delete Location",
         description: error.message,
         variant: "destructive",
       });
@@ -347,14 +371,25 @@ export default function OwnerLocations() {
                             </div>
                             <div className="text-xs text-muted-foreground">per washout</div>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingLocation(location.id)}
-                            data-testid={`button-edit-rate-${index}`}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingLocation(location.id)}
+                              data-testid={`button-edit-rate-${index}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setLocationToDelete(location)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              data-testid={`button-delete-location-${index}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -384,6 +419,40 @@ export default function OwnerLocations() {
           )}
         </div>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!locationToDelete} onOpenChange={() => setLocationToDelete(null)}>
+        <DialogContent data-testid="dialog-delete-confirmation">
+          <DialogHeader>
+            <DialogTitle>Delete Location</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete "{locationToDelete?.name}"? 
+              This action cannot be undone and will remove all associated data.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setLocationToDelete(null)}
+              data-testid="button-cancel-delete"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (locationToDelete) {
+                  deleteLocationMutation.mutate(locationToDelete.id);
+                }
+              }}
+              disabled={deleteLocationMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteLocationMutation.isPending ? "Deleting..." : "Delete Location"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <MobileNav role="owner" />
     </div>

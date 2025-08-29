@@ -58,6 +58,7 @@ export interface IStorage {
   getActiveLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]>;
   updateLocationVisibility(locationId: string, isVisible: boolean): Promise<WashoutLocation>;
   updateLocationRate(locationId: string, rate: string): Promise<WashoutLocation>;
+  deleteWashoutLocation(locationId: string, ownerId: string): Promise<boolean>;
   getAllLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]>;
 
   // Activity operations
@@ -304,6 +305,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(washoutLocations.id, locationId))
       .returning();
     return location;
+  }
+
+  async deleteWashoutLocation(locationId: string, ownerId: string): Promise<boolean> {
+    const result = await db
+      .delete(washoutLocations)
+      .where(and(
+        eq(washoutLocations.id, locationId),
+        eq(washoutLocations.ownerId, ownerId)
+      ))
+      .returning();
+    
+    return result.length > 0;
   }
 
   async getAllLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]> {
