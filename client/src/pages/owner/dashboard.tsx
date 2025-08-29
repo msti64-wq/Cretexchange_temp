@@ -87,6 +87,14 @@ export default function OwnerDashboard() {
     return total;
   }, 0) || 0;
 
+  // Calculate rejected payments
+  const rejectedPayments = recentActivities?.reduce((total: number, activity: any) => {
+    if (activity.washout_activities?.status === 'rejected') {
+      return total + Number(activity.washout_activities?.amount || 0);
+    }
+    return total;
+  }, 0) || 0;
+
   // Calculate total washouts from recent activities (exclude rejected washouts)
   const totalWashouts = recentActivities?.filter((activity: any) => 
     activity.washout_activities?.status !== 'rejected'
@@ -180,6 +188,13 @@ export default function OwnerDashboard() {
             </div>
             <div className="text-sm text-muted-foreground">Ready for Payout</div>
           </StatCard>
+
+          <StatCard title="Rejected Washouts" className="text-center">
+            <div className="text-3xl font-bold text-red-600 dark:text-red-500 mb-1" data-testid="text-rejected-payments">
+              {formatCurrency(rejectedPayments)}
+            </div>
+            <div className="text-sm text-muted-foreground">Denied</div>
+          </StatCard>
         </div>
 
 
@@ -208,6 +223,12 @@ export default function OwnerDashboard() {
               <span className="text-muted-foreground">Unique Drivers</span>
               <span className="text-lg font-semibold" data-testid="text-month-drivers">
                 {uniqueDrivers}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Rejected Washouts</span>
+              <span className="text-lg font-semibold text-red-600 dark:text-red-500" data-testid="text-rejected-count">
+                {recentActivities?.filter((activity: any) => activity.washout_activities?.status === 'rejected').length || 0}
               </span>
             </div>
           </div>
