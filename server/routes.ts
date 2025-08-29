@@ -703,6 +703,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ uploadURL });
   });
 
+  // Third alternative with completely neutral name
+  app.post("/api/files/generate", isAuthenticated, async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    res.json({ uploadURL });
+  });
+
   app.put("/api/washout-photos", isAuthenticated, async (req: any, res) => {
     if (!req.body.photoURL) {
       return res.status(400).json({ error: "photoURL is required" });
