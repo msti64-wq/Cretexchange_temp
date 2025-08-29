@@ -17,14 +17,15 @@ export function getSession() {
     tableName: "sessions",
   });
   return session({
-    secret: process.env.SESSION_SECRET || "your-secret-key-here",
+    secret: process.env.SESSION_SECRET || "development-secret-key-change-in-production",
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Always false for development
       maxAge: sessionTtl,
+      sameSite: 'lax', // Allow same-site requests
     },
   });
 }
@@ -151,6 +152,7 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
+  console.log('Auth check - isAuthenticated:', req.isAuthenticated(), 'user:', req.user);
   if (req.isAuthenticated()) {
     return next();
   }
