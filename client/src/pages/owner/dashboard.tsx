@@ -153,7 +153,7 @@ export default function OwnerDashboard() {
                 <p>No recent activity</p>
               </div>
             ) : (
-              recentActivities.slice(0, 3).map((activity: any, index: number) => (
+              recentActivities.map((activity: any, index: number) => (
                 <div key={activity.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg" data-testid={`card-recent-activity-${index}`}>
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
