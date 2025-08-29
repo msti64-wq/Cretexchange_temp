@@ -44,6 +44,14 @@ export default function OwnerDashboard() {
     return total;
   }, 0) || 0;
 
+  // Calculate total washouts from recent activities
+  const totalWashouts = recentActivities?.length || 0;
+
+  // Calculate unique drivers from recent activities
+  const uniqueDrivers = recentActivities ? new Set(
+    recentActivities.map((activity: any) => activity.users?.id).filter(Boolean)
+  ).size : 0;
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
@@ -138,13 +146,13 @@ export default function OwnerDashboard() {
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Total Washouts</span>
               <span className="text-lg font-semibold" data-testid="text-month-washouts">
-                {monthStats?.totalWashouts || 0}
+                {totalWashouts}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Unique Drivers</span>
               <span className="text-lg font-semibold" data-testid="text-month-drivers">
-                {monthStats?.totalDrivers || 0}
+                {uniqueDrivers}
               </span>
             </div>
           </div>
