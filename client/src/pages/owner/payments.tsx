@@ -138,6 +138,8 @@ export default function OwnerPayments() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
+                    min="2020-01-01"
+                    max="2030-12-31"
                     data-testid="input-start-date"
                   />
                 </div>
@@ -147,6 +149,8 @@ export default function OwnerPayments() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
+                    min="2020-01-01"
+                    max="2030-12-31"
                     data-testid="input-end-date"
                   />
                 </div>
