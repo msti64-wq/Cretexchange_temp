@@ -60,8 +60,8 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     console.log("Current window location:", window.location.href);
     
     try {
-      // Try direct fetch to avoid any middleware issues
-      const fullUrl = `${window.location.origin}/api/objects/upload`;
+      // Try alternative endpoint to bypass ad blocker blocking "upload" keyword
+      const fullUrl = `${window.location.origin}/api/media/prepare`;
       console.log("Attempting direct fetch to:", fullUrl);
       
       const response = await fetch(fullUrl, {

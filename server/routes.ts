@@ -696,6 +696,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ uploadURL });
   });
 
+  // Alternative endpoint to bypass ad blocker blocking "upload" keyword
+  app.post("/api/media/prepare", isAuthenticated, async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    res.json({ uploadURL });
+  });
+
   app.put("/api/washout-photos", isAuthenticated, async (req: any, res) => {
     if (!req.body.photoURL) {
       return res.status(400).json({ error: "photoURL is required" });
