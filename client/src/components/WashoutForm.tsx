@@ -56,11 +56,35 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
 
   const handleGetUploadParameters = async () => {
     console.log("=== GETTING UPLOAD PARAMETERS ===");
+    console.log("Making request to /api/objects/upload");
+    console.log("Current window location:", window.location.href);
+    
     try {
-      const response = await apiRequest("POST", "/api/objects/upload");
-      console.log("Upload parameters response:", response);
+      // Try direct fetch to avoid any middleware issues
+      const fullUrl = `${window.location.origin}/api/objects/upload`;
+      console.log("Attempting direct fetch to:", fullUrl);
+      
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      
+      console.log("Response received:");
+      console.log("  Status:", response.status);
+      console.log("  StatusText:", response.statusText);
+      console.log("  Headers:", Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Upload parameters request failed:", response.status, errorText);
+        throw new Error(`Failed to get upload parameters: ${response.status} - ${errorText}`);
+      }
+      
       const data = await response.json();
-      console.log("Upload parameters data:", data);
+      console.log("Upload parameters data received:", data);
       
       const uploadParams = {
         method: "PUT" as const,
@@ -70,6 +94,11 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       return uploadParams;
     } catch (error) {
       console.error("Failed to get upload parameters:", error);
+      console.error("Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       throw error;
     }
   };
