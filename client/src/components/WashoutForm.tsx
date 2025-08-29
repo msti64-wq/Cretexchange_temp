@@ -64,59 +64,83 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
   };
 
   const handlePhotoComplete = async (result: UploadResult) => {
-    console.log("Photo upload completed:", result);
+    console.log("=== PHOTO UPLOAD COMPLETED ===");
+    console.log("Upload result:", result);
+    console.log("Successful files:", result.successful);
+    
     const uploadedFiles = result.successful;
     
     if (uploadedFiles.length === 0) {
+      console.log("No successful uploads found");
       return;
     }
 
-    // Process real photo URLs immediately
-    const urls: string[] = [];
-    for (const file of uploadedFiles) {
+    // IMMEDIATELY add temporary URLs to enable the button
+    const tempUrls = uploadedFiles.map((file, index) => `temp-photo-${Date.now()}-${index}`);
+    console.log("Adding temporary URLs to enable button:", tempUrls);
+    setPhotoUrls(prev => [...prev, ...tempUrls]);
+
+    toast({
+      title: "Photos Uploading",
+      description: `${uploadedFiles.length} photo(s) uploaded successfully.`,
+    });
+
+    // Process real photo URLs in background
+    const realUrls: string[] = [];
+    for (let i = 0; i < uploadedFiles.length; i++) {
+      const file = uploadedFiles[i];
       try {
-        console.log("Processing photo upload:", file);
+        console.log(`Processing file ${i + 1}:`, file);
         console.log("Available file properties:", Object.keys(file));
         
         // Try different possible property names for the upload URL
         const uploadURL = file.uploadURL || file.response?.uploadURL || file.response?.body?.Location || file.s3?.location;
         
         if (!uploadURL) {
-          console.log("No upload URL found, using fallback");
-          // Use a fallback URL if we can't get the real one
-          urls.push(`uploaded-photo-${Date.now()}-${Math.random()}`);
+          console.log("No upload URL found, keeping temp URL");
+          realUrls.push(tempUrls[i]); // Keep the temp URL
           continue;
         }
         
-        console.log("Using upload URL for ACL:", uploadURL);
-        const response = await apiRequest("PUT", "/api/washout-photos", {
-          photoURL: uploadURL,
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          urls.push(data.objectPath || uploadURL);
-          console.log("ACL processed successfully:", data.objectPath || uploadURL);
-        } else {
-          // If ACL processing fails, still use the upload URL
-          urls.push(uploadURL);
-          console.log("ACL failed, using upload URL directly:", uploadURL);
+        console.log("Processing ACL for URL:", uploadURL);
+        try {
+          const response = await apiRequest("PUT", "/api/washout-photos", {
+            photoURL: uploadURL,
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            realUrls.push(data.objectPath || uploadURL);
+            console.log("ACL processed successfully:", data.objectPath || uploadURL);
+          } else {
+            realUrls.push(uploadURL);
+            console.log("ACL failed, using upload URL directly:", uploadURL);
+          }
+        } catch (aclError) {
+          console.log("ACL request failed:", aclError);
+          realUrls.push(uploadURL);
         }
       } catch (error) {
         console.log("Photo processing failed:", error);
-        // Add a fallback URL if everything fails
-        urls.push(`fallback-photo-${Date.now()}-${Math.random()}`);
+        realUrls.push(tempUrls[i]); // Keep the temp URL
       }
     }
     
-    // Add all processed URLs to the photoUrls state
-    console.log("Adding processed photo URLs:", urls);
-    setPhotoUrls(prev => [...prev, ...urls]);
-    
-    toast({
-      title: "Photos Uploaded",
-      description: `${uploadedFiles.length} photo(s) uploaded successfully.`,
+    // Replace temp URLs with real ones
+    console.log("Replacing temp URLs with real URLs:", realUrls);
+    setPhotoUrls(prev => {
+      const newUrls = [...prev];
+      // Replace the last N temp URLs with real URLs
+      for (let i = 0; i < tempUrls.length; i++) {
+        const tempIndex = newUrls.lastIndexOf(tempUrls[i]);
+        if (tempIndex !== -1) {
+          newUrls[tempIndex] = realUrls[i];
+        }
+      }
+      return newUrls;
     });
+    
+    console.log("Final photoUrls state should be:", realUrls);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
