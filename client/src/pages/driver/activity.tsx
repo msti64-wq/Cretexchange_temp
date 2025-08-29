@@ -17,15 +17,17 @@ export default function DriverActivity() {
 
   const { data: activities, isLoading } = useQuery({
     queryKey: ['/api/drivers/activities', startDate, endDate],
+    staleTime: 0, // Always fetch fresh data
   });
 
   const { data: payments } = useQuery({
     queryKey: ['/api/drivers/payments', startDate, endDate],
+    staleTime: 0, // Always fetch fresh data  
   });
 
   const filteredActivities = activities?.filter((activity: any) => {
     if (filterStatus === "all") return true;
-    return activity.status === filterStatus;
+    return (activity.washout_activities?.status || activity.status) === filterStatus;
   }) || [];
 
   const handleExport = async () => {
@@ -202,7 +204,7 @@ export default function DriverActivity() {
             </Card>
           ) : (
             filteredActivities.map((activity: any, index: number) => (
-              <Card key={activity.id} className="hover:shadow-md transition-shadow" data-testid={`card-activity-${index}`}>
+              <Card key={activity.washout_activities?.id || activity.id || index} className="hover:shadow-md transition-shadow" data-testid={`card-activity-${index}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
