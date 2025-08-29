@@ -197,12 +197,13 @@ export default function OwnerDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
-                      variant={activity.washout_activities?.photoUrls?.length > 0 ? "outline" : "ghost"}
+                      variant={(activity.washout_activities?.photoUrls?.length > 0 || activity.photoUrls?.length > 0) ? "outline" : "ghost"}
                       size="sm"
                       className="text-xs"
-                      disabled={!activity.washout_activities?.photoUrls?.length}
+                      disabled={!(activity.washout_activities?.photoUrls?.length > 0 || activity.photoUrls?.length > 0)}
                       onClick={() => {
-                        if (activity.washout_activities?.photoUrls?.length > 0) {
+                        console.log("Activity data:", activity); // Debug log
+                        if (activity.washout_activities?.photoUrls?.length > 0 || activity.photoUrls?.length > 0) {
                           setSelectedActivity(activity);
                           setIsPhotoModalOpen(true);
                         }
@@ -210,8 +211,10 @@ export default function OwnerDashboard() {
                       data-testid={`button-view-photos-${index}`}
                     >
                       <ImageIcon className="w-4 h-4 mr-1" />
-                      {activity.washout_activities?.photoUrls?.length > 0 ? 
+                      {(activity.washout_activities?.photoUrls?.length > 0) ? 
                         `Photos (${activity.washout_activities.photoUrls.length})` : 
+                        (activity.photoUrls?.length > 0) ?
+                        `Photos (${activity.photoUrls.length})` :
                         'No Photos'}
                     </Button>
                     <div className="text-right">
