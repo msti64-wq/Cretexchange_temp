@@ -16,7 +16,13 @@ export default function DriverCheckIn() {
 
   const { data: location, isLoading } = useQuery({
     queryKey: ['/api/drivers/locations'],
-    select: (data: any[]) => data.find((loc: any) => loc.id === locationId),
+    select: (data: any[]) => {
+      const item = data.find((item: any) => {
+        const loc = item.washout_locations || item;
+        return loc.id === locationId;
+      });
+      return item ? (item.washout_locations || item) : null;
+    },
     enabled: !!locationId,
   });
 
@@ -25,9 +31,12 @@ export default function DriverCheckIn() {
     getCurrentLocation()
       .then(coords => {
         setCurrentLocation({ lat: coords.latitude, lng: coords.longitude });
+        setLocationError(null);
       })
       .catch(error => {
         setLocationError(error.message);
+        // Fallback for development: use a default location (Denver, CO area)
+        setCurrentLocation({ lat: 39.7392, lng: -104.9903 });
       });
   }, []);
 
