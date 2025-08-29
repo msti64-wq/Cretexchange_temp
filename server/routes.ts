@@ -731,11 +731,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "No data found" });
       }
 
-      const headers = Object.keys(data[0]).join(',');
-      const rows = data.map(row => 
-        Object.values(row).map(value => 
-          typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value
-        ).join(',')
+      // Flatten nested objects for CSV export
+      const flattenedData = data.map(row => {
+        const flattened: any = {};
+        
+        // Handle nested washout_activities
+        if (row.washout_activities) {
+          Object.keys(row.washout_activities).forEach(key => {
+            flattened[`activity_${key}`] = row.washout_activities[key];
+          });
+        }
+        
+        // Handle nested washout_locations
+        if (row.washout_locations) {
+          Object.keys(row.washout_locations).forEach(key => {
+            flattened[`location_${key}`] = row.washout_locations[key];
+          });
+        }
+        
+        // Handle nested location (alternative structure)
+        if (row.location) {
+          Object.keys(row.location).forEach(key => {
+            flattened[`location_${key}`] = row.location[key];
+          });
+        }
+        
+        // Handle nested driver (for owner exports)
+        if (row.driver) {
+          Object.keys(row.driver).forEach(key => {
+            if (typeof row.driver[key] === 'object' && row.driver[key] !== null) {
+              // Handle nested user within driver
+              if (key === 'user') {
+                Object.keys(row.driver[key]).forEach(userKey => {
+                  flattened[`driver_${userKey}`] = row.driver[key][userKey];
+                });
+              } else {
+                flattened[`driver_${key}`] = row.driver[key];
+              }
+            } else {
+              flattened[`driver_${key}`] = row.driver[key];
+            }
+          });
+        }
+        
+        // Add any top-level properties that aren't nested objects
+        Object.keys(row).forEach(key => {
+          if (typeof row[key] !== 'object' || row[key] === null) {
+            flattened[key] = row[key];
+          }
+        });
+        
+        return flattened;
+      });
+
+      const headers = Object.keys(flattenedData[0]).join(',');
+      const rows = flattenedData.map(row => 
+        Object.values(row).map(value => {
+          if (value === null || value === undefined) return '';
+          if (typeof value === 'string') {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          if (value instanceof Date) {
+            return `"${value.toISOString()}"`;
+          }
+          return value;
+        }).join(',')
       );
       const csv = [headers, ...rows].join('\n');
 
