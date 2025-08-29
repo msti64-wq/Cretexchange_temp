@@ -96,9 +96,10 @@ export async function setupAuth(app: Express) {
     const isLocalhost = domain.includes('localhost');
     const callbackUrl = isLocalhost ? `http://${domain}/api/callback` : `https://${domain}/api/callback`;
     
+    const strategyName = isLocalhost ? 'localhost' : domain;
     const strategy = new Strategy(
       {
-        name: `replitauth:${domain.split(':')[0]}`,
+        name: `replitauth:${strategyName}`,
         config,
         scope: "openid email profile offline_access",
         callbackURL: callbackUrl,
@@ -112,7 +113,6 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    console.log(`Login attempt - hostname: ${req.hostname}, available strategies:`, Object.keys((passport as any)._strategies || {}));
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
@@ -123,7 +123,13 @@ export async function setupAuth(app: Express) {
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
-    })(req, res, next);
+    })(req, res, (err: any) => {
+      if (err) {
+        console.error("Authentication callback error:", err);
+        return res.redirect("/api/login");
+      }
+      next();
+    });
   });
 
   app.get("/api/logout", (req, res) => {
