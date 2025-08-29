@@ -15,8 +15,9 @@ export function getSession() {
     secret: process.env.SESSION_SECRET || "development-secret-key-change-in-production",
     resave: true,
     saveUninitialized: true,
+    name: 'connect.sid', // Standard session cookie name
     cookie: {
-      httpOnly: true,
+      httpOnly: false, // Allow JS access for debugging
       secure: false,
       maxAge: sessionTtl,
       sameSite: 'lax',
@@ -148,7 +149,7 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
-  console.log('Auth check - isAuthenticated:', req.isAuthenticated(), 'user:', req.user);
+  console.log('Auth check - Session ID:', req.sessionID, 'isAuthenticated:', req.isAuthenticated(), 'user:', req.user, 'cookies:', req.headers.cookie);
   if (req.isAuthenticated()) {
     return next();
   }
