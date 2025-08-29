@@ -731,28 +731,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "No data found" });
       }
 
-      // Flatten nested objects for CSV export
-      const flattenedData = data.map(row => {
+      // Helper function to format UUIDs for human readability
+      const formatId = (uuid: string) => {
+        if (!uuid || typeof uuid !== 'string') return uuid;
+        return uuid.split('-')[0].toUpperCase(); // Show first 8 characters in uppercase
+      };
+      
+      // Helper function to format dates for human readability
+      const formatDate = (dateString: string | Date) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric', 
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+      };
+
+      // Flatten nested objects for CSV export with human-readable formatting
+      const flattenedData = data.map((row, index) => {
         const flattened: any = {};
         
-        // Handle nested washout_activities
+        // Add a simple row number for easy reference
+        flattened['row_number'] = index + 1;
+        
+        // Handle nested washout_activities with human-friendly formatting
         if (row.washout_activities) {
           Object.keys(row.washout_activities).forEach(key => {
-            flattened[`activity_${key}`] = row.washout_activities[key];
+            let value = row.washout_activities[key];
+            
+            // Format specific fields for better readability
+            if (key === 'id') {
+              flattened['activity_ref'] = formatId(value);
+            } else if (key === 'driverId') {
+              flattened['driver_ref'] = formatId(value);
+            } else if (key === 'locationId') {
+              flattened['location_ref'] = formatId(value);
+            } else if (key === 'checkInTime' || key === 'createdAt' || key === 'updatedAt' || key === 'verifiedAt') {
+              flattened[`activity_${key === 'checkInTime' ? 'date_time' : key}`] = formatDate(value);
+            } else if (key === 'amount') {
+              flattened['activity_amount'] = `$${parseFloat(value).toFixed(2)}`;
+            } else {
+              flattened[`activity_${key}`] = value;
+            }
           });
         }
         
-        // Handle nested washout_locations
+        // Handle nested washout_locations with human-friendly formatting
         if (row.washout_locations) {
           Object.keys(row.washout_locations).forEach(key => {
-            flattened[`location_${key}`] = row.washout_locations[key];
+            let value = row.washout_locations[key];
+            
+            if (key === 'id') {
+              flattened['location_id'] = formatId(value);
+            } else if (key === 'rate') {
+              flattened['location_rate'] = `$${parseFloat(value).toFixed(2)}`;
+            } else if (key === 'createdAt' || key === 'updatedAt') {
+              flattened[`location_${key}`] = formatDate(value);
+            } else {
+              flattened[`location_${key}`] = value;
+            }
           });
         }
         
         // Handle nested location (alternative structure)
         if (row.location) {
           Object.keys(row.location).forEach(key => {
-            flattened[`location_${key}`] = row.location[key];
+            let value = row.location[key];
+            
+            if (key === 'id') {
+              flattened['location_id'] = formatId(value);
+            } else if (key === 'rate') {
+              flattened['location_rate'] = `$${parseFloat(value).toFixed(2)}`;
+            } else if (key === 'createdAt' || key === 'updatedAt') {
+              flattened[`location_${key}`] = formatDate(value);
+            } else {
+              flattened[`location_${key}`] = value;
+            }
           });
         }
         
@@ -763,13 +821,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Handle nested user within driver
               if (key === 'user') {
                 Object.keys(row.driver[key]).forEach(userKey => {
-                  flattened[`driver_${userKey}`] = row.driver[key][userKey];
+                  let value = row.driver[key][userKey];
+                  if (userKey === 'id') {
+                    flattened['driver_user_ref'] = formatId(value);
+                  } else {
+                    flattened[`driver_${userKey}`] = value;
+                  }
                 });
               } else {
                 flattened[`driver_${key}`] = row.driver[key];
               }
             } else {
-              flattened[`driver_${key}`] = row.driver[key];
+              let value = row.driver[key];
+              if (key === 'id') {
+                flattened['driver_id'] = formatId(value);
+              } else {
+                flattened[`driver_${key}`] = value;
+              }
             }
           });
         }
@@ -777,7 +845,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Add any top-level properties that aren't nested objects
         Object.keys(row).forEach(key => {
           if (typeof row[key] !== 'object' || row[key] === null) {
-            flattened[key] = row[key];
+            if (key.includes('Id') || key === 'id') {
+              flattened[`${key}_ref`] = formatId(row[key]);
+            } else {
+              flattened[key] = row[key];
+            }
           }
         });
         
