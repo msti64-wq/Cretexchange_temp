@@ -876,13 +876,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return flattened;
       });
 
-      // Calculate total earnings for summary
-      const totalEarnings = flattenedData.reduce((sum, row) => {
-        const earnings = row.activity_amount || row.amount || 0;
-        return sum + parseFloat(earnings);
-      }, 0);
+      // Calculate totals for summary
+      const totals = flattenedData.reduce((acc, row) => {
+        // Calculate total activity amount
+        const activityAmount = row.activity_amount || 0;
+        if (typeof activityAmount === 'string' && activityAmount.startsWith('$')) {
+          acc.totalActivityAmount += parseFloat(activityAmount.substring(1));
+        } else {
+          acc.totalActivityAmount += parseFloat(activityAmount || 0);
+        }
+        
+        // Calculate total earnings
+        const earnings = row.earnings || 0;
+        if (typeof earnings === 'string' && earnings.startsWith('$')) {
+          acc.totalEarnings += parseFloat(earnings.substring(1));
+        } else {
+          acc.totalEarnings += parseFloat(earnings || 0);
+        }
+        
+        return acc;
+      }, { totalActivityAmount: 0, totalEarnings: 0 });
 
-      const headers = Object.keys(flattenedData[0]).join(',');
+      const headers = Object.keys(flattenedData[0]);
+      const activityAmountIndex = headers.indexOf('activity_amount');
+      const earningsIndex = headers.indexOf('earnings');
+      
+      const csvHeaders = headers.join(',');
       const rows = flattenedData.map(row => 
         Object.values(row).map(value => {
           if (value === null || value === undefined) return '';
@@ -897,20 +916,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       // Add summary rows
-      const emptySeparatorRow = Array(Object.keys(flattenedData[0]).length).fill('').join(',');
-      const summaryLabelRow = Array(Object.keys(flattenedData[0]).length).fill('').map((_, index) => {
+      const emptySeparatorRow = Array(headers.length).fill('').join(',');
+      const summaryLabelRow = Array(headers.length).fill('').map((_, index) => {
         if (index === 0) return '"SUMMARY"';
         return '';
       }).join(',');
       
-      const totalEarningsRow = Array(Object.keys(flattenedData[0]).length).fill('').map((_, index, arr) => {
+      const totalRow = Array(headers.length).fill('').map((_, index) => {
         if (index === 0) return '"Total Activities"';
         if (index === 1) return `"${flattenedData.length}"`;
-        if (index === arr.length - 1) return `"$${totalEarnings.toFixed(2)}"`;  // earnings column is last
+        if (index === activityAmountIndex) return `"$${totals.totalActivityAmount.toFixed(2)}"`;
+        if (index === earningsIndex) return `"$${totals.totalEarnings.toFixed(2)}"`;
         return '';
       }).join(',');
       
-      const csv = [headers, ...rows, emptySeparatorRow, summaryLabelRow, totalEarningsRow].join('\n');
+      const csv = [csvHeaders, ...rows, emptySeparatorRow, summaryLabelRow, totalRow].join('\n');
 
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
