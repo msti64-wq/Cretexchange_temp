@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { User, Truck, CreditCard, Save, LogOut } from "lucide-react";
@@ -14,6 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 export default function DriverProfile() {
   const { toast } = useToast();
+  const { logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
 
   const { data: user, isLoading, refetch } = useQuery({
@@ -78,7 +80,7 @@ export default function DriverProfile() {
   };
 
   const handleLogout = () => {
-    window.location.href = '/api/logout';
+    logout();
   };
 
   if (isLoading) {

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { MobileNav } from "@/components/MobileNav";
 import { Building2, CreditCard, Save, LogOut, AlertCircle, Crown } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -15,6 +16,7 @@ import { useLocation } from "wouter";
 
 export default function OwnerProfile() {
   const { toast } = useToast();
+  const { logout } = useAuth();
   const [, setLocation] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
 
@@ -78,7 +80,7 @@ export default function OwnerProfile() {
   };
 
   const handleLogout = () => {
-    window.location.href = '/api/logout';
+    logout();
   };
 
   if (isLoading) {
