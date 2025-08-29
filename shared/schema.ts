@@ -229,6 +229,10 @@ export const insertWashoutLocationSchema = createInsertSchema(washoutLocations).
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  latitude: z.number().transform(val => val.toString()),
+  longitude: z.number().transform(val => val.toString()),
+  rate: z.number().transform(val => val.toString()),
 });
 
 export const insertWashoutActivitySchema = createInsertSchema(washoutActivities).omit({
