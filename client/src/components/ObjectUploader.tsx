@@ -77,16 +77,25 @@ export function ObjectUploader({
       })
   );
 
+  const handleButtonClick = () => {
+    console.log("=== PHOTO BUTTON CLICKED ===");
+    console.log("Opening upload modal...");
+    setShowModal(true);
+  };
+
   return (
     <div>
-      <Button type="button" onClick={() => setShowModal(true)} className={buttonClassName}>
+      <Button type="button" onClick={handleButtonClick} className={buttonClassName}>
         {children}
       </Button>
 
       <DashboardModal
         uppy={uppy}
         open={showModal}
-        onRequestClose={() => setShowModal(false)}
+        onRequestClose={() => {
+          console.log("=== UPLOAD MODAL CLOSED ===");
+          setShowModal(false);
+        }}
         proudlyDisplayPoweredByUppy={false}
       />
     </div>
