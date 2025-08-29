@@ -74,7 +74,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     }
   };
 
-  const handlePhotoComplete = async (result: UploadResult) => {
+  const handlePhotoComplete = async (result: UploadResult<any, any>) => {
     console.log("=== PHOTO UPLOAD COMPLETED ===");
     console.log("Upload result:", result);
     console.log("Successful files:", result.successful);
@@ -87,7 +87,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     }
 
     // IMMEDIATELY add temporary URLs to enable the button
-    const tempUrls = uploadedFiles.map((file, index) => `temp-photo-${Date.now()}-${index}`);
+    const tempUrls = uploadedFiles.map((file: any, index: number) => `temp-photo-${Date.now()}-${index}`);
     console.log("Adding temporary URLs to enable button:", tempUrls);
     setPhotoUrls(prev => [...prev, ...tempUrls]);
 
@@ -218,15 +218,6 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
               maxFileSize={10485760} // 10MB
               onGetUploadParameters={handleGetUploadParameters}
               onComplete={handlePhotoComplete}
-              onUpload={(file, response) => {
-                console.log("=== UPLOAD EVENT ===");
-                console.log("File uploaded:", file);
-                console.log("Upload response:", response);
-              }}
-              onError={(error) => {
-                console.error("=== UPLOAD ERROR ===");
-                console.error("Upload error:", error);
-              }}
               buttonClassName="w-full mt-2"
             >
               <Camera className="w-5 h-5 mr-2" />
