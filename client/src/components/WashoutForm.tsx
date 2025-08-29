@@ -89,8 +89,8 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     try {
       await checkInMutation.mutateAsync({
         locationId: location.id,
-        latitude: currentLocation?.lat,
-        longitude: currentLocation?.lng,
+        latitude: currentLocation?.lat?.toString(),
+        longitude: currentLocation?.lng?.toString(),
         notes,
         photoUrls,
       });
