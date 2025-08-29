@@ -71,9 +71,10 @@ export default function OwnerDashboard() {
 
   const { weekStats, monthStats, locations, recentActivities } = dashboardData || {};
 
-  // Calculate pending payments from recent activities (exclude rejected washouts)
+  // Calculate pending payments from recent activities (include approved but unpaid washouts)
   const pendingPayments = recentActivities?.reduce((total: number, activity: any) => {
-    if (activity.washout_activities?.status === 'pending') {
+    const status = activity.washout_activities?.status;
+    if (status === 'pending' || status === 'verified') {
       return total + Number(activity.washout_activities?.amount || 0);
     }
     return total;
@@ -160,10 +161,10 @@ export default function OwnerDashboard() {
           </StatCard>
 
           <StatCard title="Pending Payments" className="text-center">
-            <div className="text-3xl font-bold text-secondary mb-1" data-testid="text-week-earnings">
+            <div className="text-3xl font-bold text-secondary mb-1" data-testid="text-pending-payments">
               {formatCurrency(pendingPayments)}
             </div>
-            <div className="text-sm text-muted-foreground">Awaiting Approval</div>
+            <div className="text-sm text-muted-foreground">Awaiting Payment</div>
           </StatCard>
         </div>
 
