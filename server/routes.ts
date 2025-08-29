@@ -215,7 +215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { startDate, endDate } = req.query;
       const start = startDate ? new Date(startDate as string) : undefined;
-      const end = endDate ? new Date(endDate as string) : undefined;
+      // For end date, set to end of day (23:59:59.999) to include all activities on that date
+      const end = endDate ? new Date(new Date(endDate as string).getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
 
       const activities = await storage.getActivitiesByDriver(driver.id, start, end);
       res.json(activities);
@@ -236,7 +237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { startDate, endDate } = req.query;
       const start = startDate ? new Date(startDate as string) : undefined;
-      const end = endDate ? new Date(endDate as string) : undefined;
+      // For end date, set to end of day (23:59:59.999) to include all payments on that date
+      const end = endDate ? new Date(new Date(endDate as string).getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
 
       const payments = await storage.getPaymentsByDriver(driver.id, start, end);
       res.json(payments);
@@ -394,7 +396,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { startDate, endDate } = req.query;
       const start = startDate ? new Date(startDate as string) : undefined;
-      const end = endDate ? new Date(endDate as string) : undefined;
+      // For end date, set to end of day (23:59:59.999) to include all activities on that date
+      const end = endDate ? new Date(new Date(endDate as string).getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
 
       const activities = await storage.getActivitiesByOwner(owner.id, start, end);
       res.json(activities);
@@ -684,7 +687,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           const start = startDate ? new Date(startDate) : undefined;
-          const end = endDate ? new Date(endDate) : undefined;
+          // For end date, set to end of day (23:59:59.999) to include all activities on that date
+          const end = endDate ? new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
           
           data = await storage.getActivitiesByDriver(driver.id, start, end);
           filename = `driver-activities-${new Date().toISOString().split('T')[0]}.csv`;
@@ -697,7 +701,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           const start = startDate ? new Date(startDate) : undefined;
-          const end = endDate ? new Date(endDate) : undefined;
+          // For end date, set to end of day (23:59:59.999) to include all activities on that date
+          const end = endDate ? new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
           
           data = await storage.getActivitiesByOwner(owner.id, start, end);
           filename = `owner-activities-${new Date().toISOString().split('T')[0]}.csv`;
@@ -710,7 +715,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           const start = startDate ? new Date(startDate) : undefined;
-          const end = endDate ? new Date(endDate) : undefined;
+          // For end date, set to end of day (23:59:59.999) to include all activities on that date
+          const end = endDate ? new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
           
           data = await storage.getAllActivities(start, end);
           filename = `all-activities-${new Date().toISOString().split('T')[0]}.csv`;
