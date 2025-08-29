@@ -30,6 +30,18 @@ export default function DriverDashboard() {
 
   const { dailyStats, weeklyStats, recentActivities } = dashboardData || {};
 
+  // Calculate rejected washouts and their total amount
+  const rejectedWashouts = recentActivities?.filter((activity: any) => 
+    (activity.washout_activities?.status || activity.status) === 'rejected'
+  ) || [];
+  
+  const rejectedTotal = rejectedWashouts.reduce((total: number, activity: any) => {
+    return total + Number(activity.washout_activities?.amount || activity.amount || 0);
+  }, 0);
+
+  // Calculate adjusted earnings (total minus rejected)
+  const adjustedDailyEarnings = (dailyStats?.earnings || 0) - rejectedTotal;
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <DriverHeader />
@@ -80,9 +92,14 @@ export default function DriverDashboard() {
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-secondary mb-1" data-testid="text-daily-earnings">
-                {formatCurrency(dailyStats?.earnings || 0)}
+                {formatCurrency(adjustedDailyEarnings)}
               </div>
               <div className="text-sm text-muted-foreground">Today's Earnings</div>
+              {rejectedTotal > 0 && (
+                <div className="text-xs text-red-600 dark:text-red-400 mt-1" data-testid="text-rejected-amount">
+                  -{formatCurrency(rejectedTotal)} rejected
+                </div>
+              )}
             </div>
           </div>
         </StatCard>
@@ -116,6 +133,14 @@ export default function DriverDashboard() {
                 {formatCurrency(weeklyStats?.avgPerWashout || 0)}
               </span>
             </div>
+            {rejectedWashouts.length > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Rejected Washouts</span>
+                <span className="text-lg font-semibold text-red-600 dark:text-red-400" data-testid="text-rejected-washouts">
+                  {rejectedWashouts.length} ({formatCurrency(rejectedTotal)})
+                </span>
+              </div>
+            )}
           </div>
         </StatCard>
 
