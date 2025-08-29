@@ -9,23 +9,17 @@ import type { User } from "../shared/schema";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: true,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
+  
+  // Use memory store for development to avoid database session issues
   return session({
     secret: process.env.SESSION_SECRET || "development-secret-key-change-in-production",
-    store: sessionStore,
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     cookie: {
       httpOnly: true,
-      secure: false, // Always false for development
+      secure: false,
       maxAge: sessionTtl,
-      sameSite: 'lax', // Allow same-site requests
+      sameSite: 'lax',
     },
   });
 }
@@ -88,8 +82,10 @@ export async function setupAuth(app: Express) {
       }
       req.logIn(user, (err) => {
         if (err) {
+          console.error("Login error:", err);
           return res.status(500).json({ message: "Failed to log in" });
         }
+        console.log("User logged in successfully:", user.id, "Session:", req.sessionID);
         return res.json({ message: "Login successful", user });
       });
     })(req, res, next);
