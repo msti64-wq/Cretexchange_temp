@@ -198,28 +198,14 @@ export default function OwnerDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
-                      variant={(activity.washout_activities?.photoUrls?.length > 0 || activity.photoUrls?.length > 0) ? "outline" : "ghost"}
+                      variant={(activity.washout_activities?.photoUrls?.length > 0) ? "outline" : "ghost"}
                       size="sm"
                       className="text-xs"
-                      disabled={false}
+                      disabled={!(activity.washout_activities?.photoUrls?.length > 0)}
                       onClick={() => {
-                        console.log("=== FULL ACTIVITY DATA ===");
-                        console.log("Activity object:", JSON.stringify(activity, null, 2));
-                        console.log("=== KEYS ANALYSIS ===");
-                        console.log("All keys:", Object.keys(activity));
-                        console.log("PhotoUrls direct:", activity.photoUrls);
-                        console.log("Nested washout_activities:", activity.washout_activities);
-                        
-                        // Check for photoUrls in all possible locations
-                        const hasPhotos = activity.photoUrls?.length > 0 || 
-                                         activity.washout_activities?.photoUrls?.length > 0;
-                        console.log("Has photos:", hasPhotos);
-                        
-                        if (hasPhotos) {
+                        if (activity.washout_activities?.photoUrls?.length > 0) {
                           setSelectedActivity(activity);
                           setIsPhotoModalOpen(true);
-                        } else {
-                          console.log("No photos found - button will remain disabled");
                         }
                       }}
                       data-testid={`button-view-photos-${index}`}

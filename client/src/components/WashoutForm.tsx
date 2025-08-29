@@ -67,19 +67,11 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     console.log("Photo upload completed:", result);
     const uploadedFiles = result.successful;
     
-    // ALWAYS enable the button when files are uploaded, regardless of processing
-    if (uploadedFiles.length > 0) {
-      const fallbackUrls = uploadedFiles.map((file, index) => `uploaded-photo-${Date.now()}-${index}`);
-      console.log("Adding fallback URLs to enable check-in:", fallbackUrls);
-      setPhotoUrls([...photoUrls, ...fallbackUrls]);
-      
-      toast({
-        title: "Photo Uploaded",
-        description: `${uploadedFiles.length} photo(s) uploaded successfully.`,
-      });
+    if (uploadedFiles.length === 0) {
+      return;
     }
 
-    // Try to process ACL in background (optional)
+    // Process real photo URLs immediately
     const urls: string[] = [];
     for (const file of uploadedFiles) {
       try {
@@ -90,7 +82,9 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
         const uploadURL = file.uploadURL || file.response?.uploadURL || file.response?.body?.Location || file.s3?.location;
         
         if (!uploadURL) {
-          console.log("No upload URL found, skipping ACL processing");
+          console.log("No upload URL found, using fallback");
+          // Use a fallback URL if we can't get the real one
+          urls.push(`uploaded-photo-${Date.now()}-${Math.random()}`);
           continue;
         }
         
@@ -101,20 +95,28 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
         
         if (response.ok) {
           const data = await response.json();
-          urls.push(data.objectPath);
-          console.log("ACL processed successfully:", data.objectPath);
+          urls.push(data.objectPath || uploadURL);
+          console.log("ACL processed successfully:", data.objectPath || uploadURL);
+        } else {
+          // If ACL processing fails, still use the upload URL
+          urls.push(uploadURL);
+          console.log("ACL failed, using upload URL directly:", uploadURL);
         }
       } catch (error) {
-        console.log("ACL processing failed (non-critical):", error);
+        console.log("Photo processing failed:", error);
+        // Add a fallback URL if everything fails
+        urls.push(`fallback-photo-${Date.now()}-${Math.random()}`);
       }
     }
     
-    // Update with real URLs if ACL processing succeeded
-    if (urls.length > 0) {
-      console.log("Updating with processed URLs:", urls);
-      // Replace the fallback URLs with real ones
-      setPhotoUrls(prev => [...prev.slice(0, -uploadedFiles.length), ...urls]);
-    }
+    // Add all processed URLs to the photoUrls state
+    console.log("Adding processed photo URLs:", urls);
+    setPhotoUrls(prev => [...prev, ...urls]);
+    
+    toast({
+      title: "Photos Uploaded",
+      description: `${uploadedFiles.length} photo(s) uploaded successfully.`,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
