@@ -68,6 +68,7 @@ export interface IStorage {
   getActivitiesByLocation(locationId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { driver: Driver & { user: User } })[]>;
   getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
   verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity>;
+  rejectWashoutActivity(activityId: string, rejectedBy: string): Promise<WashoutActivity>;
   getRecentActivitiesByDriver(driverId: string, limit?: number): Promise<(WashoutActivity & { location: WashoutLocation })[]>;
   getAllActivities(startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
 
@@ -408,6 +409,20 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         status: "verified",
         verifiedBy,
+        verifiedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(washoutActivities.id, activityId))
+      .returning();
+    return activity;
+  }
+
+  async rejectWashoutActivity(activityId: string, rejectedBy: string): Promise<WashoutActivity> {
+    const [activity] = await db
+      .update(washoutActivities)
+      .set({ 
+        status: "rejected",
+        verifiedBy: rejectedBy,
         verifiedAt: new Date(),
         updatedAt: new Date()
       })

@@ -71,7 +71,7 @@ export default function OwnerDashboard() {
 
   const { weekStats, monthStats, locations, recentActivities } = dashboardData || {};
 
-  // Calculate pending payments from recent activities
+  // Calculate pending payments from recent activities (exclude rejected washouts)
   const pendingPayments = recentActivities?.reduce((total: number, activity: any) => {
     if (activity.washout_activities?.status === 'pending') {
       return total + Number(activity.washout_activities?.amount || 0);
@@ -79,12 +79,17 @@ export default function OwnerDashboard() {
     return total;
   }, 0) || 0;
 
-  // Calculate total washouts from recent activities
-  const totalWashouts = recentActivities?.length || 0;
+  // Calculate total washouts from recent activities (exclude rejected washouts)
+  const totalWashouts = recentActivities?.filter((activity: any) => 
+    activity.washout_activities?.status !== 'rejected'
+  ).length || 0;
 
-  // Calculate unique drivers from recent activities
+  // Calculate unique drivers from recent activities (exclude rejected washouts)
   const uniqueDrivers = recentActivities ? new Set(
-    recentActivities.map((activity: any) => activity.users?.id).filter(Boolean)
+    recentActivities
+      .filter((activity: any) => activity.washout_activities?.status !== 'rejected')
+      .map((activity: any) => activity.users?.id)
+      .filter(Boolean)
   ).size : 0;
 
   return (
@@ -282,11 +287,17 @@ export default function OwnerDashboard() {
                         {formatCurrency(Number(activity.washout_activities?.amount || 0))}
                       </div>
                       <Badge 
-                        variant={activity.washout_activities?.status === 'verified' ? 'default' : 'secondary'}
+                        variant={
+                          activity.washout_activities?.status === 'verified' ? 'default' : 
+                          activity.washout_activities?.status === 'rejected' ? 'destructive' : 
+                          'secondary'
+                        }
                         className="text-xs"
                         data-testid={`badge-activity-status-${index}`}
                       >
-                        {activity.washout_activities?.status === 'verified' ? 'Approved' : 'Pending'}
+                        {activity.washout_activities?.status === 'verified' ? 'Approved' : 
+                         activity.washout_activities?.status === 'rejected' ? 'Rejected' : 
+                         'Pending'}
                       </Badge>
                     </div>
                   </div>
