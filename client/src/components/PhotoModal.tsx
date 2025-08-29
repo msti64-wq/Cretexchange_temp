@@ -73,6 +73,16 @@ export function PhotoModal({
   const locationName = activity.washout_locations?.name || '';
   const checkInTime = activity.washout_activities?.checkInTime;
 
+  // Helper function to get displayable photo URL
+  const getPhotoDisplayUrl = (photoUrl: string) => {
+    if (photoUrl.startsWith('local-photo-')) {
+      // Get the base64 data from session storage
+      const base64Data = sessionStorage.getItem(photoUrl);
+      return base64Data || '/placeholder-image.jpg';
+    }
+    return photoUrl;
+  };
+
   const nextPhoto = () => {
     setCurrentPhotoIndex((prev) => (prev + 1) % photoUrls.length);
   };
@@ -137,7 +147,7 @@ export function PhotoModal({
             <div className="space-y-4">
               <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: "16/9" }}>
                 <img
-                  src={photoUrls[currentPhotoIndex]}
+                  src={getPhotoDisplayUrl(photoUrls[currentPhotoIndex])}
                   alt={`Washout photo ${currentPhotoIndex + 1}`}
                   className="w-full h-full object-contain"
                   data-testid={`image-washout-photo-${currentPhotoIndex}`}
@@ -178,7 +188,7 @@ export function PhotoModal({
                   {photoUrls.map((url: string, index: number) => (
                     <img
                       key={index}
-                      src={url}
+                      src={getPhotoDisplayUrl(url)}
                       alt={`Thumbnail ${index + 1}`}
                       className={`w-16 h-16 object-cover rounded cursor-pointer border-2 flex-shrink-0 ${
                         index === currentPhotoIndex ? 'border-primary' : 'border-transparent'
