@@ -47,8 +47,15 @@ export default function DriverActivity() {
 
   const handleExport = async () => {
     try {
+      const token = localStorage.getItem('authToken');
+      const headers: any = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/export/driver-activities?startDate=${startDate}&endDate=${endDate}`, {
         credentials: 'include',
+        headers,
       });
       
       if (!response.ok) throw new Error('Export failed');
