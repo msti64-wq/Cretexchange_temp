@@ -121,6 +121,20 @@ export default function DriverDashboard() {
                 {formatCurrency(weeklyStats?.totalEarnings || 0)}
               </span>
             </div>
+            {rejectedTotal > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Rejected Amount</span>
+                <span className="text-lg font-semibold text-red-600 dark:text-red-400" data-testid="text-weekly-rejected">
+                  -{formatCurrency(rejectedTotal)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Net Earnings</span>
+              <span className="text-xl font-bold text-green-600 dark:text-green-500" data-testid="text-net-earnings">
+                {formatCurrency((weeklyStats?.totalEarnings || 0) - rejectedTotal)}
+              </span>
+            </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Total Washouts</span>
               <span className="text-lg font-semibold" data-testid="text-weekly-washouts">
