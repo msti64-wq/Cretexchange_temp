@@ -45,23 +45,31 @@ export default function DriverLocations() {
     return R * c;
   };
 
-  const filteredAndSortedLocations = locations?.filter((location: any) =>
-    location.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    location.address.toLowerCase().includes(searchTerm.toLowerCase())
-  ).map((location: any) => ({
-    ...location,
-    distance: currentLocation ? 
-      calculateDistance(
-        currentLocation.lat, 
-        currentLocation.lng, 
-        Number(location.latitude), 
-        Number(location.longitude)
-      ) : 0
-  })).sort((a: any, b: any) => {
+  const filteredAndSortedLocations = locations?.filter((item: any) => {
+    const location = item.washout_locations || item;
+    return (
+      (location.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (location.address || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }).map((item: any) => {
+    const location = item.washout_locations || item;
+    return {
+      ...item,
+      distance: currentLocation ? 
+        calculateDistance(
+          currentLocation.lat, 
+          currentLocation.lng, 
+          Number(location.latitude), 
+          Number(location.longitude)
+        ) : 0
+    };
+  }).sort((a: any, b: any) => {
+    const locationA = a.washout_locations || a;
+    const locationB = b.washout_locations || b;
     if (sortBy === "distance") {
       return a.distance - b.distance;
     } else {
-      return Number(b.rate) - Number(a.rate);
+      return Number(locationB.rate) - Number(locationA.rate);
     }
   }) || [];
 
@@ -149,7 +157,9 @@ export default function DriverLocations() {
               </CardContent>
             </Card>
           ) : (
-            filteredAndSortedLocations.map((location: any, index: number) => (
+            filteredAndSortedLocations.map((item: any, index: number) => {
+              const location = item.washout_locations || item;
+              return (
               <Card key={location.id} className="hover:shadow-md transition-shadow" data-testid={`card-location-${index}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
@@ -165,7 +175,7 @@ export default function DriverLocations() {
                           <div className="flex items-center text-muted-foreground">
                             <Navigation className="w-4 h-4 mr-1" />
                             <span data-testid={`text-location-distance-${index}`}>
-                              {location.distance.toFixed(1)} mi
+                              {item.distance.toFixed(1)} mi
                             </span>
                           </div>
                         )}
@@ -223,7 +233,8 @@ export default function DriverLocations() {
                   </div>
                 </CardContent>
               </Card>
-            ))
+              );
+            })
           )}
         </div>
       </div>
