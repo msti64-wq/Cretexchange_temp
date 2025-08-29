@@ -276,6 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.upsertUser({
         id: userId,
         username: currentUser.username, // Preserve existing username
+        passwordHash: currentUser.passwordHash, // Preserve existing password hash
         firstName: req.body.firstName,
         lastName: req.body.lastName,
         email: req.body.email,
@@ -444,6 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.upsertUser({
         id: userId,
         username: currentUser.username, // Preserve existing username
+        passwordHash: currentUser.passwordHash, // Preserve existing password hash
         firstName: req.body.firstName,
         lastName: req.body.lastName,
         email: req.body.email,
