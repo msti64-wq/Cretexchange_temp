@@ -1,8 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Truck, Building2, Shield } from "lucide-react";
+import { Truck, Building2, Shield, ArrowRight } from "lucide-react";
+import { useState } from "react";
 
 export default function Landing() {
+  const [selectedRole, setSelectedRole] = useState<'driver' | 'owner' | null>(null);
+
+  const handleGetStarted = (role: 'driver' | 'owner') => {
+    // Store the selected role in localStorage for after authentication
+    localStorage.setItem('selectedRole', role);
+    window.location.href = '/api/login';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
       {/* Header */}
@@ -30,18 +39,79 @@ export default function Landing() {
           <h2 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
             The Complete Concrete Washout Solution
           </h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto">
             Connect concrete truck drivers with verified washout locations. 
             Earn money, track activities, and ensure environmental compliance.
           </p>
-          <Button 
-            size="lg"
-            onClick={() => window.location.href = '/api/login'}
-            data-testid="button-get-started"
-            className="bg-accent hover:bg-accent/90 text-accent-foreground px-8 py-3 text-lg"
-          >
-            Get Started Today
-          </Button>
+          
+          {/* Role Selection */}
+          <div className="max-w-4xl mx-auto mb-12">
+            <h3 className="text-2xl font-semibold text-foreground mb-8 text-center">
+              Choose your path to get started:
+            </h3>
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card 
+                className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                  selectedRole === 'driver' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/30'
+                }`}
+                onClick={() => setSelectedRole('driver')}
+              >
+                <CardHeader className="text-center pb-4">
+                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Truck className="w-10 h-10 text-primary" />
+                  </div>
+                  <CardTitle className="text-2xl">I'm a Driver</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground mb-6">
+                    Find washout locations, earn money, and track your activities
+                  </p>
+                  <Button 
+                    className="w-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGetStarted('driver');
+                    }}
+                    data-testid="button-start-driver"
+                  >
+                    Get Started as Driver
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                  selectedRole === 'owner' ? 'ring-2 ring-secondary bg-secondary/5' : 'hover:bg-muted/30'
+                }`}
+                onClick={() => setSelectedRole('owner')}
+              >
+                <CardHeader className="text-center pb-4">
+                  <div className="w-20 h-20 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Building2 className="w-10 h-10 text-secondary" />
+                  </div>
+                  <CardTitle className="text-2xl">I'm a Location Owner</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground mb-6">
+                    Manage locations, set rates, and process payments
+                  </p>
+                  <Button 
+                    className="w-full"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGetStarted('owner');
+                    }}
+                    data-testid="button-start-owner"
+                  >
+                    Get Started as Owner
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
 
         {/* Features Grid */}
@@ -111,20 +181,22 @@ export default function Landing() {
             <Button 
               size="lg"
               variant="secondary"
-              onClick={() => window.location.href = '/api/login'}
+              onClick={() => handleGetStarted('driver')}
               data-testid="button-join-driver"
               className="bg-white text-primary hover:bg-white/90"
             >
               Join as Driver
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
             <Button 
               size="lg"
               variant="outline"
-              onClick={() => window.location.href = '/api/login'}
+              onClick={() => handleGetStarted('owner')}
               data-testid="button-join-owner"
               className="border-white text-white hover:bg-white/10"
             >
               Join as Location Owner
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         </div>

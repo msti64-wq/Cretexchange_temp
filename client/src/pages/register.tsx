@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,16 @@ export default function Register() {
   const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("driver");
+
+  // Check if user selected a role from the landing page
+  useEffect(() => {
+    const selectedRole = localStorage.getItem('selectedRole');
+    if (selectedRole === 'driver' || selectedRole === 'owner') {
+      setActiveTab(selectedRole);
+      // Clear it so it doesn't persist
+      localStorage.removeItem('selectedRole');
+    }
+  }, []);
 
   const driverRegistrationMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -100,7 +110,7 @@ export default function Register() {
   }
 
   // If user already has a role, redirect to dashboard
-  if (user?.role && user.role !== 'admin') {
+  if ((user as any)?.role && (user as any).role !== 'admin') {
     setLocation('/');
     return null;
   }
@@ -131,7 +141,7 @@ export default function Register() {
         <Card className="w-full max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle className="text-center">
-              Welcome, {user?.firstName}!
+              Welcome, {(user as any)?.firstName}!
             </CardTitle>
             <p className="text-center text-muted-foreground">
               Please select your role and complete your profile information.
