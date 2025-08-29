@@ -518,10 +518,6 @@ export class DatabaseStorage implements IStorage {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    console.log('getDriverStats Debug - Driver ID:', driverId);
-    console.log('getDriverStats Debug - Start Date:', startDate);
-    console.log('getDriverStats Debug - Days:', days);
-
     const result = await db
       .select({
         totalEarnings: sql<number>`COALESCE(SUM(CAST(${washoutActivities.amount} AS DECIMAL)), 0)`,
@@ -533,20 +529,14 @@ export class DatabaseStorage implements IStorage {
         gte(washoutActivities.checkInTime, startDate)
       ));
 
-    console.log('getDriverStats Debug - Raw Result:', result);
-
     const stats = result[0] || { totalEarnings: 0, totalWashouts: 0 };
     const avgPerWashout = stats.totalWashouts > 0 ? stats.totalEarnings / stats.totalWashouts : 0;
 
-    const finalStats = {
+    return {
       totalEarnings: Number(stats.totalEarnings),
       totalWashouts: Number(stats.totalWashouts),
       avgPerWashout: Number(avgPerWashout.toFixed(2)),
     };
-
-    console.log('getDriverStats Debug - Final Stats:', finalStats);
-
-    return finalStats;
   }
 
   async getOwnerStats(ownerId: string, days: number): Promise<{ totalPayments: number; totalWashouts: number; totalDrivers: number }> {

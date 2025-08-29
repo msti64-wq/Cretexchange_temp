@@ -52,9 +52,9 @@ export default function DriverActivity() {
 
   const stats = {
     totalActivities: filteredActivities.length,
-    totalEarnings: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount), 0),
-    verifiedCount: filteredActivities.filter((a: any) => a.status === 'verified').length,
-    pendingCount: filteredActivities.filter((a: any) => a.status === 'pending').length,
+    totalEarnings: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.washout_activities?.amount || activity.amount || 0), 0),
+    verifiedCount: filteredActivities.filter((a: any) => (a.washout_activities?.status || a.status) === 'verified').length,
+    pendingCount: filteredActivities.filter((a: any) => (a.washout_activities?.status || a.status) === 'pending').length,
   };
 
   if (isLoading) {
