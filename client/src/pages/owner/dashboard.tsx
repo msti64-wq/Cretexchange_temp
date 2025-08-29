@@ -92,11 +92,11 @@ export default function OwnerDashboard() {
             <div className="text-sm text-muted-foreground">Active Sites</div>
           </StatCard>
 
-          <StatCard title="This Week" className="text-center">
+          <StatCard title="Pending Payments" className="text-center">
             <div className="text-3xl font-bold text-secondary mb-1" data-testid="text-week-earnings">
               {formatCurrency(weekStats?.totalPayments || 0)}
             </div>
-            <div className="text-sm text-muted-foreground">Revenue</div>
+            <div className="text-sm text-muted-foreground">This Week</div>
           </StatCard>
         </div>
 
