@@ -35,6 +35,7 @@ export default function OwnerLocations() {
       });
       setIsAddDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/owners/locations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
     },
     onError: (error) => {
       toast({
