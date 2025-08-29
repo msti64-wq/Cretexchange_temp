@@ -196,21 +196,24 @@ export default function OwnerDashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {activity.washout_activities?.photoUrls?.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => {
+                    <Button
+                      variant={activity.washout_activities?.photoUrls?.length > 0 ? "outline" : "ghost"}
+                      size="sm"
+                      className="text-xs"
+                      disabled={!activity.washout_activities?.photoUrls?.length}
+                      onClick={() => {
+                        if (activity.washout_activities?.photoUrls?.length > 0) {
                           setSelectedActivity(activity);
                           setIsPhotoModalOpen(true);
-                        }}
-                        data-testid={`button-view-photos-${index}`}
-                      >
-                        <ImageIcon className="w-4 h-4 mr-1" />
-                        Photos
-                      </Button>
-                    )}
+                        }
+                      }}
+                      data-testid={`button-view-photos-${index}`}
+                    >
+                      <ImageIcon className="w-4 h-4 mr-1" />
+                      {activity.washout_activities?.photoUrls?.length > 0 ? 
+                        `Photos (${activity.washout_activities.photoUrls.length})` : 
+                        'No Photos'}
+                    </Button>
                     <div className="text-right">
                       <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
                         {formatCurrency(Number(activity.washout_activities?.amount || 0))}
