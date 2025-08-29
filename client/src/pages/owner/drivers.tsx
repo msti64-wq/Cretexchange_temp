@@ -25,13 +25,13 @@ export default function OwnerDrivers() {
 
   const filteredActivities = activities?.filter((activity: any) => {
     const matchesSearch = 
-      activity.driver?.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.driver?.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.location?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      activity.users?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      activity.users?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      activity.washout_locations?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesLocation = selectedLocation === "all" || activity.location?.id === selectedLocation;
+    const matchesLocation = selectedLocation === "all" || activity.washout_locations?.id === selectedLocation;
     
-    const activityDate = new Date(activity.checkInTime);
+    const activityDate = new Date(activity.washout_activities?.checkInTime);
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - parseInt(filterPeriod));
     const matchesPeriod = activityDate >= daysAgo;
@@ -41,12 +41,12 @@ export default function OwnerDrivers() {
 
   // Group activities by driver
   const driverStats = filteredActivities.reduce((acc: any, activity: any) => {
-    const driverId = activity.driver?.id;
+    const driverId = activity.users?.id;
     if (!driverId) return acc;
 
     if (!acc[driverId]) {
       acc[driverId] = {
-        driver: activity.driver,
+        driver: activity.users,
         totalWashouts: 0,
         totalEarnings: 0,
         locations: new Set(),
@@ -55,11 +55,11 @@ export default function OwnerDrivers() {
     }
 
     acc[driverId].totalWashouts += 1;
-    acc[driverId].totalEarnings += Number(activity.amount);
-    acc[driverId].locations.add(activity.location?.name);
+    acc[driverId].totalEarnings += Number(activity.washout_activities?.amount);
+    acc[driverId].locations.add(activity.washout_locations?.name);
     
-    if (!acc[driverId].lastActivity || new Date(activity.checkInTime) > new Date(acc[driverId].lastActivity)) {
-      acc[driverId].lastActivity = activity.checkInTime;
+    if (!acc[driverId].lastActivity || new Date(activity.washout_activities?.checkInTime) > new Date(acc[driverId].lastActivity)) {
+      acc[driverId].lastActivity = activity.washout_activities?.checkInTime;
     }
 
     return acc;
@@ -121,7 +121,7 @@ export default function OwnerDrivers() {
           <StatCard title="Revenue" className="text-center">
             <div className="text-2xl font-bold text-accent" data-testid="text-total-revenue">
               {formatCurrency(
-                filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount), 0)
+                filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.washout_activities?.amount || 0), 0)
               )}
             </div>
             <div className="text-xs text-muted-foreground">Generated</div>
@@ -206,10 +206,10 @@ export default function OwnerDrivers() {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg mb-1" data-testid={`text-driver-name-${index}`}>
-                        {driverStat.driver.user.firstName} {driverStat.driver.user.lastName}
+                        {driverStat.driver.firstName} {driverStat.driver.lastName}
                       </h3>
                       <p className="text-sm text-muted-foreground mb-2" data-testid={`text-driver-employer-${index}`}>
-                        {driverStat.driver.employerName || 'No employer specified'}
+                        Driver
                       </p>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center">
