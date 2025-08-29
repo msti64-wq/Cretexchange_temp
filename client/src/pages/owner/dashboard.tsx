@@ -177,7 +177,7 @@ export default function OwnerDashboard() {
                       className="text-xs"
                       data-testid={`badge-activity-status-${index}`}
                     >
-                      {activity.washout_activities?.status === 'verified' ? 'Verified' : 'Pending'}
+                      {activity.washout_activities?.status === 'verified' ? 'Paid' : 'Pending'}
                     </Badge>
                   </div>
                 </div>
