@@ -324,7 +324,7 @@ export default function OwnerDrivers() {
                         className="text-xs"
                         data-testid={`badge-activity-status-${index}`}
                       >
-                        {activity.washout_activities?.status === 'verified' ? 'Paid' : 
+                        {activity.washout_activities?.status === 'verified' ? 'Approved' : 
                          activity.washout_activities?.status === 'pending' ? 'Pending' : 'Rejected'}
                       </Badge>
                     </div>
