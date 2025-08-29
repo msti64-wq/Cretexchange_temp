@@ -201,7 +201,7 @@ export default function OwnerDashboard() {
                       variant={(activity.washout_activities?.photoUrls?.length > 0 || activity.photoUrls?.length > 0) ? "outline" : "ghost"}
                       size="sm"
                       className="text-xs"
-                      disabled={!(activity.washout_activities?.photoUrls?.length > 0 || activity.photoUrls?.length > 0)}
+                      disabled={false}
                       onClick={() => {
                         console.log("=== FULL ACTIVITY DATA ===");
                         console.log("Activity object:", JSON.stringify(activity, null, 2));
