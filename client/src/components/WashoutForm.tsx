@@ -173,8 +173,11 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
           )}
 
           {/* Photo Upload */}
-          <div>
-            <Label htmlFor="photos">Washout Photos</Label>
+          <div className="space-y-2">
+            <Label htmlFor="photos" className="flex items-center">
+              <Camera className="w-4 h-4 mr-2" />
+              Upload Photos (Required)
+            </Label>
             <ObjectUploader
               maxNumberOfFiles={5}
               maxFileSize={10485760} // 10MB
@@ -185,9 +188,24 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
               <Camera className="w-5 h-5 mr-2" />
               Take Photos ({photoUrls.length}/5)
             </ObjectUploader>
-            <p className="text-xs text-muted-foreground mt-1">
-              Photos help verify completion of washout ({photoUrls.length} uploaded)
-            </p>
+            
+            {photoUrls.length > 0 ? (
+              <p className="text-sm text-green-600" data-testid="text-photos-uploaded">
+                ✓ {photoUrls.length} photo(s) uploaded successfully
+              </p>
+            ) : (
+              <p className="text-sm text-amber-600" data-testid="text-photos-required">
+                📸 Please upload at least one photo before checking in
+              </p>
+            )}
+            
+            {/* Debug info */}
+            <details className="text-xs text-muted-foreground">
+              <summary>Debug: Photo URLs ({photoUrls.length})</summary>
+              <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-auto max-h-20">
+                {JSON.stringify(photoUrls, null, 2)}
+              </pre>
+            </details>
           </div>
 
           {/* Notes */}
@@ -206,10 +224,12 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting}
+            disabled={isSubmitting || photoUrls.length === 0}
             data-testid="button-complete-checkin"
           >
-            {isSubmitting ? "Processing..." : "Complete Washout"}
+            {isSubmitting ? "Processing..." : 
+             photoUrls.length === 0 ? "Upload Photos to Continue" : 
+             "Complete Washout"}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
