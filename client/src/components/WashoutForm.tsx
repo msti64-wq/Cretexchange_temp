@@ -124,6 +124,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     setIsSubmitting(true);
 
     try {
+      console.log("Submitting check-in with photoUrls:", photoUrls);
       await checkInMutation.mutateAsync({
         locationId: location.id,
         latitude: currentLocation?.lat?.toString(),

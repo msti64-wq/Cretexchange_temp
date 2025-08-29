@@ -185,6 +185,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Location not found" });
       }
 
+      console.log("Check-in request body:", req.body);
+      console.log("PhotoUrls received:", req.body.photoUrls);
+      
       const activityData = insertWashoutActivitySchema.parse({
         driverId: driver.id,
         locationId: location.id,
@@ -195,6 +198,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         photoUrls: req.body.photoUrls || [],
         notes: req.body.notes,
       });
+      
+      console.log("Activity data being saved:", activityData);
 
       const activity = await storage.createWashoutActivity(activityData);
       res.json(activity);
