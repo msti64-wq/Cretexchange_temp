@@ -122,8 +122,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get recent activities
       const recentActivities = await storage.getRecentActivitiesByDriver(driver.id, 5);
 
-      const dailyEarnings = todayActivities.reduce((sum, activity) => {
-        return sum + Number(activity.washout_activities?.amount || activity.amount || 0);
+      const dailyEarnings = todayActivities.reduce((sum, activity: any) => {
+        // Handle both possible data structures from Drizzle joins
+        const amount = Number(activity.washout_activities?.amount || activity.amount || 0);
+        return sum + amount;
       }, 0);
 
       res.json({
