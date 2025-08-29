@@ -101,13 +101,19 @@ export default function OwnerDashboard() {
         </div>
 
 
-        {/* Monthly Comparison */}
-        <StatCard title="30-Day Summary">
+        {/* Total Payments */}
+        <StatCard title="Total Payments">
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Total Revenue</span>
+              <span className="text-muted-foreground">Total Payments</span>
               <span className="text-xl font-bold text-foreground" data-testid="text-month-total">
                 {formatCurrency(monthStats?.totalPayments || 0)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Total Pending Payments</span>
+              <span className="text-xl font-bold text-secondary" data-testid="text-pending-total">
+                {formatCurrency(weekStats?.totalPayments || 0)}
               </span>
             </div>
             <div className="flex justify-between items-center">
