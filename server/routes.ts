@@ -116,16 +116,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const todayActivities = await storage.getActivitiesByDriver(driver.id, today, tomorrow);
       
+      // Debug logging
+      console.log('Dashboard Debug - Driver ID:', driver.id);
+      console.log('Dashboard Debug - Today Activities:', todayActivities.length);
+      console.log('Dashboard Debug - Sample Activity:', todayActivities[0]);
+      
       // Get 7-day stats
       const weekStats = await storage.getDriverStats(driver.id, 7);
+      console.log('Dashboard Debug - Week Stats:', weekStats);
       
       // Get recent activities
       const recentActivities = await storage.getRecentActivitiesByDriver(driver.id, 5);
 
+      const dailyEarnings = todayActivities.reduce((sum, activity) => {
+        const amount = Number(activity.amount || 0);
+        console.log('Dashboard Debug - Activity amount:', amount, 'for activity:', activity.id);
+        return sum + amount;
+      }, 0);
+
       res.json({
         dailyStats: {
           visits: todayActivities.length,
-          earnings: todayActivities.reduce((sum, activity) => sum + Number(activity.amount || 0), 0),
+          earnings: dailyEarnings,
         },
         weeklyStats: weekStats,
         recentActivities,
