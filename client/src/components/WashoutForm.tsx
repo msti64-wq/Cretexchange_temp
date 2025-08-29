@@ -200,7 +200,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
             disabled={isSubmitting}
             data-testid="button-complete-checkin"
           >
-            {isSubmitting ? "Processing..." : `Complete Check-in ${photoUrls.length > 0 ? `(${photoUrls.length} photos)` : "(photos optional)"}`}
+            {isSubmitting ? "Processing..." : "Complete Washout"}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
