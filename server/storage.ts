@@ -46,6 +46,7 @@ export interface IStorage {
   createOwner(owner: InsertOwner): Promise<Owner>;
   getOwner(userId: string): Promise<Owner | undefined>;
   getOwnerById(id: string): Promise<Owner | undefined>;
+  updateOwner(ownerId: string, ownerData: Partial<InsertOwner>): Promise<Owner>;
   updateOwnerSubscription(ownerId: string, status: string, subscriptionId?: string): Promise<Owner>;
   approveOwner(ownerId: string): Promise<Owner>;
   getAllOwners(): Promise<(Owner & { user: User })[]>;
@@ -206,6 +207,18 @@ export class DatabaseStorage implements IStorage {
   async getOwnerById(id: string): Promise<Owner | undefined> {
     const [owner] = await db.select().from(owners).where(eq(owners.id, id));
     return owner;
+  }
+
+  async updateOwner(ownerId: string, ownerData: Partial<InsertOwner>): Promise<Owner> {
+    const [updatedOwner] = await db
+      .update(owners)
+      .set({
+        ...ownerData,
+        updatedAt: new Date(),
+      })
+      .where(eq(owners.id, ownerId))
+      .returning();
+    return updatedOwner;
   }
 
   async updateOwnerSubscription(ownerId: string, status: string, subscriptionId?: string): Promise<Owner> {

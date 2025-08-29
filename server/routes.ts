@@ -266,9 +266,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Update user profile information
+      // Get current user to preserve username and other required fields
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user profile information, preserving username and other required fields
       await storage.upsertUser({
         id: userId,
+        username: currentUser.username, // Preserve existing username
         firstName: req.body.firstName,
         lastName: req.body.lastName,
         email: req.body.email,
@@ -276,6 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         address: req.body.address,
         paymentMethod: req.body.paymentMethod,
         paymentFrequency: req.body.paymentFrequency,
+        role: currentUser.role, // Preserve existing role
       });
 
       res.json({ message: "Profile updated successfully" });
@@ -399,6 +407,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying activity:", error);
       res.status(500).json({ message: "Failed to verify activity" });
+    }
+  });
+
+  app.put('/api/owners/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // First, get or create the owner record
+      let owner = await storage.getOwner(userId);
+      if (!owner) {
+        // Create owner record if it doesn't exist
+        const ownerData = {
+          userId,
+          companyName: req.body.companyName || "",
+          businessLicense: req.body.businessLicense || "",
+          taxId: req.body.taxId || "",
+        };
+        owner = await storage.createOwner(ownerData);
+      } else {
+        // Update existing owner record
+        owner = await storage.updateOwner(owner.id, {
+          companyName: req.body.companyName || owner.companyName,
+          businessLicense: req.body.businessLicense || owner.businessLicense,
+          taxId: req.body.taxId || owner.taxId,
+        });
+      }
+
+      // Get current user to preserve username and other required fields
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user profile information, preserving username and other required fields
+      await storage.upsertUser({
+        id: userId,
+        username: currentUser.username, // Preserve existing username
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+        phone: req.body.phone,
+        address: req.body.address,
+        paymentMethod: req.body.paymentMethod,
+        role: currentUser.role, // Preserve existing role
+      });
+
+      res.json({ message: "Profile updated successfully" });
+    } catch (error) {
+      console.error("Error updating owner profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
     }
   });
 
