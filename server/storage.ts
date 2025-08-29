@@ -327,58 +327,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivitiesByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation })[]> {
-    let query = db
-      .select()
-      .from(washoutActivities)
-      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .where(eq(washoutActivities.driverId, driverId));
-
+    const conditions = [eq(washoutActivities.driverId, driverId)];
+    
     if (startDate) {
-      query = query.where(and(eq(washoutActivities.driverId, driverId), gte(washoutActivities.checkInTime, startDate)));
+      conditions.push(gte(washoutActivities.checkInTime, startDate));
     }
     
     if (endDate) {
-      query = query.where(and(eq(washoutActivities.driverId, driverId), lte(washoutActivities.checkInTime, endDate)));
+      conditions.push(lte(washoutActivities.checkInTime, endDate));
     }
+
+    const query = db
+      .select()
+      .from(washoutActivities)
+      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .where(and(...conditions));
 
     return await query.orderBy(desc(washoutActivities.checkInTime));
   }
 
   async getActivitiesByLocation(locationId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { driver: Driver & { user: User } })[]> {
-    let query = db
+    const conditions = [eq(washoutActivities.locationId, locationId)];
+    
+    if (startDate) {
+      conditions.push(gte(washoutActivities.checkInTime, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(washoutActivities.checkInTime, endDate));
+    }
+
+    const query = db
       .select()
       .from(washoutActivities)
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(eq(washoutActivities.locationId, locationId));
-
-    if (startDate) {
-      query = query.where(and(eq(washoutActivities.locationId, locationId), gte(washoutActivities.checkInTime, startDate)));
-    }
-    
-    if (endDate) {
-      query = query.where(and(eq(washoutActivities.locationId, locationId), lte(washoutActivities.checkInTime, endDate)));
-    }
+      .where(and(...conditions));
 
     return await query.orderBy(desc(washoutActivities.checkInTime));
   }
 
   async getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]> {
-    let query = db
+    const conditions = [eq(washoutLocations.ownerId, ownerId)];
+    
+    if (startDate) {
+      conditions.push(gte(washoutActivities.checkInTime, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(washoutActivities.checkInTime, endDate));
+    }
+
+    const query = db
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(eq(washoutLocations.ownerId, ownerId));
-
-    if (startDate) {
-      query = query.where(and(eq(washoutLocations.ownerId, ownerId), gte(washoutActivities.checkInTime, startDate)));
-    }
-    
-    if (endDate) {
-      query = query.where(and(eq(washoutLocations.ownerId, ownerId), lte(washoutActivities.checkInTime, endDate)));
-    }
+      .where(and(...conditions));
 
     return await query.orderBy(desc(washoutActivities.checkInTime));
   }
@@ -408,6 +414,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllActivities(startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]> {
+    const conditions = [];
+    
+    if (startDate) {
+      conditions.push(gte(washoutActivities.checkInTime, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(washoutActivities.checkInTime, endDate));
+    }
+
     let query = db
       .select()
       .from(washoutActivities)
@@ -415,12 +431,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id));
 
-    if (startDate) {
-      query = query.where(gte(washoutActivities.checkInTime, startDate));
-    }
-    
-    if (endDate) {
-      query = query.where(lte(washoutActivities.checkInTime, endDate));
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
     }
 
     return await query.orderBy(desc(washoutActivities.checkInTime));
@@ -433,20 +445,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPaymentsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { location: WashoutLocation } })[]> {
-    let query = db
+    const conditions = [eq(payments.driverId, driverId)];
+    
+    if (startDate) {
+      conditions.push(gte(payments.createdAt, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(payments.createdAt, endDate));
+    }
+
+    const query = db
       .select()
       .from(payments)
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .where(eq(payments.driverId, driverId));
-
-    if (startDate) {
-      query = query.where(and(eq(payments.driverId, driverId), gte(payments.createdAt, startDate)));
-    }
-    
-    if (endDate) {
-      query = query.where(and(eq(payments.driverId, driverId), lte(payments.createdAt, endDate)));
-    }
+      .where(and(...conditions));
 
     return await query.orderBy(desc(payments.createdAt));
   }
