@@ -101,8 +101,8 @@ export default function OwnerDashboard() {
         </div>
 
 
-        {/* 30-Day Total Payments */}
-        <StatCard title="30-Day Total Payments">
+        {/* 30-Day Totals */}
+        <StatCard title="30-Day Totals">
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Total Payments</span>
