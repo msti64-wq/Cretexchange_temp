@@ -1,0 +1,226 @@
+import { useState, useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useLocation, Link } from "wouter";
+import { ArrowLeft, Truck, Building2, User } from "lucide-react";
+
+export default function Register() {
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    firstName: "",
+    lastName: "",
+    role: "",
+  });
+
+  // Check if user selected a role from the landing page
+  useEffect(() => {
+    const selectedRole = localStorage.getItem('selectedRole');
+    if (selectedRole === 'driver' || selectedRole === 'owner') {
+      setFormData(prev => ({ ...prev, role: selectedRole }));
+      // Clear it so it doesn't persist
+      localStorage.removeItem('selectedRole');
+    }
+  }, []);
+
+  const registerMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (data.password !== data.confirmPassword) {
+        throw new Error("Passwords do not match");
+      }
+      
+      const { confirmPassword, ...registerData } = data;
+      const response = await apiRequest("POST", "/api/register", registerData);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created successfully!",
+      });
+      setLocation('/');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Registration Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    registerMutation.mutate(formData);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+      {/* Header */}
+      <header className="p-6 border-b bg-card/50 backdrop-blur">
+        <div className="container mx-auto flex items-center justify-between">
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="p-2" data-testid="button-back">
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back to Home
+            </Button>
+          </Link>
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+              <Truck className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">WashOut Pro</h1>
+          </div>
+        </div>
+      </header>
+
+      {/* Registration Form */}
+      <main className="container mx-auto px-6 py-12 flex items-center justify-center">
+        <Card className="w-full max-w-lg">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Create Account</CardTitle>
+            <p className="text-muted-foreground">
+              Join WashOut Pro to get started as a {formData.role ? formData.role : 'driver or location owner'}.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="First name"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    required
+                    data-testid="input-first-name"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Last name"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    required
+                    data-testid="input-last-name"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Choose a username"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  required
+                  data-testid="input-username"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                  data-testid="input-email"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="role">I am a...</Label>
+                <Select 
+                  value={formData.role} 
+                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                  required
+                >
+                  <SelectTrigger data-testid="select-role">
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="driver">
+                      <div className="flex items-center">
+                        <Truck className="w-4 h-4 mr-2" />
+                        Concrete Truck Driver
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="owner">
+                      <div className="flex items-center">
+                        <Building2 className="w-4 h-4 mr-2" />
+                        Location Owner
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Create a password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                  data-testid="input-password"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  required
+                  data-testid="input-confirm-password"
+                />
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={registerMutation.isPending}
+                data-testid="button-register"
+              >
+                {registerMutation.isPending ? "Creating Account..." : "Create Account"}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center text-sm">
+              <span className="text-muted-foreground">Already have an account? </span>
+              <Link href="/login" className="text-primary hover:underline" data-testid="link-login">
+                Sign in here
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}

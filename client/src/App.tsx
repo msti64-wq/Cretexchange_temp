@@ -6,7 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
-import Register from "@/pages/register";
+import Login from "@/pages/auth/login";
+import Register from "@/pages/auth/register";
+import OldRegister from "@/pages/register";
 
 // Driver pages
 import DriverDashboard from "@/pages/driver/dashboard";
@@ -44,16 +46,18 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
         <Route component={NotFound} />
       </Switch>
     );
   }
 
-  // If user is authenticated but doesn't have a role, show registration
+  // If user is authenticated but doesn't have a role, show old registration
   if (!(user as any).role) {
     return (
       <Switch>
-        <Route path="/" component={Register} />
+        <Route path="/" component={OldRegister} />
         <Route component={NotFound} />
       </Switch>
     );

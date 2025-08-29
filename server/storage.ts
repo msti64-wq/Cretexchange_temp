@@ -25,8 +25,12 @@ import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations - required for Replit Auth
+  // User operations - local authentication
   getUser(id: string): Promise<User | undefined>;
+  getUserById(id: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; role: string }): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId?: string): Promise<User>;
 
@@ -100,6 +104,29 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date(),
         },
       })
+      .returning();
+    return user;
+  }
+
+  async getUserById(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; role: string }): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
       .returning();
     return user;
   }

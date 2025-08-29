@@ -32,14 +32,16 @@ export const paymentFrequencyEnum = pgEnum("payment_frequency", ["weekly", "biwe
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "trial", "past_due"]);
 export const washoutStatusEnum = pgEnum("washout_status", ["pending", "verified", "rejected"]);
 
-// User storage table - required for Replit Auth
+// User storage table - local authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
+  username: varchar("username").unique().notNull(),
+  email: varchar("email").unique().notNull(),
+  passwordHash: varchar("password_hash").notNull(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
   profileImageUrl: varchar("profile_image_url"),
-  role: userRoleEnum("role").notNull().default("driver"),
+  role: userRoleEnum("role"),
   phone: varchar("phone"),
   address: text("address"),
   paymentMethod: paymentMethodEnum("payment_method").default("check"),
@@ -188,15 +190,27 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 }));
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).pick({
-  email: true,
-  firstName: true,
-  lastName: true,
-  role: true,
-  phone: true,
-  address: true,
-  paymentMethod: true,
-  paymentFrequency: true,
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  passwordHash: true, // This will be handled separately for security
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Registration schema for new users
+export const userRegistrationSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  role: z.enum(["driver", "owner"]),
+});
+
+// Login schema
+export const userLoginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
 });
 
 export const insertDriverSchema = createInsertSchema(drivers).omit({

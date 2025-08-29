@@ -7,9 +7,9 @@ export default function Landing() {
   const [selectedRole, setSelectedRole] = useState<'driver' | 'owner' | null>(null);
 
   const handleGetStarted = (role: 'driver' | 'owner') => {
-    // Store the selected role in localStorage for after authentication
+    // Store the selected role in localStorage for registration
     localStorage.setItem('selectedRole', role);
-    window.location.href = '/api/login';
+    window.location.href = '/register';
   };
 
   return (
@@ -24,7 +24,7 @@ export default function Landing() {
             <h1 className="text-2xl font-bold text-foreground">WashOut Pro</h1>
           </div>
           <Button 
-            onClick={() => window.location.href = '/api/login'}
+            onClick={() => window.location.href = '/login'}
             data-testid="button-login"
             className="bg-primary hover:bg-primary/90"
           >
