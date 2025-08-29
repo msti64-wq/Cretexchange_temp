@@ -202,7 +202,10 @@ export default function OwnerDashboard() {
                       className="text-xs"
                       disabled={!(activity.washout_activities?.photoUrls?.length > 0 || activity.photoUrls?.length > 0)}
                       onClick={() => {
-                        console.log("Activity data:", activity); // Debug log
+                        console.log("Activity data:", activity); 
+                        console.log("All keys:", Object.keys(activity));
+                        console.log("PhotoUrls direct:", activity.photoUrls);
+                        console.log("Nested washout_activities:", activity.washout_activities);
                         if (activity.washout_activities?.photoUrls?.length > 0 || activity.photoUrls?.length > 0) {
                           setSelectedActivity(activity);
                           setIsPhotoModalOpen(true);
