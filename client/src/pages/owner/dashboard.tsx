@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut } from "lucide-react";
+import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -57,6 +57,16 @@ export default function OwnerDashboard() {
             >
               <Plus className="w-4 h-4 mr-1" />
               Add Location
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLocation('/profile')}
+              data-testid="button-profile"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <User className="w-4 h-4 mr-1" />
+              Profile
             </Button>
             <Button
               variant="outline"
