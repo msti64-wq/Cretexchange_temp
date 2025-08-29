@@ -5,13 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus } from "lucide-react";
+import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function OwnerDashboard() {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ['/api/owners/dashboard'],
@@ -48,15 +48,27 @@ export default function OwnerDashboard() {
               <p className="text-white/80 text-sm">Location Management</p>
             </div>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setLocation('/locations')}
-            data-testid="button-add-location"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Location
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setLocation('/locations')}
+              data-testid="button-add-location"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Location
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={logout}
+              data-testid="button-logout"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <LogOut className="w-4 h-4 mr-1" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
