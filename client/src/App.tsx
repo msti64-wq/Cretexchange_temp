@@ -81,6 +81,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={OwnerDashboard} />
+        <Route path="/dashboard" component={OwnerDashboard} />
         <Route path="/locations" component={OwnerLocations} />
         <Route path="/drivers" component={OwnerDrivers} />
         <Route path="/payments" component={OwnerPayments} />

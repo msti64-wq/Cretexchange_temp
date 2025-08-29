@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
+import { PhotoModal } from "@/components/PhotoModal";
 import { Users, Search, Filter, MapPin, Clock, Image as ImageIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -14,6 +15,8 @@ export default function OwnerDrivers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPeriod, setFilterPeriod] = useState("7");
   const [selectedLocation, setSelectedLocation] = useState("all");
+  const [selectedActivity, setSelectedActivity] = useState<any>(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   const { data: activities, isLoading } = useQuery({
     queryKey: ['/api/owners/activities'],
@@ -293,21 +296,38 @@ export default function OwnerDrivers() {
                       )}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
-                      {formatCurrency(Number(activity.washout_activities?.amount || 0))}
+                  <div className="flex items-center gap-2">
+                    {activity.washout_activities?.photoUrls?.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          setSelectedActivity(activity);
+                          setIsPhotoModalOpen(true);
+                        }}
+                        data-testid={`button-view-photos-${index}`}
+                      >
+                        <ImageIcon className="w-4 h-4 mr-1" />
+                        View Photos
+                      </Button>
+                    )}
+                    <div className="text-right">
+                      <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
+                        {formatCurrency(Number(activity.washout_activities?.amount || 0))}
+                      </div>
+                      <Badge 
+                        variant={
+                          activity.washout_activities?.status === 'verified' ? 'default' : 
+                          activity.washout_activities?.status === 'pending' ? 'secondary' : 'destructive'
+                        }
+                        className="text-xs"
+                        data-testid={`badge-activity-status-${index}`}
+                      >
+                        {activity.washout_activities?.status === 'verified' ? 'Paid' : 
+                         activity.washout_activities?.status === 'pending' ? 'Pending' : 'Rejected'}
+                      </Badge>
                     </div>
-                    <Badge 
-                      variant={
-                        activity.washout_activities?.status === 'verified' ? 'default' : 
-                        activity.washout_activities?.status === 'pending' ? 'secondary' : 'destructive'
-                      }
-                      className="text-xs"
-                      data-testid={`badge-activity-status-${index}`}
-                    >
-                      {activity.washout_activities?.status === 'verified' ? 'Paid' : 
-                       activity.washout_activities?.status === 'pending' ? 'Pending' : 'Rejected'}
-                    </Badge>
                   </div>
                 </div>
               </CardContent>
@@ -315,6 +335,15 @@ export default function OwnerDrivers() {
           ))}
         </div>
       </main>
+
+      <PhotoModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => {
+          setIsPhotoModalOpen(false);
+          setSelectedActivity(null);
+        }}
+        activity={selectedActivity}
+      />
 
       <MobileNav role="owner" />
     </div>

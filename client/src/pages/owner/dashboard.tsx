@@ -1,17 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User } from "lucide-react";
+import { PhotoModal } from "@/components/PhotoModal";
+import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User, ImageIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function OwnerDashboard() {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
+  const [selectedActivity, setSelectedActivity] = useState<any>(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ['/api/owners/dashboard'],
@@ -175,17 +179,34 @@ export default function OwnerDashboard() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
-                      {formatCurrency(Number(activity.washout_activities?.amount || 0))}
+                  <div className="flex items-center gap-2">
+                    {activity.washout_activities?.photoUrls?.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => {
+                          setSelectedActivity(activity);
+                          setIsPhotoModalOpen(true);
+                        }}
+                        data-testid={`button-view-photos-${index}`}
+                      >
+                        <ImageIcon className="w-4 h-4 mr-1" />
+                        Photos
+                      </Button>
+                    )}
+                    <div className="text-right">
+                      <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
+                        {formatCurrency(Number(activity.washout_activities?.amount || 0))}
+                      </div>
+                      <Badge 
+                        variant={activity.washout_activities?.status === 'verified' ? 'default' : 'secondary'}
+                        className="text-xs"
+                        data-testid={`badge-activity-status-${index}`}
+                      >
+                        {activity.washout_activities?.status === 'verified' ? 'Paid' : 'Pending'}
+                      </Badge>
                     </div>
-                    <Badge 
-                      variant={activity.washout_activities?.status === 'verified' ? 'default' : 'secondary'}
-                      className="text-xs"
-                      data-testid={`badge-activity-status-${index}`}
-                    >
-                      {activity.washout_activities?.status === 'verified' ? 'Paid' : 'Pending'}
-                    </Badge>
                   </div>
                 </div>
               ))
@@ -222,6 +243,15 @@ export default function OwnerDashboard() {
           </Button>
         </div>
       </main>
+
+      <PhotoModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => {
+          setIsPhotoModalOpen(false);
+          setSelectedActivity(null);
+        }}
+        activity={selectedActivity}
+      />
 
       <MobileNav role="owner" />
     </div>

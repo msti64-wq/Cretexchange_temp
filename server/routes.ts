@@ -453,6 +453,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/owners/activities/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      const activity = await storage.rejectWashoutActivity(id, userId);
+      res.json(activity);
+    } catch (error) {
+      console.error("Error rejecting activity:", error);
+      res.status(500).json({ message: "Failed to reject activity" });
+    }
+  });
+
   app.put('/api/owners/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
