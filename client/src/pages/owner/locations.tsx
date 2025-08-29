@@ -74,7 +74,7 @@ export default function OwnerLocations() {
     latitude: "",
     longitude: "",
     rate: "10.00",
-    description: "",
+    operatingHours: "",
     amenities: "",
   });
 
@@ -206,12 +206,13 @@ export default function OwnerLocations() {
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Label htmlFor="operatingHours">Hours (Optional)</Label>
                   <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    data-testid="textarea-description"
+                    id="operatingHours"
+                    placeholder="e.g. Mon-Fri 8AM-5PM, Sat-Sun 9AM-3PM"
+                    value={formData.operatingHours}
+                    onChange={(e) => setFormData({...formData, operatingHours: e.target.value})}
+                    data-testid="textarea-operating-hours"
                   />
                 </div>
 
