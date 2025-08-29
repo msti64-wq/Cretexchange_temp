@@ -22,17 +22,20 @@ export default function Login() {
       const response = await apiRequest("POST", "/api/login", data);
       return response.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
+      // Store the token in localStorage
+      localStorage.setItem('authToken', data.token);
+      
       toast({
         title: "Login Successful",
         description: "Welcome back!",
       });
+      
       // Invalidate auth query to refetch user data
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      // Small delay to ensure session is properly set
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
+      
+      // Navigate to home page
+      setLocation('/');
     },
     onError: (error: any) => {
       toast({

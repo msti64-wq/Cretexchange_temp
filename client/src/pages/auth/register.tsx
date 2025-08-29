@@ -43,13 +43,18 @@ export default function Register() {
       const response = await apiRequest("POST", "/api/register", registerData);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Store the token in localStorage
+      localStorage.setItem('authToken', data.token);
+      
       toast({
         title: "Registration Successful",
         description: "Your account has been created successfully!",
       });
+      
       // Invalidate auth query to refetch user data
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
       setLocation('/');
     },
     onError: (error: any) => {
