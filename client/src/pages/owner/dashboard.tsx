@@ -71,10 +71,17 @@ export default function OwnerDashboard() {
 
   const { weekStats, monthStats, locations, recentActivities } = dashboardData || {};
 
-  // Calculate pending payments from recent activities (include approved but unpaid washouts)
+  // Calculate pending payments (awaiting approval)
   const pendingPayments = recentActivities?.reduce((total: number, activity: any) => {
-    const status = activity.washout_activities?.status;
-    if (status === 'pending' || status === 'verified') {
+    if (activity.washout_activities?.status === 'pending') {
+      return total + Number(activity.washout_activities?.amount || 0);
+    }
+    return total;
+  }, 0) || 0;
+
+  // Calculate approved payments (verified but not yet paid)
+  const approvedPayments = recentActivities?.reduce((total: number, activity: any) => {
+    if (activity.washout_activities?.status === 'verified') {
       return total + Number(activity.washout_activities?.amount || 0);
     }
     return total;
@@ -161,10 +168,17 @@ export default function OwnerDashboard() {
           </StatCard>
 
           <StatCard title="Pending Payments" className="text-center">
-            <div className="text-3xl font-bold text-secondary mb-1" data-testid="text-pending-payments">
+            <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-500 mb-1" data-testid="text-pending-payments">
               {formatCurrency(pendingPayments)}
             </div>
-            <div className="text-sm text-muted-foreground">Awaiting Payment</div>
+            <div className="text-sm text-muted-foreground">Awaiting Approval</div>
+          </StatCard>
+
+          <StatCard title="Approved Payments" className="text-center">
+            <div className="text-3xl font-bold text-green-600 dark:text-green-500 mb-1" data-testid="text-approved-payments">
+              {formatCurrency(approvedPayments)}
+            </div>
+            <div className="text-sm text-muted-foreground">Ready for Payout</div>
           </StatCard>
         </div>
 
