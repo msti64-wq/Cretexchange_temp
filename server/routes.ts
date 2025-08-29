@@ -760,7 +760,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Handle nested washout_activities with human-friendly formatting
         if (row.washout_activities) {
+          // Define which activity fields to exclude from CSV
+          const excludedActivityFields = ['notes', 'verifiedBy', 'verifiedAt'];
+          
           Object.keys(row.washout_activities).forEach(key => {
+            // Skip excluded fields
+            if (excludedActivityFields.includes(key)) {
+              return;
+            }
+            
             let value = row.washout_activities[key];
             
             // Format specific fields for better readability
@@ -770,7 +778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               flattened['driver_ref'] = formatId(value);
             } else if (key === 'locationId') {
               flattened['location_ref'] = formatId(value);
-            } else if (key === 'checkInTime' || key === 'createdAt' || key === 'updatedAt' || key === 'verifiedAt') {
+            } else if (key === 'checkInTime' || key === 'createdAt' || key === 'updatedAt') {
               flattened[`activity_${key === 'checkInTime' ? 'date_time' : key}`] = formatDate(value);
             } else if (key === 'amount') {
               flattened['activity_amount'] = `$${parseFloat(value).toFixed(2)}`;
@@ -782,15 +790,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Handle nested washout_locations with human-friendly formatting
         if (row.washout_locations) {
+          // Define which location fields to exclude from CSV
+          const excludedLocationFields = ['id', 'ownerId', 'amenities', 'operatingHours', 'permitUrls', 'createdAt', 'updatedAt'];
+          
           Object.keys(row.washout_locations).forEach(key => {
+            // Skip excluded fields
+            if (excludedLocationFields.includes(key)) {
+              return;
+            }
+            
             let value = row.washout_locations[key];
             
-            if (key === 'id') {
-              flattened['location_id'] = formatId(value);
-            } else if (key === 'rate') {
+            if (key === 'rate') {
               flattened['location_rate'] = `$${parseFloat(value).toFixed(2)}`;
-            } else if (key === 'createdAt' || key === 'updatedAt') {
-              flattened[`location_${key}`] = formatDate(value);
             } else {
               flattened[`location_${key}`] = value;
             }
@@ -799,15 +811,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Handle nested location (alternative structure)
         if (row.location) {
+          // Define which location fields to exclude from CSV
+          const excludedLocationFields = ['id', 'ownerId', 'amenities', 'operatingHours', 'permitUrls', 'createdAt', 'updatedAt'];
+          
           Object.keys(row.location).forEach(key => {
+            // Skip excluded fields
+            if (excludedLocationFields.includes(key)) {
+              return;
+            }
+            
             let value = row.location[key];
             
-            if (key === 'id') {
-              flattened['location_id'] = formatId(value);
-            } else if (key === 'rate') {
+            if (key === 'rate') {
               flattened['location_rate'] = `$${parseFloat(value).toFixed(2)}`;
-            } else if (key === 'createdAt' || key === 'updatedAt') {
-              flattened[`location_${key}`] = formatDate(value);
             } else {
               flattened[`location_${key}`] = value;
             }
