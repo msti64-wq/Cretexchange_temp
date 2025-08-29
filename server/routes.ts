@@ -781,8 +781,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
+        // Add a dedicated earnings column with proper formatting
+        const earnings = row.washout_activities?.amount || row.amount || 0;
+        flattened['earnings'] = `$${parseFloat(earnings).toFixed(2)}`;
+        
         return flattened;
       });
+
+      // Calculate total earnings for summary
+      const totalEarnings = flattenedData.reduce((sum, row) => {
+        const earnings = row.activity_amount || row.amount || 0;
+        return sum + parseFloat(earnings);
+      }, 0);
 
       const headers = Object.keys(flattenedData[0]).join(',');
       const rows = flattenedData.map(row => 
@@ -797,7 +807,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return value;
         }).join(',')
       );
-      const csv = [headers, ...rows].join('\n');
+      
+      // Add summary rows
+      const emptySeparatorRow = Array(Object.keys(flattenedData[0]).length).fill('').join(',');
+      const summaryLabelRow = Array(Object.keys(flattenedData[0]).length).fill('').map((_, index) => {
+        if (index === 0) return '"SUMMARY"';
+        return '';
+      }).join(',');
+      
+      const totalEarningsRow = Array(Object.keys(flattenedData[0]).length).fill('').map((_, index, arr) => {
+        if (index === 0) return '"Total Activities"';
+        if (index === 1) return `"${flattenedData.length}"`;
+        if (index === arr.length - 1) return `"$${totalEarnings.toFixed(2)}"`;  // earnings column is last
+        return '';
+      }).join(',');
+      
+      const csv = [headers, ...rows, emptySeparatorRow, summaryLabelRow, totalEarningsRow].join('\n');
 
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
