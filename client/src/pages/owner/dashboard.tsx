@@ -17,8 +17,9 @@ export default function OwnerDashboard() {
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
-  const { data: dashboardData, isLoading } = useQuery({
+  const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['/api/owners/dashboard'],
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   if (isLoading) {
@@ -202,13 +203,23 @@ export default function OwnerDashboard() {
                       className="text-xs"
                       disabled={!(activity.washout_activities?.photoUrls?.length > 0 || activity.photoUrls?.length > 0)}
                       onClick={() => {
-                        console.log("Activity data:", activity); 
+                        console.log("=== FULL ACTIVITY DATA ===");
+                        console.log("Activity object:", JSON.stringify(activity, null, 2));
+                        console.log("=== KEYS ANALYSIS ===");
                         console.log("All keys:", Object.keys(activity));
                         console.log("PhotoUrls direct:", activity.photoUrls);
                         console.log("Nested washout_activities:", activity.washout_activities);
-                        if (activity.washout_activities?.photoUrls?.length > 0 || activity.photoUrls?.length > 0) {
+                        
+                        // Check for photoUrls in all possible locations
+                        const hasPhotos = activity.photoUrls?.length > 0 || 
+                                         activity.washout_activities?.photoUrls?.length > 0;
+                        console.log("Has photos:", hasPhotos);
+                        
+                        if (hasPhotos) {
                           setSelectedActivity(activity);
                           setIsPhotoModalOpen(true);
+                        } else {
+                          console.log("No photos found - button will remain disabled");
                         }
                       }}
                       data-testid={`button-view-photos-${index}`}

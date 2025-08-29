@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Camera, MapPin, Clock } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { UploadResult } from "@uppy/core";
 
 interface WashoutFormProps {
@@ -33,6 +33,12 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate all relevant caches
+      queryClient.invalidateQueries({ queryKey: ['/api/drivers/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/drivers/activities'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/activities'] });
+      
       toast({
         title: "Check-in Successful",
         description: "Your washout has been recorded successfully.",
