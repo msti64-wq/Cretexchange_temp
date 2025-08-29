@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft, Truck } from "lucide-react";
 
@@ -27,6 +27,8 @@ export default function Login() {
         title: "Login Successful",
         description: "Welcome back!",
       });
+      // Invalidate auth query to refetch user data
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setLocation('/');
     },
     onError: (error: any) => {
