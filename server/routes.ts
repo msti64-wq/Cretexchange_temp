@@ -49,7 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Driver registration
   app.post('/api/auth/register/driver', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       // Update user role
       await storage.upsertUser({
@@ -75,7 +75,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Owner registration
   app.post('/api/auth/register/owner', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       // Update user role
       await storage.upsertUser({
@@ -101,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Driver endpoints
   app.get('/api/drivers/dashboard', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
       if (!driver) {
@@ -148,7 +148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/drivers/location', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
       if (!driver) {
@@ -167,7 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/drivers/checkin', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
       if (!driver) {
@@ -200,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/drivers/activities', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
       if (!driver) {
@@ -221,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/drivers/payments', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
       if (!driver) {
@@ -240,10 +240,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/drivers/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // First, get or create the driver record
+      let driver = await storage.getDriver(userId);
+      if (!driver) {
+        // Create driver record if it doesn't exist
+        const driverData = {
+          userId,
+          employerName: req.body.employerName || "",
+          employerAddress: req.body.employerAddress || "",
+          employerPhone: req.body.employerPhone || "",
+          licenseNumber: req.body.licenseNumber || "",
+        };
+        driver = await storage.createDriver(driverData);
+      } else {
+        // Update existing driver record
+        driver = await storage.updateDriver(driver.id, {
+          employerName: req.body.employerName || driver.employerName,
+          employerAddress: req.body.employerAddress || driver.employerAddress,
+          employerPhone: req.body.employerPhone || driver.employerPhone,
+          licenseNumber: req.body.licenseNumber || driver.licenseNumber,
+        });
+      }
+
+      // Update user profile information
+      await storage.upsertUser({
+        id: userId,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+        phone: req.body.phone,
+        address: req.body.address,
+        paymentMethod: req.body.paymentMethod,
+        paymentFrequency: req.body.paymentFrequency,
+      });
+
+      res.json({ message: "Profile updated successfully" });
+    } catch (error) {
+      console.error("Error updating driver profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
   // Owner endpoints
   app.get('/api/owners/dashboard', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const owner = await storage.getOwner(userId);
       
       if (!owner) {
@@ -269,7 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/owners/locations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const owner = await storage.getOwner(userId);
       
       if (!owner) {
@@ -295,7 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/owners/locations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const owner = await storage.getOwner(userId);
       
       if (!owner) {
@@ -325,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/owners/activities', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const owner = await storage.getOwner(userId);
       
       if (!owner) {
@@ -347,7 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/owners/activities/:id/verify', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
 
       const activity = await storage.verifyWashoutActivity(id, userId);
       res.json(activity);
@@ -360,7 +405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Owner subscription
   app.post('/api/owners/subscribe', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       const owner = await storage.getOwner(userId);
 
@@ -417,7 +462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin endpoints
   app.get('/api/admin/dashboard', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -437,7 +482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -454,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/admin/locations', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -469,7 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/admin/owners/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -485,7 +530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/admin/locations/:id/visibility', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -503,7 +548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Object storage endpoints for photo uploads
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {
-    const userId = req.user?.claims?.sub;
+    const userId = req.user?.id;
     const objectStorageService = new ObjectStorageService();
     try {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
@@ -536,7 +581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ error: "photoURL is required" });
     }
 
-    const userId = req.user?.claims?.sub;
+    const userId = req.user?.id;
 
     try {
       const objectStorageService = new ObjectStorageService();
@@ -560,7 +605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { type } = req.params;
       const { startDate, endDate } = req.query;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       let data: any[] = [];
       let filename = '';
