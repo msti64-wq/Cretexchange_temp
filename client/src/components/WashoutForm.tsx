@@ -55,12 +55,23 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
   });
 
   const handleGetUploadParameters = async () => {
-    const response = await apiRequest("POST", "/api/objects/upload");
-    const data = await response.json();
-    return {
-      method: "PUT" as const,
-      url: data.uploadURL,
-    };
+    console.log("=== GETTING UPLOAD PARAMETERS ===");
+    try {
+      const response = await apiRequest("POST", "/api/objects/upload");
+      console.log("Upload parameters response:", response);
+      const data = await response.json();
+      console.log("Upload parameters data:", data);
+      
+      const uploadParams = {
+        method: "PUT" as const,
+        url: data.uploadURL,
+      };
+      console.log("Returning upload parameters:", uploadParams);
+      return uploadParams;
+    } catch (error) {
+      console.error("Failed to get upload parameters:", error);
+      throw error;
+    }
   };
 
   const handlePhotoComplete = async (result: UploadResult) => {
@@ -207,6 +218,15 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
               maxFileSize={10485760} // 10MB
               onGetUploadParameters={handleGetUploadParameters}
               onComplete={handlePhotoComplete}
+              onUpload={(file, response) => {
+                console.log("=== UPLOAD EVENT ===");
+                console.log("File uploaded:", file);
+                console.log("Upload response:", response);
+              }}
+              onError={(error) => {
+                console.error("=== UPLOAD ERROR ===");
+                console.error("Upload error:", error);
+              }}
               buttonClassName="w-full mt-2"
             >
               <Camera className="w-5 h-5 mr-2" />
