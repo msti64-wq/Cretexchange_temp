@@ -100,37 +100,6 @@ export default function OwnerDashboard() {
           </StatCard>
         </div>
 
-        {/* Weekly Performance */}
-        <StatCard
-          title="7-Day Performance"
-          subtitle={
-            <div className="flex items-center text-green-600 text-sm font-medium">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              +15%
-            </div>
-          }
-        >
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Total Revenue</span>
-              <span className="text-xl font-bold text-foreground" data-testid="text-week-total">
-                {formatCurrency(weekStats?.totalPayments || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Washouts Completed</span>
-              <span className="text-lg font-semibold" data-testid="text-week-washouts">
-                {weekStats?.totalWashouts || 0}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Active Drivers</span>
-              <span className="text-lg font-semibold" data-testid="text-week-drivers">
-                {weekStats?.totalDrivers || 0}
-              </span>
-            </div>
-          </div>
-        </StatCard>
 
         {/* Monthly Comparison */}
         <StatCard title="30-Day Summary">
