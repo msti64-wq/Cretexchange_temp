@@ -36,6 +36,14 @@ export default function OwnerDashboard() {
 
   const { weekStats, monthStats, locations, recentActivities } = dashboardData || {};
 
+  // Calculate pending payments from recent activities
+  const pendingPayments = recentActivities?.reduce((total: number, activity: any) => {
+    if (activity.washout_activities?.status === 'pending') {
+      return total + Number(activity.washout_activities?.amount || 0);
+    }
+    return total;
+  }, 0) || 0;
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
@@ -105,9 +113,9 @@ export default function OwnerDashboard() {
 
           <StatCard title="Pending Payments" className="text-center">
             <div className="text-3xl font-bold text-secondary mb-1" data-testid="text-week-earnings">
-              {formatCurrency(weekStats?.totalPayments || 0)}
+              {formatCurrency(pendingPayments)}
             </div>
-            <div className="text-sm text-muted-foreground">This Week</div>
+            <div className="text-sm text-muted-foreground">Awaiting Approval</div>
           </StatCard>
         </div>
 
@@ -124,7 +132,7 @@ export default function OwnerDashboard() {
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Total Pending Payments</span>
               <span className="text-xl font-bold text-secondary" data-testid="text-pending-total">
-                {formatCurrency(weekStats?.totalPayments || 0)}
+                {formatCurrency(pendingPayments)}
               </span>
             </div>
             <div className="flex justify-between items-center">
