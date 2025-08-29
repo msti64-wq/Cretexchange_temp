@@ -177,7 +177,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
               Take Photos ({photoUrls.length}/5)
             </ObjectUploader>
             <p className="text-xs text-muted-foreground mt-1">
-              Photos are required to verify completion of washout
+              Photos help verify completion of washout ({photoUrls.length} uploaded)
             </p>
           </div>
 
@@ -197,10 +197,10 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting || photoUrls.length === 0}
+            disabled={isSubmitting}
             data-testid="button-complete-checkin"
           >
-            {isSubmitting ? "Processing..." : "Complete Check-in"}
+            {isSubmitting ? "Processing..." : `Complete Check-in ${photoUrls.length > 0 ? `(${photoUrls.length} photos)` : "(photos optional)"}`}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">
