@@ -7,9 +7,11 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function OwnerDashboard() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
 
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ['/api/owners/dashboard'],
@@ -41,7 +43,7 @@ export default function OwnerDashboard() {
             </div>
             <div>
               <h1 className="font-semibold text-lg" data-testid="text-owner-name">
-                Owner Dashboard
+                Welcome, {user?.firstName} {user?.lastName}
               </h1>
               <p className="text-white/80 text-sm">Location Management</p>
             </div>
