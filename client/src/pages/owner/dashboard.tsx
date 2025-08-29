@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,19 +7,53 @@ import { useLocation } from "wouter";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
-import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User, ImageIcon } from "lucide-react";
+import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User, ImageIcon, Check, X } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function OwnerDashboard() {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['/api/owners/dashboard'],
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (activityId: string) => {
+      const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/verify`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Washout approved for payment" });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/activities'] });
+    },
+    onError: () => {
+      toast({ title: "Failed to approve washout", variant: "destructive" });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async (activityId: string) => {
+      const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/reject`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Washout rejected" });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/activities'] });
+    },
+    onError: () => {
+      toast({ title: "Failed to reject washout", variant: "destructive" });
+    },
   });
 
   if (isLoading) {
@@ -217,6 +251,32 @@ export default function OwnerDashboard() {
                         `Photos (${activity.photoUrls.length})` :
                         'No Photos'}
                     </Button>
+                    
+                    {/* Approval buttons for pending washouts */}
+                    {activity.washout_activities?.status === 'pending' && (
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="text-xs px-2"
+                          onClick={() => rejectMutation.mutate(activity.washout_activities.id)}
+                          disabled={rejectMutation.isPending || approveMutation.isPending}
+                          data-testid={`button-reject-${index}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="text-xs px-2"
+                          onClick={() => approveMutation.mutate(activity.washout_activities.id)}
+                          disabled={rejectMutation.isPending || approveMutation.isPending}
+                          data-testid={`button-approve-${index}`}
+                        >
+                          <Check className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
+                    
                     <div className="text-right">
                       <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
                         {formatCurrency(Number(activity.washout_activities?.amount || 0))}
