@@ -11,8 +11,9 @@ import { formatCurrency } from "@/lib/utils";
 export default function DriverDashboard() {
   const [, setLocation] = useLocation();
 
-  const { data: dashboardData, isLoading } = useQuery({
+  const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['/api/drivers/dashboard'],
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   if (isLoading) {
@@ -51,11 +52,24 @@ export default function DriverDashboard() {
         {/* Today's Activity */}
         <StatCard
           title="Today's Activity"
-          subtitle={new Date().toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric', 
-            year: 'numeric' 
-          })}
+          subtitle={
+            <div className="flex items-center justify-between">
+              <span>{new Date().toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+              })}</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:text-primary/80 text-xs"
+                onClick={() => refetch()}
+                data-testid="button-refresh-dashboard"
+              >
+                Refresh
+              </Button>
+            </div>
+          }
         >
           <div className="grid grid-cols-2 gap-4">
             <div className="text-center">
