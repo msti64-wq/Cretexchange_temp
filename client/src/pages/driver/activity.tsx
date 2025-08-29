@@ -15,13 +15,28 @@ export default function DriverActivity() {
   const [endDate, setEndDate] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
+  // Build URLs with query parameters instead of path parameters
+  const activitiesUrl = `/api/drivers/activities${startDate || endDate ? '?' : ''}${
+    [
+      startDate ? `startDate=${startDate}` : '',
+      endDate ? `endDate=${endDate}` : ''
+    ].filter(Boolean).join('&')
+  }`;
+  
+  const paymentsUrl = `/api/drivers/payments${startDate || endDate ? '?' : ''}${
+    [
+      startDate ? `startDate=${startDate}` : '',
+      endDate ? `endDate=${endDate}` : ''
+    ].filter(Boolean).join('&')
+  }`;
+
   const { data: activities, isLoading } = useQuery({
-    queryKey: ['/api/drivers/activities', startDate, endDate],
+    queryKey: [activitiesUrl],
     staleTime: 0, // Always fetch fresh data
   });
 
   const { data: payments } = useQuery({
-    queryKey: ['/api/drivers/payments', startDate, endDate],
+    queryKey: [paymentsUrl],
     staleTime: 0, // Always fetch fresh data  
   });
 
