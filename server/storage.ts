@@ -520,14 +520,13 @@ export class DatabaseStorage implements IStorage {
 
     const result = await db
       .select({
-        totalEarnings: sql<number>`COALESCE(SUM(CAST(${payments.amount} AS DECIMAL)), 0)`,
-        totalWashouts: count(payments.id),
+        totalEarnings: sql<number>`COALESCE(SUM(CAST(${washoutActivities.amount} AS DECIMAL)), 0)`,
+        totalWashouts: count(washoutActivities.id),
       })
-      .from(payments)
+      .from(washoutActivities)
       .where(and(
-        eq(payments.driverId, driverId),
-        gte(payments.createdAt, startDate),
-        eq(payments.status, 'completed')
+        eq(washoutActivities.driverId, driverId),
+        gte(washoutActivities.checkInTime, startDate)
       ));
 
     const stats = result[0] || { totalEarnings: 0, totalWashouts: 0 };

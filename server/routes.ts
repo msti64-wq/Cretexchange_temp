@@ -125,7 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         dailyStats: {
           visits: todayActivities.length,
-          earnings: todayActivities.reduce((sum, activity) => sum + Number(activity.amount), 0),
+          earnings: todayActivities.reduce((sum, activity) => sum + Number(activity.amount || 0), 0),
         },
         weeklyStats: weekStats,
         recentActivities,
