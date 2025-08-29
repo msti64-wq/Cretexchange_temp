@@ -94,7 +94,7 @@ export default function OwnerDashboard() {
 
           <StatCard title="Daily Visits" className="text-center">
             <div className="text-3xl font-bold text-accent mb-1" data-testid="text-daily-visits">
-              {weekStats?.totalWashouts || 0}
+              {recentActivities?.length || 0}
             </div>
             <div className="text-sm text-muted-foreground">Today</div>
           </StatCard>
