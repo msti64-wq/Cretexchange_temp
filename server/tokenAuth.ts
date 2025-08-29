@@ -74,6 +74,24 @@ export async function setupAuth(app: Express) {
         role,
       });
 
+      // Create role-specific profile
+      if (role === 'driver') {
+        await storage.createDriver({
+          userId: newUser.id,
+          licenseNumber: '',
+          phoneNumber: '',
+          address: '',
+          company: '',
+        });
+      } else if (role === 'owner') {
+        await storage.createOwner({
+          userId: newUser.id,
+          companyName: '',
+          businessLicense: '',
+          taxId: '',
+        });
+      }
+
       // Create JWT token
       const token = jwt.sign(
         { userId: newUser.id, username: newUser.username },
