@@ -79,7 +79,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     console.log("Upload result:", result);
     console.log("Successful files:", result.successful);
     
-    const uploadedFiles = result.successful;
+    const uploadedFiles = result.successful || [];
     
     if (uploadedFiles.length === 0) {
       console.log("No successful uploads found");
@@ -105,7 +105,10 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
         console.log("Available file properties:", Object.keys(file));
         
         // Try different possible property names for the upload URL
-        const uploadURL = file.uploadURL || file.response?.uploadURL || file.response?.body?.Location || file.s3?.location;
+        const uploadURL = (file as any).uploadURL || 
+                         (file as any).response?.uploadURL || 
+                         (file as any).response?.body?.Location || 
+                         (file as any).meta?.location;
         
         if (!uploadURL) {
           console.log("No upload URL found, keeping temp URL");
