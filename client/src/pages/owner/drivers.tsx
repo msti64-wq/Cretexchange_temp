@@ -266,47 +266,47 @@ export default function OwnerDrivers() {
           <h2 className="text-lg font-semibold">Recent Activity</h2>
           
           {filteredActivities.slice(0, 10).map((activity: any, index: number) => (
-            <Card key={activity.id} className="hover:shadow-md transition-shadow" data-testid={`card-activity-${index}`}>
+            <Card key={activity.washout_activities?.id || index} className="hover:shadow-md transition-shadow" data-testid={`card-activity-${index}`}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h4 className="font-medium" data-testid={`text-activity-driver-${index}`}>
-                      {activity.driver?.user?.firstName} {activity.driver?.user?.lastName}
+                      {activity.users?.firstName} {activity.users?.lastName}
                     </h4>
                     <p className="text-sm text-muted-foreground" data-testid={`text-activity-location-${index}`}>
-                      {activity.location?.name}
+                      {activity.washout_locations?.name}
                     </p>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                       <span data-testid={`text-activity-time-${index}`}>
-                        {new Date(activity.checkInTime).toLocaleDateString()} at{' '}
-                        {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
+                        {new Date(activity.washout_activities?.checkInTime).toLocaleDateString()} at{' '}
+                        {new Date(activity.washout_activities?.checkInTime).toLocaleTimeString('en-US', {
                           hour: 'numeric',
                           minute: '2-digit',
                           hour12: true
                         })}
                       </span>
-                      {activity.photoUrls && activity.photoUrls.length > 0 && (
+                      {activity.washout_activities?.photoUrls && activity.washout_activities?.photoUrls.length > 0 && (
                         <div className="flex items-center">
                           <ImageIcon className="w-4 h-4 mr-1" />
-                          <span>{activity.photoUrls.length} photo(s)</span>
+                          <span>{activity.washout_activities?.photoUrls.length} photo(s)</span>
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
-                      {formatCurrency(Number(activity.amount))}
+                      {formatCurrency(Number(activity.washout_activities?.amount || 0))}
                     </div>
                     <Badge 
                       variant={
-                        activity.status === 'verified' ? 'default' : 
-                        activity.status === 'pending' ? 'secondary' : 'destructive'
+                        activity.washout_activities?.status === 'verified' ? 'default' : 
+                        activity.washout_activities?.status === 'pending' ? 'secondary' : 'destructive'
                       }
                       className="text-xs"
                       data-testid={`badge-activity-status-${index}`}
                     >
-                      {activity.status === 'verified' ? 'Verified' : 
-                       activity.status === 'pending' ? 'Pending' : 'Rejected'}
+                      {activity.washout_activities?.status === 'verified' ? 'Paid' : 
+                       activity.washout_activities?.status === 'pending' ? 'Pending' : 'Rejected'}
                     </Badge>
                   </div>
                 </div>
