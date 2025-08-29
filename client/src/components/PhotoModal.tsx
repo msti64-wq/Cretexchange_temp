@@ -114,7 +114,7 @@ export function PhotoModal({
             <Badge 
               variant={status === 'verified' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}
             >
-              {status === 'verified' ? 'Paid' : status === 'pending' ? 'Pending' : 'Rejected'}
+              {status === 'verified' ? 'Approved' : status === 'pending' ? 'Pending' : 'Rejected'}
             </Badge>
           </DialogTitle>
         </DialogHeader>
