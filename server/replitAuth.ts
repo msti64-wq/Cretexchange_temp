@@ -27,7 +27,7 @@ export function getSession() {
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
+    createTableIfMissing: true,
     ttl: sessionTtl,
     tableName: "sessions",
   });
@@ -38,7 +38,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: sessionTtl,
     },
   });
@@ -84,14 +84,24 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
+  // Register strategies for all configured domains
+  const domains = process.env.REPLIT_DOMAINS!.split(",");
+  
+  // Add localhost for local development
+  if (process.env.NODE_ENV === 'development') {
+    domains.push('localhost:5000');
+  }
+  
+  for (const domain of domains) {
+    const isLocalhost = domain.includes('localhost');
+    const callbackUrl = isLocalhost ? `http://${domain}/api/callback` : `https://${domain}/api/callback`;
+    
     const strategy = new Strategy(
       {
-        name: `replitauth:${domain}`,
+        name: `replitauth:${domain.split(':')[0]}`,
         config,
         scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
+        callbackURL: callbackUrl,
       },
       verify,
     );
@@ -102,6 +112,7 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
+    console.log(`Login attempt - hostname: ${req.hostname}, available strategies:`, Object.keys((passport as any)._strategies || {}));
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
