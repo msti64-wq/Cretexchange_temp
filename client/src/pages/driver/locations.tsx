@@ -16,6 +16,7 @@ export default function DriverLocations() {
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"distance" | "rate">("distance");
 
   const { data: locations, isLoading } = useQuery({
@@ -27,9 +28,11 @@ export default function DriverLocations() {
     getCurrentLocation()
       .then(coords => {
         setCurrentLocation({ lat: coords.latitude, lng: coords.longitude });
+        setLocationError(null);
       })
       .catch(error => {
         console.error("Error getting location:", error);
+        setLocationError(error.message);
       });
   }, []);
 
@@ -113,6 +116,7 @@ export default function DriverLocations() {
               variant={sortBy === "distance" ? "default" : "outline"}
               size="sm"
               onClick={() => setSortBy("distance")}
+              disabled={!currentLocation}
               data-testid="button-sort-distance"
             >
               <Navigation className="w-4 h-4 mr-1" />
@@ -128,6 +132,18 @@ export default function DriverLocations() {
             </Button>
           </div>
         </div>
+
+        {/* Location Error Message */}
+        {locationError && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-yellow-800 text-sm">
+              📍 Location access not available: {locationError}
+            </p>
+            <p className="text-yellow-600 text-xs mt-1">
+              Distance sorting is disabled. You can still view all locations.
+            </p>
+          </div>
+        )}
 
         {/* Map View */}
         <Card>
@@ -171,7 +187,7 @@ export default function DriverLocations() {
                         {location.address}
                       </p>
                       <div className="flex items-center gap-4 text-sm">
-                        {currentLocation && (
+                        {currentLocation && item.distance !== undefined && (
                           <div className="flex items-center text-muted-foreground">
                             <Navigation className="w-4 h-4 mr-1" />
                             <span data-testid={`text-location-distance-${index}`}>
