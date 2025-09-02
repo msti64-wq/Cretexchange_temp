@@ -92,7 +92,7 @@ function Router() {
     );
   }
 
-  if ((user as any).role === 'admin') {
+  if ((user as any).role === 'admin' || (user as any).role === 'super_admin') {
     return (
       <Switch>
         <Route path="/" component={AdminDashboard} />
