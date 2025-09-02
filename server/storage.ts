@@ -321,12 +321,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]> {
-    return await db
+    const results = await db
       .select()
       .from(washoutLocations)
       .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
       .innerJoin(users, eq(owners.userId, users.id))
       .orderBy(desc(washoutLocations.createdAt));
+
+    // Transform the nested structure to flat structure expected by frontend
+    return results.map((row: any) => ({
+      ...row.washout_locations,
+      owner: {
+        ...row.owners,
+        user: row.users
+      }
+    }));
   }
 
   // Activity operations
