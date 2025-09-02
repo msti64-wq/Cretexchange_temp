@@ -609,8 +609,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const drivers = await storage.getAllDrivers();
       const owners = await storage.getAllOwners();
+      const admins = await storage.getAllAdmins();
 
-      res.json({ drivers, owners });
+      res.json({ drivers, owners, admins });
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });

@@ -98,12 +98,13 @@ export default function AdminUsers() {
     );
   }
 
-  const { drivers = [], owners = [] } = usersData || {};
+  const { drivers = [], owners = [], admins = [] } = usersData || {};
   
   // Combine and filter users
   const allUsers = [
     ...drivers.map((d: any) => ({ ...d.user, roleData: d, role: 'driver' })),
-    ...owners.map((o: any) => ({ ...o.user, roleData: o, role: 'owner' }))
+    ...owners.map((o: any) => ({ ...o.user, roleData: o, role: 'owner' })),
+    ...admins.map((a: any) => ({ ...a, roleData: null, role: 'admin' }))
   ];
 
   const filteredUsers = allUsers.filter((user: any) => {
@@ -128,6 +129,7 @@ export default function AdminUsers() {
     totalUsers: allUsers.length,
     totalDrivers: drivers.length,
     totalOwners: owners.length,
+    totalAdmins: admins.length,
     pendingApprovals: owners.filter((o: any) => !o.isApproved).length,
   };
 
@@ -257,11 +259,13 @@ export default function AdminUsers() {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-start space-x-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        user.role === 'driver' ? 'bg-secondary/10' : 'bg-accent/10'
+                        user.role === 'driver' ? 'bg-secondary/10' : user.role === 'admin' ? 'bg-primary/10' : 'bg-accent/10'
                       }`}>
                         {user.role === 'driver' ? 
-                          <Truck className={`w-5 h-5 ${user.role === 'driver' ? 'text-secondary' : 'text-accent'}`} /> :
-                          <Building2 className={`w-5 h-5 ${user.role === 'driver' ? 'text-secondary' : 'text-accent'}`} />
+                          <Truck className="w-5 h-5 text-secondary" /> :
+                          user.role === 'admin' ?
+                          <Users className="w-5 h-5 text-primary" /> :
+                          <Building2 className="w-5 h-5 text-accent" />
                         }
                       </div>
                       <div className="flex-1">
@@ -285,11 +289,11 @@ export default function AdminUsers() {
                     </div>
                     <div className="text-right">
                       <Badge 
-                        variant={user.role === 'driver' ? 'secondary' : 'default'}
+                        variant={user.role === 'driver' ? 'secondary' : user.role === 'admin' ? 'outline' : 'default'}
                         className="mb-2"
                         data-testid={`badge-user-role-${index}`}
                       >
-                        {user.role === 'driver' ? 'Driver' : 'Owner'}
+                        {user.role === 'driver' ? 'Driver' : user.role === 'admin' ? 'Admin' : 'Owner'}
                       </Badge>
                       <div className="flex flex-col gap-1">
                         <Badge 

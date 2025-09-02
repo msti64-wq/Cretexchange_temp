@@ -41,6 +41,7 @@ export interface IStorage {
   updateDriver(driverId: string, driverData: Partial<InsertDriver>): Promise<Driver>;
   updateDriverLocation(driverId: string, latitude: number, longitude: number): Promise<void>;
   getAllDrivers(): Promise<(Driver & { user: User })[]>;
+  getAllAdmins(): Promise<User[]>;
 
   // Owner operations
   createOwner(owner: InsertOwner): Promise<Owner>;
@@ -255,6 +256,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(owners)
       .innerJoin(users, eq(owners.userId, users.id));
+  }
+
+  async getAllAdmins(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.role, 'admin'))
+      .orderBy(desc(users.createdAt));
   }
 
   // Location operations
