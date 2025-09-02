@@ -610,23 +610,39 @@ export class DatabaseStorage implements IStorage {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const paymentStats = await db
+    // Calculate stats from washout activities (pending and verified, excluding rejected)
+    const activityStats = await db
       .select({
-        totalEarnings: sql<number>`COALESCE(SUM(CAST(${payments.amount} AS DECIMAL)), 0)`,
-        totalWashouts: count(payments.id),
-        totalDrivers: sql<number>`COUNT(DISTINCT ${payments.driverId})`,
-        totalOwners: sql<number>`COUNT(DISTINCT ${payments.ownerId})`,
+        totalEarnings: sql<number>`COALESCE(SUM(CAST(${washoutActivities.amount} AS DECIMAL)), 0)`,
+        totalWashouts: count(washoutActivities.id),
+        totalDrivers: sql<number>`COUNT(DISTINCT ${washoutActivities.driverId})`,
       })
-      .from(payments)
-      .where(gte(payments.createdAt, startDate));
+      .from(washoutActivities)
+      .where(and(
+        gte(washoutActivities.checkInTime, startDate),
+        ne(washoutActivities.status, 'rejected')
+      ));
 
-    const stats = paymentStats[0] || { totalEarnings: 0, totalWashouts: 0, totalDrivers: 0, totalOwners: 0 };
+    // Get unique owners from locations used in activities
+    const ownerStats = await db
+      .select({
+        totalOwners: sql<number>`COUNT(DISTINCT ${washoutLocations.ownerId})`,
+      })
+      .from(washoutActivities)
+      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .where(and(
+        gte(washoutActivities.checkInTime, startDate),
+        ne(washoutActivities.status, 'rejected')
+      ));
+
+    const stats = activityStats[0] || { totalEarnings: 0, totalWashouts: 0, totalDrivers: 0 };
+    const ownerCount = ownerStats[0]?.totalOwners || 0;
 
     return {
       totalEarnings: Number(stats.totalEarnings),
       totalWashouts: Number(stats.totalWashouts),
       totalDrivers: Number(stats.totalDrivers),
-      totalOwners: Number(stats.totalOwners),
+      totalOwners: Number(ownerCount),
     };
   }
 
