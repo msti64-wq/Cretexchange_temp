@@ -102,8 +102,8 @@ export default function AdminUsers() {
   
   // Combine and filter users
   const allUsers = [
-    ...drivers.map((d: any) => ({ ...d.user, roleData: d, role: 'driver' })),
-    ...owners.map((o: any) => ({ ...o.user, roleData: o, role: 'owner' })),
+    ...drivers.map((d: any) => ({ ...d.users, roleData: d.drivers, role: 'driver' })),
+    ...owners.map((o: any) => ({ ...o.users, roleData: o.owners, role: 'owner' })),
     ...admins.map((a: any) => ({ ...a, roleData: null, role: 'admin' }))
   ];
 
