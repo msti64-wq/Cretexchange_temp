@@ -6,13 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download } from "lucide-react";
+import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
+  const { logout } = useAuth();
   const [dateRange, setDateRange] = useState("7");
 
   const { data: dashboardData, isLoading, error } = useQuery({
@@ -97,15 +99,27 @@ export default function AdminDashboard() {
               <p className="text-white/80 text-sm">Platform Administration</p>
             </div>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleExport}
-            data-testid="button-export-report"
-          >
-            <Download className="w-4 h-4 mr-1" />
-            Export
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExport}
+              data-testid="button-export-report"
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Export
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={logout}
+              data-testid="button-logout"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <LogOut className="w-4 h-4 mr-1" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
