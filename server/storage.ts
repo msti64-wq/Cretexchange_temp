@@ -22,7 +22,7 @@ import {
   type InsertNotification,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, count } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, count, ne } from "drizzle-orm";
 
 export interface IStorage {
   // User operations - local authentication
