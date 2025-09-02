@@ -1,10 +1,10 @@
 import { useAuth } from "@/hooks/useAuth";
-import { Bell, Settings, Truck } from "lucide-react";
+import { Bell, Settings, Truck, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export function DriverHeader() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <header className="gradient-bg text-white p-4 shadow-lg">
@@ -39,6 +39,16 @@ export function DriverHeader() {
             data-testid="button-settings"
           >
             <Settings className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={logout}
+            data-testid="button-logout"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+          >
+            <LogOut className="w-4 h-4 mr-1" />
+            Logout
           </Button>
         </div>
       </div>

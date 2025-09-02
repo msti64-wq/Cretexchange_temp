@@ -10,12 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
-import { User, Truck, CreditCard, Save, LogOut } from "lucide-react";
+import { User, Truck, CreditCard, Save } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function DriverProfile() {
   const { toast } = useToast();
-  const { logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
 
   const { data: user, isLoading, refetch } = useQuery({
@@ -79,9 +78,6 @@ export default function DriverProfile() {
     updateProfileMutation.mutate(formData);
   };
 
-  const handleLogout = () => {
-    logout();
-  };
 
   if (isLoading) {
     return (
@@ -119,15 +115,6 @@ export default function DriverProfile() {
                 data-testid="button-edit-profile"
               >
                 {isEditing ? "Cancel" : "Edit Profile"}
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleLogout}
-                data-testid="button-logout"
-              >
-                <LogOut className="w-4 h-4 mr-1" />
-                Logout
               </Button>
             </div>
           </CardContent>
