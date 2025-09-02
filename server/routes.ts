@@ -619,9 +619,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create admin user (super admin only)
-  app.post("/api/admin/users/create-admin", async (req, res) => {
+  app.post("/api/admin/users/create-admin", isAuthenticated, async (req: any, res) => {
     try {
-      const user = req.session?.user;
+      const user = await storage.getUser(req.user.id);
       if (user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Super admin access required" });
       }
