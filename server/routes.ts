@@ -583,7 +583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/dashboard', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin') {
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -603,7 +603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin') {
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -618,10 +618,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create admin user (super admin only)
+  app.post("/api/admin/users/create-admin", async (req, res) => {
+    try {
+      const user = req.session?.user;
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const { username, email, password, firstName, lastName } = req.body;
+      
+      if (!username || !email || !password || !firstName || !lastName) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Check if username or email already exists
+      const existingUser = await storage.getUserByUsername(username) || await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username or email already exists" });
+      }
+
+      // Hash password
+      const bcrypt = require('bcryptjs');
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      const newAdmin = await storage.createAdminUser({
+        username,
+        email,
+        passwordHash,
+        firstName,
+        lastName
+      });
+
+      res.json({ message: "Admin user created successfully", admin: { id: newAdmin.id, username: newAdmin.username, email: newAdmin.email } });
+    } catch (error) {
+      console.error("Error creating admin user:", error);
+      res.status(500).json({ message: "Failed to create admin user" });
+    }
+  });
+
   app.get('/api/admin/locations', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin') {
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -636,7 +675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/admin/owners/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin') {
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -652,7 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/admin/locations/:id/visibility', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin') {
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 

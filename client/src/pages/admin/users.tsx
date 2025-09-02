@@ -5,22 +5,84 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Users, Search, Filter, CheckCircle, XCircle, Eye, Truck, Building2 } from "lucide-react";
+import { Users, Search, Filter, CheckCircle, XCircle, Eye, Truck, Building2, UserPlus } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+
+const createAdminSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+});
 
 export default function AdminUsers() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  const createAdminForm = useForm<z.infer<typeof createAdminSchema>>({
+    resolver: zodResolver(createAdminSchema),
+    defaultValues: {
+      username: "",
+      email: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+    },
+  });
 
   const { data: usersData, isLoading, error } = useQuery({
     queryKey: ['/api/admin/users'],
+    retry: false,
+  });
+
+  const createAdminMutation = useMutation({
+    mutationFn: (data: z.infer<typeof createAdminSchema>) =>
+      apiRequest('/api/admin/users/create-admin', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Admin user created successfully",
+      });
+      setIsCreateDialogOpen(false);
+      createAdminForm.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create admin user",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateAdmin = (data: z.infer<typeof createAdminSchema>) => {
+    createAdminMutation.mutate(data);
+  };
+
+  // Get current user to check if super admin
+  const { data: currentUser } = useQuery({
+    queryKey: ['/api/auth/user'],
     retry: false,
   });
 
@@ -104,7 +166,7 @@ export default function AdminUsers() {
   const allUsers = [
     ...drivers.map((d: any) => ({ ...d.users, roleData: d.drivers, role: 'driver' })),
     ...owners.map((o: any) => ({ ...o.users, roleData: o.owners, role: 'owner' })),
-    ...admins.map((a: any) => ({ ...a, roleData: null, role: 'admin' }))
+    ...admins.map((a: any) => ({ ...a, roleData: null, role: a.role })) // Keep original role (admin or super_admin)
   ];
 
   const filteredUsers = allUsers.filter((user: any) => {
@@ -240,10 +302,123 @@ export default function AdminUsers() {
 
         {/* User List */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold flex items-center">
-            <Users className="w-5 h-5 mr-2" />
-            Platform Users ({filteredUsers.length})
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold flex items-center">
+              <Users className="w-5 h-5 mr-2" />
+              Platform Users ({filteredUsers.length})
+            </h2>
+            
+            {/* Create Admin Button - Only for Super Admins */}
+            {currentUser?.role === 'super_admin' && (
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" data-testid="button-create-admin">
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Create Admin
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Create Admin User</DialogTitle>
+                  </DialogHeader>
+                  
+                  <Form {...createAdminForm}>
+                    <form onSubmit={createAdminForm.handleSubmit(handleCreateAdmin)} className="space-y-4">
+                      <FormField
+                        control={createAdminForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter username" {...field} data-testid="input-admin-username" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={createAdminForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="Enter email" {...field} data-testid="input-admin-email" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={createAdminForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Enter password" {...field} data-testid="input-admin-password" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={createAdminForm.control}
+                          name="firstName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>First Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="First name" {...field} data-testid="input-admin-firstname" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={createAdminForm.control}
+                          name="lastName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Last Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Last name" {...field} data-testid="input-admin-lastname" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsCreateDialogOpen(false)}
+                          data-testid="button-cancel-admin"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={createAdminMutation.isPending}
+                          data-testid="button-submit-admin"
+                        >
+                          {createAdminMutation.isPending ? "Creating..." : "Create Admin"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
 
           {filteredUsers.length === 0 ? (
             <Card>
@@ -259,11 +434,11 @@ export default function AdminUsers() {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-start space-x-3">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        user.role === 'driver' ? 'bg-secondary/10' : user.role === 'admin' ? 'bg-primary/10' : 'bg-accent/10'
+                        user.role === 'driver' ? 'bg-secondary/10' : (user.role === 'admin' || user.role === 'super_admin') ? 'bg-primary/10' : 'bg-accent/10'
                       }`}>
                         {user.role === 'driver' ? 
                           <Truck className="w-5 h-5 text-secondary" /> :
-                          user.role === 'admin' ?
+                          (user.role === 'admin' || user.role === 'super_admin') ?
                           <Users className="w-5 h-5 text-primary" /> :
                           <Building2 className="w-5 h-5 text-accent" />
                         }
@@ -289,11 +464,11 @@ export default function AdminUsers() {
                     </div>
                     <div className="text-right">
                       <Badge 
-                        variant={user.role === 'driver' ? 'secondary' : user.role === 'admin' ? 'outline' : 'default'}
+                        variant={user.role === 'driver' ? 'secondary' : (user.role === 'admin' || user.role === 'super_admin') ? 'outline' : 'default'}
                         className="mb-2"
                         data-testid={`badge-user-role-${index}`}
                       >
-                        {user.role === 'driver' ? 'Driver' : user.role === 'admin' ? 'Admin' : 'Owner'}
+                        {user.role === 'driver' ? 'Driver' : user.role === 'super_admin' ? 'Super Admin' : user.role === 'admin' ? 'Admin' : 'Owner'}
                       </Badge>
                       <div className="flex flex-col gap-1">
                         <Badge 

@@ -22,7 +22,7 @@ import {
   type InsertNotification,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, count, ne } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, count, ne, or } from "drizzle-orm";
 
 export interface IStorage {
   // User operations - local authentication
@@ -42,6 +42,7 @@ export interface IStorage {
   updateDriverLocation(driverId: string, latitude: number, longitude: number): Promise<void>;
   getAllDrivers(): Promise<(Driver & { user: User })[]>;
   getAllAdmins(): Promise<User[]>;
+  createAdminUser(adminData: { username: string; email: string; passwordHash: string; firstName: string; lastName: string }): Promise<User>;
 
   // Owner operations
   createOwner(owner: InsertOwner): Promise<Owner>;
@@ -262,8 +263,20 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(users)
-      .where(eq(users.role, 'admin'))
+      .where(or(eq(users.role, 'admin'), eq(users.role, 'super_admin')))
       .orderBy(desc(users.createdAt));
+  }
+
+  async createAdminUser(adminData: { username: string; email: string; passwordHash: string; firstName: string; lastName: string }): Promise<User> {
+    const [newAdmin] = await db
+      .insert(users)
+      .values({
+        ...adminData,
+        role: 'admin',
+        isActive: true,
+      })
+      .returning();
+    return newAdmin;
   }
 
   // Location operations
