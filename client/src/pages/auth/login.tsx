@@ -108,6 +108,10 @@ export default function Login() {
                 />
               </div>
 
+              <div className="text-xs text-muted-foreground text-center mb-2">
+                Note: Username and password are case sensitive
+              </div>
+
               <Button 
                 type="submit" 
                 className="w-full" 
