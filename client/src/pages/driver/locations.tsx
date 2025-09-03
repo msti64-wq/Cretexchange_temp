@@ -25,17 +25,21 @@ export default function DriverLocations() {
 
   useEffect(() => {
     // Get user's current location
-    getCurrentLocation()
-      .then(coords => {
+    const getLocation = async () => {
+      try {
+        const coords = await getCurrentLocation();
         setCurrentLocation({ lat: coords.latitude, lng: coords.longitude });
         setLocationError(null);
-      })
-      .catch(error => {
+      } catch (error) {
         console.error("Error getting location:", error);
-        setLocationError(error.message);
+        const errorMessage = error instanceof Error ? error.message : "Unable to get location";
+        setLocationError(errorMessage);
         // Fallback for development: use a default location (Denver, CO area)
         setCurrentLocation({ lat: 39.7392, lng: -104.9903 });
-      });
+      }
+    };
+
+    getLocation();
   }, []);
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -50,7 +54,7 @@ export default function DriverLocations() {
     return R * c;
   };
 
-  const filteredAndSortedLocations = locations?.filter((item: any) => {
+  const filteredAndSortedLocations = Array.isArray(locations) ? locations.filter((item: any) => {
     const location = item.washout_locations || item;
     return (
       (location.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -76,7 +80,7 @@ export default function DriverLocations() {
     } else {
       return Number(locationB.rate) - Number(locationA.rate);
     }
-  }) || [];
+  }) : [];
 
   if (isLoading) {
     return (
