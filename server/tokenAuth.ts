@@ -10,16 +10,22 @@ export async function setupAuth(app: Express) {
   app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
+      
+      console.log(`Login attempt: username=${username}, environment=${process.env.REPLIT_DEPLOYMENT ? 'production' : 'development'}`);
 
       // Check if user exists
       const user = await storage.getUserByUsername(username);
       if (!user) {
+        console.log(`User not found: ${username}`);
         return res.status(401).json({ message: "Invalid username or password" });
       }
+
+      console.log(`User found: ${username}, id=${user.id}`);
 
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       if (!isValidPassword) {
+        console.log(`Password verification failed for user: ${username}`);
         return res.status(401).json({ message: "Invalid username or password" });
       }
 
