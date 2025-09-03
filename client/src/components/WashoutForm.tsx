@@ -29,8 +29,19 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
 
   const checkInMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/drivers/checkin", data);
-      return response.json();
+      console.log("=== CHECK-IN MUTATION START ===");
+      console.log("Data being sent:", data);
+      console.log("Auth token:", localStorage.getItem('authToken') ? 'present' : 'missing');
+      
+      const response = await apiRequest("/api/drivers/checkin", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      
+      console.log("Response status:", response.status);
+      const result = await response.json();
+      console.log("Response data:", result);
+      return result;
     },
     onSuccess: () => {
       // Invalidate all relevant caches
