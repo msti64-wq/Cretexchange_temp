@@ -38,6 +38,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Database connectivity test endpoint
+  app.get("/api/debug/db-status", async (req, res) => {
+    try {
+      const environment = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
+      const hasDatabaseUrl = !!process.env.DATABASE_URL;
+      const databaseUrlPreview = process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'undefined';
+      
+      console.log('Database status check:', {
+        environment,
+        hasDatabaseUrl,
+        databaseUrlPreview
+      });
+
+      const userCount = await storage.getUserCount();
+      const testUsers = await storage.getTestUsers();
+      
+      res.json({
+        environment,
+        hasDatabaseUrl,
+        databaseUrlPreview,
+        userCount,
+        testUsers
+      });
+    } catch (error) {
+      console.error('Database status check failed:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Auth middleware
   await setupAuth(app);
 

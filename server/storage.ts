@@ -99,6 +99,10 @@ export interface IStorage {
   getAllMessages(): Promise<(Message & { user: User })[]>;
   getMessageById(messageId: string): Promise<(Message & { user: User }) | undefined>;
   updateMessageStatus(messageId: string, status: string): Promise<Message>;
+
+  // Debug operations
+  getUserCount(): Promise<number>;
+  getTestUsers(): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -772,6 +776,26 @@ export class DatabaseStorage implements IStorage {
       .where(eq(messages.id, messageId))
       .returning();
     return message;
+  }
+
+  // Debug operations
+  async getUserCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(users);
+    return result[0]?.count || 0;
+  }
+
+  async getTestUsers(): Promise<string[]> {
+    const testUsers = await db
+      .select({ username: users.username })
+      .from(users)
+      .where(or(
+        eq(users.username, 'deploytest'),
+        eq(users.username, 'prodtest'),
+        eq(users.username, 'D1'),
+        eq(users.username, 'O1'),
+        eq(users.username, 'admin')
+      ));
+    return testUsers.map(u => u.username);
   }
 }
 
