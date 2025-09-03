@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { MapPin, History, User, TrendingUp, Clock } from "lucide-react";
+import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function DriverDashboard() {
@@ -224,6 +224,28 @@ export default function DriverDashboard() {
                 </div>
               ))
             )}
+          </div>
+        </StatCard>
+
+        {/* Support Section */}
+        <StatCard title="Need Help?" className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Contact our support team for assistance</p>
+              <div className="flex items-center space-x-2 text-sm">
+                <Phone className="w-4 h-4 text-blue-600" />
+                <span className="font-medium text-blue-600" data-testid="text-support-phone">214-949-3859</span>
+              </div>
+            </div>
+            <Button 
+              size="sm" 
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => window.open('sms:214-949-3859?body=Hello, I need help with my WashOut Pro account.', '_blank')}
+              data-testid="button-contact-support"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Message Support
+            </Button>
           </div>
         </StatCard>
 
