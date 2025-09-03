@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,20 +6,41 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut } from "lucide-react";
+import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut, MessageCircle, Clock, CheckCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
   const { logout } = useAuth();
+  const queryClient = useQueryClient();
   const [dateRange, setDateRange] = useState("7");
 
   const { data: dashboardData, isLoading, error } = useQuery({
     queryKey: ['/api/admin/dashboard'],
     retry: false,
+  });
+
+  const { data: messages, isLoading: messagesLoading } = useQuery({
+    queryKey: ['/api/admin/messages'],
+    retry: false,
+  });
+
+  const updateMessageStatusMutation = useMutation({
+    mutationFn: async ({ messageId, status }: { messageId: string; status: string }) => {
+      const response = await apiRequest("PUT", `/api/admin/messages/${messageId}/status`, { status });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/messages'] });
+      toast({ title: "Message status updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update message status", variant: "destructive" });
+    },
   });
 
   // Handle unauthorized error
@@ -263,6 +284,98 @@ export default function AdminDashboard() {
                 </Badge>
               </div>
             </div>
+          </div>
+        </StatCard>
+
+        {/* Messages Section */}
+        <StatCard title="Support Messages" className="col-span-full">
+          <div className="space-y-4">
+            {messagesLoading ? (
+              <div className="text-center py-4">
+                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
+                <p className="text-sm text-muted-foreground mt-2">Loading messages...</p>
+              </div>
+            ) : !messages || messages.length === 0 ? (
+              <div className="text-center py-8">
+                <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No support messages yet</p>
+                <p className="text-sm text-muted-foreground">Messages from drivers and owners will appear here</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {messages.slice(0, 5).map((message: any) => (
+                  <div 
+                    key={message.id} 
+                    className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                    data-testid={`message-card-${message.id}`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <Badge 
+                          variant={message.userRole === 'driver' ? 'default' : 'secondary'}
+                          data-testid={`badge-user-role-${message.id}`}
+                        >
+                          {message.userRole === 'driver' ? 'Driver' : 'Owner'}
+                        </Badge>
+                        <Badge 
+                          variant={
+                            message.status === 'resolved' ? 'default' : 
+                            message.status === 'read' ? 'secondary' : 'destructive'
+                          }
+                          data-testid={`badge-status-${message.id}`}
+                        >
+                          {message.status === 'unread' ? 'Unread' : 
+                           message.status === 'read' ? 'Read' : 'Resolved'}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center">
+                        <Clock className="w-3 h-3 mr-1" />
+                        {new Date(message.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <h4 className="font-semibold mb-1" data-testid={`text-subject-${message.id}`}>
+                      {message.subject}
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-2" data-testid={`text-user-name-${message.id}`}>
+                      From: {message.user.firstName} {message.user.lastName}
+                      {message.userPhone && ` • ${message.userPhone}`}
+                    </p>
+                    <p className="text-sm mb-3 line-clamp-2" data-testid={`text-message-${message.id}`}>
+                      {message.message}
+                    </p>
+                    <div className="flex space-x-2">
+                      {message.status === 'unread' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateMessageStatusMutation.mutate({ messageId: message.id, status: 'read' })}
+                          data-testid={`button-mark-read-${message.id}`}
+                        >
+                          Mark as Read
+                        </Button>
+                      )}
+                      {message.status !== 'resolved' && (
+                        <Button
+                          size="sm"
+                          onClick={() => updateMessageStatusMutation.mutate({ messageId: message.id, status: 'resolved' })}
+                          data-testid={`button-resolve-${message.id}`}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Resolve
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {messages.length > 5 && (
+                  <div className="text-center pt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Showing 5 of {messages.length} messages
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </StatCard>
 

@@ -6,6 +6,7 @@ import {
   washoutActivities,
   payments,
   notifications,
+  messages,
   type User,
   type UpsertUser,
   type Driver,
@@ -14,12 +15,14 @@ import {
   type WashoutActivity,
   type Payment,
   type Notification,
+  type Message,
   type InsertDriver,
   type InsertOwner,
   type InsertWashoutLocation,
   type InsertWashoutActivity,
   type InsertPayment,
   type InsertNotification,
+  type InsertMessage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or } from "drizzle-orm";
@@ -90,6 +93,12 @@ export interface IStorage {
   createNotification(notification: InsertNotification): Promise<Notification>;
   getNotificationsByUser(userId: string): Promise<Notification[]>;
   markNotificationAsRead(notificationId: string): Promise<Notification>;
+
+  // Message operations
+  createMessage(message: InsertMessage): Promise<Message>;
+  getAllMessages(): Promise<(Message & { user: User })[]>;
+  getMessageById(messageId: string): Promise<(Message & { user: User }) | undefined>;
+  updateMessageStatus(messageId: string, status: string): Promise<Message>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -724,6 +733,45 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.id, notificationId))
       .returning();
     return notification;
+  }
+
+  // Message operations
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [newMessage] = await db.insert(messages).values(message).returning();
+    return newMessage;
+  }
+
+  async getAllMessages(): Promise<(Message & { user: User })[]> {
+    return await db
+      .select({
+        ...messages,
+        user: users,
+      })
+      .from(messages)
+      .innerJoin(users, eq(messages.userId, users.id))
+      .orderBy(desc(messages.createdAt));
+  }
+
+  async getMessageById(messageId: string): Promise<(Message & { user: User }) | undefined> {
+    const [message] = await db
+      .select({
+        ...messages,
+        user: users,
+      })
+      .from(messages)
+      .innerJoin(users, eq(messages.userId, users.id))
+      .where(eq(messages.id, messageId));
+    return message;
+  }
+
+  async updateMessageStatus(messageId: string, status: string): Promise<Message> {
+    const resolvedAt = status === 'resolved' ? new Date() : null;
+    const [message] = await db
+      .update(messages)
+      .set({ status: status as any, resolvedAt })
+      .where(eq(messages.id, messageId))
+      .returning();
+    return message;
   }
 }
 

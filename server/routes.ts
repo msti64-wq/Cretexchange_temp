@@ -1067,6 +1067,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Message routes for admin
+  app.get('/api/admin/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const messages = await storage.getAllMessages();
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.put('/api/admin/messages/:messageId/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { messageId } = req.params;
+      const { status } = req.body;
+
+      if (!['unread', 'read', 'resolved'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const message = await storage.updateMessageStatus(messageId, status);
+      res.json(message);
+    } catch (error) {
+      console.error("Error updating message status:", error);
+      res.status(500).json({ message: "Failed to update message status" });
+    }
+  });
+
+  // Create message route for users
+  app.post('/api/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const { subject, message } = req.body;
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const newMessage = await storage.createMessage({
+        userId: user.id,
+        subject,
+        message,
+        userRole: user.role || 'driver',
+        userPhone: user.phone,
+      });
+
+      res.status(201).json(newMessage);
+    } catch (error) {
+      console.error("Error creating message:", error);
+      res.status(500).json({ message: "Failed to create message" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

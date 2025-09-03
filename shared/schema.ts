@@ -31,6 +31,7 @@ export const paymentMethodEnum = pgEnum("payment_method", ["check", "venmo", "ze
 export const paymentFrequencyEnum = pgEnum("payment_frequency", ["weekly", "biweekly", "monthly"]);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "trial", "past_due"]);
 export const washoutStatusEnum = pgEnum("washout_status", ["pending", "verified", "rejected"]);
+export const messageStatusEnum = pgEnum("message_status", ["unread", "read", "resolved"]);
 
 // User storage table - local authentication
 export const users = pgTable("users", {
@@ -149,6 +150,19 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Support messages from users to admin
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subject: varchar("subject").notNull(),
+  message: text("message").notNull(),
+  status: messageStatusEnum("status").default("unread"),
+  userRole: userRoleEnum("user_role").notNull(),
+  userPhone: varchar("user_phone"),
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   driver: one(drivers, { fields: [users.id], references: [drivers.userId] }),
@@ -252,6 +266,11 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   createdAt: true,
 });
 
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -261,6 +280,7 @@ export type WashoutLocation = typeof washoutLocations.$inferSelect;
 export type WashoutActivity = typeof washoutActivities.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type Message = typeof messages.$inferSelect;
 
 export type InsertDriver = z.infer<typeof insertDriverSchema>;
 export type InsertOwner = z.infer<typeof insertOwnerSchema>;
@@ -268,3 +288,4 @@ export type InsertWashoutLocation = z.infer<typeof insertWashoutLocationSchema>;
 export type InsertWashoutActivity = z.infer<typeof insertWashoutActivitySchema>;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
