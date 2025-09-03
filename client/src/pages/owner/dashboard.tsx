@@ -250,84 +250,85 @@ export default function OwnerDashboard() {
               </div>
             ) : (
               recentActivities.map((activity: any, index: number) => (
-                <div key={activity.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg" data-testid={`card-recent-activity-${index}`}>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Users className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="font-medium" data-testid={`text-driver-name-${index}`}>
-                        {activity.users?.firstName} {activity.users?.lastName}
+                <div key={activity.id} className="p-3 bg-muted/50 rounded-lg space-y-2" data-testid={`card-recent-activity-${index}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Users className="w-4 h-4 text-primary" />
                       </div>
-                      <div className="text-sm text-muted-foreground" data-testid={`text-location-name-${index}`}>
-                        {activity.washout_locations?.name}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate" data-testid={`text-driver-name-${index}`}>
+                          {activity.users?.firstName} {activity.users?.lastName}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate" data-testid={`text-location-name-${index}`}>
+                          {activity.washout_locations?.name}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="font-semibold text-sm" data-testid={`text-activity-amount-${index}`}>
+                        {formatCurrency(Number(activity.washout_activities?.amount || 0))}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={(activity.washout_activities?.photoUrls?.length > 0) ? "outline" : "ghost"}
-                      size="sm"
+                  
+                  <div className="flex items-center justify-between">
+                    <Badge 
+                      variant={
+                        activity.washout_activities?.status === 'verified' ? 'default' : 
+                        activity.washout_activities?.status === 'rejected' ? 'destructive' : 
+                        'secondary'
+                      }
                       className="text-xs"
-                      disabled={!(activity.washout_activities?.photoUrls?.length > 0)}
-                      onClick={() => {
-                        if (activity.washout_activities?.photoUrls?.length > 0) {
-                          setSelectedActivity(activity);
-                          setIsPhotoModalOpen(true);
-                        }
-                      }}
-                      data-testid={`button-view-photos-${index}`}
+                      data-testid={`badge-activity-status-${index}`}
                     >
-                      <ImageIcon className="w-4 h-4 mr-1" />
-                      {(activity.washout_activities?.photoUrls?.length > 0) ? 
-                        `Photos (${activity.washout_activities.photoUrls.length})` : 
-                        (activity.photoUrls?.length > 0) ?
-                        `Photos (${activity.photoUrls.length})` :
-                        'No Photos'}
-                    </Button>
+                      {activity.washout_activities?.status === 'verified' ? 'Approved' : 
+                       activity.washout_activities?.status === 'rejected' ? 'Rejected' : 
+                       'Pending'}
+                    </Badge>
                     
-                    {/* Approval buttons for pending washouts */}
-                    {activity.washout_activities?.status === 'pending' && (
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="text-xs px-2"
-                          onClick={() => rejectMutation.mutate(activity.washout_activities.id)}
-                          disabled={rejectMutation.isPending || approveMutation.isPending}
-                          data-testid={`button-reject-${index}`}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="text-xs px-2"
-                          onClick={() => approveMutation.mutate(activity.washout_activities.id)}
-                          disabled={rejectMutation.isPending || approveMutation.isPending}
-                          data-testid={`button-approve-${index}`}
-                        >
-                          <Check className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    )}
-                    
-                    <div className="text-right">
-                      <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
-                        {formatCurrency(Number(activity.washout_activities?.amount || 0))}
-                      </div>
-                      <Badge 
-                        variant={
-                          activity.washout_activities?.status === 'verified' ? 'default' : 
-                          activity.washout_activities?.status === 'rejected' ? 'destructive' : 
-                          'secondary'
-                        }
-                        className="text-xs"
-                        data-testid={`badge-activity-status-${index}`}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant={(activity.washout_activities?.photoUrls?.length > 0) ? "outline" : "ghost"}
+                        size="sm"
+                        className="text-xs h-6 px-2"
+                        disabled={!(activity.washout_activities?.photoUrls?.length > 0)}
+                        onClick={() => {
+                          if (activity.washout_activities?.photoUrls?.length > 0) {
+                            setSelectedActivity(activity);
+                            setIsPhotoModalOpen(true);
+                          }
+                        }}
+                        data-testid={`button-view-photos-${index}`}
                       >
-                        {activity.washout_activities?.status === 'verified' ? 'Approved' : 
-                         activity.washout_activities?.status === 'rejected' ? 'Rejected' : 
-                         'Pending'}
-                      </Badge>
+                        <ImageIcon className="w-3 h-3" />
+                      </Button>
+                      
+                      {/* Approval buttons for pending washouts */}
+                      {activity.washout_activities?.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="text-xs px-2 h-6"
+                            onClick={() => rejectMutation.mutate(activity.washout_activities.id)}
+                            disabled={rejectMutation.isPending || approveMutation.isPending}
+                            data-testid={`button-reject-${index}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="text-xs px-2 h-6"
+                            onClick={() => approveMutation.mutate(activity.washout_activities.id)}
+                            disabled={rejectMutation.isPending || approveMutation.isPending}
+                            data-testid={`button-approve-${index}`}
+                          >
+                            <Check className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
