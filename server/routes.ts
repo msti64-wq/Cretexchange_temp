@@ -618,6 +618,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin payments endpoint
+  app.get('/api/admin/payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { startDate, endDate } = req.query;
+      const start = startDate ? new Date(startDate as string) : undefined;
+      // For end date, set to end of day (23:59:59.999) to include all payments on that date
+      const end = endDate ? new Date(new Date(endDate as string).getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
+
+      const payments = await storage.getAllPayments(start, end);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching admin payments:", error);
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
   // Create admin user (super admin only)
   app.post("/api/admin/users/create-admin", isAuthenticated, async (req: any, res) => {
     try {

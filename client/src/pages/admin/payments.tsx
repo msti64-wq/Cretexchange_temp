@@ -19,8 +19,16 @@ export default function AdminPayments() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterRole, setFilterRole] = useState("all");
 
+  // Build URL with query parameters like the driver dashboard
+  const paymentsUrl = `/api/admin/payments${startDate || endDate ? '?' : ''}${
+    [
+      startDate ? `startDate=${startDate}` : '',
+      endDate ? `endDate=${endDate}` : ''
+    ].filter(Boolean).join('&')
+  }`;
+
   const { data: payments, isLoading, error } = useQuery({
-    queryKey: ['/api/admin/payments', startDate, endDate],
+    queryKey: [paymentsUrl],
     retry: false,
   });
 
