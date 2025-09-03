@@ -141,7 +141,7 @@ export default function AdminPayments() {
             <div className="text-2xl font-bold text-green-600" data-testid="text-platform-fees">
               {formatCurrency(stats.platformFees)}
             </div>
-            <div className="text-xs text-muted-foreground">Commission (1%)</div>
+            <div className="text-xs text-muted-foreground">Commission (10%)</div>
           </StatCard>
         </div>
 

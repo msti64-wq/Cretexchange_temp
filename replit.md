@@ -45,7 +45,7 @@ Preferred communication style: Simple, everyday language.
 - **Multiple Payment Methods**: Support for ACH, credit cards, checks, Venmo, and Zelle
 - **Automated Payouts**: Scheduled payments to drivers based on their preferences
 - **Subscription Management**: Monthly/annual billing for washout location owners
-- **Transaction Fees**: 1% processing fee charged to location owners
+- **Transaction Fees**: 10% processing fee charged to location owners
 
 ### File Management
 - **Google Cloud Storage**: Secure file storage for washout verification photos

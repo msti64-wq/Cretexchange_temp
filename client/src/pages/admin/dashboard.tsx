@@ -318,9 +318,9 @@ export default function AdminDashboard() {
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Platform Commission (1%)</span>
+                <span className="text-sm text-muted-foreground">Platform Commission (10%)</span>
                 <span className="font-semibold text-green-600" data-testid="text-platform-commission">
-                  {formatCurrency((weekStats?.totalEarnings || 0) * 0.01)}
+                  {formatCurrency((weekStats?.totalEarnings || 0) * 0.10)}
                 </span>
               </div>
               
