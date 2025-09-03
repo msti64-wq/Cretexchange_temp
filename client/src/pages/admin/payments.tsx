@@ -96,19 +96,59 @@ export default function AdminPayments() {
     );
   }
 
-  const filteredPayments = payments?.filter((payment: any) => {
+  // Generate mock payment data for development when no real payments exist
+  const generateMockPayments = () => {
+    const mockPayments = [];
+    const statuses = ['completed', 'pending', 'failed'];
+    const drivers = [
+      { firstName: 'John', lastName: 'Smith' },
+      { firstName: 'Sarah', lastName: 'Johnson' },
+      { firstName: 'Mike', lastName: 'Wilson' },
+      { firstName: 'Lisa', lastName: 'Davis' },
+      { firstName: 'Tom', lastName: 'Brown' }
+    ];
+    
+    for (let i = 0; i < 15; i++) {
+      const driver = drivers[i % drivers.length];
+      const status = statuses[i % statuses.length];
+      const amount = Math.floor(Math.random() * 80) + 20; // $20-$100
+      const processingFee = Math.floor(amount * 0.1); // 10% fee
+      
+      mockPayments.push({
+        id: `mock-payment-${i}`,
+        amount: amount,
+        processingFee: processingFee,
+        status: status,
+        createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date in last 30 days
+        driver: {
+          user: driver
+        },
+        stripePaymentIntentId: status === 'completed' ? `pi_mock_${i}` : null,
+        activity: {
+          location: {
+            name: `Washout Site ${String.fromCharCode(65 + (i % 26))}`
+          }
+        }
+      });
+    }
+    
+    return mockPayments;
+  };
+
+  const realPayments = payments || [];
+  const displayPayments = realPayments.length > 0 ? realPayments : generateMockPayments();
+
+  const filteredPayments = displayPayments.filter((payment: any) => {
     const matchesStatus = filterStatus === "all" || payment.status === filterStatus;
     const matchesRole = filterRole === "all" ||
       (filterRole === "driver" && payment.driver) ||
       (filterRole === "owner" && payment.owner);
     
     return matchesStatus && matchesRole;
-  }) || [];
+  });
 
-  // Calculate stats from payments data, but fallback to mock data for development
-  const hasPayments = filteredPayments.length > 0;
-  
-  const stats = hasPayments ? {
+  // Calculate stats from the current payment data (real or mock)
+  const stats = {
     totalRevenue: filteredPayments.reduce((sum: number, payment: any) => sum + Number(payment.amount), 0),
     platformFees: filteredPayments.reduce((sum: number, payment: any) => sum + Number(payment.processingFee), 0),
     totalPayments: filteredPayments.length,
@@ -116,14 +156,6 @@ export default function AdminPayments() {
     pendingPayments: filteredPayments.filter((p: any) => p.status === 'pending').length,
     avgPayment: filteredPayments.length > 0 ? 
       filteredPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0) / filteredPayments.length : 0,
-  } : {
-    // Development mode: Use calculated values based on activity data
-    totalRevenue: 1000, // Mock total revenue
-    platformFees: 100,  // 10% commission on revenue
-    totalPayments: 25,  // Mock payment count
-    completedPayments: 20, // Mock completed
-    pendingPayments: 5,    // Mock pending
-    avgPayment: 40,     // Average payment amount
   };
 
   return (
