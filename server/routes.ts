@@ -67,55 +67,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Force production database population - bypasses deployment issues
-  app.post("/api/debug/force-prod-migration", async (req, res) => {
+  // Universal database population - works in any environment
+  app.get("/api/setup-users", async (req, res) => {
     try {
-      console.log('🔧 FORCE POPULATING PRODUCTION DATABASE...');
+      const env = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
+      console.log(`🔧 SETTING UP USERS FOR ${env.toUpperCase()} ENVIRONMENT...`);
       
-      // Create a fresh production database connection
-      const { drizzle } = await import('drizzle-orm/neon-serverless');
-      const { users } = await import('../shared/schema');
+      // Use storage interface for reliable database operations
+      const testUsers = [
+        { username: 'D1', password: 'D1', firstName: 'D1', lastName: 'Driver', role: 'driver' as const, 
+          email: 'D1@email.com', phone: '2149493859', address: '11445 Mansfield Dr, Frisco, Texas 75035' },
+        { username: 'O1', password: 'O1', firstName: 'O1', lastName: 'Owner', role: 'owner' as const,
+          email: 'O1@email.com', phone: '9723321192', address: '870 N Preston Rd, Celina, TX 75009' },
+        { username: 'admin', password: 'admin123', firstName: 'Super', lastName: 'Admin', role: 'super_admin' as const,
+          email: 'admin@washoutpro.com' },
+        { username: 'testdriver', password: 'test123', firstName: 'Test', lastName: 'Driver', role: 'driver' as const,
+          email: 'test@example.com', phone: '555-123-4567', address: '123 Main St' },
+        { username: 'prodtest', password: 'test123', firstName: 'Prod', lastName: 'Test', role: 'driver' as const,
+          email: 'prodtest@example.com' },
+        { username: 'deploytest', password: 'test123', firstName: 'Deploy', lastName: 'Test', role: 'driver' as const,
+          email: 'deploy@test.com' }
+      ];
+
+      let createdCount = 0;
+      let existingCount = 0;
+
+      for (const userData of testUsers) {
+        try {
+          const existing = await storage.findUserByUsername(userData.username);
+          if (existing) {
+            existingCount++;
+            console.log(`User ${userData.username} already exists`);
+          } else {
+            await storage.createUser(userData);
+            createdCount++;
+            console.log(`✅ Created user: ${userData.username}`);
+          }
+        } catch (error) {
+          console.log(`⚠️ Issue with user ${userData.username}:`, error.message);
+        }
+      }
+
+      const totalUsers = await storage.getUserCount();
       
-      // Use the same DATABASE_URL but force production mode behavior
-      const prodDB = drizzle(process.env.DATABASE_URL);
-
-      // Direct SQL insert with exact data from development
-      const migrationSQL = `
-        INSERT INTO users (username, email, password_hash, first_name, last_name, role, is_active, phone, address, payment_method, payment_frequency) 
-        VALUES 
-          ('D1', 'D1@email.com', '$2b$10$PGZzOVQKrgHCOMAR/lAuieFXObsjcpkhRzpjuDueWomVU6yJisMxO', 'D1', 'Driver', 'driver', true, '2149493859', '11445 Mansfield Dr, Frisco, Texas 75035', 'check', 'weekly'),
-          ('O1', 'O1@email.com', '$2b$10$47iTqPSY46Xq.F9kDoNRlOf6ODk6PjKNX1CC5PVtG/4S0j7EvuWba', 'O1', 'Owner', 'owner', true, '9723321192', '870 N Preston Rd, Celina, TX 75009', 'credit_card', 'weekly'),
-          ('admin', 'admin@washoutpro.com', '$2b$10$.XWkrVrv7FR7.wAQuWnyrOVVOD6dzHNZ8.RcWUCdJLs58ewJ5aBOq', 'Super', 'Admin', 'super_admin', true, NULL, NULL, 'check', 'weekly'),
-          ('testdriver', 'test@example.com', '$2b$10$1EWo5zGZdXj.uWetZmkl4.xK9cY1.CyfRJnjhgN3z2p9GmaZyrKae', 'Test', 'Driver', 'driver', true, '555-123-4567', '123 Main St', 'check', 'weekly'),
-          ('prodtest', 'prodtest@example.com', '$2b$10$uOarqKpN4MNeaE0uUqzCNuFkRfqazloweWU8uPzTDo3F6ioznEu2C', 'Prod', 'Test', 'driver', true, NULL, NULL, 'check', 'weekly'),
-          ('deploytest', 'deploy@test.com', '$2b$10$uOarqKpN4MNeaE0uUqzCNuFkRfqazloweWU8uPzTDo3F6ioznEu2C', 'Deploy', 'Test', 'driver', true, NULL, NULL, 'check', 'weekly')
-        ON CONFLICT (username) DO NOTHING;
-      `;
-
-      // Execute the migration directly using raw SQL
-      const { sql } = await import('drizzle-orm');
-      const result = await prodDB.execute(sql.raw(migrationSQL));
-
-      // Verify success by counting users
-      const userCountResult = await prodDB.execute(sql.raw('SELECT COUNT(*) as count FROM users'));
-      const userCount = userCountResult.rows[0]?.count || 0;
-
-      console.log(`✅ PRODUCTION MIGRATION COMPLETE! ${userCount} total users in database`);
+      console.log(`✅ USER SETUP COMPLETE FOR ${env.toUpperCase()}: ${createdCount} created, ${existingCount} existing, ${totalUsers} total`);
 
       res.json({
         success: true,
-        message: `🎉 PRODUCTION database populated with ${userCount} users!`,
-        migrationResult: result,
-        userCount,
-        action: 'Now try logging in with deploytest/test123'
+        environment: env,
+        message: `Users ready in ${env}!`,
+        created: createdCount,
+        existing: existingCount,
+        total: totalUsers,
+        testLogin: 'Try: deploytest / test123'
       });
 
     } catch (error) {
-      console.error('❌ Error in production migration:', error);
+      console.error('❌ Error setting up users:', error);
       res.status(500).json({ 
         success: false, 
-        error: error.message,
-        troubleshooting: 'Check logs for detailed error information'
+        error: error.message 
       });
     }
   });
