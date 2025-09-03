@@ -51,9 +51,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       
-      // Update user role
+      // Get existing user and update specific fields
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       await storage.upsertUser({
-        id: userId,
+        ...existingUser,
         role: 'driver',
         ...req.body.user,
       });
@@ -77,9 +82,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       
-      // Update user role
+      // Get existing user and update specific fields
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
       await storage.upsertUser({
-        id: userId,
+        ...existingUser,
         role: 'owner',
         ...req.body.user,
       });
