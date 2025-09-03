@@ -67,6 +67,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Populate production database with test users
+  app.post("/api/debug/populate-db", async (req, res) => {
+    try {
+      const environment = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
+      console.log(`🔧 Populating ${environment} database with test users...`);
+
+      // Import bcrypt here to avoid import issues
+      const bcrypt = require('bcryptjs');
+
+      // Hash the common test password
+      const testPasswordHash = await bcrypt.hash('test123', 10);
+      const adminPasswordHash = await bcrypt.hash('admin123', 10);
+      const d1PasswordHash = await bcrypt.hash('D1', 10);
+      const o1PasswordHash = await bcrypt.hash('O1', 10);
+
+      const testUsers = [
+        {
+          username: 'deploytest',
+          email: 'deploy@test.com',
+          passwordHash: testPasswordHash,
+          firstName: 'Deploy',
+          lastName: 'Test',
+          role: 'driver',
+          isActive: true
+        },
+        {
+          username: 'prodtest',
+          email: 'prod@test.com',
+          passwordHash: testPasswordHash,
+          firstName: 'Prod',
+          lastName: 'Test',
+          role: 'driver',
+          isActive: true
+        },
+        {
+          username: 'admin',
+          email: 'admin@washoutpro.com',
+          passwordHash: adminPasswordHash,
+          firstName: 'Super',
+          lastName: 'Admin',
+          role: 'super_admin',
+          isActive: true
+        },
+        {
+          username: 'D1',
+          email: 'd1@driver.com',
+          passwordHash: d1PasswordHash,
+          firstName: 'Driver',
+          lastName: 'One',
+          role: 'driver',
+          isActive: true
+        },
+        {
+          username: 'O1',
+          email: 'o1@owner.com',
+          passwordHash: o1PasswordHash,
+          firstName: 'Owner',
+          lastName: 'One',
+          role: 'owner',
+          isActive: true
+        }
+      ];
+
+      const results = [];
+      // Create users one by one
+      for (const userData of testUsers) {
+        try {
+          const user = await storage.createUser(userData);
+          results.push(`✅ Created user: ${user.username}`);
+          console.log(`✅ Created user: ${user.username}`);
+        } catch (error) {
+          results.push(`ℹ️ User ${userData.username} already exists or conflict occurred`);
+          console.log(`ℹ️ User ${userData.username} already exists or conflict occurred`);
+        }
+      }
+
+      // Verify users were created
+      const userCount = await storage.getUserCount();
+      const existingTestUsers = await storage.getTestUsers();
+
+      res.json({
+        environment,
+        message: `🎉 ${environment} database population complete!`,
+        results,
+        userCount,
+        testUsers: existingTestUsers
+      });
+
+    } catch (error) {
+      console.error('❌ Error populating database:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Auth middleware
   await setupAuth(app);
 
