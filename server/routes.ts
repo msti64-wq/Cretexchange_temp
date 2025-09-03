@@ -429,16 +429,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Check-in request body:", req.body);
       console.log("PhotoUrls received:", req.body.photoUrls);
       
-      const activityData = insertWashoutActivitySchema.parse({
+      // Create activity data without Zod validation first
+      const activityData = {
         driverId: driver.id,
         locationId: location.id,
-        amount: location.rate,
+        amount: location.rate.toString(),
         checkInTime: new Date(),
-        latitude: req.body.latitude,
-        longitude: req.body.longitude,
+        latitude: req.body.latitude ? req.body.latitude.toString() : null,
+        longitude: req.body.longitude ? req.body.longitude.toString() : null,
         photoUrls: req.body.photoUrls || [],
-        notes: req.body.notes,
-      });
+        notes: req.body.notes || null,
+        status: 'pending' as const,
+      };
       
       console.log("Activity data being saved:", activityData);
 
