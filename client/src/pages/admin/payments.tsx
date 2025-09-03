@@ -186,7 +186,7 @@ export default function AdminPayments() {
 
       <main className="p-4 space-y-4">
         {/* Key Metrics */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <StatCard title="Total Revenue" className="text-center">
             <div className="text-2xl font-bold text-primary" data-testid="text-total-revenue">
               {formatCurrency(stats.totalRevenue)}
@@ -202,7 +202,7 @@ export default function AdminPayments() {
           </StatCard>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard title="Total" className="text-center">
             <div className="text-xl font-bold text-foreground" data-testid="text-total-payments">
               {stats.totalPayments}

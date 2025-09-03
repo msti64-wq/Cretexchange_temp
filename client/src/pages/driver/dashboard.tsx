@@ -229,8 +229,8 @@ export default function DriverDashboard() {
 
         {/* Support Section */}
         <StatCard title="Need Help?" className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-2 flex-1">
               <p className="text-sm text-muted-foreground">Contact our support team for assistance</p>
               <div className="flex items-center space-x-2 text-sm">
                 <Phone className="w-4 h-4 text-blue-600" />
@@ -239,7 +239,7 @@ export default function DriverDashboard() {
             </div>
             <Button 
               size="sm" 
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
               onClick={() => window.open('sms:214-949-3859?body=Hello, I need help with my WashOut Pro account.', '_blank')}
               data-testid="button-contact-support"
             >
@@ -250,7 +250,7 @@ export default function DriverDashboard() {
         </StatCard>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Button 
             variant="outline" 
             className="h-20 flex-col space-y-2"

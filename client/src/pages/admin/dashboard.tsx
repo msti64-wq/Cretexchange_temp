@@ -117,34 +117,53 @@ export default function AdminDashboard() {
       {/* Header */}
       <header className="gradient-bg text-white p-4 shadow-lg">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
               <BarChart3 className="w-5 h-5" />
             </div>
-            <div>
-              <h1 className="font-semibold text-lg">System Overview</h1>
-              <p className="text-white/80 text-sm">Platform Administration</p>
+            <div className="min-w-0">
+              <h1 className="font-semibold text-lg truncate">System Overview</h1>
+              <p className="text-white/80 text-sm hidden sm:block">Platform Administration</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
             <Button
               variant="secondary"
               size="sm"
               onClick={handleExport}
               data-testid="button-export-report"
+              className="hidden sm:flex"
             >
               <Download className="w-4 h-4 mr-1" />
               Export
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExport}
+              data-testid="button-export-report-mobile"
+              className="sm:hidden p-2"
+            >
+              <Download className="w-4 h-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={logout}
               data-testid="button-logout"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 hidden sm:flex"
             >
               <LogOut className="w-4 h-4 mr-1" />
               Logout
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={logout}
+              data-testid="button-logout-mobile"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 sm:hidden p-2"
+            >
+              <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -154,17 +173,18 @@ export default function AdminDashboard() {
         {/* Date Range Filter */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Date Range</span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <Button 
                   size="sm"
                   variant={dateRange === "7" ? "default" : "outline"}
                   onClick={() => setDateRange("7")}
                   data-testid="button-range-7"
+                  className="flex-1 sm:flex-none"
                 >
                   7 Days
                 </Button>
@@ -173,6 +193,7 @@ export default function AdminDashboard() {
                   variant={dateRange === "30" ? "default" : "outline"}
                   onClick={() => setDateRange("30")}
                   data-testid="button-range-30"
+                  className="flex-1 sm:flex-none"
                 >
                   30 Days
                 </Button>
@@ -288,7 +309,7 @@ export default function AdminDashboard() {
         </StatCard>
 
         {/* Messages Section */}
-        <StatCard title="Support Messages" className="col-span-full">
+        <StatCard title="Support Messages">
           <div className="space-y-4">
             {messagesLoading ? (
               <div className="text-center py-4">
