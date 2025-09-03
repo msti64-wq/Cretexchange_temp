@@ -67,96 +67,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Populate production database with test users
-  app.post("/api/debug/populate-db", async (req, res) => {
+  // Direct database migration from development to production
+  app.post("/api/debug/migrate-users", async (req, res) => {
     try {
       const environment = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
-      console.log(`🔧 Populating ${environment} database with test users...`);
+      console.log(`🔧 Migrating all users to ${environment} database...`);
 
-      // Import bcrypt here to avoid import issues
-      const bcrypt = require('bcryptjs');
+      // Direct SQL insert with exact data from development
+      const migrationSQL = `
+        INSERT INTO users (username, email, password_hash, first_name, last_name, role, is_active, phone, address, payment_method, payment_frequency) 
+        VALUES 
+          ('D1', 'D1@email.com', '$2b$10$PGZzOVQKrgHCOMAR/lAuieFXObsjcpkhRzpjuDueWomVU6yJisMxO', 'D1', 'Driver', 'driver', true, '2149493859', '11445 Mansfield Dr, Frisco, Texas 75035', 'check', 'weekly'),
+          ('O1', 'O1@email.com', '$2b$10$47iTqPSY46Xq.F9kDoNRlOf6ODk6PjKNX1CC5PVtG/4S0j7EvuWba', 'O1', 'Owner', 'owner', true, '9723321192', '870 N Preston Rd, Celina, TX 75009', 'credit_card', 'weekly'),
+          ('admin', 'admin@washoutpro.com', '$2b$10$.XWkrVrv7FR7.wAQuWnyrOVVOD6dzHNZ8.RcWUCdJLs58ewJ5aBOq', 'Super', 'Admin', 'super_admin', true, NULL, NULL, 'check', 'weekly'),
+          ('testdriver', 'test@example.com', '$2b$10$1EWo5zGZdXj.uWetZmkl4.xK9cY1.CyfRJnjhgN3z2p9GmaZyrKae', 'Test', 'Driver', 'driver', true, '555-123-4567', '123 Main St', 'check', 'weekly'),
+          ('prodtest', 'prodtest@example.com', '$2b$10$uOarqKpN4MNeaE0uUqzCNuFkRfqazloweWU8uPzTDo3F6ioznEu2C', 'Prod', 'Test', 'driver', true, NULL, NULL, 'check', 'weekly'),
+          ('deploytest', 'deploy@test.com', '$2b$10$uOarqKpN4MNeaE0uUqzCNuFkRfqazloweWU8uPzTDo3F6ioznEu2C', 'Deploy', 'Test', 'driver', true, NULL, NULL, 'check', 'weekly')
+        ON CONFLICT (username) DO NOTHING;
+      `;
 
-      // Hash the common test password
-      const testPasswordHash = await bcrypt.hash('test123', 10);
-      const adminPasswordHash = await bcrypt.hash('admin123', 10);
-      const d1PasswordHash = await bcrypt.hash('D1', 10);
-      const o1PasswordHash = await bcrypt.hash('O1', 10);
+      // Execute the migration directly
+      const { db } = await import('./db');
+      const { sql } = await import('drizzle-orm');
+      
+      const result = await db.execute(sql.raw(migrationSQL));
 
-      const testUsers = [
-        {
-          username: 'deploytest',
-          email: 'deploy@test.com',
-          passwordHash: testPasswordHash,
-          firstName: 'Deploy',
-          lastName: 'Test',
-          role: 'driver',
-          isActive: true
-        },
-        {
-          username: 'prodtest',
-          email: 'prod@test.com',
-          passwordHash: testPasswordHash,
-          firstName: 'Prod',
-          lastName: 'Test',
-          role: 'driver',
-          isActive: true
-        },
-        {
-          username: 'admin',
-          email: 'admin@washoutpro.com',
-          passwordHash: adminPasswordHash,
-          firstName: 'Super',
-          lastName: 'Admin',
-          role: 'super_admin',
-          isActive: true
-        },
-        {
-          username: 'D1',
-          email: 'd1@driver.com',
-          passwordHash: d1PasswordHash,
-          firstName: 'Driver',
-          lastName: 'One',
-          role: 'driver',
-          isActive: true
-        },
-        {
-          username: 'O1',
-          email: 'o1@owner.com',
-          passwordHash: o1PasswordHash,
-          firstName: 'Owner',
-          lastName: 'One',
-          role: 'owner',
-          isActive: true
-        }
-      ];
-
-      const results = [];
-      // Create users one by one
-      for (const userData of testUsers) {
-        try {
-          const user = await storage.createUser(userData);
-          results.push(`✅ Created user: ${user.username}`);
-          console.log(`✅ Created user: ${user.username}`);
-        } catch (error) {
-          results.push(`ℹ️ User ${userData.username} already exists or conflict occurred`);
-          console.log(`ℹ️ User ${userData.username} already exists or conflict occurred`);
-        }
-      }
-
-      // Verify users were created
+      // Verify migration success
       const userCount = await storage.getUserCount();
       const existingTestUsers = await storage.getTestUsers();
 
+      console.log(`✅ Migration complete! ${userCount} total users, test users: ${existingTestUsers.join(', ')}`);
+
       res.json({
         environment,
-        message: `🎉 ${environment} database population complete!`,
-        results,
+        message: `🎉 Database migration to ${environment} complete!`,
+        migrationResult: result,
         userCount,
         testUsers: existingTestUsers
       });
 
     } catch (error) {
-      console.error('❌ Error populating database:', error);
+      console.error('❌ Error migrating database:', error);
       res.status(500).json({ error: error.message });
     }
   });
