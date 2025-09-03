@@ -3,6 +3,14 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Debug database connection
+console.log('Environment check:', {
+  environment: process.env.REPLIT_DEPLOYMENT ? 'production' : 'development',
+  hasDatabaseUrl: !!process.env.DATABASE_URL,
+  databaseUrlPreview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'undefined'
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
