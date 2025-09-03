@@ -229,6 +229,43 @@ export default function AdminDashboard() {
           </div>
         </StatCard>
 
+        {/* Owner Subscription Revenue */}
+        <StatCard title="Subscription Revenue">
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Monthly Subscriptions</span>
+              <span className="text-xl font-bold text-green-600" data-testid="text-monthly-subscriptions">
+                {formatCurrency(weekStats?.subscriptionRevenue || 0)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Active Licenses</span>
+              <span className="text-lg font-semibold" data-testid="text-active-licenses">
+                {weekStats?.activeLicenses || 0}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">License Renewals</span>
+              <div className="text-right">
+                <div className="text-lg font-semibold text-foreground" data-testid="text-license-renewals">
+                  {weekStats?.licenseRenewals || 0}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  This month
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Stripe Integration</span>
+                <Badge variant="outline" data-testid="badge-stripe-status">
+                  {process.env.STRIPE_SECRET_KEY ? "Connected" : "Pending"}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </StatCard>
+
         {/* Platform Health */}
         <Card>
           <CardHeader>

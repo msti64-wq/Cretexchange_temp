@@ -637,7 +637,15 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getSystemStats(days: number): Promise<{ totalEarnings: number; totalWashouts: number; totalDrivers: number; totalOwners: number }> {
+  async getSystemStats(days: number): Promise<{ 
+    totalEarnings: number; 
+    totalWashouts: number; 
+    totalDrivers: number; 
+    totalOwners: number;
+    subscriptionRevenue: number;
+    activeLicenses: number;
+    licenseRenewals: number;
+  }> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
@@ -666,14 +674,32 @@ export class DatabaseStorage implements IStorage {
         ne(washoutActivities.status, 'rejected')
       ));
 
+    // Get subscription statistics
+    const subscriptionStats = await db
+      .select({
+        activeLicenses: sql<number>`COUNT(*) FILTER (WHERE ${owners.subscriptionStatus} = 'active')`,
+        licenseRenewals: sql<number>`COUNT(*) FILTER (WHERE ${owners.subscriptionStatus} = 'active' AND ${owners.updatedAt} >= ${startDate})`,
+      })
+      .from(owners);
+
+    // Calculate subscription revenue based on active licenses
+    // For now, using a placeholder amount of $50/month per license until Stripe integration
+    const monthlyRatePerLicense = 50;
+    const activeLicenseCount = subscriptionStats[0]?.activeLicenses || 0;
+    const subscriptionRevenue = Number(activeLicenseCount) * monthlyRatePerLicense;
+
     const stats = activityStats[0] || { totalEarnings: 0, totalWashouts: 0, totalDrivers: 0 };
     const ownerCount = ownerStats[0]?.totalOwners || 0;
+    const subStats = subscriptionStats[0] || { activeLicenses: 0, licenseRenewals: 0 };
 
     return {
       totalEarnings: Number(stats.totalEarnings),
       totalWashouts: Number(stats.totalWashouts),
       totalDrivers: Number(stats.totalDrivers),
       totalOwners: Number(ownerCount),
+      subscriptionRevenue: subscriptionRevenue,
+      activeLicenses: Number(subStats.activeLicenses),
+      licenseRenewals: Number(subStats.licenseRenewals),
     };
   }
 
