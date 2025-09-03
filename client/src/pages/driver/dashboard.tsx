@@ -191,31 +191,37 @@ export default function DriverDashboard() {
               </div>
             ) : (
               recentActivities.map((activity: any, index: number) => (
-                <div key={activity.washout_activities?.id || activity.id || index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg" data-testid={`card-activity-${index}`}>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <MapPin className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="font-medium" data-testid={`text-location-name-${index}`}>
-                        {activity.washout_locations?.name || activity.location?.name || 'Unknown Location'}
+                <div key={activity.washout_activities?.id || activity.id || index} className="p-3 bg-muted/50 rounded-lg" data-testid={`card-activity-${index}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <MapPin className="w-4 h-4 text-primary" />
                       </div>
-                      <div className="text-sm text-muted-foreground" data-testid={`text-activity-time-${index}`}>
-                        {new Date(activity.washout_activities?.checkInTime || activity.checkInTime).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate" data-testid={`text-location-name-${index}`}>
+                          {activity.washout_locations?.name || activity.location?.name || 'Unknown Location'}
+                        </div>
+                        <div className="text-xs text-muted-foreground" data-testid={`text-activity-time-${index}`}>
+                          {new Date(activity.washout_activities?.checkInTime || activity.checkInTime).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right ml-2">
+                      <div className="font-semibold text-sm" data-testid={`text-activity-amount-${index}`}>
+                        {formatCurrency(Number(activity.washout_activities?.amount || activity.amount || 0))}
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
-                      {formatCurrency(Number(activity.washout_activities?.amount || activity.amount || 0))}
-                    </div>
-                    <div className={`text-xs font-medium ${
-                      (activity.washout_activities?.status || activity.status) === 'verified' ? 'text-green-600' : 
-                      (activity.washout_activities?.status || activity.status) === 'pending' ? 'text-yellow-600' : 'text-red-600'
+                  
+                  <div className="flex items-center justify-center">
+                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${
+                      (activity.washout_activities?.status || activity.status) === 'verified' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300' : 
+                      (activity.washout_activities?.status || activity.status) === 'pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300'
                     }`} data-testid={`text-activity-status-${index}`}>
                       {(activity.washout_activities?.status || activity.status) === 'verified' ? 'Verified' : 
                        (activity.washout_activities?.status || activity.status) === 'pending' ? 'Pending' : 'Rejected'}
