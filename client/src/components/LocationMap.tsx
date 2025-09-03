@@ -121,33 +121,21 @@ export function LocationMap({
     }
   }, [locations, userLocation, onLocationSelect]);
 
-  // Show fallback when API key is missing
+  // Show simple GPS status when API key is missing
   if (mapError) {
     return (
       <div 
-        style={{ height, width: "100%" }}
-        className="rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-2 border-dashed border-blue-200 dark:border-blue-800 flex flex-col items-center justify-center p-6 text-center"
+        style={{ height: "auto", width: "100%" }}
+        className="rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 p-4"
         data-testid="location-map-fallback"
       >
-        <div className="max-w-sm">
-          <div className="text-4xl mb-4">🗺️</div>
-          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-            Map View Unavailable
-          </h3>
-          <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-            Interactive map requires Google Maps API key configuration.
-          </p>
-          <div className="bg-white/50 dark:bg-black/20 rounded-lg p-3">
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              📍 Location data available in list view below
+        {userLocation && (
+          <div className="flex items-center justify-center">
+            <p className="text-sm text-green-700 dark:text-green-300 font-medium">
+              ✅ GPS location detected: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
             </p>
-            {userLocation && (
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                ✅ GPS location detected: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
-              </p>
-            )}
           </div>
-        </div>
+        )}
       </div>
     );
   }
