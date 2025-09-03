@@ -9,6 +9,7 @@ import Landing from "@/pages/landing";
 import Login from "@/pages/auth/login";
 import Register from "@/pages/auth/register";
 import OldRegister from "@/pages/register";
+import Setup from "@/pages/setup";
 
 // Driver pages
 import DriverDashboard from "@/pages/driver/dashboard";
@@ -48,6 +49,7 @@ function Router() {
         <Route path="/" component={Landing} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
+        <Route path="/setup" component={Setup} />
         <Route component={NotFound} />
       </Switch>
     );
