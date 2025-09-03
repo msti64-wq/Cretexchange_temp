@@ -259,7 +259,7 @@ export default function AdminDashboard() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Stripe Integration</span>
                 <Badge variant="outline" data-testid="badge-stripe-status">
-                  {process.env.STRIPE_SECRET_KEY ? "Connected" : "Pending"}
+                  {import.meta.env.VITE_STRIPE_PUBLIC_KEY ? "Connected" : "Pending"}
                 </Badge>
               </div>
             </div>
