@@ -450,7 +450,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const userId = req.user.id;
 
+      // Get the owner to ensure they have permission
+      const owner = await storage.getOwner(userId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Get the activity details before verification
+      const activityDetails = await storage.getWashoutActivity(id);
+      if (!activityDetails) {
+        return res.status(404).json({ message: "Activity not found" });
+      }
+
+      // Verify the activity
       const activity = await storage.verifyWashoutActivity(id, userId);
+
+      // Create payment with 10% platform commission
+      const activityAmount = Number(activityDetails.amount);
+      const processingFee = activityAmount * 0.10; // 10% commission
+
+      await storage.createPayment({
+        driverId: activityDetails.driverId,
+        ownerId: owner.id,
+        activityId: id,
+        amount: activityAmount.toString(),
+        processingFee: processingFee.toString(),
+        status: 'pending'
+      });
+
       res.json(activity);
     } catch (error) {
       console.error("Error verifying activity:", error);
