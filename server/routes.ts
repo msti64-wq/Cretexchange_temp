@@ -67,6 +67,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create test data with pending payments
+  app.post("/api/debug/create-test-data", async (req, res) => {
+    try {
+      const env = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
+      console.log(`🔧 CREATING TEST DATA FOR ${env.toUpperCase()} ENVIRONMENT...`);
+      
+      // Get O1 user and ensure owner record exists
+      const o1User = await storage.getUserByUsername('O1');
+      if (!o1User) {
+        return res.status(404).json({ error: 'O1 user not found' });
+      }
+
+      // Check if O1 owner record exists, create if not
+      let o1Owner = await storage.getOwner(o1User.id);
+      if (!o1Owner) {
+        console.log('Creating O1 owner record...');
+        o1Owner = await storage.createOwner({
+          userId: o1User.id,
+          businessName: 'O1 Washout Services',
+          businessAddress: '870 N Preston Rd, Celina, TX 75009',
+          businessPhone: '9723321192',
+          taxId: '12-3456789',
+          subscriptionStatus: 'active',
+          monthlyRate: 29.99
+        });
+      }
+
+      // Get D1 user and ensure driver record exists
+      const d1User = await storage.getUserByUsername('D1');
+      if (!d1User) {
+        return res.status(404).json({ error: 'D1 user not found' });
+      }
+
+      let d1Driver = await storage.getDriver(d1User.id);
+      if (!d1Driver) {
+        console.log('Creating D1 driver record...');
+        d1Driver = await storage.createDriver({
+          userId: d1User.id,
+          licenseNumber: 'DL123456',
+          phoneNumber: '2149493859',
+          emergencyContact: 'Jane Driver',
+          emergencyPhone: '2149493860',
+          truckInfo: 'Peterbilt 389 - License: TX123ABC'
+        });
+      }
+
+      // Get or create a washout location for O1
+      let location = await storage.getWashoutLocationsByOwnerId(o1Owner.id);
+      if (!location || location.length === 0) {
+        console.log('Creating washout location for O1...');
+        location = [await storage.createWashoutLocation({
+          ownerId: o1Owner.id,
+          name: 'O1 Premium Washout Station',
+          address: '870 N Preston Rd, Celina, TX 75009',
+          city: 'Celina',
+          state: 'TX',
+          zipCode: '75009',
+          latitude: 33.2273,
+          longitude: -96.7764,
+          operatingHours: { monday: '6:00-18:00', tuesday: '6:00-18:00', wednesday: '6:00-18:00', thursday: '6:00-18:00', friday: '6:00-18:00', saturday: '8:00-16:00', sunday: 'closed' },
+          services: ['concrete_washout', 'truck_wash', 'equipment_cleaning'],
+          pricePerWashout: 25.00,
+          isActive: true,
+          hasWifi: true,
+          hasRestroom: true,
+          hasParking: true
+        })];
+      }
+
+      // Create test washout activities with pending payments
+      const activities = [];
+      const payments = [];
+      
+      for (let i = 0; i < 3; i++) {
+        const activity = await storage.createWashoutActivity({
+          driverId: d1Driver.id,
+          locationId: location[0].id,
+          checkInTime: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000), // 1, 2, 3 days ago
+          checkOutTime: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000 + 30 * 60 * 1000), // 30 min later
+          photos: [`test-photo-${i + 1}.jpg`],
+          notes: `Test washout activity ${i + 1}`,
+          status: 'completed',
+          totalAmount: 25.00,
+          platformFee: 2.50 // 10% commission
+        });
+        activities.push(activity);
+
+        // Create corresponding payment with 'pending' status
+        const payment = await storage.createPayment({
+          activityId: activity.id,
+          driverId: d1Driver.id,
+          amount: 22.50, // Amount after platform fee
+          status: 'pending',
+          method: 'check',
+          platformFee: 2.50
+        });
+        payments.push(payment);
+      }
+      
+      console.log(`✅ TEST DATA CREATED: ${activities.length} activities, ${payments.length} pending payments`);
+
+      res.json({
+        success: true,
+        environment: env,
+        message: `Test data created with ${payments.length} pending payments!`,
+        activities: activities.length,
+        payments: payments.length,
+        totalPending: payments.reduce((sum, p) => sum + p.amount, 0)
+      });
+
+    } catch (error) {
+      console.error('❌ Error creating test data:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
   // Universal database population - works in any environment
   app.get("/api/setup-users", async (req, res) => {
     try {
