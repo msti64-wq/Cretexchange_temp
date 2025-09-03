@@ -432,10 +432,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activityData = insertWashoutActivitySchema.parse({
         driverId: driver.id,
         locationId: location.id,
-        amount: parseFloat(location.rate),
+        amount: location.rate,
         checkInTime: new Date(),
-        latitude: req.body.latitude ? parseFloat(req.body.latitude) : null,
-        longitude: req.body.longitude ? parseFloat(req.body.longitude) : null,
+        latitude: req.body.latitude,
+        longitude: req.body.longitude,
         photoUrls: req.body.photoUrls || [],
         notes: req.body.notes,
       });
