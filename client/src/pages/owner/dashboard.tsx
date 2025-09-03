@@ -112,38 +112,27 @@ export default function OwnerDashboard() {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="gradient-bg text-white p-4 shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-3 flex-1 min-w-0">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
               <Building2 className="w-5 h-5" />
             </div>
-            <div>
-              <h1 className="font-semibold text-lg" data-testid="text-owner-name">
+            <div className="flex-1 min-w-0">
+              <h1 className="font-semibold text-base truncate" data-testid="text-owner-name">
                 Welcome, {user?.firstName} {user?.lastName}
               </h1>
-              <p className="text-white/80 text-sm">Location Management</p>
+              <p className="text-white/80 text-xs">Location Management</p>
             </div>
           </div>
-        </div>
-        <div className="flex items-center justify-between">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setLocation('/locations')}
-            data-testid="button-add-location"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Location
-          </Button>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setLocation('/profile')}
               data-testid="button-profile"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs px-2"
             >
-              <User className="w-4 h-4 mr-1" />
+              <User className="w-3 h-3 mr-1" />
               Profile
             </Button>
             <Button
@@ -151,12 +140,24 @@ export default function OwnerDashboard() {
               size="sm"
               onClick={logout}
               data-testid="button-logout"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs px-2"
             >
-              <LogOut className="w-4 h-4 mr-1" />
+              <LogOut className="w-3 h-3 mr-1" />
               Logout
             </Button>
           </div>
+        </div>
+        <div className="flex justify-center">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setLocation('/locations')}
+            data-testid="button-add-location"
+            className="w-full max-w-xs"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Location
+          </Button>
         </div>
       </header>
 
