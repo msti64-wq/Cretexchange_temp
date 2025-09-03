@@ -257,8 +257,8 @@ export default function OwnerDashboard() {
               </div>
             ) : (
               recentActivities.map((activity: any, index: number) => (
-                <div key={activity.id} className="p-3 bg-muted/50 rounded-lg" data-testid={`card-recent-activity-${index}`}>
-                  <div className="flex items-start justify-between">
+                <div key={activity.id} className="p-3 bg-muted/50 rounded-lg space-y-2" data-testid={`card-recent-activity-${index}`}>
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3 flex-1">
                       <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                         <Users className="w-5 h-5 text-primary" />
@@ -273,74 +273,72 @@ export default function OwnerDashboard() {
                       </div>
                     </div>
                     
-                    <div className="flex flex-col items-end gap-2 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="font-semibold text-foreground" data-testid={`text-activity-amount-${index}`}>
-                          {formatCurrency(Number(activity.washout_activities?.amount || 0))}
-                        </div>
-                        <Badge 
-                          variant={
-                            activity.washout_activities?.status === 'verified' ? 'default' : 
-                            activity.washout_activities?.status === 'rejected' ? 'destructive' : 
-                            'secondary'
-                          }
-                          className="text-xs"
-                          data-testid={`badge-activity-status-${index}`}
-                        >
-                          {activity.washout_activities?.status === 'verified' ? 'Approved' : 
-                           activity.washout_activities?.status === 'rejected' ? 'Rejected' : 
-                           'Pending'}
-                        </Badge>
+                    <div className="text-right">
+                      <div className="font-semibold text-foreground mb-1" data-testid={`text-activity-amount-${index}`}>
+                        {formatCurrency(Number(activity.washout_activities?.amount || 0))}
                       </div>
-                      
-                      <div className="flex items-center gap-1">
-                        {/* Approval buttons for pending washouts */}
-                        {activity.washout_activities?.status === 'pending' && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="text-xs px-2 h-7"
-                              onClick={() => rejectMutation.mutate(activity.washout_activities.id)}
-                              disabled={rejectMutation.isPending || approveMutation.isPending}
-                              data-testid={`button-reject-${index}`}
-                            >
-                              <X className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="text-xs px-2 h-7"
-                              onClick={() => approveMutation.mutate(activity.washout_activities.id)}
-                              disabled={rejectMutation.isPending || approveMutation.isPending}
-                              data-testid={`button-approve-${index}`}
-                            >
-                              <Check className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
-                        
+                      <Badge 
+                        variant={
+                          activity.washout_activities?.status === 'verified' ? 'default' : 
+                          activity.washout_activities?.status === 'rejected' ? 'destructive' : 
+                          'secondary'
+                        }
+                        className="text-xs"
+                        data-testid={`badge-activity-status-${index}`}
+                      >
+                        {activity.washout_activities?.status === 'verified' ? 'Approved' : 
+                         activity.washout_activities?.status === 'rejected' ? 'Rejected' : 
+                         'Pending'}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant={(activity.washout_activities?.photoUrls?.length > 0) ? "outline" : "ghost"}
+                      size="sm"
+                      className="text-xs h-7"
+                      disabled={!(activity.washout_activities?.photoUrls?.length > 0)}
+                      onClick={() => {
+                        if (activity.washout_activities?.photoUrls?.length > 0) {
+                          setSelectedActivity(activity);
+                          setIsPhotoModalOpen(true);
+                        }
+                      }}
+                      data-testid={`button-view-photos-${index}`}
+                    >
+                      <ImageIcon className="w-3 h-3 mr-1" />
+                      {(activity.washout_activities?.photoUrls?.length > 0) ? 
+                        `Photos (${activity.washout_activities.photoUrls.length})` : 
+                        (activity.photoUrls?.length > 0) ?
+                        `Photos (${activity.photoUrls.length})` :
+                        'No Photos'}
+                    </Button>
+                    
+                    {/* Approval buttons for pending washouts */}
+                    {activity.washout_activities?.status === 'pending' && (
+                      <div className="flex gap-1">
                         <Button
-                          variant={(activity.washout_activities?.photoUrls?.length > 0) ? "outline" : "ghost"}
                           size="sm"
-                          className="text-xs h-7"
-                          disabled={!(activity.washout_activities?.photoUrls?.length > 0)}
-                          onClick={() => {
-                            if (activity.washout_activities?.photoUrls?.length > 0) {
-                              setSelectedActivity(activity);
-                              setIsPhotoModalOpen(true);
-                            }
-                          }}
-                          data-testid={`button-view-photos-${index}`}
+                          variant="destructive"
+                          className="text-xs px-2 h-7"
+                          onClick={() => rejectMutation.mutate(activity.washout_activities.id)}
+                          disabled={rejectMutation.isPending || approveMutation.isPending}
+                          data-testid={`button-reject-${index}`}
                         >
-                          <ImageIcon className="w-3 h-3 mr-1" />
-                          {(activity.washout_activities?.photoUrls?.length > 0) ? 
-                            `Photos (${activity.washout_activities.photoUrls.length})` : 
-                            (activity.photoUrls?.length > 0) ?
-                            `Photos (${activity.photoUrls.length})` :
-                            'No Photos'}
+                          <X className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="text-xs px-2 h-7"
+                          onClick={() => approveMutation.mutate(activity.washout_activities.id)}
+                          disabled={rejectMutation.isPending || approveMutation.isPending}
+                          data-testid={`button-approve-${index}`}
+                        >
+                          <Check className="w-3 h-3" />
                         </Button>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               ))
