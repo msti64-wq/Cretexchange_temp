@@ -19,6 +19,25 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint for debugging
+  app.get('/api/health', async (req, res) => {
+    try {
+      const userCount = await storage.getUserByUsername('admin');
+      res.json({ 
+        status: 'ok', 
+        environment: process.env.REPLIT_DEPLOYMENT ? 'production' : 'development',
+        database_connected: !!userCount,
+        admin_user_exists: !!userCount
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        status: 'error', 
+        environment: process.env.REPLIT_DEPLOYMENT ? 'production' : 'development',
+        error: error.message 
+      });
+    }
+  });
+
   // Auth middleware
   await setupAuth(app);
 
