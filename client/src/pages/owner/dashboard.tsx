@@ -112,7 +112,7 @@ export default function OwnerDashboard() {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="gradient-bg text-white p-4 shadow-lg">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
               <Building2 className="w-5 h-5" />
@@ -124,16 +124,18 @@ export default function OwnerDashboard() {
               <p className="text-white/80 text-sm">Location Management</p>
             </div>
           </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setLocation('/locations')}
+            data-testid="button-add-location"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Location
+          </Button>
           <div className="flex items-center space-x-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setLocation('/locations')}
-              data-testid="button-add-location"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add Location
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -160,40 +162,31 @@ export default function OwnerDashboard() {
 
       <main className="p-4 space-y-6">
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard title="Locations" className="text-center">
-            <div className="text-3xl font-bold text-primary mb-1" data-testid="text-total-locations">
-              {locations || 0}
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard title="Today's Activity" className="text-center">
+            <div className="space-y-2">
+              <div className="text-2xl font-bold text-primary" data-testid="text-daily-visits">
+                {recentActivities?.length || 0}
+              </div>
+              <div className="text-xs text-muted-foreground">Washouts Today</div>
+              <div className="text-lg font-semibold text-green-600 dark:text-green-500" data-testid="text-pending-payments">
+                {formatCurrency(pendingPayments)}
+              </div>
+              <div className="text-xs text-muted-foreground">Pending Approval</div>
             </div>
-            <div className="text-sm text-muted-foreground">Active Sites</div>
           </StatCard>
 
-          <StatCard title="Daily Visits" className="text-center">
-            <div className="text-3xl font-bold text-accent mb-1" data-testid="text-daily-visits">
-              {recentActivities?.length || 0}
+          <StatCard title="Locations & Revenue" className="text-center">
+            <div className="space-y-2">
+              <div className="text-2xl font-bold text-accent" data-testid="text-total-locations">
+                {locations || 0}
+              </div>
+              <div className="text-xs text-muted-foreground">Active Sites</div>
+              <div className="text-lg font-semibold text-green-600 dark:text-green-500" data-testid="text-approved-payments">
+                {formatCurrency(approvedPayments)}
+              </div>
+              <div className="text-xs text-muted-foreground">Ready for Payout</div>
             </div>
-            <div className="text-sm text-muted-foreground">Today</div>
-          </StatCard>
-
-          <StatCard title="Pending Payments" className="text-center">
-            <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-500 mb-1" data-testid="text-pending-payments">
-              {formatCurrency(pendingPayments)}
-            </div>
-            <div className="text-sm text-muted-foreground">Awaiting Approval</div>
-          </StatCard>
-
-          <StatCard title="Approved Payments" className="text-center">
-            <div className="text-3xl font-bold text-green-600 dark:text-green-500 mb-1" data-testid="text-approved-payments">
-              {formatCurrency(approvedPayments)}
-            </div>
-            <div className="text-sm text-muted-foreground">Ready for Payout</div>
-          </StatCard>
-
-          <StatCard title="Rejected Washouts" className="text-center">
-            <div className="text-3xl font-bold text-red-600 dark:text-red-500 mb-1" data-testid="text-rejected-payments">
-              {formatCurrency(rejectedPayments)}
-            </div>
-            <div className="text-sm text-muted-foreground">Denied</div>
           </StatCard>
         </div>
 
