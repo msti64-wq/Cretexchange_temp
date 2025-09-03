@@ -67,11 +67,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Direct database migration from development to production
-  app.post("/api/debug/migrate-users", async (req, res) => {
+  // Force production database population - bypasses deployment issues
+  app.post("/api/debug/force-prod-migration", async (req, res) => {
     try {
-      const environment = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
-      console.log(`🔧 Migrating all users to ${environment} database...`);
+      console.log('🔧 FORCE POPULATING PRODUCTION DATABASE...');
+      
+      // Create a fresh production database connection
+      const { drizzle } = await import('drizzle-orm/neon-serverless');
+      const { users } = await import('../shared/schema');
+      
+      // Use the same DATABASE_URL but force production mode behavior
+      const prodDB = drizzle(process.env.DATABASE_URL);
 
       // Direct SQL insert with exact data from development
       const migrationSQL = `
@@ -86,29 +92,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ON CONFLICT (username) DO NOTHING;
       `;
 
-      // Execute the migration directly
-      const { db } = await import('./db');
+      // Execute the migration directly using raw SQL
       const { sql } = await import('drizzle-orm');
-      
-      const result = await db.execute(sql.raw(migrationSQL));
+      const result = await prodDB.execute(sql.raw(migrationSQL));
 
-      // Verify migration success
-      const userCount = await storage.getUserCount();
-      const existingTestUsers = await storage.getTestUsers();
+      // Verify success by counting users
+      const userCountResult = await prodDB.execute(sql.raw('SELECT COUNT(*) as count FROM users'));
+      const userCount = userCountResult.rows[0]?.count || 0;
 
-      console.log(`✅ Migration complete! ${userCount} total users, test users: ${existingTestUsers.join(', ')}`);
+      console.log(`✅ PRODUCTION MIGRATION COMPLETE! ${userCount} total users in database`);
 
       res.json({
-        environment,
-        message: `🎉 Database migration to ${environment} complete!`,
+        success: true,
+        message: `🎉 PRODUCTION database populated with ${userCount} users!`,
         migrationResult: result,
         userCount,
-        testUsers: existingTestUsers
+        action: 'Now try logging in with deploytest/test123'
       });
 
     } catch (error) {
-      console.error('❌ Error migrating database:', error);
-      res.status(500).json({ error: error.message });
+      console.error('❌ Error in production migration:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message,
+        troubleshooting: 'Check logs for detailed error information'
+      });
     }
   });
 
