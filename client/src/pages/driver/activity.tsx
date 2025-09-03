@@ -54,7 +54,6 @@ export default function DriverActivity() {
       }
       
       const response = await fetch(`/api/export/driver-activities?startDate=${startDate}&endDate=${endDate}`, {
-        credentials: 'include',
         headers,
       });
       

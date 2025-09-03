@@ -41,8 +41,14 @@ export default function AdminPayments() {
 
   const handleExport = async () => {
     try {
+      const token = localStorage.getItem('authToken');
+      const headers: any = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch(`/api/export/admin-payments?startDate=${startDate}&endDate=${endDate}`, {
-        credentials: 'include',
+        headers,
       });
       
       if (!response.ok) throw new Error('Export failed');
