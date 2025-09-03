@@ -43,8 +43,14 @@ export default function AdminDashboard() {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - parseInt(dateRange));
 
+      const token = localStorage.getItem('authToken');
+      const headers: any = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch(`/api/export/admin-all?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, {
-        credentials: 'include',
+        headers,
       });
       
       if (!response.ok) throw new Error('Export failed');
