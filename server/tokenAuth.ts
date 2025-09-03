@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-jwt-secret-key-change-in-production";
 
 export async function setupAuth(app: Express) {
   // Login route
