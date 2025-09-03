@@ -15,7 +15,7 @@ if (process.env.STRIPE_SECRET_KEY) {
     apiVersion: "2025-08-27.basil",
   });
 } else {
-  console.warn('STRIPE_SECRET_KEY not found - Stripe functionality will be disabled');
+  console.log('Development mode: Stripe functionality disabled - using mock payment processing');
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {

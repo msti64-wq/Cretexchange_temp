@@ -16,7 +16,7 @@ let stripePromise: Promise<any> | null = null;
 if (import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
   stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 } else {
-  console.warn('VITE_STRIPE_PUBLIC_KEY not found - Stripe UI will be disabled');
+  console.log('Development mode: Stripe UI disabled - using mock payment flow');
 }
 
 const SubscribeForm = ({ clientSecret, onSuccess }: { clientSecret: string; onSuccess: () => void }) => {
