@@ -190,7 +190,7 @@ export default function DriverDashboard() {
                 </div>
               </div>
               <div className="text-center text-sm text-muted-foreground">
-                <p>Payments processed weekly • 10% platform fee applies</p>
+                <p>Payments processed weekly • You receive full amounts</p>
               </div>
             </div>
           </CardContent>

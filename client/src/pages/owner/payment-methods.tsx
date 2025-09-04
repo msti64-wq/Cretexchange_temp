@@ -155,7 +155,7 @@ export default function PaymentMethods() {
                 </h3>
                 <p className="text-blue-700 dark:text-blue-300">
                   Add a payment method to enable automatic weekly withdrawals for driver payouts. 
-                  We'll charge your account and distribute 90% to drivers, keeping 10% as platform fees.
+                  We'll charge your account 110% (100% to drivers + 10% platform fee).
                 </p>
               </div>
             </div>
@@ -435,8 +435,8 @@ export default function PaymentMethods() {
                   <Badge variant="secondary">Active</Badge>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <p>• Drivers receive 90% of verified washout amounts</p>
-                  <p>• 10% platform fee automatically deducted</p>
+                  <p>• Drivers receive 100% of verified washout amounts</p>
+                  <p>• You pay 110% total (100% to drivers + 10% platform fee)</p>
                   <p>• Payments processed using your default payment method</p>
                   <p>• You'll receive email confirmations for all transactions</p>
                 </div>

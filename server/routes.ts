@@ -921,8 +921,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver user not found" });
       }
 
-      // Calculate amounts: 90% to driver, 10% platform commission
-      const driverAmount = amount * 0.9;
+      // Calculate amounts: 100% to driver, 10% platform fee charged to owner
+      const driverAmount = amount;
       const platformCommission = amount * 0.1;
 
       if (!stripe) {
@@ -1194,8 +1194,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process payouts by driver
       for (const [driverId, activities] of driverActivityMap) {
         const totalAmount = activities.reduce((sum: number, activity: any) => sum + parseFloat(activity.amount), 0);
-        const driverAmount = totalAmount * 0.9; // 90% to driver
-        const platformFee = totalAmount * 0.1; // 10% platform fee
+        const driverAmount = totalAmount; // 100% to driver
+        const platformFee = totalAmount * 0.1; // 10% platform fee charged to owner
         
         // Create payment record
         const payment = await storage.createPayment({
