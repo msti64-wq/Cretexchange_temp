@@ -56,6 +56,13 @@ export async function setupAuth(app: Express) {
     try {
       const { username, email, password, firstName, lastName, role } = req.body;
 
+      // Validate role field
+      if (!role || !['driver', 'owner', 'admin', 'super_admin'].includes(role)) {
+        return res.status(400).json({ 
+          message: `Invalid role: '${role}'. Must be one of: driver, owner, admin, super_admin` 
+        });
+      }
+
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {

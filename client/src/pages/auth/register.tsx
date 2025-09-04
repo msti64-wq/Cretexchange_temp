@@ -68,6 +68,17 @@ export default function Register() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that role is selected
+    if (!formData.role) {
+      toast({
+        title: "Please select a role",
+        description: "You must choose whether you're a driver or location owner.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     registerMutation.mutate(formData);
   };
 
