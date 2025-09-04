@@ -50,6 +50,8 @@ function Router() {
         <Route path="/" component={Landing} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
+        <Route path="/register/driver" component={() => <Register preselectedRole="driver" />} />
+        <Route path="/register/owner" component={() => <Register preselectedRole="owner" />} />
         <Route path="/setup" component={Setup} />
         <Route component={NotFound} />
       </Switch>

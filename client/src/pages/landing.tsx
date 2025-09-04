@@ -7,9 +7,7 @@ export default function Landing() {
   const [selectedRole, setSelectedRole] = useState<'driver' | 'owner' | null>(null);
 
   const handleGetStarted = (role: 'driver' | 'owner') => {
-    // Store the selected role in localStorage for registration
-    localStorage.setItem('selectedRole', role);
-    window.location.href = '/register';
+    window.location.href = `/register/${role}`;
   };
 
   return (

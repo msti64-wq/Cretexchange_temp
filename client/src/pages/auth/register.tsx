@@ -10,7 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft, Truck, Building2, User } from "lucide-react";
 
-export default function Register() {
+export default function Register({ preselectedRole }: { preselectedRole?: 'driver' | 'owner' }) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [formData, setFormData] = useState({
@@ -23,15 +23,19 @@ export default function Register() {
     role: "",
   });
 
-  // Check if user selected a role from the landing page
+  // Check if user selected a role from URL prop or landing page
   useEffect(() => {
-    const selectedRole = localStorage.getItem('selectedRole');
-    if (selectedRole === 'driver' || selectedRole === 'owner') {
-      setFormData(prev => ({ ...prev, role: selectedRole }));
-      // Clear it so it doesn't persist
-      localStorage.removeItem('selectedRole');
+    if (preselectedRole) {
+      setFormData(prev => ({ ...prev, role: preselectedRole }));
+    } else {
+      const selectedRole = localStorage.getItem('selectedRole');
+      if (selectedRole === 'driver' || selectedRole === 'owner') {
+        setFormData(prev => ({ ...prev, role: selectedRole }));
+        // Clear it so it doesn't persist
+        localStorage.removeItem('selectedRole');
+      }
     }
-  }, []);
+  }, [preselectedRole]);
 
   const registerMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -108,7 +112,11 @@ export default function Register() {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Create Account</CardTitle>
             <p className="text-muted-foreground">
-              Join WashOut Pro to get started as a {formData.role ? formData.role : 'driver or location owner'}.
+              {formData.role ? (
+                `Complete your registration as a ${formData.role === 'driver' ? 'Concrete Truck Driver' : 'Location Owner'}.`
+              ) : (
+                'Join WashOut Pro to get started as a driver or location owner.'
+              )}
             </p>
           </CardHeader>
           <CardContent>
@@ -167,32 +175,63 @@ export default function Register() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role">I am a...</Label>
-                <Select 
-                  value={formData.role} 
-                  onValueChange={(value) => setFormData({ ...formData, role: value })}
-                  required
-                >
-                  <SelectTrigger data-testid="select-role">
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="driver">
-                      <div className="flex items-center">
-                        <Truck className="w-4 h-4 mr-2" />
-                        Concrete Truck Driver
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="owner">
-                      <div className="flex items-center">
-                        <Building2 className="w-4 h-4 mr-2" />
-                        Location Owner
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Only show role selector if role isn't already set */}
+              {!formData.role && (
+                <div className="space-y-2">
+                  <Label htmlFor="role">I am a...</Label>
+                  <Select 
+                    value={formData.role} 
+                    onValueChange={(value) => setFormData({ ...formData, role: value })}
+                    required
+                  >
+                    <SelectTrigger data-testid="select-role">
+                      <SelectValue placeholder="Select your role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="driver">
+                        <div className="flex items-center">
+                          <Truck className="w-4 h-4 mr-2" />
+                          Concrete Truck Driver
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="owner">
+                        <div className="flex items-center">
+                          <Building2 className="w-4 h-4 mr-2" />
+                          Location Owner
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Show selected role confirmation when role is pre-set */}
+              {formData.role && (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                  <div className="flex items-center justify-center space-x-2">
+                    {formData.role === 'driver' ? (
+                      <>
+                        <Truck className="w-5 h-5 text-primary" />
+                        <span className="font-medium text-primary">Registering as Concrete Truck Driver</span>
+                      </>
+                    ) : (
+                      <>
+                        <Building2 className="w-5 h-5 text-primary" />
+                        <span className="font-medium text-primary">Registering as Location Owner</span>
+                      </>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="w-full mt-2 text-xs text-muted-foreground"
+                    onClick={() => setFormData({ ...formData, role: '' })}
+                  >
+                    Change role
+                  </Button>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
