@@ -156,7 +156,7 @@ export default function OwnerLocations() {
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="secondary" size="sm" data-testid="button-add-location">
+              <Button variant="secondary" size="sm" data-testid="button-add-location" className="bg-green-600 hover:bg-green-700 text-white">
                 <Plus className="w-4 h-4 mr-1" />
                 Add Location
               </Button>
