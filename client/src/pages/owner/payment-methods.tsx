@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { useLocation } from "wouter";
-import { CreditCard, Bank, ArrowLeft, Plus, Check, AlertCircle } from "lucide-react";
+import { CreditCard, Building2, ArrowLeft, Plus, Check, AlertCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function PaymentMethods() {
@@ -198,7 +198,7 @@ export default function PaymentMethods() {
                       {method.type === 'card' ? (
                         <CreditCard className="w-8 h-8 text-blue-600" />
                       ) : (
-                        <Bank className="w-8 h-8 text-green-600" />
+                        <Building2 className="w-8 h-8 text-green-600" />
                       )}
                       <div>
                         <div className="font-medium">
@@ -269,7 +269,7 @@ export default function PaymentMethods() {
                     onClick={() => setPaymentType('bank')}
                     data-testid="button-bank-type"
                   >
-                    <Bank className="w-4 h-4 mr-2" />
+                    <Building2 className="w-4 h-4 mr-2" />
                     Bank Account
                   </Button>
                 </div>
