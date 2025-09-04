@@ -166,7 +166,7 @@ export default function AdminUsers() {
     );
   }
 
-  const { drivers = [], owners = [], admins = [] } = usersData || {};
+  const { drivers = [], owners = [], admins = [] } = (usersData as any) || {};
   
   // Combine and filter users
   const allUsers = [
@@ -315,7 +315,7 @@ export default function AdminUsers() {
             </h2>
             
             {/* Create Admin Button - Only for Super Admins */}
-            {currentUser?.role === 'super_admin' && (
+            {(currentUser as any)?.role === 'super_admin' && (
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="button-create-admin">
