@@ -52,7 +52,13 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    throw err;
+    
+    // Log error but don't crash the server in production
+    if (process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT) {
+      console.error('Production error handled:', err.message);
+    } else {
+      throw err; // Only throw in development for debugging
+    }
   });
 
   // importantly only setup vite in development and after
