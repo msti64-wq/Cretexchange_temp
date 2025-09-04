@@ -154,8 +154,7 @@ export default function PaymentMethods() {
                   Automatic Driver Payouts
                 </h3>
                 <p className="text-blue-700 dark:text-blue-300">
-                  Add a payment method to enable automatic weekly withdrawals for driver payouts. 
-                  We'll charge your account 110% (100% to drivers + 10% platform fee).
+                  Add a payment method to enable automatic weekly withdrawals for driver payouts.
                 </p>
               </div>
             </div>
