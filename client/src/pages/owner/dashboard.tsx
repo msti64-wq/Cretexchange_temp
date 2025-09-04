@@ -158,7 +158,7 @@ export default function OwnerDashboard() {
             size="sm"
             onClick={() => setLocation('/locations')}
             data-testid="button-add-location"
-            className="flex-1 max-w-xs"
+            className="flex-1 max-w-xs bg-green-600 hover:bg-green-700 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Location
@@ -168,7 +168,7 @@ export default function OwnerDashboard() {
             size="sm"
             onClick={() => setLocation('/payment-methods')}
             data-testid="button-payment-methods"
-            className="flex-1 max-w-xs"
+            className="flex-1 max-w-xs bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700"
           >
             <CreditCard className="w-4 h-4 mr-2" />
             Payment Methods
