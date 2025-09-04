@@ -798,21 +798,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Owner subscription
   app.post('/api/owners/subscribe', isAuthenticated, async (req: any, res) => {
     try {
+      console.log("Subscription request started for user:", req.user.id);
+      
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       const owner = await storage.getOwner(userId);
 
+      console.log("User found:", !!user, "Owner found:", !!owner);
+
       if (!user || !owner) {
+        console.log("User or owner not found");
         return res.status(404).json({ message: "User or owner not found" });
       }
 
       if (owner.subscriptionStatus === 'active') {
+        console.log("Already subscribed");
         return res.json({ message: "Already subscribed" });
       }
 
       // Check if Stripe is available
+      console.log("Stripe available:", !!stripe);
+      console.log("STRIPE_PRICE_ID:", process.env.STRIPE_PRICE_ID);
+      
       if (!stripe) {
         // For development, just mark as active without payment processing
+        console.log("Development mode: Activating subscription without Stripe");
         await storage.updateOwnerSubscription(owner.id, 'active', 'dev_subscription_' + Date.now());
         return res.json({ 
           subscriptionId: 'dev_subscription', 
@@ -822,15 +832,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!user.stripeCustomerId) {
+        console.log("Creating Stripe customer for user:", user.email);
         const customer = await stripe.customers.create({
           email: user.email!,
           name: `${user.firstName} ${user.lastName}`,
         });
         
+        console.log("Stripe customer created:", customer.id);
         await storage.updateUserStripeInfo(userId, customer.id);
         user.stripeCustomerId = customer.id;
+      } else {
+        console.log("Using existing Stripe customer:", user.stripeCustomerId);
       }
 
+      console.log("Creating Stripe subscription...");
       const subscription = await stripe.subscriptions.create({
         customer: user.stripeCustomerId,
         items: [{
@@ -840,15 +855,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expand: ['latest_invoice.payment_intent'],
       });
 
+      console.log("Stripe subscription created:", subscription.id);
       await storage.updateOwnerSubscription(owner.id, 'active', subscription.id);
+
+      const clientSecret = (subscription.latest_invoice as any)?.payment_intent?.client_secret;
+      console.log("Client secret available:", !!clientSecret);
 
       res.json({
         subscriptionId: subscription.id,
-        clientSecret: (subscription.latest_invoice as any)?.payment_intent?.client_secret,
+        clientSecret,
       });
-    } catch (error) {
-      console.error("Error creating subscription:", error);
-      res.status(500).json({ message: "Failed to create subscription" });
+    } catch (error: any) {
+      console.error("Detailed subscription error:", {
+        message: error.message,
+        type: error.type,
+        code: error.code,
+        stack: error.stack
+      });
+      res.status(500).json({ 
+        message: "Failed to create subscription",
+        error: error.message 
+      });
     }
   });
 
