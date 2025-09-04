@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone } from "lucide-react";
+import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function DriverDashboard() {
@@ -14,6 +14,11 @@ export default function DriverDashboard() {
   const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['/api/drivers/dashboard'],
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const { data: paymentHistory } = useQuery({
+    queryKey: ['/api/payments/driver-history'],
+    refetchInterval: 60000, // Refresh every minute
   });
 
   if (isLoading) {
@@ -157,6 +162,39 @@ export default function DriverDashboard() {
             )}
           </div>
         </StatCard>
+
+        {/* Payment Status */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <DollarSign className="w-5 h-5 text-green-600" />
+                <h3 className="font-semibold text-lg">Payment Status</h3>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600" data-testid="text-pending-earnings">
+                    {formatCurrency(adjustedDailyEarnings)}
+                  </div>
+                  <div className="text-sm text-green-700 dark:text-green-300">Pending Today</div>
+                </div>
+                <div className="text-center p-3 bg-blue-50 dark:blue-900/20 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600" data-testid="text-total-paid">
+                    {formatCurrency((paymentHistory || []).reduce((sum: number, payment: any) => 
+                      sum + Number(payment.amount || 0), 0
+                    ))}
+                  </div>
+                  <div className="text-sm text-blue-700 dark:text-blue-300">Total Paid</div>
+                </div>
+              </div>
+              <div className="text-center text-sm text-muted-foreground">
+                <p>Payments processed weekly • 10% platform fee applies</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Check-in Button */}
         <Button 

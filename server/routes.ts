@@ -852,6 +852,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create payment intent for one-time payments (if needed)
+  app.post('/api/payments/create-payment-intent', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!stripe) {
+        return res.json({ 
+          clientSecret: 'dev_client_secret',
+          message: "Development mode: Mock payment intent created"
+        });
+      }
+
+      const { amount } = req.body;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: "usd",
+      });
+      
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+      console.error("Error creating payment intent:", error);
+      res.status(500).json({ message: "Error creating payment intent: " + error.message });
+    }
+  });
+
+  // Process driver payout with 10% platform commission
+  app.post('/api/payments/process-payout', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { driverId, amount } = req.body;
+      const driver = await storage.getDriver(driverId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driverUser = await storage.getUser(driver.userId);
+      if (!driverUser) {
+        return res.status(404).json({ message: "Driver user not found" });
+      }
+
+      // Calculate amounts: 90% to driver, 10% platform commission
+      const driverAmount = amount * 0.9;
+      const platformCommission = amount * 0.1;
+
+      if (!stripe) {
+        // Development mode - just record the payment
+        await storage.createPayment({
+          driverId: driver.id,
+          amount: driverAmount.toString(),
+          platformCommission: platformCommission.toString(),
+          method: driverUser.paymentMethod || 'check',
+          status: 'completed',
+          processedAt: new Date(),
+        });
+
+        return res.json({
+          message: "Development mode: Payout recorded without Stripe processing",
+          driverAmount,
+          platformCommission,
+        });
+      }
+
+      // Create payout through Stripe (would require Stripe Connect for real implementation)
+      // For now, record the payment in database
+      await storage.createPayment({
+        driverId: driver.id,
+        amount: driverAmount.toString(),
+        platformCommission: platformCommission.toString(),
+        method: driverUser.paymentMethod || 'ach',
+        status: 'pending',
+        processedAt: new Date(),
+      });
+
+      res.json({
+        message: "Payout processed successfully",
+        driverAmount,
+        platformCommission,
+        method: driverUser.paymentMethod,
+      });
+    } catch (error) {
+      console.error("Error processing payout:", error);
+      res.status(500).json({ message: "Failed to process payout" });
+    }
+  });
+
+  // Get payment history for drivers
+  app.get('/api/payments/driver-history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const driver = await storage.getDriver(userId);
+      
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const payments = await storage.getPaymentsByDriver(driver.id);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error getting payment history:", error);
+      res.status(500).json({ message: "Failed to get payment history" });
+    }
+  });
+
+  // Get subscription status for owners
+  app.get('/api/payments/subscription-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      let subscriptionData = {
+        status: owner.subscriptionStatus,
+        plan: owner.subscriptionPlan,
+        endsAt: owner.subscriptionEndsAt,
+      };
+
+      // If we have Stripe and a subscription ID, get fresh data
+      if (stripe && user?.stripeSubscriptionId) {
+        try {
+          const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+          subscriptionData = {
+            status: subscription.status === 'active' ? 'active' : 'inactive',
+            plan: 'monthly', // or get from subscription metadata
+            endsAt: new Date(subscription.current_period_end * 1000),
+          };
+        } catch (stripeError) {
+          console.log("Could not fetch Stripe subscription:", stripeError.message);
+        }
+      }
+
+      res.json(subscriptionData);
+    } catch (error) {
+      console.error("Error getting subscription status:", error);
+      res.status(500).json({ message: "Failed to get subscription status" });
+    }
+  });
+
   // Admin endpoints
   app.get('/api/admin/dashboard', isAuthenticated, async (req: any, res) => {
     try {

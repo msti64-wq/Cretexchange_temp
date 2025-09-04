@@ -7,7 +7,7 @@ import { useLocation } from "wouter";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
-import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User, ImageIcon, Check, X, MessageCircle, Phone } from "lucide-react";
+import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User, ImageIcon, Check, X, MessageCircle, Phone, Crown, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -24,6 +24,11 @@ export default function OwnerDashboard() {
   const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['/api/owners/dashboard'],
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const { data: subscriptionData } = useQuery({
+    queryKey: ['/api/payments/subscription-status'],
+    refetchInterval: 300000, // Refresh every 5 minutes
   });
 
   const approveMutation = useMutation({
