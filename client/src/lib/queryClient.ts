@@ -8,9 +8,35 @@ async function throwIfResNotOk(res: Response) {
 }
 
 export async function apiRequest(
+  method: string,
   url: string,
-  options: RequestInit = {}
+  data?: any
+): Promise<Response>;
+export async function apiRequest(
+  url: string,
+  options?: RequestInit
+): Promise<Response>;
+export async function apiRequest(
+  urlOrMethod: string,
+  urlOrOptions?: string | RequestInit,
+  data?: any
 ): Promise<Response> {
+  // Handle both calling patterns
+  let url: string;
+  let options: RequestInit;
+  
+  if (typeof urlOrOptions === 'string') {
+    // Called as apiRequest(method, url, data)
+    url = urlOrOptions;
+    options = {
+      method: urlOrMethod,
+      ...(data && { body: JSON.stringify(data) })
+    };
+  } else {
+    // Called as apiRequest(url, options)
+    url = urlOrMethod;
+    options = urlOrOptions || {};
+  }
   const token = localStorage.getItem('authToken');
   const headers: any = {
     ...options.headers,
