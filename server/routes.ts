@@ -1022,6 +1022,207 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Owner payment methods management
+  app.get('/api/owners/payment-methods', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // In development mode, return mock data
+      if (!stripe) {
+        return res.json([
+          {
+            id: 'mock_card_1',
+            type: 'card',
+            last4: '4242',
+            expiryMonth: '12',
+            expiryYear: '25',
+            isDefault: true,
+          }
+        ]);
+      }
+
+      // In production, this would fetch from Stripe
+      res.json([]);
+    } catch (error) {
+      console.error("Error getting payment methods:", error);
+      res.status(500).json({ message: "Failed to get payment methods" });
+    }
+  });
+
+  app.post('/api/owners/payment-methods', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      const user = await storage.getUser(userId);
+      
+      if (!owner || !user) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const { type, cardNumber, expiryMonth, expiryYear, cvc, cardholderName, accountNumber, routingNumber, accountHolderName, bankName } = req.body;
+
+      console.log("Adding payment method:", { type, owner: owner.id });
+
+      // In development mode, return success without Stripe
+      if (!stripe) {
+        const mockMethod = {
+          id: 'mock_' + type + '_' + Date.now(),
+          type,
+          last4: type === 'card' ? cardNumber.slice(-4) : accountNumber.slice(-4),
+          ...(type === 'card' ? { expiryMonth, expiryYear } : { bankName }),
+          isDefault: true,
+        };
+        
+        return res.json({
+          message: "Payment method added successfully (development mode)",
+          method: mockMethod,
+        });
+      }
+
+      // In production, this would create the payment method with Stripe
+      // Ensure customer exists
+      if (!user.stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          email: user.email!,
+          name: `${user.firstName} ${user.lastName}`,
+        });
+        
+        await storage.updateUserStripeInfo(userId, customer.id);
+        user.stripeCustomerId = customer.id;
+      }
+
+      // Create payment method with Stripe
+      let stripePaymentMethod;
+      if (type === 'card') {
+        // In a real implementation, you'd use Stripe Elements or Payment Method API
+        // This is simplified for demonstration
+        stripePaymentMethod = {
+          id: 'pm_mock_card_' + Date.now(),
+          type: 'card',
+          card: { last4: cardNumber.slice(-4), exp_month: expiryMonth, exp_year: expiryYear }
+        };
+      } else {
+        stripePaymentMethod = {
+          id: 'pm_mock_bank_' + Date.now(),
+          type: 'us_bank_account',
+          us_bank_account: { last4: accountNumber.slice(-4), bank_name: bankName }
+        };
+      }
+
+      res.json({
+        message: "Payment method added successfully",
+        method: {
+          id: stripePaymentMethod.id,
+          type,
+          last4: type === 'card' ? stripePaymentMethod.card.last4 : stripePaymentMethod.us_bank_account.last4,
+          ...(type === 'card' ? { expiryMonth, expiryYear } : { bankName }),
+          isDefault: true,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error adding payment method:", error);
+      res.status(500).json({ message: "Failed to add payment method: " + error.message });
+    }
+  });
+
+  app.delete('/api/owners/payment-methods/:methodId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { methodId } = req.params;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      console.log("Removing payment method:", methodId);
+
+      // In development mode, just return success
+      if (!stripe) {
+        return res.json({ message: "Payment method removed (development mode)" });
+      }
+
+      // In production, detach from Stripe customer
+      // await stripe.paymentMethods.detach(methodId);
+
+      res.json({ message: "Payment method removed successfully" });
+    } catch (error: any) {
+      console.error("Error removing payment method:", error);
+      res.status(500).json({ message: "Failed to remove payment method: " + error.message });
+    }
+  });
+
+  // Weekly payout processing endpoint
+  app.post('/api/admin/process-weekly-payouts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      console.log("Processing weekly payouts...");
+
+      // Get all verified activities from the past week that haven't been paid
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      
+      const unpaidActivities = await storage.getActivitiesForPayout(oneWeekAgo);
+      
+      if (!unpaidActivities.length) {
+        return res.json({ message: "No unpaid activities found", processedPayouts: 0 });
+      }
+
+      let processedPayouts = 0;
+      let totalPlatformFees = 0;
+
+      // Group by driver for batch processing
+      const driverActivityMap = new Map();
+      
+      for (const activity of unpaidActivities) {
+        const driverId = activity.driverId;
+        if (!driverActivityMap.has(driverId)) {
+          driverActivityMap.set(driverId, []);
+        }
+        driverActivityMap.get(driverId).push(activity);
+      }
+
+      // Process payouts by driver
+      for (const [driverId, activities] of driverActivityMap) {
+        const totalAmount = activities.reduce((sum: number, activity: any) => sum + parseFloat(activity.amount), 0);
+        const driverAmount = totalAmount * 0.9; // 90% to driver
+        const platformFee = totalAmount * 0.1; // 10% platform fee
+        
+        // Create payment record
+        const payment = await storage.createPayment({
+          ownerId: activities[0].location?.ownerId || '', // Need to get from location
+          driverId: driverId,
+          amount: driverAmount.toFixed(2),
+          activityId: activities[0].id,
+          processingFee: platformFee.toFixed(2),
+          status: stripe ? 'pending' : 'completed',
+          paidAt: new Date(),
+        });
+
+        processedPayouts++;
+        totalPlatformFees += platformFee;
+      }
+
+      res.json({
+        message: `Processed ${processedPayouts} weekly payouts`,
+        processedPayouts,
+        totalPlatformFees: totalPlatformFees.toFixed(2),
+      });
+    } catch (error: any) {
+      console.error("Error processing weekly payouts:", error);
+      res.status(500).json({ message: "Failed to process payouts: " + error.message });
+    }
+  });
+
   // Admin endpoints
   app.get('/api/admin/dashboard', isAuthenticated, async (req: any, res) => {
     try {

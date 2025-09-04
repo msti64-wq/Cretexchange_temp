@@ -152,16 +152,26 @@ export default function OwnerDashboard() {
             </Button>
           </div>
         </div>
-        <div className="flex justify-center">
+        <div className="flex justify-center space-x-2">
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setLocation('/locations')}
             data-testid="button-add-location"
-            className="w-full max-w-xs"
+            className="flex-1 max-w-xs"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Location
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLocation('/payment-methods')}
+            data-testid="button-payment-methods"
+            className="flex-1 max-w-xs"
+          >
+            <CreditCard className="w-4 h-4 mr-2" />
+            Payment Methods
           </Button>
         </div>
       </header>
