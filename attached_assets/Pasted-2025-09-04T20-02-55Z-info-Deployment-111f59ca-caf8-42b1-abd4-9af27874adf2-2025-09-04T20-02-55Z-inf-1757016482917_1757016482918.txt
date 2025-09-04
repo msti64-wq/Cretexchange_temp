@@ -1,0 +1,80 @@
+2025-09-04T20:02:55Z info: Deployment: 111f59ca-caf8-42b1-abd4-9af27874adf2
+2025-09-04T20:02:55Z info: Build: 75aa67ab-f1c5-44d2-aacf-a8d21b01f1d9
+2025-09-04T20:02:55Z info: Connecting to builder
+2025-09-04T20:02:57Z info: Builder connected
+2025-09-04T20:02:58Z info: Installing packages
+2025-09-04T20:02:58Z info: Starting Build
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+
+vite v5.4.19 building for production...
+
+transforming...
+
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+✓ 1760 modules transformed.
+
+rendering chunks...
+
+computing gzip size...
+
+../dist/public/index.html                   2.20 kB │ gzip:   0.86 kB
+
+../dist/public/assets/index-ttVQUNqP.css   74.12 kB │ gzip:  12.96 kB
+
+../dist/public/assets/index-M600-uGc.js   635.28 kB │ gzip: 176.08 kB
+
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+✓ built in 6.60s
+
+
+  dist/index.js  104.1kb
+
+⚡ Done in 30ms
+
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.6.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.0
+npm notice To update run: npm install -g npm@11.6.0
+npm notice
+
+2025-09-04T20:03:10Z info: Pushing pid1 binary layer...
+2025-09-04T20:03:11Z info: Pushing Repl layer...
+2025-09-04T20:03:11Z info: Pushing hosting layer...
+2025-09-04T20:03:12Z info: Created hosting layer
+2025-09-04T20:03:12Z info: Created pid1 binary layer
+2025-09-04T20:03:33Z info: Created Repl layer
+2025-09-04T20:03:33Z info: Pushed image manifest
+2025-09-04T20:03:34Z info: Pushed soci index manifest
+2025-09-04T20:03:34Z info: Pushed referrer manifest
+2025-09-04T20:03:40Z info: Creating virtual machine
+forwarding local port 5000 to external port 80 (mapped as 1104)
+starting up user application
+🚀 Starting WashOut Pro production server...
+  hasDatabaseUrl: true,
+  env: 'production',
+}
+Environment info: {
+  nodeVersion: 'v20.19.3',
+  port: '5000'
+  platform: 'linux',
+📦 Loading production bundle...
+Environment check: {
+  databaseUrlPreview: 'postgresql://neondb_owner:npg_2BbavpOA6MWc@ep-ling...'
+✅ Server started successfully
+}
+  environment: 'production',
+  hasDatabaseUrl: true,
+2025-09-04T20:05:01Z info: Virtual machine created
+2025-09-04T20:05:01Z info: Waiting for deployment to be ready
+2025-09-04T20:05:02Z info: Deployment successful
