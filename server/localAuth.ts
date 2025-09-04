@@ -133,7 +133,9 @@ export async function setupAuth(app: Express) {
       });
     } catch (error) {
       console.error("Registration error:", error);
-      res.status(500).json({ message: "Internal server error" });
+      const errorMessage = error.message || "Internal server error";
+      console.error("Detailed error:", JSON.stringify(error, null, 2));
+      res.status(500).json({ message: "Registration failed: " + errorMessage });
     }
   });
 

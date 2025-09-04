@@ -143,11 +143,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; role: string }): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .returning();
-    return user;
+    try {
+      const [user] = await db
+        .insert(users)
+        .values({
+          username: userData.username,
+          email: userData.email,
+          passwordHash: userData.passwordHash,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          role: userData.role as any, // Cast to handle enum validation
+        })
+        .returning();
+      return user;
+    } catch (error) {
+      console.error('Database createUser error:', error);
+      throw new Error(`User creation failed: ${error.message}`);
+    }
   }
 
   async updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId?: string): Promise<User> {
