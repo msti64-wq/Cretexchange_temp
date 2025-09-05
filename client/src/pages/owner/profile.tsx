@@ -174,10 +174,9 @@ export default function OwnerProfile() {
             </div>
           </div>
           <Button 
-            variant="outline" 
             size="sm"
             onClick={handleLogout}
-            className="border-white/20 text-white hover:bg-white/10"
+            className="bg-slate-700 hover:bg-slate-800 text-white"
             data-testid="button-logout"
           >
             <LogOut className="w-4 h-4 mr-1" />
