@@ -20,6 +20,8 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
     confirmPassword: "",
     firstName: "",
     lastName: "",
+    phone: "",
+    address: "",
     role: "",
   });
 
@@ -172,6 +174,32 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                   data-testid="input-email"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="(555) 123-4567"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  required
+                  data-testid="input-phone"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  type="text"
+                  placeholder="123 Main St, City, State 12345"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  required
+                  data-testid="input-address"
                 />
               </div>
 

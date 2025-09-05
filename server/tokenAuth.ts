@@ -54,7 +54,7 @@ export async function setupAuth(app: Express) {
   // Registration route
   app.post("/api/register", async (req, res) => {
     try {
-      const { username, email, password, firstName, lastName, role } = req.body;
+      const { username, email, password, firstName, lastName, phone, address, role } = req.body;
 
       // Validate role field
       if (!role || !['driver', 'owner', 'admin', 'super_admin'].includes(role)) {
@@ -77,13 +77,15 @@ export async function setupAuth(app: Express) {
       // Hash password
       const passwordHash = await bcrypt.hash(password, 10);
 
-      // Create user
+      // Create user with all mandatory fields
       const newUser = await storage.createUser({
         username,
         email,
         passwordHash,
         firstName,
         lastName,
+        phone,
+        address,
         role,
       });
 
@@ -131,6 +133,95 @@ export async function setupAuth(app: Express) {
   // Logout route (client-side only since we're using JWT)
   app.post("/api/logout", (req, res) => {
     res.json({ message: "Logout successful" });
+  });
+
+  // Forgot password route
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal if email exists for security
+        return res.json({ message: "If an account exists with this email, password reset instructions have been sent." });
+      }
+
+      // Generate reset token (use crypto-secure random string)
+      const resetToken = require('crypto').randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+      // Store reset token
+      await storage.createPasswordResetToken({
+        userId: user.id,
+        token: resetToken,
+        expiresAt
+      });
+
+      // In a real app, you'd send an email here
+      // For now, just log the reset token for development
+      console.log(`Password reset token for ${user.email}: ${resetToken}`);
+      console.log(`Reset URL would be: /reset-password?token=${resetToken}`);
+      
+      res.json({ 
+        message: "If an account exists with this email, password reset instructions have been sent.",
+        // In development, include the token for testing
+        ...(process.env.NODE_ENV === 'development' && { resetToken })
+      });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Reset password route
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, password } = req.body;
+
+      if (!token || !password) {
+        return res.status(400).json({ message: "Token and new password are required" });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters long" });
+      }
+
+      // Find and validate reset token
+      const resetToken = await storage.getPasswordResetToken(token);
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      if (new Date() > new Date(resetToken.expiresAt)) {
+        return res.status(400).json({ message: "Reset token has expired" });
+      }
+
+      // Get user
+      const user = await storage.getUserById(resetToken.userId);
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+
+      // Hash new password
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Update user password
+      await storage.updateUserPassword(user.id, passwordHash);
+
+      // Delete the reset token
+      await storage.deletePasswordResetToken(resetToken.id);
+
+      console.log(`Password reset successfully for user: ${user.username} (${user.email})`);
+      res.json({ message: "Password has been reset successfully" });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 }
 

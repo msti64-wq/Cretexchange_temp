@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Login from "@/pages/auth/login";
 import Register from "@/pages/auth/register";
+import ResetPassword from "@/pages/auth/reset-password";
 import OldRegister from "@/pages/register";
 import Setup from "@/pages/setup";
 
@@ -52,6 +53,7 @@ function Router() {
         <Route path="/register" component={Register} />
         <Route path="/register/driver" component={() => <Register preselectedRole="driver" />} />
         <Route path="/register/owner" component={() => <Register preselectedRole="owner" />} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/setup" component={Setup} />
         <Route component={NotFound} />
       </Switch>

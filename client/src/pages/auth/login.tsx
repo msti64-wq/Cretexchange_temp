@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft, Truck } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export default function Login() {
   const { toast } = useToast();
@@ -16,6 +17,8 @@ export default function Login() {
     username: "",
     password: "",
   });
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
 
   const loginMutation = useMutation({
     mutationFn: async (data: { username: string; password: string }) => {
@@ -49,9 +52,44 @@ export default function Login() {
     },
   });
 
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const response = await apiRequest("POST", "/api/auth/forgot-password", { email });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Reset Email Sent",
+        description: "If an account exists with this email, you'll receive password reset instructions.",
+      });
+      setShowForgotPassword(false);
+      setForgotPasswordEmail("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Request Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     loginMutation.mutate(formData);
+  };
+
+  const handleForgotPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotPasswordEmail) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+    forgotPasswordMutation.mutate(forgotPasswordEmail);
   };
 
   return (
@@ -124,6 +162,46 @@ export default function Login() {
                 {loginMutation.isPending ? "Signing In..." : "Sign In"}
               </Button>
             </form>
+
+            <div className="mt-4 text-center">
+              <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+                <DialogTrigger asChild>
+                  <Button variant="link" size="sm" className="text-primary hover:underline" data-testid="button-forgot-password">
+                    Forgot your password?
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Reset Password</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">Email Address</Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="Enter your email address"
+                        value={forgotPasswordEmail}
+                        onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                        required
+                        data-testid="input-reset-email"
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      We'll send you a link to reset your password if an account exists with this email.
+                    </p>
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={forgotPasswordMutation.isPending}
+                      data-testid="button-send-reset"
+                    >
+                      {forgotPasswordMutation.isPending ? "Sending..." : "Send Reset Link"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
 
             <div className="mt-6 text-center text-sm">
               <span className="text-muted-foreground">Don't have an account? </span>

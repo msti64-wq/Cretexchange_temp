@@ -7,6 +7,7 @@ import {
   payments,
   notifications,
   messages,
+  passwordResetTokens,
   type User,
   type UpsertUser,
   type Driver,
@@ -16,6 +17,7 @@ import {
   type Payment,
   type Notification,
   type Message,
+  type PasswordResetToken,
   type InsertDriver,
   type InsertOwner,
   type InsertWashoutLocation,
@@ -23,6 +25,7 @@ import {
   type InsertPayment,
   type InsertNotification,
   type InsertMessage,
+  type InsertPasswordResetToken,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or } from "drizzle-orm";
@@ -33,9 +36,15 @@ export interface IStorage {
   getUserById(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; role: string }): Promise<User>;
+  createUser(user: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; phone?: string; address?: string; role: string }): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId?: string): Promise<User>;
+  updateUserPassword(userId: string, passwordHash: string): Promise<User>;
+
+  // Password reset operations
+  createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  deletePasswordResetToken(tokenId: string): Promise<void>;
 
   // Driver operations
   createDriver(driver: InsertDriver): Promise<Driver>;
@@ -142,7 +151,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(userData: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; role: string }): Promise<User> {
+  async createUser(userData: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; phone?: string; address?: string; role: string }): Promise<User> {
     try {
       const [user] = await db
         .insert(users)
@@ -152,6 +161,8 @@ export class DatabaseStorage implements IStorage {
           passwordHash: userData.passwordHash,
           firstName: userData.firstName,
           lastName: userData.lastName,
+          phone: userData.phone,
+          address: userData.address,
           role: userData.role as any, // Cast to handle enum validation
         })
         .returning();
@@ -173,6 +184,41 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async updateUserPassword(userId: string, passwordHash: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        passwordHash,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  // Password reset operations
+  async createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [token] = await db
+      .insert(passwordResetTokens)
+      .values(tokenData)
+      .returning();
+    return token;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.token, token));
+    return resetToken;
+  }
+
+  async deletePasswordResetToken(tokenId: string): Promise<void> {
+    await db
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.id, tokenId));
   }
 
   // Driver operations

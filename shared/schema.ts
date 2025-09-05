@@ -25,6 +25,15 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
+// Password reset tokens
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Enums
 export const userRoleEnum = pgEnum("user_role", ["driver", "owner", "admin", "super_admin"]);
 export const paymentMethodEnum = pgEnum("payment_method", ["check", "venmo", "zelle", "ach", "credit_card"]);
@@ -218,6 +227,8 @@ export const userRegistrationSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  address: z.string().min(5, "Address is required"),
   role: z.enum(["driver", "owner"]),
 });
 
@@ -225,6 +236,16 @@ export const userRegistrationSchema = z.object({
 export const userLoginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
+});
+
+// Password reset schemas
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Reset token is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export const insertDriverSchema = createInsertSchema(drivers).omit({
@@ -271,6 +292,11 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   createdAt: true,
 });
 
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -289,3 +315,5 @@ export type InsertWashoutActivity = z.infer<typeof insertWashoutActivitySchema>;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
