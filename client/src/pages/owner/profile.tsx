@@ -327,7 +327,7 @@ export default function OwnerProfile() {
                 </div>
                 <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" data-testid="button-change-password">
+                    <Button className="bg-slate-800 hover:bg-slate-900 text-white" size="sm" data-testid="button-change-password">
                       Change Password
                     </Button>
                   </DialogTrigger>
