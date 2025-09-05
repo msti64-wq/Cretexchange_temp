@@ -66,6 +66,33 @@ export default function DriverDashboard() {
       </div>
 
       <main className="p-4 space-y-6">
+        {/* Profile Completion Notice */}
+        {dashboardData && (!dashboardData.user?.phone || !dashboardData.user?.address || !dashboardData.user?.paymentMethod || dashboardData.user?.paymentMethod === 'check') && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-xs font-bold">!</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-1">
+                  Complete Your Profile
+                </h3>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+                  Please complete your profile and set up your payment method to receive earnings from washout activities.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => setLocation('/profile')}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  data-testid="button-complete-profile"
+                >
+                  Complete Profile
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Today's Activity */}
         <StatCard
           title="Today's Activity"
