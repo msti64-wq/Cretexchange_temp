@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
-import { ArrowLeft, Building2, User } from "lucide-react";
+import { ArrowLeft, Building2, User, Truck } from "lucide-react";
 import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
 
 export default function Register({ preselectedRole }: { preselectedRole?: 'driver' | 'owner' }) {
