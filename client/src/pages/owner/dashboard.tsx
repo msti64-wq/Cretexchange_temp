@@ -204,6 +204,33 @@ export default function OwnerDashboard() {
           </div>
         )}
 
+        {/* Subscription Required Notice */}
+        {user && subscriptionData?.status !== 'active' && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <CreditCard className="w-3 h-3 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+                  Subscription Required
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                  You need an active subscription to add washout locations. Each location requires a subscription to operate on the platform.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => setLocation('/subscribe')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  data-testid="button-subscribe"
+                >
+                  Start Subscription
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-4">
           <StatCard title="Today's Activity" className="text-center">

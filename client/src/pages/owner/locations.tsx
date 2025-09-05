@@ -24,6 +24,10 @@ export default function OwnerLocations() {
     queryKey: ['/api/owners/locations'],
   });
 
+  const { data: subscriptionData } = useQuery({
+    queryKey: ['/api/payments/subscription-status'],
+  });
+
   const addLocationMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("POST", "/api/owners/locations", data);
@@ -156,7 +160,13 @@ export default function OwnerLocations() {
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="secondary" size="sm" data-testid="button-add-location" className="bg-green-600 hover:bg-green-700 text-white">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                data-testid="button-add-location" 
+                className="bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
+                disabled={subscriptionData?.status !== 'active'}
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Add Location
               </Button>
@@ -266,6 +276,33 @@ export default function OwnerLocations() {
       </header>
 
       <main className="p-4 space-y-4">
+        {/* Subscription Required Notice */}
+        {subscriptionData?.status !== 'active' && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-xs font-bold">!</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+                  Active Subscription Required
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                  You must have an active subscription to add and manage washout locations. Each location requires a subscription to operate.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => window.location.href = '/subscribe'}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  data-testid="button-subscribe-locations"
+                >
+                  Get Subscription
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Summary Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard title="Total" className="text-center">
