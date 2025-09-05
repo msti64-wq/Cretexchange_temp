@@ -363,6 +363,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sum + amount;
       }, 0);
 
+      // Get user data for profile completion checks
+      const user = await storage.getUser(userId);
+
       res.json({
         dailyStats: {
           visits: todayActivities.length,
@@ -370,6 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         weeklyStats: weekStats,
         recentActivities,
+        user: user,
       });
     } catch (error) {
       console.error("Error fetching driver dashboard:", error);
@@ -560,11 +564,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const locations = await storage.getLocationsByOwner(owner.id);
       const recentActivities = await storage.getActivitiesByOwner(owner.id);
 
+      // Get user data for profile completion checks
+      const user = await storage.getUser(userId);
+
       res.json({
         weekStats,
         monthStats,
         locations: locations.length,
         recentActivities: recentActivities.slice(0, 10),
+        user: user,
+        owner: owner,
       });
     } catch (error) {
       console.error("Error fetching owner dashboard:", error);

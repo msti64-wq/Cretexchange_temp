@@ -60,6 +60,7 @@ export default function PaymentMethods() {
         accountNumber: '', routingNumber: '', accountHolderName: '', bankName: '',
       });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/payment-methods'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
     },
     onError: (error: any) => {
       toast({ 
@@ -78,6 +79,7 @@ export default function PaymentMethods() {
     onSuccess: () => {
       toast({ title: "Payment method removed" });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/payment-methods'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
     },
     onError: (error: any) => {
       toast({ 
@@ -102,6 +104,7 @@ export default function PaymentMethods() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/terms-status'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/payment-methods'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
     },
     onError: (error: any) => {
       toast({ 
