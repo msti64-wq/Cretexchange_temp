@@ -18,6 +18,7 @@ export default function PaymentMethods() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [paymentType, setPaymentType] = useState<'card' | 'bank'>('card');
   const [showTerms, setShowTerms] = useState(false);
+  const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: paymentMethods, isLoading } = useQuery({
@@ -75,6 +76,29 @@ export default function PaymentMethods() {
     onError: (error: any) => {
       toast({ 
         title: "Failed to remove payment method", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const agreeToTermsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/owners/agree-to-terms", {});
+      return response.json();
+    },
+    onSuccess: () => {
+      setHasAgreedToTerms(true);
+      setShowTerms(false);
+      toast({ 
+        title: "Terms accepted", 
+        description: "You can now add payment methods and locations" 
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/terms-status'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to record agreement", 
         description: error.message,
         variant: "destructive" 
       });
@@ -461,21 +485,55 @@ export default function PaymentMethods() {
               </div>
               <Dialog open={showTerms} onOpenChange={setShowTerms}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" data-testid="button-terms">
-                    View Terms
+                  <Button className="bg-red-600 hover:bg-red-700 text-white font-semibold" size="sm" data-testid="button-terms">
+                    ⚠️ Must Read Terms
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Terms and Conditions</DialogTitle>
+                    <DialogTitle>Terms and Conditions - Required Reading</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 text-sm">
-                    <p className="text-muted-foreground">
-                      Please provide the terms and conditions document content. This section will be populated with your specific terms once you provide the document.
-                    </p>
-                    <div className="bg-muted/50 p-4 rounded-lg">
-                      <h3 className="font-semibold mb-2">Placeholder Content</h3>
-                      <p>This dialog will contain your terms and conditions document once provided.</p>
+                    <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                      <div className="flex items-center mb-2">
+                        <AlertCircle className="w-4 h-4 text-yellow-600 mr-2" />
+                        <span className="font-semibold text-yellow-800">Important Notice</span>
+                      </div>
+                      <p className="text-yellow-700 text-xs">
+                        You must read and agree to these terms before adding payment methods or locations.
+                      </p>
+                    </div>
+                    
+                    <div className="border rounded-lg p-4 bg-background">
+                      <h3 className="font-semibold mb-3">WashOut Pro Platform Terms</h3>
+                      <div className="space-y-3 text-xs leading-relaxed">
+                        <p className="text-muted-foreground">
+                          [Your terms and conditions document will be displayed here once provided]
+                        </p>
+                        <div className="bg-muted/30 p-3 rounded">
+                          <h4 className="font-medium mb-2">Key Points (Placeholder):</h4>
+                          <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                            <li>Platform usage responsibilities</li>
+                            <li>Payment processing terms</li>
+                            <li>Location owner obligations</li>
+                            <li>Liability and insurance requirements</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        By clicking "I Agree", you confirm you have read and accept all terms.
+                      </p>
+                      <Button 
+                        onClick={() => agreeToTermsMutation.mutate()}
+                        disabled={agreeToTermsMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+                        data-testid="button-agree-terms"
+                      >
+                        {agreeToTermsMutation.isPending ? "Recording..." : "I Agree"}
+                      </Button>
                     </div>
                   </div>
                 </DialogContent>

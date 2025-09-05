@@ -787,6 +787,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Terms agreement endpoint
+  app.post('/api/owners/agree-to-terms', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      const user = await storage.getUser(userId);
+      
+      if (!owner || !user) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Record terms agreement with timestamp
+      const agreementData = {
+        ownerId: owner.id,
+        ownerName: `${user.firstName} ${user.lastName}`,
+        ownerEmail: user.email || '',
+        ownerCompany: owner.companyName || 'N/A',
+        agreedAt: new Date(),
+        ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
+      };
+
+      // Update owner with terms agreement info
+      await storage.updateOwner(owner.id, {
+        ...owner,
+        hasAgreedToTerms: true,
+        termsAgreedAt: new Date()
+      });
+
+      // Create admin notification message
+      const adminMessage = {
+        userId: userId,
+        subject: `Terms Agreement - ${agreementData.ownerName}`,
+        message: `Owner "${agreementData.ownerName}" (${agreementData.ownerEmail}) from company "${agreementData.ownerCompany}" has read and agreed to the Terms and Conditions on ${agreementData.agreedAt.toLocaleDateString()} at ${agreementData.agreedAt.toLocaleTimeString()}.\n\nIP Address: ${agreementData.ipAddress}`,
+        userRole: 'owner',
+        userPhone: user.phone || '',
+        priority: 'normal'
+      };
+
+      await storage.createMessage(adminMessage);
+
+      console.log(`📋 Terms agreed by owner: ${agreementData.ownerName} (${agreementData.ownerEmail}) at ${agreementData.agreedAt}`);
+
+      res.json({ 
+        success: true, 
+        message: "Terms agreement recorded successfully",
+        agreedAt: agreementData.agreedAt
+      });
+    } catch (error) {
+      console.error("Error recording terms agreement:", error);
+      res.status(500).json({ message: "Failed to record terms agreement" });
+    }
+  });
+
   // Owner subscription
   app.post('/api/owners/subscribe', isAuthenticated, async (req: any, res) => {
     try {
