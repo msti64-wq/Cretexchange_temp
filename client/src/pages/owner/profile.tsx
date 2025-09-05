@@ -176,7 +176,7 @@ export default function OwnerProfile() {
           <Button 
             size="sm"
             onClick={handleLogout}
-            className="bg-slate-700 hover:bg-slate-800 text-white"
+            className="bg-slate-800 hover:bg-slate-700 text-white"
             data-testid="button-logout"
           >
             <LogOut className="w-4 h-4 mr-1" />

@@ -151,7 +151,7 @@ export default function AdminDashboard() {
               size="sm"
               onClick={logout}
               data-testid="button-logout"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20 hidden sm:flex"
+              className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700 hidden sm:flex"
             >
               <LogOut className="w-4 h-4 mr-1" />
               Logout
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
               size="sm"
               onClick={logout}
               data-testid="button-logout-mobile"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20 sm:hidden p-2"
+              className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700 sm:hidden p-2"
             >
               <LogOut className="w-4 h-4" />
             </Button>

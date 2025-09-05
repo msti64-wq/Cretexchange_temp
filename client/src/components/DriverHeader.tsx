@@ -48,7 +48,7 @@ export function DriverHeader() {
             size="sm"
             onClick={logout}
             data-testid="button-logout"
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700"
           >
             <LogOut className="w-4 h-4 mr-1" />
             Logout
