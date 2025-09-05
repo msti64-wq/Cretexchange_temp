@@ -1058,6 +1058,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Owner payments endpoint
+  app.get('/api/owners/payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const { startDate, endDate } = req.query;
+      const start = startDate ? new Date(startDate as string) : undefined;
+      // For end date, set to end of day (23:59:59.999) to include all payments on that date
+      const end = endDate ? new Date(new Date(endDate as string).getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
+
+      const payments = await storage.getPaymentsByOwner(owner.id, start, end);
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching owner payments:", error);
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
   // Get subscription status for owners
   app.get('/api/payments/subscription-status', isAuthenticated, async (req: any, res) => {
     try {
