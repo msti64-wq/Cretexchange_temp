@@ -90,6 +90,8 @@ export const owners = pgTable("owners", {
   subscriptionPlan: varchar("subscription_plan").default("monthly"),
   subscriptionEndsAt: timestamp("subscription_ends_at"),
   isApproved: boolean("is_approved").default(false),
+  hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
+  termsAgreedAt: timestamp("terms_agreed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
