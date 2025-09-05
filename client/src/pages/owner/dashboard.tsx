@@ -135,7 +135,7 @@ export default function OwnerDashboard() {
               size="sm"
               onClick={() => setLocation('/profile')}
               data-testid="button-profile"
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs px-2"
+              className="bg-blue-600 border-blue-500 text-white hover:bg-blue-700 text-xs px-2"
             >
               <User className="w-3 h-3 mr-1" />
               Profile
