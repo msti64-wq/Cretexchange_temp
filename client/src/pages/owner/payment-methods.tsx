@@ -559,6 +559,12 @@ export default function PaymentMethods() {
                                 <div className="bg-muted/50 p-2 rounded italic">
                                   Example: If a driver is paid $10.00, the Owner will be billed $11.00 ($10.00 driver payment + $1.00 service fee).
                                 </div>
+                                <p><strong>2.4 Washout Verification:</strong> Washouts will vary in size and content. Drivers are required to upload a clear photo of the actual washout for verification. Owners will be provided this photo for approval.</p>
+                                <div className="space-y-2 ml-4">
+                                  <p><strong>a. Approval Requirement:</strong> Unless the driver fails to provide a photo, or provides a photo unrelated to the actual washout, Owners must approve the washout.</p>
+                                  <p><strong>b. No Other Grounds for Rejection:</strong> Washouts cannot be rejected based on size, volume, or other subjective factors.</p>
+                                  <p><strong>c. Improper Rejection:</strong> If an Owner rejects a washout for reasons other than those listed above, WashOut Pro reserves the right to automatically override the rejection, approve the washout, and process the payment on the Owner's behalf.</p>
+                                </div>
                               </div>
                             </div>
                             
@@ -591,7 +597,7 @@ export default function PaymentMethods() {
                             <div>
                               <h4 className="font-semibold mb-2">6. Miscellaneous</h4>
                               <div className="space-y-2 ml-4">
-                                <p><strong>6.1 Governing Law:</strong> This Agreement shall be governed by the laws of the United States.</p>
+                                <p><strong>6.1 Governing Law:</strong> This Agreement shall be governed by the laws of the state of [Insert State].</p>
                                 <p><strong>6.2 Entire Agreement:</strong> This Agreement constitutes the full understanding between the parties and supersedes any prior agreements.</p>
                                 <p><strong>6.3 Amendments:</strong> WashOut Pro may update these Terms and Conditions with notice to participating Owners. Continued use of the system constitutes acceptance of updated terms.</p>
                               </div>
