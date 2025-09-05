@@ -13,8 +13,8 @@ export async function setupAuth(app: Express) {
       
       console.log(`Login attempt: username=${username}, environment=${process.env.REPLIT_DEPLOYMENT ? 'production' : 'development'}`);
 
-      // Check if user exists
-      const user = await storage.getUserByUsername(username);
+      // Check if user exists (case-insensitive username lookup)
+      const user = await storage.getUserByUsernameInsensitive(username);
       if (!user) {
         console.log(`User not found: ${username}`);
         return res.status(401).json({ message: "Invalid username or password" });
@@ -63,8 +63,8 @@ export async function setupAuth(app: Express) {
         });
       }
 
-      // Check if user already exists
-      const existingUser = await storage.getUserByUsername(username);
+      // Check if user already exists (case-insensitive check)
+      const existingUser = await storage.getUserByUsernameInsensitive(username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
       }
