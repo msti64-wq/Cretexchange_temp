@@ -8,6 +8,7 @@ import {
   notifications,
   messages,
   passwordResetTokens,
+  ownerPaymentMethods,
   type User,
   type UpsertUser,
   type Driver,
@@ -18,6 +19,7 @@ import {
   type Notification,
   type Message,
   type PasswordResetToken,
+  type OwnerPaymentMethod,
   type InsertDriver,
   type InsertOwner,
   type InsertWashoutLocation,
@@ -26,6 +28,7 @@ import {
   type InsertNotification,
   type InsertMessage,
   type InsertPasswordResetToken,
+  type InsertOwnerPaymentMethod,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or } from "drizzle-orm";
@@ -109,6 +112,13 @@ export interface IStorage {
   getAllMessages(): Promise<(Message & { user: User })[]>;
   getMessageById(messageId: string): Promise<(Message & { user: User }) | undefined>;
   updateMessageStatus(messageId: string, status: string): Promise<Message>;
+
+  // Payment methods operations
+  createOwnerPaymentMethod(paymentMethod: InsertOwnerPaymentMethod): Promise<OwnerPaymentMethod>;
+  getOwnerPaymentMethods(ownerId: string): Promise<OwnerPaymentMethod[]>;
+  getOwnerPaymentMethodById(id: string): Promise<OwnerPaymentMethod | undefined>;
+  deleteOwnerPaymentMethod(id: string): Promise<void>;
+  setDefaultPaymentMethod(ownerId: string, paymentMethodId: string): Promise<void>;
 
   // Debug operations
   getUserCount(): Promise<number>;
@@ -860,6 +870,60 @@ export class DatabaseStorage implements IStorage {
         eq(users.username, 'admin')
       ));
     return testUsers.map(u => u.username);
+  }
+
+  // Payment methods operations
+  async createOwnerPaymentMethod(paymentMethod: InsertOwnerPaymentMethod): Promise<OwnerPaymentMethod> {
+    // If this is set as default, unset all other defaults for this owner
+    if (paymentMethod.isDefault) {
+      await db
+        .update(ownerPaymentMethods)
+        .set({ isDefault: false })
+        .where(eq(ownerPaymentMethods.ownerId, paymentMethod.ownerId));
+    }
+
+    const [newPaymentMethod] = await db.insert(ownerPaymentMethods).values(paymentMethod).returning();
+    return newPaymentMethod;
+  }
+
+  async getOwnerPaymentMethods(ownerId: string): Promise<OwnerPaymentMethod[]> {
+    return await db
+      .select()
+      .from(ownerPaymentMethods)
+      .where(and(
+        eq(ownerPaymentMethods.ownerId, ownerId),
+        eq(ownerPaymentMethods.isActive, true)
+      ))
+      .orderBy(desc(ownerPaymentMethods.isDefault), desc(ownerPaymentMethods.createdAt));
+  }
+
+  async getOwnerPaymentMethodById(id: string): Promise<OwnerPaymentMethod | undefined> {
+    const [paymentMethod] = await db
+      .select()
+      .from(ownerPaymentMethods)
+      .where(eq(ownerPaymentMethods.id, id));
+    return paymentMethod;
+  }
+
+  async deleteOwnerPaymentMethod(id: string): Promise<void> {
+    await db
+      .update(ownerPaymentMethods)
+      .set({ isActive: false })
+      .where(eq(ownerPaymentMethods.id, id));
+  }
+
+  async setDefaultPaymentMethod(ownerId: string, paymentMethodId: string): Promise<void> {
+    // First, unset all defaults for this owner
+    await db
+      .update(ownerPaymentMethods)
+      .set({ isDefault: false })
+      .where(eq(ownerPaymentMethods.ownerId, ownerId));
+
+    // Then set the specified one as default
+    await db
+      .update(ownerPaymentMethods)
+      .set({ isDefault: true })
+      .where(eq(ownerPaymentMethods.id, paymentMethodId));
   }
 }
 

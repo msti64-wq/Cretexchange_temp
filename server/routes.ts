@@ -1097,22 +1097,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // In development mode, return mock data
-      if (!stripe) {
-        return res.json([
-          {
-            id: 'mock_card_1',
-            type: 'card',
-            last4: '4242',
-            expiryMonth: '12',
-            expiryYear: '25',
-            isDefault: true,
-          }
-        ]);
-      }
+      // Fetch payment methods from database
+      const paymentMethods = await storage.getOwnerPaymentMethods(owner.id);
+      
+      // Format for frontend
+      const formattedMethods = paymentMethods.map(method => ({
+        id: method.id,
+        type: method.type,
+        last4: method.last4,
+        ...(method.type === 'card' ? {
+          expiryMonth: method.expiryMonth,
+          expiryYear: method.expiryYear,
+          cardholderName: method.cardholderName
+        } : {
+          bankName: method.bankName,
+          accountHolderName: method.accountHolderName
+        }),
+        isDefault: method.isDefault,
+        stripePaymentMethodId: method.stripePaymentMethodId,
+      }));
 
-      // In production, this would fetch from Stripe
-      res.json([]);
+      res.json(formattedMethods);
     } catch (error) {
       console.error("Error getting payment methods:", error);
       res.status(500).json({ message: "Failed to get payment methods" });
@@ -1133,60 +1138,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Adding payment method:", { type, owner: owner.id });
 
-      // In development mode, return success without Stripe
-      if (!stripe) {
-        const mockMethod = {
-          id: 'mock_' + type + '_' + Date.now(),
-          type,
-          last4: type === 'card' ? cardNumber.slice(-4) : accountNumber.slice(-4),
-          ...(type === 'card' ? { expiryMonth, expiryYear } : { bankName }),
-          isDefault: true,
-        };
-        
-        return res.json({
-          message: "Payment method added successfully (development mode)",
-          method: mockMethod,
-        });
-      }
+      // Create payment method record in database
+      const paymentMethodData = {
+        ownerId: owner.id,
+        type,
+        last4: type === 'card' ? cardNumber.slice(-4) : accountNumber.slice(-4),
+        ...(type === 'card' ? {
+          expiryMonth,
+          expiryYear,
+          cardholderName
+        } : {
+          bankName,
+          accountHolderName
+        }),
+        isDefault: true, // First method is default, or handle this logic
+        stripePaymentMethodId: null, // Will be set when Stripe integration is complete
+      };
 
-      // In production, this would create the payment method with Stripe
-      // Ensure customer exists
-      if (!user.stripeCustomerId) {
-        const customer = await stripe.customers.create({
-          email: user.email!,
-          name: `${user.firstName} ${user.lastName}`,
-        });
-        
-        await storage.updateUserStripeInfo(userId, customer.id);
-        user.stripeCustomerId = customer.id;
-      }
+      // Save to database
+      const savedMethod = await storage.createOwnerPaymentMethod(paymentMethodData);
 
-      // Create payment method with Stripe
-      let stripePaymentMethod;
-      if (type === 'card') {
-        // In a real implementation, you'd use Stripe Elements or Payment Method API
-        // This is simplified for demonstration
-        stripePaymentMethod = {
-          id: 'pm_mock_card_' + Date.now(),
-          type: 'card',
-          card: { last4: cardNumber.slice(-4), exp_month: expiryMonth, exp_year: expiryYear }
-        };
-      } else {
-        stripePaymentMethod = {
-          id: 'pm_mock_bank_' + Date.now(),
-          type: 'us_bank_account',
-          us_bank_account: { last4: accountNumber.slice(-4), bank_name: bankName }
-        };
-      }
-
-      res.json({
+      return res.json({
         message: "Payment method added successfully",
         method: {
-          id: stripePaymentMethod.id,
-          type,
-          last4: type === 'card' ? stripePaymentMethod.card.last4 : stripePaymentMethod.us_bank_account.last4,
-          ...(type === 'card' ? { expiryMonth, expiryYear } : { bankName }),
-          isDefault: true,
+          id: savedMethod.id,
+          type: savedMethod.type,
+          last4: savedMethod.last4,
+          ...(savedMethod.type === 'card' ? {
+            expiryMonth: savedMethod.expiryMonth,
+            expiryYear: savedMethod.expiryYear,
+            cardholderName: savedMethod.cardholderName
+          } : {
+            bankName: savedMethod.bankName,
+            accountHolderName: savedMethod.accountHolderName
+          }),
+          isDefault: savedMethod.isDefault,
         },
       });
     } catch (error: any) {
@@ -1207,13 +1193,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Removing payment method:", methodId);
 
-      // In development mode, just return success
-      if (!stripe) {
-        return res.json({ message: "Payment method removed (development mode)" });
-      }
-
-      // In production, detach from Stripe customer
-      // await stripe.paymentMethods.detach(methodId);
+      // Remove from database (soft delete)
+      await storage.deleteOwnerPaymentMethod(methodId);
 
       res.json({ message: "Payment method removed successfully" });
     } catch (error: any) {

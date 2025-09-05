@@ -147,6 +147,27 @@ export const payments = pgTable("payments", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Owner payment methods
+export const ownerPaymentMethods = pgTable("owner_payment_methods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
+  type: varchar("type").notNull(), // 'card' or 'bank'
+  last4: varchar("last4").notNull(),
+  // Card specific fields
+  expiryMonth: varchar("expiry_month"),
+  expiryYear: varchar("expiry_year"),
+  cardholderName: varchar("cardholder_name"),
+  // Bank specific fields
+  bankName: varchar("bank_name"),
+  accountHolderName: varchar("account_holder_name"),
+  // Stripe integration
+  stripePaymentMethodId: varchar("stripe_payment_method_id"),
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Notifications
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -189,6 +210,7 @@ export const ownersRelations = relations(owners, ({ one, many }) => ({
   user: one(users, { fields: [owners.userId], references: [users.id] }),
   locations: many(washoutLocations),
   payments: many(payments),
+  paymentMethods: many(ownerPaymentMethods),
 }));
 
 export const washoutLocationsRelations = relations(washoutLocations, ({ one, many }) => ({
@@ -200,6 +222,10 @@ export const washoutActivitiesRelations = relations(washoutActivities, ({ one })
   driver: one(drivers, { fields: [washoutActivities.driverId], references: [drivers.id] }),
   location: one(washoutLocations, { fields: [washoutActivities.locationId], references: [washoutLocations.id] }),
   payment: one(payments, { fields: [washoutActivities.id], references: [payments.activityId] }),
+}));
+
+export const ownerPaymentMethodsRelations = relations(ownerPaymentMethods, ({ one }) => ({
+  owner: one(owners, { fields: [ownerPaymentMethods.ownerId], references: [owners.id] }),
 }));
 
 export const paymentsRelations = relations(payments, ({ one }) => ({
@@ -297,6 +323,12 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
   createdAt: true,
 });
 
+export const insertOwnerPaymentMethodSchema = createInsertSchema(ownerPaymentMethods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -317,3 +349,5 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type OwnerPaymentMethod = typeof ownerPaymentMethods.$inferSelect;
+export type InsertOwnerPaymentMethod = z.infer<typeof insertOwnerPaymentMethodSchema>;
