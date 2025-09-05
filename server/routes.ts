@@ -787,6 +787,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check terms agreement status
+  app.get('/api/owners/terms-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      res.json({ 
+        hasAgreed: !!owner.hasAgreedToTerms,
+        agreedAt: owner.termsAgreedAt || null
+      });
+    } catch (error) {
+      console.error("Error checking terms status:", error);
+      res.status(500).json({ message: "Failed to check terms status" });
+    }
+  });
+
   // Terms agreement endpoint
   app.post('/api/owners/agree-to-terms', isAuthenticated, async (req: any, res) => {
     try {

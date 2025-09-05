@@ -26,6 +26,12 @@ export default function PaymentMethods() {
     refetchInterval: 30000,
   });
 
+  // Check if owner has agreed to terms
+  const { data: termsStatus } = useQuery({
+    queryKey: ['/api/owners/terms-status'],
+    refetchInterval: 30000,
+  });
+
   const [formData, setFormData] = useState({
     // Credit card fields
     cardNumber: '',
@@ -95,6 +101,7 @@ export default function PaymentMethods() {
         description: "You can now add payment methods and locations" 
       });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/terms-status'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/payment-methods'] });
     },
     onError: (error: any) => {
       toast({ 
@@ -485,9 +492,15 @@ export default function PaymentMethods() {
               </div>
               <Dialog open={showTerms} onOpenChange={setShowTerms}>
                 <DialogTrigger asChild>
-                  <Button className="bg-red-600 hover:bg-red-700 text-white font-semibold" size="sm" data-testid="button-terms">
-                    ⚠️ Must Read Terms
-                  </Button>
+                  {hasAgreedToTerms || termsStatus?.hasAgreed ? (
+                    <Button variant="outline" size="sm" data-testid="button-terms" className="text-green-700 border-green-200">
+                      ✓ Terms Reviewed
+                    </Button>
+                  ) : (
+                    <Button className="bg-red-600 hover:bg-red-700 text-white font-semibold" size="sm" data-testid="button-terms">
+                      ⚠️ Must Read Terms
+                    </Button>
+                  )}
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
