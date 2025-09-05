@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Truck, Building2, Shield, ArrowRight } from "lucide-react";
 import { useState } from "react";
+import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
 
 export default function Landing() {
   const [selectedRole, setSelectedRole] = useState<'driver' | 'owner' | null>(null);
@@ -15,12 +16,12 @@ export default function Landing() {
       {/* Header */}
       <header className="p-6 border-b bg-card/50 backdrop-blur">
         <div className="container mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <img 
-              src="/attached_assets/shutterstock_2364131707_1757091585450.png"
-              alt="WashOut Pro Logo"
-              className="w-12 h-12 object-contain"
-            />
+          <img 
+            src={logoImage}
+            alt="WashOut Pro Logo"
+            className="w-12 h-12 object-contain"
+          />
+          <div className="flex-1 flex justify-center">
             <h1 className="text-2xl font-bold text-foreground">WashOut Pro</h1>
           </div>
           <Button 

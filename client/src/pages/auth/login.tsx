@@ -9,6 +9,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
 
 export default function Login() {
   const { toast } = useToast();
@@ -105,7 +106,7 @@ export default function Login() {
           </Link>
           <div className="flex items-center space-x-3">
             <img 
-              src="/attached_assets/shutterstock_2364131707_1757091585450.png"
+              src={logoImage}
               alt="WashOut Pro Logo"
               className="w-12 h-12 object-contain"
             />

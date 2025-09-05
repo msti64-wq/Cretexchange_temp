@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft, Building2, User } from "lucide-react";
+import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
 
 export default function Register({ preselectedRole }: { preselectedRole?: 'driver' | 'owner' }) {
   const { toast } = useToast();
@@ -101,7 +102,7 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
           </Link>
           <div className="flex items-center space-x-3">
             <img 
-              src="/attached_assets/shutterstock_2364131707_1757091585450.png"
+              src={logoImage}
               alt="WashOut Pro Logo"
               className="w-12 h-12 object-contain"
             />

@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Bell, Settings, LogOut } from "lucide-react";
+import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -11,7 +12,7 @@ export function DriverHeader() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <img 
-            src="/attached_assets/shutterstock_2364131707_1757091585450.png"
+            src={logoImage}
             alt="WashOut Pro Logo"
             className="w-12 h-12 object-contain bg-white/20 rounded-full p-1"
           />
