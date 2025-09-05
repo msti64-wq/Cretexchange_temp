@@ -169,35 +169,6 @@ export default function Landing() {
           </Card>
         </div>
 
-        {/* CTA Section */}
-        <div className="text-center bg-gradient-to-r from-primary to-secondary rounded-2xl p-12 text-white">
-          <h3 className="text-3xl font-bold mb-4">Ready to Get Started?</h3>
-          <p className="text-xl mb-8 opacity-90">
-            Join thousands of drivers and location owners using WashOut Pro
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg"
-              variant="secondary"
-              onClick={() => handleGetStarted('driver')}
-              data-testid="button-join-driver"
-              className="bg-white text-primary hover:bg-white/90"
-            >
-              Join as Driver
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-            <Button 
-              size="lg"
-              variant="outline"
-              onClick={() => handleGetStarted('owner')}
-              data-testid="button-join-owner"
-              className="border-white text-white hover:bg-white/10"
-            >
-              Join as Location Owner
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </div>
       </main>
 
       {/* Footer */}
