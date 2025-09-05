@@ -161,7 +161,7 @@ export default function OwnerLocations() {
                 Add Location
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-full max-w-md mx-4">
+            <DialogContent className="w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Location</DialogTitle>
               </DialogHeader>
