@@ -253,10 +253,9 @@ export default function DriverProfile() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="check">Check</SelectItem>
                     <SelectItem value="venmo">Venmo</SelectItem>
                     <SelectItem value="zelle">Zelle</SelectItem>
-                    <SelectItem value="ach">ACH Transfer</SelectItem>
+                    <SelectItem value="ach">Direct Deposit (ACH)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
