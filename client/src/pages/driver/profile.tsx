@@ -260,22 +260,13 @@ export default function DriverProfile() {
                 </Select>
               </div>
               
-              <div>
-                <Label htmlFor="paymentFrequency">Payment Frequency</Label>
-                <Select 
-                  value={formData.paymentFrequency}
-                  onValueChange={(value) => setFormData({...formData, paymentFrequency: value})}
-                  disabled={!isEditing}
-                >
-                  <SelectTrigger data-testid="select-payment-frequency">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="biweekly">Bi-weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center mb-2">
+                  <Label className="text-blue-800 font-medium">Payment Schedule</Label>
+                </div>
+                <p className="text-sm text-blue-700">
+                  Payments are processed weekly on Fridays for all completed washout activities from the previous week.
+                </p>
               </div>
             </CardContent>
           </Card>
