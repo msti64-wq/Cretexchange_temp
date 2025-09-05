@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { useLocation } from "wouter";
-import { CreditCard, Building2, ArrowLeft, Plus, Check, AlertCircle } from "lucide-react";
+import { CreditCard, Building2, ArrowLeft, Plus, Check, AlertCircle, FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function PaymentMethods() {
@@ -16,6 +17,7 @@ export default function PaymentMethods() {
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [paymentType, setPaymentType] = useState<'card' | 'bank'>('card');
+  const [showTerms, setShowTerms] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: paymentMethods, isLoading } = useQuery({
@@ -443,6 +445,44 @@ export default function PaymentMethods() {
             </CardContent>
           </Card>
         )}
+
+        {/* Terms and Conditions */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <FileText className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <div className="font-medium">Terms and Conditions</div>
+                  <div className="text-sm text-muted-foreground">
+                    Review payment terms and platform policies
+                  </div>
+                </div>
+              </div>
+              <Dialog open={showTerms} onOpenChange={setShowTerms}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" data-testid="button-terms">
+                    View Terms
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Terms and Conditions</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 text-sm">
+                    <p className="text-muted-foreground">
+                      Please provide the terms and conditions document content. This section will be populated with your specific terms once you provide the document.
+                    </p>
+                    <div className="bg-muted/50 p-4 rounded-lg">
+                      <h3 className="font-semibold mb-2">Placeholder Content</h3>
+                      <p>This dialog will contain your terms and conditions document once provided.</p>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardContent>
+        </Card>
       </main>
 
       <MobileNav role="owner" />
