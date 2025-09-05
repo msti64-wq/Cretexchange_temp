@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { MobileNav } from "@/components/MobileNav";
 import { Building2, CreditCard, Save, LogOut, AlertCircle, Crown, Lock, Eye, EyeOff } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 
 export default function OwnerProfile() {
@@ -45,6 +45,8 @@ export default function OwnerProfile() {
       });
       setIsEditing(false);
       refetch();
+      // Also invalidate owner dashboard data so profile completion notices update
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
     },
     onError: (error) => {
       toast({
