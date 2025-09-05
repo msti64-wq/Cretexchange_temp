@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { Bell, Settings, Truck, LogOut } from "lucide-react";
+import { Bell, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,9 +10,11 @@ export function DriverHeader() {
     <header className="gradient-bg text-white p-4 shadow-lg">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-            <Truck className="w-5 h-5" />
-          </div>
+          <img 
+            src="/attached_assets/shutterstock_2364131707_1757091585450.png"
+            alt="WashOut Pro Logo"
+            className="w-12 h-12 object-contain bg-white/20 rounded-full p-1"
+          />
           <div>
             <h1 className="font-semibold text-lg" data-testid="text-driver-name">
               {user?.firstName} {user?.lastName}

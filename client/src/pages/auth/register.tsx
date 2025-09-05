@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
-import { ArrowLeft, Truck, Building2, User } from "lucide-react";
+import { ArrowLeft, Building2, User } from "lucide-react";
 
 export default function Register({ preselectedRole }: { preselectedRole?: 'driver' | 'owner' }) {
   const { toast } = useToast();
@@ -100,9 +100,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
             </Button>
           </Link>
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <Truck className="w-6 h-6 text-primary-foreground" />
-            </div>
+            <img 
+              src="/attached_assets/shutterstock_2364131707_1757091585450.png"
+              alt="WashOut Pro Logo"
+              className="w-12 h-12 object-contain"
+            />
             <h1 className="text-2xl font-bold text-foreground">WashOut Pro</h1>
           </div>
         </div>
