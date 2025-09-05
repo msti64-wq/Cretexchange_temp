@@ -521,19 +521,82 @@ export default function PaymentMethods() {
                     </div>
                     
                     <div className="border rounded-lg p-4 bg-background">
-                      <h3 className="font-semibold mb-3">WashOut Pro Platform Terms</h3>
-                      <div className="space-y-3 text-xs leading-relaxed">
-                        <p className="text-muted-foreground">
-                          [Your terms and conditions document will be displayed here once provided]
-                        </p>
-                        <div className="bg-muted/30 p-3 rounded">
-                          <h4 className="font-medium mb-2">Key Points (Placeholder):</h4>
-                          <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                            <li>Platform usage responsibilities</li>
-                            <li>Payment processing terms</li>
-                            <li>Location owner obligations</li>
-                            <li>Liability and insurance requirements</li>
-                          </ul>
+                      <div className="space-y-4 text-xs leading-relaxed max-h-96 overflow-y-auto">
+                        <div className="text-center">
+                          <h3 className="font-bold text-lg mb-2">WashOut Pro Terms and Conditions</h3>
+                          <p className="font-semibold">Agreement</p>
+                          <p className="font-medium">Effective Date: September 5, 2025</p>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <p>
+                            This Terms and Conditions Agreement ("Agreement") is entered into by and between WashOut
+                            Pro, LLC ("WashOut Pro," "we," or "our") and each rock crushing yard operator ("Owner,"
+                            "you," or "your").
+                          </p>
+                          
+                          <p>
+                            By clicking "I Agree," enrolling in, and using the WashOut Pro system, you acknowledge that
+                            you have read, understood, and agree to be bound by the following terms:
+                          </p>
+                          
+                          <div className="space-y-4">
+                            <div>
+                              <h4 className="font-semibold mb-2">1. Subscription and Account</h4>
+                              <div className="space-y-2 ml-4">
+                                <p><strong>1.1 Subscription Fee:</strong> Each published location is subject to a monthly subscription fee as communicated to you by WashOut Pro.</p>
+                                <p><strong>1.2 Payment Method:</strong> You must provide and maintain a valid payment method (credit account, ACH, or linked bank account) for automatic withdrawals. Subscription fees will be billed monthly.</p>
+                                <p><strong>1.3 Authorization:</strong> By agreeing to this Agreement, you authorize WashOut Pro to automatically withdraw subscription fees, service charges, and other applicable fees from your designated account.</p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 className="font-semibold mb-2">2. Payments to Drivers</h4>
+                              <div className="space-y-2 ml-4">
+                                <p><strong>2.1 Payment Obligation:</strong> Owners are responsible for compensating participating concrete truck drivers for washout services in the minimum amount of $10.00 per washout (or higher, as determined by you within the app).</p>
+                                <p><strong>2.2 Payment Schedule:</strong> Payments to drivers will be processed on a weekly basis.</p>
+                                <p><strong>2.3 Service Fee:</strong> For each payment made to a driver, WashOut Pro will assess a 10% service charge to the Owner, billed in addition to the driver's compensation. Drivers shall receive the full washout payment without any deduction for service fees.</p>
+                                <div className="bg-muted/50 p-2 rounded italic">
+                                  Example: If a driver is paid $10.00, the Owner will be billed $11.00 ($10.00 driver payment + $1.00 service fee).
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 className="font-semibold mb-2">3. System Participation</h4>
+                              <div className="space-y-2 ml-4">
+                                <p><strong>3.1 Eligibility:</strong> Only approved owners with active accounts may use the WashOut Pro platform.</p>
+                                <p><strong>3.2 Compliance:</strong> Owners agree to comply with all applicable laws, safety standards, and environmental regulations related to washout services.</p>
+                                <p><strong>3.3 Account Suspension:</strong> WashOut Pro reserves the right to suspend or terminate access to the system for non-payment, misuse, or violation of this Agreement.</p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 className="font-semibold mb-2">4. Disclaimers and Liability</h4>
+                              <div className="space-y-2 ml-4">
+                                <p><strong>4.1 Independent Contractors:</strong> Drivers participating in WashOut Pro are independent contractors, not employees, agents, or representatives of WashOut Pro.</p>
+                                <p><strong>4.2 Limitation of Liability:</strong> WashOut Pro is not responsible for disputes, damages, or claims arising out of washout services performed by drivers.</p>
+                                <p><strong>4.3 Indemnification:</strong> You agree to indemnify and hold harmless WashOut Pro, its affiliates, and representatives from any claims, damages, or expenses resulting from your participation in the system.</p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 className="font-semibold mb-2">5. Termination</h4>
+                              <div className="space-y-2 ml-4">
+                                <p><strong>5.1 By Owner:</strong> You may terminate your participation at any time by providing thirty (30) days written notice to WashOut Pro.</p>
+                                <p><strong>5.2 By WashOut Pro:</strong> WashOut Pro may terminate this Agreement immediately for failure to pay, fraudulent activity, or material breach of terms.</p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 className="font-semibold mb-2">6. Miscellaneous</h4>
+                              <div className="space-y-2 ml-4">
+                                <p><strong>6.1 Governing Law:</strong> This Agreement shall be governed by the laws of the United States.</p>
+                                <p><strong>6.2 Entire Agreement:</strong> This Agreement constitutes the full understanding between the parties and supersedes any prior agreements.</p>
+                                <p><strong>6.3 Amendments:</strong> WashOut Pro may update these Terms and Conditions with notice to participating Owners. Continued use of the system constitutes acceptance of updated terms.</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
