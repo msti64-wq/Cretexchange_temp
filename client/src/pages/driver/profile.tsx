@@ -259,6 +259,95 @@ export default function DriverProfile() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Payment Account Details */}
+              {formData.paymentMethod === 'venmo' && (
+                <div>
+                  <Label htmlFor="venmoUsername">Venmo Username</Label>
+                  <Input
+                    id="venmoUsername"
+                    placeholder="@username"
+                    value={formData.venmoUsername || ''}
+                    onChange={(e) => setFormData({...formData, venmoUsername: e.target.value})}
+                    disabled={!isEditing}
+                    data-testid="input-venmo-username"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter your Venmo username (include the @ symbol)
+                  </p>
+                </div>
+              )}
+
+              {formData.paymentMethod === 'zelle' && (
+                <div>
+                  <Label htmlFor="zelleInfo">Zelle Email or Phone</Label>
+                  <Input
+                    id="zelleInfo"
+                    placeholder="email@example.com or (555) 123-4567"
+                    value={formData.zelleInfo || ''}
+                    onChange={(e) => setFormData({...formData, zelleInfo: e.target.value})}
+                    disabled={!isEditing}
+                    data-testid="input-zelle-info"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter the email address or phone number linked to your Zelle account
+                  </p>
+                </div>
+              )}
+
+              {formData.paymentMethod === 'ach' && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="bankName">Bank Name</Label>
+                    <Input
+                      id="bankName"
+                      placeholder="e.g., Chase Bank, Wells Fargo"
+                      value={formData.bankName || ''}
+                      onChange={(e) => setFormData({...formData, bankName: e.target.value})}
+                      disabled={!isEditing}
+                      data-testid="input-bank-name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="routingNumber">Routing Number</Label>
+                    <Input
+                      id="routingNumber"
+                      placeholder="9-digit routing number"
+                      value={formData.routingNumber || ''}
+                      onChange={(e) => setFormData({...formData, routingNumber: e.target.value})}
+                      disabled={!isEditing}
+                      data-testid="input-routing-number"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="accountNumber">Account Number</Label>
+                    <Input
+                      id="accountNumber"
+                      placeholder="Your account number"
+                      value={formData.accountNumber || ''}
+                      onChange={(e) => setFormData({...formData, accountNumber: e.target.value})}
+                      disabled={!isEditing}
+                      data-testid="input-account-number"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="accountType">Account Type</Label>
+                    <Select 
+                      value={formData.accountType || 'checking'}
+                      onValueChange={(value) => setFormData({...formData, accountType: value})}
+                      disabled={!isEditing}
+                    >
+                      <SelectTrigger data-testid="select-account-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="checking">Checking</SelectItem>
+                        <SelectItem value="savings">Savings</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
               
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center mb-2">
