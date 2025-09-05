@@ -104,7 +104,7 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
             <img 
               src={logoImage}
               alt="WashOut Pro Logo"
-              className="w-12 h-12 object-contain"
+              className="w-16 h-16 object-contain"
             />
             <h1 className="text-2xl font-bold text-foreground">WashOut Pro</h1>
           </div>

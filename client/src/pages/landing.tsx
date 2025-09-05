@@ -19,7 +19,7 @@ export default function Landing() {
           <img 
             src={logoImage}
             alt="WashOut Pro Logo"
-            className="w-12 h-12 object-contain"
+            className="w-16 h-16 object-contain"
           />
           <div className="flex-1 flex justify-center">
             <h1 className="text-2xl font-bold text-foreground">WashOut Pro</h1>

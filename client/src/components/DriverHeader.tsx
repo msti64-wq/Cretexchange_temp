@@ -14,7 +14,7 @@ export function DriverHeader() {
           <img 
             src={logoImage}
             alt="WashOut Pro Logo"
-            className="w-12 h-12 object-contain bg-white/20 rounded-full p-1"
+            className="w-14 h-14 object-contain bg-white/20 rounded-full p-1"
           />
           <div>
             <h1 className="font-semibold text-lg" data-testid="text-driver-name">
