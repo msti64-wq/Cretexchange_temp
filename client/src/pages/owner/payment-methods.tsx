@@ -597,7 +597,7 @@ export default function PaymentMethods() {
                             <div>
                               <h4 className="font-semibold mb-2">6. Miscellaneous</h4>
                               <div className="space-y-2 ml-4">
-                                <p><strong>6.1 Governing Law:</strong> This Agreement shall be governed by the laws of the state of [Insert State].</p>
+                                <p><strong>6.1 Governing Law:</strong> This Agreement shall be governed by the laws of the state of Texas.</p>
                                 <p><strong>6.2 Entire Agreement:</strong> This Agreement constitutes the full understanding between the parties and supersedes any prior agreements.</p>
                                 <p><strong>6.3 Amendments:</strong> WashOut Pro may update these Terms and Conditions with notice to participating Owners. Continued use of the system constitutes acceptance of updated terms.</p>
                               </div>
