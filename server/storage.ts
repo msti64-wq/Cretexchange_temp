@@ -141,6 +141,7 @@ export interface IStorage {
   createDriverWallet(wallet: InsertDriverWallet): Promise<DriverWallet>;
   getDriverWallet(driverId: string): Promise<DriverWallet | undefined>;
   updateWalletBalance(driverId: string, availableBalance: string, pendingBalance: string): Promise<DriverWallet>;
+  creditDriverWallet(driverId: string, amount: string, sourceType: 'washout' | 'adjustment' | 'refund', sourceId: string, description?: string): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }>;
   
   // Wallet transaction operations
   createWalletTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction>;
@@ -1128,21 +1129,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Wallet operations
-  async createDriverWallet(wallet: InsertDriverWallet): Promise<DriverWallet> {
-    const [newWallet] = await db.insert(driverWallets).values(wallet).returning();
+  async createDriverWallet(wallet: InsertDriverWallet, txHandle?: any): Promise<DriverWallet> {
+    const dbHandle = txHandle || db;
+    const [newWallet] = await dbHandle.insert(driverWallets).values(wallet).returning();
     return newWallet;
   }
 
-  async getDriverWallet(driverId: string): Promise<DriverWallet | undefined> {
-    const [wallet] = await db
-      .select()
-      .from(driverWallets)
-      .where(eq(driverWallets.driverId, driverId));
-    return wallet;
+  async getDriverWallet(driverId: string, txHandle?: any, forUpdate = false): Promise<DriverWallet | undefined> {
+    const dbHandle = txHandle || db;
+    
+    // Add FOR UPDATE lock to prevent race conditions during transactions
+    if (forUpdate && txHandle) {
+      // Use proper Drizzle FOR UPDATE syntax
+      const [wallet] = await dbHandle
+        .select()
+        .from(driverWallets)
+        .where(eq(driverWallets.driverId, driverId))
+        .for('update');
+      return wallet;
+    } else {
+      const [wallet] = await dbHandle
+        .select()
+        .from(driverWallets)
+        .where(eq(driverWallets.driverId, driverId));
+      return wallet;
+    }
   }
 
-  async updateWalletBalance(driverId: string, availableBalance: string, pendingBalance: string): Promise<DriverWallet> {
-    const [wallet] = await db
+  async updateWalletBalance(driverId: string, availableBalance: string, pendingBalance: string, txHandle?: any): Promise<DriverWallet> {
+    const dbHandle = txHandle || db;
+    const [wallet] = await dbHandle
       .update(driverWallets)
       .set({
         availableBalance,
@@ -1154,9 +1170,102 @@ export class DatabaseStorage implements IStorage {
     return wallet;
   }
 
+  async creditDriverWallet(
+    driverId: string, 
+    amount: string, 
+    sourceType: 'washout' | 'adjustment' | 'refund', 
+    sourceId: string, 
+    description?: string
+  ): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }> {
+    return await db.transaction(async (tx) => {
+      try {
+        // CRITICAL FIX: Get or create driver wallet with FOR UPDATE lock FIRST
+        // This prevents race conditions by locking the row before checking for duplicates
+        let wallet = await this.getDriverWallet(driverId, tx, true);
+        if (!wallet) {
+          wallet = await this.createDriverWallet({
+            driverId,
+            availableBalance: "0.00",
+            pendingBalance: "0.00"
+          }, tx);
+          // Re-fetch with lock after creation
+          wallet = await this.getDriverWallet(driverId, tx, true);
+          if (!wallet) {
+            throw new Error('Failed to create or retrieve wallet');
+          }
+        }
+
+        // IDEMPOTENCY CHECK: Now check if this exact credit already exists
+        // This check is AFTER acquiring the lock to prevent race conditions
+        const existingTransaction = await tx
+          .select()
+          .from(walletTransactions)
+          .where(and(
+            eq(walletTransactions.driverId, driverId),
+            eq(walletTransactions.sourceType, sourceType),
+            eq(walletTransactions.sourceId, sourceId),
+            eq(walletTransactions.direction, 'credit')
+          ))
+          .limit(1);
+
+        if (existingTransaction.length > 0) {
+          console.log(`Idempotent credit attempt detected for driver ${driverId}, source ${sourceType}:${sourceId}`);
+          // Return the existing transaction and current wallet state
+          return { wallet, transaction: existingTransaction[0] };
+        }
+
+        // CENT-SAFE ARITHMETIC: Convert to cents to avoid floating point precision issues
+        const amountCents = Math.round(parseFloat(amount) * 100);
+        const currentAvailableCents = Math.round(parseFloat(wallet.availableBalance) * 100);
+        const newAvailableCents = currentAvailableCents + amountCents;
+        const newAvailableBalance = (newAvailableCents / 100).toFixed(2);
+        
+        // Validate amounts
+        if (amountCents <= 0) {
+          throw new Error(`Invalid credit amount: ${amount}`);
+        }
+        
+        // Create wallet transaction record first (for better error tracing)
+        const transaction = await this.createWalletTransaction({
+          driverId,
+          amount: amount,
+          direction: 'credit',
+          balanceAfter: newAvailableBalance,
+          sourceType: sourceType,
+          sourceId: sourceId,
+          status: 'completed',
+          description: description || `${sourceType} credit: $${amount}`,
+          metadata: {
+            creditType: sourceType,
+            sourceActivityId: sourceId,
+            originalBalanceCents: currentAvailableCents,
+            creditCents: amountCents,
+            newBalanceCents: newAvailableCents
+          }
+        }, tx);
+
+        // ATOMIC UPDATE: Update wallet balance using the transaction handle
+        const updatedWallet = await this.updateWalletBalance(
+          driverId,
+          newAvailableBalance,
+          wallet.pendingBalance,
+          tx
+        );
+
+        console.log(`✅ Wallet credited: Driver ${driverId}, Amount $${amount}, New Balance $${newAvailableBalance}, Source: ${sourceType}:${sourceId}`);
+        return { wallet: updatedWallet, transaction };
+
+      } catch (error) {
+        console.error(`❌ Wallet credit failed for driver ${driverId}:`, error);
+        throw error; // Let transaction auto-rollback
+      }
+    });
+  }
+
   // Wallet transaction operations
-  async createWalletTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction> {
-    const [newTransaction] = await db.insert(walletTransactions).values(transaction).returning();
+  async createWalletTransaction(transaction: InsertWalletTransaction, txHandle?: any): Promise<WalletTransaction> {
+    const dbHandle = txHandle || db;
+    const [newTransaction] = await dbHandle.insert(walletTransactions).values(transaction).returning();
     return newTransaction;
   }
 

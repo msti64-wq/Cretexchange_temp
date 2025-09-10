@@ -1,6 +1,7 @@
 import { sql, relations } from "drizzle-orm";
 import {
   index,
+  uniqueIndex,
   jsonb,
   pgTable,
   timestamp,
@@ -237,7 +238,12 @@ export const walletTransactions = pgTable("wallet_transactions", {
   description: text("description"),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  // Index for performance
+  driverCreatedAtIndex: index("idx_wallet_transactions_driver").on(table.driverId, table.createdAt),
+  // UNIQUE constraint to prevent duplicate credits from the same source - sourceId can be null
+  idempotencyConstraint: uniqueIndex("uniq_wallet_transactions_idempotency").on(table.driverId, table.sourceType, table.sourceId, table.direction),
+}));
 
 // Withdrawals - tracks withdrawal requests and processing status
 export const withdrawals = pgTable("withdrawals", {

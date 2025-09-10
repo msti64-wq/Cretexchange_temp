@@ -718,18 +718,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify the activity
       const activity = await storage.verifyWashoutActivity(id, userId);
 
-      // Create payment with 10% platform commission
+      // Calculate driver's share (90% of washout amount after 10% platform commission)
       const activityAmount = Number(activityDetails.amount);
-      const processingFee = activityAmount * 0.10; // 10% commission
+      const platformCommission = activityAmount * 0.10; // 10% commission to platform
+      const driverAmount = activityAmount - platformCommission; // 90% to driver
 
-      await storage.createPayment({
+      // Credit driver's wallet and create payment record for reporting
+      const walletCredit = await storage.creditDriverWallet(
+        activityDetails.driverId,
+        driverAmount.toString(),
+        'washout',
+        id,
+        `Washout payment for activity ${id} - $${activityAmount} less $${platformCommission.toFixed(2)} platform fee`
+      );
+
+      // Create Payment record for admin/owner reporting and audit trail
+      const payment = await storage.createPayment({
+        activityId: id,
         driverId: activityDetails.driverId,
         ownerId: owner.id,
-        activityId: id,
-        amount: activityAmount.toString(),
-        processingFee: processingFee.toString(),
-        status: 'pending'
+        amount: driverAmount.toString(),
+        processingFee: platformCommission.toFixed(2),
+        status: 'settled', // Status indicating wallet settlement
+        stripePaymentIntentId: `wallet_${walletCredit.transaction.id}`, // Link to wallet transaction
       });
+
+      console.log(`✅ Credited driver wallet: $${driverAmount} for activity ${id}, Payment record: ${payment.id}`);
+
+      // TODO: In a real implementation, charge the owner via Stripe here
+      // For now, we're focusing on the wallet credit functionality
+      // The owner charging logic would happen here using their payment method
 
       res.json(activity);
     } catch (error) {
