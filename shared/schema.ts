@@ -177,6 +177,19 @@ export const ownerPaymentMethods = pgTable("owner_payment_methods", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Webhook events for idempotency handling
+export const webhookEvents = pgTable("webhook_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  stripeEventId: varchar("stripe_event_id").notNull().unique(),
+  eventType: varchar("event_type").notNull(),
+  processed: boolean("processed").default(false),
+  accountId: varchar("account_id"),
+  retryCount: integer("retry_count").default(0),
+  errorMessage: text("error_message"),
+  processedAt: timestamp("processed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Notifications
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

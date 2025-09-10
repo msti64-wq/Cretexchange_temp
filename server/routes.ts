@@ -33,10 +33,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         admin_user_exists: !!userCount
       });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ 
         status: 'error', 
         environment: process.env.REPLIT_DEPLOYMENT ? 'production' : 'development',
-        error: error.message 
+        error: errorMessage 
       });
     }
   });
@@ -66,7 +67,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Database status check failed:', error);
-      res.status(500).json({ error: error.message });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: errorMessage });
     }
   });
 
@@ -168,9 +170,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('❌ Error creating test data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ 
         success: false, 
-        error: error.message 
+        error: errorMessage 
       });
     }
   });
@@ -217,7 +220,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`✅ Created user: ${userData.username}`);
           }
         } catch (error) {
-          console.log(`⚠️ Issue with user ${userData.username}:`, error.message);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.log(`⚠️ Issue with user ${userData.username}:`, errorMessage);
         }
       }
 
@@ -237,9 +241,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('❌ Error setting up users:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ 
         success: false, 
-        error: error.message 
+        error: errorMessage 
       });
     }
   });
@@ -849,7 +854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: userId,
         subject: `Terms Agreement - ${agreementData.ownerName}`,
         message: `Owner "${agreementData.ownerName}" (${agreementData.ownerEmail}) from company "${agreementData.ownerCompany}" has read and agreed to the Terms and Conditions on ${agreementData.agreedAt.toLocaleDateString()} at ${agreementData.agreedAt.toLocaleTimeString()}.\n\nIP Address: ${agreementData.ipAddress}`,
-        userRole: 'owner',
+        userRole: 'owner' as const,
         userPhone: user.phone || '',
         priority: 'normal'
       };
@@ -972,7 +977,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ clientSecret: paymentIntent.client_secret });
     } catch (error) {
       console.error("Error creating payment intent:", error);
-      res.status(500).json({ message: "Error creating payment intent: " + error.message });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Error creating payment intent: " + errorMessage });
     }
   });
 
@@ -1105,10 +1111,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subscriptionData = {
             status: subscription.status === 'active' ? 'active' : 'inactive',
             plan: 'monthly', // or get from subscription metadata
-            endsAt: new Date(subscription.current_period_end * 1000),
+            endsAt: new Date((subscription as any).current_period_end * 1000),
           };
         } catch (stripeError) {
-          console.log("Could not fetch Stripe subscription:", stripeError.message);
+          const errorMessage = stripeError instanceof Error ? stripeError.message : 'Unknown error';
+          console.log("Could not fetch Stripe subscription:", errorMessage);
         }
       }
 
@@ -1886,7 +1893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: user.id,
         subject,
         message,
-        userRole: user.role || 'driver',
+        userRole: (user.role || 'driver') as 'driver' | 'owner' | 'admin' | 'super_admin',
         userPhone: user.phone,
       });
 
@@ -1895,6 +1902,380 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating message:", error);
       res.status(500).json({ message: "Failed to create message" });
     }
+  });
+
+  // ==================== STRIPE CONNECT ENDPOINTS ====================
+  
+  // Create Stripe Connect Express account for driver
+  app.post('/api/stripe/connect/create-account', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+
+      const driver = await storage.getDriver(userId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      // Check if driver already has a connected account
+      if (driver.connectedAccountId) {
+        return res.status(400).json({ 
+          message: "Driver already has a connected account",
+          accountId: driver.connectedAccountId 
+        });
+      }
+
+      if (!stripe) {
+        // Development mode - create mock account ID
+        const mockAccountId = `acct_dev_${Date.now()}`;
+        await storage.updateDriver(driver.id, { connectedAccountId: mockAccountId });
+        
+        return res.json({
+          accountId: mockAccountId,
+          message: "Development mode: Mock connected account created"
+        });
+      }
+
+      // Create Stripe Express account
+      const account = await stripe.accounts.create({
+        type: 'express',
+        country: 'US',
+        email: user.email,
+        capabilities: {
+          card_payments: { requested: false }, // Not needed for payouts
+          transfers: { requested: true }, // Required for receiving transfers
+        },
+        business_type: 'individual',
+        individual: {
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName,
+          phone: user.phone || undefined,
+        },
+        business_profile: {
+          mcc: '4214', // Motor Freight Transportation
+          product_description: 'Concrete washout services',
+        },
+        settings: {
+          payouts: {
+            schedule: {
+              interval: 'daily',
+            },
+          },
+        },
+      });
+
+      // Store the connected account ID
+      await storage.updateDriver(driver.id, { connectedAccountId: account.id });
+
+      console.log(`✅ Created Stripe Connect account ${account.id} for driver ${user.username}`);
+
+      res.json({
+        accountId: account.id,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        detailsSubmitted: account.details_submitted,
+      });
+
+    } catch (error: any) {
+      console.error("Error creating Stripe Connect account:", error);
+      res.status(500).json({ 
+        message: "Failed to create connected account",
+        error: error.message 
+      });
+    }
+  });
+
+  // Get Stripe Connect onboarding link for driver
+  app.get('/api/stripe/connect/onboarding-link', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+
+      const driver = await storage.getDriver(userId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      if (!driver.connectedAccountId) {
+        return res.status(400).json({ 
+          message: "No connected account found. Create an account first." 
+        });
+      }
+
+      if (!stripe) {
+        // Development mode - return mock onboarding URL
+        return res.json({
+          url: `${process.env.BASE_URL || 'http://localhost:5000'}/api/stripe/connect/mock-onboarding?account=${driver.connectedAccountId}`,
+          message: "Development mode: Mock onboarding link generated"
+        });
+      }
+
+      // Create account link for onboarding
+      const accountLink = await stripe.accountLinks.create({
+        account: driver.connectedAccountId,
+        refresh_url: `${process.env.BASE_URL || 'http://localhost:5000'}/driver/profile`,
+        return_url: `${process.env.BASE_URL || 'http://localhost:5000'}/driver/profile?setup=complete`,
+        type: 'account_onboarding',
+      });
+
+      console.log(`🔗 Generated onboarding link for driver ${user.username} account ${driver.connectedAccountId}`);
+
+      res.json({
+        url: accountLink.url,
+        expiresAt: accountLink.expires_at,
+      });
+
+    } catch (error: any) {
+      console.error("Error creating onboarding link:", error);
+      res.status(500).json({ 
+        message: "Failed to create onboarding link",
+        error: error.message 
+      });
+    }
+  });
+
+  // Check Stripe Connect account status for driver
+  app.get('/api/stripe/connect/account-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+
+      const driver = await storage.getDriver(userId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      if (!driver.connectedAccountId) {
+        return res.json({
+          hasAccount: false,
+          status: 'no_account',
+          message: "No connected account found"
+        });
+      }
+
+      if (!stripe) {
+        // Development mode - return mock status
+        return res.json({
+          hasAccount: true,
+          accountId: driver.connectedAccountId,
+          status: 'active',
+          chargesEnabled: true,
+          payoutsEnabled: true,
+          detailsSubmitted: true,
+          requirementsCurrentlyDue: [],
+          requirementsEventuallyDue: [],
+          message: "Development mode: Mock account status"
+        });
+      }
+
+      // Retrieve account details from Stripe
+      const account = await stripe.accounts.retrieve(driver.connectedAccountId);
+
+      // Determine overall status
+      let status = 'incomplete';
+      if (account.details_submitted && account.charges_enabled && account.payouts_enabled) {
+        status = 'active';
+      } else if (account.details_submitted) {
+        status = 'pending';
+      } else if (account.requirements?.currently_due?.length === 0) {
+        status = 'restricted';
+      }
+
+      console.log(`📊 Account status for driver ${user.username}: ${status}`);
+
+      res.json({
+        hasAccount: true,
+        accountId: account.id,
+        status,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        detailsSubmitted: account.details_submitted,
+        requirementsCurrentlyDue: account.requirements?.currently_due || [],
+        requirementsEventuallyDue: account.requirements?.eventually_due || [],
+        disabled: account.requirements?.disabled_reason,
+        country: account.country,
+        defaultCurrency: account.default_currency,
+      });
+
+    } catch (error: any) {
+      console.error("Error checking account status:", error);
+      res.status(500).json({ 
+        message: "Failed to check account status",
+        error: error.message 
+      });
+    }
+  });
+
+  // Stripe Connect webhook handler with enhanced security and idempotency
+  app.post('/api/stripe/webhooks/connect', async (req, res) => {
+    const environment = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
+    let eventId = 'unknown';
+    
+    try {
+      // Development mode handling
+      if (!stripe) {
+        console.log(`🔧 [${environment}] Webhook received but Stripe is disabled - skipping processing`);
+        return res.status(200).json({ received: true, mode: 'development' });
+      }
+
+      const sig = req.headers['stripe-signature'];
+      const webhookSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+
+      // Validate webhook signature and secret
+      if (!webhookSecret) {
+        console.error(`❌ [${environment}] STRIPE_CONNECT_WEBHOOK_SECRET not configured`);
+        return res.status(400).json({ error: 'Webhook secret not configured' });
+      }
+
+      if (!sig) {
+        console.error(`❌ [${environment}] Missing Stripe signature header`);
+        return res.status(400).json({ error: 'Missing signature' });
+      }
+
+      // Construct and verify event with raw body
+      let event: Stripe.Event;
+      try {
+        event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
+        eventId = event.id;
+      } catch (err: any) {
+        console.error(`❌ [${environment}] Webhook signature verification failed: ${err.message}`);
+        return res.status(400).json({ error: 'Invalid signature' });
+      }
+
+      console.log(`🎣 [${environment}] Received webhook: ${event.type} (${event.id}) for account ${event.account}`);
+
+      // Check for idempotency - has this event been processed before?
+      const alreadyProcessed = await storage.isWebhookEventProcessed(event.id);
+      if (alreadyProcessed) {
+        console.log(`✅ [${environment}] Event ${event.id} already processed - returning success`);
+        return res.status(200).json({ received: true, idempotent: true });
+      }
+
+      // Record the webhook event for idempotency (this prevents duplicate processing)
+      const eventCreated = await storage.createWebhookEvent(event.id, event.type, event.account as string);
+      if (!eventCreated) {
+        console.log(`✅ [${environment}] Event ${event.id} already being processed - returning success`);
+        return res.status(200).json({ received: true, concurrent: true });
+      }
+
+      // Process the webhook event
+      try {
+        await processWebhookEvent(event, environment);
+        
+        // Mark as successfully processed
+        await storage.markWebhookEventProcessed(event.id);
+        console.log(`✅ [${environment}] Successfully processed webhook ${event.id}`);
+        
+        res.status(200).json({ received: true, processed: true });
+        
+      } catch (processingError: any) {
+        // Mark as failed but don't throw - we've received the webhook successfully
+        await storage.markWebhookEventFailed(event.id, processingError.message);
+        console.error(`❌ [${environment}] Failed to process webhook ${event.id}:`, processingError.message);
+        
+        // Return 200 to prevent Stripe from retrying, but log the processing failure
+        res.status(200).json({ received: true, processed: false, error: 'Processing failed' });
+      }
+
+    } catch (error: any) {
+      console.error(`💥 [${environment}] Critical webhook error for event ${eventId}:`, error.message);
+      
+      // For critical errors (signature verification, etc.), return 400 to prevent retries
+      res.status(400).json({ 
+        error: 'Webhook processing failed',
+        eventId: eventId !== 'unknown' ? eventId : undefined
+      });
+    }
+  });
+
+  // Helper function to process webhook events
+  async function processWebhookEvent(event: Stripe.Event, environment: string): Promise<void> {
+    switch (event.type) {
+      case 'account.updated':
+        const account = event.data.object as Stripe.Account;
+        
+        // Find driver with this connected account ID
+        const driver = await storage.getDriverByConnectedAccountId(account.id);
+        if (!driver) {
+          console.warn(`⚠️ [${environment}] No driver found for connected account ${account.id}`);
+          return;
+        }
+
+        console.log(`📦 [${environment}] Account ${account.id} updated for driver ${driver.id}`);
+        console.log(`   Charges enabled: ${account.charges_enabled}`);
+        console.log(`   Payouts enabled: ${account.payouts_enabled}`);
+        console.log(`   Details submitted: ${account.details_submitted}`);
+        
+        // Send appropriate notifications based on account status
+        if (account.payouts_enabled && account.details_submitted) {
+          await storage.createNotification({
+            userId: driver.userId,
+            title: "Bank Account Connected",
+            message: "Your bank account has been successfully connected and verified. You can now receive payments!",
+            type: "success"
+          });
+        } else if (account.requirements?.currently_due && account.requirements.currently_due.length > 0) {
+          await storage.createNotification({
+            userId: driver.userId,
+            title: "Account Setup Required",
+            message: "Please complete your bank account setup to receive payments.",
+            type: "warning"
+          });
+        }
+        
+        break;
+
+      case 'account.application.deauthorized':
+        // Account was disconnected
+        const disconnectedAccount = event.data.object as any;
+        const disconnectedDriver = await storage.getDriverByConnectedAccountId(disconnectedAccount.id);
+        if (disconnectedDriver) {
+          await storage.updateDriver(disconnectedDriver.id, { connectedAccountId: null });
+          await storage.createNotification({
+            userId: disconnectedDriver.userId,
+            title: "Bank Account Disconnected",
+            message: "Your bank account has been disconnected. Please reconnect to receive payments.",
+            type: "error"
+          });
+          console.log(`🔗 [${environment}] Disconnected account ${disconnectedAccount.id} for driver ${disconnectedDriver.id}`);
+        }
+        break;
+
+      default:
+        console.log(`ℹ️ [${environment}] Unhandled event type: ${event.type} - safely ignored`);
+    }
+  }
+
+  // Mock onboarding endpoint for development
+  app.get('/api/stripe/connect/mock-onboarding', async (req, res) => {
+    const { account } = req.query;
+    res.send(`
+      <html>
+        <head><title>Mock Stripe Onboarding</title></head>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+          <h1>🏦 Mock Bank Account Setup</h1>
+          <p>Account ID: <code>${account}</code></p>
+          <p>In a real environment, this would be Stripe's onboarding flow.</p>
+          <button onclick="window.location.href='/driver/profile?setup=complete'" 
+                  style="background: #6772e5; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+            Complete Setup (Mock)
+          </button>
+        </body>
+      </html>
+    `);
   });
 
   const httpServer = createServer(app);

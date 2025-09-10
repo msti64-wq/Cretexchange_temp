@@ -11,6 +11,10 @@ console.log('Environment check:', {
   databaseUrlPreview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'undefined'
 });
 
+// Raw body parsing specifically for Stripe webhooks (must come before JSON parsing)
+app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }));
+
+// JSON parsing for all other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

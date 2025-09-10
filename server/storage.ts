@@ -12,6 +12,7 @@ import {
   driverWallets,
   walletTransactions,
   withdrawals,
+  webhookEvents,
   type User,
   type UpsertUser,
   type Driver,
@@ -63,6 +64,7 @@ export interface IStorage {
   createDriver(driver: InsertDriver): Promise<Driver>;
   getDriver(userId: string): Promise<Driver | undefined>;
   getDriverById(id: string): Promise<Driver | undefined>;
+  getDriverByConnectedAccountId(connectedAccountId: string): Promise<Driver | undefined>;
   updateDriver(driverId: string, driverData: Partial<InsertDriver>): Promise<Driver>;
   updateDriverLocation(driverId: string, latitude: number, longitude: number): Promise<void>;
   getAllDrivers(): Promise<(Driver & { user: User })[]>;
@@ -121,6 +123,12 @@ export interface IStorage {
   getAllMessages(): Promise<(Message & { user: User })[]>;
   getMessageById(messageId: string): Promise<(Message & { user: User }) | undefined>;
   updateMessageStatus(messageId: string, status: string): Promise<Message>;
+
+  // Webhook event operations for idempotency
+  createWebhookEvent(stripeEventId: string, eventType: string, accountId?: string): Promise<boolean>;
+  isWebhookEventProcessed(stripeEventId: string): Promise<boolean>;
+  markWebhookEventProcessed(stripeEventId: string): Promise<void>;
+  markWebhookEventFailed(stripeEventId: string, errorMessage: string): Promise<void>;
 
   // Payment methods operations
   createOwnerPaymentMethod(paymentMethod: InsertOwnerPaymentMethod): Promise<OwnerPaymentMethod>;
@@ -280,6 +288,11 @@ export class DatabaseStorage implements IStorage {
 
   async getDriverById(id: string): Promise<Driver | undefined> {
     const [driver] = await db.select().from(drivers).where(eq(drivers.id, id));
+    return driver;
+  }
+
+  async getDriverByConnectedAccountId(connectedAccountId: string): Promise<Driver | undefined> {
+    const [driver] = await db.select().from(drivers).where(eq(drivers.connectedAccountId, connectedAccountId));
     return driver;
   }
 
@@ -1310,6 +1323,43 @@ export class DatabaseStorage implements IStorage {
       totalFees,
       transactionCount: transactions.length,
     };
+  }
+
+  // Webhook event operations for idempotency
+  async createWebhookEvent(stripeEventId: string, eventType: string, accountId?: string): Promise<boolean> {
+    try {
+      await db.insert(webhookEvents).values({
+        stripeEventId,
+        eventType,
+        accountId,
+        processed: false,
+      });
+      return true;
+    } catch (error) {
+      // If the event already exists (unique constraint violation), return false
+      return false;
+    }
+  }
+
+  async isWebhookEventProcessed(stripeEventId: string): Promise<boolean> {
+    const [event] = await db.select().from(webhookEvents)
+      .where(eq(webhookEvents.stripeEventId, stripeEventId));
+    return event?.processed || false;
+  }
+
+  async markWebhookEventProcessed(stripeEventId: string): Promise<void> {
+    await db.update(webhookEvents)
+      .set({ processed: true, processedAt: new Date() })
+      .where(eq(webhookEvents.stripeEventId, stripeEventId));
+  }
+
+  async markWebhookEventFailed(stripeEventId: string, errorMessage: string): Promise<void> {
+    await db.update(webhookEvents)
+      .set({ 
+        errorMessage,
+        retryCount: sql`${webhookEvents.retryCount} + 1`,
+      })
+      .where(eq(webhookEvents.stripeEventId, stripeEventId));
   }
 }
 
