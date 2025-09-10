@@ -1,21 +1,27 @@
-import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3 } from "lucide-react";
+import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface MobileNavProps {
-  role: "driver" | "owner" | "admin";
+  role?: "driver" | "owner" | "admin";
 }
 
 export function MobileNav({ role }: MobileNavProps) {
   const [location, setLocation] = useLocation();
+  const { user } = useAuth();
+  
+  // Use the role prop if provided, otherwise get from auth context
+  const userRole = role || (user as any)?.role;
 
   const getNavItems = () => {
-    switch (role) {
+    switch (userRole) {
       case "driver":
         return [
           { path: "/", icon: Home, label: "Dashboard" },
           { path: "/locations", icon: Map, label: "Locations" },
           { path: "/activity", icon: List, label: "Activity" },
+          { path: "/wallet", icon: Wallet, label: "Wallet" },
           { path: "/profile", icon: User, label: "Profile" },
         ];
       case "owner":

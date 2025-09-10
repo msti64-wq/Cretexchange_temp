@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, RouteComponentProps } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -18,6 +18,7 @@ import DriverLocations from "@/pages/driver/locations";
 import DriverActivity from "@/pages/driver/activity";
 import DriverProfile from "@/pages/driver/profile";
 import DriverCheckIn from "@/pages/driver/check-in";
+import DriverWallet from "@/pages/driver/wallet";
 
 // Owner pages
 import OwnerDashboard from "@/pages/owner/dashboard";
@@ -33,6 +34,11 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminUsers from "@/pages/admin/users";
 import AdminLocations from "@/pages/admin/locations";
 import AdminPayments from "@/pages/admin/payments";
+
+// Wrapper components for Register with preselected roles
+const GeneralRegister = (props: RouteComponentProps) => <Register />;
+const DriverRegister = (props: RouteComponentProps) => <Register preselectedRole="driver" />;
+const OwnerRegister = (props: RouteComponentProps) => <Register preselectedRole="owner" />;
 
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -50,9 +56,9 @@ function Router() {
       <Switch>
         <Route path="/" component={Landing} />
         <Route path="/login" component={Login} />
-        <Route path="/register" component={Register} />
-        <Route path="/register/driver" component={() => <Register preselectedRole="driver" />} />
-        <Route path="/register/owner" component={() => <Register preselectedRole="owner" />} />
+        <Route path="/register" component={GeneralRegister} />
+        <Route path="/register/driver" component={DriverRegister} />
+        <Route path="/register/owner" component={OwnerRegister} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/setup" component={Setup} />
         <Route component={NotFound} />
@@ -77,6 +83,7 @@ function Router() {
         <Route path="/" component={DriverDashboard} />
         <Route path="/locations" component={DriverLocations} />
         <Route path="/activity" component={DriverActivity} />
+        <Route path="/wallet" component={DriverWallet} />
         <Route path="/profile" component={DriverProfile} />
         <Route path="/check-in/:locationId?" component={DriverCheckIn} />
         <Route component={NotFound} />

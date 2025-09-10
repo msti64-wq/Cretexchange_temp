@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign } from "lucide-react";
+import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function DriverDashboard() {
@@ -33,7 +33,10 @@ export default function DriverDashboard() {
     );
   }
 
-  const { dailyStats, weeklyStats, recentActivities } = dashboardData || {};
+  // Extract data with proper null checks and type annotation
+  const dailyStats = (dashboardData as any)?.dailyStats || null;
+  const weeklyStats = (dashboardData as any)?.weeklyStats || null;
+  const recentActivities = (dashboardData as any)?.recentActivities || null;
 
   // Calculate rejected washouts and their total amount
   const rejectedWashouts = recentActivities?.filter((activity: any) => 
@@ -67,7 +70,7 @@ export default function DriverDashboard() {
 
       <main className="p-4 space-y-6">
         {/* Profile Completion Notice */}
-        {dashboardData && (!dashboardData.user?.phone || !dashboardData.user?.address || !dashboardData.user?.paymentMethod || dashboardData.user?.paymentMethod === 'check') && (
+        {(dashboardData as any)?.user && (!(dashboardData as any).user.phone || !(dashboardData as any).user.address || !(dashboardData as any).user.paymentMethod || (dashboardData as any).user.paymentMethod === 'check') && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -209,9 +212,9 @@ export default function DriverDashboard() {
                 </div>
                 <div className="text-center p-3 bg-blue-50 dark:blue-900/20 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600" data-testid="text-total-paid">
-                    {formatCurrency((paymentHistory || []).reduce((sum: number, payment: any) => 
+                    {formatCurrency(Array.isArray(paymentHistory) ? paymentHistory.reduce((sum: number, payment: any) => 
                       sum + Number(payment.amount || 0), 0
-                    ))}
+                    ) : 0)}
                   </div>
                   <div className="text-sm text-blue-700 dark:text-blue-300">Total Paid</div>
                 </div>
@@ -223,15 +226,25 @@ export default function DriverDashboard() {
           </CardContent>
         </Card>
 
-        {/* Check-in Button */}
-        <Button 
-          className="w-full py-6 text-lg font-semibold bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-accent-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
-          onClick={() => setLocation('/locations')}
-          data-testid="button-find-location"
-        >
-          <MapPin className="w-6 h-6 mr-3" />
-          Find Nearby Washout Location
-        </Button>
+        {/* Quick Action Buttons */}
+        <div className="grid grid-cols-2 gap-4">
+          <Button 
+            className="py-6 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+            onClick={() => setLocation('/wallet')}
+            data-testid="button-access-wallet"
+          >
+            <Wallet className="w-6 h-6 mr-3" />
+            My Wallet
+          </Button>
+          <Button 
+            className="py-6 text-lg font-semibold bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-accent-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+            onClick={() => setLocation('/locations')}
+            data-testid="button-find-location"
+          >
+            <MapPin className="w-6 h-6 mr-3" />
+            Find Location
+          </Button>
+        </div>
 
         {/* Recent Activity */}
         <StatCard
