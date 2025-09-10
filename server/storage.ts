@@ -9,6 +9,9 @@ import {
   messages,
   passwordResetTokens,
   ownerPaymentMethods,
+  driverWallets,
+  walletTransactions,
+  withdrawals,
   type User,
   type UpsertUser,
   type Driver,
@@ -20,6 +23,9 @@ import {
   type Message,
   type PasswordResetToken,
   type OwnerPaymentMethod,
+  type DriverWallet,
+  type WalletTransaction,
+  type Withdrawal,
   type InsertDriver,
   type InsertOwner,
   type InsertWashoutLocation,
@@ -29,9 +35,12 @@ import {
   type InsertMessage,
   type InsertPasswordResetToken,
   type InsertOwnerPaymentMethod,
+  type InsertDriverWallet,
+  type InsertWalletTransaction,
+  type InsertWithdrawal,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, count, ne, or } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns } from "drizzle-orm";
 
 export interface IStorage {
   // User operations - local authentication
@@ -120,6 +129,27 @@ export interface IStorage {
   deleteOwnerPaymentMethod(id: string): Promise<void>;
   setDefaultPaymentMethod(ownerId: string, paymentMethodId: string): Promise<void>;
 
+  // Wallet operations
+  createDriverWallet(wallet: InsertDriverWallet): Promise<DriverWallet>;
+  getDriverWallet(driverId: string): Promise<DriverWallet | undefined>;
+  updateWalletBalance(driverId: string, availableBalance: string, pendingBalance: string): Promise<DriverWallet>;
+  
+  // Wallet transaction operations
+  createWalletTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction>;
+  getWalletTransactionsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<WalletTransaction[]>;
+  getWalletTransaction(id: string): Promise<WalletTransaction | undefined>;
+  updateWalletTransactionStatus(transactionId: string, status: string): Promise<WalletTransaction>;
+  
+  // Withdrawal operations
+  createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal>;
+  getWithdrawalsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<Withdrawal[]>;
+  getWithdrawal(id: string): Promise<Withdrawal | undefined>;
+  updateWithdrawalStatus(withdrawalId: string, status: string, stripeTransferId?: string, stripePayoutId?: string, failureReason?: string): Promise<Withdrawal>;
+  getAllWithdrawals(startDate?: Date, endDate?: Date): Promise<(Withdrawal & { driver: Driver & { user: User } })[]>;
+  
+  // Wallet statistics
+  getWalletStats(driverId: string, days: number): Promise<{ totalCredits: number; totalDebits: number; totalFees: number; transactionCount: number }>;
+  
   // Debug operations
   getUserCount(): Promise<number>;
   getTestUsers(): Promise<string[]>;
@@ -185,7 +215,7 @@ export class DatabaseStorage implements IStorage {
       return user;
     } catch (error) {
       console.error('Database createUser error:', error);
-      throw new Error(`User creation failed: ${error.message}`);
+      throw new Error(`User creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -278,10 +308,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllDrivers(): Promise<(Driver & { user: User })[]> {
-    return await db
-      .select()
+    const result = await db
+      .select({
+        id: drivers.id,
+        userId: drivers.userId,
+        employerName: drivers.employerName,
+        employerAddress: drivers.employerAddress,
+        employerPhone: drivers.employerPhone,
+        licenseNumber: drivers.licenseNumber,
+        isGpsEnabled: drivers.isGpsEnabled,
+        currentLatitude: drivers.currentLatitude,
+        currentLongitude: drivers.currentLongitude,
+        lastLocationUpdate: drivers.lastLocationUpdate,
+        connectedAccountId: drivers.connectedAccountId,
+        createdAt: drivers.createdAt,
+        updatedAt: drivers.updatedAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          passwordHash: users.passwordHash,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          role: users.role,
+          phone: users.phone,
+          address: users.address,
+          paymentMethod: users.paymentMethod,
+          paymentFrequency: users.paymentFrequency,
+          stripeCustomerId: users.stripeCustomerId,
+          stripeSubscriptionId: users.stripeSubscriptionId,
+          isActive: users.isActive,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        },
+      })
       .from(drivers)
       .innerJoin(users, eq(drivers.userId, users.id));
+    return result;
   }
 
   // Owner operations
@@ -340,10 +404,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllOwners(): Promise<(Owner & { user: User })[]> {
-    return await db
-      .select()
+    const result = await db
+      .select({
+        id: owners.id,
+        userId: owners.userId,
+        companyName: owners.companyName,
+        businessLicense: owners.businessLicense,
+        taxId: owners.taxId,
+        subscriptionStatus: owners.subscriptionStatus,
+        subscriptionPlan: owners.subscriptionPlan,
+        subscriptionEndsAt: owners.subscriptionEndsAt,
+        isApproved: owners.isApproved,
+        hasAgreedToTerms: owners.hasAgreedToTerms,
+        termsAgreedAt: owners.termsAgreedAt,
+        createdAt: owners.createdAt,
+        updatedAt: owners.updatedAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          passwordHash: users.passwordHash,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          role: users.role,
+          phone: users.phone,
+          address: users.address,
+          paymentMethod: users.paymentMethod,
+          paymentFrequency: users.paymentFrequency,
+          stripeCustomerId: users.stripeCustomerId,
+          stripeSubscriptionId: users.stripeSubscriptionId,
+          isActive: users.isActive,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        },
+      })
       .from(owners)
       .innerJoin(users, eq(owners.userId, users.id));
+    return result;
   }
 
   async getAllAdmins(): Promise<User[]> {
@@ -386,7 +484,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]> {
-    return await db
+    const results = await db
       .select()
       .from(washoutLocations)
       .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
@@ -397,6 +495,14 @@ export class DatabaseStorage implements IStorage {
         eq(owners.isApproved, true)
       ))
       .orderBy(washoutLocations.name);
+    
+    return results.map((row: any) => ({
+      ...row.washout_locations,
+      owner: {
+        ...row.owners,
+        user: row.users
+      }
+    }));
   }
 
   async updateLocationVisibility(locationId: string, isVisible: boolean): Promise<WashoutLocation> {
@@ -469,13 +575,17 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(washoutActivities.checkInTime, endDate));
     }
 
-    const query = db
+    const results = await db
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(desc(washoutActivities.checkInTime));
 
-    return await query.orderBy(desc(washoutActivities.checkInTime));
+    return results.map((row: any) => ({
+      ...row.washout_activities,
+      location: row.washout_locations
+    }));
   }
 
   async getActivitiesByLocation(locationId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { driver: Driver & { user: User } })[]> {
@@ -489,14 +599,21 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(washoutActivities.checkInTime, endDate));
     }
 
-    const query = db
+    const results = await db
       .select()
       .from(washoutActivities)
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(desc(washoutActivities.checkInTime));
 
-    return await query.orderBy(desc(washoutActivities.checkInTime));
+    return results.map((row: any) => ({
+      ...row.washout_activities,
+      driver: {
+        ...row.drivers,
+        user: row.users
+      }
+    }));
   }
 
   async getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]> {
@@ -510,15 +627,23 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(washoutActivities.checkInTime, endDate));
     }
 
-    const query = db
+    const results = await db
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(desc(washoutActivities.checkInTime));
 
-    return await query.orderBy(desc(washoutActivities.checkInTime));
+    return results.map((row: any) => ({
+      ...row.washout_activities,
+      location: row.washout_locations,
+      driver: {
+        ...row.drivers,
+        user: row.users
+      }
+    }));
   }
 
   async verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity> {
@@ -550,17 +675,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRecentActivitiesByDriver(driverId: string, limit = 5): Promise<(WashoutActivity & { location: WashoutLocation })[]> {
-    return await db
+    const results = await db
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .where(eq(washoutActivities.driverId, driverId))
       .orderBy(desc(washoutActivities.checkInTime))
       .limit(limit);
+    
+    return results.map((row: any) => ({
+      ...row.washout_activities,
+      location: row.washout_locations
+    }));
   }
 
   async getAllActivities(startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]> {
-    const conditions = [];
+    const conditions = [eq(washoutActivities.id, washoutActivities.id)]; // Always true condition
     
     if (startDate) {
       conditions.push(gte(washoutActivities.checkInTime, startDate));
@@ -570,18 +700,23 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(washoutActivities.checkInTime, endDate));
     }
 
-    let query = db
+    const results = await db
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
-      .innerJoin(users, eq(drivers.userId, users.id));
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-
-    return await query.orderBy(desc(washoutActivities.checkInTime));
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .where(and(...conditions))
+      .orderBy(desc(washoutActivities.checkInTime));
+    
+    return results.map((row: any) => ({
+      ...row.washout_activities,
+      location: row.washout_locations,
+      driver: {
+        ...row.drivers,
+        user: row.users
+      }
+    }));
   }
 
   // Payment operations
@@ -601,34 +736,53 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(payments.createdAt, endDate));
     }
 
-    const query = db
+    const results = await db
       .select()
       .from(payments)
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(desc(payments.createdAt));
 
-    return await query.orderBy(desc(payments.createdAt));
+    return results.map((row: any) => ({
+      ...row.payments,
+      activity: {
+        ...row.washout_activities,
+        location: row.washout_locations
+      }
+    }));
   }
 
   async getPaymentsByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { driver: Driver & { user: User } } })[]> {
-    let query = db
+    const conditions = [eq(payments.ownerId, ownerId)];
+    
+    if (startDate) {
+      conditions.push(gte(payments.createdAt, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(payments.createdAt, endDate));
+    }
+
+    const results = await db
       .select()
       .from(payments)
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(eq(payments.ownerId, ownerId));
+      .where(and(...conditions))
+      .orderBy(desc(payments.createdAt));
 
-    if (startDate) {
-      query = query.where(and(eq(payments.ownerId, ownerId), gte(payments.createdAt, startDate)));
-    }
-    
-    if (endDate) {
-      query = query.where(and(eq(payments.ownerId, ownerId), lte(payments.createdAt, endDate)));
-    }
-
-    return await query.orderBy(desc(payments.createdAt));
+    return results.map((row: any) => ({
+      ...row.payments,
+      activity: {
+        ...row.washout_activities,
+        driver: {
+          ...row.drivers,
+          user: row.users
+        }
+      }
+    }));
   }
 
   async updatePaymentStatus(paymentId: string, status: string, stripePaymentIntentId?: string): Promise<Payment> {
@@ -654,23 +808,51 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllPayments(startDate?: Date, endDate?: Date): Promise<(Payment & { driver: Driver & { user: User }; owner: Owner & { user: User }; activity: WashoutActivity })[]> {
-    let query = db
+    const conditions = [eq(payments.id, payments.id)]; // Always true condition
+    
+    if (startDate) {
+      conditions.push(gte(payments.createdAt, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(payments.createdAt, endDate));
+    }
+
+    const results = await db
       .select()
       .from(payments)
       .innerJoin(drivers, eq(payments.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
       .innerJoin(owners, eq(payments.ownerId, owners.id))
-      .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id));
+      .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
+      .where(and(...conditions))
+      .orderBy(desc(payments.createdAt));
 
-    if (startDate) {
-      query = query.where(gte(payments.createdAt, startDate));
-    }
+    // Transform the results to handle the owner user relationship
+    const transformedResults: any[] = [];
     
-    if (endDate) {
-      query = query.where(lte(payments.createdAt, endDate));
+    for (const row of results) {
+      // Get the owner's user information
+      const [ownerUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, row.owners.userId));
+
+      transformedResults.push({
+        ...row.payments,
+        driver: {
+          ...row.drivers,
+          user: row.users
+        },
+        owner: {
+          ...row.owners,
+          user: ownerUser
+        },
+        activity: row.washout_activities
+      });
     }
 
-    return await query.orderBy(desc(payments.createdAt));
+    return transformedResults;
   }
 
   // Statistics operations
@@ -820,26 +1002,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllMessages(): Promise<(Message & { user: User })[]> {
-    return await db
-      .select({
-        ...messages,
-        user: users,
-      })
+    const results = await db
+      .select()
       .from(messages)
       .innerJoin(users, eq(messages.userId, users.id))
       .orderBy(desc(messages.createdAt));
+    
+    return results.map((row: any) => ({
+      ...row.messages,
+      user: row.users
+    }));
   }
 
   async getMessageById(messageId: string): Promise<(Message & { user: User }) | undefined> {
-    const [message] = await db
-      .select({
-        ...messages,
-        user: users,
-      })
+    const results = await db
+      .select()
       .from(messages)
       .innerJoin(users, eq(messages.userId, users.id))
       .where(eq(messages.id, messageId));
-    return message;
+    
+    if (results.length === 0) return undefined;
+    
+    const row = results[0] as any;
+    return {
+      ...row.messages,
+      user: row.users
+    };
   }
 
   async updateMessageStatus(messageId: string, status: string): Promise<Message> {
@@ -924,6 +1112,204 @@ export class DatabaseStorage implements IStorage {
       .update(ownerPaymentMethods)
       .set({ isDefault: true })
       .where(eq(ownerPaymentMethods.id, paymentMethodId));
+  }
+
+  // Wallet operations
+  async createDriverWallet(wallet: InsertDriverWallet): Promise<DriverWallet> {
+    const [newWallet] = await db.insert(driverWallets).values(wallet).returning();
+    return newWallet;
+  }
+
+  async getDriverWallet(driverId: string): Promise<DriverWallet | undefined> {
+    const [wallet] = await db
+      .select()
+      .from(driverWallets)
+      .where(eq(driverWallets.driverId, driverId));
+    return wallet;
+  }
+
+  async updateWalletBalance(driverId: string, availableBalance: string, pendingBalance: string): Promise<DriverWallet> {
+    const [wallet] = await db
+      .update(driverWallets)
+      .set({
+        availableBalance,
+        pendingBalance,
+        updatedAt: new Date(),
+      })
+      .where(eq(driverWallets.driverId, driverId))
+      .returning();
+    return wallet;
+  }
+
+  // Wallet transaction operations
+  async createWalletTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction> {
+    const [newTransaction] = await db.insert(walletTransactions).values(transaction).returning();
+    return newTransaction;
+  }
+
+  async getWalletTransactionsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<WalletTransaction[]> {
+    const conditions = [eq(walletTransactions.driverId, driverId)];
+    
+    if (startDate) {
+      conditions.push(gte(walletTransactions.createdAt, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(walletTransactions.createdAt, endDate));
+    }
+
+    return await db
+      .select()
+      .from(walletTransactions)
+      .where(and(...conditions))
+      .orderBy(desc(walletTransactions.createdAt));
+  }
+
+  async getWalletTransaction(id: string): Promise<WalletTransaction | undefined> {
+    const [transaction] = await db
+      .select()
+      .from(walletTransactions)
+      .where(eq(walletTransactions.id, id));
+    return transaction;
+  }
+
+  async updateWalletTransactionStatus(transactionId: string, status: string): Promise<WalletTransaction> {
+    const [transaction] = await db
+      .update(walletTransactions)
+      .set({ status: status as any })
+      .where(eq(walletTransactions.id, transactionId))
+      .returning();
+    return transaction;
+  }
+
+  // Withdrawal operations
+  async createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal> {
+    const [newWithdrawal] = await db.insert(withdrawals).values(withdrawal).returning();
+    return newWithdrawal;
+  }
+
+  async getWithdrawalsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<Withdrawal[]> {
+    const conditions = [eq(withdrawals.driverId, driverId)];
+    
+    if (startDate) {
+      conditions.push(gte(withdrawals.createdAt, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(withdrawals.createdAt, endDate));
+    }
+
+    return await db
+      .select()
+      .from(withdrawals)
+      .where(and(...conditions))
+      .orderBy(desc(withdrawals.createdAt));
+  }
+
+  async getWithdrawal(id: string): Promise<Withdrawal | undefined> {
+    const [withdrawal] = await db
+      .select()
+      .from(withdrawals)
+      .where(eq(withdrawals.id, id));
+    return withdrawal;
+  }
+
+  async updateWithdrawalStatus(
+    withdrawalId: string, 
+    status: string, 
+    stripeTransferId?: string, 
+    stripePayoutId?: string, 
+    failureReason?: string
+  ): Promise<Withdrawal> {
+    const updateData: any = {
+      status: status as any,
+    };
+
+    if (stripeTransferId) updateData.stripeTransferId = stripeTransferId;
+    if (stripePayoutId) updateData.stripePayoutId = stripePayoutId;
+    if (failureReason) updateData.failureReason = failureReason;
+    if (status === 'paid' || status === 'failed') updateData.processedAt = new Date();
+
+    const [withdrawal] = await db
+      .update(withdrawals)
+      .set(updateData)
+      .where(eq(withdrawals.id, withdrawalId))
+      .returning();
+    return withdrawal;
+  }
+
+  async getAllWithdrawals(startDate?: Date, endDate?: Date): Promise<(Withdrawal & { driver: Driver & { user: User } })[]> {
+    const conditions = [eq(withdrawals.id, withdrawals.id)]; // Always true condition
+    
+    if (startDate) {
+      conditions.push(gte(withdrawals.createdAt, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(withdrawals.createdAt, endDate));
+    }
+
+    const results = await db
+      .select()
+      .from(withdrawals)
+      .innerJoin(drivers, eq(withdrawals.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .where(and(...conditions))
+      .orderBy(desc(withdrawals.createdAt));
+    
+    return results.map((row: any) => ({
+      ...row.withdrawals,
+      driver: {
+        ...row.drivers,
+        user: row.users
+      }
+    }));
+  }
+
+  // Wallet statistics
+  async getWalletStats(driverId: string, days: number): Promise<{ totalCredits: number; totalDebits: number; totalFees: number; transactionCount: number }> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const transactions = await db
+      .select({
+        amount: walletTransactions.amount,
+        direction: walletTransactions.direction,
+      })
+      .from(walletTransactions)
+      .where(
+        and(
+          eq(walletTransactions.driverId, driverId),
+          gte(walletTransactions.createdAt, startDate),
+          eq(walletTransactions.status, 'posted')
+        )
+      );
+
+    let totalCredits = 0;
+    let totalDebits = 0;
+    let totalFees = 0;
+
+    transactions.forEach(transaction => {
+      const amount = parseFloat(transaction.amount);
+      switch (transaction.direction) {
+        case 'credit':
+          totalCredits += amount;
+          break;
+        case 'debit':
+          totalDebits += amount;
+          break;
+        case 'fee':
+          totalFees += amount;
+          break;
+      }
+    });
+
+    return {
+      totalCredits,
+      totalDebits,
+      totalFees,
+      transactionCount: transactions.length,
+    };
   }
 }
 

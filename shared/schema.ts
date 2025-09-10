@@ -42,6 +42,12 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "
 export const washoutStatusEnum = pgEnum("washout_status", ["pending", "verified", "rejected"]);
 export const messageStatusEnum = pgEnum("message_status", ["unread", "read", "resolved"]);
 
+// Wallet system enums
+export const transactionDirectionEnum = pgEnum("transaction_direction", ["credit", "debit", "fee"]);
+export const transactionSourceTypeEnum = pgEnum("transaction_source_type", ["washout", "withdrawal", "adjustment"]);
+export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "posted", "failed"]);
+export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["requested", "processing", "paid", "failed", "canceled"]);
+
 // User storage table - local authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -75,6 +81,7 @@ export const drivers = pgTable("drivers", {
   currentLatitude: decimal("current_latitude", { precision: 10, scale: 8 }),
   currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),
   lastLocationUpdate: timestamp("last_location_update"),
+  connectedAccountId: varchar("connected_account_id"), // Stripe Connect account ID for drivers
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -195,6 +202,46 @@ export const messages = pgTable("messages", {
   resolvedAt: timestamp("resolved_at"),
 });
 
+// Driver wallets - stores current wallet balances
+export const driverWallets = pgTable("driver_wallets", {
+  driverId: varchar("driver_id").primaryKey().references(() => drivers.id, { onDelete: "cascade" }),
+  availableBalance: decimal("available_balance", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  pendingBalance: decimal("pending_balance", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Wallet transactions - tracks all wallet credits, debits, and fees
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  direction: transactionDirectionEnum("direction").notNull(),
+  balanceAfter: decimal("balance_after", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").notNull().default("USD"),
+  sourceType: transactionSourceTypeEnum("source_type").notNull(),
+  sourceId: varchar("source_id"), // References activity, withdrawal, or adjustment ID
+  status: transactionStatusEnum("status").notNull().default("pending"),
+  description: text("description"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Withdrawals - tracks withdrawal requests and processing status
+export const withdrawals = pgTable("withdrawals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
+  amountRequested: decimal("amount_requested", { precision: 10, scale: 2 }).notNull(),
+  feeAmount: decimal("fee_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  amountNet: decimal("amount_net", { precision: 10, scale: 2 }).notNull(),
+  status: withdrawalStatusEnum("status").notNull().default("requested"),
+  stripeTransferId: varchar("stripe_transfer_id"),
+  stripePayoutId: varchar("stripe_payout_id"),
+  failureReason: text("failure_reason"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  processedAt: timestamp("processed_at"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   driver: one(drivers, { fields: [users.id], references: [drivers.userId] }),
@@ -206,6 +253,9 @@ export const driversRelations = relations(drivers, ({ one, many }) => ({
   user: one(users, { fields: [drivers.userId], references: [users.id] }),
   activities: many(washoutActivities),
   payments: many(payments),
+  wallet: one(driverWallets, { fields: [drivers.id], references: [driverWallets.driverId] }),
+  walletTransactions: many(walletTransactions),
+  withdrawals: many(withdrawals),
 }));
 
 export const ownersRelations = relations(owners, ({ one, many }) => ({
@@ -238,6 +288,20 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
+export const driverWalletsRelations = relations(driverWallets, ({ one, many }) => ({
+  driver: one(drivers, { fields: [driverWallets.driverId], references: [drivers.id] }),
+  transactions: many(walletTransactions),
+}));
+
+export const walletTransactionsRelations = relations(walletTransactions, ({ one }) => ({
+  driver: one(drivers, { fields: [walletTransactions.driverId], references: [drivers.id] }),
+  wallet: one(driverWallets, { fields: [walletTransactions.driverId], references: [driverWallets.driverId] }),
+}));
+
+export const withdrawalsRelations = relations(withdrawals, ({ one }) => ({
+  driver: one(drivers, { fields: [withdrawals.driverId], references: [drivers.id] }),
 }));
 
 // Insert schemas
@@ -331,6 +395,20 @@ export const insertOwnerPaymentMethodSchema = createInsertSchema(ownerPaymentMet
   updatedAt: true,
 });
 
+export const insertDriverWalletSchema = createInsertSchema(driverWallets).omit({
+  updatedAt: true,
+});
+
+export const insertWalletTransactionSchema = createInsertSchema(walletTransactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWithdrawalSchema = createInsertSchema(withdrawals).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -353,3 +431,9 @@ export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSc
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type OwnerPaymentMethod = typeof ownerPaymentMethods.$inferSelect;
 export type InsertOwnerPaymentMethod = z.infer<typeof insertOwnerPaymentMethodSchema>;
+export type DriverWallet = typeof driverWallets.$inferSelect;
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+export type Withdrawal = typeof withdrawals.$inferSelect;
+export type InsertDriverWallet = z.infer<typeof insertDriverWalletSchema>;
+export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;
+export type InsertWithdrawal = z.infer<typeof insertWithdrawalSchema>;
