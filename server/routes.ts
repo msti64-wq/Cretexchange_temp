@@ -3,12 +3,13 @@ import { createServer, type Server } from "http";
 import Stripe from "stripe";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
-import { washoutActivities } from "../shared/schema";
+import { washoutActivities, withdrawals, walletTransactions, driverWallets } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 // Initialize Stripe only if secret key is available
@@ -1456,6 +1457,431 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update location visibility" });
     }
   });
+
+  // ============================================================================
+  // WALLET API ENDPOINTS
+  // ============================================================================
+
+  // GET /api/wallet/balance - Get driver's current wallet balance
+  app.get('/api/wallet/balance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+
+      const driver = await storage.getDriver(userId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      // Get or create wallet
+      let wallet = await storage.getDriverWallet(driver.id);
+      if (!wallet) {
+        wallet = await storage.createDriverWallet({
+          driverId: driver.id,
+          availableBalance: "0.00",
+          pendingBalance: "0.00"
+        });
+      }
+
+      res.json({
+        availableBalance: parseFloat(wallet.availableBalance),
+        pendingBalance: parseFloat(wallet.pendingBalance),
+        totalBalance: parseFloat(wallet.availableBalance) + parseFloat(wallet.pendingBalance),
+        lastUpdated: wallet.updatedAt
+      });
+    } catch (error) {
+      console.error("Error getting wallet balance:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to get wallet balance: " + errorMessage });
+    }
+  });
+
+  // GET /api/wallet/transactions - Get paginated transaction history
+  app.get('/api/wallet/transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+
+      const driver = await storage.getDriver(userId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      // Parse and validate query parameters
+      const rawQueryParams = {
+        page: parseInt(req.query.page) || 1,
+        limit: Math.min(parseInt(req.query.limit) || 20, 100),
+        type: req.query.type,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+      };
+
+      // Validate query parameters
+      let queryParams;
+      try {
+        queryParams = walletTransactionQuerySchema.parse(rawQueryParams);
+      } catch (validationError) {
+        return res.status(400).json({ message: "Invalid query parameters", details: validationError });
+      }
+
+      // Get transactions with date filtering
+      const allTransactions = await storage.getWalletTransactionsByDriver(
+        driver.id,
+        queryParams.startDate,
+        queryParams.endDate
+      );
+
+      // Filter by type if specified
+      let filteredTransactions = allTransactions;
+      if (queryParams.type) {
+        filteredTransactions = allTransactions.filter(t => t.direction === queryParams.type);
+      }
+
+      // Calculate pagination
+      const total = filteredTransactions.length;
+      const offset = (queryParams.page - 1) * queryParams.limit;
+      const transactions = filteredTransactions.slice(offset, offset + queryParams.limit);
+      const hasMore = offset + queryParams.limit < total;
+
+      // Format transactions for response
+      const formattedTransactions = transactions.map(transaction => ({
+        id: transaction.id,
+        amount: parseFloat(transaction.amount),
+        direction: transaction.direction,
+        balanceAfter: parseFloat(transaction.balanceAfter),
+        currency: transaction.currency,
+        sourceType: transaction.sourceType,
+        sourceId: transaction.sourceId,
+        status: transaction.status,
+        description: transaction.description,
+        metadata: transaction.metadata,
+        createdAt: transaction.createdAt,
+      }));
+
+      res.json({
+        transactions: formattedTransactions,
+        pagination: {
+          page: queryParams.page,
+          limit: queryParams.limit,
+          total,
+          hasMore,
+          totalPages: Math.ceil(total / queryParams.limit)
+        }
+      });
+    } catch (error) {
+      console.error("Error getting wallet transactions:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to get wallet transactions: " + errorMessage });
+    }
+  });
+
+  // POST /api/wallet/withdraw - Request withdrawal with 10% fee
+  app.post('/api/wallet/withdraw', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+
+      const driver = await storage.getDriver(userId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      // Validate request body
+      let validatedData;
+      try {
+        validatedData = withdrawalRequestSchema.parse(req.body);
+      } catch (validationError) {
+        return res.status(400).json({ message: "Invalid withdrawal request", details: validationError });
+      }
+
+      const withdrawalAmount = validatedData.amount;
+
+      // Get current wallet balance
+      const wallet = await storage.getDriverWallet(driver.id);
+      if (!wallet) {
+        return res.status(400).json({ message: "Wallet not found. Please contact support." });
+      }
+
+      const availableBalance = parseFloat(wallet.availableBalance);
+      if (availableBalance < withdrawalAmount) {
+        return res.status(400).json({ 
+          message: "Insufficient funds", 
+          availableBalance,
+          requestedAmount: withdrawalAmount 
+        });
+      }
+
+      // Idempotency protection: Check for existing pending withdrawals
+      const existingPendingWithdrawals = await storage.getWithdrawalsByDriver(driver.id);
+      const pendingWithdrawals = existingPendingWithdrawals.filter(w => 
+        w.status === 'requested' || w.status === 'processing'
+      );
+      
+      if (pendingWithdrawals.length > 0) {
+        return res.status(409).json({ 
+          message: "You already have a pending withdrawal request. Please wait for it to be processed before submitting another.",
+          pendingWithdrawal: {
+            id: pendingWithdrawals[0].id,
+            amount: parseFloat(pendingWithdrawals[0].amountRequested),
+            status: pendingWithdrawals[0].status,
+            createdAt: pendingWithdrawals[0].createdAt
+          }
+        });
+      }
+
+      // Rate limiting: Check for recent withdrawal attempts (last 5 minutes)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const recentWithdrawals = existingPendingWithdrawals.filter(w => 
+        w.createdAt && new Date(w.createdAt) > fiveMinutesAgo
+      );
+      
+      if (recentWithdrawals.length > 0) {
+        const nextAllowedTime = new Date((recentWithdrawals[0].createdAt?.getTime() || Date.now()) + 5 * 60 * 1000);
+        return res.status(429).json({ 
+          message: "Too many withdrawal requests. Please wait before submitting another.",
+          nextAllowedTime: nextAllowedTime.toISOString(),
+          waitSeconds: Math.ceil((nextAllowedTime.getTime() - Date.now()) / 1000)
+        });
+      }
+
+      // Check if driver has connected Stripe account with payouts enabled
+      if (stripe && driver.connectedAccountId) {
+        try {
+          const account = await stripe.accounts.retrieve(driver.connectedAccountId);
+          if (!account.payouts_enabled || !account.details_submitted) {
+            return res.status(400).json({ 
+              message: "Bank account setup incomplete. Please complete your bank account setup to withdraw funds.",
+              accountStatus: {
+                payoutsEnabled: account.payouts_enabled,
+                detailsSubmitted: account.details_submitted
+              }
+            });
+          }
+        } catch (stripeError) {
+          console.error("Error checking Stripe account:", stripeError);
+          return res.status(500).json({ message: "Unable to verify bank account status" });
+        }
+      } else if (!driver.connectedAccountId) {
+        return res.status(400).json({ 
+          message: "No bank account connected. Please connect a bank account to withdraw funds."
+        });
+      }
+
+      // Calculate fee (10%) and net amount - using cent-safe arithmetic
+      const feeAmount = Math.round(withdrawalAmount * 0.10 * 100) / 100;
+      const netAmount = withdrawalAmount - feeAmount;
+
+      // Wrap all withdrawal operations in database transaction for atomicity
+      const { withdrawal, newBalance } = await db.transaction(async (tx) => {
+        // Create withdrawal record
+        const [withdrawal] = await tx.insert(withdrawals).values({
+          driverId: driver.id,
+          amountRequested: withdrawalAmount.toString(),
+          feeAmount: feeAmount.toString(),
+          amountNet: netAmount.toString(),
+          status: "requested",
+          metadata: {
+            stripeAccountId: driver.connectedAccountId,
+            requestedAt: new Date().toISOString()
+          }
+        }).returning();
+
+        // Calculate new balance
+        const newBalance = availableBalance - withdrawalAmount;
+        
+        // Create wallet transaction for withdrawal amount (debit)
+        await tx.insert(walletTransactions).values({
+          driverId: driver.id,
+          amount: withdrawalAmount.toString(),
+          direction: "debit",
+          balanceAfter: newBalance.toString(),
+          sourceType: "withdrawal",
+          sourceId: withdrawal.id,
+          status: "posted",
+          description: `Withdrawal request: $${netAmount.toFixed(2)} (after $${feeAmount.toFixed(2)} fee)`
+        });
+
+        // Update wallet balance atomically
+        await tx.update(driverWallets)
+          .set({
+            availableBalance: newBalance.toString(),
+            updatedAt: new Date(),
+          })
+          .where(eq(driverWallets.driverId, driver.id));
+
+        return { withdrawal, newBalance };
+      });
+
+      res.json({
+        withdrawal: {
+          id: withdrawal.id,
+          amountRequested: withdrawalAmount,
+          feeAmount: feeAmount,
+          amountNet: netAmount,
+          status: withdrawal.status,
+          createdAt: withdrawal.createdAt
+        },
+        newBalance: newBalance,
+        message: `Withdrawal request submitted. You will receive $${netAmount.toFixed(2)} after the $${feeAmount.toFixed(2)} processing fee.`
+      });
+    } catch (error) {
+      console.error("Error processing withdrawal:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to process withdrawal: " + errorMessage });
+    }
+  });
+
+  // Admin endpoint: GET /api/admin/withdrawals - List all pending withdrawals
+  app.get('/api/admin/withdrawals', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { startDate, endDate, status } = req.query;
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const withdrawals = await storage.getAllWithdrawals(start, end);
+      
+      // Filter by status if provided
+      let filteredWithdrawals = withdrawals;
+      if (status) {
+        filteredWithdrawals = withdrawals.filter(w => w.status === status);
+      }
+
+      // Format response
+      const formattedWithdrawals = filteredWithdrawals.map(withdrawal => ({
+        id: withdrawal.id,
+        driver: {
+          id: withdrawal.driver.id,
+          name: `${withdrawal.driver.user.firstName} ${withdrawal.driver.user.lastName}`,
+          email: withdrawal.driver.user.email,
+          licenseNumber: withdrawal.driver.licenseNumber
+        },
+        amountRequested: parseFloat(withdrawal.amountRequested),
+        feeAmount: parseFloat(withdrawal.feeAmount),
+        amountNet: parseFloat(withdrawal.amountNet),
+        status: withdrawal.status,
+        stripeTransferId: withdrawal.stripeTransferId,
+        stripePayoutId: withdrawal.stripePayoutId,
+        failureReason: withdrawal.failureReason,
+        createdAt: withdrawal.createdAt,
+        processedAt: withdrawal.processedAt
+      }));
+
+      res.json({
+        withdrawals: formattedWithdrawals,
+        total: filteredWithdrawals.length,
+        summary: {
+          requested: filteredWithdrawals.filter(w => w.status === 'requested').length,
+          processing: filteredWithdrawals.filter(w => w.status === 'processing').length,
+          paid: filteredWithdrawals.filter(w => w.status === 'paid').length,
+          failed: filteredWithdrawals.filter(w => w.status === 'failed').length,
+          canceled: filteredWithdrawals.filter(w => w.status === 'canceled').length
+        }
+      });
+    } catch (error) {
+      console.error("Error getting admin withdrawals:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to get withdrawals: " + errorMessage });
+    }
+  });
+
+  // Admin endpoint: PATCH /api/admin/withdrawals/:id - Update withdrawal status
+  app.patch('/api/admin/withdrawals/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const withdrawalId = req.params.id;
+      
+      // Validate request body
+      let validatedData;
+      try {
+        validatedData = adminWithdrawalUpdateSchema.parse(req.body);
+      } catch (validationError) {
+        return res.status(400).json({ message: "Invalid update data", details: validationError });
+      }
+
+      // Get current withdrawal
+      const withdrawal = await storage.getWithdrawal(withdrawalId);
+      if (!withdrawal) {
+        return res.status(404).json({ message: "Withdrawal not found" });
+      }
+
+      // Update withdrawal status
+      const updatedWithdrawal = await storage.updateWithdrawalStatus(
+        withdrawalId,
+        validatedData.status,
+        undefined, // stripeTransferId - would be set by actual Stripe processing
+        undefined, // stripePayoutId - would be set by actual Stripe processing  
+        validatedData.failureReason
+      );
+
+      // If marking as failed or canceled, credit the money back to driver's wallet
+      if ((validatedData.status === 'failed' || validatedData.status === 'canceled') && 
+          withdrawal.status === 'requested') {
+        
+        const driver = await storage.getDriverById(withdrawal.driverId);
+        if (driver) {
+          const wallet = await storage.getDriverWallet(withdrawal.driverId);
+          if (wallet) {
+            const refundAmount = parseFloat(withdrawal.amountRequested);
+            const newBalance = parseFloat(wallet.availableBalance) + refundAmount;
+            
+            // Create refund transaction
+            await storage.createWalletTransaction({
+              driverId: withdrawal.driverId,
+              amount: withdrawal.amountRequested,
+              direction: "credit",
+              balanceAfter: newBalance.toString(),
+              sourceType: "adjustment",
+              sourceId: withdrawalId,
+              status: "posted",
+              description: `Withdrawal ${validatedData.status}: refund for withdrawal ${withdrawalId}`
+            });
+
+            // Update wallet balance
+            await storage.updateWalletBalance(withdrawal.driverId, newBalance.toString(), wallet.pendingBalance);
+          }
+        }
+      }
+
+      res.json({
+        withdrawal: {
+          id: updatedWithdrawal.id,
+          status: updatedWithdrawal.status,
+          failureReason: updatedWithdrawal.failureReason,
+          processedAt: updatedWithdrawal.processedAt
+        },
+        message: `Withdrawal ${validatedData.status} successfully`
+      });
+    } catch (error) {
+      console.error("Error updating withdrawal:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to update withdrawal: " + errorMessage });
+    }
+  });
+
+  // ============================================================================
+  // END WALLET API ENDPOINTS  
+  // ============================================================================
 
   // Object storage endpoints for photo uploads
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {

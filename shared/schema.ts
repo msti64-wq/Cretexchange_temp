@@ -422,6 +422,24 @@ export const insertWithdrawalSchema = createInsertSchema(withdrawals).omit({
   createdAt: true,
 });
 
+// Wallet API request validation schemas
+export const withdrawalRequestSchema = z.object({
+  amount: z.number().positive().min(10, "Minimum withdrawal amount is $10"),
+});
+
+export const walletTransactionQuerySchema = z.object({
+  page: z.number().int().min(1).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+  type: z.enum(["credit", "debit", "fee"]).optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+});
+
+export const adminWithdrawalUpdateSchema = z.object({
+  status: z.enum(["processing", "paid", "failed", "canceled"]),
+  failureReason: z.string().optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
