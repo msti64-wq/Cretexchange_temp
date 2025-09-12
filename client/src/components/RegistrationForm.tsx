@@ -23,6 +23,7 @@ const driverSchema = z.object({
     employerAddress: z.string().min(1, "Employer address is required"), 
     employerPhone: z.string().min(1, "Employer phone is required"),
     licenseNumber: z.string().optional(),
+    truckNumber: z.string().optional(),
   }),
 });
 
@@ -80,6 +81,7 @@ export function RegistrationForm({ type, onSubmit, isLoading }: RegistrationForm
         employerAddress: "",
         employerPhone: "",
         licenseNumber: "",
+        truckNumber: "",
       },
       owner: {
         companyName: "",
@@ -250,6 +252,20 @@ export function RegistrationForm({ type, onSubmit, isLoading }: RegistrationForm
                       <FormLabel>CDL License Number (Optional)</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="License number" data-testid="input-license-number" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="driver.truckNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Truck Number (Optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="e.g., Truck #123, Unit A5" data-testid="input-truck-number" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

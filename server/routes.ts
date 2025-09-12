@@ -515,6 +515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           employerAddress: req.body.employerAddress || "",
           employerPhone: req.body.employerPhone || "",
           licenseNumber: req.body.licenseNumber || "",
+          truckNumber: req.body.truckNumber || "",
         };
         driver = await storage.createDriver(driverData);
       } else {
@@ -524,6 +525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           employerAddress: req.body.employerAddress || driver.employerAddress,
           employerPhone: req.body.employerPhone || driver.employerPhone,
           licenseNumber: req.body.licenseNumber || driver.licenseNumber,
+          truckNumber: req.body.truckNumber || driver.truckNumber,
         });
       }
 

@@ -78,6 +78,7 @@ export const drivers = pgTable("drivers", {
   employerAddress: text("employer_address"),
   employerPhone: varchar("employer_phone"),
   licenseNumber: varchar("license_number"),
+  truckNumber: varchar("truck_number"),
   isGpsEnabled: boolean("is_gps_enabled").default(true),
   currentLatitude: decimal("current_latitude", { precision: 10, scale: 8 }),
   currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),

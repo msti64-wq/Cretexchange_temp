@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,22 +53,37 @@ export default function DriverProfile() {
     employerName: "",
     employerAddress: "",
     employerPhone: "",
+    truckNumber: "",
+    venmoUsername: "",
+    zelleInfo: "",
+    bankName: "",
+    routingNumber: "",
+    accountNumber: "",
+    accountType: "checking",
   });
 
   // Update form data when user data loads
-  useState(() => {
-    if (user && user.roleData) {
+  useEffect(() => {
+    if (user && (user as any).roleData) {
+      const userData = user as any;
       setFormData({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        address: user.address || "",
-        paymentMethod: user.paymentMethod || "check",
-        paymentFrequency: user.paymentFrequency || "weekly",
-        employerName: user.roleData.employerName || "",
-        employerAddress: user.roleData.employerAddress || "",
-        employerPhone: user.roleData.employerPhone || "",
+        firstName: userData.firstName || "",
+        lastName: userData.lastName || "",
+        email: userData.email || "",
+        phone: userData.phone || "",
+        address: userData.address || "",
+        paymentMethod: userData.paymentMethod || "check",
+        paymentFrequency: userData.paymentFrequency || "weekly",
+        employerName: userData.roleData.employerName || "",
+        employerAddress: userData.roleData.employerAddress || "",
+        employerPhone: userData.roleData.employerPhone || "",
+        truckNumber: userData.roleData.truckNumber || "",
+        venmoUsername: "",
+        zelleInfo: "",
+        bankName: "",
+        routingNumber: "",
+        accountNumber: "",
+        accountType: "checking",
       });
     }
   }, [user]);
@@ -104,7 +119,7 @@ export default function DriverProfile() {
               <User className="w-10 h-10 text-primary" />
             </div>
             <h2 className="text-xl font-semibold mb-1" data-testid="text-user-name">
-              {user?.firstName} {user?.lastName}
+              {(user as any)?.firstName} {(user as any)?.lastName}
             </h2>
             <p className="text-muted-foreground" data-testid="text-user-role">Concrete Truck Driver</p>
             <div className="flex justify-center gap-2 mt-4">
@@ -229,6 +244,21 @@ export default function DriverProfile() {
                   disabled={!isEditing}
                   data-testid="input-employer-phone"
                 />
+              </div>
+              
+              <div>
+                <Label htmlFor="truckNumber">Truck Number</Label>
+                <Input
+                  id="truckNumber"
+                  placeholder="e.g., Truck #123, Unit A5"
+                  value={formData.truckNumber}
+                  onChange={(e) => setFormData({...formData, truckNumber: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="input-truck-number"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter your current truck number or unit identifier
+                </p>
               </div>
             </CardContent>
           </Card>

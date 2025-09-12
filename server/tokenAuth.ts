@@ -96,6 +96,7 @@ export async function setupAuth(app: Express) {
           licenseNumber: '',
           employerName: '',
           employerPhone: '',
+          truckNumber: '',
         });
       } else if (role === 'owner') {
         await storage.createOwner({
@@ -124,7 +125,7 @@ export async function setupAuth(app: Express) {
       });
     } catch (error) {
       console.error("Registration error:", error);
-      const errorMessage = error.message || "Internal server error";
+      const errorMessage = (error as any).message || "Internal server error";
       console.error("Detailed error:", JSON.stringify(error, null, 2));
       res.status(500).json({ message: "Registration failed: " + errorMessage });
     }
