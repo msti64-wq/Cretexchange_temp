@@ -320,6 +320,11 @@ export default function DriverDashboard() {
                         📞 Owner: {activity.location.owner.user.phone}
                       </div>
                     )}
+                    {((activity.washout_activities?.latitude && activity.washout_activities?.longitude) || (activity.latitude && activity.longitude)) && (
+                      <div className="text-xs text-muted-foreground mt-1" data-testid={`text-gps-coordinates-${index}`}>
+                        🌐 GPS: {Number(activity.washout_activities?.latitude || activity.latitude).toFixed(6)}, {Number(activity.washout_activities?.longitude || activity.longitude).toFixed(6)}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Status and Actions Row */}

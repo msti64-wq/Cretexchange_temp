@@ -359,6 +359,11 @@ export default function OwnerDashboard() {
                         {activity.location.address}
                       </div>
                     )}
+                    {(activity.latitude && activity.longitude) && (
+                      <div className="text-xs text-muted-foreground mt-1" data-testid={`text-gps-coordinates-${index}`}>
+                        🌐 GPS: {Number(activity.latitude).toFixed(6)}, {Number(activity.longitude).toFixed(6)}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Actions Row - Status and Buttons */}

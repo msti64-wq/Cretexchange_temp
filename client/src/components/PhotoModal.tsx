@@ -135,6 +135,11 @@ export function PhotoModal({
                   })}
                 </p>
               )}
+              {(activity.latitude && activity.longitude) && (
+                <p className="text-sm text-muted-foreground" data-testid="text-gps-coordinates">
+                  🌐 GPS: {Number(activity.latitude).toFixed(6)}, {Number(activity.longitude).toFixed(6)}
+                </p>
+              )}
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-primary">{formatCurrency(Number(amount))}</div>

@@ -243,6 +243,11 @@ export default function DriverActivity() {
                           📞 Owner: {activity.location.owner.user.phone}
                         </p>
                       )}
+                      {((activity.washout_activities?.latitude && activity.washout_activities?.longitude) || (activity.latitude && activity.longitude)) && (
+                        <p className="text-xs text-muted-foreground mb-2" data-testid={`text-gps-coordinates-${index}`}>
+                          🌐 GPS: {Number(activity.washout_activities?.latitude || activity.latitude).toFixed(6)}, {Number(activity.washout_activities?.longitude || activity.longitude).toFixed(6)}
+                        </p>
+                      )}
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
