@@ -65,13 +65,13 @@ export function PhotoModal({
   
   if (!activity) return null;
   
-  const photoUrls = activity.washout_activities?.photoUrls || [];
-  const activityId = activity.washout_activities?.id;
-  const status = activity.washout_activities?.status;
-  const amount = activity.washout_activities?.amount || 0;
-  const driverName = `${activity.users?.firstName || ''} ${activity.users?.lastName || ''}`.trim();
-  const locationName = activity.washout_locations?.name || '';
-  const checkInTime = activity.washout_activities?.checkInTime;
+  const photoUrls = activity.photoUrls || [];
+  const activityId = activity.id;
+  const status = activity.status;
+  const amount = activity.amount || 0;
+  const driverName = `${activity.driver?.user?.firstName || ''} ${activity.driver?.user?.lastName || ''}`.trim();
+  const locationName = activity.location?.name || '';
+  const checkInTime = activity.checkInTime;
 
   // Helper function to get displayable photo URL
   const getPhotoDisplayUrl = (photoUrl: string) => {
