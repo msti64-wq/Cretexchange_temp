@@ -331,6 +331,11 @@ export default function OwnerDashboard() {
                         <div className="font-medium text-sm" data-testid={`text-driver-name-${index}`}>
                           {activity.driver?.user?.firstName} {activity.driver?.user?.lastName}
                         </div>
+                        {activity.driver?.user?.phone && (
+                          <div className="text-xs text-muted-foreground" data-testid={`text-driver-phone-${index}`}>
+                            📞 {activity.driver.user.phone}
+                          </div>
+                        )}
                         <div className="text-xs text-muted-foreground">
                           {new Date(activity.checkInTime).toLocaleDateString()}
                         </div>
