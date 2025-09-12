@@ -183,9 +183,10 @@ export default function DriverWallet() {
     });
   };
 
-  // Calculate withdrawal fee and net amount
+  // Calculate withdrawal fee and net amount based on tiered structure
   const withdrawAmount = parseFloat(withdrawalAmount) || 0;
-  const feeAmount = withdrawAmount * 0.1;
+  // Under $10.00: $1.00 flat fee, $10.00+: 10% fee
+  const feeAmount = withdrawAmount < 10.00 ? 1.00 : withdrawAmount * 0.1;
   const netAmount = withdrawAmount - feeAmount;
 
   const getTransactionIcon = (transaction: WalletTransaction) => {
@@ -377,7 +378,7 @@ export default function DriverWallet() {
           title="Request Withdrawal"
           subtitle={
             <span className="text-sm text-muted-foreground">
-              10% processing fee • Funds arrive in 1-2 business days
+              $1 fee under $10, then 10% • Funds arrive in 1-2 business days
             </span>
           }
         >
@@ -417,7 +418,7 @@ export default function DriverWallet() {
                       <span data-testid="text-withdrawal-amount">{formatCurrency(withdrawAmount)}</span>
                     </div>
                     <div className="flex justify-between text-sm text-amber-600">
-                      <span>Processing Fee (10%):</span>
+                      <span>Processing Fee ({withdrawAmount < 10 ? '$1 flat fee' : '10%'}):</span>
                       <span data-testid="text-fee-amount">-{formatCurrency(feeAmount)}</span>
                     </div>
                     <div className="flex justify-between font-semibold border-t pt-2">

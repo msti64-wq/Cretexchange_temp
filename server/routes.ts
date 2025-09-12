@@ -1798,8 +1798,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Calculate fee (10%) and net amount - using cent-safe arithmetic
-      const feeAmount = Math.round(withdrawalAmount * 0.10 * 100) / 100;
+      // Calculate fee based on tiered structure and net amount - using cent-safe arithmetic
+      // Under $10.00: $1.00 flat fee, $10.00+: 10% fee
+      const feeAmount = withdrawalAmount < 10.00 
+        ? 1.00 
+        : Math.round(withdrawalAmount * 0.10 * 100) / 100;
       const netAmount = withdrawalAmount - feeAmount;
 
       // Wrap all withdrawal operations in database transaction for atomicity
