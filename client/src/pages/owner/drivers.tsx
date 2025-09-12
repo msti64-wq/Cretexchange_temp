@@ -28,13 +28,13 @@ export default function OwnerDrivers() {
 
   const filteredActivities = activities?.filter((activity: any) => {
     const matchesSearch = 
-      activity.users?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.users?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.washout_locations?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      activity.driver?.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      activity.driver?.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      activity.location?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesLocation = selectedLocation === "all" || activity.washout_locations?.id === selectedLocation;
+    const matchesLocation = selectedLocation === "all" || activity.location?.id === selectedLocation;
     
-    const activityDate = new Date(activity.washout_activities?.checkInTime);
+    const activityDate = new Date(activity.checkInTime);
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - parseInt(filterPeriod));
     const matchesPeriod = activityDate >= daysAgo;
@@ -44,12 +44,12 @@ export default function OwnerDrivers() {
 
   // Group activities by driver
   const driverStats = filteredActivities.reduce((acc: any, activity: any) => {
-    const driverId = activity.users?.id;
+    const driverId = activity.driver?.user?.id;
     if (!driverId) return acc;
 
     if (!acc[driverId]) {
       acc[driverId] = {
-        driver: activity.users,
+        driver: activity.driver?.user,
         totalWashouts: 0,
         totalEarnings: 0,
         locations: new Set(),
@@ -58,11 +58,11 @@ export default function OwnerDrivers() {
     }
 
     acc[driverId].totalWashouts += 1;
-    acc[driverId].totalEarnings += Number(activity.washout_activities?.amount);
-    acc[driverId].locations.add(activity.washout_locations?.name);
+    acc[driverId].totalEarnings += Number(activity.amount);
+    acc[driverId].locations.add(activity.location?.name);
     
-    if (!acc[driverId].lastActivity || new Date(activity.washout_activities?.checkInTime) > new Date(acc[driverId].lastActivity)) {
-      acc[driverId].lastActivity = activity.washout_activities?.checkInTime;
+    if (!acc[driverId].lastActivity || new Date(activity.checkInTime) > new Date(acc[driverId].lastActivity)) {
+      acc[driverId].lastActivity = activity.checkInTime;
     }
 
     return acc;
@@ -124,7 +124,7 @@ export default function OwnerDrivers() {
           <StatCard title="Revenue" className="text-center">
             <div className="text-2xl font-bold text-accent" data-testid="text-total-revenue">
               {formatCurrency(
-                filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.washout_activities?.amount || 0), 0)
+                filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0)
               )}
             </div>
             <div className="text-xs text-muted-foreground">Generated</div>
@@ -269,7 +269,7 @@ export default function OwnerDrivers() {
           <h2 className="text-lg font-semibold">Recent Activity</h2>
           
           {filteredActivities.slice(0, 10).map((activity: any, index: number) => (
-            <div key={activity.washout_activities?.id || index} className="p-3 bg-muted/50 rounded-lg" data-testid={`card-activity-${index}`}>
+            <div key={activity.id || index} className="p-3 bg-muted/50 rounded-lg" data-testid={`card-activity-${index}`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
                   <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -277,17 +277,17 @@ export default function OwnerDrivers() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate" data-testid={`text-activity-driver-${index}`}>
-                      {activity.users?.firstName} {activity.users?.lastName}
+                      {activity.driver?.user?.firstName} {activity.driver?.user?.lastName}
                     </div>
                     <div className="text-xs text-muted-foreground truncate" data-testid={`text-activity-location-${index}`}>
-                      {activity.washout_locations?.name}
+                      {activity.location?.name}
                     </div>
                   </div>
                 </div>
                 
                 <div className="text-right ml-2">
                   <div className="font-semibold text-sm" data-testid={`text-activity-amount-${index}`}>
-                    {formatCurrency(Number(activity.washout_activities?.amount || 0))}
+                    {formatCurrency(Number(activity.amount || 0))}
                   </div>
                 </div>
               </div>
@@ -295,18 +295,18 @@ export default function OwnerDrivers() {
               <div className="flex items-center justify-between">
                 <Badge 
                   variant={
-                    activity.washout_activities?.status === 'verified' ? 'default' : 
-                    activity.washout_activities?.status === 'pending' ? 'secondary' : 'destructive'
+                    activity.status === 'verified' ? 'default' : 
+                    activity.status === 'pending' ? 'secondary' : 'destructive'
                   }
                   className="text-xs"
                   data-testid={`badge-activity-status-${index}`}
                 >
-                  {activity.washout_activities?.status === 'verified' ? 'Approved' : 
-                   activity.washout_activities?.status === 'pending' ? 'Pending' : 'Rejected'}
+                  {activity.status === 'verified' ? 'Approved' : 
+                   activity.status === 'pending' ? 'Pending' : 'Rejected'}
                 </Badge>
                 
                 <div className="flex items-center gap-1">
-                  {activity.washout_activities?.photoUrls?.length > 0 && (
+                  {activity.photoUrls?.length > 0 && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -321,7 +321,7 @@ export default function OwnerDrivers() {
                     </Button>
                   )}
                   <div className="text-xs text-muted-foreground" data-testid={`text-activity-time-${index}`}>
-                    {new Date(activity.washout_activities?.checkInTime).toLocaleDateString()}
+                    {new Date(activity.checkInTime).toLocaleDateString()}
                   </div>
                 </div>
               </div>
