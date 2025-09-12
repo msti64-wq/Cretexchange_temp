@@ -326,6 +326,7 @@ export default function DriverActivity() {
         isOpen={isPhotoModalOpen}
         onClose={() => setIsPhotoModalOpen(false)}
         activity={selectedActivity}
+        canApprove={false} // Drivers cannot approve/reject photos
       />
     </div>
   );

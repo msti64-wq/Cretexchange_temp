@@ -15,6 +15,7 @@ interface PhotoModalProps {
   onApprove?: (activityId: string) => void;
   onReject?: (activityId: string) => void;
   isLoading?: boolean;
+  canApprove?: boolean; // Controls whether approve/reject buttons are shown
 }
 
 export function PhotoModal({ 
@@ -23,7 +24,8 @@ export function PhotoModal({
   activity, 
   onApprove, 
   onReject, 
-  isLoading = false 
+  isLoading = false,
+  canApprove = false // Default to false for security
 }: PhotoModalProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const queryClient = useQueryClient();
@@ -212,8 +214,8 @@ export function PhotoModal({
             </div>
           )}
 
-          {/* Action Buttons */}
-          {status === 'pending' && (
+          {/* Action Buttons - Only show for users who can approve (owners) */}
+          {status === 'pending' && canApprove && (
             <div className="flex gap-3 pt-4 border-t">
               <Button
                 onClick={handleReject}
