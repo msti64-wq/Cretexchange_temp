@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
+import { PhotoModal } from "@/components/PhotoModal";
 import { Calendar, Download, MapPin, Clock, Image as ImageIcon, Filter } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { exportToCsv } from "@/lib/csvExport";
@@ -14,6 +15,8 @@ export default function DriverActivity() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [selectedActivity, setSelectedActivity] = useState<any>(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   // Build URLs with query parameters instead of path parameters
   const activitiesUrl = `/api/drivers/activities${startDate || endDate ? '?' : ''}${
@@ -278,10 +281,19 @@ export default function DriverActivity() {
                   )}
 
                   {(activity.washout_activities?.photoUrls || activity.photoUrls) && (activity.washout_activities?.photoUrls || activity.photoUrls).length > 0 && (
-                    <div className="flex items-center text-sm text-muted-foreground">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-sm h-8 px-3 w-fit"
+                      onClick={() => {
+                        setSelectedActivity(activity);
+                        setIsPhotoModalOpen(true);
+                      }}
+                      data-testid={`button-view-photos-${index}`}
+                    >
                       <ImageIcon className="w-4 h-4 mr-1" />
-                      <span>{(activity.washout_activities?.photoUrls || activity.photoUrls).length} photo(s) attached</span>
-                    </div>
+                      View Photos ({(activity.washout_activities?.photoUrls || activity.photoUrls).length})
+                    </Button>
                   )}
 
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
@@ -303,6 +315,13 @@ export default function DriverActivity() {
       </div>
 
       <MobileNav role="driver" />
+      
+      {/* Photo Modal */}
+      <PhotoModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+        activity={selectedActivity}
+      />
     </div>
   );
 }
