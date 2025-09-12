@@ -78,38 +78,38 @@ export default function OwnerDashboard() {
 
   // Calculate pending payments (awaiting approval)
   const pendingPayments = recentActivities?.reduce((total: number, activity: any) => {
-    if (activity.washout_activities?.status === 'pending') {
-      return total + Number(activity.washout_activities?.amount || 0);
+    if (activity.status === 'pending') {
+      return total + Number(activity.amount || 0);
     }
     return total;
   }, 0) || 0;
 
   // Calculate approved payments (verified but not yet paid)
   const approvedPayments = recentActivities?.reduce((total: number, activity: any) => {
-    if (activity.washout_activities?.status === 'verified') {
-      return total + Number(activity.washout_activities?.amount || 0);
+    if (activity.status === 'verified') {
+      return total + Number(activity.amount || 0);
     }
     return total;
   }, 0) || 0;
 
   // Calculate rejected payments
   const rejectedPayments = recentActivities?.reduce((total: number, activity: any) => {
-    if (activity.washout_activities?.status === 'rejected') {
-      return total + Number(activity.washout_activities?.amount || 0);
+    if (activity.status === 'rejected') {
+      return total + Number(activity.amount || 0);
     }
     return total;
   }, 0) || 0;
 
   // Calculate total washouts from recent activities (exclude rejected washouts)
   const totalWashouts = recentActivities?.filter((activity: any) => 
-    activity.washout_activities?.status !== 'rejected'
+    activity.status !== 'rejected'
   ).length || 0;
 
   // Calculate unique drivers from recent activities (exclude rejected washouts)
   const uniqueDrivers = recentActivities ? new Set(
     recentActivities
-      .filter((activity: any) => activity.washout_activities?.status !== 'rejected')
-      .map((activity: any) => activity.users?.id)
+      .filter((activity: any) => activity.status !== 'rejected')
+      .map((activity: any) => activity.driver?.user?.id)
       .filter(Boolean)
   ).size : 0;
 
@@ -291,7 +291,7 @@ export default function OwnerDashboard() {
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Rejected Washouts</span>
               <span className="text-lg font-semibold text-red-600 dark:text-red-500" data-testid="text-rejected-count">
-                {recentActivities?.filter((activity: any) => activity.washout_activities?.status === 'rejected').length || 0}
+                {recentActivities?.filter((activity: any) => activity.status === 'rejected').length || 0}
               </span>
             </div>
           </div>
@@ -329,17 +329,17 @@ export default function OwnerDashboard() {
                       </div>
                       <div>
                         <div className="font-medium text-sm" data-testid={`text-driver-name-${index}`}>
-                          {activity.users?.firstName} {activity.users?.lastName}
+                          {activity.driver?.user?.firstName} {activity.driver?.user?.lastName}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {new Date(activity.washout_activities?.checkInTime).toLocaleDateString()}
+                          {new Date(activity.checkInTime).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
                     
                     <div className="text-right">
                       <div className="font-bold text-lg text-accent" data-testid={`text-activity-amount-${index}`}>
-                        {formatCurrency(Number(activity.washout_activities?.amount || 0))}
+                        {formatCurrency(Number(activity.amount || 0))}
                       </div>
                     </div>
                   </div>
@@ -347,11 +347,11 @@ export default function OwnerDashboard() {
                   {/* Location Row - Full width for location name */}
                   <div className="w-full">
                     <div className="text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
-                      📍 {activity.washout_locations?.name}
+                      📍 {activity.location?.name}
                     </div>
-                    {activity.washout_locations?.address && (
+                    {activity.location?.address && (
                       <div className="text-xs text-muted-foreground mt-1">
-                        {activity.washout_locations.address}
+                        {activity.location.address}
                       </div>
                     )}
                   </div>
@@ -360,26 +360,26 @@ export default function OwnerDashboard() {
                   <div className="flex items-center justify-between pt-2 border-t border-border/50">
                     <Badge 
                       variant={
-                        activity.washout_activities?.status === 'verified' ? 'default' : 
-                        activity.washout_activities?.status === 'rejected' ? 'destructive' : 
+                        activity.status === 'verified' ? 'default' : 
+                        activity.status === 'rejected' ? 'destructive' : 
                         'secondary'
                       }
                       className="text-xs"
                       data-testid={`badge-activity-status-${index}`}
                     >
-                      {activity.washout_activities?.status === 'verified' ? 'Approved' : 
-                       activity.washout_activities?.status === 'rejected' ? 'Rejected' : 
+                      {activity.status === 'verified' ? 'Approved' : 
+                       activity.status === 'rejected' ? 'Rejected' : 
                        'Pending Review'}
                     </Badge>
                     
                     <div className="flex items-center gap-2">
                       <Button
-                        variant={(activity.washout_activities?.photoUrls?.length > 0) ? "outline" : "ghost"}
+                        variant={(activity.photoUrls?.length > 0) ? "outline" : "ghost"}
                         size="sm"
                         className="text-xs h-8 px-3"
-                        disabled={!(activity.washout_activities?.photoUrls?.length > 0)}
+                        disabled={!(activity.photoUrls?.length > 0)}
                         onClick={() => {
-                          if (activity.washout_activities?.photoUrls?.length > 0) {
+                          if (activity.photoUrls?.length > 0) {
                             setSelectedActivity(activity);
                             setIsPhotoModalOpen(true);
                           }
@@ -391,13 +391,13 @@ export default function OwnerDashboard() {
                       </Button>
                       
                       {/* Approval buttons for pending washouts */}
-                      {activity.washout_activities?.status === 'pending' && (
+                      {activity.status === 'pending' && (
                         <>
                           <Button
                             size="sm"
                             variant="destructive"
                             className="text-xs px-3 h-8"
-                            onClick={() => rejectMutation.mutate(activity.washout_activities.id)}
+                            onClick={() => rejectMutation.mutate(activity.id)}
                             disabled={rejectMutation.isPending || approveMutation.isPending}
                             data-testid={`button-reject-${index}`}
                           >
@@ -407,7 +407,7 @@ export default function OwnerDashboard() {
                           <Button
                             size="sm"
                             className="text-xs px-3 h-8"
-                            onClick={() => approveMutation.mutate(activity.washout_activities.id)}
+                            onClick={() => approveMutation.mutate(activity.id)}
                             disabled={rejectMutation.isPending || approveMutation.isPending}
                             data-testid={`button-approve-${index}`}
                           >
