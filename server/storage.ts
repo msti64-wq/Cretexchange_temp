@@ -578,7 +578,7 @@ export class DatabaseStorage implements IStorage {
     return activity;
   }
 
-  async getActivitiesByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation })[]> {
+  async getActivitiesByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation & { owner: Owner & { user: User } } })[]> {
     const conditions = [eq(washoutActivities.driverId, driverId)];
     
     if (startDate) {
@@ -593,12 +593,20 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
+      .innerJoin(users, eq(owners.userId, users.id))
       .where(and(...conditions))
       .orderBy(desc(washoutActivities.checkInTime));
 
     return results.map((row: any) => ({
       ...row.washout_activities,
-      location: row.washout_locations
+      location: {
+        ...row.washout_locations,
+        owner: {
+          ...row.owners,
+          user: row.users
+        }
+      }
     }));
   }
 
@@ -688,18 +696,26 @@ export class DatabaseStorage implements IStorage {
     return activity;
   }
 
-  async getRecentActivitiesByDriver(driverId: string, limit = 5): Promise<(WashoutActivity & { location: WashoutLocation })[]> {
+  async getRecentActivitiesByDriver(driverId: string, limit = 5): Promise<(WashoutActivity & { location: WashoutLocation & { owner: Owner & { user: User } } })[]> {
     const results = await db
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
+      .innerJoin(users, eq(owners.userId, users.id))
       .where(eq(washoutActivities.driverId, driverId))
       .orderBy(desc(washoutActivities.checkInTime))
       .limit(limit);
     
     return results.map((row: any) => ({
       ...row.washout_activities,
-      location: row.washout_locations
+      location: {
+        ...row.washout_locations,
+        owner: {
+          ...row.owners,
+          user: row.users
+        }
+      }
     }));
   }
 

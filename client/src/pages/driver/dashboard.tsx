@@ -315,6 +315,11 @@ export default function DriverDashboard() {
                         {activity.washout_locations?.address || activity.location?.address}
                       </div>
                     )}
+                    {(activity.location?.owner?.user?.phone) && (
+                      <div className="text-xs text-muted-foreground mt-1" data-testid={`text-owner-phone-${index}`}>
+                        📞 Owner: {activity.location.owner.user.phone}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Status and Actions Row */}
