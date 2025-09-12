@@ -141,7 +141,7 @@ export interface IStorage {
   createDriverWallet(wallet: InsertDriverWallet): Promise<DriverWallet>;
   getDriverWallet(driverId: string): Promise<DriverWallet | undefined>;
   updateWalletBalance(driverId: string, availableBalance: string, pendingBalance: string): Promise<DriverWallet>;
-  creditDriverWallet(driverId: string, amount: string, sourceType: 'washout' | 'adjustment' | 'refund', sourceId: string, description?: string): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }>;
+  creditDriverWallet(driverId: string, amount: string, sourceType: 'washout' | 'adjustment' | 'withdrawal', sourceId: string, description?: string): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }>;
   
   // Wallet transaction operations
   createWalletTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction>;
@@ -330,6 +330,7 @@ export class DatabaseStorage implements IStorage {
         employerAddress: drivers.employerAddress,
         employerPhone: drivers.employerPhone,
         licenseNumber: drivers.licenseNumber,
+        truckNumber: drivers.truckNumber,
         isGpsEnabled: drivers.isGpsEnabled,
         currentLatitude: drivers.currentLatitude,
         currentLongitude: drivers.currentLongitude,
@@ -825,7 +826,7 @@ export class DatabaseStorage implements IStorage {
       updateData.stripePaymentIntentId = stripePaymentIntentId;
     }
     
-    if (status === 'completed') {
+    if (status === 'posted') {
       updateData.paidAt = new Date();
     }
 
@@ -1189,7 +1190,7 @@ export class DatabaseStorage implements IStorage {
   async creditDriverWallet(
     driverId: string, 
     amount: string, 
-    sourceType: 'washout' | 'adjustment' | 'refund', 
+    sourceType: 'washout' | 'adjustment' | 'withdrawal', 
     sourceId: string, 
     description?: string
   ): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }> {
@@ -1249,7 +1250,7 @@ export class DatabaseStorage implements IStorage {
           balanceAfter: newAvailableBalance,
           sourceType: sourceType,
           sourceId: sourceId,
-          status: 'completed',
+          status: 'posted',
           description: description || `${sourceType} credit: $${amount}`,
           metadata: {
             creditType: sourceType,
