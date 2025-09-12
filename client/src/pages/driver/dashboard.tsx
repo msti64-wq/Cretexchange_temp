@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,11 +6,14 @@ import { useLocation } from "wouter";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet } from "lucide-react";
+import { PhotoModal } from "@/components/PhotoModal";
+import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function DriverDashboard() {
   const [, setLocation] = useLocation();
+  const [selectedActivity, setSelectedActivity] = useState<any>(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['/api/drivers/dashboard'],
@@ -313,8 +317,8 @@ export default function DriverDashboard() {
                     )}
                   </div>
                   
-                  {/* Status Row */}
-                  <div className="flex justify-center pt-2 border-t border-border/50">
+                  {/* Status and Actions Row */}
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
                     <div className={`text-xs font-medium px-3 py-1.5 rounded-full ${
                       (activity.washout_activities?.status || activity.status) === 'verified' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300' : 
                       (activity.washout_activities?.status || activity.status) === 'pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300'
@@ -322,6 +326,23 @@ export default function DriverDashboard() {
                       {(activity.washout_activities?.status || activity.status) === 'verified' ? '✅ Approved & Paid' : 
                        (activity.washout_activities?.status || activity.status) === 'pending' ? '⏳ Pending Review' : '❌ Rejected'}
                     </div>
+                    
+                    {/* Photos button */}
+                    {((activity.washout_activities?.photoUrls?.length > 0) || (activity.photoUrls?.length > 0)) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-8 px-3"
+                        onClick={() => {
+                          setSelectedActivity(activity);
+                          setIsPhotoModalOpen(true);
+                        }}
+                        data-testid={`button-view-photos-${index}`}
+                      >
+                        <ImageIcon className="w-4 h-4 mr-1" />
+                        Photos ({(activity.washout_activities?.photoUrls?.length || activity.photoUrls?.length || 0)})
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))
@@ -382,6 +403,13 @@ export default function DriverDashboard() {
       </main>
 
       <MobileNav role="driver" />
+      
+      {/* Photo Modal */}
+      <PhotoModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+        activity={selectedActivity}
+      />
     </div>
   );
 }
