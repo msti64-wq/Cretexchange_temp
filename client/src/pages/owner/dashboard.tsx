@@ -205,7 +205,7 @@ export default function OwnerDashboard() {
         )}
 
         {/* Subscription Required Notice */}
-        {user && subscriptionData?.status !== 'active' && (
+        {user && subscriptionData && subscriptionData.status !== 'active' && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
