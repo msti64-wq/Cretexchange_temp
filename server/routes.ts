@@ -8,7 +8,7 @@ import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -635,11 +635,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/owners/locations/:id/rate', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { rate } = req.body;
+      const userId = req.user.id;
+      
+      // Get owner information
+      const owner = await storage.getOwner(userId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
 
-      const location = await storage.updateLocationRate(id, rate);
+      // Verify the location exists and belongs to this owner
+      const existingLocation = await storage.getWashoutLocation(id);
+      if (!existingLocation) {
+        return res.status(404).json({ message: "Location not found" });
+      }
+
+      if (existingLocation.ownerId !== owner.id) {
+        return res.status(403).json({ message: "Not authorized to update this location" });
+      }
+
+      // Validate request body using Zod schema
+      const validatedData = updateLocationRateSchema.parse(req.body);
+
+      const location = await storage.updateLocationRate(id, validatedData.rate);
       res.json(location);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          errors: error.errors 
+        });
+      }
       console.error("Error updating rate:", error);
       res.status(500).json({ message: "Failed to update rate" });
     }
@@ -665,12 +690,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to update this location" });
       }
 
-      // Parse and validate the location data (excluding ownerId which should not be changed)
-      const { ownerId, ...locationData } = req.body;
+      // Validate request body using Zod schema
+      const validatedData = updateLocationSchema.parse(req.body);
       
-      const location = await storage.updateLocation(id, owner.id, locationData);
+      const location = await storage.updateLocation(id, owner.id, validatedData);
       res.json(location);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          errors: error.errors 
+        });
+      }
       console.error("Error updating location:", error);
       res.status(500).json({ message: "Failed to update location" });
     }
@@ -679,7 +710,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/owners/locations/:id/status', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { isActive } = req.body;
       const userId = req.user.id;
       
       const owner = await storage.getOwner(userId);
@@ -697,9 +727,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to update this location" });
       }
 
-      const location = await storage.updateLocationStatus(id, owner.id, isActive);
+      // Validate request body using Zod schema
+      const validatedData = updateLocationStatusSchema.parse(req.body);
+
+      const location = await storage.updateLocationStatus(id, owner.id, validatedData.isActive);
       res.json(location);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          errors: error.errors 
+        });
+      }
       console.error("Error updating location status:", error);
       res.status(500).json({ message: "Failed to update location status" });
     }

@@ -447,6 +447,19 @@ export const adminWithdrawalUpdateSchema = z.object({
   failureReason: z.string().optional(),
 });
 
+// Location update validation schemas
+export const updateLocationRateSchema = z.object({
+  rate: z.number().min(0.01, "Rate must be greater than 0").transform(val => val.toString()),
+});
+
+export const updateLocationStatusSchema = z.object({
+  isActive: z.boolean(),
+});
+
+export const updateLocationSchema = insertWashoutLocationSchema.partial().omit({
+  ownerId: true, // Owner cannot be changed through update
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
