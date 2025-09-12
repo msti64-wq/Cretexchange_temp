@@ -87,6 +87,8 @@ export interface IStorage {
   getActiveLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]>;
   updateLocationVisibility(locationId: string, isVisible: boolean): Promise<WashoutLocation>;
   updateLocationRate(locationId: string, rate: string): Promise<WashoutLocation>;
+  updateLocation(locationId: string, ownerId: string, locationData: Partial<InsertWashoutLocation>): Promise<WashoutLocation>;
+  updateLocationStatus(locationId: string, ownerId: string, isActive: boolean): Promise<WashoutLocation>;
   deleteWashoutLocation(locationId: string, ownerId: string): Promise<boolean>;
   getAllLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]>;
 
@@ -534,6 +536,36 @@ export class DatabaseStorage implements IStorage {
       .update(washoutLocations)
       .set({ rate, updatedAt: new Date() })
       .where(eq(washoutLocations.id, locationId))
+      .returning();
+    return location;
+  }
+
+  async updateLocation(locationId: string, ownerId: string, locationData: Partial<InsertWashoutLocation>): Promise<WashoutLocation> {
+    const [location] = await db
+      .update(washoutLocations)
+      .set({
+        ...locationData,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(washoutLocations.id, locationId),
+        eq(washoutLocations.ownerId, ownerId)
+      ))
+      .returning();
+    return location;
+  }
+
+  async updateLocationStatus(locationId: string, ownerId: string, isActive: boolean): Promise<WashoutLocation> {
+    const [location] = await db
+      .update(washoutLocations)
+      .set({ 
+        isActive, 
+        updatedAt: new Date() 
+      })
+      .where(and(
+        eq(washoutLocations.id, locationId),
+        eq(washoutLocations.ownerId, ownerId)
+      ))
       .returning();
     return location;
   }

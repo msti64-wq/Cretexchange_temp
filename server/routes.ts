@@ -645,6 +645,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/owners/locations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      
+      const owner = await storage.getOwner(userId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Verify the location belongs to this owner
+      const existingLocation = await storage.getWashoutLocation(id);
+      if (!existingLocation) {
+        return res.status(404).json({ message: "Location not found" });
+      }
+
+      if (existingLocation.ownerId !== owner.id) {
+        return res.status(403).json({ message: "Not authorized to update this location" });
+      }
+
+      // Parse and validate the location data (excluding ownerId which should not be changed)
+      const { ownerId, ...locationData } = req.body;
+      
+      const location = await storage.updateLocation(id, owner.id, locationData);
+      res.json(location);
+    } catch (error) {
+      console.error("Error updating location:", error);
+      res.status(500).json({ message: "Failed to update location" });
+    }
+  });
+
+  app.put('/api/owners/locations/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { isActive } = req.body;
+      const userId = req.user.id;
+      
+      const owner = await storage.getOwner(userId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Verify the location belongs to this owner
+      const existingLocation = await storage.getWashoutLocation(id);
+      if (!existingLocation) {
+        return res.status(404).json({ message: "Location not found" });
+      }
+
+      if (existingLocation.ownerId !== owner.id) {
+        return res.status(403).json({ message: "Not authorized to update this location" });
+      }
+
+      const location = await storage.updateLocationStatus(id, owner.id, isActive);
+      res.json(location);
+    } catch (error) {
+      console.error("Error updating location status:", error);
+      res.status(500).json({ message: "Failed to update location status" });
+    }
+  });
+
   app.delete('/api/owners/locations/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
