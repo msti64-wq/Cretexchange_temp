@@ -152,10 +152,10 @@ export default function DriverWallet() {
 
   const handleWithdrawal = () => {
     const amount = parseFloat(withdrawalAmount);
-    if (isNaN(amount) || amount < 10) {
+    if (isNaN(amount) || amount < 5) {
       toast({
         title: "Invalid Amount",
-        description: "Minimum withdrawal amount is $10.00",
+        description: "Minimum withdrawal amount is $5.00",
         variant: "destructive",
       });
       return;
@@ -400,13 +400,13 @@ export default function DriverWallet() {
                       value={withdrawalAmount}
                       onChange={(e) => setWithdrawalAmount(e.target.value)}
                       className="pl-10"
-                      min="10"
+                      min="5"
                       step="0.01"
                       data-testid="input-withdrawal-amount"
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Minimum withdrawal: $10.00
+                    Minimum withdrawal: $5.00
                   </p>
                 </div>
 
@@ -434,7 +434,7 @@ export default function DriverWallet() {
                   disabled={
                     withdrawalMutation.isPending ||
                     !withdrawalAmount ||
-                    parseFloat(withdrawalAmount) < 10 ||
+                    parseFloat(withdrawalAmount) < 5 ||
                     parseFloat(withdrawalAmount) > (walletBalance?.availableBalance || 0)
                   }
                   className="w-full"

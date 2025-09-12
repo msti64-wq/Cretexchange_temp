@@ -553,11 +553,11 @@ export default function PaymentMethods() {
                             <div>
                               <h4 className="font-semibold mb-2">2. Payments to Drivers</h4>
                               <div className="space-y-2 ml-4">
-                                <p><strong>2.1 Payment Obligation:</strong> Owners are responsible for compensating participating concrete truck drivers for washout services in the minimum amount of $10.00 per washout (or higher, as determined by you within the app).</p>
+                                <p><strong>2.1 Payment Obligation:</strong> Owners are responsible for compensating participating concrete truck drivers for washout services in the minimum amount of $5.00 per washout (or higher, as determined by you within the app).</p>
                                 <p><strong>2.2 Payment Schedule:</strong> Payments to drivers will be processed on a weekly basis.</p>
                                 <p><strong>2.3 Service Fee:</strong> For each payment made to a driver, WashOut Pro will assess a 10% service charge to the Owner, billed in addition to the driver's compensation. Drivers shall receive the full washout payment without any deduction for service fees.</p>
                                 <div className="bg-muted/50 p-2 rounded italic">
-                                  Example: If a driver is paid $10.00, the Owner will be billed $11.00 ($10.00 driver payment + $1.00 service fee).
+                                  Example: If a driver is paid $5.00, the Owner will be billed $5.50 ($5.00 driver payment + $0.50 service fee).
                                 </div>
                                 <p><strong>2.4 Washout Verification:</strong> Washouts will vary in size and content. Drivers are required to upload a clear photo of the actual washout for verification. Owners will be provided this photo for approval.</p>
                                 <div className="space-y-2 ml-4">

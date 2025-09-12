@@ -101,7 +101,7 @@ export default function OwnerLocations() {
     address: "",
     latitude: "",
     longitude: "",
-    rate: "10.00",
+    rate: "5.00",
     operatingHours: "",
     amenities: "",
   });

@@ -113,7 +113,7 @@ export const washoutLocations = pgTable("washout_locations", {
   address: text("address").notNull(),
   latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
   longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
-  rate: decimal("rate", { precision: 10, scale: 2 }).notNull().default("10.00"),
+  rate: decimal("rate", { precision: 10, scale: 2 }).notNull().default("5.00"),
   isActive: boolean("is_active").default(true),
   isVisible: boolean("is_visible").default(true),
   description: text("description"),
@@ -431,7 +431,7 @@ export const insertWithdrawalSchema = createInsertSchema(withdrawals).omit({
 
 // Wallet API request validation schemas
 export const withdrawalRequestSchema = z.object({
-  amount: z.number().positive().min(10, "Minimum withdrawal amount is $10"),
+  amount: z.number().positive().min(5, "Minimum withdrawal amount is $5"),
 });
 
 export const walletTransactionQuerySchema = z.object({
