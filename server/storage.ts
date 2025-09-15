@@ -13,6 +13,7 @@ import {
   walletTransactions,
   withdrawals,
   webhookEvents,
+  servicePaymentAccounts,
   type User,
   type UpsertUser,
   type Driver,
@@ -27,6 +28,7 @@ import {
   type DriverWallet,
   type WalletTransaction,
   type Withdrawal,
+  type ServicePaymentAccount,
   type InsertDriver,
   type InsertOwner,
   type InsertWashoutLocation,
@@ -39,6 +41,8 @@ import {
   type InsertDriverWallet,
   type InsertWalletTransaction,
   type InsertWithdrawal,
+  type InsertServicePaymentAccount,
+  type UpdateServicePaymentAccount,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns } from "drizzle-orm";
@@ -160,6 +164,15 @@ export interface IStorage {
   
   // Wallet statistics
   getWalletStats(driverId: string, days: number): Promise<{ totalCredits: number; totalDebits: number; totalFees: number; transactionCount: number }>;
+  
+  // Service Payment Account operations (superadmin only)
+  createServicePaymentAccount(account: InsertServicePaymentAccount): Promise<ServicePaymentAccount>;
+  getServicePaymentAccount(id: string): Promise<ServicePaymentAccount | undefined>;
+  getAllServicePaymentAccounts(): Promise<ServicePaymentAccount[]>;
+  getDefaultServicePaymentAccount(): Promise<ServicePaymentAccount | undefined>;
+  updateServicePaymentAccount(id: string, accountData: UpdateServicePaymentAccount): Promise<ServicePaymentAccount>;
+  deleteServicePaymentAccount(id: string): Promise<void>;
+  setDefaultServicePaymentAccount(id: string): Promise<ServicePaymentAccount>;
   
   // Debug operations
   getUserCount(): Promise<number>;
@@ -1518,6 +1531,83 @@ export class DatabaseStorage implements IStorage {
         retryCount: sql`${webhookEvents.retryCount} + 1`,
       })
       .where(eq(webhookEvents.stripeEventId, stripeEventId));
+  }
+
+  // Service Payment Account operations (superadmin only)
+  async createServicePaymentAccount(account: InsertServicePaymentAccount): Promise<ServicePaymentAccount> {
+    const [newAccount] = await db
+      .insert(servicePaymentAccounts)
+      .values(account)
+      .returning();
+    return newAccount;
+  }
+
+  async getServicePaymentAccount(id: string): Promise<ServicePaymentAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(servicePaymentAccounts)
+      .where(eq(servicePaymentAccounts.id, id));
+    return account;
+  }
+
+  async getAllServicePaymentAccounts(): Promise<ServicePaymentAccount[]> {
+    return await db
+      .select()
+      .from(servicePaymentAccounts)
+      .orderBy(desc(servicePaymentAccounts.createdAt));
+  }
+
+  async getDefaultServicePaymentAccount(): Promise<ServicePaymentAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(servicePaymentAccounts)
+      .where(and(
+        eq(servicePaymentAccounts.isDefault, true),
+        eq(servicePaymentAccounts.isActive, true)
+      ));
+    return account;
+  }
+
+  async updateServicePaymentAccount(id: string, accountData: UpdateServicePaymentAccount): Promise<ServicePaymentAccount> {
+    const [account] = await db
+      .update(servicePaymentAccounts)
+      .set({
+        ...accountData,
+        updatedAt: new Date(),
+      })
+      .where(eq(servicePaymentAccounts.id, id))
+      .returning();
+    return account;
+  }
+
+  async deleteServicePaymentAccount(id: string): Promise<void> {
+    await db
+      .delete(servicePaymentAccounts)
+      .where(eq(servicePaymentAccounts.id, id));
+  }
+
+  async setDefaultServicePaymentAccount(id: string): Promise<ServicePaymentAccount> {
+    // Use a transaction to prevent race conditions where multiple accounts could become default
+    return await db.transaction(async (tx) => {
+      // First, unset all other default accounts
+      await tx
+        .update(servicePaymentAccounts)
+        .set({ isDefault: false, updatedAt: new Date() })
+        .where(eq(servicePaymentAccounts.isDefault, true));
+
+      // Then set the specified account as default
+      const [account] = await tx
+        .update(servicePaymentAccounts)
+        .set({ isDefault: true, updatedAt: new Date() })
+        .where(eq(servicePaymentAccounts.id, id))
+        .returning();
+      
+      if (!account) {
+        throw new Error(`Service payment account with ID ${id} not found`);
+      }
+      
+      return account;
+    });
   }
 }
 

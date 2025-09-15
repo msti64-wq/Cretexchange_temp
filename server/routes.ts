@@ -8,7 +8,7 @@ import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -2824,6 +2824,191 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </body>
       </html>
     `);
+  });
+
+  // ==================== SUPERADMIN SERVICE PAYMENT ACCOUNT ROUTES ====================
+  
+  // Get all service payment accounts (superadmin only)
+  app.get('/api/superadmin/service-accounts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const accounts = await storage.getAllServicePaymentAccounts();
+      res.json(accounts);
+    } catch (error) {
+      console.error("Error fetching service payment accounts:", error);
+      res.status(500).json({ message: "Failed to fetch service payment accounts" });
+    }
+  });
+
+  // Create new service payment account (superadmin only)
+  app.post('/api/superadmin/service-accounts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      // Validate request body using Zod
+      const result = insertServicePaymentAccountSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid service account data", 
+          errors: result.error.issues 
+        });
+      }
+
+      const accountData = {
+        ...result.data,
+        createdBy: user.id,
+        updatedBy: user.id,
+      };
+
+      const newAccount = await storage.createServicePaymentAccount(accountData);
+      res.status(201).json(newAccount);
+    } catch (error) {
+      console.error("Error creating service payment account:", error);
+      res.status(500).json({ message: "Failed to create service payment account" });
+    }
+  });
+
+  // Get specific service payment account (superadmin only)
+  app.get('/api/superadmin/service-accounts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      // Validate UUID parameter
+      const paramResult = uuidParamSchema.safeParse(req.params);
+      if (!paramResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid account ID format", 
+          errors: paramResult.error.issues 
+        });
+      }
+
+      const account = await storage.getServicePaymentAccount(req.params.id);
+      if (!account) {
+        return res.status(404).json({ message: "Service payment account not found" });
+      }
+
+      res.json(account);
+    } catch (error) {
+      console.error("Error fetching service payment account:", error);
+      res.status(500).json({ message: "Failed to fetch service payment account" });
+    }
+  });
+
+  // Update service payment account (superadmin only)
+  app.put('/api/superadmin/service-accounts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      // Validate UUID parameter
+      const paramResult = uuidParamSchema.safeParse(req.params);
+      if (!paramResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid account ID format", 
+          errors: paramResult.error.issues 
+        });
+      }
+
+      // Validate request body using Zod
+      const result = updateServicePaymentAccountSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid service account data", 
+          errors: result.error.issues 
+        });
+      }
+
+      const accountData = {
+        ...result.data,
+        updatedBy: user.id,
+      };
+
+      const updatedAccount = await storage.updateServicePaymentAccount(req.params.id, accountData);
+      res.json(updatedAccount);
+    } catch (error) {
+      console.error("Error updating service payment account:", error);
+      res.status(500).json({ message: "Failed to update service payment account" });
+    }
+  });
+
+  // Delete service payment account (superadmin only)
+  app.delete('/api/superadmin/service-accounts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      // Validate UUID parameter
+      const paramResult = uuidParamSchema.safeParse(req.params);
+      if (!paramResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid account ID format", 
+          errors: paramResult.error.issues 
+        });
+      }
+
+      const account = await storage.getServicePaymentAccount(req.params.id);
+      if (!account) {
+        return res.status(404).json({ message: "Service payment account not found" });
+      }
+
+      if (account.isDefault) {
+        return res.status(400).json({ message: "Cannot delete the default service payment account" });
+      }
+
+      await storage.deleteServicePaymentAccount(req.params.id);
+      res.json({ message: "Service payment account deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting service payment account:", error);
+      res.status(500).json({ message: "Failed to delete service payment account" });
+    }
+  });
+
+  // Set default service payment account (superadmin only)
+  app.put('/api/superadmin/service-accounts/:id/set-default', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      // Validate UUID parameter
+      const paramResult = uuidParamSchema.safeParse(req.params);
+      if (!paramResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid account ID format", 
+          errors: paramResult.error.issues 
+        });
+      }
+
+      const account = await storage.getServicePaymentAccount(req.params.id);
+      if (!account) {
+        return res.status(404).json({ message: "Service payment account not found" });
+      }
+
+      if (!account.isActive) {
+        return res.status(400).json({ message: "Cannot set inactive account as default" });
+      }
+
+      const defaultAccount = await storage.setDefaultServicePaymentAccount(req.params.id);
+      res.json(defaultAccount);
+    } catch (error) {
+      console.error("Error setting default service payment account:", error);
+      res.status(500).json({ message: "Failed to set default service payment account" });
+    }
   });
 
   const httpServer = createServer(app);

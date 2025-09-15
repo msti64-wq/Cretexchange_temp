@@ -42,6 +42,7 @@ export const paymentFrequencyEnum = pgEnum("payment_frequency", ["weekly", "biwe
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "trial", "past_due"]);
 export const washoutStatusEnum = pgEnum("washout_status", ["pending", "verified", "rejected"]);
 export const messageStatusEnum = pgEnum("message_status", ["unread", "read", "resolved"]);
+export const distributionFrequencyEnum = pgEnum("distribution_frequency", ["daily", "weekly", "biweekly", "monthly"]);
 
 // Wallet system enums
 export const transactionDirectionEnum = pgEnum("transaction_direction", ["credit", "debit", "fee"]);
@@ -460,6 +461,77 @@ export const updateLocationSchema = insertWashoutLocationSchema.partial().omit({
   ownerId: true, // Owner cannot be changed through update
 });
 
+// UUID parameter validation schema for route parameters
+export const uuidParamSchema = z.object({
+  id: z.string().uuid("Invalid UUID format"),
+});
+
+// Service Payment Account Configuration - managed by superadmin
+export const servicePaymentAccounts = pgTable("service_payment_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(), // Display name for the service account
+  description: text("description"), // Optional description
+  
+  // Stripe Configuration
+  stripeAccountId: varchar("stripe_account_id"), // Main service Stripe account ID
+  stripePublishableKey: varchar("stripe_publishable_key"), // Associated publishable key
+  webhookEndpointId: varchar("webhook_endpoint_id"), // Stripe webhook endpoint ID
+  
+  // Platform Fee Configuration
+  platformFeePercentage: decimal("platform_fee_percentage", { precision: 5, scale: 2 }).default("10.00"), // Platform fee percentage (default 10%)
+  processingFeeFlat: decimal("processing_fee_flat", { precision: 10, scale: 2 }).default("0.30"), // Flat processing fee
+  processingFeePercentage: decimal("processing_fee_percentage", { precision: 5, scale: 2 }).default("2.90"), // Processing fee percentage
+  
+  // Payment Collection Settings
+  collectPaymentsFromOwners: boolean("collect_payments_from_owners").default(true), // Whether to collect from owners
+  autoDistributeToDrivers: boolean("auto_distribute_to_drivers").default(true), // Auto-distribute to drivers
+  distributionFrequency: distributionFrequencyEnum("distribution_frequency").default("daily"), // daily, weekly, biweekly, monthly
+  minimumPayoutAmount: decimal("minimum_payout_amount", { precision: 10, scale: 2 }).default("5.00"), // Minimum payout threshold
+  
+  // Account Status and Settings
+  isActive: boolean("is_active").default(true),
+  isDefault: boolean("is_default").default(false), // Whether this is the default service account
+  lastPayoutAt: timestamp("last_payout_at"),
+  totalProcessed: decimal("total_processed", { precision: 15, scale: 2 }).default("0.00"), // Total amount processed
+  totalFeesCollected: decimal("total_fees_collected", { precision: 15, scale: 2 }).default("0.00"), // Total fees collected
+  
+  // Audit fields
+  createdBy: varchar("created_by").references(() => users.id),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  // Partial unique index to ensure only one default account exists
+  // This constraint prevents multiple accounts from being set as default
+  uniqueDefaultAccountConstraint: uniqueIndex("uniq_service_payment_accounts_default")
+    .on(table.isDefault)
+    .where(sql`${table.isDefault} = true`),
+}));
+
+// Insert and Update schemas for service payment accounts
+export const insertServicePaymentAccountSchema = createInsertSchema(servicePaymentAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  totalProcessed: true,
+  totalFeesCollected: true,
+  lastPayoutAt: true,
+});
+
+export const updateServicePaymentAccountSchema = insertServicePaymentAccountSchema.partial().omit({
+  createdBy: true, // Cannot change creator
+  isDefault: true, // Cannot be set by clients - use dedicated endpoint
+  totalProcessed: true, // System-maintained field
+  totalFeesCollected: true, // System-maintained field
+  lastPayoutAt: true, // System-maintained field
+}).extend({
+  // Add validation for fee fields to prevent invalid values
+  platformFeePercentage: z.coerce.number().min(0, "Platform fee must be >= 0").max(100, "Platform fee must be <= 100%").transform(val => val.toString()).optional(),
+  processingFeeFlat: z.coerce.number().min(0, "Processing fee must be >= 0").transform(val => val.toString()).optional(),
+  processingFeePercentage: z.coerce.number().min(0, "Processing fee must be >= 0").max(100, "Processing fee must be <= 100%").transform(val => val.toString()).optional(),
+  minimumPayoutAmount: z.coerce.number().min(0.01, "Minimum payout must be >= $0.01").transform(val => val.toString()).optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -488,3 +560,6 @@ export type Withdrawal = typeof withdrawals.$inferSelect;
 export type InsertDriverWallet = z.infer<typeof insertDriverWalletSchema>;
 export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;
 export type InsertWithdrawal = z.infer<typeof insertWithdrawalSchema>;
+export type ServicePaymentAccount = typeof servicePaymentAccounts.$inferSelect;
+export type InsertServicePaymentAccount = z.infer<typeof insertServicePaymentAccountSchema>;
+export type UpdateServicePaymentAccount = z.infer<typeof updateServicePaymentAccountSchema>;
