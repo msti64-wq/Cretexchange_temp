@@ -72,6 +72,7 @@ export function PhotoModal({
   const status = activity.status;
   const amount = activity.amount || 0;
   const driverName = `${activity.driver?.user?.firstName || ''} ${activity.driver?.user?.lastName || ''}`.trim();
+  const truckNumber = activity.driver?.truckNumber;
   const locationName = activity.location?.name || '';
   const checkInTime = activity.checkInTime;
 
@@ -125,7 +126,14 @@ export function PhotoModal({
           {/* Activity Details */}
           <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
             <div>
-              <h3 className="font-semibold text-lg">{driverName}</h3>
+              <h3 className="font-semibold text-lg" data-testid="text-driver-info">
+                {driverName}
+                {String(truckNumber || '') && (
+                  <span className="text-muted-foreground font-normal">
+                    {driverName ? ' - ' : ''}Truck #{truckNumber}
+                  </span>
+                )}
+              </h3>
               <p className="text-muted-foreground">{locationName}</p>
               {checkInTime && (
                 <p className="text-sm text-muted-foreground">
