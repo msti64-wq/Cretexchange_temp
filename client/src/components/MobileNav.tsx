@@ -1,10 +1,10 @@
-import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard } from "lucide-react";
+import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
 interface MobileNavProps {
-  role?: "driver" | "owner" | "admin";
+  role?: "driver" | "owner" | "admin" | "super_admin";
 }
 
 export function MobileNav({ role }: MobileNavProps) {
@@ -32,11 +32,13 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/payments", icon: DollarSign, label: "Payments" },
         ];
       case "admin":
+      case "super_admin":
         const adminNavItems = [
           { path: "/", icon: BarChart3, label: "Dashboard" },
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/payments", icon: DollarSign, label: "Payments" },
+          { path: "/subscriptions", icon: Receipt, label: "Subscriptions" },
         ];
         
         // Add service accounts for super_admin

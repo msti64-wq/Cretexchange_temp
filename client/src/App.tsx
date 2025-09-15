@@ -34,6 +34,7 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminUsers from "@/pages/admin/users";
 import AdminLocations from "@/pages/admin/locations";
 import AdminPayments from "@/pages/admin/payments";
+import AdminSubscriptions from "@/pages/admin/subscriptions";
 import ServiceAccountsPage from "@/pages/admin/service-accounts";
 
 // Wrapper components for Register with preselected roles
@@ -115,6 +116,7 @@ function Router() {
         <Route path="/users" component={AdminUsers} />
         <Route path="/locations" component={AdminLocations} />
         <Route path="/payments" component={AdminPayments} />
+        <Route path="/subscriptions" component={AdminSubscriptions} />
         <Route path="/service-accounts" component={ServiceAccountsPage} />
         <Route component={NotFound} />
       </Switch>
