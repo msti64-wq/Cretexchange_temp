@@ -1489,6 +1489,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin subscription management endpoint
+  app.get('/api/admin/subscriptions', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      // Get all owners with subscription information
+      const owners = await storage.getAllOwners();
+      
+      // Get all user details in parallel for efficiency
+      const ownerUserPromises = owners.map(owner => storage.getUser(owner.userId));
+      const ownerUsers = await Promise.all(ownerUserPromises);
+
+      // Filter out owners without valid user records
+      const validOwnerData = owners
+        .map((owner, index) => ({ owner, user: ownerUsers[index] }))
+        .filter(({ user }) => user !== null);
+
+      // Prepare base subscription data for all owners
+      const baseSubscriptionsData = validOwnerData.map(({ owner, user }) => ({
+        id: user!.stripeSubscriptionId || 'N/A', // Use Stripe subscription ID as primary identifier
+        userId: owner.userId,
+        ownerName: `${user!.firstName} ${user!.lastName}`,
+        email: user!.email,
+        companyName: owner.companyName || 'N/A',
+        status: owner.subscriptionStatus,
+        plan: owner.subscriptionPlan || 'monthly',
+        localEndsAt: owner.subscriptionEndsAt,
+        stripeCustomerId: user!.stripeCustomerId,
+        stripeSubscriptionId: user!.stripeSubscriptionId,
+        createdAt: user!.createdAt,
+        nextBillingDate: null,
+        currentPeriodEnd: null,
+        amount: null,
+        currency: 'usd',
+        cancelAtPeriodEnd: false,
+        cancelAt: null,
+        trialEnd: null
+      }));
+
+      // Get fresh Stripe data for all subscriptions in parallel (performance improvement)
+      const stripeDataPromises = baseSubscriptionsData.map(async (subscriptionData) => {
+        if (stripe && subscriptionData.stripeSubscriptionId) {
+          try {
+            const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionData.stripeSubscriptionId);
+            
+            // Calculate total amount across ALL subscription items (not just first one)
+            const totalAmount = stripeSubscription.items.data.reduce((sum, item) => {
+              return sum + (item.price?.unit_amount || 0);
+            }, 0);
+
+            return {
+              ...subscriptionData,
+              id: stripeSubscription.id, // Use Stripe subscription ID as consistent identifier
+              status: stripeSubscription.status,
+              currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+              nextBillingDate: new Date(stripeSubscription.current_period_end * 1000),
+              amount: totalAmount > 0 ? (totalAmount / 100).toFixed(2) : null,
+              currency: stripeSubscription.items.data[0]?.price?.currency || 'usd',
+              cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+              cancelAt: stripeSubscription.cancel_at ? new Date(stripeSubscription.cancel_at * 1000) : null,
+              trialEnd: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000) : null
+            };
+          } catch (stripeError) {
+            console.log(`Could not fetch Stripe subscription for ${subscriptionData.email}:`, stripeError instanceof Error ? stripeError.message : 'Unknown error');
+            // Return base data if Stripe fails
+            return subscriptionData;
+          }
+        }
+        return subscriptionData;
+      });
+
+      const subscriptionsWithStripeData = await Promise.all(stripeDataPromises);
+
+      // Filter to only include truly active subscriptions (corrected filtering logic)
+      const activeSubscriptions = subscriptionsWithStripeData.filter(subscription => 
+        subscription.status === 'active'
+      );
+
+      // Sort by next billing date
+      activeSubscriptions.sort((a, b) => {
+        const aDate = a.nextBillingDate || a.currentPeriodEnd || a.localEndsAt || new Date(0);
+        const bDate = b.nextBillingDate || b.currentPeriodEnd || b.localEndsAt || new Date(0);
+        return new Date(aDate).getTime() - new Date(bDate).getTime();
+      });
+
+      res.json({
+        subscriptions: activeSubscriptions,
+        totalActive: activeSubscriptions.length,
+        totalSubscriptions: activeSubscriptions.length
+      });
+    } catch (error) {
+      console.error("Error fetching subscription data:", error);
+      res.status(500).json({ message: "Failed to fetch subscription data" });
+    }
+  });
+
   // Create admin user (super admin only)
   app.post("/api/admin/users/create-admin", isAuthenticated, async (req: any, res) => {
     try {
