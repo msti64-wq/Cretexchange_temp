@@ -57,10 +57,25 @@ interface ServicePaymentAccount {
 
 export default function ServiceAccountsPage() {
   const { toast } = useToast();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<ServicePaymentAccount | null>(null);
+
+  // Client-side role guard for super_admin only
+  if ((user as any)?.role !== 'super_admin') {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Access denied. This page is only available to super administrators.
+          </AlertDescription>
+        </Alert>
+        <MobileNav role="admin" />
+      </div>
+    );
+  }
 
   const { data: accounts, isLoading, error } = useQuery<ServicePaymentAccount[]>({
     queryKey: ['/api/superadmin/service-accounts'],
@@ -70,14 +85,28 @@ export default function ServiceAccountsPage() {
   // Handle unauthorized error
   useEffect(() => {
     if (error && isUnauthorizedError(error as Error)) {
-      toast({
-        title: "Unauthorized",
-        description: "You don't have permission to access this page.",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
+      const errorMessage = (error as any)?.message || '';
+      if (errorMessage.includes('403') || errorMessage.includes('forbidden')) {
+        // Forbidden - insufficient role
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to access this page.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 1000);
+      } else {
+        // Unauthorized - need to login
+        toast({
+          title: "Session Expired",
+          description: "Please log in again to continue.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+      }
       return;
     }
   }, [error, toast]);
