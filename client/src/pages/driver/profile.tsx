@@ -429,9 +429,10 @@ export default function DriverProfile() {
                   size="sm"
                   onClick={() => setShowTermsDialog(true)}
                   data-testid="button-view-terms"
+                  className={!termsStatus?.hasAgreed ? "border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-400 dark:text-red-400 dark:hover:bg-red-900/20" : ""}
                 >
                   <Eye className="w-4 h-4 mr-2" />
-                  View Terms
+                  {!termsStatus?.hasAgreed ? "Must Read Terms" : "View Terms"}
                 </Button>
               </div>
               
