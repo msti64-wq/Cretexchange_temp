@@ -19,6 +19,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
   const queryClient = useQueryClient();
   const [hasReadTerms, setHasReadTerms] = useState(false);
 
+
   const agreeToTermsMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/drivers/agree-to-terms", {});

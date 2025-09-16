@@ -622,6 +622,8 @@ export default function DriverWallet() {
         open={showTermsDialog}
         onOpenChange={setShowTermsDialog}
         onAccepted={handleTermsAccepted}
+        // Explicitly set readOnly to false for wallet
+        readOnly={false}
       />
 
       <MobileNav />
