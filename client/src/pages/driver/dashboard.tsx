@@ -7,6 +7,7 @@ import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
+import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ export default function DriverDashboard() {
   const [, setLocation] = useLocation();
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
 
   const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['/api/drivers/dashboard'],
@@ -373,7 +375,7 @@ export default function DriverDashboard() {
             <Button 
               size="sm" 
               className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-              onClick={() => window.open('sms:214-949-3859?body=Hello, I need help with my WashOut Pro account.', '_blank')}
+              onClick={() => setIsSupportDialogOpen(true)}
               data-testid="button-contact-support"
             >
               <MessageCircle className="w-4 h-4 mr-2" />
@@ -419,6 +421,11 @@ export default function DriverDashboard() {
         isOpen={isPhotoModalOpen}
         onClose={() => setIsPhotoModalOpen(false)}
         activity={selectedActivity}
+      />
+
+      <SupportMessageDialog
+        isOpen={isSupportDialogOpen}
+        onClose={() => setIsSupportDialogOpen(false)}
       />
     </div>
   );

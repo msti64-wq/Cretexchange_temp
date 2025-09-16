@@ -7,6 +7,7 @@ import { useLocation } from "wouter";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
+import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User, ImageIcon, Check, X, MessageCircle, Phone, Crown, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +19,7 @@ export default function OwnerDashboard() {
   const { user, logout } = useAuth();
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -476,7 +478,7 @@ export default function OwnerDashboard() {
             <Button 
               size="sm" 
               className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-              onClick={() => window.open('sms:214-949-3859?body=Hello, I need help with my WashOut Pro account.', '_blank')}
+              onClick={() => setIsSupportDialogOpen(true)}
               data-testid="button-contact-support"
             >
               <MessageCircle className="w-4 h-4 mr-2" />
@@ -494,6 +496,11 @@ export default function OwnerDashboard() {
         }}
         activity={selectedActivity}
         canApprove={true} // Owners can approve/reject photos
+      />
+
+      <SupportMessageDialog
+        isOpen={isSupportDialogOpen}
+        onClose={() => setIsSupportDialogOpen(false)}
       />
 
       <MobileNav role="owner" />
