@@ -462,7 +462,11 @@ export default function DriverProfile() {
       <DriverTermsDialog
         open={showTermsDialog}
         onOpenChange={setShowTermsDialog}
-        readOnly={true}
+        readOnly={termsStatus?.hasAgreed || false}
+        onAccepted={() => {
+          // Refresh terms status when accepted from profile
+          window.location.reload();
+        }}
       />
 
       <MobileNav role="driver" />
