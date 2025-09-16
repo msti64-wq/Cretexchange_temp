@@ -242,8 +242,9 @@ export default function OwnerLocations() {
                 title={(subscriptionData as any)?.status === 'past_due' 
                   ? "Feature restricted during grace period - payment required"
                   : (subscriptionData as any)?.status !== 'active' 
-                  ? "Active subscription required" 
+                  ? `Active subscription required (Current: ${(subscriptionData as any)?.status || 'none'})` 
                   : ""}
+                onClick={() => console.log('Subscription status:', subscriptionData)}
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Add Location
