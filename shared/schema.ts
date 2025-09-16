@@ -85,6 +85,8 @@ export const drivers = pgTable("drivers", {
   currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),
   lastLocationUpdate: timestamp("last_location_update"),
   connectedAccountId: varchar("connected_account_id"), // Stripe Connect account ID for drivers
+  hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
+  termsAgreedAt: timestamp("terms_agreed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -366,6 +368,8 @@ export const resetPasswordSchema = z.object({
 
 export const insertDriverSchema = createInsertSchema(drivers).omit({
   id: true,
+  hasAgreedToTerms: true,
+  termsAgreedAt: true,
   createdAt: true,
   updatedAt: true,
 });
