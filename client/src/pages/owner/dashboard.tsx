@@ -167,48 +167,49 @@ export default function OwnerDashboard() {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="gradient-bg text-white p-4 shadow-lg">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-3 flex-1 min-w-0">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <Building2 className="w-5 h-5" />
+        {/* Top Row - User Info and Logout */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3 flex-1">
+            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <Building2 className="w-6 h-6" />
             </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="font-semibold text-base truncate" data-testid="text-owner-name">
+            <div className="flex-1">
+              <h1 className="font-semibold text-lg leading-tight" data-testid="text-owner-name">
                 Welcome, {user?.firstName} {user?.lastName}
               </h1>
-              <p className="text-white/80 text-xs">Location Management</p>
+              <p className="text-white/80 text-sm">Location Management</p>
             </div>
           </div>
-          <div className="flex items-center space-x-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLocation('/profile')}
-              data-testid="button-profile"
-              className="bg-blue-600 border-blue-500 text-white hover:bg-blue-700 text-xs px-2"
-            >
-              <User className="w-3 h-3 mr-1" />
-              Profile
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={logout}
-              data-testid="button-logout"
-              className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700 text-xs px-2"
-            >
-              <LogOut className="w-3 h-3 mr-1" />
-              Logout
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={logout}
+            data-testid="button-logout"
+            className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700 flex-shrink-0"
+          >
+            <LogOut className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Logout</span>
+          </Button>
         </div>
-        <div className="flex justify-center space-x-2">
+        
+        {/* Action Buttons Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLocation('/profile')}
+            data-testid="button-profile"
+            className="bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
+          >
+            <User className="w-4 h-4 mr-2" />
+            Profile
+          </Button>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setLocation('/locations')}
             data-testid="button-add-location"
-            className="flex-1 max-w-xs bg-green-600 hover:bg-green-700 text-white"
+            className="bg-green-600 hover:bg-green-700 text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Location
@@ -218,7 +219,7 @@ export default function OwnerDashboard() {
             size="sm"
             onClick={() => setLocation('/payment-methods')}
             data-testid="button-payment-methods"
-            className="flex-1 max-w-xs bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700"
           >
             <CreditCard className="w-4 h-4 mr-2" />
             Payment Methods
