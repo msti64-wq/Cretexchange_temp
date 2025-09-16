@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
@@ -20,7 +21,7 @@ export default function OwnerDashboard() {
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<'today' | '90days'>('today');
+  const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | '90days' | 'all'>('today');
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -324,26 +325,19 @@ export default function OwnerDashboard() {
           title="Recent Activity"
           subtitle={
             <div className="flex items-center space-x-2">
-              <div className="flex bg-muted rounded-lg p-1">
-                <Button
-                  variant={dateRange === 'today' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setDateRange('today')}
-                  data-testid="button-today-filter"
-                  className="text-xs px-2 py-1 h-auto"
-                >
-                  Today
-                </Button>
-                <Button
-                  variant={dateRange === '90days' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setDateRange('90days')}
-                  data-testid="button-90days-filter"
-                  className="text-xs px-2 py-1 h-auto"
-                >
-                  90 Days
-                </Button>
-              </div>
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger className="w-32 h-8 text-xs" data-testid="select-date-range">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today" data-testid="option-today">Today</SelectItem>
+                  <SelectItem value="yesterday" data-testid="option-yesterday">Yesterday</SelectItem>
+                  <SelectItem value="7days" data-testid="option-7days">Last 7 Days</SelectItem>
+                  <SelectItem value="30days" data-testid="option-30days">Last 30 Days</SelectItem>
+                  <SelectItem value="90days" data-testid="option-90days">Last 90 Days</SelectItem>
+                  <SelectItem value="all" data-testid="option-all">All Time</SelectItem>
+                </SelectContent>
+              </Select>
               <Button 
                 variant="ghost" 
                 size="sm" 
