@@ -50,6 +50,10 @@ export const transactionSourceTypeEnum = pgEnum("transaction_source_type", ["was
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "posted", "failed"]);
 export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["requested", "processing", "paid", "failed", "canceled"]);
 
+// Billing system enums
+export const billingCadenceEnum = pgEnum("billing_cadence", ["daily"]);
+export const batchStatusEnum = pgEnum("batch_status", ["pending", "processing", "completed", "failed", "cancelled"]);
+
 // User storage table - local authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -104,6 +108,10 @@ export const owners = pgTable("owners", {
   pastDueDate: timestamp("past_due_date"), // When subscription first became past due
   gracePeriodStartDate: timestamp("grace_period_start_date"), // When 7-day grace period started
   lastReminderSent: timestamp("last_reminder_sent"), // Last time we sent a reminder
+  // Billing configuration for daily batch processing
+  billingCadence: billingCadenceEnum("billing_cadence").default("daily"),
+  billingCutoffTime: varchar("billing_cutoff_time").default("23:59:00"), // Time of day for billing cutoff (HH:MM:SS)
+  billingTimezone: varchar("billing_timezone").default("America/Chicago"), // Owner's timezone for billing cutoff
   isApproved: boolean("is_approved").default(false),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
@@ -159,10 +167,39 @@ export const payments = pgTable("payments", {
   processingFee: decimal("processing_fee", { precision: 10, scale: 2 }).notNull(),
   stripePaymentIntentId: varchar("stripe_payment_intent_id"),
   status: varchar("status").notNull().default("pending"),
+  // Batch tracking fields for daily billing
+  batchId: varchar("batch_id").references(() => billingBatches.id),
+  businessDate: varchar("business_date"), // YYYY-MM-DD format for the business day
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Billing batches for daily batch processing
+export const billingBatches = pgTable("billing_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
+  businessDate: varchar("business_date").notNull(), // YYYY-MM-DD format
+  cutoffTime: varchar("cutoff_time").notNull(), // HH:MM:SS format when batch was created
+  timezone: varchar("timezone").notNull(), // Timezone used for cutoff
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  totalFees: decimal("total_fees", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  paymentCount: integer("payment_count").notNull().default(0),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  status: batchStatusEnum("status").notNull().default("pending"),
+  processingStartedAt: timestamp("processing_started_at"),
+  completedAt: timestamp("completed_at"),
+  failureReason: text("failure_reason"),
+  retryCount: integer("retry_count").notNull().default(0),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  // Unique constraint: one batch per owner per business date
+  uniqueBatchPerDay: uniqueIndex("uniq_billing_batches_owner_date").on(table.ownerId, table.businessDate),
+  // Index for efficient queries by status and date
+  statusDateIndex: index("idx_billing_batches_status_date").on(table.status, table.businessDate),
+}));
 
 // Owner payment methods
 export const ownerPaymentMethods = pgTable("owner_payment_methods", {
@@ -289,6 +326,7 @@ export const ownersRelations = relations(owners, ({ one, many }) => ({
   locations: many(washoutLocations),
   payments: many(payments),
   paymentMethods: many(ownerPaymentMethods),
+  billingBatches: many(billingBatches),
 }));
 
 export const washoutLocationsRelations = relations(washoutLocations, ({ one, many }) => ({
@@ -310,6 +348,12 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
   driver: one(drivers, { fields: [payments.driverId], references: [drivers.id] }),
   owner: one(owners, { fields: [payments.ownerId], references: [owners.id] }),
   activity: one(washoutActivities, { fields: [payments.activityId], references: [washoutActivities.id] }),
+  batch: one(billingBatches, { fields: [payments.batchId], references: [billingBatches.id] }),
+}));
+
+export const billingBatchesRelations = relations(billingBatches, ({ one, many }) => ({
+  owner: one(owners, { fields: [billingBatches.ownerId], references: [owners.id] }),
+  payments: many(payments),
 }));
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
@@ -433,6 +477,12 @@ export const insertWalletTransactionSchema = createInsertSchema(walletTransactio
 export const insertWithdrawalSchema = createInsertSchema(withdrawals).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertBillingBatchSchema = createInsertSchema(billingBatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Wallet API request validation schemas
@@ -568,6 +618,8 @@ export type Withdrawal = typeof withdrawals.$inferSelect;
 export type InsertDriverWallet = z.infer<typeof insertDriverWalletSchema>;
 export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;
 export type InsertWithdrawal = z.infer<typeof insertWithdrawalSchema>;
+export type BillingBatch = typeof billingBatches.$inferSelect;
+export type InsertBillingBatch = z.infer<typeof insertBillingBatchSchema>;
 export type ServicePaymentAccount = typeof servicePaymentAccounts.$inferSelect;
 export type InsertServicePaymentAccount = z.infer<typeof insertServicePaymentAccountSchema>;
 export type UpdateServicePaymentAccount = z.infer<typeof updateServicePaymentAccountSchema>;

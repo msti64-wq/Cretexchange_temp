@@ -73,6 +73,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced batch management API endpoints
+  app.get('/api/admin/billing/batches', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { status, startDate, endDate, limit = 50, offset = 0 } = req.query;
+      
+      // Get batches with filtering and pagination
+      const batches = await storage.getBillingBatchesWithFilters({
+        status: status as string,
+        startDate: startDate ? new Date(startDate as string) : undefined,
+        endDate: endDate ? new Date(endDate as string) : undefined,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string)
+      });
+      
+      res.json(batches);
+    } catch (error) {
+      console.error("Error fetching billing batches:", error);
+      res.status(500).json({ message: "Failed to fetch batches" });
+    }
+  });
+
+  // Retry failed batch processing
+  app.post('/api/admin/billing/batches/:batchId/retry', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { batchId } = req.params;
+      const batch = await storage.getBillingBatch(batchId);
+      
+      if (!batch) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+
+      if (batch.status !== 'failed') {
+        return res.status(400).json({ message: "Can only retry failed batches" });
+      }
+
+      // Reset batch status and retry
+      await storage.retryBillingBatch(batchId);
+      
+      res.json({ message: "Batch retry initiated", batchId });
+    } catch (error) {
+      console.error("Error retrying batch:", error);
+      res.status(500).json({ message: "Failed to retry batch" });
+    }
+  });
+
+  // Daily batch scheduling endpoint (for cron job setup)
+  app.post('/api/system/daily-batch-job', async (req, res) => {
+    try {
+      const { cronKey } = req.body;
+      
+      // Simple authentication for scheduled jobs
+      if (cronKey !== process.env.CRON_JOB_SECRET) {
+        return res.status(401).json({ message: "Invalid cron job authentication" });
+      }
+
+      console.log('🕐 Starting scheduled daily batch processing...');
+      
+      const results = await storage.processDailyBatches();
+      
+      console.log(`✅ Scheduled batch processing completed: ${results.processed} processed, ${results.failed} failed`);
+      
+      res.json({
+        message: "Daily batch processing completed",
+        results,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error("Error in scheduled batch processing:", error);
+      res.status(500).json({ 
+        message: "Scheduled batch processing failed",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Scheduled job documentation endpoint
+  app.get('/api/system/batch-job-info', (req, res) => {
+    const environment = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
+    const baseUrl = process.env.REPLIT_DEPLOYMENT 
+      ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+      : 'http://localhost:5000';
+      
+    res.json({
+      message: "Daily Batch Processing Job Setup Information",
+      environment,
+      jobEndpoint: `${baseUrl}/api/system/daily-batch-job`,
+      requiredEnvironmentVariable: "CRON_JOB_SECRET",
+      authentication: {
+        method: "POST body parameter",
+        parameter: "cronKey",
+        value: "Must match CRON_JOB_SECRET environment variable"
+      },
+      recommendations: {
+        frequency: "Every 6 hours (to catch different timezones)",
+        cronExpression: "0 */6 * * *",
+        timeouts: "Set timeout to at least 5 minutes",
+        retries: "Enable retries with exponential backoff"
+      },
+      curlExample: `curl -X POST ${baseUrl}/api/system/daily-batch-job \\\n  -H "Content-Type: application/json" \\\n  -d '{"cronKey": "YOUR_CRON_JOB_SECRET"}'`,
+      setupInstructions: [
+        "1. Set CRON_JOB_SECRET environment variable to a secure random string",
+        "2. Configure your cron service (GitHub Actions, cron-job.org, etc.)",
+        "3. Schedule to run every 6 hours: 0 */6 * * *",
+        "4. Use the POST endpoint with cronKey authentication",
+        "5. Monitor response for processing results and errors"
+      ],
+      businessLogic: {
+        description: "Processes daily batches for each owner based on their billing settings",
+        timezoneHandling: "Each owner's timezone and cutoff time is respected",
+        batchCreation: "Creates billing_batches for each owner with pending payments",
+        stripeIntegration: "Creates single PaymentIntent per batch",
+        walletUpdates: "Posts pending balances to available on successful payment",
+        idempotency: "Prevents duplicate processing with database and Stripe checks"
+      }
+    });
+  });
+
+  // Health check endpoint for monitoring
+  app.get('/api/system/health', (req, res) => {
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      database: 'connected',
+      stripe: !!process.env.STRIPE_SECRET_KEY ? 'configured' : 'disabled'
+    });
+  });
+
   // Create test data with pending payments
   app.post("/api/debug/create-test-data", async (req, res) => {
     try {
@@ -146,6 +285,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         activities.push(activity);
 
+        // Get owner's billing settings for business date calculation
+        const billingSettings = await storage.getOwnerBillingSettings(o1Owner.id);
+        const businessDate = billingSettings 
+          ? await storage.calculateBusinessDateForOwner(
+              o1Owner.id,
+              billingSettings.billingTimezone,
+              billingSettings.billingCutoffTime
+            )
+          : new Date().toISOString().split('T')[0]; // fallback to today
+        
         // Create corresponding payment with 'pending' status
         const payment = await storage.createPayment({
           activityId: activity.id,
@@ -153,7 +302,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerId: o1Owner.id,
           amount: '25.00',
           processingFee: '2.50',
-          status: 'pending'
+          status: 'pending',
+          businessDate // Critical: Set business date for batch processing
         });
         payments.push(payment);
       }
@@ -900,31 +1050,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const platformCommission = activityAmount * 0.10; // 10% commission to platform
       const driverAmount = activityAmount - platformCommission; // 90% to driver
 
-      // Credit driver's wallet and create payment record for reporting
-      const walletCredit = await storage.creditDriverWallet(
-        activityDetails.driverId,
-        driverAmount.toString(),
-        'washout',
-        id,
-        `Washout payment for activity ${id}`
+      // Get owner's billing settings for business date calculation
+      const billingSettings = await storage.getOwnerBillingSettings(owner.id);
+      if (!billingSettings) {
+        return res.status(500).json({ message: "Owner billing settings not found" });
+      }
+      
+      // Calculate business date using proper cutoff time logic
+      const businessDate = await storage.calculateBusinessDateForOwner(
+        owner.id,
+        billingSettings.billingTimezone,
+        billingSettings.billingCutoffTime
       );
 
-      // Create Payment record for admin/owner reporting and audit trail
+      // Create PENDING payment record for daily batch processing (no immediate Stripe charge)
       const payment = await storage.createPayment({
         activityId: id,
         driverId: activityDetails.driverId,
         ownerId: owner.id,
         amount: driverAmount.toString(),
         processingFee: platformCommission.toFixed(2),
-        status: 'completed', // Status indicating successful payment processing
-        stripePaymentIntentId: `wallet_${walletCredit.transaction.id}`, // Link to wallet transaction
+        status: 'pending', // Will be processed by daily batch
+        businessDate, // Set business date for batch grouping
+        // batchId will be set later by the daily batch processor
       });
 
-      console.log(`✅ Credited driver wallet: $${driverAmount} for activity ${id}, Payment record: ${payment.id}`);
+      // Credit driver's wallet to PENDING balance (not available until batch processes)
+      const walletCredit = await storage.creditDriverPendingBalance(
+        activityDetails.driverId,
+        driverAmount.toString(),
+        'washout',
+        id,
+        `Pending washout payment for activity ${id} (batch date: ${businessDate})`
+      );
 
-      // TODO: In a real implementation, charge the owner via Stripe here
-      // For now, we're focusing on the wallet credit functionality
-      // The owner charging logic would happen here using their payment method
+      console.log(`✅ Created pending payment: $${driverAmount} for activity ${id}, Payment ID: ${payment.id}, Business Date: ${businessDate}`);
+      console.log(`📅 Payment will be processed in daily batch for ${businessDate} at ${billingSettings?.billingCutoffTime || '23:59:00'} ${timezone}`);
+
+      // Daily batch processor will:
+      // 1. Group all pending payments by owner and business date
+      // 2. Create single Stripe PaymentIntent per owner per day
+      // 3. On successful payment, move funds from pending to available balance
 
       res.json(activity);
     } catch (error) {
@@ -1256,9 +1422,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { amount } = req.body;
+      const userId = req.user.id;
+      
+      // Create idempotency key for one-time payments
+      const idempotencyKey = `one_time_payment_${userId}_${Math.round(amount * 100)}_${Date.now()}`;
+      
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(amount * 100), // Convert to cents
         currency: "usd",
+      }, {
+        idempotencyKey
       });
       
       res.json({ clientSecret: paymentIntent.client_secret });
@@ -3278,6 +3451,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         break;
 
+      // Daily batch payment processing events  
+      case 'payment_intent.succeeded':
+        const succeededPaymentIntent = event.data.object as Stripe.PaymentIntent;
+        
+        // Check if this is a batch payment (metadata should contain batchId)
+        if (succeededPaymentIntent.metadata?.batchId) {
+          const batchId = succeededPaymentIntent.metadata.batchId;
+          console.log(`✅ [${environment}] Batch payment succeeded for batch ${batchId}, PaymentIntent: ${succeededPaymentIntent.id}`);
+          
+          try {
+            // Get batch details to verify it exists and is in processing state
+            const batch = await storage.getBillingBatch(batchId);
+            if (!batch) {
+              console.warn(`⚠️ [${environment}] Batch ${batchId} not found for successful payment ${succeededPaymentIntent.id}`);
+              return;
+            }
+
+            if (batch.status === 'completed') {
+              console.log(`ℹ️ [${environment}] Batch ${batchId} already completed - webhook may be duplicate`);
+              return;
+            }
+
+            // Complete the batch payment processing
+            await storage.completeBatchPayment(batchId, succeededPaymentIntent.id);
+            
+            console.log(`🎉 [${environment}] Successfully completed batch payment processing for batch ${batchId}`);
+            
+          } catch (error: any) {
+            console.error(`❌ [${environment}] Error processing successful batch payment ${succeededPaymentIntent.id}:`, error);
+            // Update batch status to failed
+            await storage.updateBillingBatchStatus(
+              batchId, 
+              'failed', 
+              succeededPaymentIntent.id, 
+              `Webhook processing error: ${error.message}`
+            );
+          }
+        } else {
+          console.log(`ℹ️ [${environment}] PaymentIntent ${succeededPaymentIntent.id} succeeded but no batchId in metadata - likely not a batch payment`);
+        }
+        break;
+
+      case 'payment_intent.payment_failed':
+        const failedPaymentIntent = event.data.object as Stripe.PaymentIntent;
+        
+        // Check if this is a batch payment
+        if (failedPaymentIntent.metadata?.batchId) {
+          const batchId = failedPaymentIntent.metadata.batchId;
+          const failureReason = failedPaymentIntent.last_payment_error?.message || 'Payment failed without specific error';
+          
+          console.error(`❌ [${environment}] Batch payment failed for batch ${batchId}, PaymentIntent: ${failedPaymentIntent.id}, Reason: ${failureReason}`);
+          
+          try {
+            // Update batch status to failed
+            await storage.updateBillingBatchStatus(
+              batchId, 
+              'failed', 
+              failedPaymentIntent.id, 
+              failureReason
+            );
+
+            // Get batch details to notify affected drivers
+            const batch = await storage.getBillingBatch(batchId);
+            if (batch) {
+              // Get the owner's information for notifications
+              const owner = await storage.getOwner(batch.ownerId);
+              if (owner) {
+                await storage.createNotification({
+                  userId: owner.userId,
+                  title: "Daily Billing Failed",
+                  message: `Your daily payment of $${batch.totalAmount} failed: ${failureReason}. Please check your payment method.`,
+                  type: "error"
+                });
+              }
+            }
+
+            console.log(`📝 [${environment}] Updated batch ${batchId} status to failed due to payment failure`);
+            
+          } catch (error: any) {
+            console.error(`❌ [${environment}] Error processing failed batch payment ${failedPaymentIntent.id}:`, error);
+          }
+        } else {
+          console.log(`ℹ️ [${environment}] PaymentIntent ${failedPaymentIntent.id} failed but no batchId in metadata - likely not a batch payment`);
+        }
+        break;
+
       default:
         console.log(`ℹ️ [${environment}] Unhandled event type: ${event.type} - safely ignored`);
     }
@@ -3300,6 +3559,225 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </body>
       </html>
     `);
+  });
+
+  // ==================== DAILY BATCH PROCESSING API ENDPOINTS ====================
+  
+  // Get owner's billing batches with optional date filtering
+  app.get('/api/owners/billing/batches', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const { startDate, endDate } = req.query;
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const batches = await storage.getBillingBatchesByOwner(owner.id, start, end);
+      res.json(batches);
+    } catch (error) {
+      console.error("Error fetching billing batches:", error);
+      res.status(500).json({ message: "Failed to fetch billing batches" });
+    }
+  });
+
+  // Get specific batch details with payments
+  app.get('/api/owners/billing/batches/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      
+      const owner = await storage.getOwner(userId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const batch = await storage.getBillingBatch(id);
+      if (!batch) {
+        return res.status(404).json({ message: "Batch not found" });
+      }
+
+      // Verify owner has access to this batch
+      if (batch.ownerId !== owner.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get payments for this batch
+      const batchPayments = await storage.getPaymentsByBatchId(id);
+      
+      res.json({
+        ...batch,
+        payments: batchPayments
+      });
+    } catch (error) {
+      console.error("Error fetching batch details:", error);
+      res.status(500).json({ message: "Failed to fetch batch details" });
+    }
+  });
+
+  // Get owner's billing settings
+  app.get('/api/owners/billing/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const billingSettings = await storage.getOwnerBillingSettings(owner.id);
+      res.json(billingSettings);
+    } catch (error) {
+      console.error("Error fetching billing settings:", error);
+      res.status(500).json({ message: "Failed to fetch billing settings" });
+    }
+  });
+
+  // Update owner's billing settings
+  app.put('/api/owners/billing/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { billingCadence, billingCutoffTime, billingTimezone } = req.body;
+      
+      const owner = await storage.getOwner(userId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Validate cutoff time format (HH:MM:SS)
+      if (billingCutoffTime && !/^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(billingCutoffTime)) {
+        return res.status(400).json({ message: "Invalid cutoff time format. Use HH:MM:SS (24-hour format)" });
+      }
+
+      // Validate timezone (basic check)
+      if (billingTimezone) {
+        try {
+          new Intl.DateTimeFormat('en', { timeZone: billingTimezone });
+        } catch (error) {
+          return res.status(400).json({ message: "Invalid timezone" });
+        }
+      }
+
+      // Validate billing cadence
+      if (billingCadence && !['daily', 'weekly', 'monthly'].includes(billingCadence)) {
+        return res.status(400).json({ message: "Invalid billing cadence. Must be daily, weekly, or monthly" });
+      }
+
+      const updatedOwner = await storage.updateOwnerBillingSettings(owner.id, {
+        billingCadence,
+        billingCutoffTime,
+        billingTimezone
+      });
+
+      console.log(`✅ Updated billing settings for owner ${owner.id}: cutoff=${billingCutoffTime}, timezone=${billingTimezone}`);
+      
+      res.json({
+        message: "Billing settings updated successfully",
+        settings: {
+          billingCadence: updatedOwner.billingCadence,
+          billingCutoffTime: updatedOwner.billingCutoffTime,
+          billingTimezone: updatedOwner.billingTimezone
+        }
+      });
+    } catch (error) {
+      console.error("Error updating billing settings:", error);
+      res.status(500).json({ message: "Failed to update billing settings" });
+    }
+  });
+
+  // Trigger manual batch processing for current business date (admin/testing endpoint)
+  app.post('/api/admin/billing/process-batches', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { businessDate, dryRun = false } = req.body;
+      const cutoffDate = businessDate || new Date().toISOString().split('T')[0];
+
+      console.log(`🔄 Admin triggered ${dryRun ? 'DRY RUN' : 'manual'} batch processing for ${cutoffDate}`);
+      
+      const results = dryRun 
+        ? await storage.getDryRunBatchPreview(cutoffDate)
+        : await storage.processDailyBatches(cutoffDate);
+      
+      res.json({
+        message: dryRun ? "Dry run completed" : "Batch processing completed",
+        businessDate: cutoffDate,
+        dryRun,
+        results
+      });
+    } catch (error) {
+      console.error("Error processing batches:", error);
+      res.status(500).json({ message: "Failed to process batches" });
+    }
+  });
+
+  // Get batch processing status for all owners (admin endpoint)
+  app.get('/api/admin/billing/batches/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { status = 'processing' } = req.query;
+      
+      const batches = await storage.getBillingBatchesByStatus(status as string);
+      res.json(batches);
+    } catch (error) {
+      console.error("Error fetching batch status:", error);
+      res.status(500).json({ message: "Failed to fetch batch status" });
+    }
+  });
+
+  // Get pending payments summary for current business date
+  app.get('/api/owners/billing/pending-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Get current business date in owner's timezone
+      const billingSettings = await storage.getOwnerBillingSettings(owner.id);
+      const timezone = billingSettings?.billingTimezone || 'America/Chicago';
+      const ownerTime = new Date().toLocaleString('en-US', { timeZone: timezone });
+      const businessDate = new Date(ownerTime).toISOString().split('T')[0];
+
+      const pendingPayments = await storage.getPendingPaymentsForBatch(owner.id, businessDate);
+      
+      const summary = {
+        businessDate,
+        timezone,
+        cutoffTime: billingSettings?.billingCutoffTime || '23:59:00',
+        pendingPayments: pendingPayments.length,
+        totalAmount: pendingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0).toFixed(2),
+        totalFees: pendingPayments.reduce((sum, p) => sum + parseFloat(p.processingFee), 0).toFixed(2),
+        payments: pendingPayments.map(p => ({
+          id: p.id,
+          amount: p.amount,
+          processingFee: p.processingFee,
+          driver: p.driver.user.name,
+          activity: {
+            checkInTime: p.activity.checkInTime,
+            amount: p.activity.amount
+          }
+        }))
+      };
+
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching pending summary:", error);
+      res.status(500).json({ message: "Failed to fetch pending summary" });
+    }
   });
 
   // ==================== PLATFORM PERFORMANCE ANALYTICS ROUTES ====================

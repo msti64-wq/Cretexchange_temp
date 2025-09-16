@@ -14,6 +14,7 @@ import {
   withdrawals,
   webhookEvents,
   servicePaymentAccounts,
+  billingBatches,
   type User,
   type UpsertUser,
   type Driver,
@@ -29,6 +30,7 @@ import {
   type WalletTransaction,
   type Withdrawal,
   type ServicePaymentAccount,
+  type BillingBatch,
   type InsertDriver,
   type InsertOwner,
   type InsertWashoutLocation,
@@ -43,6 +45,7 @@ import {
   type InsertWithdrawal,
   type InsertServicePaymentAccount,
   type UpdateServicePaymentAccount,
+  type InsertBillingBatch,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
@@ -148,6 +151,7 @@ export interface IStorage {
   getDriverWallet(driverId: string): Promise<DriverWallet | undefined>;
   updateWalletBalance(driverId: string, availableBalance: string, pendingBalance: string): Promise<DriverWallet>;
   creditDriverWallet(driverId: string, amount: string, sourceType: 'washout' | 'adjustment' | 'withdrawal', sourceId: string, description?: string): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }>;
+  creditDriverPendingBalance(driverId: string, amount: string, sourceType: 'washout' | 'adjustment' | 'withdrawal', sourceId: string, description?: string): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }>;
   
   // Wallet transaction operations
   createWalletTransaction(transaction: InsertWalletTransaction): Promise<WalletTransaction>;
@@ -193,6 +197,25 @@ export interface IStorage {
     totalWashouts: number;
     totalWithdrawals: number;
   }>;
+
+  // Billing batch operations for daily batch processing
+  createBillingBatch(batch: InsertBillingBatch): Promise<BillingBatch>;
+  getBillingBatch(id: string): Promise<BillingBatch | undefined>;
+  getBillingBatchByOwnerAndDate(ownerId: string, businessDate: string): Promise<BillingBatch | undefined>;
+  getBillingBatchesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<BillingBatch[]>;
+  getBillingBatchesByStatus(status: string): Promise<(BillingBatch & { owner: Owner & { user: User } })[]>;
+  updateBillingBatchStatus(batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string): Promise<BillingBatch>;
+  updateBillingBatchProcessing(batchId: string, totalAmount: string, totalFees: string, paymentCount: number, stripePaymentIntentId?: string): Promise<BillingBatch>;
+  markBillingBatchCompleted(batchId: string): Promise<BillingBatch>;
+  getPendingPaymentsForBatch(ownerId: string, businessDate: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
+  assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void>;
+  getPaymentsByBatchId(batchId: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
+  
+  // Daily batch processing methods
+  processDailyBatches(cutoffDate?: string): Promise<{ processed: number; failed: number; errors: string[] }>;
+  movePendingToAvailable(driverId: string, amount: string, sourceTransactionId: string, batchId: string): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }>;
+  getOwnerBillingSettings(ownerId: string): Promise<{ billingCadence: string; billingCutoffTime: string; billingTimezone: string } | undefined>;
+  updateOwnerBillingSettings(ownerId: string, settings: { billingCadence?: string; billingCutoffTime?: string; billingTimezone?: string }): Promise<Owner>;
 
   // Debug operations
   getUserCount(): Promise<number>;
@@ -1428,6 +1451,100 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  async creditDriverPendingBalance(
+    driverId: string, 
+    amount: string, 
+    sourceType: 'washout' | 'adjustment' | 'withdrawal', 
+    sourceId: string, 
+    description?: string
+  ): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }> {
+    return await db.transaction(async (tx) => {
+      try {
+        // CRITICAL FIX: Get or create driver wallet with FOR UPDATE lock FIRST
+        // This prevents race conditions by locking the row before checking for duplicates
+        let wallet = await this.getDriverWallet(driverId, tx, true);
+        if (!wallet) {
+          wallet = await this.createDriverWallet({
+            driverId,
+            availableBalance: "0.00",
+            pendingBalance: "0.00"
+          }, tx);
+          // Re-fetch with lock after creation
+          wallet = await this.getDriverWallet(driverId, tx, true);
+          if (!wallet) {
+            throw new Error('Failed to create or retrieve wallet');
+          }
+        }
+
+        // IDEMPOTENCY CHECK: Now check if this exact credit already exists
+        // This check is AFTER acquiring the lock to prevent race conditions
+        const existingTransaction = await tx
+          .select()
+          .from(walletTransactions)
+          .where(and(
+            eq(walletTransactions.driverId, driverId),
+            eq(walletTransactions.sourceType, sourceType),
+            eq(walletTransactions.sourceId, sourceId),
+            eq(walletTransactions.direction, 'credit'),
+            eq(walletTransactions.status, 'pending') // Only check pending transactions
+          ))
+          .limit(1);
+
+        if (existingTransaction.length > 0) {
+          console.log(`Idempotent pending credit attempt detected for driver ${driverId}, source ${sourceType}:${sourceId}`);
+          // Return the existing transaction and current wallet state
+          return { wallet, transaction: existingTransaction[0] };
+        }
+
+        // CENT-SAFE ARITHMETIC: Convert to cents to avoid floating point precision issues
+        const amountCents = Math.round(parseFloat(amount) * 100);
+        const currentPendingCents = Math.round(parseFloat(wallet.pendingBalance) * 100);
+        const newPendingCents = currentPendingCents + amountCents;
+        const newPendingBalance = (newPendingCents / 100).toFixed(2);
+        
+        // Validate amounts
+        if (amountCents <= 0) {
+          throw new Error(`Invalid pending credit amount: ${amount}`);
+        }
+        
+        // Create wallet transaction record first (for better error tracing)
+        const transaction = await this.createWalletTransaction({
+          driverId,
+          amount: amount,
+          direction: 'credit',
+          balanceAfter: newPendingBalance, // Balance after this pending transaction
+          sourceType: sourceType,
+          sourceId: sourceId,
+          status: 'pending', // Will be 'posted' when batch completes
+          description: description || `${sourceType} pending credit: $${amount}`,
+          metadata: {
+            creditType: sourceType,
+            sourceActivityId: sourceId,
+            originalPendingBalanceCents: currentPendingCents,
+            creditCents: amountCents,
+            newPendingBalanceCents: newPendingCents,
+            balanceType: 'pending'
+          }
+        }, tx);
+
+        // ATOMIC UPDATE: Update wallet pending balance using the transaction handle
+        const updatedWallet = await this.updateWalletBalance(
+          driverId,
+          wallet.availableBalance, // Keep available balance unchanged
+          newPendingBalance,       // Update pending balance
+          tx
+        );
+
+        console.log(`✅ Wallet pending balance credited: Driver ${driverId}, Amount $${amount}, New Pending Balance $${newPendingBalance}, Source: ${sourceType}:${sourceId}`);
+        return { wallet: updatedWallet, transaction };
+
+      } catch (error) {
+        console.error(`❌ Wallet pending credit failed for driver ${driverId}:`, error);
+        throw error; // Let transaction auto-rollback
+      }
+    });
+  }
+
   // Wallet transaction operations
   async createWalletTransaction(transaction: InsertWalletTransaction, txHandle?: any): Promise<WalletTransaction> {
     const dbHandle = txHandle || db;
@@ -1832,6 +1949,1120 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.stripeCustomerId, customerId));
     
     return result[0];
+  }
+
+  // Billing batch operations for daily batch processing
+  async createBillingBatch(batch: InsertBillingBatch): Promise<BillingBatch> {
+    const [createdBatch] = await db
+      .insert(billingBatches)
+      .values(batch)
+      .returning();
+    return createdBatch;
+  }
+
+  async getBillingBatch(id: string): Promise<BillingBatch | undefined> {
+    const [batch] = await db
+      .select()
+      .from(billingBatches)
+      .where(eq(billingBatches.id, id));
+    return batch;
+  }
+
+  async getBillingBatchByOwnerAndDate(ownerId: string, businessDate: string): Promise<BillingBatch | undefined> {
+    const [batch] = await db
+      .select()
+      .from(billingBatches)
+      .where(
+        and(
+          eq(billingBatches.ownerId, ownerId),
+          eq(billingBatches.businessDate, businessDate)
+        )
+      );
+    return batch;
+  }
+
+  async getBillingBatchesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<BillingBatch[]> {
+    const conditions = [eq(billingBatches.ownerId, ownerId)];
+    
+    if (startDate) {
+      conditions.push(gte(billingBatches.createdAt, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(billingBatches.createdAt, endDate));
+    }
+
+    const batches = await db
+      .select()
+      .from(billingBatches)
+      .where(and(...conditions))
+      .orderBy(desc(billingBatches.businessDate));
+    
+    return batches;
+  }
+
+  async getBillingBatchesByStatus(status: string): Promise<(BillingBatch & { owner: Owner & { user: User } })[]> {
+    const batches = await db
+      .select({
+        id: billingBatches.id,
+        ownerId: billingBatches.ownerId,
+        businessDate: billingBatches.businessDate,
+        cutoffTime: billingBatches.cutoffTime,
+        timezone: billingBatches.timezone,
+        totalAmount: billingBatches.totalAmount,
+        totalFees: billingBatches.totalFees,
+        paymentCount: billingBatches.paymentCount,
+        stripePaymentIntentId: billingBatches.stripePaymentIntentId,
+        status: billingBatches.status,
+        processingStartedAt: billingBatches.processingStartedAt,
+        completedAt: billingBatches.completedAt,
+        failureReason: billingBatches.failureReason,
+        retryCount: billingBatches.retryCount,
+        metadata: billingBatches.metadata,
+        createdAt: billingBatches.createdAt,
+        updatedAt: billingBatches.updatedAt,
+        owner: {
+          id: owners.id,
+          userId: owners.userId,
+          companyName: owners.companyName,
+          businessLicense: owners.businessLicense,
+          taxId: owners.taxId,
+          subscriptionStatus: owners.subscriptionStatus,
+          subscriptionPlan: owners.subscriptionPlan,
+          subscriptionEndsAt: owners.subscriptionEndsAt,
+          pastDueDate: owners.pastDueDate,
+          gracePeriodStartDate: owners.gracePeriodStartDate,
+          lastReminderSent: owners.lastReminderSent,
+          billingCadence: owners.billingCadence,
+          billingCutoffTime: owners.billingCutoffTime,
+          billingTimezone: owners.billingTimezone,
+          isApproved: owners.isApproved,
+          hasAgreedToTerms: owners.hasAgreedToTerms,
+          termsAgreedAt: owners.termsAgreedAt,
+          createdAt: owners.createdAt,
+          updatedAt: owners.updatedAt,
+          user: {
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            phone: users.phone,
+            address: users.address,
+            role: users.role,
+            stripeCustomerId: users.stripeCustomerId,
+            stripeSubscriptionId: users.stripeSubscriptionId,
+            isActive: users.isActive,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+          }
+        }
+      })
+      .from(billingBatches)
+      .innerJoin(owners, eq(billingBatches.ownerId, owners.id))
+      .innerJoin(users, eq(owners.userId, users.id))
+      .where(eq(billingBatches.status, status))
+      .orderBy(desc(billingBatches.createdAt));
+
+    return batches;
+  }
+
+  async updateBillingBatchStatus(batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string): Promise<BillingBatch> {
+    const updateData: any = {
+      status,
+      updatedAt: new Date(),
+    };
+
+    if (status === 'processing') {
+      updateData.processingStartedAt = new Date();
+    } else if (status === 'completed') {
+      updateData.completedAt = new Date();
+    }
+
+    if (stripePaymentIntentId) {
+      updateData.stripePaymentIntentId = stripePaymentIntentId;
+    }
+
+    if (failureReason) {
+      updateData.failureReason = failureReason;
+      updateData.retryCount = sql`${billingBatches.retryCount} + 1`;
+    }
+
+    const [batch] = await db
+      .update(billingBatches)
+      .set(updateData)
+      .where(eq(billingBatches.id, batchId))
+      .returning();
+    
+    return batch;
+  }
+
+  async updateBillingBatchProcessing(batchId: string, totalAmount: string, totalFees: string, paymentCount: number, stripePaymentIntentId?: string): Promise<BillingBatch> {
+    const updateData: any = {
+      totalAmount,
+      totalFees,
+      paymentCount,
+      status: 'processing',
+      processingStartedAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    if (stripePaymentIntentId) {
+      updateData.stripePaymentIntentId = stripePaymentIntentId;
+    }
+
+    const [batch] = await db
+      .update(billingBatches)
+      .set(updateData)
+      .where(eq(billingBatches.id, batchId))
+      .returning();
+    
+    return batch;
+  }
+
+  async markBillingBatchCompleted(batchId: string): Promise<BillingBatch> {
+    const [batch] = await db
+      .update(billingBatches)
+      .set({
+        status: 'completed',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(billingBatches.id, batchId))
+      .returning();
+    
+    return batch;
+  }
+
+  // Get Stripe instance (similar to routes.ts but accessible from storage)
+  private async getStripeInstance() {
+    // Import Stripe dynamically to avoid issues in environments without it
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return null; // Development mode
+    }
+    
+    try {
+      const Stripe = (await import('stripe')).default;
+      return new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: "2025-08-27.basil",
+      });
+    } catch (error) {
+      console.warn('Stripe not available:', error);
+      return null;
+    }
+  }
+
+  // Create Stripe PaymentIntent for a billing batch
+  private async createStripePaymentIntent(
+    batchId: string,
+    ownerId: string,
+    totalAmount: number,
+    totalFees: number,
+    paymentCount: number,
+    billingSettings: { billingCadence: string; billingCutoffTime: string; billingTimezone: string }
+  ): Promise<string> {
+    const stripe = await this.getStripeInstance();
+    if (!stripe) {
+      throw new Error('Stripe not available');
+    }
+
+    // Get owner's Stripe customer ID
+    const owner = await this.getOwnerById(ownerId);
+    if (!owner || !owner.user.stripeCustomerId) {
+      throw new Error(`No Stripe customer ID found for owner ${ownerId}`);
+    }
+
+    // Convert to cents for Stripe
+    const amountCents = Math.round(totalAmount * 100);
+    
+    // Create idempotency key based on batch
+    const idempotencyKey = `batch_payment_${batchId}_${Math.round(totalAmount * 100)}`;
+    
+    // Create PaymentIntent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountCents,
+      currency: 'usd',
+      customer: owner.user.stripeCustomerId,
+      description: `Daily batch payment - ${paymentCount} washouts`,
+      metadata: {
+        batchId,
+        ownerId,
+        paymentCount: paymentCount.toString(),
+        totalFees: totalFees.toFixed(2),
+        timezone: billingSettings.billingTimezone,
+        cutoffTime: billingSettings.billingCutoffTime,
+        type: 'daily_batch_payment'
+      },
+      confirm: true, // Automatically confirm the payment
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    }, {
+      idempotencyKey
+    });
+
+    return paymentIntent.id;
+  }
+
+  // Mark billing batch as failed
+  async markBillingBatchFailed(batchId: string, failureReason: string): Promise<void> {
+    await db
+      .update(billingBatches)
+      .set({
+        status: 'failed',
+        failureReason,
+        updatedAt: new Date(),
+      })
+      .where(eq(billingBatches.id, batchId));
+  }
+
+  // Get billing batches with filters and pagination
+  async getBillingBatchesWithFilters(filters: {
+    status?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<(BillingBatch & { owner: Owner & { user: User } })[]> {
+    const conditions = [];
+    
+    if (filters.status) {
+      conditions.push(eq(billingBatches.status, filters.status));
+    }
+    if (filters.startDate) {
+      conditions.push(gte(billingBatches.createdAt, filters.startDate));
+    }
+    if (filters.endDate) {
+      conditions.push(lte(billingBatches.createdAt, filters.endDate));
+    }
+
+    const batches = await db
+      .select({
+        id: billingBatches.id,
+        ownerId: billingBatches.ownerId,
+        businessDate: billingBatches.businessDate,
+        cutoffTime: billingBatches.cutoffTime,
+        timezone: billingBatches.timezone,
+        totalAmount: billingBatches.totalAmount,
+        totalFees: billingBatches.totalFees,
+        paymentCount: billingBatches.paymentCount,
+        stripePaymentIntentId: billingBatches.stripePaymentIntentId,
+        status: billingBatches.status,
+        processingStartedAt: billingBatches.processingStartedAt,
+        completedAt: billingBatches.completedAt,
+        failureReason: billingBatches.failureReason,
+        retryCount: billingBatches.retryCount,
+        metadata: billingBatches.metadata,
+        createdAt: billingBatches.createdAt,
+        updatedAt: billingBatches.updatedAt,
+        owner: {
+          id: owners.id,
+          userId: owners.userId,
+          companyName: owners.companyName,
+          businessLicense: owners.businessLicense,
+          taxId: owners.taxId,
+          subscriptionStatus: owners.subscriptionStatus,
+          subscriptionPlan: owners.subscriptionPlan,
+          subscriptionEndsAt: owners.subscriptionEndsAt,
+          pastDueDate: owners.pastDueDate,
+          gracePeriodStartDate: owners.gracePeriodStartDate,
+          lastReminderSent: owners.lastReminderSent,
+          billingCadence: owners.billingCadence,
+          billingCutoffTime: owners.billingCutoffTime,
+          billingTimezone: owners.billingTimezone,
+          isApproved: owners.isApproved,
+          hasAgreedToTerms: owners.hasAgreedToTerms,
+          termsAgreedAt: owners.termsAgreedAt,
+          createdAt: owners.createdAt,
+          updatedAt: owners.updatedAt,
+          user: {
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            phone: users.phone,
+            address: users.address,
+            role: users.role,
+            stripeCustomerId: users.stripeCustomerId,
+            stripeSubscriptionId: users.stripeSubscriptionId,
+            isActive: users.isActive,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+          }
+        }
+      })
+      .from(billingBatches)
+      .innerJoin(owners, eq(billingBatches.ownerId, owners.id))
+      .innerJoin(users, eq(owners.userId, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(billingBatches.createdAt))
+      .limit(filters.limit || 50)
+      .offset(filters.offset || 0);
+
+    return batches;
+  }
+
+  // Retry a failed billing batch
+  async retryBillingBatch(batchId: string): Promise<void> {
+    return await db.transaction(async (tx) => {
+      // Reset batch status to pending and increment retry count
+      await db
+        .update(billingBatches)
+        .set({
+          status: 'pending',
+          failureReason: null,
+          stripePaymentIntentId: null,
+          processingStartedAt: null,
+          retryCount: sql`${billingBatches.retryCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(billingBatches.id, batchId));
+
+      // Get batch details for processing
+      const batch = await this.getBillingBatch(batchId);
+      if (!batch) {
+        throw new Error(`Batch ${batchId} not found after reset`);
+      }
+
+      // Process the batch again
+      await this.processOwnerBatch(batch.ownerId, batch.businessDate);
+    });
+  }
+
+  // Get a dry run preview of batch processing without execution
+  async getDryRunBatchPreview(cutoffDate?: string): Promise<{
+    businessDate: string;
+    ownerBatches: Array<{
+      ownerId: string;
+      ownerName: string;
+      timezone: string;
+      cutoffTime: string;
+      paymentCount: number;
+      totalAmount: number;
+      totalFees: number;
+      pendingPayments: Array<{
+        id: string;
+        amount: string;
+        driverName: string;
+        activityId: string;
+      }>;
+    }>;
+    summary: {
+      totalOwners: number;
+      totalPayments: number;
+      totalAmount: number;
+      totalFees: number;
+    };
+  }> {
+    const businessDate = cutoffDate || new Date().toISOString().split('T')[0];
+    
+    // Get all owners with pending payments
+    const ownersWithPayments = await db
+      .selectDistinct({ 
+        ownerId: payments.ownerId
+      })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.status, 'pending'),
+          isNull(payments.batchId)
+        )
+      );
+
+    const ownerBatches = [];
+    let totalPayments = 0;
+    let totalAmount = 0;
+    let totalFees = 0;
+
+    for (const { ownerId } of ownersWithPayments) {
+      // Get billing settings
+      const billingSettings = await this.getOwnerBillingSettings(ownerId);
+      if (!billingSettings) continue;
+
+      // Calculate business date for this owner
+      const ownerBusinessDate = cutoffDate || this.calculateBusinessDate(
+        billingSettings.billingTimezone,
+        billingSettings.billingCutoffTime
+      );
+
+      // Get pending payments for this owner and business date
+      const pendingPayments = await this.getPendingPaymentsForBatch(ownerId, ownerBusinessDate);
+      
+      if (pendingPayments.length === 0) continue;
+
+      // Get owner details
+      const owner = await this.getOwnerById(ownerId);
+      if (!owner) continue;
+
+      // Calculate totals
+      const batchTotal = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+      const batchFees = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee), 0);
+
+      ownerBatches.push({
+        ownerId,
+        ownerName: owner.companyName || `${owner.user.firstName} ${owner.user.lastName}`,
+        timezone: billingSettings.billingTimezone,
+        cutoffTime: billingSettings.billingCutoffTime,
+        paymentCount: pendingPayments.length,
+        totalAmount: batchTotal,
+        totalFees: batchFees,
+        pendingPayments: pendingPayments.map(p => ({
+          id: p.id,
+          amount: p.amount,
+          driverName: `${p.driver.user.firstName} ${p.driver.user.lastName}`,
+          activityId: p.activityId
+        }))
+      });
+
+      totalPayments += pendingPayments.length;
+      totalAmount += batchTotal;
+      totalFees += batchFees;
+    }
+
+    return {
+      businessDate,
+      ownerBatches,
+      summary: {
+        totalOwners: ownerBatches.length,
+        totalPayments,
+        totalAmount,
+        totalFees
+      }
+    };
+  }
+
+  async getPendingPaymentsForBatch(ownerId: string, businessDate: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
+    const pendingPayments = await db
+      .select({
+        id: payments.id,
+        driverId: payments.driverId,
+        ownerId: payments.ownerId,
+        activityId: payments.activityId,
+        amount: payments.amount,
+        processingFee: payments.processingFee,
+        stripePaymentIntentId: payments.stripePaymentIntentId,
+        status: payments.status,
+        batchId: payments.batchId,
+        businessDate: payments.businessDate,
+        paidAt: payments.paidAt,
+        createdAt: payments.createdAt,
+        updatedAt: payments.updatedAt,
+        activity: {
+          id: washoutActivities.id,
+          driverId: washoutActivities.driverId,
+          locationId: washoutActivities.locationId,
+          status: washoutActivities.status,
+          amount: washoutActivities.amount,
+          checkInTime: washoutActivities.checkInTime,
+          checkOutTime: washoutActivities.checkOutTime,
+          photoUrls: washoutActivities.photoUrls,
+          notes: washoutActivities.notes,
+          verifiedBy: washoutActivities.verifiedBy,
+          verifiedAt: washoutActivities.verifiedAt,
+          latitude: washoutActivities.latitude,
+          longitude: washoutActivities.longitude,
+          createdAt: washoutActivities.createdAt,
+          updatedAt: washoutActivities.updatedAt,
+        },
+        driver: {
+          id: drivers.id,
+          userId: drivers.userId,
+          employerName: drivers.employerName,
+          employerAddress: drivers.employerAddress,
+          employerPhone: drivers.employerPhone,
+          licenseNumber: drivers.licenseNumber,
+          truckNumber: drivers.truckNumber,
+          isGpsEnabled: drivers.isGpsEnabled,
+          currentLatitude: drivers.currentLatitude,
+          currentLongitude: drivers.currentLongitude,
+          lastLocationUpdate: drivers.lastLocationUpdate,
+          connectedAccountId: drivers.connectedAccountId,
+          hasAgreedToTerms: drivers.hasAgreedToTerms,
+          termsAgreedAt: drivers.termsAgreedAt,
+          createdAt: drivers.createdAt,
+          updatedAt: drivers.updatedAt,
+          user: {
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            phone: users.phone,
+            address: users.address,
+            role: users.role,
+            stripeCustomerId: users.stripeCustomerId,
+            stripeSubscriptionId: users.stripeSubscriptionId,
+            isActive: users.isActive,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+          }
+        }
+      })
+      .from(payments)
+      .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
+      .innerJoin(drivers, eq(payments.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .where(
+        and(
+          eq(payments.ownerId, ownerId),
+          eq(payments.businessDate, businessDate),
+          eq(payments.status, 'pending'),
+          isNull(payments.batchId)
+        )
+      )
+      .orderBy(payments.createdAt);
+
+    return pendingPayments;
+  }
+
+  async assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void> {
+    if (paymentIds.length === 0) return;
+
+    await db
+      .update(payments)
+      .set({
+        batchId,
+        businessDate,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        sql`${payments.id} = ANY(${paymentIds})`,
+        eq(payments.status, 'pending')
+      ));
+  }
+
+  async getPaymentsByBatchId(batchId: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
+    const batchPayments = await db
+      .select({
+        id: payments.id,
+        driverId: payments.driverId,
+        ownerId: payments.ownerId,
+        activityId: payments.activityId,
+        amount: payments.amount,
+        processingFee: payments.processingFee,
+        stripePaymentIntentId: payments.stripePaymentIntentId,
+        status: payments.status,
+        batchId: payments.batchId,
+        businessDate: payments.businessDate,
+        paidAt: payments.paidAt,
+        createdAt: payments.createdAt,
+        updatedAt: payments.updatedAt,
+        activity: {
+          id: washoutActivities.id,
+          driverId: washoutActivities.driverId,
+          locationId: washoutActivities.locationId,
+          status: washoutActivities.status,
+          amount: washoutActivities.amount,
+          checkInTime: washoutActivities.checkInTime,
+          checkOutTime: washoutActivities.checkOutTime,
+          photoUrls: washoutActivities.photoUrls,
+          notes: washoutActivities.notes,
+          verifiedBy: washoutActivities.verifiedBy,
+          verifiedAt: washoutActivities.verifiedAt,
+          latitude: washoutActivities.latitude,
+          longitude: washoutActivities.longitude,
+          createdAt: washoutActivities.createdAt,
+          updatedAt: washoutActivities.updatedAt,
+        },
+        driver: {
+          id: drivers.id,
+          userId: drivers.userId,
+          employerName: drivers.employerName,
+          employerAddress: drivers.employerAddress,
+          employerPhone: drivers.employerPhone,
+          licenseNumber: drivers.licenseNumber,
+          truckNumber: drivers.truckNumber,
+          isGpsEnabled: drivers.isGpsEnabled,
+          currentLatitude: drivers.currentLatitude,
+          currentLongitude: drivers.currentLongitude,
+          lastLocationUpdate: drivers.lastLocationUpdate,
+          connectedAccountId: drivers.connectedAccountId,
+          hasAgreedToTerms: drivers.hasAgreedToTerms,
+          termsAgreedAt: drivers.termsAgreedAt,
+          createdAt: drivers.createdAt,
+          updatedAt: drivers.updatedAt,
+          user: {
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            phone: users.phone,
+            role: users.role,
+            createdAt: users.createdAt,
+            updatedAt: users.updatedAt,
+          },
+        },
+      })
+      .from(payments)
+      .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
+      .innerJoin(drivers, eq(payments.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .where(eq(payments.batchId, batchId))
+      .orderBy(payments.createdAt);
+
+    return batchPayments;
+  }
+
+  async getOwnerBillingSettings(ownerId: string): Promise<{ billingCadence: string; billingCutoffTime: string; billingTimezone: string } | undefined> {
+    const [owner] = await db
+      .select({
+        billingCadence: owners.billingCadence,
+        billingCutoffTime: owners.billingCutoffTime,
+        billingTimezone: owners.billingTimezone,
+      })
+      .from(owners)
+      .where(eq(owners.id, ownerId));
+    
+    if (!owner) return undefined;
+    
+    return {
+      billingCadence: owner.billingCadence || 'daily',
+      billingCutoffTime: owner.billingCutoffTime || '23:59:00',
+      billingTimezone: owner.billingTimezone || 'America/Chicago',
+    };
+  }
+
+  async updateOwnerBillingSettings(ownerId: string, settings: { billingCadence?: string; billingCutoffTime?: string; billingTimezone?: string }): Promise<Owner> {
+    const [owner] = await db
+      .update(owners)
+      .set({
+        ...settings,
+        updatedAt: new Date(),
+      })
+      .where(eq(owners.id, ownerId))
+      .returning();
+    
+    return owner;
+  }
+
+  // Calculate business date based on owner's timezone and cutoff time
+  private calculateBusinessDate(
+    ownerTimezone: string = 'America/Chicago',
+    cutoffTime: string = '23:59:00',
+    referenceTime?: Date
+  ): string {
+    const now = referenceTime || new Date();
+    
+    console.log(`🕐 [BUSINESS_DATE_CALC] Input: timezone=${ownerTimezone}, cutoff=${cutoffTime}, ref=${now.toISOString()}`);
+    
+    // Parse cutoff time (HH:MM:SS)
+    const [cutoffHours, cutoffMinutes, cutoffSeconds] = cutoffTime.split(':').map(Number);
+    
+    // Get current time in owner's timezone
+    const ownerTimeString = now.toLocaleString('en-US', { 
+      timeZone: ownerTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    
+    console.log(`🕐 [BUSINESS_DATE_CALC] Owner local time: ${ownerTimeString} (${ownerTimezone})`);
+    
+    // Parse the owner's local time
+    const [datePart, timePart] = ownerTimeString.split(', ');
+    const [month, day, year] = datePart.split('/');
+    const [hours, minutes, seconds] = timePart.split(':').map(Number);
+    
+    // Create Date object in owner's timezone
+    const ownerLocalTime = new Date(Number(year), Number(month) - 1, Number(day), hours, minutes, seconds);
+    
+    // Create cutoff time for today in owner's timezone  
+    const todayCutoff = new Date(Number(year), Number(month) - 1, Number(day), cutoffHours, cutoffMinutes, cutoffSeconds);
+    
+    const isAfterCutoff = ownerLocalTime > todayCutoff;
+    console.log(`🕐 [BUSINESS_DATE_CALC] Cutoff comparison: ${ownerLocalTime.toISOString()} > ${todayCutoff.toISOString()} = ${isAfterCutoff}`);
+    
+    // If current time is after cutoff, the business date is tomorrow
+    // Otherwise, it's today
+    const businessDate = isAfterCutoff
+      ? new Date(todayCutoff.getTime() + 24 * 60 * 60 * 1000) // Add 1 day
+      : todayCutoff;
+    
+    const result = businessDate.toISOString().split('T')[0];
+    console.log(`🕐 [BUSINESS_DATE_CALC] Result: ${result} (${isAfterCutoff ? 'tomorrow' : 'today'})`);
+    
+    // Return in YYYY-MM-DD format
+    return result;
+  }
+
+  // Public wrapper for business date calculation that fetches owner settings
+  async calculateBusinessDateForOwner(ownerId: string, timezone?: string, cutoffTime?: string): Promise<string> {
+    // Use provided settings or fetch from database
+    if (!timezone || !cutoffTime) {
+      const billingSettings = await this.getOwnerBillingSettings(ownerId);
+      if (!billingSettings) {
+        throw new Error(`No billing settings found for owner ${ownerId}`);
+      }
+      timezone = timezone || billingSettings.billingTimezone;
+      cutoffTime = cutoffTime || billingSettings.billingCutoffTime;
+    }
+    
+    return this.calculateBusinessDate(timezone, cutoffTime);
+  }
+
+  // Daily batch processing implementation
+  async processDailyBatches(cutoffDate?: string): Promise<{ processed: number; failed: number; errors: string[] }> {
+    const results = {
+      processed: 0,
+      failed: 0,
+      errors: [] as string[]
+    };
+
+    try {
+      // If cutoffDate is provided, use it directly
+      // Otherwise, we'll calculate per-owner business dates based on their cutoff times
+      if (cutoffDate) {
+        console.log(`📅 Using provided cutoff date: ${cutoffDate}`);
+      } else {
+        console.log(`📅 Calculating business dates per owner based on their cutoff times`);
+      }
+      
+      // Get all owners with pending payments
+      const ownersWithPendingPayments = await db
+        .selectDistinct({ 
+          ownerId: payments.ownerId
+        })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.status, 'pending'),
+            isNull(payments.batchId)
+          )
+        );
+
+      console.log(`📅 Found ${ownersWithPendingPayments.length} owners with pending payments`);
+
+      // Process each owner individually with their specific business date
+      for (const { ownerId } of ownersWithPendingPayments) {
+        try {
+          // Get owner's billing settings
+          const billingSettings = await this.getOwnerBillingSettings(ownerId);
+          if (!billingSettings) {
+            console.warn(`⚠️  No billing settings found for owner ${ownerId}, skipping`);
+            continue;
+          }
+
+          // Calculate business date for this owner
+          const ownerBusinessDate = cutoffDate || this.calculateBusinessDate(
+            billingSettings.billingTimezone,
+            billingSettings.billingCutoffTime
+          );
+
+          console.log(`📅 Processing owner ${ownerId} for business date ${ownerBusinessDate} (timezone: ${billingSettings.billingTimezone}, cutoff: ${billingSettings.billingCutoffTime})`);
+
+          // Process this owner's batch for their specific business date
+          await this.processOwnerBatch(ownerId, ownerBusinessDate, billingSettings);
+          results.processed++;
+        } catch (error: any) {
+          console.error(`❌ Failed to process batch for owner ${ownerId}:`, error);
+          results.failed++;
+          results.errors.push(`Owner ${ownerId}: ${error.message}`);
+        }
+      }
+
+      console.log(`✅ Batch processing complete - Processed: ${results.processed}, Failed: ${results.failed}`);
+      return results;
+    } catch (error: any) {
+      console.error('❌ Daily batch processing failed:', error);
+      results.errors.push(`System error: ${error.message}`);
+      return results;
+    }
+  }
+
+  // Process a single owner's batch for a business date
+  private async processOwnerBatch(ownerId: string, businessDate: string, billingSettings?: { billingCadence: string; billingCutoffTime: string; billingTimezone: string }): Promise<void> {
+    return await db.transaction(async (tx) => {
+      try {
+        // Check if batch already exists for this owner/date (idempotency)
+        const existingBatch = await this.getBillingBatchByOwnerAndDate(ownerId, businessDate);
+        if (existingBatch) {
+          console.log(`⚠️  Batch already exists for owner ${ownerId} on ${businessDate}: ${existingBatch.id}`);
+          return;
+        }
+
+        // Get pending payments for this owner and business date
+        const pendingPayments = await this.getPendingPaymentsForBatch(ownerId, businessDate);
+        
+        if (pendingPayments.length === 0) {
+          console.log(`ℹ️  No pending payments for owner ${ownerId} on ${businessDate}`);
+          return;
+        }
+
+        // Calculate batch totals
+        const totalAmount = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+        const totalFees = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee), 0);
+        const paymentCount = pendingPayments.length;
+
+        console.log(`💰 Processing batch for owner ${ownerId}: ${paymentCount} payments totaling $${totalAmount.toFixed(2)} (fees: $${totalFees.toFixed(2)})`);
+
+        // Get billing settings if not provided
+        const batchBillingSettings = billingSettings || await this.getOwnerBillingSettings(ownerId);
+        if (!batchBillingSettings) {
+          throw new Error(`No billing settings found for owner ${ownerId}`);
+        }
+
+        // Create billing batch record with proper timezone and cutoff time
+        const billingBatch = await this.createBillingBatch({
+          ownerId,
+          businessDate,
+          cutoffTime: batchBillingSettings.billingCutoffTime,
+          timezone: batchBillingSettings.billingTimezone,
+          status: 'processing',
+          totalAmount: totalAmount.toFixed(2),
+          totalFees: totalFees.toFixed(2),
+          paymentCount,
+          processingStartedAt: new Date(),
+        });
+
+        // Assign payments to the batch
+        const paymentIds = pendingPayments.map(p => p.id);
+        await this.assignPaymentsToBatch(paymentIds, billingBatch.id, businessDate);
+
+        // Create Stripe PaymentIntent or simulate for development
+        let stripePaymentIntentId: string;
+        let processingResult: { success: boolean; error?: string } = { success: false };
+
+        try {
+          // Check if we're in a Stripe-enabled environment
+          const stripe = await this.getStripeInstance();
+          
+          if (stripe) {
+            // Production/Stripe-enabled environment: Create real PaymentIntent
+            stripePaymentIntentId = await this.createStripePaymentIntent(
+              billingBatch.id,
+              ownerId,
+              totalAmount,
+              totalFees,
+              paymentCount,
+              batchBillingSettings
+            );
+            
+            // Update batch with real Stripe payment intent
+            await this.updateBillingBatchProcessing(
+              billingBatch.id, 
+              totalAmount.toFixed(2), 
+              totalFees.toFixed(2), 
+              paymentCount, 
+              stripePaymentIntentId
+            );
+            
+            console.log(`💳 Created Stripe PaymentIntent ${stripePaymentIntentId} for batch ${billingBatch.id}`);
+            
+            // Payment completion will be handled by Stripe webhook
+            // Mark batch as processing and wait for webhook
+            processingResult = { success: true };
+            
+          } else {
+            // Development environment: Simulate success
+            stripePaymentIntentId = `pi_simulated_${billingBatch.id}_${Date.now()}`;
+            
+            // Update batch with simulated payment intent
+            await this.updateBillingBatchProcessing(
+              billingBatch.id, 
+              totalAmount.toFixed(2), 
+              totalFees.toFixed(2), 
+              paymentCount, 
+              stripePaymentIntentId
+            );
+
+            // Simulate successful payment processing immediately
+            await this.completeBatchPayment(billingBatch.id, stripePaymentIntentId);
+            
+            console.log(`🧪 Simulated successful payment for batch ${billingBatch.id} (development mode)`);
+            processingResult = { success: true };
+          }
+          
+        } catch (error: any) {
+          console.error(`❌ Error creating payment for batch ${billingBatch.id}:`, error);
+          
+          // Mark batch as failed
+          await this.markBillingBatchFailed(billingBatch.id, error.message);
+          processingResult = { success: false, error: error.message };
+          
+          // Don't throw here - we want to continue processing other batches
+          // The caller will see this batch marked as failed
+        }
+
+        console.log(`✅ Successfully processed batch ${billingBatch.id} for owner ${ownerId}`);
+
+      } catch (error: any) {
+        console.error(`❌ Error processing batch for owner ${ownerId}:`, error);
+        throw error; // Will rollback transaction
+      }
+    });
+  }
+
+  // Complete batch payment processing (normally called by Stripe webhook)
+  async completeBatchPayment(batchId: string, stripePaymentIntentId: string): Promise<void> {
+    console.log(`🎯 [BATCH_COMPLETION] Starting batch completion: ${batchId}, PaymentIntent: ${stripePaymentIntentId}`);
+    
+    return await db.transaction(async (tx) => {
+      try {
+        // Get batch details
+        const batch = await this.getBillingBatch(batchId);
+        if (!batch) {
+          throw new Error(`Batch ${batchId} not found`);
+        }
+
+        console.log(`🎯 [BATCH_COMPLETION] Batch details: ${JSON.stringify({
+          id: batch.id,
+          ownerId: batch.ownerId,
+          businessDate: batch.businessDate,
+          totalAmount: batch.totalAmount,
+          paymentCount: batch.paymentCount,
+          status: batch.status,
+          timezone: batch.timezone,
+          cutoffTime: batch.cutoffTime
+        })}`);
+
+        // Get all payments in this batch
+        const batchPayments = await db
+          .select({
+            id: payments.id,
+            driverId: payments.driverId,
+            amount: payments.amount,
+            activityId: payments.activityId,
+          })
+          .from(payments)
+          .where(eq(payments.batchId, batchId));
+
+        console.log(`🎯 [BATCH_COMPLETION] Found ${batchPayments.length} payments in batch`);
+
+        // Update payment statuses to completed
+        await db
+          .update(payments)
+          .set({
+            status: 'completed',
+            stripePaymentIntentId,
+            paidAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(payments.batchId, batchId));
+
+        console.log(`🎯 [BATCH_COMPLETION] Updated ${batchPayments.length} payments to completed status`);
+
+        // Move funds from pending to available for each driver
+        let totalMovedAmount = 0;
+        for (const payment of batchPayments) {
+          console.log(`💰 [WALLET_UPDATE] Moving $${payment.amount} from pending to available for driver ${payment.driverId}`);
+          
+          await this.movePendingToAvailable(
+            payment.driverId, 
+            payment.amount, 
+            payment.activityId, // Source transaction ID
+            batchId
+          );
+          
+          totalMovedAmount += parseFloat(payment.amount);
+          console.log(`💰 [WALLET_UPDATE] Successfully moved $${payment.amount} for driver ${payment.driverId}`);
+        }
+
+        // Mark batch as completed
+        await this.markBillingBatchCompleted(batchId);
+
+        console.log(`✅ [BATCH_COMPLETION] Successfully completed batch ${batchId}:`);
+        console.log(`   - Payments processed: ${batchPayments.length}`);
+        console.log(`   - Total amount moved to available: $${totalMovedAmount.toFixed(2)}`);
+        console.log(`   - PaymentIntent: ${stripePaymentIntentId}`);
+        console.log(`   - Business date: ${batch.businessDate}`);
+        console.log(`   - Owner timezone: ${batch.timezone} (cutoff: ${batch.cutoffTime})`);
+
+      } catch (error: any) {
+        console.error(`❌ [BATCH_COMPLETION] Error completing batch payment ${batchId}:`, error);
+        console.error(`❌ [BATCH_COMPLETION] Full error details:`, {
+          message: error.message,
+          stack: error.stack,
+          batchId,
+          stripePaymentIntentId
+        });
+        throw error; // Will rollback transaction
+      }
+    });
+  }
+
+  async movePendingToAvailable(
+    driverId: string, 
+    amount: string, 
+    sourceTransactionId: string, 
+    batchId: string
+  ): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }> {
+    return await db.transaction(async (tx) => {
+      try {
+        // Get wallet with lock
+        let wallet = await this.getDriverWallet(driverId, tx, true);
+        if (!wallet) {
+          throw new Error(`Wallet not found for driver ${driverId}`);
+        }
+
+        // CENT-SAFE ARITHMETIC
+        const amountCents = Math.round(parseFloat(amount) * 100);
+        const currentAvailableCents = Math.round(parseFloat(wallet.availableBalance) * 100);
+        const currentPendingCents = Math.round(parseFloat(wallet.pendingBalance) * 100);
+        
+        // Validate we have enough pending balance
+        if (currentPendingCents < amountCents) {
+          throw new Error(`Insufficient pending balance for driver ${driverId}: ${wallet.pendingBalance} < ${amount}`);
+        }
+
+        const newAvailableCents = currentAvailableCents + amountCents;
+        const newPendingCents = currentPendingCents - amountCents;
+        const newAvailableBalance = (newAvailableCents / 100).toFixed(2);
+        const newPendingBalance = (newPendingCents / 100).toFixed(2);
+
+        // Create transaction record for the balance transfer
+        const transaction = await this.createWalletTransaction({
+          driverId,
+          amount: amount,
+          direction: 'credit',
+          balanceAfter: newAvailableBalance,
+          sourceType: 'washout',
+          sourceId: batchId, // Reference the batch, not the original activity
+          status: 'posted',
+          description: `Batch payment posted - moved $${amount} from pending to available (batch: ${batchId})`,
+          metadata: {
+            transferType: 'pending_to_available',
+            originalSourceId: sourceTransactionId,
+            batchId,
+            originalPendingBalanceCents: currentPendingCents,
+            originalAvailableBalanceCents: currentAvailableCents,
+            transferCents: amountCents,
+            newPendingBalanceCents,
+            newAvailableBalanceCents
+          }
+        }, tx);
+
+        // Update wallet balances atomically
+        const updatedWallet = await this.updateWalletBalance(
+          driverId,
+          newAvailableBalance,
+          newPendingBalance,
+          tx
+        );
+
+        // Update the original pending transaction status to 'posted'
+        await db
+          .update(walletTransactions)
+          .set({
+            status: 'posted',
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(walletTransactions.driverId, driverId),
+            eq(walletTransactions.sourceId, sourceTransactionId),
+            eq(walletTransactions.status, 'pending')
+          ));
+
+        console.log(`✅ Moved $${amount} from pending to available for driver ${driverId} (batch: ${batchId})`);
+        return { wallet: updatedWallet, transaction };
+
+      } catch (error: any) {
+        console.error(`❌ Failed to move pending to available for driver ${driverId}:`, error);
+        throw error; // Will rollback transaction
+      }
+    });
   }
 }
 
