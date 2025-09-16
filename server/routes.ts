@@ -572,22 +572,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const locations = await storage.getLocationsByOwner(owner.id);
       
       // Get activities based on date range parameter
-      const dateRange = req.query.dateRange || 'today'; // 'today' or '90days'
+      const dateRange = req.query.dateRange || 'today';
       let recentActivities;
+      const now = new Date();
       
-      if (dateRange === '90days') {
-        // Get last 90 days of activities
-        const now = new Date();
-        const ninetyDaysAgo = new Date(now);
-        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-        recentActivities = await storage.getActivitiesByOwner(owner.id, ninetyDaysAgo);
-      } else {
-        // Get today's activities (default behavior)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Start of today
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
-        recentActivities = await storage.getActivitiesByOwner(owner.id, today, tomorrow);
+      switch (dateRange) {
+        case 'yesterday':
+          const yesterday = new Date(now);
+          yesterday.setDate(yesterday.getDate() - 1);
+          yesterday.setHours(0, 0, 0, 0);
+          const endOfYesterday = new Date(yesterday);
+          endOfYesterday.setHours(23, 59, 59, 999);
+          recentActivities = await storage.getActivitiesByOwner(owner.id, yesterday, endOfYesterday);
+          break;
+          
+        case '7days':
+          const sevenDaysAgo = new Date(now);
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          recentActivities = await storage.getActivitiesByOwner(owner.id, sevenDaysAgo);
+          break;
+          
+        case '30days':
+          const thirtyDaysAgo = new Date(now);
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          recentActivities = await storage.getActivitiesByOwner(owner.id, thirtyDaysAgo);
+          break;
+          
+        case '90days':
+          const ninetyDaysAgo = new Date(now);
+          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+          recentActivities = await storage.getActivitiesByOwner(owner.id, ninetyDaysAgo);
+          break;
+          
+        case 'all':
+          // Get all activities (no date filter)
+          recentActivities = await storage.getActivitiesByOwner(owner.id);
+          break;
+          
+        case 'today':
+        default:
+          // Get today's activities (default behavior)
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Start of today
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
+          recentActivities = await storage.getActivitiesByOwner(owner.id, today, tomorrow);
+          break;
       }
 
       // Get user data for profile completion checks
