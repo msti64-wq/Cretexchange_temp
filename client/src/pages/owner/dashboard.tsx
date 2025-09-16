@@ -27,9 +27,19 @@ export default function OwnerDashboard() {
   const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['/api/owners/dashboard', dateRange],
     queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      const headers: any = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch(`/api/owners/dashboard?dateRange=${dateRange}`, {
-        credentials: 'include',
+        headers,
       });
+      
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data');
       }
