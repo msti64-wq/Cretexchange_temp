@@ -282,16 +282,26 @@ export default function AdminDashboard() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Active Licenses</span>
-              <span className="text-lg font-semibold" data-testid="text-active-licenses">
+              <button 
+                className="text-lg font-semibold hover:text-primary transition-colors cursor-pointer hover:underline"
+                onClick={() => window.location.href = '/subscriptions?filter=active'}
+                data-testid="button-active-licenses"
+                title="Click to view active subscribers"
+              >
                 {weekStats?.activeLicenses || 0}
-              </span>
+              </button>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">License Renewals</span>
               <div className="text-right">
-                <div className="text-lg font-semibold text-foreground" data-testid="text-license-renewals">
+                <button 
+                  className="text-lg font-semibold text-foreground hover:text-primary transition-colors cursor-pointer hover:underline"
+                  onClick={() => window.location.href = '/subscriptions?filter=renewal'}
+                  data-testid="button-license-renewals"
+                  title="Click to view upcoming renewals"
+                >
                   {weekStats?.licenseRenewals || 0}
-                </div>
+                </button>
                 <div className="text-sm text-muted-foreground">
                   This month
                 </div>

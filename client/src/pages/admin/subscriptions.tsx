@@ -52,6 +52,18 @@ export default function AdminSubscriptions() {
   const { toast } = useToast();
   const [filterStatus, setFilterStatus] = useState("all");
 
+  // Handle URL parameters for filtering
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const filterParam = urlParams.get('filter');
+    if (filterParam === 'active') {
+      setFilterStatus('active');
+    } else if (filterParam === 'renewal') {
+      // For renewals, we'll filter to show subscriptions with upcoming billing dates
+      setFilterStatus('active'); // Show active subscriptions for now
+    }
+  }, []);
+
   const { data: subscriptionsData, isLoading, error } = useQuery<SubscriptionsData>({
     queryKey: ['/api/admin/subscriptions'],
     retry: false,
@@ -76,8 +88,27 @@ export default function AdminSubscriptions() {
   const totalActive = subscriptionsData?.totalActive || 0;
   const totalSubscriptions = subscriptionsData?.totalSubscriptions || 0;
 
+  // Check if we're filtering for renewals (upcoming billing dates)
+  const isRenewalFilter = new URLSearchParams(window.location.search).get('filter') === 'renewal';
+
   const filteredSubscriptions = subscriptions.filter((subscription: Subscription) => {
-    return filterStatus === "all" || subscription.status === filterStatus;
+    if (filterStatus === "all") return true;
+    
+    // Special handling for renewal filter
+    if (isRenewalFilter && filterStatus === "active") {
+      // Show active subscriptions with billing dates in the next 30 days
+      if (subscription.status !== 'active') return false;
+      
+      if (subscription.nextBillingDate) {
+        const nextBilling = new Date(subscription.nextBillingDate);
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        return nextBilling <= thirtyDaysFromNow;
+      }
+      return false;
+    }
+    
+    return subscription.status === filterStatus;
   });
 
   const handleExport = () => {
@@ -172,8 +203,20 @@ export default function AdminSubscriptions() {
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-lg">Subscription Management</h1>
-              <p className="text-white/80 text-sm">Active subscriptions & billing</p>
+              <h1 className="font-semibold text-lg">
+                Subscription Management
+                {isRenewalFilter && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    Upcoming Renewals
+                  </Badge>
+                )}
+              </h1>
+              <p className="text-white/80 text-sm">
+                {isRenewalFilter 
+                  ? "Subscriptions renewing in the next 30 days" 
+                  : "Active subscriptions & billing"
+                }
+              </p>
             </div>
           </div>
           <Button
