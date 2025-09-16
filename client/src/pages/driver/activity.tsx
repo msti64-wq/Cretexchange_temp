@@ -238,14 +238,14 @@ export default function DriverActivity() {
                       <p className="text-sm text-muted-foreground mb-2" data-testid={`text-activity-address-${index}`}>
                         {activity.washout_locations?.address || activity.location?.address || ''}
                       </p>
-                      {(activity.location?.owner?.user) && (
+                      {(activity.location?.owner?.user || activity.washout_locations?.owner?.user) && (
                         <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-name-${index}`}>
-                          👤 Owner: {activity.location.owner.user.firstName} {activity.location.owner.user.lastName}
+                          👤 Owner: {(activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName)} {(activity.location?.owner?.user?.lastName || activity.washout_locations?.owner?.user?.lastName)}
                         </p>
                       )}
-                      {(activity.location?.owner?.user?.phone) && (
+                      {(activity.location?.owner?.user?.phone || activity.washout_locations?.owner?.user?.phone) && (
                         <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-phone-${index}`}>
-                          📞 Phone: {activity.location.owner.user.phone}
+                          📞 Phone: {activity.location?.owner?.user?.phone || activity.washout_locations?.owner?.user?.phone}
                         </p>
                       )}
                       {((activity.washout_activities?.latitude && activity.washout_activities?.longitude) || (activity.latitude && activity.longitude)) && (

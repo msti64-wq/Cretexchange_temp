@@ -191,6 +191,11 @@ export default function DriverLocations() {
                       <p className="text-muted-foreground text-sm mb-2" data-testid={`text-location-address-${index}`}>
                         {location.address}
                       </p>
+                      {(item.owner?.user || location.owner?.user) && (
+                        <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-name-${index}`}>
+                          👤 Owner: {(item.owner?.user?.firstName || location.owner?.user?.firstName)} {(item.owner?.user?.lastName || location.owner?.user?.lastName)}
+                        </p>
+                      )}
                       <div className="flex items-center gap-4 text-sm">
                         {currentLocation && item.distance !== undefined && (
                           <div className="flex items-center text-muted-foreground">
