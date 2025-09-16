@@ -317,14 +317,14 @@ export default function DriverDashboard() {
                         {activity.washout_locations?.address || activity.location?.address}
                       </div>
                     )}
-                    {(activity.location?.owner?.user) && (
+                    {(activity.location?.owner?.user || activity.washout_locations?.owner?.user) && (
                       <div className="text-xs text-muted-foreground mt-1" data-testid={`text-owner-name-${index}`}>
-                        👤 Owner: {activity.location.owner.user.firstName} {activity.location.owner.user.lastName}
+                        👤 Owner: {(activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName)} {(activity.location?.owner?.user?.lastName || activity.washout_locations?.owner?.user?.lastName)}
                       </div>
                     )}
-                    {(activity.location?.owner?.user?.phone) && (
+                    {(activity.location?.owner?.user?.phone || activity.washout_locations?.owner?.user?.phone) && (
                       <div className="text-xs text-muted-foreground mt-1" data-testid={`text-owner-phone-${index}`}>
-                        📞 Phone: {activity.location.owner.user.phone}
+                        📞 Phone: {activity.location?.owner?.user?.phone || activity.washout_locations?.owner?.user?.phone}
                       </div>
                     )}
                     {((activity.washout_activities?.latitude && activity.washout_activities?.longitude) || (activity.latitude && activity.longitude)) && (
