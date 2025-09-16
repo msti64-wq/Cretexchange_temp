@@ -20,7 +20,7 @@ export function DriverHeader() {
             <h1 className="font-semibold text-lg" data-testid="text-driver-name">
               {(user as any)?.firstName} {(user as any)?.lastName}
               {(user as any)?.roleData?.truckNumber && (
-                <span className="text-white/90 font-normal"> - {(user as any).roleData.truckNumber}</span>
+                <span className="text-white/90 font-normal"> - Truck #{(user as any).roleData.truckNumber}</span>
               )}
             </h1>
             <p className="text-white/80 text-sm">Concrete Driver</p>
