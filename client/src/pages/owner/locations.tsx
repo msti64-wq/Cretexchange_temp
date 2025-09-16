@@ -242,9 +242,15 @@ export default function OwnerLocations() {
                 title={(subscriptionData as any)?.status === 'past_due' 
                   ? "Feature restricted during grace period - payment required"
                   : (subscriptionData as any)?.status !== 'active' 
-                  ? `Active subscription required (Current: ${(subscriptionData as any)?.status || 'none'})` 
+                  ? `Active subscription required (Current: ${(subscriptionData as any)?.status || 'none'}) - Try refreshing page` 
                   : ""}
-                onClick={() => console.log('Subscription status:', subscriptionData)}
+                onClick={() => {
+                  console.log('Subscription status:', subscriptionData);
+                  if ((subscriptionData as any)?.status !== 'active') {
+                    // Force refresh subscription data
+                    queryClient.invalidateQueries({ queryKey: ['/api/payments/subscription-status'] });
+                  }
+                }}
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Add Location

@@ -1554,6 +1554,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const owner = await storage.getOwner(userId);
       
+      console.log(`[DEBUG] Subscription status for user ${user?.username}: owner.subscriptionStatus=${owner?.subscriptionStatus}, user.stripeSubscriptionId=${user?.stripeSubscriptionId}, stripe configured=${!!stripe}`);
+      
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
       }
@@ -1564,8 +1566,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         endsAt: owner.subscriptionEndsAt,
       };
 
+      console.log(`[DEBUG] Initial subscription data:`, subscriptionData);
+
       // If we have Stripe and a subscription ID, get fresh data
       if (stripe && user?.stripeSubscriptionId) {
+        console.log(`[DEBUG] Attempting to fetch Stripe subscription: ${user.stripeSubscriptionId}`);
         try {
           const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
           subscriptionData = {
@@ -1573,12 +1578,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             plan: 'monthly', // or get from subscription metadata
             endsAt: new Date(((subscription as any).current_period_end || (subscription as any).items?.data?.[0]?.current_period_end) * 1000),
           };
+          console.log(`[DEBUG] Updated subscription data from Stripe:`, subscriptionData);
         } catch (stripeError) {
           const errorMessage = stripeError instanceof Error ? stripeError.message : 'Unknown error';
           console.log("Could not fetch Stripe subscription:", errorMessage);
         }
+      } else {
+        console.log(`[DEBUG] Skipping Stripe fetch - using database status`);
       }
 
+      console.log(`[DEBUG] Final subscription data being returned:`, subscriptionData);
       res.json(subscriptionData);
     } catch (error) {
       console.error("Error getting subscription status:", error);
