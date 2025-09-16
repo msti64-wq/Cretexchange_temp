@@ -2857,8 +2857,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!stripe) {
         // Development mode - return mock onboarding URL
+        // Use Replit's public URL or fallback to localhost
+        const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+          : process.env.BASE_URL || 'http://localhost:5000';
+          
         return res.json({
-          url: `${process.env.BASE_URL || 'http://localhost:5000'}/api/stripe/connect/mock-onboarding?account=${driver.connectedAccountId}`,
+          url: `${baseUrl}/api/stripe/connect/mock-onboarding?account=${driver.connectedAccountId}`,
           message: "Development mode: Mock onboarding link generated"
         });
       }
