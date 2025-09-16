@@ -145,6 +145,16 @@ export default function DriverDashboard() {
           </div>
         </StatCard>
 
+        {/* Find Location Button */}
+        <Button 
+          className="w-full py-6 text-lg font-semibold bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-accent-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+          onClick={() => setLocation('/locations')}
+          data-testid="button-find-location"
+        >
+          <MapPin className="w-6 h-6 mr-3" />
+          Find Location
+        </Button>
+
         {/* 7-Day Summary */}
         <StatCard
           title="7-Day Summary"
@@ -232,25 +242,15 @@ export default function DriverDashboard() {
           </CardContent>
         </Card>
 
-        {/* Quick Action Buttons */}
-        <div className="grid grid-cols-2 gap-4">
-          <Button 
-            className="py-6 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
-            onClick={() => setLocation('/wallet')}
-            data-testid="button-access-wallet"
-          >
-            <Wallet className="w-6 h-6 mr-3" />
-            My Wallet
-          </Button>
-          <Button 
-            className="py-6 text-lg font-semibold bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-accent-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
-            onClick={() => setLocation('/locations')}
-            data-testid="button-find-location"
-          >
-            <MapPin className="w-6 h-6 mr-3" />
-            Find Location
-          </Button>
-        </div>
+        {/* My Wallet Button */}
+        <Button 
+          className="w-full py-6 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
+          onClick={() => setLocation('/wallet')}
+          data-testid="button-access-wallet"
+        >
+          <Wallet className="w-6 h-6 mr-3" />
+          My Wallet
+        </Button>
 
         {/* Recent Activity */}
         <StatCard
