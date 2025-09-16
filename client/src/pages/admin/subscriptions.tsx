@@ -156,18 +156,19 @@ export default function AdminSubscriptions() {
     );
   }
 
-  // Calculate stats based on filtered data
+  // Calculate stats based on ALL subscription data (not filtered display)
+  // Monthly revenue and average should always be calculated from active subscriptions only
+  const activeSubscriptions = subscriptions.filter((s: Subscription) => s.status === 'active' && s.amount);
+  
   const stats = {
     totalActive,
     totalSubscriptions,
-    monthlyRevenue: filteredSubscriptions
-      .filter((s: Subscription) => s.status === 'active' && s.amount)
+    monthlyRevenue: activeSubscriptions
       .reduce((sum: number, s: Subscription) => sum + Number(s.amount), 0),
-    avgSubscription: filteredSubscriptions.length > 0 ? 
-      filteredSubscriptions
-        .filter((s: Subscription) => s.amount)
+    avgSubscription: activeSubscriptions.length > 0 ? 
+      activeSubscriptions
         .reduce((sum: number, s: Subscription) => sum + Number(s.amount), 0) / 
-        filteredSubscriptions.filter((s: Subscription) => s.amount).length : 0,
+        activeSubscriptions.length : 0,
     upcomingBillings: filteredSubscriptions.filter((s: Subscription) => {
       if (!s.nextBillingDate) return false;
       try {
