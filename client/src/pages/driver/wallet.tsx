@@ -434,7 +434,10 @@ export default function DriverWallet() {
           title="Request Withdrawal"
           subtitle={
             <span className="text-sm text-muted-foreground">
-              $1 fee under $10, then 10% • Funds arrive in 1-2 business days
+              {!termsStatus?.hasAgreed 
+                ? "$1 fee under $10, then 10% • Funds arrive in 1-2 business days"
+                : "Funds arrive in 1-2 business days"
+              }
             </span>
           }
         >
@@ -473,10 +476,12 @@ export default function DriverWallet() {
                       <span>Withdrawal Amount:</span>
                       <span data-testid="text-withdrawal-amount">{formatCurrency(withdrawAmount)}</span>
                     </div>
-                    <div className="flex justify-between text-sm text-amber-600">
-                      <span>Processing Fee ({withdrawAmount < 10 ? '$1 flat fee' : '10%'}):</span>
-                      <span data-testid="text-fee-amount">-{formatCurrency(feeAmount)}</span>
-                    </div>
+                    {!termsStatus?.hasAgreed && (
+                      <div className="flex justify-between text-sm text-amber-600">
+                        <span>Processing Fee ({withdrawAmount < 10 ? '$1 flat fee' : '10%'}):</span>
+                        <span data-testid="text-fee-amount">-{formatCurrency(feeAmount)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-semibold border-t pt-2">
                       <span>You'll Receive:</span>
                       <span className="text-green-600" data-testid="text-net-amount">
