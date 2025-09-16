@@ -19,7 +19,26 @@ interface PerformanceData {
 
 export function PlatformPerformanceCard({ dateRange }: PlatformPerformanceCardProps) {
   const { data: performanceData, isLoading, error } = useQuery<PerformanceData>({
-    queryKey: ['/api/admin/platform-performance', dateRange],
+    queryKey: ['/api/admin/platform-performance', 'v2', dateRange],
+    queryFn: async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(`/api/admin/platform-performance?days=${dateRange}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+      }
+
+      return response.json();
+    },
     retry: false,
   });
 
@@ -39,9 +58,13 @@ export function PlatformPerformanceCard({ dateRange }: PlatformPerformanceCardPr
   }
 
   if (error) {
+    console.error('Platform performance error:', error);
     return (
       <div className="text-center py-4 text-destructive">
         <p className="text-sm">Failed to load performance data</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {error instanceof Error ? error.message : 'Unknown error'}
+        </p>
       </div>
     );
   }

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
 
 interface User {
   id: string;
@@ -40,6 +41,8 @@ export function useAuth() {
 
   const logout = () => {
     localStorage.removeItem('authToken');
+    // Clear all React Query cache to prevent stale data
+    queryClient.clear();
     // Redirect to home page
     setLocation('/');
     // Force page reload to clear any cached user data
