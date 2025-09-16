@@ -238,9 +238,14 @@ export default function DriverActivity() {
                       <p className="text-sm text-muted-foreground mb-2" data-testid={`text-activity-address-${index}`}>
                         {activity.washout_locations?.address || activity.location?.address || ''}
                       </p>
+                      {(activity.location?.owner?.user) && (
+                        <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-name-${index}`}>
+                          👤 Owner: {activity.location.owner.user.firstName} {activity.location.owner.user.lastName}
+                        </p>
+                      )}
                       {(activity.location?.owner?.user?.phone) && (
                         <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-phone-${index}`}>
-                          📞 Owner: {activity.location.owner.user.phone}
+                          📞 Phone: {activity.location.owner.user.phone}
                         </p>
                       )}
                       {((activity.washout_activities?.latitude && activity.washout_activities?.longitude) || (activity.latitude && activity.longitude)) && (
