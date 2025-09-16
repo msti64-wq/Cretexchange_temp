@@ -424,42 +424,6 @@ export default function AdminDashboard() {
           </Button>
         </div>
 
-        {/* System Metrics */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Key Performance Indicators</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Average per Washout</span>
-                <span className="font-semibold" data-testid="text-avg-washout">
-                  {weekStats?.totalWashouts > 0 ? 
-                    formatCurrency((weekStats?.totalEarnings || 0) / weekStats.totalWashouts) : 
-                    formatCurrency(0)
-                  }
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Platform Commission (10%)</span>
-                <span className="font-semibold text-green-600" data-testid="text-platform-commission">
-                  {formatCurrency((weekStats?.totalEarnings || 0) * 0.10)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Driver Retention Rate</span>
-                <span className="font-semibold">94%</span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Owner Satisfaction</span>
-                <span className="font-semibold">4.8/5</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </main>
 
       <MobileNav role="admin" />
