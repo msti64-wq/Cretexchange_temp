@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut, MessageCircle, Clock, CheckCircle } from "lucide-react";
+import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -19,6 +19,8 @@ export default function AdminDashboard() {
   const { logout } = useAuth();
   const queryClient = useQueryClient();
   const [dateRange, setDateRange] = useState("30");
+  const [messageSearchTerm, setMessageSearchTerm] = useState("");
+  const [showResolvedMessages, setShowResolvedMessages] = useState(false);
 
   const { data: dashboardData, isLoading, error } = useQuery({
     queryKey: ['/api/admin/dashboard'],
@@ -264,20 +266,86 @@ export default function AdminDashboard() {
         {/* Messages Section */}
         <StatCard title="Support Messages">
           <div className="space-y-4">
+            {/* Search and Filter Controls */}
+            <div className="flex items-center space-x-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search messages (includes resolved)..."
+                  value={messageSearchTerm}
+                  onChange={(e) => setMessageSearchTerm(e.target.value)}
+                  className="pl-10 pr-10"
+                  data-testid="input-search-messages"
+                />
+                {messageSearchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                    onClick={() => setMessageSearchTerm("")}
+                    data-testid="button-clear-search"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowResolvedMessages(!showResolvedMessages)}
+                data-testid="button-toggle-resolved"
+              >
+                {showResolvedMessages ? "Hide Resolved" : "Show Resolved"}
+              </Button>
+            </div>
+
             {messagesLoading ? (
               <div className="text-center py-4">
                 <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
                 <p className="text-sm text-muted-foreground mt-2">Loading messages...</p>
               </div>
-            ) : !messages || messages.length === 0 ? (
-              <div className="text-center py-8">
-                <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No support messages yet</p>
-                <p className="text-sm text-muted-foreground">Messages from drivers and owners will appear here</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {messages.slice(0, 5).map((message: any) => (
+            ) : (() => {
+              // Filter messages based on search term and resolved toggle
+              let filteredMessages = messages || [];
+              
+              if (messageSearchTerm) {
+                // When searching, include all messages (including resolved)
+                filteredMessages = filteredMessages.filter((message: any) =>
+                  message.subject?.toLowerCase().includes(messageSearchTerm.toLowerCase()) ||
+                  message.message?.toLowerCase().includes(messageSearchTerm.toLowerCase()) ||
+                  `${message.user?.firstName} ${message.user?.lastName}`.toLowerCase().includes(messageSearchTerm.toLowerCase()) ||
+                  message.userRole?.toLowerCase().includes(messageSearchTerm.toLowerCase())
+                );
+              } else {
+                // When not searching, filter based on resolved toggle
+                if (!showResolvedMessages) {
+                  filteredMessages = filteredMessages.filter((message: any) => message.status !== 'resolved');
+                }
+              }
+
+              return !filteredMessages || filteredMessages.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  {messageSearchTerm ? (
+                    <>
+                      <p className="text-muted-foreground">No messages found</p>
+                      <p className="text-sm text-muted-foreground">Try adjusting your search terms</p>
+                    </>
+                  ) : showResolvedMessages ? (
+                    <>
+                      <p className="text-muted-foreground">No support messages yet</p>
+                      <p className="text-sm text-muted-foreground">Messages from drivers and owners will appear here</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-muted-foreground">No active support messages</p>
+                      <p className="text-sm text-muted-foreground">Resolved messages are hidden. Use search or toggle to view them.</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {filteredMessages.slice(0, 5).map((message: any) => (
                   <div 
                     key={message.id} 
                     className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
@@ -340,16 +408,17 @@ export default function AdminDashboard() {
                       )}
                     </div>
                   </div>
-                ))}
-                {messages.length > 5 && (
-                  <div className="text-center pt-4">
-                    <p className="text-sm text-muted-foreground">
-                      Showing 5 of {messages.length} messages
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+                  ))}
+                  {filteredMessages.length > 5 && (
+                    <div className="text-center pt-4">
+                      <p className="text-sm text-muted-foreground">
+                        Showing 5 of {filteredMessages.length} messages
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </StatCard>
 
