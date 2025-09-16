@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,6 +147,17 @@ export default function DriverWallet() {
     },
     onSuccess: (data: any) => {
       window.open(data.url, '_blank');
+      // Set up focus listener to refresh when user returns
+      const handleFocus = () => {
+        setTimeout(() => {
+          refetchStripeStatus();
+        }, 1000); // Small delay to allow Stripe processing
+      };
+      window.addEventListener('focus', handleFocus);
+      // Clean up listener after 5 minutes
+      setTimeout(() => {
+        window.removeEventListener('focus', handleFocus);
+      }, 300000);
     },
     onError: (error: any) => {
       toast({
@@ -156,6 +167,40 @@ export default function DriverWallet() {
       });
     },
   });
+
+  // Auto-refresh stripe status when the component mounts and periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (stripeStatus?.hasConnectedAccount && !stripeStatus?.payoutsEnabled) {
+        refetchStripeStatus();
+      }
+    }, 10000); // Check every 10 seconds if account exists but payouts not enabled
+
+    return () => clearInterval(interval);
+  }, [stripeStatus, refetchStripeStatus]);
+
+  // Track when account becomes verified to show success message
+  const [previousCanWithdraw, setPreviousCanWithdraw] = useState<boolean | null>(null);
+  
+  useEffect(() => {
+    const currentCanWithdraw = 
+      stripeStatus?.hasConnectedAccount && 
+      stripeStatus?.payoutsEnabled && 
+      stripeStatus?.detailsSubmitted;
+      
+    if (previousCanWithdraw === false && currentCanWithdraw === true) {
+      toast({
+        title: "Account Verified! 🎉",
+        description: "Your payment account is now ready for withdrawals.",
+      });
+    }
+    
+    if (previousCanWithdraw !== null) {
+      setPreviousCanWithdraw(currentCanWithdraw);
+    } else {
+      setPreviousCanWithdraw(currentCanWithdraw);
+    }
+  }, [stripeStatus, toast, previousCanWithdraw]);
 
   const handleWithdrawal = () => {
     // Handle terms status loading and error states
@@ -389,12 +434,13 @@ export default function DriverWallet() {
                   <span className="text-muted-foreground">Account Status</span>
                   <Badge 
                     variant={canWithdraw ? "default" : "secondary"}
+                    className={canWithdraw ? "bg-green-600 hover:bg-green-700" : ""}
                     data-testid="badge-account-status"
                   >
                     {canWithdraw ? (
                       <>
                         <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Verified
+                        Verified & Ready
                       </>
                     ) : (
                       <>
@@ -404,23 +450,48 @@ export default function DriverWallet() {
                     )}
                   </Badge>
                 </div>
+
+                {/* Show account connection details */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${stripeStatus?.hasConnectedAccount ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-muted-foreground">Account Created</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${stripeStatus?.detailsSubmitted ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-muted-foreground">Details Complete</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${stripeStatus?.chargesEnabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-muted-foreground">Charges Enabled</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${stripeStatus?.payoutsEnabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <span className="text-muted-foreground">Payouts Enabled</span>
+                  </div>
+                </div>
                 
                 {!canWithdraw && (
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      Complete your account verification to enable withdrawals.
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="ml-2 p-0 h-auto"
-                        onClick={() => getOnboardingLinkMutation.mutate()}
-                        disabled={getOnboardingLinkMutation.isPending}
-                        data-testid="button-complete-onboarding"
-                      >
-                        Complete Setup
-                        <ExternalLink className="w-3 h-3 ml-1" />
-                      </Button>
+                      {!stripeStatus?.detailsSubmitted 
+                        ? "Complete your account verification to enable withdrawals."
+                        : "Your account is being reviewed. This usually takes a few minutes."
+                      }
+                      {!stripeStatus?.detailsSubmitted && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="ml-2 p-0 h-auto"
+                          onClick={() => getOnboardingLinkMutation.mutate()}
+                          disabled={getOnboardingLinkMutation.isPending}
+                          data-testid="button-complete-onboarding"
+                        >
+                          Complete Setup
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                        </Button>
+                      )}
                     </AlertDescription>
                   </Alert>
                 )}
