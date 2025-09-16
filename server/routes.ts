@@ -3066,6 +3066,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     `);
   });
 
+  // ==================== PLATFORM PERFORMANCE ANALYTICS ROUTES ====================
+  
+  // Get comprehensive platform performance analytics
+  app.get('/api/admin/platform-performance', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { days = '30' } = req.query;
+      const dayCount = parseInt(days as string);
+
+      if (isNaN(dayCount) || dayCount < 1 || dayCount > 365) {
+        return res.status(400).json({ message: "Days must be between 1 and 365" });
+      }
+
+      const performanceStats = await storage.getPlatformPerformanceStats(dayCount);
+      
+      res.json({
+        dateRange: dayCount,
+        ...performanceStats
+      });
+
+    } catch (error) {
+      console.error("Error fetching platform performance:", error);
+      res.status(500).json({ message: "Failed to fetch platform performance data" });
+    }
+  });
+
   // ==================== SUBSCRIPTION MANAGEMENT ROUTES ====================
   
   // Process expired grace periods (can be called by cron job or periodically)

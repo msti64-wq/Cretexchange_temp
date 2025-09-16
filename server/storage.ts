@@ -180,6 +180,17 @@ export interface IStorage {
   updateOwnerReminderSent(ownerId: string): Promise<Owner>;
   getOwnerByStripeCustomerId(customerId: string): Promise<(Owner & { user: User }) | undefined>;
 
+  // Platform performance analytics
+  getPlatformPerformanceStats(days: number): Promise<{
+    moneyFromOwners: number;
+    moneyPaidToDrivers: number;
+    withdrawalFees: number;
+    subscriptionFees: number;
+    totalRevenue: number;
+    totalWashouts: number;
+    totalWithdrawals: number;
+  }>;
+
   // Debug operations
   getUserCount(): Promise<number>;
   getTestUsers(): Promise<string[]>;
@@ -1139,6 +1150,71 @@ export class DatabaseStorage implements IStorage {
       .where(eq(messages.id, messageId))
       .returning();
     return message;
+  }
+
+  // Platform performance analytics
+  async getPlatformPerformanceStats(days: number): Promise<{
+    moneyFromOwners: number;
+    moneyPaidToDrivers: number;
+    withdrawalFees: number;
+    subscriptionFees: number;
+    totalRevenue: number;
+    totalWashouts: number;
+    totalWithdrawals: number;
+  }> {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Get payment statistics (money from owners to drivers + service fees)
+    const paymentStats = await db
+      .select({
+        totalDriverPayments: sql<number>`COALESCE(SUM(CAST(${payments.amount} AS DECIMAL)), 0)`,
+        totalServiceFees: sql<number>`COALESCE(SUM(CAST(${payments.processingFee} AS DECIMAL)), 0)`,
+        totalWashouts: count(payments.id),
+      })
+      .from(payments)
+      .where(gte(payments.createdAt, startDate));
+
+    // Get withdrawal statistics (fees collected)
+    const withdrawalStats = await db
+      .select({
+        totalWithdrawalFees: sql<number>`COALESCE(SUM(CAST(${withdrawals.feeAmount} AS DECIMAL)), 0)`,
+        totalWithdrawals: count(withdrawals.id),
+      })
+      .from(withdrawals)
+      .where(gte(withdrawals.createdAt, startDate));
+
+    // Calculate subscription fees (based on active owners)
+    const activeOwners = await db
+      .select({
+        count: count(owners.id),
+      })
+      .from(owners)
+      .where(eq(owners.subscriptionStatus, 'active'));
+
+    const stats = paymentStats[0] || { totalDriverPayments: 0, totalServiceFees: 0, totalWashouts: 0 };
+    const wStats = withdrawalStats[0] || { totalWithdrawalFees: 0, totalWithdrawals: 0 };
+    const activeOwnerCount = activeOwners[0]?.count || 0;
+
+    // Subscription fees: $29/month for monthly plan based on days in range
+    const subscriptionFeePerMonth = 29;
+    const dailySubscriptionFee = subscriptionFeePerMonth / 30;
+    const subscriptionFees = dailySubscriptionFee * days * Number(activeOwnerCount);
+
+    const moneyFromOwners = Number(stats.totalDriverPayments) + Number(stats.totalServiceFees);
+    const moneyPaidToDrivers = Number(stats.totalDriverPayments);
+    const withdrawalFees = Number(wStats.totalWithdrawalFees);
+    const totalRevenue = moneyFromOwners + withdrawalFees + subscriptionFees;
+
+    return {
+      moneyFromOwners,
+      moneyPaidToDrivers,
+      withdrawalFees,
+      subscriptionFees,
+      totalRevenue,
+      totalWashouts: Number(stats.totalWashouts),
+      totalWithdrawals: Number(wStats.totalWithdrawals),
+    };
   }
 
   // Debug operations

@@ -12,12 +12,13 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { PlatformPerformanceCard } from "@/components/PlatformPerformanceCard";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
   const { logout } = useAuth();
   const queryClient = useQueryClient();
-  const [dateRange, setDateRange] = useState("7");
+  const [dateRange, setDateRange] = useState("30");
 
   const { data: dashboardData, isLoading, error } = useQuery({
     queryKey: ['/api/admin/dashboard'],
@@ -271,6 +272,47 @@ export default function AdminDashboard() {
           </div>
         </StatCard>
 
+        {/* Platform Performance Analytics */}
+        <StatCard title="Platform Performance Analytics">
+          <div className="space-y-4">
+            {/* Date Range Selector */}
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <span className="text-sm font-medium">Date Range</span>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm"
+                  variant={dateRange === "30" ? "default" : "outline"}
+                  onClick={() => setDateRange("30")}
+                  data-testid="button-range-30-performance"
+                  className="text-xs"
+                >
+                  30 Days
+                </Button>
+                <Button 
+                  size="sm"
+                  variant={dateRange === "60" ? "default" : "outline"}
+                  onClick={() => setDateRange("60")}
+                  data-testid="button-range-60-performance"
+                  className="text-xs"
+                >
+                  60 Days
+                </Button>
+                <Button 
+                  size="sm"
+                  variant={dateRange === "90" ? "default" : "outline"}
+                  onClick={() => setDateRange("90")}
+                  data-testid="button-range-90-performance"
+                  className="text-xs"
+                >
+                  90 Days
+                </Button>
+              </div>
+            </div>
+
+            <PlatformPerformanceCard dateRange={parseInt(dateRange)} />
+          </div>
+        </StatCard>
+
         {/* Owner Subscription Revenue */}
         <StatCard title="Subscription Revenue">
           <div className="space-y-3">
@@ -308,7 +350,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="mt-4 pt-3 border-t border-border">
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Stripe Integration</span>
                 <Badge variant="outline" data-testid="badge-stripe-status">
                   {import.meta.env.VITE_STRIPE_PUBLIC_KEY ? "Connected" : "Development Mode"}
