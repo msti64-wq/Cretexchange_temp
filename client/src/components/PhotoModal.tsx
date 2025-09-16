@@ -223,29 +223,6 @@ export function PhotoModal({
           )}
 
           {/* Action Buttons - Only show for users who can approve (owners) */}
-          {status === 'pending' && canApprove && (
-            <div className="flex gap-3 pt-4 border-t">
-              <Button
-                onClick={handleReject}
-                variant="destructive"
-                className="flex-1"
-                disabled={isProcessing}
-                data-testid="button-reject-washout"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Reject Washout
-              </Button>
-              <Button
-                onClick={handleApprove}
-                className="flex-1"
-                disabled={isProcessing}
-                data-testid="button-approve-washout"
-              >
-                <Check className="w-4 h-4 mr-2" />
-                Approve for Payment
-              </Button>
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
