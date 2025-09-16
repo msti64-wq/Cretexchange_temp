@@ -147,20 +147,34 @@ export default function DriverWallet() {
     },
     onSuccess: (data: any) => {
       window.open(data.url, '_blank');
-      // Set up focus listener to refresh when user returns, but with longer delay
+      
+      // Set up focus listener to refresh when user returns
+      // Use a flag to prevent immediate triggering
+      let hasLeftPage = false;
+      
       const handleFocus = () => {
-        setTimeout(() => {
-          refetchStripeStatus();
-        }, 3000); // Longer delay to prevent immediate conflicts
+        if (hasLeftPage) {
+          setTimeout(() => {
+            refetchStripeStatus();
+          }, 2000);
+        }
       };
-      // Add delay before setting up listener to avoid immediate trigger
+      
+      const handleBlur = () => {
+        hasLeftPage = true;
+      };
+      
+      // Add both focus and blur listeners with delay to avoid immediate trigger
       setTimeout(() => {
         window.addEventListener('focus', handleFocus);
-        // Clean up listener after 5 minutes
+        window.addEventListener('blur', handleBlur);
+        
+        // Clean up listeners after 5 minutes
         setTimeout(() => {
           window.removeEventListener('focus', handleFocus);
+          window.removeEventListener('blur', handleBlur);
         }, 300000);
-      }, 2000);
+      }, 3000); // Longer delay before setting up listeners
     },
     onError: (error: any) => {
       toast({
@@ -487,11 +501,17 @@ export default function DriverWallet() {
                           variant="link"
                           size="sm"
                           className="ml-2 p-0 h-auto"
-                          onClick={() => getOnboardingLinkMutation.mutate()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!getOnboardingLinkMutation.isPending) {
+                              getOnboardingLinkMutation.mutate();
+                            }
+                          }}
                           disabled={getOnboardingLinkMutation.isPending}
                           data-testid="button-complete-onboarding"
                         >
-                          Complete Setup
+                          {getOnboardingLinkMutation.isPending ? "Opening..." : "Complete Setup"}
                           <ExternalLink className="w-3 h-3 ml-1" />
                         </Button>
                       )}
