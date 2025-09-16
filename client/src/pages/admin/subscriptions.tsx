@@ -157,6 +157,7 @@ export default function AdminSubscriptions() {
       case 'trialing': return 'secondary';
       case 'past_due': return 'destructive';
       case 'canceled': return 'outline';
+      case 'pending_approval': return 'destructive';
       default: return 'secondary';
     }
   };
@@ -281,6 +282,7 @@ export default function AdminSubscriptions() {
                     <SelectItem value="trialing">Trialing</SelectItem>
                     <SelectItem value="past_due">Past Due</SelectItem>
                     <SelectItem value="canceled">Canceled</SelectItem>
+                    <SelectItem value="pending_approval">Pending Approval</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -1516,7 +1516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerName: `${user!.firstName} ${user!.lastName}`,
         email: user!.email,
         companyName: owner.companyName || 'N/A',
-        status: owner.subscriptionStatus,
+        status: owner.isApproved ? owner.subscriptionStatus : 'pending_approval',
         plan: owner.subscriptionPlan || 'monthly',
         localEndsAt: owner.subscriptionEndsAt,
         stripeCustomerId: user!.stripeCustomerId,
@@ -1542,10 +1542,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return sum + (item.price?.unit_amount || 0);
             }, 0);
 
+            // Find the owner to check approval status
+            const owner = validOwnerData.find(({ user }) => user!.stripeSubscriptionId === subscriptionData.stripeSubscriptionId)?.owner;
+            const effectiveStatus = owner?.isApproved ? stripeSubscription.status : 'pending_approval';
+
             return {
               ...subscriptionData,
               id: stripeSubscription.id, // Use Stripe subscription ID as consistent identifier
-              status: stripeSubscription.status,
+              status: effectiveStatus,
               currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
               nextBillingDate: new Date(stripeSubscription.current_period_end * 1000),
               amount: totalAmount > 0 ? (totalAmount / 100).toFixed(2) : null,
@@ -1565,22 +1569,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const subscriptionsWithStripeData = await Promise.all(stripeDataPromises);
 
-      // Filter to only include truly active subscriptions (corrected filtering logic)
+      // Get truly active subscriptions for stats  
       const activeSubscriptions = subscriptionsWithStripeData.filter(subscription => 
         subscription.status === 'active'
       );
 
-      // Sort by next billing date
-      activeSubscriptions.sort((a, b) => {
+      // Sort all subscriptions by next billing date
+      subscriptionsWithStripeData.sort((a, b) => {
         const aDate = a.nextBillingDate || a.currentPeriodEnd || a.localEndsAt || new Date(0);
         const bDate = b.nextBillingDate || b.currentPeriodEnd || b.localEndsAt || new Date(0);
         return new Date(aDate).getTime() - new Date(bDate).getTime();
       });
 
       res.json({
-        subscriptions: activeSubscriptions,
+        subscriptions: subscriptionsWithStripeData,  // Return all subscriptions, not just active
         totalActive: activeSubscriptions.length,
-        totalSubscriptions: activeSubscriptions.length
+        totalSubscriptions: subscriptionsWithStripeData.length
       });
     } catch (error) {
       console.error("Error fetching subscription data:", error);
