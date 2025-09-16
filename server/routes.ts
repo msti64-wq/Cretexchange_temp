@@ -570,7 +570,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const weekStats = await storage.getOwnerStats(owner.id, 7);
       const monthStats = await storage.getOwnerStats(owner.id, 30);
       const locations = await storage.getLocationsByOwner(owner.id);
-      const recentActivities = await storage.getActivitiesByOwner(owner.id);
+      
+      // Get today's activities for "Today's Activity" card
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
+      
+      const recentActivities = await storage.getActivitiesByOwner(owner.id, today, tomorrow);
 
       // Get user data for profile completion checks
       const user = await storage.getUser(userId);
