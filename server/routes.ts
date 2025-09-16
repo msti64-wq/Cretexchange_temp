@@ -830,7 +830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverAmount.toString(),
         'washout',
         id,
-        `Washout payment for activity ${id} - $${activityAmount} less $${platformCommission.toFixed(2)} platform fee`
+        `Washout payment for activity ${id}`
       );
 
       // Create Payment record for admin/owner reporting and audit trail
