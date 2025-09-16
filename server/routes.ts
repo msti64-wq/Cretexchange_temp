@@ -1457,9 +1457,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const drivers = await storage.getAllDrivers();
-      const owners = await storage.getAllOwners();
+      const driversData = await storage.getAllDrivers();
+      const ownersData = await storage.getAllOwners();
       const admins = await storage.getAllAdmins();
+
+      // Transform data to match frontend expectations
+      const drivers = driversData.map(d => ({
+        users: d.user,
+        drivers: {
+          id: d.id,
+          userId: d.userId,
+          employerName: d.employerName,
+          employerAddress: d.employerAddress,
+          employerPhone: d.employerPhone,
+          licenseNumber: d.licenseNumber,
+          truckNumber: d.truckNumber,
+          isGpsEnabled: d.isGpsEnabled,
+          currentLatitude: d.currentLatitude,
+          currentLongitude: d.currentLongitude,
+          lastLocationUpdate: d.lastLocationUpdate,
+          connectedAccountId: d.connectedAccountId,
+          createdAt: d.createdAt,
+          updatedAt: d.updatedAt,
+        }
+      }));
+
+      const owners = ownersData.map(o => ({
+        users: o.user,
+        owners: {
+          id: o.id,
+          userId: o.userId,
+          companyName: o.companyName,
+          businessLicense: o.businessLicense,
+          taxId: o.taxId,
+          subscriptionStatus: o.subscriptionStatus,
+          subscriptionPlan: o.subscriptionPlan,
+          subscriptionEndsAt: o.subscriptionEndsAt,
+          isApproved: o.isApproved,
+          hasAgreedToTerms: o.hasAgreedToTerms,
+          termsAgreedAt: o.termsAgreedAt,
+          createdAt: o.createdAt,
+          updatedAt: o.updatedAt,
+        }
+      }));
 
       res.json({ drivers, owners, admins });
     } catch (error) {
