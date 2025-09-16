@@ -26,7 +26,9 @@ export default function OwnerDrivers() {
     queryKey: ['/api/owners/locations'],
   });
 
-  const filteredActivities = activities?.filter((activity: any) => {
+  // Ensure activities is an array before filtering
+  const activitiesArray = Array.isArray(activities) ? activities : [];
+  const filteredActivities = activitiesArray.filter((activity: any) => {
     const matchesSearch = 
       activity.driver?.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       activity.driver?.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -40,7 +42,7 @@ export default function OwnerDrivers() {
     const matchesPeriod = activityDate >= daysAgo;
 
     return matchesSearch && matchesLocation && matchesPeriod;
-  }) || [];
+  });
 
   // Group activities by driver
   const driverStats = filteredActivities.reduce((acc: any, activity: any) => {
@@ -175,7 +177,7 @@ export default function OwnerDrivers() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Locations</SelectItem>
-                      {locations?.map((location: any) => (
+                      {Array.isArray(locations) && locations.map((location: any) => (
                         <SelectItem key={location.id} value={location.id}>
                           {location.name}
                         </SelectItem>
@@ -243,9 +245,9 @@ export default function OwnerDrivers() {
 
                   <div className="flex items-center justify-between">
                     <div className="flex flex-wrap gap-1">
-                      {Array.from(driverStat.locations).slice(0, 3).map((location: string, locIndex: number) => (
+                      {Array.from(driverStat.locations).slice(0, 3).map((location, locIndex) => (
                         <Badge key={locIndex} variant="outline" className="text-xs">
-                          {location}
+                          {String(location)}
                         </Badge>
                       ))}
                       {driverStat.locations.size > 3 && (
