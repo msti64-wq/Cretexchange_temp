@@ -99,6 +99,9 @@ export const owners = pgTable("owners", {
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("trial"),
   subscriptionPlan: varchar("subscription_plan").default("monthly"),
   subscriptionEndsAt: timestamp("subscription_ends_at"),
+  pastDueDate: timestamp("past_due_date"), // When subscription first became past due
+  gracePeriodStartDate: timestamp("grace_period_start_date"), // When 7-day grace period started
+  lastReminderSent: timestamp("last_reminder_sent"), // Last time we sent a reminder
   isApproved: boolean("is_approved").default(false),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),

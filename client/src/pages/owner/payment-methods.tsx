@@ -525,7 +525,7 @@ export default function PaymentMethods() {
                         <div className="text-center">
                           <h3 className="font-bold text-lg mb-2">WashOut Pro Terms and Conditions</h3>
                           <p className="font-semibold">Agreement</p>
-                          <p className="font-medium">Effective Date: September 5, 2025</p>
+                          <p className="font-medium">Effective Date: September 16, 2025</p>
                         </div>
                         
                         <div className="space-y-3">
@@ -547,6 +547,15 @@ export default function PaymentMethods() {
                                 <p><strong>1.1 Subscription Fee:</strong> Each published location is subject to a monthly subscription fee as communicated to you by WashOut Pro.</p>
                                 <p><strong>1.2 Payment Method:</strong> You must provide and maintain a valid payment method (credit account, ACH, or linked bank account) for automatic withdrawals. Subscription fees will be billed monthly.</p>
                                 <p><strong>1.3 Authorization:</strong> By agreeing to this Agreement, you authorize WashOut Pro to automatically withdraw subscription fees, service charges, and other applicable fees from your designated account.</p>
+                                <p><strong>1.4 Payment Failure and Grace Period:</strong> If a subscription payment fails, your account will enter a 7-day grace period during which:</p>
+                                <div className="space-y-1 ml-4">
+                                  <p><strong>a. Grace Period Start:</strong> The grace period begins immediately upon payment failure, and you will receive notification via the platform.</p>
+                                  <p><strong>b. Feature Restrictions:</strong> During the grace period, you cannot add new locations or modify existing location settings, but you remain fully responsible for all driver payments and service fees for washouts performed at your locations.</p>
+                                  <p><strong>c. Payment Obligations Continue:</strong> All existing payment obligations to drivers and WashOut Pro service fees remain in effect during the grace period.</p>
+                                  <p><strong>d. Automatic Deactivation:</strong> If payment is not resolved within 7 days, your subscription will be automatically suspended, and your locations will be temporarily removed from the platform until payment is restored.</p>
+                                  <p><strong>e. Reactivation:</strong> Upon successful payment, your account will be immediately reactivated with full access restored.</p>
+                                </div>
+                                <p><strong>1.5 Renewal Reminders:</strong> WashOut Pro will send payment reminders 7 days before your subscription renewal date to help ensure uninterrupted service.</p>
                               </div>
                             </div>
                             

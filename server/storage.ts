@@ -45,7 +45,7 @@ import {
   type UpdateServicePaymentAccount,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations - local authentication
@@ -80,7 +80,7 @@ export interface IStorage {
   getOwner(userId: string): Promise<Owner | undefined>;
   getOwnerById(id: string): Promise<Owner | undefined>;
   updateOwner(ownerId: string, ownerData: Partial<InsertOwner>): Promise<Owner>;
-  updateOwnerSubscription(ownerId: string, status: string, subscriptionId?: string): Promise<Owner>;
+  updateOwnerSubscription(ownerId: string, status: string, subscriptionId?: string, subscriptionEndsAt?: Date): Promise<Owner>;
   approveOwner(ownerId: string): Promise<Owner>;
   getAllOwners(): Promise<(Owner & { user: User })[]>;
 
@@ -174,6 +174,12 @@ export interface IStorage {
   deleteServicePaymentAccount(id: string): Promise<void>;
   setDefaultServicePaymentAccount(id: string): Promise<ServicePaymentAccount>;
   
+  // Grace period and subscription management
+  getOwnersWithExpiredGracePeriod(): Promise<Owner[]>;
+  getOwnersNeedingReminders(): Promise<Owner[]>;
+  updateOwnerReminderSent(ownerId: string): Promise<Owner>;
+  getOwnerByStripeCustomerId(customerId: string): Promise<(Owner & { user: User }) | undefined>;
+
   // Debug operations
   getUserCount(): Promise<number>;
   getTestUsers(): Promise<string[]>;
@@ -406,7 +412,7 @@ export class DatabaseStorage implements IStorage {
     return updatedOwner;
   }
 
-  async updateOwnerSubscription(ownerId: string, status: string, subscriptionId?: string): Promise<Owner> {
+  async updateOwnerSubscription(ownerId: string, status: string, subscriptionId?: string, subscriptionEndsAt?: Date): Promise<Owner> {
     const updateData: any = {
       subscriptionStatus: status as any,
       updatedAt: new Date(),
@@ -414,6 +420,25 @@ export class DatabaseStorage implements IStorage {
     
     if (subscriptionId) {
       updateData.stripeSubscriptionId = subscriptionId;
+    }
+
+    if (subscriptionEndsAt) {
+      updateData.subscriptionEndsAt = subscriptionEndsAt;
+    }
+
+    // Handle grace period logic based on status
+    if (status === 'past_due') {
+      // If going to past_due and not already in grace period, start grace period
+      const currentOwner = await this.getOwner(ownerId);
+      if (currentOwner && !currentOwner.gracePeriodStartDate) {
+        updateData.pastDueDate = new Date();
+        updateData.gracePeriodStartDate = new Date();
+      }
+    } else if (status === 'active') {
+      // If becoming active, clear grace period fields
+      updateData.pastDueDate = null;
+      updateData.gracePeriodStartDate = null;
+      updateData.lastReminderSent = null;
     }
 
     const [owner] = await db
@@ -1608,6 +1633,100 @@ export class DatabaseStorage implements IStorage {
       
       return account;
     });
+  }
+
+  // Grace period and subscription management
+  async getOwnersWithExpiredGracePeriod(): Promise<Owner[]> {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const expiredOwners = await db
+      .select()
+      .from(owners)
+      .where(
+        and(
+          eq(owners.subscriptionStatus, 'past_due'),
+          isNotNull(owners.gracePeriodStartDate),
+          lte(owners.gracePeriodStartDate, sevenDaysAgo)
+        )
+      );
+    return expiredOwners;
+  }
+
+  async getOwnersNeedingReminders(): Promise<Owner[]> {
+    // Get owners who need 7-day advance warning (subscription ending in 7 days)
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    
+    const remindersNeeded = await db
+      .select()
+      .from(owners)
+      .where(
+        and(
+          eq(owners.subscriptionStatus, 'active'),
+          isNotNull(owners.subscriptionEndsAt),
+          lte(owners.subscriptionEndsAt, sevenDaysFromNow),
+          or(
+            isNull(owners.lastReminderSent),
+            lte(owners.lastReminderSent, new Date(Date.now() - 24 * 60 * 60 * 1000)) // Haven't sent reminder in 24h
+          )
+        )
+      );
+    return remindersNeeded;
+  }
+
+  async updateOwnerReminderSent(ownerId: string): Promise<Owner> {
+    const [owner] = await db
+      .update(owners)
+      .set({ 
+        lastReminderSent: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(owners.id, ownerId))
+      .returning();
+    return owner;
+  }
+
+  async getOwnerByStripeCustomerId(customerId: string): Promise<(Owner & { user: User }) | undefined> {
+    const result = await db
+      .select({
+        id: owners.id,
+        userId: owners.userId,
+        companyName: owners.companyName,
+        businessLicense: owners.businessLicense,
+        taxId: owners.taxId,
+        subscriptionStatus: owners.subscriptionStatus,
+        subscriptionPlan: owners.subscriptionPlan,
+        subscriptionEndsAt: owners.subscriptionEndsAt,
+        pastDueDate: owners.pastDueDate,
+        gracePeriodStartDate: owners.gracePeriodStartDate,
+        lastReminderSent: owners.lastReminderSent,
+        isApproved: owners.isApproved,
+        hasAgreedToTerms: owners.hasAgreedToTerms,
+        termsAgreedAt: owners.termsAgreedAt,
+        createdAt: owners.createdAt,
+        updatedAt: owners.updatedAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          phone: users.phone,
+          address: users.address,
+          role: users.role,
+          stripeCustomerId: users.stripeCustomerId,
+          stripeSubscriptionId: users.stripeSubscriptionId,
+          isActive: users.isActive,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        }
+      })
+      .from(owners)
+      .innerJoin(users, eq(owners.userId, users.id))
+      .where(eq(users.stripeCustomerId, customerId));
+    
+    return result[0];
   }
 }
 

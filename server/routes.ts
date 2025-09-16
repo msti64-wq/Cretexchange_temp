@@ -16,7 +16,7 @@ import { z } from "zod";
 let stripe: Stripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2025-08-27.basil",
+    apiVersion: "2024-11-20.acacia",
   });
 } else {
   console.log('Development mode: Stripe functionality disabled - using mock payment processing');
@@ -1231,7 +1231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subscriptionData = {
             status: subscription.status === 'active' ? 'active' : 'inactive',
             plan: 'monthly', // or get from subscription metadata
-            endsAt: new Date((subscription as any).current_period_end * 1000),
+            endsAt: new Date(((subscription as any).current_period_end || (subscription as any).items?.data?.[0]?.current_period_end) * 1000),
           };
         } catch (stripeError) {
           const errorMessage = stripeError instanceof Error ? stripeError.message : 'Unknown error';
@@ -1591,8 +1591,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ...subscriptionData,
               id: stripeSubscription.id, // Use Stripe subscription ID as consistent identifier
               status: effectiveStatus,
-              currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
-              nextBillingDate: new Date(stripeSubscription.current_period_end * 1000),
+              currentPeriodEnd: new Date(((stripeSubscription as any).current_period_end || (stripeSubscription as any).items?.data?.[0]?.current_period_end) * 1000),
+              nextBillingDate: new Date(((stripeSubscription as any).current_period_end || (stripeSubscription as any).items?.data?.[0]?.current_period_end) * 1000),
               amount: totalAmount > 0 ? (totalAmount / 100).toFixed(2) : null,
               currency: stripeSubscription.items.data[0]?.price?.currency || 'usd',
               cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
@@ -2946,6 +2946,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         break;
 
+      // Subscription lifecycle events
+      case 'invoice.payment_failed':
+        const failedInvoice = event.data.object as Stripe.Invoice;
+        const failedCustomerId = failedInvoice.customer as string;
+        
+        const ownerFailed = await storage.getOwnerByStripeCustomerId(failedCustomerId);
+        if (ownerFailed) {
+          console.log(`💳 [${environment}] Payment failed for owner ${ownerFailed.id} - starting grace period`);
+          
+          // Update owner to past_due status (this triggers grace period logic in storage)
+          await storage.updateOwnerSubscription(ownerFailed.id, 'past_due');
+          
+          // Send notification
+          await storage.createNotification({
+            userId: ownerFailed.user.id,
+            title: "Payment Failed - Grace Period Started",
+            message: "Your payment failed. You have 7 days to update your payment method before service is suspended.",
+            type: "error"
+          });
+        }
+        break;
+
+      case 'invoice.payment_succeeded':
+        const succeededInvoice = event.data.object as Stripe.Invoice;
+        const succeededCustomerId = succeededInvoice.customer as string;
+        
+        const ownerSucceeded = await storage.getOwnerByStripeCustomerId(succeededCustomerId);
+        if (ownerSucceeded && ownerSucceeded.subscriptionStatus === 'past_due') {
+          console.log(`✅ [${environment}] Payment succeeded for owner ${ownerSucceeded.id} - clearing grace period`);
+          
+          // Update owner to active status (this clears grace period fields)
+          await storage.updateOwnerSubscription(ownerSucceeded.id, 'active');
+          
+          // Send notification
+          await storage.createNotification({
+            userId: ownerSucceeded.user.id,
+            title: "Payment Successful",
+            message: "Your payment was processed successfully. Your service is now active.",
+            type: "success"
+          });
+        }
+        break;
+
+      case 'customer.subscription.updated':
+        const updatedSubscription = event.data.object as Stripe.Subscription;
+        const updatedCustomerId = updatedSubscription.customer as string;
+        
+        const ownerUpdated = await storage.getOwnerByStripeCustomerId(updatedCustomerId);
+        if (ownerUpdated) {
+          const newStatus = updatedSubscription.status === 'active' ? 'active' : 
+                           updatedSubscription.status === 'past_due' ? 'past_due' : 
+                           'inactive';
+          
+          // Convert Stripe timestamp to Date - use type assertion for current_period_end
+          const subscription = updatedSubscription as any;
+          const subscriptionEndsAt = subscription.current_period_end ? 
+            new Date(subscription.current_period_end * 1000) : 
+            (subscription.items?.data?.[0]?.current_period_end ? 
+              new Date(subscription.items.data[0].current_period_end * 1000) : undefined);
+          
+          console.log(`🔄 [${environment}] Subscription updated for owner ${ownerUpdated.id}: ${ownerUpdated.subscriptionStatus} → ${newStatus}, ends at: ${subscriptionEndsAt?.toISOString()}`);
+          
+          if (ownerUpdated.subscriptionStatus !== newStatus || subscriptionEndsAt) {
+            await storage.updateOwnerSubscription(ownerUpdated.id, newStatus, undefined, subscriptionEndsAt);
+            
+            if (newStatus === 'active') {
+              await storage.createNotification({
+                userId: ownerUpdated.user.id,
+                title: "Subscription Reactivated",
+                message: "Your subscription is now active. All features are available.",
+                type: "success"
+              });
+            }
+          }
+        }
+        break;
+
+      case 'customer.subscription.deleted':
+        const deletedSubscription = event.data.object as Stripe.Subscription;
+        const deletedCustomerId = deletedSubscription.customer as string;
+        
+        const ownerDeleted = await storage.getOwnerByStripeCustomerId(deletedCustomerId);
+        if (ownerDeleted) {
+          console.log(`❌ [${environment}] Subscription cancelled for owner ${ownerDeleted.id}`);
+          
+          await storage.updateOwnerSubscription(ownerDeleted.id, 'inactive');
+          
+          await storage.createNotification({
+            userId: ownerDeleted.user.id,
+            title: "Subscription Cancelled",
+            message: "Your subscription has been cancelled. Please resubscribe to continue using the service.",
+            type: "warning"
+          });
+        }
+        break;
+
       default:
         console.log(`ℹ️ [${environment}] Unhandled event type: ${event.type} - safely ignored`);
     }
@@ -2968,6 +3064,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </body>
       </html>
     `);
+  });
+
+  // ==================== SUBSCRIPTION MANAGEMENT ROUTES ====================
+  
+  // Process expired grace periods (can be called by cron job or periodically)
+  app.post('/api/admin/process-grace-periods', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      // Get owners with expired grace periods (7 days past due)
+      const expiredOwners = await storage.getOwnersWithExpiredGracePeriod();
+      let processedCount = 0;
+
+      for (const owner of expiredOwners) {
+        try {
+          // Deactivate the subscription
+          await storage.updateOwnerSubscription(owner.id, 'inactive');
+          
+          // Send final notification
+          await storage.createNotification({
+            userId: owner.userId,
+            title: "Subscription Suspended",
+            message: "Your 7-day grace period has expired. Your subscription has been suspended. Please update your payment method to reactivate.",
+            type: "error"
+          });
+
+          console.log(`🔒 Deactivated subscription for owner ${owner.id} - grace period expired`);
+          processedCount++;
+        } catch (error) {
+          console.error(`Error processing expired owner ${owner.id}:`, error);
+        }
+      }
+
+      // Get owners needing renewal reminders
+      const remindersNeeded = await storage.getOwnersNeedingReminders();
+      let remindersSent = 0;
+
+      for (const owner of remindersNeeded) {
+        try {
+          // Send reminder notification
+          await storage.createNotification({
+            userId: owner.userId,
+            title: "Subscription Renewal Reminder",
+            message: "Your subscription will expire in 7 days. Please ensure your payment method is up to date.",
+            type: "warning"
+          });
+
+          // Update reminder sent timestamp
+          await storage.updateOwnerReminderSent(owner.id);
+          remindersSent++;
+        } catch (error) {
+          console.error(`Error sending reminder to owner ${owner.id}:`, error);
+        }
+      }
+
+      res.json({
+        success: true,
+        expiredProcessed: processedCount,
+        remindersSent,
+        message: `Processed ${processedCount} expired subscriptions and sent ${remindersSent} renewal reminders`
+      });
+
+    } catch (error) {
+      console.error("Error processing grace periods:", error);
+      res.status(500).json({ message: "Failed to process grace periods" });
+    }
   });
 
   // ==================== SUPERADMIN SERVICE PAYMENT ACCOUNT ROUTES ====================

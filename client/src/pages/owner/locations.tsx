@@ -239,6 +239,11 @@ export default function OwnerLocations() {
                 data-testid="button-add-location" 
                 className="bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
                 disabled={(subscriptionData as any)?.status !== 'active'}
+                title={(subscriptionData as any)?.status === 'past_due' 
+                  ? "Feature restricted during grace period - payment required"
+                  : (subscriptionData as any)?.status !== 'active' 
+                  ? "Active subscription required" 
+                  : ""}
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Add Location
