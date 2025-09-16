@@ -11,9 +11,10 @@ interface DriverTermsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAccepted?: () => void;
+  readOnly?: boolean;
 }
 
-export function DriverTermsDialog({ open, onOpenChange, onAccepted }: DriverTermsDialogProps) {
+export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = false }: DriverTermsDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [hasReadTerms, setHasReadTerms] = useState(false);
@@ -53,10 +54,15 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted }: DriverTerm
           <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
             <div className="flex items-center mb-2">
               <AlertCircle className="w-4 h-4 text-blue-600 mr-2" />
-              <span className="font-semibold text-blue-800">Required Reading</span>
+              <span className="font-semibold text-blue-800">
+                {readOnly ? "Terms & Conditions" : "Required Reading"}
+              </span>
             </div>
             <p className="text-blue-700 text-xs">
-              You must read and agree to these terms before using your wallet for withdrawals.
+              {readOnly 
+                ? "Review the terms and conditions you have previously agreed to." 
+                : "You must read and agree to these terms before using your wallet for withdrawals."
+              }
             </p>
           </div>
           
@@ -145,35 +151,51 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted }: DriverTerm
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 p-3 border border-border rounded">
-            <Checkbox 
-              id="terms-read"
-              checked={hasReadTerms}
-              onCheckedChange={(v) => setHasReadTerms(!!v)}
-              data-testid="checkbox-terms-read"
-            />
-            <label htmlFor="terms-read" className="text-sm cursor-pointer">
-              I have read and understand all terms and conditions above
-            </label>
-          </div>
+          {!readOnly && (
+            <>
+              <div className="flex items-center space-x-2 p-3 border border-border rounded">
+                <Checkbox 
+                  id="terms-read"
+                  checked={hasReadTerms}
+                  onCheckedChange={(v) => setHasReadTerms(!!v)}
+                  data-testid="checkbox-terms-read"
+                />
+                <label htmlFor="terms-read" className="text-sm cursor-pointer">
+                  I have read and understand all terms and conditions above
+                </label>
+              </div>
 
-          <div className="flex items-center justify-between pt-4 border-t">
-            <Button 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-              data-testid="button-cancel-terms"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={() => agreeToTermsMutation.mutate()}
-              disabled={!hasReadTerms || agreeToTermsMutation.isPending}
-              className="bg-green-600 hover:bg-green-700"
-              data-testid="button-agree-terms"
-            >
-              {agreeToTermsMutation.isPending ? "Recording..." : "I Agree"}
-            </Button>
-          </div>
+              <div className="flex items-center justify-between pt-4 border-t">
+                <Button 
+                  variant="outline" 
+                  onClick={() => onOpenChange(false)}
+                  data-testid="button-cancel-terms"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => agreeToTermsMutation.mutate()}
+                  disabled={!hasReadTerms || agreeToTermsMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700"
+                  data-testid="button-agree-terms"
+                >
+                  {agreeToTermsMutation.isPending ? "Recording..." : "I Agree"}
+                </Button>
+              </div>
+            </>
+          )}
+          
+          {readOnly && (
+            <div className="flex justify-center pt-4 border-t">
+              <Button
+                onClick={() => onOpenChange(false)}
+                className="w-32"
+                data-testid="button-close-terms"
+              >
+                Close
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

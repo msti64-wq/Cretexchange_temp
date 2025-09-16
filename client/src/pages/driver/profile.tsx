@@ -6,19 +6,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
-import { User, Truck, CreditCard, Save } from "lucide-react";
+import { DriverTermsDialog } from "@/components/DriverTermsDialog";
+import { User, Truck, CreditCard, Save, FileText, Eye } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function DriverProfile() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
 
   const { data: user, isLoading, refetch } = useQuery({
     queryKey: ['/api/auth/user'],
+  });
+
+  // Fetch driver terms status
+  const { data: termsStatus } = useQuery<{hasAgreed: boolean; agreedAt: string | null}>({
+    queryKey: ['/api/drivers/terms-status'],
   });
 
   const updateProfileMutation = useMutation({
@@ -390,6 +398,52 @@ export default function DriverProfile() {
             </CardContent>
           </Card>
 
+          {/* Terms & Conditions Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Terms & Conditions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Driver Terms Agreement</p>
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      variant={termsStatus?.hasAgreed ? "default" : "secondary"}
+                      data-testid="badge-terms-status"
+                    >
+                      {termsStatus?.hasAgreed ? "Agreed" : "Not Agreed"}
+                    </Badge>
+                    {termsStatus?.hasAgreed && termsStatus?.agreedAt && (
+                      <span className="text-xs text-muted-foreground">
+                        Agreed on {new Date(termsStatus.agreedAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTermsDialog(true)}
+                  data-testid="button-view-terms"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Terms
+                </Button>
+              </div>
+              
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground">
+                  Review the terms and conditions that govern your use of WashOut Pro, 
+                  including payment processing fees and service policies.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {isEditing && (
             <Button 
               type="submit" 
@@ -403,6 +457,13 @@ export default function DriverProfile() {
           )}
         </form>
       </div>
+
+      {/* Driver Terms Dialog */}
+      <DriverTermsDialog
+        open={showTermsDialog}
+        onOpenChange={setShowTermsDialog}
+        readOnly={true}
+      />
 
       <MobileNav role="driver" />
     </div>
