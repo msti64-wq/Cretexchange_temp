@@ -78,7 +78,7 @@ export default function OwnerDashboard() {
   const isDataReady = dashboardData && activitiesData;
   
   // Profile completion notice component
-  const renderProfileNotice = (): React.ReactElement | null => {
+  const renderProfileNotice = (): React.ReactNode => {
     if (!dashboardData) return null;
     const needsCompletion = !(dashboardData as any).user?.phone || !(dashboardData as any).user?.address || !(dashboardData as any).owner?.companyName;
     if (!needsCompletion) return null;
