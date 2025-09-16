@@ -994,6 +994,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Driver terms agreement endpoints
+  // Check driver terms agreement status
+  app.get('/api/drivers/terms-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const driver = await storage.getDriver(userId);
+      
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      res.json({ 
+        hasAgreed: !!driver.hasAgreedToTerms,
+        agreedAt: driver.termsAgreedAt || null
+      });
+    } catch (error) {
+      console.error("Error checking driver terms status:", error);
+      res.status(500).json({ message: "Failed to check terms status" });
+    }
+  });
+
+  // Driver terms agreement endpoint
+  app.post('/api/drivers/agree-to-terms', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      // Verify user is a driver
+      if (!user || user.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+
+      const driver = await storage.getDriver(userId);
+      if (!driver || driver.userId !== userId) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      // Check for idempotency - if already agreed, return existing agreement
+      if (driver.hasAgreedToTerms) {
+        return res.json({ 
+          success: true, 
+          message: "Terms already accepted",
+          agreedAt: driver.termsAgreedAt
+        });
+      }
+
+      const now = new Date();
+      const ipAddress = req.get('x-forwarded-for') || req.ip || req.connection.remoteAddress || 'unknown';
+      
+      // Record terms agreement with timestamp
+      const agreementData = {
+        driverId: driver.id,
+        driverName: `${user.firstName} ${user.lastName}`,
+        driverEmail: user.email || '',
+        driverLicense: driver.licenseNumber || 'N/A',
+        driverEmployer: driver.employerName || 'N/A',
+        agreedAt: now,
+        ipAddress,
+        userAgent: req.get('user-agent') || 'unknown'
+      };
+
+      // Safe partial update - only update the fields we need to change
+      await storage.updateDriver(driver.id, {
+        hasAgreedToTerms: true,
+        termsAgreedAt: now
+      });
+
+      // Create admin notification message (remove unsupported 'priority' field)
+      const adminMessage = {
+        userId: userId,
+        subject: `Driver Wallet Terms Agreement - ${agreementData.driverName}`,
+        message: `Driver "${agreementData.driverName}" (${agreementData.driverEmail}) with license "${agreementData.driverLicense}" from "${agreementData.driverEmployer}" has read and agreed to the Wallet Terms and Conditions on ${agreementData.agreedAt.toLocaleDateString()} at ${agreementData.agreedAt.toLocaleTimeString()}.\n\nThis agreement enables wallet withdrawal functionality with the established fee structure (10% on withdrawals ≥$10, $1 flat fee <$10).\n\nIP Address: ${agreementData.ipAddress}\nUser Agent: ${agreementData.userAgent}`,
+        userRole: 'driver' as const,
+        userPhone: user.phone || ''
+      };
+
+      await storage.createMessage(adminMessage);
+
+      console.log(`💳 Driver wallet terms agreed: ${agreementData.driverName} at ${agreementData.agreedAt}`);
+
+      res.json({ 
+        success: true, 
+        message: "Wallet terms agreement recorded successfully",
+        agreedAt: agreementData.agreedAt
+      });
+    } catch (error) {
+      console.error("Error recording driver terms agreement:", error);
+      res.status(500).json({ message: "Failed to record terms agreement" });
+    }
+  });
+
   // Owner subscription
   app.post('/api/owners/subscribe', isAuthenticated, async (req: any, res) => {
     try {
