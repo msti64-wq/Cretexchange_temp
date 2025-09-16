@@ -1085,7 +1085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       console.log(`✅ Created pending payment: $${driverAmount} for activity ${id}, Payment ID: ${payment.id}, Business Date: ${businessDate}`);
-      console.log(`📅 Payment will be processed in daily batch for ${businessDate} at ${billingSettings?.billingCutoffTime || '23:59:00'} ${timezone}`);
+      console.log(`📅 Payment will be processed in daily batch for ${businessDate} at ${billingSettings?.billingCutoffTime || '23:59:00'} ${billingSettings?.billingTimezone || 'America/Chicago'}`);
 
       // Daily batch processor will:
       // 1. Group all pending payments by owner and business date
@@ -3765,7 +3765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: p.id,
           amount: p.amount,
           processingFee: p.processingFee,
-          driver: p.driver.user.name,
+          driver: `${p.driver.user.firstName} ${p.driver.user.lastName}`,
           activity: {
             checkInTime: p.activity.checkInTime,
             amount: p.activity.amount
