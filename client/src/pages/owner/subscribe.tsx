@@ -1,76 +1,120 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
-import { Crown, Check, CreditCard, ArrowLeft } from "lucide-react";
+import { Crown, Check, CreditCard, ArrowLeft, AlertTriangle } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
-// Initialize Stripe only if public key is available
+// Safe Stripe.js loader with proper error handling
 let stripePromise: Promise<any> | null = null;
-if (import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-  stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-} else {
-  console.log('Development mode: Stripe UI disabled - using mock payment flow');
-}
+let stripeLoadError: string | null = null;
+
+const initializeStripe = async () => {
+  // Return early if already initialized or errored
+  if (stripePromise || stripeLoadError) {
+    return;
+  }
+
+  if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+    console.log('Development mode: Stripe UI disabled - using mock payment flow');
+    return;
+  }
+
+  try {
+    stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+    
+    // Test if the promise resolves successfully
+    await stripePromise;
+  } catch (error) {
+    console.error('Failed to load Stripe.js:', error);
+    stripeLoadError = error instanceof Error ? error.message : 'Failed to load payment processor';
+    stripePromise = null;
+  }
+};
 
 const SubscribeForm = ({ clientSecret, onSuccess }: { clientSecret: string; onSuccess: () => void }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPaymentError(null);
 
     if (!stripe || !elements) {
+      setPaymentError("Payment system is not ready. Please try again.");
       return;
     }
 
     setIsProcessing(true);
 
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: window.location.origin,
-      },
-      redirect: 'if_required',
-    });
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin,
+        },
+        redirect: 'if_required',
+      });
 
-    setIsProcessing(false);
-
-    if (error) {
+      if (error) {
+        setPaymentError(error.message || "Payment failed. Please try again.");
+        toast({
+          title: "Payment Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Subscription Activated",
+          description: "Your subscription has been activated successfully!",
+        });
+        onSuccess();
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      setPaymentError(errorMessage);
       toast({
-        title: "Payment Failed",
-        description: error.message,
+        title: "Payment Error",
+        description: errorMessage,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Subscription Activated",
-        description: "Your subscription has been activated successfully!",
-      });
-      onSuccess();
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={!stripe || isProcessing}
-        data-testid="button-subscribe"
-      >
-        {isProcessing ? "Processing..." : "Subscribe Now"}
-      </Button>
-    </form>
+    <div className="space-y-4">
+      {paymentError && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            <p className="text-sm text-red-700 dark:text-red-300">{paymentError}</p>
+          </div>
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <PaymentElement />
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={!stripe || isProcessing}
+          data-testid="button-subscribe"
+        >
+          {isProcessing ? "Processing..." : "Subscribe Now"}
+        </Button>
+      </form>
+    </div>
   );
 };
 
@@ -79,6 +123,29 @@ export default function OwnerSubscribe() {
   const [, setLocation] = useLocation();
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "annual">("monthly");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [stripeLoading, setStripeLoading] = useState(true);
+  const [stripeError, setStripeError] = useState<string | null>(null);
+
+  // Initialize Stripe safely on component mount
+  useEffect(() => {
+    const loadStripe = async () => {
+      try {
+        await initializeStripe();
+        
+        if (stripeLoadError) {
+          setStripeError(stripeLoadError);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to initialize payment system';
+        setStripeError(errorMessage);
+        console.error('Stripe initialization error:', error);
+      } finally {
+        setStripeLoading(false);
+      }
+    };
+
+    loadStripe();
+  }, []);
 
   const subscribeMutation = useMutation({
     mutationFn: async () => {
@@ -302,6 +369,41 @@ export default function OwnerSubscribe() {
                     Continue to Dashboard
                   </Button>
                 </div>
+              ) : stripeLoading ? (
+                <div className="text-center space-y-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-sm text-muted-foreground">Loading payment system...</p>
+                </div>
+              ) : stripeError ? (
+                <div className="text-center space-y-4">
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <div className="flex items-center justify-center space-x-2 mb-3">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                      <p className="font-medium text-yellow-700 dark:text-yellow-300">Payment System Unavailable</p>
+                    </div>
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400 mb-4">{stripeError}</p>
+                    <div className="space-y-2">
+                      <Button 
+                        onClick={() => window.location.reload()} 
+                        variant="outline" 
+                        size="sm"
+                        data-testid="button-retry-stripe"
+                      >
+                        Try Again
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Please contact support if this issue persists.
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => setLocation('/')} 
+                    variant="ghost"
+                    data-testid="button-back-to-dashboard"
+                  >
+                    Back to Dashboard
+                  </Button>
+                </div>
               ) : stripePromise ? (
                 <Elements stripe={stripePromise} options={{ clientSecret }}>
                   <SubscribeForm 
@@ -311,12 +413,21 @@ export default function OwnerSubscribe() {
                 </Elements>
               ) : (
                 <div className="text-center space-y-4">
-                  <p className="text-yellow-600 font-medium">
-                    Stripe is not configured
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Payment processing is disabled in development mode.
-                  </p>
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-blue-700 dark:text-blue-300 font-medium mb-2">
+                      Development Mode
+                    </p>
+                    <p className="text-sm text-blue-600 dark:text-blue-400">
+                      Payment processing is disabled. Stripe is not configured.
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => setLocation('/')} 
+                    variant="ghost"
+                    data-testid="button-back-to-dashboard-dev"
+                  >
+                    Back to Dashboard
+                  </Button>
                 </div>
               )}
             </CardContent>
