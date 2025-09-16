@@ -20,11 +20,21 @@ export default function OwnerDashboard() {
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<'today' | '90days'>('today');
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: dashboardData, isLoading, refetch } = useQuery({
-    queryKey: ['/api/owners/dashboard'],
+    queryKey: ['/api/owners/dashboard', dateRange],
+    queryFn: async () => {
+      const response = await fetch(`/api/owners/dashboard?dateRange=${dateRange}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data');
+      }
+      return response.json();
+    },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -303,15 +313,37 @@ export default function OwnerDashboard() {
         <StatCard
           title="Recent Activity"
           subtitle={
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-primary hover:text-primary/80"
-              onClick={() => setLocation('/drivers')}
-              data-testid="button-view-all-activity"
-            >
-              View All
-            </Button>
+            <div className="flex items-center space-x-2">
+              <div className="flex bg-muted rounded-lg p-1">
+                <Button
+                  variant={dateRange === 'today' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDateRange('today')}
+                  data-testid="button-today-filter"
+                  className="text-xs px-2 py-1 h-auto"
+                >
+                  Today
+                </Button>
+                <Button
+                  variant={dateRange === '90days' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDateRange('90days')}
+                  data-testid="button-90days-filter"
+                  className="text-xs px-2 py-1 h-auto"
+                >
+                  90 Days
+                </Button>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:text-primary/80"
+                onClick={() => setLocation('/drivers')}
+                data-testid="button-view-all-activity"
+              >
+                View All
+              </Button>
+            </div>
           }
         >
           <div className="space-y-3">
