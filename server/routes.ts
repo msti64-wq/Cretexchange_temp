@@ -1512,6 +1512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Prepare base subscription data for all owners
       const baseSubscriptionsData = validOwnerData.map(({ owner, user }) => ({
         id: user!.stripeSubscriptionId || 'N/A', // Use Stripe subscription ID as primary identifier
+        ownerId: owner.id, // Add unique owner ID for table keys
         userId: owner.userId,
         ownerName: `${user!.firstName} ${user!.lastName}`,
         email: user!.email,

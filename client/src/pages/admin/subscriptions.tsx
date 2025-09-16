@@ -324,7 +324,7 @@ export default function AdminSubscriptions() {
                   </TableHeader>
                   <TableBody>
                     {filteredSubscriptions.map((subscription: Subscription, index: number) => (
-                      <TableRow key={subscription.id} data-testid={`table-row-subscription-${index}`}>
+                      <TableRow key={(subscription as any).ownerId || subscription.id || index} data-testid={`table-row-subscription-${index}`}>
                         <TableCell data-testid={`table-cell-owner-${index}`}>
                           <div className="font-medium">
                             {subscription.ownerName}
