@@ -10,14 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building2, Plus, MapPin, DollarSign, Edit, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings } from "lucide-react";
+import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function OwnerLocations() {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingLocation, setEditingLocation] = useState<any>(null);
   const [locationToDelete, setLocationToDelete] = useState<any>(null);
   const [locationToEdit, setLocationToEdit] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -53,27 +52,6 @@ export default function OwnerLocations() {
     },
   });
 
-  const updateRateMutation = useMutation({
-    mutationFn: async ({ locationId, rate }: { locationId: string; rate: string }) => {
-      const response = await apiRequest("PUT", `/api/owners/locations/${locationId}/rate`, { rate });
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Rate Updated",
-        description: "Location rate has been updated successfully.",
-      });
-      setEditingLocation(null);
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/locations'] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Failed to Update Rate",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
   const updateLocationMutation = useMutation({
     mutationFn: async ({ locationId, locationData }: { locationId: string; locationData: any }) => {
@@ -180,9 +158,6 @@ export default function OwnerLocations() {
     });
   };
 
-  const handleRateUpdate = (locationId: string, newRate: string) => {
-    updateRateMutation.mutate({ locationId, rate: newRate });
-  };
 
   const handleEditLocation = (location: any) => {
     setLocationToEdit(location);
@@ -610,28 +585,12 @@ export default function OwnerLocations() {
                       </div>
                       
                       <div className="text-right">
-                        {editingLocation === location.id ? (
-                          <Input
-                            type="number"
-                            step="0.01"
-                            defaultValue={location.rate}
-                            className="w-20 text-right"
-                            onBlur={(e) => handleRateUpdate(location.id, e.target.value)}
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter') {
-                                handleRateUpdate(location.id, (e.target as HTMLInputElement).value);
-                              }
-                            }}
-                            data-testid={`input-edit-rate-${index}`}
-                          />
-                        ) : (
-                          <div>
-                            <div className="text-xl font-bold text-accent" data-testid={`text-location-rate-${index}`}>
-                              {formatCurrency(Number(location.rate))}
-                            </div>
-                            <div className="text-xs text-muted-foreground">per washout</div>
+                        <div>
+                          <div className="text-xl font-bold text-accent" data-testid={`text-location-rate-${index}`}>
+                            {formatCurrency(Number(location.rate))}
                           </div>
-                        )}
+                          <div className="text-xs text-muted-foreground">per washout</div>
+                        </div>
                       </div>
                     </div>
                     
@@ -666,15 +625,6 @@ export default function OwnerLocations() {
                           >
                             <Settings className="w-4 h-4 mr-1" />
                             Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingLocation(location.id)}
-                            data-testid={`button-edit-rate-${index}`}
-                          >
-                            <DollarSign className="w-4 h-4 mr-1" />
-                            Rate
                           </Button>
                           <Button
                             size="sm"
