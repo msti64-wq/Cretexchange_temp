@@ -840,7 +840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: owner.id,
         amount: driverAmount.toString(),
         processingFee: platformCommission.toFixed(2),
-        status: 'settled', // Status indicating wallet settlement
+        status: 'completed', // Status indicating successful payment processing
         stripePaymentIntentId: `wallet_${walletCredit.transaction.id}`, // Link to wallet transaction
       });
 
