@@ -147,17 +147,20 @@ export default function DriverWallet() {
     },
     onSuccess: (data: any) => {
       window.open(data.url, '_blank');
-      // Set up focus listener to refresh when user returns
+      // Set up focus listener to refresh when user returns, but with longer delay
       const handleFocus = () => {
         setTimeout(() => {
           refetchStripeStatus();
-        }, 1000); // Small delay to allow Stripe processing
+        }, 3000); // Longer delay to prevent immediate conflicts
       };
-      window.addEventListener('focus', handleFocus);
-      // Clean up listener after 5 minutes
+      // Add delay before setting up listener to avoid immediate trigger
       setTimeout(() => {
-        window.removeEventListener('focus', handleFocus);
-      }, 300000);
+        window.addEventListener('focus', handleFocus);
+        // Clean up listener after 5 minutes
+        setTimeout(() => {
+          window.removeEventListener('focus', handleFocus);
+        }, 300000);
+      }, 2000);
     },
     onError: (error: any) => {
       toast({
