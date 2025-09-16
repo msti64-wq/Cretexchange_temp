@@ -19,7 +19,7 @@ interface PerformanceData {
 
 export function PlatformPerformanceCard({ dateRange }: PlatformPerformanceCardProps) {
   const { data: performanceData, isLoading, error } = useQuery<PerformanceData>({
-    queryKey: [`/api/admin/platform-performance?days=${dateRange}`],
+    queryKey: ['/api/admin/platform-performance', dateRange],
     retry: false,
   });
 
