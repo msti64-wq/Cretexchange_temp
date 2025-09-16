@@ -198,7 +198,7 @@ export default function AdminUsers() {
     totalDrivers: drivers.length,
     totalOwners: owners.length,
     totalAdmins: admins.length,
-    pendingApprovals: owners.filter((o: any) => !o.isApproved).length,
+    pendingApprovals: owners.filter((o: any) => !o.owners?.isApproved).length,
   };
 
   return (
