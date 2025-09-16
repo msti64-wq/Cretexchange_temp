@@ -1,69 +1,22 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 
 interface PhotoModalProps {
   isOpen: boolean;
   onClose: () => void;
   activity: any;
-  onApprove?: (activityId: string) => void;
-  onReject?: (activityId: string) => void;
-  isLoading?: boolean;
-  canApprove?: boolean; // Controls whether approve/reject buttons are shown
 }
 
 export function PhotoModal({ 
   isOpen, 
   onClose, 
-  activity, 
-  onApprove, 
-  onReject, 
-  isLoading = false,
-  canApprove = false // Default to false for security
+  activity
 }: PhotoModalProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const approveMutation = useMutation({
-    mutationFn: async (activityId: string) => {
-      return apiRequest(`/api/owners/activities/${activityId}/verify`, {
-        method: 'PUT',
-      });
-    },
-    onSuccess: () => {
-      toast({ title: "Washout approved for payment" });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/activities'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
-      onClose();
-    },
-    onError: () => {
-      toast({ title: "Failed to approve washout", variant: "destructive" });
-    },
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: async (activityId: string) => {
-      return apiRequest(`/api/owners/activities/${activityId}/reject`, {
-        method: 'PUT',
-      });
-    },
-    onSuccess: () => {
-      toast({ title: "Washout rejected" });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/activities'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
-      onClose();
-    },
-    onError: () => {
-      toast({ title: "Failed to reject washout", variant: "destructive" });
-    },
-  });
   
   if (!activity) return null;
   
@@ -94,19 +47,6 @@ export function PhotoModal({
     setCurrentPhotoIndex((prev) => (prev - 1 + photoUrls.length) % photoUrls.length);
   };
 
-  const handleApprove = () => {
-    if (activityId) {
-      approveMutation.mutate(activityId);
-    }
-  };
-
-  const handleReject = () => {
-    if (activityId) {
-      rejectMutation.mutate(activityId);
-    }
-  };
-
-  const isProcessing = approveMutation.isPending || rejectMutation.isPending;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

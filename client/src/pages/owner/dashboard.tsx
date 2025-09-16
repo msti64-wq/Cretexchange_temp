@@ -495,7 +495,6 @@ export default function OwnerDashboard() {
           setSelectedActivity(null);
         }}
         activity={selectedActivity}
-        canApprove={true} // Owners can approve/reject photos
       />
 
       <SupportMessageDialog
