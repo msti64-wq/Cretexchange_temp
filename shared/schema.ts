@@ -368,8 +368,6 @@ export const resetPasswordSchema = z.object({
 
 export const insertDriverSchema = createInsertSchema(drivers).omit({
   id: true,
-  hasAgreedToTerms: true,
-  termsAgreedAt: true,
   createdAt: true,
   updatedAt: true,
 });

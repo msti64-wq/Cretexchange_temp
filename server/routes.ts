@@ -1952,6 +1952,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver profile not found" });
       }
 
+      // Critical: Check if driver has agreed to terms before allowing withdrawal
+      if (!driver.hasAgreedToTerms) {
+        return res.status(403).json({ 
+          message: "Terms agreement required", 
+          details: "You must agree to the wallet terms and conditions before making withdrawals."
+        });
+      }
+
       // Validate request body
       let validatedData;
       try {

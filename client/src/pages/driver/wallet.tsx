@@ -72,7 +72,7 @@ export default function DriverWallet() {
   });
 
   // Fetch driver terms status
-  const { data: termsStatus, isLoading: termsLoading, isError: termsError } = useQuery({
+  const { data: termsStatus, isLoading: termsLoading, isError: termsError } = useQuery<{hasAgreed: boolean; agreedAt: string | null}>({
     queryKey: ['/api/drivers/terms-status'],
   });
 
