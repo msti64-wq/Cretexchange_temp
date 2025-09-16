@@ -571,13 +571,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const monthStats = await storage.getOwnerStats(owner.id, 30);
       const locations = await storage.getLocationsByOwner(owner.id);
       
-      // Get today's activities for "Today's Activity" card
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Start of today
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
+      // Get activities based on date range parameter
+      const dateRange = req.query.dateRange || 'today'; // 'today' or '90days'
+      let recentActivities;
       
-      const recentActivities = await storage.getActivitiesByOwner(owner.id, today, tomorrow);
+      if (dateRange === '90days') {
+        // Get last 90 days of activities
+        const now = new Date();
+        const ninetyDaysAgo = new Date(now);
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        recentActivities = await storage.getActivitiesByOwner(owner.id, ninetyDaysAgo);
+      } else {
+        // Get today's activities (default behavior)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of today
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
+        recentActivities = await storage.getActivitiesByOwner(owner.id, today, tomorrow);
+      }
 
       // Get user data for profile completion checks
       const user = await storage.getUser(userId);
