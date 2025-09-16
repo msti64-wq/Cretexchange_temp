@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
+import { DriverTermsDialog } from "@/components/DriverTermsDialog";
 import { 
   Wallet, 
   DollarSign, 
@@ -61,12 +62,18 @@ export default function DriverWallet() {
   const { toast } = useToast();
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
   const pageSize = 20;
 
   // Fetch wallet balance
   const { data: walletBalance, isLoading: balanceLoading, refetch: refetchBalance } = useQuery<WalletBalance>({
     queryKey: ['/api/wallet/balance'],
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Fetch driver terms status
+  const { data: termsStatus, isLoading: termsLoading, isError: termsError } = useQuery({
+    queryKey: ['/api/drivers/terms-status'],
   });
 
   // Fetch wallet transactions
@@ -151,11 +158,60 @@ export default function DriverWallet() {
   });
 
   const handleWithdrawal = () => {
+    // Handle terms status loading and error states
+    if (termsLoading) {
+      toast({
+        title: "Loading Terms Status",
+        description: "Please wait while we verify your account status",
+      });
+      return;
+    }
+
+    if (termsError) {
+      toast({
+        title: "Terms Status Error",
+        description: "Unable to verify terms status. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const amount = parseFloat(withdrawalAmount);
     if (isNaN(amount) || amount < 5) {
       toast({
         title: "Invalid Amount",
         description: "Minimum withdrawal amount is $5.00",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (amount > (walletBalance?.availableBalance || 0)) {
+      toast({
+        title: "Insufficient Funds",
+        description: "Withdrawal amount exceeds available balance",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if driver has agreed to terms
+    if (!termsStatus?.hasAgreed) {
+      setShowTermsDialog(true);
+      return;
+    }
+
+    withdrawalMutation.mutate(amount);
+  };
+
+  const handleTermsAccepted = () => {
+    // Re-validate amount and balance after terms acceptance
+    const amount = parseFloat(withdrawalAmount);
+    
+    if (isNaN(amount) || amount < 5) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid withdrawal amount of at least $5.00",
         variant: "destructive",
       });
       return;
@@ -434,6 +490,7 @@ export default function DriverWallet() {
                   onClick={handleWithdrawal}
                   disabled={
                     withdrawalMutation.isPending ||
+                    termsLoading ||
                     !withdrawalAmount ||
                     parseFloat(withdrawalAmount) < 5 ||
                     parseFloat(withdrawalAmount) > (walletBalance?.availableBalance || 0)
@@ -554,6 +611,13 @@ export default function DriverWallet() {
           </div>
         </StatCard>
       </div>
+
+      {/* Driver Terms Dialog */}
+      <DriverTermsDialog
+        open={showTermsDialog}
+        onOpenChange={setShowTermsDialog}
+        onAccepted={handleTermsAccepted}
+      />
 
       <MobileNav />
     </div>
