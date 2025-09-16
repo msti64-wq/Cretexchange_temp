@@ -196,9 +196,9 @@ export default function DriverWallet() {
     }
     
     if (previousCanWithdraw !== null) {
-      setPreviousCanWithdraw(currentCanWithdraw);
+      setPreviousCanWithdraw(currentCanWithdraw || false);
     } else {
-      setPreviousCanWithdraw(currentCanWithdraw);
+      setPreviousCanWithdraw(currentCanWithdraw || false);
     }
   }, [stripeStatus, toast, previousCanWithdraw]);
 

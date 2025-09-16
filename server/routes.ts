@@ -2904,7 +2904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!driver.connectedAccountId) {
         return res.json({
-          hasAccount: false,
+          hasConnectedAccount: false,
           status: 'no_account',
           message: "No connected account found"
         });
@@ -2913,7 +2913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!stripe) {
         // Development mode - return mock status
         return res.json({
-          hasAccount: true,
+          hasConnectedAccount: true,
           accountId: driver.connectedAccountId,
           status: 'active',
           chargesEnabled: true,
@@ -2941,7 +2941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 Account status for driver ${user.username}: ${status}`);
 
       res.json({
-        hasAccount: true,
+        hasConnectedAccount: true,
         accountId: account.id,
         status,
         chargesEnabled: account.charges_enabled,
