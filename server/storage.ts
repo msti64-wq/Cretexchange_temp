@@ -165,6 +165,9 @@ export interface IStorage {
   // Wallet statistics
   getWalletStats(driverId: string, days: number): Promise<{ totalCredits: number; totalDebits: number; totalFees: number; transactionCount: number }>;
   
+  // Dynamic pending balance calculation
+  calculatePendingBalance(driverId: string): Promise<number>;
+  
   // Service Payment Account operations (superadmin only)
   createServicePaymentAccount(account: InsertServicePaymentAccount): Promise<ServicePaymentAccount>;
   getServicePaymentAccount(id: string): Promise<ServicePaymentAccount | undefined>;
@@ -1595,6 +1598,32 @@ export class DatabaseStorage implements IStorage {
       totalFees,
       transactionCount: transactions.length,
     };
+  }
+
+  // Calculate pending balance from activities with status='pending'
+  async calculatePendingBalance(driverId: string): Promise<number> {
+    const pendingActivities = await db
+      .select({
+        amount: washoutActivities.amount
+      })
+      .from(washoutActivities)
+      .where(
+        and(
+          eq(washoutActivities.driverId, driverId),
+          eq(washoutActivities.status, 'pending')
+        )
+      );
+
+    // Calculate total pending amount and apply 90% driver share (10% platform commission)
+    const totalPendingAmount = pendingActivities.reduce((total, activity) => {
+      return total + parseFloat(activity.amount);
+    }, 0);
+
+    // Apply the same 90% calculation used when activities are verified
+    const platformCommission = totalPendingAmount * 0.10;
+    const driverPendingAmount = totalPendingAmount - platformCommission;
+
+    return Number(driverPendingAmount.toFixed(2));
   }
 
   // Webhook event operations for idempotency

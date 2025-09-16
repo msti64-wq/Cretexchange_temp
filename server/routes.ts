@@ -1841,10 +1841,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Calculate pending balance dynamically from activities with status='pending'
+      const dynamicPendingBalance = await storage.calculatePendingBalance(driver.id);
+
       res.json({
         availableBalance: parseFloat(wallet.availableBalance),
-        pendingBalance: parseFloat(wallet.pendingBalance),
-        totalBalance: parseFloat(wallet.availableBalance) + parseFloat(wallet.pendingBalance),
+        pendingBalance: dynamicPendingBalance,
+        totalBalance: parseFloat(wallet.availableBalance) + dynamicPendingBalance,
         lastUpdated: wallet.updatedAt
       });
     } catch (error) {
