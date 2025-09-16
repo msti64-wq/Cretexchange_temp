@@ -532,9 +532,6 @@ export const insertServicePaymentAccountSchema = createInsertSchema(servicePayme
 export const updateServicePaymentAccountSchema = insertServicePaymentAccountSchema.partial().omit({
   createdBy: true, // Cannot change creator
   isDefault: true, // Cannot be set by clients - use dedicated endpoint
-  totalProcessed: true, // System-maintained field
-  totalFeesCollected: true, // System-maintained field
-  lastPayoutAt: true, // System-maintained field
 }).extend({
   // Add validation for fee fields to prevent invalid values
   platformFeePercentage: z.coerce.number().min(0, "Platform fee must be >= 0").max(100, "Platform fee must be <= 100%").transform(val => val.toString()).optional(),
@@ -574,3 +571,11 @@ export type InsertWithdrawal = z.infer<typeof insertWithdrawalSchema>;
 export type ServicePaymentAccount = typeof servicePaymentAccounts.$inferSelect;
 export type InsertServicePaymentAccount = z.infer<typeof insertServicePaymentAccountSchema>;
 export type UpdateServicePaymentAccount = z.infer<typeof updateServicePaymentAccountSchema>;
+
+// Date range validation schema
+export const dateRangeSchema = z.enum(['today', 'yesterday', '7days', '30days', '90days', 'all']).default('today');
+
+// Query parameter schemas
+export const ownerActivitiesQuerySchema = z.object({
+  dateRange: dateRangeSchema.optional(),
+});

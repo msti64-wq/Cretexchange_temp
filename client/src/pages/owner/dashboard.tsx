@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,27 +26,15 @@ export default function OwnerDashboard() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: dashboardData, isLoading, refetch } = useQuery({
-    queryKey: ['/api/owners/dashboard', dateRange],
-    queryFn: async () => {
-      const token = localStorage.getItem('authToken');
-      const headers: any = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
+  // Separate query for dashboard stats (stable, independent of dateRange)
+  const { data: dashboardData, isLoading: isDashboardLoading } = useQuery({
+    queryKey: ['/api/owners/dashboard'],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
-      const response = await fetch(`/api/owners/dashboard?dateRange=${dateRange}`, {
-        headers,
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboard data');
-      }
-      return response.json();
-    },
+  // Separate query for activities with date range filtering
+  const { data: activitiesData, isLoading: isActivitiesLoading, isFetching: isActivitiesFetching } = useQuery({
+    queryKey: ['/api/owners/activities', dateRange],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -84,7 +73,44 @@ export default function OwnerDashboard() {
     },
   });
 
-  if (isLoading) {
+  // Combined loading states
+  const isMainLoading = isDashboardLoading;
+  const isDataReady = dashboardData && activitiesData;
+  
+  // Profile completion notice component
+  const renderProfileNotice = (): React.ReactElement | null => {
+    if (!dashboardData) return null;
+    const needsCompletion = !(dashboardData as any).user?.phone || !(dashboardData as any).user?.address || !(dashboardData as any).owner?.companyName;
+    if (!needsCompletion) return null;
+    
+    return (
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+        <div className="flex items-start space-x-3">
+          <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span className="text-white text-xs font-bold">!</span>
+          </div>
+          <div className="flex-1">
+            <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-1">
+              Complete Your Profile
+            </h3>
+            <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+              Please complete your profile information to start using all platform features and receive payments.
+            </p>
+            <Button
+              size="sm"
+              onClick={() => setLocation('/profile')}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              data-testid="button-complete-profile"
+            >
+              Complete Profile
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (isMainLoading) {
     return (
       <div className="min-h-screen bg-background pb-20">
         <div className="animate-pulse space-y-4 p-4">
@@ -97,7 +123,8 @@ export default function OwnerDashboard() {
     );
   }
 
-  const { weekStats, monthStats, locations, recentActivities } = (dashboardData as any) || {};
+  const { weekStats, monthStats, locations } = (dashboardData as any) || {};
+  const recentActivities = (activitiesData as any)?.activities || [];
 
   // Calculate pending payments (awaiting approval)
   const pendingPayments = recentActivities?.reduce((total: number, activity: any) => {
@@ -201,31 +228,7 @@ export default function OwnerDashboard() {
 
       <main className="p-4 space-y-6">
         {/* Profile Completion Notice */}
-        {dashboardData && (!(dashboardData as any).user?.phone || !(dashboardData as any).user?.address || !(dashboardData as any).owner?.companyName) && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-white text-xs font-bold">!</span>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-1">
-                  Complete Your Profile
-                </h3>
-                <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                  Please complete your profile information to start using all platform features and receive payments.
-                </p>
-                <Button
-                  size="sm"
-                  onClick={() => setLocation('/profile')}
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
-                  data-testid="button-complete-profile"
-                >
-                  Complete Profile
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {renderProfileNotice()}
 
         {/* Subscription Required Notice */}
         {user && subscriptionData && (subscriptionData as any).status !== 'active' && (
@@ -325,7 +328,7 @@ export default function OwnerDashboard() {
           title="Recent Activity"
           subtitle={
             <div className="flex items-center space-x-2">
-              <Select value={dateRange} onValueChange={setDateRange}>
+              <Select value={dateRange} onValueChange={(value) => setDateRange(value as typeof dateRange)}>
                 <SelectTrigger className="w-32 h-8 text-xs" data-testid="select-date-range">
                   <SelectValue />
                 </SelectTrigger>
@@ -351,10 +354,58 @@ export default function OwnerDashboard() {
           }
         >
           <div className="space-y-3">
-            {!recentActivities?.length ? (
+            {/* Loading state for activities */}
+            {isActivitiesLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                <p>Loading activities...</p>
+              </div>
+            ) : isActivitiesFetching ? (
+              <div className="space-y-3 opacity-50 transition-opacity">
+                <div className="text-center py-2 text-sm text-muted-foreground">
+                  <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full inline-block mr-2"></div>
+                  Updating activities...
+                </div>
+                {recentActivities.map((activity: any, index: number) => (
+                  <div key={activity.id} className="p-4 bg-muted/50 rounded-lg space-y-3" data-testid={`card-recent-activity-${index}`}>
+                    {/* Previous activity content will be dimmed while fetching */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <Users className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm" data-testid={`text-driver-name-${index}`}>
+                            {activity.driver?.user?.firstName} {activity.driver?.user?.lastName}
+                          </div>
+                          {activity.driver?.user?.phone && (
+                            <div className="text-xs text-muted-foreground" data-testid={`text-driver-phone-${index}`}>
+                              📞 {activity.driver.user.phone}
+                            </div>
+                          )}
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(activity.checkInTime).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-lg text-accent" data-testid={`text-activity-amount-${index}`}>
+                          {formatCurrency(Number(activity.amount || 0))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-full">
+                      <div className="text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
+                        📍 {activity.location?.name}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : !recentActivities?.length ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No recent activity</p>
+                <p>No activity found for this time period</p>
               </div>
             ) : (
               recentActivities.map((activity: any, index: number) => (

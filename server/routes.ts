@@ -8,7 +8,7 @@ import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -16,7 +16,7 @@ import { z } from "zod";
 let stripe: Stripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2024-11-20.acacia",
+    apiVersion: "2025-08-27.basil",
   });
 } else {
   console.log('Development mode: Stripe functionality disabled - using mock payment processing');
@@ -570,10 +570,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const weekStats = await storage.getOwnerStats(owner.id, 7);
       const monthStats = await storage.getOwnerStats(owner.id, 30);
       const locations = await storage.getLocationsByOwner(owner.id);
+
+      // Get user data for profile completion checks
+      const user = await storage.getUser(userId);
+
+      res.json({
+        weekStats,
+        monthStats,
+        locations: locations.length,
+        user: user,
+        owner: owner,
+      });
+    } catch (error) {
+      console.error("Error fetching owner dashboard:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard data" });
+    }
+  });
+
+  // Owner activities endpoint with date range filtering
+  app.get('/api/owners/activities', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
       
-      // Get activities based on date range parameter
-      const dateRange = req.query.dateRange || 'today';
-      let recentActivities;
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Validate and parse query parameters
+      const queryValidation = ownerActivitiesQuerySchema.safeParse(req.query);
+      if (!queryValidation.success) {
+        return res.status(400).json({ 
+          message: "Invalid query parameters", 
+          errors: queryValidation.error.errors 
+        });
+      }
+
+      const { dateRange = 'today' } = queryValidation.data;
+      let activities;
       const now = new Date();
       
       switch (dateRange) {
@@ -583,30 +617,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           yesterday.setHours(0, 0, 0, 0);
           const endOfYesterday = new Date(yesterday);
           endOfYesterday.setHours(23, 59, 59, 999);
-          recentActivities = await storage.getActivitiesByOwner(owner.id, yesterday, endOfYesterday);
+          activities = await storage.getActivitiesByOwner(owner.id, yesterday, endOfYesterday);
           break;
           
         case '7days':
           const sevenDaysAgo = new Date(now);
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          recentActivities = await storage.getActivitiesByOwner(owner.id, sevenDaysAgo);
+          activities = await storage.getActivitiesByOwner(owner.id, sevenDaysAgo);
           break;
           
         case '30days':
           const thirtyDaysAgo = new Date(now);
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          recentActivities = await storage.getActivitiesByOwner(owner.id, thirtyDaysAgo);
+          activities = await storage.getActivitiesByOwner(owner.id, thirtyDaysAgo);
           break;
           
         case '90days':
           const ninetyDaysAgo = new Date(now);
           ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-          recentActivities = await storage.getActivitiesByOwner(owner.id, ninetyDaysAgo);
+          activities = await storage.getActivitiesByOwner(owner.id, ninetyDaysAgo);
           break;
           
         case 'all':
           // Get all activities (no date filter)
-          recentActivities = await storage.getActivitiesByOwner(owner.id);
+          activities = await storage.getActivitiesByOwner(owner.id);
           break;
           
         case 'today':
@@ -616,24 +650,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           today.setHours(0, 0, 0, 0); // Start of today
           const tomorrow = new Date(today);
           tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
-          recentActivities = await storage.getActivitiesByOwner(owner.id, today, tomorrow);
+          activities = await storage.getActivitiesByOwner(owner.id, today, tomorrow);
           break;
       }
 
-      // Get user data for profile completion checks
-      const user = await storage.getUser(userId);
-
       res.json({
-        weekStats,
-        monthStats,
-        locations: locations.length,
-        recentActivities: recentActivities.slice(0, 10),
-        user: user,
-        owner: owner,
+        activities: activities.slice(0, 50), // Limit to 50 for performance
+        dateRange,
+        totalCount: activities.length,
       });
     } catch (error) {
-      console.error("Error fetching owner dashboard:", error);
-      res.status(500).json({ message: "Failed to fetch dashboard data" });
+      console.error("Error fetching owner activities:", error);
+      res.status(500).json({ message: "Failed to fetch activities" });
     }
   });
 
