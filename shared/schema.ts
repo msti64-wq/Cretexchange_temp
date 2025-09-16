@@ -469,6 +469,12 @@ export const uuidParamSchema = z.object({
   id: z.string().uuid("Invalid UUID format"),
 });
 
+// Super admin email update schema
+export const superAdminEmailUpdateSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newEmail: z.string().email("Invalid email format")
+});
+
 // Service Payment Account Configuration - managed by superadmin
 export const servicePaymentAccounts = pgTable("service_payment_accounts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

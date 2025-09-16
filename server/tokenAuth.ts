@@ -153,7 +153,8 @@ export async function setupAuth(app: Express) {
       }
 
       // Generate reset token (use crypto-secure random string)
-      const resetToken = require('crypto').randomBytes(32).toString('hex');
+      const { randomBytes } = await import('crypto');
+      const resetToken = randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
 
       // Store reset token

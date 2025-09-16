@@ -8,7 +8,7 @@ import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -2568,6 +2568,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error changing password:", error);
       res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // Super admin email update endpoint
+  app.put('/api/admin/update-email', isAuthenticated, async (req: any, res) => {
+    try {
+      const { currentPassword, newEmail } = req.body;
+      const userId = req.user.id;
+
+      // Validate request body
+      const validationResult = superAdminEmailUpdateSchema.safeParse({ currentPassword, newEmail });
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validationResult.error.issues 
+        });
+      }
+
+      // Get current user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user is super admin
+      if (user.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      // Verify current password
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      // Check if new email is already in use by another user
+      const existingUser = await storage.getUserByEmail(newEmail);
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({ message: "Email address is already in use" });
+      }
+
+      // Update user email
+      await storage.upsertUser({
+        ...user,
+        email: newEmail
+      });
+
+      console.log(`📧 Email updated for super admin: ${user.username} (${user.email} → ${newEmail})`);
+
+      res.json({ message: "Email updated successfully" });
+    } catch (error) {
+      console.error("Error updating super admin email:", error);
+      res.status(500).json({ message: "Failed to update email" });
     }
   });
 
