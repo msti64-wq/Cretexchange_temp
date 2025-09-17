@@ -19,7 +19,7 @@ export default function OwnerDrivers() {
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   const { data: activitiesData, isLoading } = useQuery({
-    queryKey: ['/api/owners/activities'],
+    queryKey: ['/api/owners/activities?dateRange=all'],
   });
 
   const { data: locations } = useQuery({
@@ -27,7 +27,7 @@ export default function OwnerDrivers() {
   });
 
   // Extract activities array from API response and ensure it's an array
-  const activitiesArray = Array.isArray((activitiesData as any)?.activities) ? (activitiesData as any).activities : [];
+  const activitiesArray = Array.isArray(activitiesData) ? activitiesData : (activitiesData?.activities ?? []);
   const filteredActivities = activitiesArray.filter((activity: any) => {
     const matchesSearch = 
       activity.driver?.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
