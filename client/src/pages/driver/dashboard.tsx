@@ -425,6 +425,7 @@ export default function DriverDashboard() {
         isOpen={isPhotoModalOpen}
         onClose={() => setIsPhotoModalOpen(false)}
         activity={selectedActivity}
+        canApprove={false}
       />
 
       <SupportMessageDialog
