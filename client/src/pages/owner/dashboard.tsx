@@ -461,12 +461,19 @@ export default function OwnerDashboard() {
                     
                     <div className="flex items-center gap-2">
                       <Button
-                        variant={(activity.photoUrls?.length > 0) ? "outline" : "ghost"}
+                        variant={(() => {
+                          const photoUrls = activity.photoUrls || activity.washout_activities?.photo_urls || activity.photo_urls || [];
+                          return photoUrls.length > 0 ? "outline" : "ghost";
+                        })()}
                         size="sm"
                         className="text-xs h-8 px-3"
-                        disabled={!(activity.photoUrls?.length > 0)}
+                        disabled={(() => {
+                          const photoUrls = activity.photoUrls || activity.washout_activities?.photo_urls || activity.photo_urls || [];
+                          return !(photoUrls.length > 0);
+                        })()}
                         onClick={() => {
-                          if (activity.photoUrls?.length > 0) {
+                          const photoUrls = activity.photoUrls || activity.washout_activities?.photo_urls || activity.photo_urls || [];
+                          if (photoUrls.length > 0) {
                             setSelectedActivity(activity);
                             setIsPhotoModalOpen(true);
                           }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +18,15 @@ export function PhotoModal({
 }: PhotoModalProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   
+  // Reset photo index when activity changes or modal opens
+  useEffect(() => {
+    setCurrentPhotoIndex(0);
+  }, [activity?.id, isOpen]);
+  
   if (!activity) return null;
   
-  const photoUrls = activity.photoUrls || [];
+  // Robust photo URL extraction to handle different backend response formats
+  const photoUrls = activity.photoUrls || activity.washout_activities?.photo_urls || activity.photo_urls || [];
   const activityId = activity.id;
   const status = activity.status;
   const amount = activity.amount || 0;

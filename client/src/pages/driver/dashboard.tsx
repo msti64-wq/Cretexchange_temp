@@ -345,7 +345,10 @@ export default function DriverDashboard() {
                     </div>
                     
                     {/* Photos button */}
-                    {((activity.washout_activities?.photoUrls?.length > 0) || (activity.photoUrls?.length > 0)) && (
+                    {(() => {
+                      const photoUrls = activity.photoUrls || activity.washout_activities?.photo_urls || activity.photo_urls || [];
+                      return photoUrls.length > 0;
+                    })() && (
                       <Button
                         variant="outline"
                         size="sm"
