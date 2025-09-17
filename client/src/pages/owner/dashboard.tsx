@@ -160,7 +160,7 @@ export default function OwnerDashboard() {
             size="sm"
             onClick={logout}
             data-testid="button-logout"
-            className="bg-slate-800 border-slate-700 text-white hover:bg-slate-700 flex-shrink-0"
+            className="bg-black border-black text-white hover:bg-gray-800 flex-shrink-0"
           >
             <LogOut className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Logout</span>
