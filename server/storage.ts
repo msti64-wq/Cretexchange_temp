@@ -395,6 +395,8 @@ export class DatabaseStorage implements IStorage {
         currentLongitude: drivers.currentLongitude,
         lastLocationUpdate: drivers.lastLocationUpdate,
         connectedAccountId: drivers.connectedAccountId,
+        hasAgreedToTerms: drivers.hasAgreedToTerms,
+        termsAgreedAt: drivers.termsAgreedAt,
         createdAt: drivers.createdAt,
         updatedAt: drivers.updatedAt,
         user: {
@@ -496,7 +498,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(owners.id, ownerId))
       .limit(1);
     
-    return result[0];
+    if (!result[0] || result[0].subscriptionStatus === null) {
+      return undefined;
+    }
+    
+    return {
+      subscriptionStatus: result[0].subscriptionStatus
+    };
   }
 
   async approveOwner(ownerId: string): Promise<Owner> {
@@ -519,6 +527,12 @@ export class DatabaseStorage implements IStorage {
         subscriptionStatus: owners.subscriptionStatus,
         subscriptionPlan: owners.subscriptionPlan,
         subscriptionEndsAt: owners.subscriptionEndsAt,
+        pastDueDate: owners.pastDueDate,
+        gracePeriodStartDate: owners.gracePeriodStartDate,
+        lastReminderSent: owners.lastReminderSent,
+        billingCadence: owners.billingCadence,
+        billingCutoffTime: owners.billingCutoffTime,
+        billingTimezone: owners.billingTimezone,
         isApproved: owners.isApproved,
         hasAgreedToTerms: owners.hasAgreedToTerms,
         termsAgreedAt: owners.termsAgreedAt,
@@ -699,7 +713,7 @@ export class DatabaseStorage implements IStorage {
     return activity;
   }
 
-  async getActivitiesByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation & { owner: Owner & { user: User } } })[]> {
+  async getActivitiesByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation })[]> {
     const conditions = [eq(washoutActivities.driverId, driverId)];
     
     if (startDate) {
@@ -714,21 +728,12 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
-      .innerJoin(users, eq(owners.userId, users.id))
       .where(and(...conditions))
       .orderBy(desc(washoutActivities.checkInTime));
 
     return results.map((row: any) => ({
       ...row.washout_activities,
-      photoUrls: row.washout_activities.photo_urls, // Convert snake_case to camelCase for photos
-      location: {
-        ...row.washout_locations,
-        owner: {
-          ...row.owners,
-          user: row.users
-        }
-      }
+      location: row.washout_locations
     }));
   }
 
@@ -753,7 +758,6 @@ export class DatabaseStorage implements IStorage {
 
     return results.map((row: any) => ({
       ...row.washout_activities,
-      photoUrls: row.washout_activities.photo_urls, // Convert snake_case to camelCase for photos
       driver: {
         ...row.drivers,
         user: row.users
@@ -784,7 +788,6 @@ export class DatabaseStorage implements IStorage {
 
     return results.map((row: any) => ({
       ...row.washout_activities,
-      photoUrls: row.washout_activities.photo_urls, // Convert snake_case to camelCase for photos
       location: row.washout_locations,
       driver: {
         ...row.drivers,
@@ -821,27 +824,18 @@ export class DatabaseStorage implements IStorage {
     return activity;
   }
 
-  async getRecentActivitiesByDriver(driverId: string, limit = 5): Promise<(WashoutActivity & { location: WashoutLocation & { owner: Owner & { user: User } } })[]> {
+  async getRecentActivitiesByDriver(driverId: string, limit = 5): Promise<(WashoutActivity & { location: WashoutLocation })[]> {
     const results = await db
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
-      .innerJoin(users, eq(owners.userId, users.id))
       .where(eq(washoutActivities.driverId, driverId))
       .orderBy(desc(washoutActivities.checkInTime))
       .limit(limit);
     
     return results.map((row: any) => ({
       ...row.washout_activities,
-      photoUrls: row.washout_activities.photo_urls, // Convert snake_case to camelCase for photos
-      location: {
-        ...row.washout_locations,
-        owner: {
-          ...row.owners,
-          user: row.users
-        }
-      }
+      location: row.washout_locations
     }));
   }
 
@@ -2078,7 +2072,7 @@ export class DatabaseStorage implements IStorage {
       .from(billingBatches)
       .innerJoin(owners, eq(billingBatches.ownerId, owners.id))
       .innerJoin(users, eq(owners.userId, users.id))
-      .where(eq(billingBatches.status, status))
+      .where(eq(billingBatches.status, status as any))
       .orderBy(desc(billingBatches.createdAt));
 
     return batches;
@@ -2183,11 +2177,31 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Stripe not available');
     }
 
-    // Get owner's Stripe customer ID
-    const owner = await this.getOwnerById(ownerId);
-    if (!owner || !owner.user.stripeCustomerId) {
+    // Get owner's user information
+    const ownerResult = await db
+      .select({
+        owner: {
+          id: owners.id,
+          userId: owners.userId,
+          companyName: owners.companyName,
+          subscriptionStatus: owners.subscriptionStatus,
+        },
+        user: {
+          id: users.id,
+          stripeCustomerId: users.stripeCustomerId,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        }
+      })
+      .from(owners)
+      .innerJoin(users, eq(owners.userId, users.id))
+      .where(eq(owners.id, ownerId));
+    
+    if (ownerResult.length === 0 || !ownerResult[0].user.stripeCustomerId) {
       throw new Error(`No Stripe customer ID found for owner ${ownerId}`);
     }
+    
+    const owner = { ...ownerResult[0].owner, user: ownerResult[0].user };
 
     // Convert to cents for Stripe
     const amountCents = Math.round(totalAmount * 100);
@@ -2244,7 +2258,7 @@ export class DatabaseStorage implements IStorage {
     const conditions = [];
     
     if (filters.status) {
-      conditions.push(eq(billingBatches.status, filters.status));
+      conditions.push(eq(billingBatches.status, filters.status as any));
     }
     if (filters.startDate) {
       conditions.push(gte(billingBatches.createdAt, filters.startDate));
@@ -2601,7 +2615,9 @@ export class DatabaseStorage implements IStorage {
           updatedAt: drivers.updatedAt,
           user: {
             id: users.id,
-            name: users.name,
+            username: users.username,
+            firstName: users.firstName,
+            lastName: users.lastName,
             email: users.email,
             phone: users.phone,
             role: users.role,
@@ -2640,12 +2656,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateOwnerBillingSettings(ownerId: string, settings: { billingCadence?: string; billingCutoffTime?: string; billingTimezone?: string }): Promise<Owner> {
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+    
+    if (settings.billingCadence !== undefined) {
+      updateData.billingCadence = settings.billingCadence as any;
+    }
+    if (settings.billingCutoffTime !== undefined) {
+      updateData.billingCutoffTime = settings.billingCutoffTime;
+    }
+    if (settings.billingTimezone !== undefined) {
+      updateData.billingTimezone = settings.billingTimezone;
+    }
+    
     const [owner] = await db
       .update(owners)
-      .set({
-        ...settings,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(owners.id, ownerId))
       .returning();
     
@@ -3047,8 +3074,8 @@ export class DatabaseStorage implements IStorage {
             originalPendingBalanceCents: currentPendingCents,
             originalAvailableBalanceCents: currentAvailableCents,
             transferCents: amountCents,
-            newPendingBalanceCents,
-            newAvailableBalanceCents
+            newPendingCents: newPendingCents,
+            newAvailableCents: newAvailableCents
           }
         }, tx);
 
@@ -3065,7 +3092,6 @@ export class DatabaseStorage implements IStorage {
           .update(walletTransactions)
           .set({
             status: 'posted',
-            updatedAt: new Date(),
           })
           .where(and(
             eq(walletTransactions.driverId, driverId),
