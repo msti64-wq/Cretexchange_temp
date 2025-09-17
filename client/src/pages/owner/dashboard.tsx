@@ -359,8 +359,12 @@ export default function OwnerDashboard() {
                               📞 {activity.driver.user.phone}
                             </div>
                           )}
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(activity.checkInTime).toLocaleDateString()}
+                          <div className="text-xs text-muted-foreground" data-testid={`text-activity-timestamp-${index}`}>
+                            🕒 {new Date(activity.checkInTime).toLocaleDateString()} at {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
                           </div>
                         </div>
                       </div>
@@ -404,8 +408,12 @@ export default function OwnerDashboard() {
                             📞 {activity.driver.user.phone}
                           </div>
                         )}
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(activity.checkInTime).toLocaleDateString()}
+                        <div className="text-xs text-muted-foreground" data-testid={`text-activity-timestamp-${index}`}>
+                          🕒 {new Date(activity.checkInTime).toLocaleDateString()} at {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
                         </div>
                       </div>
                     </div>
