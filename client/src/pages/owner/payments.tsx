@@ -15,21 +15,27 @@ export default function OwnerPayments() {
   const [endDate, setEndDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  const buildPaymentsUrl = () => {
+  const buildActivitiesUrl = () => {
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', startDate);
     if (endDate) params.set('endDate', endDate);
-    return `/api/owners/payments${params.toString() ? '?' + params.toString() : ''}`;
+    params.set('dateRange', 'custom');
+    return `/api/owners/activities${params.toString() ? '?' + params.toString() : '?dateRange=all'}`;
   };
 
-  const { data: payments, isLoading } = useQuery({
-    queryKey: [buildPaymentsUrl()],
+  const { data: activitiesData, isLoading } = useQuery({
+    queryKey: [buildActivitiesUrl()],
   });
 
-  const filteredPayments = payments?.filter((payment: any) => {
+  // Extract activities array from API response and ensure it's an array
+  const activitiesArray = Array.isArray(activitiesData) ? activitiesData : (activitiesData?.activities ?? []);
+  
+  const filteredActivities = activitiesArray.filter((activity: any) => {
     if (filterStatus === "all") return true;
-    return payment.status === filterStatus;
-  }) || [];
+    if (filterStatus === "completed") return activity.status === "verified";
+    if (filterStatus === "pending") return activity.status === "pending";
+    return activity.status === filterStatus;
+  });
 
   const handleExport = async () => {
     try {
@@ -60,10 +66,10 @@ export default function OwnerPayments() {
   };
 
   const stats = {
-    totalPayments: filteredPayments.reduce((sum: number, payment: any) => sum + Number(payment.amount), 0),
-    totalFees: filteredPayments.reduce((sum: number, payment: any) => sum + Number(payment.processingFee), 0),
-    completedCount: filteredPayments.filter((p: any) => p.status === 'completed').length,
-    pendingCount: filteredPayments.filter((p: any) => p.status === 'pending').length,
+    totalPayments: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0),
+    totalFees: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0) * 0.1, 0), // 10% processing fee
+    completedCount: filteredActivities.filter((a: any) => a.status === 'verified').length,
+    pendingCount: filteredActivities.filter((a: any) => a.status === 'pending').length,
   };
 
   if (isLoading) {
@@ -217,7 +223,7 @@ export default function OwnerPayments() {
             Payment History
           </h2>
 
-          {filteredPayments.length === 0 ? (
+          {filteredActivities.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -225,59 +231,76 @@ export default function OwnerPayments() {
               </CardContent>
             </Card>
           ) : (
-            filteredPayments.map((payment: any, index: number) => (
-              <Card key={payment.id} className="hover:shadow-md transition-shadow" data-testid={`card-payment-${index}`}>
+            filteredActivities.map((activity: any, index: number) => (
+              <Card key={activity.id} className="hover:shadow-md transition-shadow" data-testid={`card-payment-${index}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="font-semibold mb-1" data-testid={`text-driver-name-${index}`}>
-                        {payment.activity?.driver?.user?.firstName} {payment.activity?.driver?.user?.lastName}
+                        {activity.driver?.user?.firstName} {activity.driver?.user?.lastName}
                       </h3>
                       <p className="text-sm text-muted-foreground mb-2" data-testid={`text-location-name-${index}`}>
-                        {payment.activity?.location?.name}
+                        📍 {activity.location?.name}
                       </p>
+                      {activity.location?.address && (
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {activity.location.address}
+                        </p>
+                      )}
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span data-testid={`text-payment-date-${index}`}>
-                          {payment.paidAt ? 
-                            `Paid: ${new Date(payment.paidAt).toLocaleDateString()}` :
-                            `Created: ${new Date(payment.createdAt).toLocaleDateString()}`
-                          }
+                        <span data-testid={`text-activity-date-${index}`}>
+                          🕒 {new Date(activity.checkInTime).toLocaleDateString()} at {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
                         </span>
-                        {payment.stripePaymentIntentId && (
-                          <span className="text-xs font-mono">
-                            ID: {payment.stripePaymentIntentId.slice(-8)}
-                          </span>
-                        )}
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-xl font-bold text-foreground mb-1" data-testid={`text-payment-amount-${index}`}>
-                        {formatCurrency(Number(payment.amount))}
+                        {formatCurrency(Number(activity.amount || 0))}
                       </div>
                       <div className="text-xs text-muted-foreground mb-2" data-testid={`text-processing-fee-${index}`}>
-                        Fee: {formatCurrency(Number(payment.processingFee))}
+                        Fee: {formatCurrency(Number(activity.amount || 0) * 0.1)}
                       </div>
                       <Badge 
                         variant={
-                          payment.status === 'completed' ? 'default' : 
-                          payment.status === 'pending' ? 'secondary' : 'destructive'
+                          activity.status === 'verified' ? 'default' : 
+                          activity.status === 'pending' ? 'secondary' : 'destructive'
                         }
                         data-testid={`badge-payment-status-${index}`}
                       >
-                        {payment.status === 'completed' ? 'Completed' : 
-                         payment.status === 'pending' ? 'Pending' : 'Failed'}
+                        {activity.status === 'verified' ? 'Paid' : 
+                         activity.status === 'pending' ? 'Pending Payment' : 'Rejected'}
                       </Badge>
                     </div>
                   </div>
 
+                  {/* Photos button if available */}
+                  {(activity.photoUrls?.length > 0) && (
+                    <div className="flex items-center justify-between pt-3 border-t border-border">
+                      <div className="text-sm text-muted-foreground">
+                        Driver verification photos available
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-8 px-3"
+                        data-testid={`button-view-photos-${index}`}
+                      >
+                        View Photos ({activity.photoUrls.length})
+                      </Button>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between pt-3 border-t border-border">
                     <div className="text-sm text-muted-foreground">
-                      Washout completed: {new Date(payment.activity?.checkInTime).toLocaleDateString()}
+                      Net amount to driver
                     </div>
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Net: </span>
                       <span className="font-semibold text-green-600" data-testid={`text-net-amount-${index}`}>
-                        {formatCurrency(Number(payment.amount) - Number(payment.processingFee))}
+                        {formatCurrency(Number(activity.amount || 0) * 0.9)} {/* 90% to driver, 10% fee */}
                       </span>
                     </div>
                   </div>
