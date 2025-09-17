@@ -27,6 +27,18 @@ export function PhotoModal({
   
   // Robust photo URL extraction to handle different backend response formats
   const photoUrls = activity.photoUrls || activity.washout_activities?.photo_urls || activity.photo_urls || [];
+  
+  // Debug logging
+  console.log("PhotoModal Debug:", {
+    activityId: activity.id,
+    photoUrls: photoUrls,
+    photoUrlsLength: photoUrls.length,
+    rawActivity: activity,
+    hasPhotoUrls: !!activity.photoUrls,
+    hasNestedPhotoUrls: !!activity.washout_activities?.photo_urls,
+    hasDirectPhotoUrls: !!activity.photo_urls
+  });
+  
   const activityId = activity.id;
   const status = activity.status;
   const amount = activity.amount || 0;
@@ -165,6 +177,21 @@ export function PhotoModal({
             <div className="text-center py-8 text-muted-foreground">
               <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No photos available for this washout</p>
+              
+              {/* Temporary debug section */}
+              <details className="mt-4 text-left bg-muted/50 p-4 rounded-lg">
+                <summary className="cursor-pointer text-sm font-medium">Debug Info (Click to expand)</summary>
+                <div className="mt-2 text-xs">
+                  <p><strong>Activity ID:</strong> {activityId}</p>
+                  <p><strong>Photo URLs Found:</strong> {photoUrls.length}</p>
+                  <p><strong>Has activity.photoUrls:</strong> {activity.photoUrls ? 'YES' : 'NO'}</p>
+                  <p><strong>Has activity.washout_activities?.photo_urls:</strong> {activity.washout_activities?.photo_urls ? 'YES' : 'NO'}</p>
+                  <p><strong>Has activity.photo_urls:</strong> {activity.photo_urls ? 'YES' : 'NO'}</p>
+                  <p><strong>Raw activity.photoUrls:</strong> {JSON.stringify(activity.photoUrls)}</p>
+                  <p><strong>Raw activity.washout_activities?.photo_urls:</strong> {JSON.stringify(activity.washout_activities?.photo_urls)}</p>
+                  <p><strong>Raw activity.photo_urls:</strong> {JSON.stringify(activity.photo_urls)}</p>
+                </div>
+              </details>
             </div>
           )}
 
