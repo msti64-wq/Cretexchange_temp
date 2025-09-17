@@ -8,7 +8,7 @@ import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -798,8 +798,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Check-in request body:", req.body);
       console.log("PhotoUrls received:", req.body.photoUrls);
       
-      // Insert directly into database bypassing validation
-      const activityData = {
+      // Prepare activity data with proper validation
+      const activityInput = {
         driverId: driver.id,
         locationId: location.id,
         amount: location.rate.toString(),
@@ -811,13 +811,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'pending' as const,
       };
       
-      console.log("Activity data being saved:", activityData);
+      // Validate input using Zod schema
+      const validatedData = insertWashoutActivitySchema.parse(activityInput);
+      console.log("Validated activity data:", validatedData);
 
-      // Direct database insert to bypass type validation issues
-      const [activity] = await db.insert(washoutActivities).values(activityData).returning();
+      // Use storage layer method for proper data handling
+      const activity = await storage.createWashoutActivity(validatedData);
       res.json(activity);
     } catch (error) {
       console.error("Error checking in:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid input data", 
+          errors: error.errors 
+        });
+      }
       res.status(500).json({ message: "Failed to check in" });
     }
   });
