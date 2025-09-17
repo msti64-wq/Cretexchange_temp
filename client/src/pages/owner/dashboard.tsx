@@ -10,6 +10,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
+import { DebugPanel } from "@/components/DebugPanel";
 import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User, ImageIcon, Check, X, MessageCircle, Phone, Crown, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -126,15 +127,7 @@ export default function OwnerDashboard() {
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
   const recentActivities = (activitiesData as any)?.activities || [];
 
-  // Debug logging for activities data
-  console.log('🔴🔴🔴 [WASHOUT DEBUG] activitiesData:', activitiesData);
-  console.log('🔴🔴🔴 [WASHOUT DEBUG] recentActivities length:', recentActivities?.length);
-  console.log('🔴🔴🔴 [WASHOUT DEBUG] dateRange:', dateRange);
-  console.log('🔴🔴🔴 [WASHOUT DEBUG] isLoading:', isActivitiesLoading);
-  console.log('🔴🔴🔴 [WASHOUT DEBUG] user:', user?.id);
-  if (recentActivities?.length > 0) {
-    console.log('[FRONTEND DEBUG] Sample activity:', recentActivities[0]);
-  }
+  // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
 
   // Calculate pending payments (awaiting approval)
   const pendingPayments = recentActivities?.reduce((total: number, activity: any) => {
@@ -239,7 +232,7 @@ export default function OwnerDashboard() {
 
       <main className="p-4 space-y-6">
         {/* Profile Completion Notice */}
-        {/* Temporarily commented to fix TypeScript error: {renderProfileNotice()} */}
+        {renderProfileNotice()}
 
         {/* Subscription Required Notice */}
         {user && subscriptionData && (subscriptionData as any).status !== 'active' && (
@@ -601,6 +594,16 @@ export default function OwnerDashboard() {
       <SupportMessageDialog
         isOpen={isSupportDialogOpen}
         onClose={() => setIsSupportDialogOpen(false)}
+      />
+
+      <DebugPanel
+        currentDateRange={dateRange}
+        activitiesData={activitiesData}
+        queryKeys={[
+          '/api/owners/dashboard',
+          `/api/owners/activities?dateRange=${dateRange}`,
+          '/api/payments/subscription-status'
+        ]}
       />
 
       <MobileNav role="owner" />

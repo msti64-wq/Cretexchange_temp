@@ -43,17 +43,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Database connectivity test endpoint
-  app.get("/api/debug/db-status", async (req, res) => {
+  // Database connectivity test endpoint - SECURED FOR ADMIN ONLY
+  app.get("/api/debug/db-status", isAuthenticated, async (req: any, res) => {
     try {
+      // Get the authenticated user
+      const user = await storage.getUser(req.user.id);
+      
+      // Restrict to admin and super_admin roles only
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ 
+          error: 'Admin access required',
+          message: 'This endpoint is restricted to administrators only'
+        });
+      }
+
       const environment = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
       const hasDatabaseUrl = !!process.env.DATABASE_URL;
-      const databaseUrlPreview = process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'undefined';
+      const databaseUrlPreview = process.env.DATABASE_URL ? 'postgresql://[MASKED]@[MASKED]/[DATABASE]' : 'undefined';
       
-      console.log('Database status check:', {
+      console.log('Database status check by admin:', {
+        adminId: user.id,
+        adminEmail: user.email,
         environment,
-        hasDatabaseUrl,
-        databaseUrlPreview
+        hasDatabaseUrl
       });
 
       const userCount = await storage.getUserCount();
@@ -64,10 +76,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasDatabaseUrl,
         databaseUrlPreview,
         userCount,
-        testUsers
+        testUsers,
+        requestedBy: {
+          id: user.id,
+          email: user.email,
+          role: user.role
+        }
       });
     } catch (error) {
       console.error('Database status check failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: errorMessage });
+    }
+  });
+
+  // Authenticated debug endpoint for user/owner info
+  app.get("/api/debug/whoami", isAuthenticated, async (req: any, res) => {
+    try {
+      const environment = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let owner = null;
+      let subscriptionStatus = null;
+      let stripeOnboarding = null;
+
+      if (user.role === 'owner') {
+        owner = await storage.getOwner(user.id);
+        if (owner) {
+          // Get subscription status
+          const subscriptionQuery = await storage.getOwnerSubscriptionStatus(owner.id);
+          subscriptionStatus = subscriptionQuery?.subscriptionStatus || 'inactive';
+          
+          // Owners don't have Stripe Connect accounts (only drivers do)
+          stripeOnboarding = { note: 'Owners do not use Stripe Connect accounts' };
+        }
+      }
+
+      res.json({
+        environment,
+        timestamp: new Date().toISOString(),
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: user.phone,
+          address: user.address
+        },
+        owner: owner ? {
+          id: owner.id,
+          companyName: owner.companyName,
+          businessLicense: owner.businessLicense,
+          taxId: owner.taxId,
+          subscriptionStatus: owner.subscriptionStatus
+        } : null,
+        subscriptionStatus,
+        stripeOnboarding
+      });
+    } catch (error) {
+      console.error('Debug whoami failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: errorMessage });
+    }
+  });
+
+  // Authenticated debug endpoint for owner activities summary
+  app.get("/api/debug/owner-activities-summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user || user.role !== 'owner') {
+        return res.status(403).json({ error: 'Owner access required' });
+      }
+
+      const owner = await storage.getOwner(user.id);
+      if (!owner) {
+        return res.status(404).json({ error: 'Owner record not found' });
+      }
+
+      const dateRange = (req.query.dateRange as string) || 'today';
+      
+      // Calculate date range
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      switch (dateRange) {
+        case 'yesterday':
+          const yesterday = new Date(now);
+          yesterday.setDate(yesterday.getDate() - 1);
+          startDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0);
+          endDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
+          break;
+        case '7days':
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 7);
+          startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
+          break;
+        case '30days':
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 30);
+          startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
+          break;
+        case '90days':
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 90);
+          startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
+          break;
+        case 'all':
+          startDate = new Date('2020-01-01');
+          endDate = new Date('2030-12-31');
+          break;
+        default: // 'today'
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+          break;
+      }
+
+      // Get activities for the owner
+      const activities = await storage.getActivitiesByOwner(owner.id, startDate, endDate);
+      
+      // Calculate statistics
+      const stats = activities.reduce((acc, activity) => {
+        acc.total++;
+        acc.byStatus[activity.status] = (acc.byStatus[activity.status] || 0) + 1;
+        return acc;
+      }, {
+        total: 0,
+        byStatus: {} as Record<string, number>
+      });
+
+      // Get a sample activity ID for further debugging
+      const sampleActivity = activities[0];
+
+      res.json({
+        ownerId: owner.id,
+        dateRange,
+        dateRangeCalculated: {
+          start: startDate.toISOString(),
+          end: endDate.toISOString()
+        },
+        total: stats.total,
+        byStatus: stats.byStatus,
+        sampleActivityId: sampleActivity?.id || null,
+        sampleActivity: sampleActivity ? {
+          id: sampleActivity.id,
+          status: sampleActivity.status,
+          amount: sampleActivity.amount,
+          checkInTime: sampleActivity.checkInTime,
+          location: sampleActivity.location ? {
+            id: sampleActivity.location.id,
+            name: sampleActivity.location.name
+          } : null,
+          driver: sampleActivity.driver ? {
+            id: sampleActivity.driver.id,
+            user: {
+              firstName: sampleActivity.driver.user.firstName,
+              lastName: sampleActivity.driver.user.lastName
+            }
+          } : null
+        } : null,
+        debugInfo: {
+          activitiesQueryParams: {
+            ownerId: owner.id,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString()
+          },
+          rawActivityCount: activities.length
+        }
+      });
+    } catch (error) {
+      console.error('Debug owner activities summary failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: errorMessage });
     }
@@ -212,11 +395,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Create test data with pending payments
-  app.post("/api/debug/create-test-data", async (req, res) => {
+  // Create test data with pending payments - SECURED FOR ADMIN ONLY
+  app.post("/api/debug/create-test-data", isAuthenticated, async (req: any, res) => {
     try {
+      // Get the authenticated user
+      const user = await storage.getUser(req.user.id);
+      
+      // Restrict to admin and super_admin roles only
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ 
+          error: 'Admin access required',
+          message: 'This endpoint is restricted to administrators only'
+        });
+      }
+
       const env = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
       console.log(`🔧 CREATING TEST DATA FOR ${env.toUpperCase()} ENVIRONMENT...`);
+      console.log('Test data creation requested by admin:', {
+        adminId: user.id,
+        adminEmail: user.email,
+        environment: env
+      });
       
       // Get O1 user and ensure owner record exists
       const o1User = await storage.getUserByUsername('O1');
@@ -329,11 +528,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Universal database population - works in any environment
-  app.get("/api/setup-users", async (req, res) => {
+  // Universal database population - SECURED FOR ADMIN ONLY
+  app.get("/api/setup-users", isAuthenticated, async (req: any, res) => {
     try {
+      // Get the authenticated user
+      const user = await storage.getUser(req.user.id);
+      
+      // Restrict to admin and super_admin roles only
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ 
+          error: 'Admin access required',
+          message: 'This endpoint is restricted to administrators only'
+        });
+      }
+
       const env = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
       console.log(`🔧 SETTING UP USERS FOR ${env.toUpperCase()} ENVIRONMENT...`);
+      console.log('User setup requested by admin:', {
+        adminId: user.id,
+        adminEmail: user.email,
+        environment: env
+      });
       
       // Use storage interface for reliable database operations
       const testUsers = [
