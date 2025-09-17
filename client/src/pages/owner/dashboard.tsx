@@ -127,9 +127,11 @@ export default function OwnerDashboard() {
   const recentActivities = (activitiesData as any)?.activities || [];
 
   // Debug logging for activities data
-  console.log('[FRONTEND DEBUG] activitiesData:', activitiesData);
-  console.log('[FRONTEND DEBUG] recentActivities length:', recentActivities?.length);
-  console.log('[FRONTEND DEBUG] dateRange:', dateRange);
+  console.log('🔴🔴🔴 [WASHOUT DEBUG] activitiesData:', activitiesData);
+  console.log('🔴🔴🔴 [WASHOUT DEBUG] recentActivities length:', recentActivities?.length);
+  console.log('🔴🔴🔴 [WASHOUT DEBUG] dateRange:', dateRange);
+  console.log('🔴🔴🔴 [WASHOUT DEBUG] isLoading:', isActivitiesLoading);
+  console.log('🔴🔴🔴 [WASHOUT DEBUG] user:', user?.id);
   if (recentActivities?.length > 0) {
     console.log('[FRONTEND DEBUG] Sample activity:', recentActivities[0]);
   }
