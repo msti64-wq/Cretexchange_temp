@@ -242,20 +242,22 @@ export default function OwnerProfile() {
           {/* Personal Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center">
+              <CardTitle className="text-center">
+                <div className="flex items-center justify-center mb-3">
                   <Building2 className="w-5 h-5 mr-2" />
                   Personal Information
                 </div>
-                <Button 
-                  type="button"
-                  variant={isEditing ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsEditing(!isEditing)}
-                  data-testid="button-edit-profile"
-                >
-                  {isEditing ? "Cancel" : "Edit"}
-                </Button>
+                <div className="flex justify-center">
+                  <Button 
+                    type="button"
+                    variant={isEditing ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setIsEditing(!isEditing)}
+                    data-testid="button-edit-profile"
+                  >
+                    {isEditing ? "Cancel" : "Edit"}
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
