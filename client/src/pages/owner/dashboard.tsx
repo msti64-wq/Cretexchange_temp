@@ -37,7 +37,6 @@ export default function OwnerDashboard() {
   const { data: activitiesData, isLoading: isActivitiesLoading, isFetching: isActivitiesFetching } = useQuery({
     queryKey: [`/api/owners/activities?dateRange=${dateRange}`],
     refetchInterval: 30000, // Refresh every 30 seconds
-    staleTime: 0, // Always fetch fresh data
   });
 
   const { data: subscriptionData } = useQuery({
@@ -100,12 +99,6 @@ export default function OwnerDashboard() {
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
   const recentActivities = Array.isArray(activitiesData) ? activitiesData : [];
   
-  // Force query invalidation on mount to ensure fresh data
-  React.useEffect(() => {
-    queryClient.invalidateQueries({ 
-      predicate: (query) => Boolean(query.queryKey[0]?.toString().includes('/api/owners/activities'))
-    });
-  }, [queryClient]);
 
   // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
 
