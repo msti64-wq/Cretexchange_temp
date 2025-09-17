@@ -1246,9 +1246,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { startDate, endDate } = req.query;
-      const start = startDate ? new Date(startDate as string) : undefined;
-      // For end date, set to end of day (23:59:59.999) to include all activities on that date
-      const end = endDate ? new Date(new Date(endDate as string).getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
+      
+      // Match debug endpoint logic: if no dates provided, use wide range to get all activities
+      let start: Date | undefined;
+      let end: Date | undefined;
+      
+      if (startDate) {
+        start = new Date(startDate as string);
+      } else {
+        // Default to wide range when no startDate provided (matches debug endpoint 'all' behavior)
+        start = new Date('2020-01-01');
+      }
+      
+      if (endDate) {
+        // For end date, set to end of day (23:59:59.999) to include all activities on that date
+        end = new Date(new Date(endDate as string).getTime() + 24 * 60 * 60 * 1000 - 1);
+      } else {
+        // Default to wide range when no endDate provided (matches debug endpoint 'all' behavior)
+        end = new Date('2030-12-31');
+      }
 
       const activities = await storage.getActivitiesByOwner(owner.id, start, end);
       res.json(activities);
