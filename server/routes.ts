@@ -747,6 +747,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
+      const user = await storage.getUser(userId);
+      console.log(`[DEBUG] Activities request for owner: ${user?.username} (ID: ${owner.id})`);
+
       // Validate and parse query parameters
       const queryValidation = ownerActivitiesQuerySchema.safeParse(req.query);
       if (!queryValidation.success) {
@@ -759,6 +762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dateRange = 'today' } = queryValidation.data;
       let activities;
       const now = new Date();
+      console.log(`[DEBUG] Date range requested: ${dateRange}, Current time: ${now.toISOString()}`);
       
       switch (dateRange) {
         case 'yesterday':
@@ -803,6 +807,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           activities = await storage.getActivitiesByOwner(owner.id, today, tomorrow);
           break;
       }
+
+      console.log(`[DEBUG] Found ${activities.length} activities for owner ${user?.username}`);
+      if (activities.length > 0) {
+        console.log(`[DEBUG] Sample activity:`, {
+          driver: activities[0].driver?.user?.username,
+          location: activities[0].location?.name,
+          checkInTime: activities[0].checkInTime,
+          status: activities[0].status
+        });
+      }
+
+      // Check if owner has any locations at all
+      const ownerLocations = await storage.getLocationsByOwner(owner.id);
+      console.log(`[DEBUG] Owner ${user?.username} has ${ownerLocations.length} locations:`, ownerLocations.map(l => l.name));
 
       res.json({
         activities: activities.slice(0, 50), // Limit to 50 for performance
