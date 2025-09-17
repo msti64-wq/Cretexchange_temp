@@ -126,6 +126,14 @@ export default function OwnerDashboard() {
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
   const recentActivities = (activitiesData as any)?.activities || [];
 
+  // Debug logging for activities data
+  console.log('[FRONTEND DEBUG] activitiesData:', activitiesData);
+  console.log('[FRONTEND DEBUG] recentActivities length:', recentActivities?.length);
+  console.log('[FRONTEND DEBUG] dateRange:', dateRange);
+  if (recentActivities?.length > 0) {
+    console.log('[FRONTEND DEBUG] Sample activity:', recentActivities[0]);
+  }
+
   // Calculate pending payments (awaiting approval)
   const pendingPayments = recentActivities?.reduce((total: number, activity: any) => {
     if (activity.status === 'pending') {
