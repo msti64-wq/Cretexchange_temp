@@ -753,10 +753,12 @@ export class DatabaseStorage implements IStorage {
 
     return results.map((row: any) => ({
       ...row.washout_activities,
+      photoUrls: row.washout_activities.photo_urls, // Convert snake_case to camelCase for photos
       driver: {
         ...row.drivers,
         user: row.users
-      }
+      },
+      location: row.washout_locations
     }));
   }
 
