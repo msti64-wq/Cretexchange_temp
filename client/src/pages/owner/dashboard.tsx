@@ -415,9 +415,6 @@ export default function OwnerDashboard() {
                             hour12: true
                           })}
                         </div>
-                        <div className="text-xs text-red-500">
-                          DEBUG: Photos={activity.photoUrls?.length || 0} | Status={activity.status}
-                        </div>
                       </div>
                     </div>
                     
@@ -468,11 +465,6 @@ export default function OwnerDashboard() {
                         className="text-xs h-8 px-3"
                         disabled={!(activity.photoUrls?.length > 0)}
                         onClick={() => {
-                          console.log('🔍 Photo button clicked:', {
-                            activityId: activity.id,
-                            photoUrls: activity.photoUrls,
-                            photoCount: activity.photoUrls?.length
-                          });
                           if (activity.photoUrls?.length > 0) {
                             setSelectedActivity(activity);
                             setIsPhotoModalOpen(true);
@@ -481,7 +473,7 @@ export default function OwnerDashboard() {
                         data-testid={`button-view-photos-${index}`}
                       >
                         <ImageIcon className="w-4 h-4 mr-1" />
-                        Photos {activity.photoUrls?.length > 0 ? `(${activity.photoUrls.length})` : ''}
+                        Photos
                       </Button>
                       
                       {/* Approval buttons for pending washouts */}
