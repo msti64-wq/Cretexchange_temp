@@ -417,6 +417,9 @@ export default function OwnerDashboard() {
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>No activity found for this time period</p>
+                <div className="mt-4 text-xs bg-red-100 p-2 rounded">
+                  DEBUG: user={user?.id} | dateRange={dateRange} | length={recentActivities?.length}
+                </div>
               </div>
             ) : (
               recentActivities.map((activity: any, index: number) => (
