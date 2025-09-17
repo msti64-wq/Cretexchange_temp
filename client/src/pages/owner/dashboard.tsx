@@ -103,7 +103,7 @@ export default function OwnerDashboard() {
   // Force query invalidation on mount to ensure fresh data
   React.useEffect(() => {
     queryClient.invalidateQueries({ 
-      predicate: (query) => query.queryKey[0]?.toString().includes('/api/owners/activities') 
+      predicate: (query) => Boolean(query.queryKey[0]?.toString().includes('/api/owners/activities'))
     });
   }, [queryClient]);
 
