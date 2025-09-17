@@ -15,8 +15,15 @@ export default function OwnerPayments() {
   const [endDate, setEndDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  const buildPaymentsUrl = () => {
+    const params = new URLSearchParams();
+    if (startDate) params.set('startDate', startDate);
+    if (endDate) params.set('endDate', endDate);
+    return `/api/owners/payments${params.toString() ? '?' + params.toString() : ''}`;
+  };
+
   const { data: payments, isLoading } = useQuery({
-    queryKey: ['/api/owners/payments', startDate, endDate],
+    queryKey: [buildPaymentsUrl()],
   });
 
   const filteredPayments = payments?.filter((payment: any) => {
