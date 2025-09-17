@@ -97,7 +97,7 @@ export default function OwnerDashboard() {
   }
 
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
-  const recentActivities = (activitiesData as any)?.activities || [];
+  const recentActivities = Array.isArray(activitiesData) ? activitiesData : (activitiesData?.activities ?? []);
 
   // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
 
