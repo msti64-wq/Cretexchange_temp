@@ -345,10 +345,7 @@ export default function DriverDashboard() {
                     </div>
                     
                     {/* Photos button */}
-                    {(() => {
-                      const photoUrls = activity.photoUrls || activity.washout_activities?.photo_urls || activity.photo_urls || [];
-                      return photoUrls.length > 0;
-                    })() && (
+                    {((activity.photoUrls?.length > 0) || (activity.washout_activities?.photo_urls?.length > 0) || (activity.photo_urls?.length > 0)) && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -360,7 +357,7 @@ export default function DriverDashboard() {
                         data-testid={`button-view-photos-${index}`}
                       >
                         <ImageIcon className="w-4 h-4 mr-1" />
-                        Photos ({(activity.washout_activities?.photoUrls?.length || activity.photoUrls?.length || 0)})
+                        Photos ({(activity.photoUrls?.length || activity.washout_activities?.photo_urls?.length || activity.photo_urls?.length || 0)})
                       </Button>
                     )}
                   </div>
