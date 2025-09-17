@@ -1245,28 +1245,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, dateRange } = req.query;
       
-      // Match debug endpoint logic: if no dates provided, use wide range to get all activities
-      let start: Date | undefined;
-      let end: Date | undefined;
+      // Match debug endpoint logic exactly - support dateRange parameter
+      let start: Date;
+      let end: Date;
       
-      if (startDate) {
-        start = new Date(startDate as string);
+      if (dateRange) {
+        // Use debug endpoint's date range calculation
+        const now = new Date();
+        let calculatedEndDate: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+        switch (dateRange) {
+          case 'yesterday':
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0, 0);
+            end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
+            break;
+          case '7days':
+            start = new Date(now);
+            start.setDate(start.getDate() - 7);
+            start = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0, 0);
+            end = calculatedEndDate;
+            break;
+          case '30days':
+            start = new Date(now);
+            start.setDate(start.getDate() - 30);
+            start = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0, 0);
+            end = calculatedEndDate;
+            break;
+          case '90days':
+            start = new Date(now);
+            start.setDate(start.getDate() - 90);
+            start = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0, 0);
+            end = calculatedEndDate;
+            break;
+          case 'all':
+            start = new Date('2020-01-01');
+            end = new Date('2030-12-31');
+            break;
+          default: // 'today'
+            start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+            end = calculatedEndDate;
+            break;
+        }
       } else {
-        // Default to wide range when no startDate provided (matches debug endpoint 'all' behavior)
-        start = new Date('2020-01-01');
-      }
-      
-      if (endDate) {
-        // For end date, set to end of day (23:59:59.999) to include all activities on that date
-        end = new Date(new Date(endDate as string).getTime() + 24 * 60 * 60 * 1000 - 1);
-      } else {
-        // Default to wide range when no endDate provided (matches debug endpoint 'all' behavior)
-        end = new Date('2030-12-31');
+        // Handle legacy startDate/endDate parameters
+        if (startDate) {
+          start = new Date(startDate as string);
+        } else {
+          // Default to 'all' behavior for backward compatibility
+          start = new Date('2020-01-01');
+        }
+        
+        if (endDate) {
+          // For end date, set to end of day (23:59:59.999) to include all activities on that date
+          end = new Date(new Date(endDate as string).getTime() + 24 * 60 * 60 * 1000 - 1);
+        } else {
+          // Default to 'all' behavior for backward compatibility
+          end = new Date('2030-12-31');
+        }
       }
 
+      // Add debug logging to match debug endpoint
+      console.log('🔍 /api/owners/activities called:', {
+        ownerId: owner.id,
+        userId: userId,
+        dateRange: dateRange || 'legacy-params',
+        startDate: startDate,
+        endDate: endDate,
+        calculatedStart: start.toISOString(),
+        calculatedEnd: end.toISOString()
+      });
+
       const activities = await storage.getActivitiesByOwner(owner.id, start, end);
+      
+      console.log('📊 Activities query result:', {
+        ownerId: owner.id,
+        totalActivities: activities.length,
+        statusBreakdown: activities.reduce((acc, activity) => {
+          acc[activity.status] = (acc[activity.status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+        sampleActivityIds: activities.slice(0, 3).map(a => a.id)
+      });
+
       res.json(activities);
     } catch (error) {
       console.error("Error fetching activities:", error);
