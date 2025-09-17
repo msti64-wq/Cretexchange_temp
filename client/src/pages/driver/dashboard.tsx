@@ -344,22 +344,21 @@ export default function DriverDashboard() {
                        (activity.washout_activities?.status || activity.status) === 'pending' ? '⏳ Pending Review' : '❌ Rejected'}
                     </div>
                     
-                    {/* Photos button */}
-                    {((activity.photoUrls?.length > 0) || (activity.washout_activities?.photo_urls?.length > 0) || (activity.photo_urls?.length > 0)) && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-8 px-3"
-                        onClick={() => {
-                          setSelectedActivity(activity);
-                          setIsPhotoModalOpen(true);
-                        }}
-                        data-testid={`button-view-photos-${index}`}
-                      >
-                        <ImageIcon className="w-4 h-4 mr-1" />
-                        Photos ({(activity.photoUrls?.length || activity.washout_activities?.photo_urls?.length || activity.photo_urls?.length || 0)})
-                      </Button>
-                    )}
+                    {/* Photos button - ALWAYS VISIBLE */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-8 px-3"
+                      onClick={() => {
+                        console.log("Driver Photo Button Clicked:", activity);
+                        setSelectedActivity(activity);
+                        setIsPhotoModalOpen(true);
+                      }}
+                      data-testid={`button-view-photos-${index}`}
+                    >
+                      <ImageIcon className="w-4 h-4 mr-1" />
+                      Photos
+                    </Button>
                   </div>
                 </div>
               ))

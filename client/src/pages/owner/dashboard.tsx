@@ -461,15 +461,13 @@ export default function OwnerDashboard() {
                     
                     <div className="flex items-center gap-2">
                       <Button
-                        variant={((activity.photoUrls?.length > 0) || (activity.washout_activities?.photo_urls?.length > 0) || (activity.photo_urls?.length > 0)) ? "outline" : "ghost"}
+                        variant="outline"
                         size="sm"
                         className="text-xs h-8 px-3"
-                        disabled={!((activity.photoUrls?.length > 0) || (activity.washout_activities?.photo_urls?.length > 0) || (activity.photo_urls?.length > 0))}
                         onClick={() => {
-                          if ((activity.photoUrls?.length > 0) || (activity.washout_activities?.photo_urls?.length > 0) || (activity.photo_urls?.length > 0)) {
-                            setSelectedActivity(activity);
-                            setIsPhotoModalOpen(true);
-                          }
+                          console.log("Owner Photo Button Clicked:", activity);
+                          setSelectedActivity(activity);
+                          setIsPhotoModalOpen(true);
                         }}
                         data-testid={`button-view-photos-${index}`}
                       >
