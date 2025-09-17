@@ -781,6 +781,7 @@ export class DatabaseStorage implements IStorage {
 
     return results.map((row: any) => ({
       ...row.washout_activities,
+      photoUrls: row.washout_activities.photo_urls, // Convert snake_case to camelCase for photos
       location: row.washout_locations,
       driver: {
         ...row.drivers,
