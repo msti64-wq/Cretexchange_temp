@@ -19,7 +19,7 @@ export default function OwnerDrivers() {
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   const { data: activitiesData, isLoading } = useQuery({
-    queryKey: ['/api/owners/activities?dateRange=all'],
+    queryKey: [`/api/owners/activities?dateRange=all`],
   });
 
   const { data: locations } = useQuery({
