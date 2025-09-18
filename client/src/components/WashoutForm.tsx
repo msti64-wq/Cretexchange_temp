@@ -69,51 +69,75 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     console.log("=== DIRECT FILE UPLOAD ===");
     console.log("File:", file.name, file.size, file.type);
     
-    // Compress image before storing
-    return new Promise((resolve) => {
+    // Compress image before uploading to server
+    return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
       
-      img.onload = () => {
-        // Calculate new dimensions (max 800px width/height)
-        let { width, height } = img;
-        const maxSize = 800;
-        
-        if (width > maxSize || height > maxSize) {
-          if (width > height) {
-            height = (height * maxSize) / width;
-            width = maxSize;
-          } else {
-            width = (width * maxSize) / height;
-            height = maxSize;
-          }
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Draw and compress
-        ctx?.drawImage(img, 0, 0, width, height);
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        
-        console.log("Original size:", file.size, "Compressed base64 length:", compressedBase64.length);
-        
-        // Create a local URL for this file
-        const localUrl = `local-photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        console.log("Generated local URL:", localUrl);
-        
+      img.onload = async () => {
         try {
-          // Store the compressed data
-          sessionStorage.setItem(localUrl, compressedBase64);
-          console.log("Photo stored successfully");
-          resolve(localUrl);
+          // Calculate new dimensions (max 800px width/height)
+          let { width, height } = img;
+          const maxSize = 800;
+          
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            } else {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Draw and compress
+          ctx?.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          
+          console.log("Original size:", file.size, "Compressed base64 length:", compressedBase64.length);
+          
+          // Upload compressed photo to server
+          console.log("Uploading photo to server...");
+          const response = await apiRequest("/api/photos/upload-base64", {
+            method: "POST",
+            body: JSON.stringify({
+              base64Data: compressedBase64,
+              filename: file.name
+            }),
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log("Photo uploaded successfully:", result.objectPath);
+            resolve(result.objectPath);
+          } else {
+            const error = await response.json();
+            console.error("Server upload failed:", error);
+            // Fallback: create local URL and store in sessionStorage for backward compatibility
+            const localUrl = `local-photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            sessionStorage.setItem(localUrl, compressedBase64);
+            console.log("Using fallback local storage:", localUrl);
+            resolve(localUrl);
+          }
         } catch (error) {
-          console.error("Storage error:", error);
-          // Fallback: just use a simple photo placeholder
-          const placeholder = `photo-${Date.now()}-${file.name}`;
-          resolve(placeholder);
+          console.error("Upload error:", error);
+          // Fallback: create local URL and store in sessionStorage for backward compatibility
+          const localUrl = `local-photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          sessionStorage.setItem(localUrl, compressedBase64);
+          console.log("Using fallback local storage due to error:", localUrl);
+          resolve(localUrl);
         }
+      };
+      
+      img.onerror = () => {
+        console.error("Image loading failed");
+        const placeholder = `photo-${Date.now()}-${file.name}`;
+        resolve(placeholder);
       };
       
       img.src = URL.createObjectURL(file);

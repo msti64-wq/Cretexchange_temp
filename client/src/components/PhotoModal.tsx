@@ -74,11 +74,18 @@ export function PhotoModal({
 
   // Helper function to get displayable photo URL
   const getPhotoDisplayUrl = (photoUrl: string) => {
+    // Handle server-side stored photos (new system) - these work across all platforms
+    if (photoUrl.startsWith('/objects/')) {
+      return photoUrl;
+    }
+    
+    // Handle legacy sessionStorage photos (fallback for backward compatibility)
     if (photoUrl.startsWith('local-photo-')) {
-      // Get the base64 data from session storage
       const base64Data = sessionStorage.getItem(photoUrl);
       return base64Data || '/placeholder-image.jpg';
     }
+    
+    // Handle other URL formats (cloud storage URLs, etc.)
     return photoUrl;
   };
 

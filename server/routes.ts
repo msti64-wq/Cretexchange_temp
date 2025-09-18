@@ -6,8 +6,8 @@ import { storage } from "./storage";
 import { washoutActivities, withdrawals, walletTransactions, driverWallets } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { ObjectPermission } from "./objectAcl";
+import { ObjectStorageService, ObjectNotFoundError, objectStorageClient } from "./objectStorage";
+import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -2728,6 +2728,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // END WALLET API ENDPOINTS  
   // ============================================================================
+
+  // Photo upload endpoint for base64 compressed photos
+  app.post("/api/photos/upload-base64", isAuthenticated, async (req: any, res) => {
+    try {
+      const { base64Data, filename } = req.body;
+      
+      if (!base64Data) {
+        return res.status(400).json({ error: "base64Data is required" });
+      }
+
+      // Extract base64 data (remove data:image/jpeg;base64, prefix if present)
+      const base64Match = base64Data.match(/^data:image\/[a-z]+;base64,(.+)$/);
+      const cleanBase64 = base64Match ? base64Match[1] : base64Data;
+      
+      // Convert base64 to buffer
+      const buffer = Buffer.from(cleanBase64, 'base64');
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substr(2, 9);
+      const extension = filename?.split('.').pop() || 'jpg';
+      const uniqueFilename = `photo-${timestamp}-${randomId}.${extension}`;
+      
+      // Get object storage service
+      const objectStorageService = new ObjectStorageService();
+      const privateDir = objectStorageService.getPrivateObjectDir();
+      const fullPath = `${privateDir}/photos/${uniqueFilename}`;
+      
+      // Parse object path and get bucket/object name
+      const pathParts = fullPath.split("/");
+      const bucketName = pathParts[1];
+      const objectName = pathParts.slice(2).join("/");
+      
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      // Upload buffer to cloud storage
+      await file.save(buffer, {
+        metadata: {
+          contentType: 'image/jpeg',
+          metadata: {
+            uploadedBy: req.user.id,
+            uploadedAt: new Date().toISOString()
+          }
+        }
+      });
+      
+      // Set ACL to private
+      await setObjectAclPolicy(file, {
+        owner: req.user.id,
+        visibility: "private"
+      });
+      
+      // Return the object path
+      const objectPath = `/objects/photos/${uniqueFilename}`;
+      console.log(`Photo uploaded successfully: ${objectPath}`);
+      
+      res.status(200).json({ 
+        objectPath,
+        filename: uniqueFilename
+      });
+      
+    } catch (error) {
+      console.error("Error uploading base64 photo:", error);
+      res.status(500).json({ error: "Failed to upload photo" });
+    }
+  });
 
   // Object storage endpoints for photo uploads
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {
