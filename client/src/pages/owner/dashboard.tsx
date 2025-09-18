@@ -444,63 +444,127 @@ export default function OwnerDashboard() {
                   </div>
                   
                   {/* Actions Row - Status and Buttons */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                    <Badge 
-                      variant={
-                        activity.status === 'verified' ? 'default' : 
-                        activity.status === 'rejected' ? 'destructive' : 
-                        'secondary'
-                      }
-                      className="text-xs"
-                      data-testid={`badge-activity-status-${index}`}
-                    >
-                      {activity.status === 'verified' ? 'Approved' : 
-                       activity.status === 'rejected' ? 'Rejected' : 
-                       'Pending Review'}
-                    </Badge>
-                    
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-8 px-3"
-                        onClick={() => {
-                          console.log("Owner Photo Button Clicked:", activity);
-                          setSelectedActivity(activity);
-                          setIsPhotoModalOpen(true);
-                        }}
-                        data-testid={`button-view-photos-${index}`}
+                  <div className="pt-2 border-t border-border/50 space-y-2 sm:space-y-0">
+                    {/* Mobile layout: Stack status above buttons */}
+                    <div className="flex flex-col space-y-2 sm:hidden">
+                      <Badge 
+                        variant={
+                          activity.status === 'verified' ? 'default' : 
+                          activity.status === 'rejected' ? 'destructive' : 
+                          'secondary'
+                        }
+                        className="text-xs w-fit"
+                        data-testid={`badge-activity-status-${index}`}
                       >
-                        <ImageIcon className="w-4 h-4 mr-1" />
-                        Photos
-                      </Button>
+                        {activity.status === 'verified' ? 'Approved' : 
+                         activity.status === 'rejected' ? 'Rejected' : 
+                         'Pending Review'}
+                      </Badge>
                       
-                      {/* Approval buttons for pending washouts */}
-                      {activity.status === 'pending' && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="text-xs px-3 h-8"
-                            onClick={() => rejectMutation.mutate(activity.id)}
-                            disabled={rejectMutation.isPending || approveMutation.isPending}
-                            data-testid={`button-reject-${index}`}
-                          >
-                            <X className="w-4 h-4 mr-1" />
-                            Reject
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="text-xs px-3 h-8"
-                            onClick={() => approveMutation.mutate(activity.id)}
-                            disabled={rejectMutation.isPending || approveMutation.isPending}
-                            data-testid={`button-approve-${index}`}
-                          >
-                            <Check className="w-4 h-4 mr-1" />
-                            Approve
-                          </Button>
-                        </>
-                      )}
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-9 px-3 min-w-[70px]"
+                          onClick={() => {
+                            console.log("Owner Photo Button Clicked:", activity);
+                            setSelectedActivity(activity);
+                            setIsPhotoModalOpen(true);
+                          }}
+                          data-testid={`button-view-photos-${index}`}
+                        >
+                          <ImageIcon className="w-4 h-4 mr-1" />
+                          Photos
+                        </Button>
+                        
+                        {/* Approval buttons for pending washouts */}
+                        {activity.status === 'pending' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="text-xs px-3 h-9 min-w-[70px]"
+                              onClick={() => rejectMutation.mutate(activity.id)}
+                              disabled={rejectMutation.isPending || approveMutation.isPending}
+                              data-testid={`button-reject-${index}`}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="text-xs px-3 h-9 min-w-[80px] bg-green-600 hover:bg-green-700"
+                              onClick={() => approveMutation.mutate(activity.id)}
+                              disabled={rejectMutation.isPending || approveMutation.isPending}
+                              data-testid={`button-approve-${index}`}
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              Approve
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Desktop layout: Keep status and buttons side by side */}
+                    <div className="hidden sm:flex items-center justify-between">
+                      <Badge 
+                        variant={
+                          activity.status === 'verified' ? 'default' : 
+                          activity.status === 'rejected' ? 'destructive' : 
+                          'secondary'
+                        }
+                        className="text-xs"
+                        data-testid={`badge-activity-status-${index}`}
+                      >
+                        {activity.status === 'verified' ? 'Approved' : 
+                         activity.status === 'rejected' ? 'Rejected' : 
+                         'Pending Review'}
+                      </Badge>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-8 px-3"
+                          onClick={() => {
+                            console.log("Owner Photo Button Clicked:", activity);
+                            setSelectedActivity(activity);
+                            setIsPhotoModalOpen(true);
+                          }}
+                          data-testid={`button-view-photos-${index}`}
+                        >
+                          <ImageIcon className="w-4 h-4 mr-1" />
+                          Photos
+                        </Button>
+                        
+                        {/* Approval buttons for pending washouts */}
+                        {activity.status === 'pending' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="text-xs px-3 h-8"
+                              onClick={() => rejectMutation.mutate(activity.id)}
+                              disabled={rejectMutation.isPending || approveMutation.isPending}
+                              data-testid={`button-reject-${index}`}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="text-xs px-3 h-8 bg-green-600 hover:bg-green-700"
+                              onClick={() => approveMutation.mutate(activity.id)}
+                              disabled={rejectMutation.isPending || approveMutation.isPending}
+                              data-testid={`button-approve-${index}`}
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              Approve
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
