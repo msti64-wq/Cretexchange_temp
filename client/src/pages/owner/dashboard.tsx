@@ -632,11 +632,6 @@ export default function OwnerDashboard() {
           setSelectedActivity(null);
         }}
         activity={selectedActivity}
-        canApprove={true}
-        onApprove={(activityId) => approveMutation.mutate(activityId)}
-        onReject={(activityId) => rejectMutation.mutate(activityId)}
-        isApproving={approveMutation.isPending}
-        isRejecting={rejectMutation.isPending}
       />
 
       <SupportMessageDialog

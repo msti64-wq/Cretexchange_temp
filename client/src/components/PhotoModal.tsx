@@ -2,29 +2,19 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, ImageIcon, Check, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface PhotoModalProps {
   isOpen: boolean;
   onClose: () => void;
   activity: any;
-  canApprove?: boolean;
-  onApprove?: (activityId: string) => void;
-  onReject?: (activityId: string) => void;
-  isApproving?: boolean;
-  isRejecting?: boolean;
 }
 
 export function PhotoModal({ 
   isOpen, 
   onClose, 
-  activity,
-  canApprove = false,
-  onApprove,
-  onReject,
-  isApproving = false,
-  isRejecting = false
+  activity
 }: PhotoModalProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   
@@ -75,7 +65,6 @@ export function PhotoModal({
   // Robust photo URL extraction to handle different API response formats
   const photoUrls = getPhotoUrls(activity);
   
-  const activityId = activity.id;
   const status = activity.status;
   const amount = activity.amount || 0;
   const driverName = `${activity.driver?.user?.firstName || ''} ${activity.driver?.user?.lastName || ''}`.trim();
@@ -217,30 +206,6 @@ export function PhotoModal({
             </div>
           )}
 
-          {/* Action Buttons - Only show for users who can approve (owners) */}
-          {canApprove && status === 'pending' && (
-            <div className="flex gap-3 pt-4 border-t border-border">
-              <Button
-                variant="destructive"
-                onClick={() => onReject?.(activityId)}
-                disabled={isRejecting || isApproving}
-                className="flex-1"
-                data-testid="button-reject-activity"
-              >
-                <X className="w-4 h-4 mr-2" />
-                {isRejecting ? 'Rejecting...' : 'Reject'}
-              </Button>
-              <Button
-                onClick={() => onApprove?.(activityId)}
-                disabled={isRejecting || isApproving}
-                className="flex-1"
-                data-testid="button-approve-activity"
-              >
-                <Check className="w-4 h-4 mr-2" />
-                {isApproving ? 'Approving...' : 'Approve'}
-              </Button>
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
