@@ -184,7 +184,7 @@ export default function OwnerSubscribe() {
     {
       id: "monthly",
       name: "Monthly",
-      price: 29,
+      price: 100,
       period: "month",
       features: [
         "Unlimited locations",
@@ -199,10 +199,10 @@ export default function OwnerSubscribe() {
     {
       id: "annual",
       name: "Annual",
-      price: 299,
+      price: 1000,
       period: "year",
-      originalPrice: 348,
-      savings: 49,
+      originalPrice: 1200,
+      savings: 200,
       features: [
         "All monthly features",
         "Priority support",
