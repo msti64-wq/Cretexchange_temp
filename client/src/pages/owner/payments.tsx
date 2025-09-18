@@ -67,7 +67,10 @@ export default function OwnerPayments() {
 
   const stats = {
     totalPayments: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0),
-    totalFees: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0) * 0.1, 0), // 10% processing fee
+    totalFees: filteredActivities.reduce((sum: number, activity: any) => {
+      const amount = Number(activity.amount || 0);
+      return sum + (amount * 0.1) + 10; // 10% processing fee + $10.00 washout service fee
+    }, 0),
     completedCount: filteredActivities.filter((a: any) => a.status === 'verified').length,
     pendingCount: filteredActivities.filter((a: any) => a.status === 'pending').length,
   };
@@ -116,11 +119,11 @@ export default function OwnerPayments() {
             <div className="text-xs text-muted-foreground">To Drivers</div>
           </StatCard>
 
-          <StatCard title="Processing Fees" className="text-center">
+          <StatCard title="Total Fees" className="text-center">
             <div className="text-2xl font-bold text-secondary" data-testid="text-total-fees">
               {formatCurrency(stats.totalFees)}
             </div>
-            <div className="text-xs text-muted-foreground">Platform Fees</div>
+            <div className="text-xs text-muted-foreground">Processing + Service Fees</div>
           </StatCard>
         </div>
 
@@ -262,7 +265,10 @@ export default function OwnerPayments() {
                         {formatCurrency(Number(activity.amount || 0))}
                       </div>
                       <div className="text-xs text-muted-foreground mb-2" data-testid={`text-processing-fee-${index}`}>
-                        Fee: {formatCurrency(Number(activity.amount || 0) * 0.1)}
+                        Processing: {formatCurrency(Number(activity.amount || 0) * 0.1)}
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-2" data-testid={`text-service-fee-${index}`}>
+                        Service: {formatCurrency(10)}
                       </div>
                       <Badge 
                         variant={
@@ -296,11 +302,21 @@ export default function OwnerPayments() {
 
                   <div className="flex items-center justify-between pt-3 border-t border-border">
                     <div className="text-sm text-muted-foreground">
+                      Total fees (Processing + Service)
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-semibold text-red-600" data-testid={`text-total-fees-${index}`}>
+                        {formatCurrency((Number(activity.amount || 0) * 0.1) + 10)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="text-sm text-muted-foreground">
                       Net amount to driver
                     </div>
                     <div className="text-sm">
                       <span className="font-semibold text-green-600" data-testid={`text-net-amount-${index}`}>
-                        {formatCurrency(Number(activity.amount || 0) * 0.9)} {/* 90% to driver, 10% fee */}
+                        {formatCurrency(Number(activity.amount || 0) * 0.9)} {/* 90% to driver */}
                       </span>
                     </div>
                   </div>

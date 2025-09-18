@@ -2203,23 +2203,26 @@ export class DatabaseStorage implements IStorage {
     
     const owner = { ...ownerResult[0].owner, user: ownerResult[0].user };
 
-    // Convert to cents for Stripe
-    const amountCents = Math.round(totalAmount * 100);
+    // Convert to cents for Stripe - CRITICAL FIX: charge FULL amount (driver payouts + fees)
+    const fullChargeAmount = totalAmount + totalFees;
+    const amountCents = Math.round(fullChargeAmount * 100);
     
-    // Create idempotency key based on batch
-    const idempotencyKey = `batch_payment_${batchId}_${Math.round(totalAmount * 100)}`;
+    // Create idempotency key based on batch - use full amount for consistency
+    const idempotencyKey = `batch_payment_${batchId}_${Math.round(fullChargeAmount * 100)}`;
     
     // Create PaymentIntent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: 'usd',
       customer: owner.user.stripeCustomerId,
-      description: `Daily batch payment - ${paymentCount} washouts`,
+      description: `Daily batch payment - ${paymentCount} washouts (Driver payouts: $${totalAmount.toFixed(2)}, Fees: $${totalFees.toFixed(2)})`,
       metadata: {
         batchId,
         ownerId,
         paymentCount: paymentCount.toString(),
+        driverPayouts: totalAmount.toFixed(2),
         totalFees: totalFees.toFixed(2),
+        fullChargeAmount: fullChargeAmount.toFixed(2),
         timezone: billingSettings.billingTimezone,
         cutoffTime: billingSettings.billingCutoffTime,
         type: 'daily_batch_payment'
@@ -2428,7 +2431,7 @@ export class DatabaseStorage implements IStorage {
 
       // Calculate totals
       const batchTotal = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-      const batchFees = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee), 0);
+      const batchFees = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee) + parseFloat(payment.washoutServiceFee), 0);
 
       ownerBatches.push({
         ownerId,
@@ -2472,6 +2475,7 @@ export class DatabaseStorage implements IStorage {
         activityId: payments.activityId,
         amount: payments.amount,
         processingFee: payments.processingFee,
+        washoutServiceFee: payments.washoutServiceFee,
         stripePaymentIntentId: payments.stripePaymentIntentId,
         status: payments.status,
         batchId: payments.batchId,
@@ -2572,6 +2576,7 @@ export class DatabaseStorage implements IStorage {
         activityId: payments.activityId,
         amount: payments.amount,
         processingFee: payments.processingFee,
+        washoutServiceFee: payments.washoutServiceFee,
         stripePaymentIntentId: payments.stripePaymentIntentId,
         status: payments.status,
         batchId: payments.batchId,
@@ -2838,7 +2843,7 @@ export class DatabaseStorage implements IStorage {
 
         // Calculate batch totals
         const totalAmount = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-        const totalFees = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee), 0);
+        const totalFees = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee) + parseFloat(payment.washoutServiceFee), 0);
         const paymentCount = pendingPayments.length;
 
         console.log(`💰 Processing batch for owner ${ownerId}: ${paymentCount} payments totaling $${totalAmount.toFixed(2)} (fees: $${totalFees.toFixed(2)})`);

@@ -1296,6 +1296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: owner.id,
         amount: driverAmount.toString(),
         processingFee: platformCommission.toFixed(2),
+        washoutServiceFee: "10.00",
         status: 'pending', // Will be processed by daily batch
         businessDate, // Set business date for batch grouping
         // batchId will be set later by the daily batch processor
