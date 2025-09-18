@@ -68,8 +68,10 @@ export default function OwnerPayments() {
   const stats = {
     totalPayments: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0),
     totalFees: filteredActivities.reduce((sum: number, activity: any) => {
-      const amount = Number(activity.amount || 0);
-      return sum + (amount * 0.1) + 10; // 10% processing fee + $10.00 washout service fee
+      // NEW FEE STRUCTURE: Flat $8.00 base fee + 10% service fee = $8.80 per washout
+      const baseFee = 8.00;
+      const serviceFee = baseFee * 0.10; // 10% of base fee = $0.80
+      return sum + baseFee + serviceFee; // $8.80 total per washout
     }, 0),
     completedCount: filteredActivities.filter((a: any) => a.status === 'verified').length,
     pendingCount: filteredActivities.filter((a: any) => a.status === 'pending').length,
@@ -123,7 +125,7 @@ export default function OwnerPayments() {
             <div className="text-2xl font-bold text-secondary" data-testid="text-total-fees">
               {formatCurrency(stats.totalFees)}
             </div>
-            <div className="text-xs text-muted-foreground">Processing + Service Fees</div>
+            <div className="text-xs text-muted-foreground">Base + Service Fees ($8.80/washout)</div>
           </StatCard>
         </div>
 

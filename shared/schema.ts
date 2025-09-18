@@ -165,7 +165,7 @@ export const payments = pgTable("payments", {
   activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   processingFee: decimal("processing_fee", { precision: 10, scale: 2 }).notNull(),
-  washoutServiceFee: decimal("washout_service_fee", { precision: 10, scale: 2 }).notNull().default("10.00"),
+  washoutServiceFee: decimal("washout_service_fee", { precision: 10, scale: 2 }).notNull().default("8.00"),
   stripePaymentIntentId: varchar("stripe_payment_intent_id"),
   status: varchar("status").notNull().default("pending"),
   // Batch tracking fields for daily billing

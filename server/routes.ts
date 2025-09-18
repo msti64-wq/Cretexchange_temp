@@ -1271,10 +1271,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify the activity
       const activity = await storage.verifyWashoutActivity(id, userId);
 
-      // Calculate driver's share (90% of washout amount after 10% platform commission)
+      // NEW FEE STRUCTURE: Driver gets 100% of washout amount, owner pays flat $8.00 + 10% service fee
       const activityAmount = Number(activityDetails.amount);
-      const platformCommission = activityAmount * 0.10; // 10% commission to platform
-      const driverAmount = activityAmount - platformCommission; // 90% to driver
+      const driverAmount = activityAmount; // Driver gets full washout amount
+      const baseFee = 8.00; // Flat $8.00 base fee
+      const serviceFee = baseFee * 0.10; // 10% service fee on base fee = $0.80
 
       // Get owner's billing settings for business date calculation
       const billingSettings = await storage.getOwnerBillingSettings(owner.id);
@@ -1295,8 +1296,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverId: activityDetails.driverId,
         ownerId: owner.id,
         amount: driverAmount.toString(),
-        processingFee: platformCommission.toFixed(2),
-        washoutServiceFee: "10.00",
+        processingFee: serviceFee.toFixed(2), // 10% service fee ($0.80)
+        washoutServiceFee: baseFee.toFixed(2), // Flat $8.00 base fee
         status: 'pending', // Will be processed by daily batch
         businessDate, // Set business date for batch grouping
         // batchId will be set later by the daily batch processor
@@ -1311,7 +1312,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Pending washout payment for activity ${id} (batch date: ${businessDate})`
       );
 
-      console.log(`✅ Created pending payment: $${driverAmount} for activity ${id}, Payment ID: ${payment.id}, Business Date: ${businessDate}`);
+      console.log(`✅ Created pending payment: Driver gets $${driverAmount}, Owner pays $${(baseFee + serviceFee).toFixed(2)} for activity ${id}, Payment ID: ${payment.id}, Business Date: ${businessDate}`);
+      console.log(`💰 Fee breakdown: Base $${baseFee.toFixed(2)} + Service $${serviceFee.toFixed(2)} = Total $${(baseFee + serviceFee).toFixed(2)}`);
       console.log(`📅 Payment will be processed in daily batch for ${businessDate} at ${billingSettings?.billingCutoffTime || '23:59:00'} ${billingSettings?.billingTimezone || 'America/Chicago'}`);
 
       // Daily batch processor will:

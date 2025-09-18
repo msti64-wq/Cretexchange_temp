@@ -117,7 +117,7 @@ export function PlatformPerformanceCard({ dateRange }: PlatformPerformanceCardPr
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">↳ Service Fees (10%)</span>
+            <span className="text-muted-foreground">↳ Service Fees ($8.80/washout)</span>
             <span className="font-medium text-green-600" data-testid="text-service-fees">
               {formatCurrency(data.moneyFromOwners - data.moneyPaidToDrivers)}
             </span>
