@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 
 interface PhotoModalProps {
   isOpen: boolean;
@@ -72,13 +73,13 @@ export function PhotoModal({
   const locationName = activity.location?.name || '';
   const checkInTime = activity.checkInTime;
 
-  // Helper function to get displayable photo URL
+  // Helper function to determine if photo needs authenticated fetching
+  const needsAuthentication = (photoUrl: string) => {
+    return photoUrl.startsWith('/objects/');
+  };
+
+  // Helper function to get displayable photo URL for non-authenticated images
   const getPhotoDisplayUrl = (photoUrl: string) => {
-    // Handle server-side stored photos (new system) - these work across all platforms
-    if (photoUrl.startsWith('/objects/')) {
-      return photoUrl;
-    }
-    
     // Handle legacy sessionStorage photos (fallback for backward compatibility)
     if (photoUrl.startsWith('local-photo-')) {
       const base64Data = sessionStorage.getItem(photoUrl);
@@ -151,12 +152,21 @@ export function PhotoModal({
           {photoUrls.length > 0 ? (
             <div className="space-y-4">
               <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: "16/9" }}>
-                <img
-                  src={getPhotoDisplayUrl(photoUrls[currentPhotoIndex])}
-                  alt={`Washout photo ${currentPhotoIndex + 1}`}
-                  className="w-full h-full object-contain"
-                  data-testid={`image-washout-photo-${currentPhotoIndex}`}
-                />
+                {needsAuthentication(photoUrls[currentPhotoIndex]) ? (
+                  <AuthenticatedImage
+                    src={photoUrls[currentPhotoIndex]}
+                    alt={`Washout photo ${currentPhotoIndex + 1}`}
+                    className="w-full h-full object-contain"
+                    data-testid={`image-washout-photo-${currentPhotoIndex}`}
+                  />
+                ) : (
+                  <img
+                    src={getPhotoDisplayUrl(photoUrls[currentPhotoIndex])}
+                    alt={`Washout photo ${currentPhotoIndex + 1}`}
+                    className="w-full h-full object-contain"
+                    data-testid={`image-washout-photo-${currentPhotoIndex}`}
+                  />
+                )}
                 
                 {photoUrls.length > 1 && (
                   <>
@@ -191,16 +201,29 @@ export function PhotoModal({
               {photoUrls.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {photoUrls.map((url: string, index: number) => (
-                    <img
-                      key={index}
-                      src={getPhotoDisplayUrl(url)}
-                      alt={`Thumbnail ${index + 1}`}
-                      className={`w-16 h-16 object-cover rounded cursor-pointer border-2 flex-shrink-0 ${
-                        index === currentPhotoIndex ? 'border-primary' : 'border-transparent'
-                      }`}
-                      onClick={() => setCurrentPhotoIndex(index)}
-                      data-testid={`thumbnail-photo-${index}`}
-                    />
+                    needsAuthentication(url) ? (
+                      <AuthenticatedImage
+                        key={index}
+                        src={url}
+                        alt={`Thumbnail ${index + 1}`}
+                        className={`w-16 h-16 object-cover rounded cursor-pointer border-2 flex-shrink-0 ${
+                          index === currentPhotoIndex ? 'border-primary' : 'border-transparent'
+                        }`}
+                        onClick={() => setCurrentPhotoIndex(index)}
+                        data-testid={`thumbnail-photo-${index}`}
+                      />
+                    ) : (
+                      <img
+                        key={index}
+                        src={getPhotoDisplayUrl(url)}
+                        alt={`Thumbnail ${index + 1}`}
+                        className={`w-16 h-16 object-cover rounded cursor-pointer border-2 flex-shrink-0 ${
+                          index === currentPhotoIndex ? 'border-primary' : 'border-transparent'
+                        }`}
+                        onClick={() => setCurrentPhotoIndex(index)}
+                        data-testid={`thumbnail-photo-${index}`}
+                      />
+                    )
                   ))}
                 </div>
               )}

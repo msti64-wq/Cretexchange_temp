@@ -46,34 +46,50 @@ export default function OwnerDashboard() {
 
   const approveMutation = useMutation({
     mutationFn: async (activityId: string) => {
-      const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/verify`);
-      return response.json();
+      try {
+        const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/verify`);
+        const result = await response.json();
+        return result;
+      } catch (error) {
+        console.error("Approval mutation error:", error);
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data, activityId) => {
+      console.log("Approval successful:", data);
       toast({ title: "Washout approved for payment" });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
       queryClient.invalidateQueries({ predicate: (query) => 
         Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))
       });
     },
-    onError: () => {
+    onError: (error, activityId) => {
+      console.error("Approval failed:", error);
       toast({ title: "Failed to approve washout", variant: "destructive" });
     },
   });
 
   const rejectMutation = useMutation({
     mutationFn: async (activityId: string) => {
-      const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/reject`);
-      return response.json();
+      try {
+        const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/reject`);
+        const result = await response.json();
+        return result;
+      } catch (error) {
+        console.error("Rejection mutation error:", error);
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data, activityId) => {
+      console.log("Rejection successful:", data);
       toast({ title: "Washout rejected" });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
       queryClient.invalidateQueries({ predicate: (query) => 
         Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))
       });
     },
-    onError: () => {
+    onError: (error, activityId) => {
+      console.error("Rejection failed:", error);
       toast({ title: "Failed to reject washout", variant: "destructive" });
     },
   });
