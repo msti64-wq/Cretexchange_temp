@@ -72,7 +72,29 @@ app.use((req, res, next) => {
   if (!isProduction) {
     await setupVite(app, server);
   } else {
-    serveStatic(app);
+    // Custom static file serving for production to fix deployment issue
+    const path = await import("path");
+    const fs = await import("fs");
+    
+    const distPath = path.resolve(process.cwd(), "dist", "public");
+    console.log("Serving static files from:", distPath);
+    console.log("Directory exists:", fs.existsSync(distPath));
+    
+    if (fs.existsSync(distPath)) {
+      // Serve static files
+      app.use(express.static(distPath));
+      
+      // SPA fallback - serve index.html for all non-API routes
+      app.get("*", (_req, res) => {
+        const indexPath = path.resolve(distPath, "index.html");
+        console.log("Serving index.html from:", indexPath);
+        res.sendFile(indexPath);
+      });
+    } else {
+      console.error(`Static files directory not found: ${distPath}`);
+      // Fallback to the original serveStatic function
+      serveStatic(app);
+    }
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
