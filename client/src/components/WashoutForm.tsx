@@ -114,10 +114,36 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
             const result = await response.json();
             console.log("Photo uploaded successfully:", result.objectPath);
             resolve(result.objectPath);
+          } else if (response.status === 401) {
+            // CRITICAL FIX: Handle authentication errors properly
+            console.error("❌ AUTHENTICATION FAILED - Token expired or invalid!");
+            console.error("This is why photos fall back to sessionStorage and break cross-platform access!");
+            
+            // Show user-friendly error instead of silent fallback
+            toast({
+              title: "Authentication Required",
+              description: "Your session has expired. Please log in again to upload photos that can be seen on all devices.",
+              variant: "destructive",
+            });
+            
+            // Clear invalid token
+            localStorage.removeItem('authToken');
+            
+            // Reject to prevent fallback - force user to re-authenticate
+            reject(new Error("Authentication expired - please log in again"));
+            return;
           } else {
             const error = await response.json();
-            console.error("Server upload failed:", error);
-            // Fallback: create local URL and store in sessionStorage for backward compatibility
+            console.error("Server upload failed:", error, "Status:", response.status);
+            
+            // Only fall back to sessionStorage for non-auth errors AND warn user
+            console.warn("⚠️ FALLBACK TO SESSIONSTORAGE - Photos will only be visible on this device!");
+            toast({
+              title: "Photo Upload Warning",
+              description: "Photo saved locally only. Other users may not see this photo. Please check your internet connection.",
+              variant: "destructive",
+            });
+            
             const localUrl = `local-photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             sessionStorage.setItem(localUrl, compressedBase64);
             console.log("Using fallback local storage:", localUrl);
@@ -125,7 +151,28 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
           }
         } catch (error) {
           console.error("Upload error:", error);
-          // Fallback: create local URL and store in sessionStorage for backward compatibility
+          
+          // Check if it's an auth error
+          if (error instanceof Error && error.message.includes('401')) {
+            // Authentication error - don't fall back
+            console.error("❌ AUTHENTICATION ERROR DETECTED");
+            toast({
+              title: "Authentication Required",
+              description: "Please log in again to upload photos.",
+              variant: "destructive",
+            });
+            reject(error);
+            return;
+          }
+          
+          // Non-auth error - warn user but allow fallback
+          console.warn("⚠️ FALLBACK TO SESSIONSTORAGE due to error - Photos will only be visible on this device!");
+          toast({
+            title: "Photo Upload Warning",
+            description: "Photo saved locally only. Other users may not see this photo.",
+            variant: "destructive",
+          });
+          
           const localUrl = `local-photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
           sessionStorage.setItem(localUrl, compressedBase64);
