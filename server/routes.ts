@@ -798,6 +798,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Check-in request body:", req.body);
       console.log("PhotoUrls received:", req.body.photoUrls);
       
+      // CRITICAL FIX: Validate photo URLs to prevent temp/invalid URLs from being saved
+      const photoUrls = req.body.photoUrls || [];
+      const invalidPhotoUrls = photoUrls.filter((url: string) => 
+        url.startsWith('temp-photo-') ||
+        url.startsWith('local-photo-') ||
+        url.startsWith('data:') ||
+        url.startsWith('photo-') ||
+        url.startsWith('blob:') ||
+        (!url.includes('/objects/photos/') && !url.startsWith('/objects/photos/'))
+      );
+
+      if (invalidPhotoUrls.length > 0) {
+        console.error("❌ INVALID PHOTO URLs REJECTED:", invalidPhotoUrls);
+        return res.status(400).json({ 
+          message: "Invalid photo URLs detected. All photos must be uploaded to server storage before submission.",
+          invalidUrls: invalidPhotoUrls,
+          details: "Only server-backed photo URLs containing '/objects/photos/' are allowed. Temporary, local, or data URLs cannot be saved to database."
+        });
+      }
+
+      // Validate that all photo URLs are server-backed
+      const nonServerUrls = photoUrls.filter((url: string) => 
+        !url.includes('/objects/photos/') && 
+        !url.startsWith('/objects/photos/') &&
+        !url.startsWith('https://') // Allow external HTTPS URLs as fallback
+      );
+
+      if (nonServerUrls.length > 0) {
+        console.error("❌ NON-SERVER PHOTO URLs REJECTED:", nonServerUrls);
+        return res.status(400).json({ 
+          message: "All photos must be uploaded to server storage for cross-platform access.",
+          nonServerUrls,
+          details: "Photos must be stored on server to be visible across all devices. Please re-upload photos and try again."
+        });
+      }
+
+      console.log("✅ All photo URLs validated as server-backed:", photoUrls);
+      
       // Prepare activity data with proper validation
       const activityInput = {
         driverId: driver.id,
@@ -2732,9 +2770,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Photo upload endpoint for base64 compressed photos
   app.post("/api/photos/upload-base64", isAuthenticated, async (req: any, res) => {
     try {
+      console.log(`🔧 PHOTO UPLOAD ATTEMPT - User: ${req.user.id} (${req.user.username}), Environment: ${process.env.REPLIT_DEPLOYMENT ? 'production' : 'development'}`);
+      
       const { base64Data, filename } = req.body;
       
       if (!base64Data) {
+        console.log("❌ PHOTO UPLOAD FAILED - No base64Data provided");
         return res.status(400).json({ error: "base64Data is required" });
       }
 
@@ -2783,7 +2824,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Return the object path
       const objectPath = `/objects/photos/${uniqueFilename}`;
-      console.log(`Photo uploaded successfully: ${objectPath}`);
+      console.log(`✅ PHOTO UPLOADED SUCCESSFULLY: ${objectPath} by user ${req.user.username} (${req.user.id})`);
+      console.log(`🎯 CRITICAL: Photo will be accessible cross-platform via ${objectPath}`);
       
       res.status(200).json({ 
         objectPath,
@@ -2791,7 +2833,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
     } catch (error) {
-      console.error("Error uploading base64 photo:", error);
+      console.error(`❌ PHOTO UPLOAD FAILED - Server error for user ${req.user?.username} (${req.user?.id}):`, error);
+      console.error("🔧 This error would previously cause fallback to sessionStorage and break cross-platform access");
       res.status(500).json({ error: "Failed to upload photo" });
     }
   });

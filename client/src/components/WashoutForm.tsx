@@ -26,6 +26,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
   const [notes, setNotes] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
 
   const checkInMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -134,20 +135,18 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
             return;
           } else {
             const error = await response.json();
-            console.error("Server upload failed:", error, "Status:", response.status);
+            console.error("❌ PHOTO UPLOAD FAILED - Server error:", error, "Status:", response.status);
             
-            // Only fall back to sessionStorage for non-auth errors AND warn user
-            console.warn("⚠️ FALLBACK TO SESSIONSTORAGE - Photos will only be visible on this device!");
+            // CRITICAL FIX: DO NOT fall back to sessionStorage
+            // This was causing cross-platform photo display issues
             toast({
-              title: "Photo Upload Warning",
-              description: "Photo saved locally only. Other users may not see this photo. Please check your internet connection.",
+              title: "Photo Upload Failed",
+              description: "Unable to upload photo to server. Please check your connection and try again. Without successful upload, photos won't be visible on other devices.",
               variant: "destructive",
             });
             
-            const localUrl = `local-photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            sessionStorage.setItem(localUrl, compressedBase64);
-            console.log("Using fallback local storage:", localUrl);
-            resolve(localUrl);
+            // Reject instead of fallback to prevent local-photo-* URLs in database
+            reject(new Error(`Photo upload failed: ${error.message || 'Server error'}`));
           }
         } catch (error) {
           console.error("Upload error:", error);
@@ -165,19 +164,17 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
             return;
           }
           
-          // Non-auth error - warn user but allow fallback
-          console.warn("⚠️ FALLBACK TO SESSIONSTORAGE due to error - Photos will only be visible on this device!");
+          // CRITICAL FIX: DO NOT fall back to sessionStorage for ANY errors
+          // This was causing cross-platform photo display issues
+          console.error("❌ PHOTO UPLOAD FAILED - Network or processing error:", error);
           toast({
-            title: "Photo Upload Warning",
-            description: "Photo saved locally only. Other users may not see this photo.",
+            title: "Photo Upload Failed", 
+            description: "Unable to process photo upload. Please check your connection and try again. Photos must be uploaded to server to be visible on all devices.",
             variant: "destructive",
           });
           
-          const localUrl = `local-photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-          sessionStorage.setItem(localUrl, compressedBase64);
-          console.log("Using fallback local storage due to error:", localUrl);
-          resolve(localUrl);
+          // Reject instead of fallback to prevent local-photo-* URLs in database
+          reject(error);
         }
       };
       
@@ -214,9 +211,13 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       return;
     }
 
-    // IMMEDIATELY add temporary URLs to enable the button
+    // CRITICAL FIX: Set processing state to block form submission
+    setIsProcessingPhotos(true);
+    console.log("🔄 Photo processing started - blocking form submission");
+    
+    // IMMEDIATELY add temporary URLs to track progress
     const tempUrls = uploadedFiles.map((file: any, index: number) => `temp-photo-${Date.now()}-${index}`);
-    console.log("Adding temporary URLs to enable button:", tempUrls);
+    console.log("Adding temporary URLs to track progress:", tempUrls);
     setPhotoUrls(prev => [...prev, ...tempUrls]);
 
     toast({
@@ -282,15 +283,76 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       return newUrls;
     });
     
+    // CRITICAL FIX: Clear processing state after all photos are processed
+    setIsProcessingPhotos(false);
+    console.log("✅ Photo processing completed - form submission now allowed");
     console.log("Final photoUrls state should be:", realUrls);
+  };
+
+  // CRITICAL FIX: Helper function to validate photo URLs
+  const areAllPhotosServerBacked = () => {
+    return photoUrls.every(url => 
+      url.includes('/objects/photos/') || 
+      url.startsWith('/objects/photos/') ||
+      url.startsWith('https://') && url.includes('/objects/photos/')
+    );
+  };
+
+  const hasTempOrInvalidUrls = () => {
+    return photoUrls.some(url => 
+      url.startsWith('temp-photo-') ||
+      url.startsWith('local-photo-') ||
+      url.startsWith('data:') ||
+      url.startsWith('photo-') // Also catch placeholder URLs
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // CRITICAL FIX: Validate all photos are server-backed before submission
+    if (isProcessingPhotos) {
+      console.warn("❌ SUBMISSION BLOCKED - Photos still processing");
+      toast({
+        title: "Photos Still Processing",
+        description: "Please wait for photo uploads to complete before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (hasTempOrInvalidUrls()) {
+      console.error("❌ SUBMISSION BLOCKED - Invalid photo URLs detected:", photoUrls);
+      const invalidUrls = photoUrls.filter(url => 
+        url.startsWith('temp-photo-') ||
+        url.startsWith('local-photo-') ||
+        url.startsWith('data:') ||
+        url.startsWith('photo-')
+      );
+      console.error("Invalid URLs:", invalidUrls);
+      
+      toast({
+        title: "Invalid Photo URLs",
+        description: "Some photos failed to upload properly. Please remove and re-upload them.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!areAllPhotosServerBacked()) {
+      console.error("❌ SUBMISSION BLOCKED - Not all photos are server-backed:", photoUrls);
+      toast({
+        title: "Photo Upload Incomplete",
+        description: "Photos must be uploaded to server to be visible on all devices. Please wait or re-upload.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      console.log("Submitting check-in with photoUrls:", photoUrls);
+      console.log("✅ Submitting check-in with validated server-backed photoUrls:", photoUrls);
       await checkInMutation.mutateAsync({
         locationId: location.id,
         latitude: currentLocation?.lat?.toString(),
@@ -356,14 +418,27 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
                   console.log("=== FILES SELECTED ===");
                   console.log("Number of files:", files.length);
                   
+                  // CRITICAL FIX: Set processing state during direct upload
+                  setIsProcessingPhotos(true);
+                  console.log("🔄 Direct photo upload started - blocking form submission");
+                  
                   const newUrls: string[] = [];
                   for (const file of files) {
-                    const localUrl = await handleDirectFileUpload(file);
-                    newUrls.push(localUrl);
+                    try {
+                      const serverUrl = await handleDirectFileUpload(file);
+                      newUrls.push(serverUrl);
+                    } catch (error) {
+                      console.error("Direct upload failed for file:", file.name, error);
+                      // Don't add failed uploads to prevent temp URLs
+                    }
                   }
                   
-                  console.log("Adding new photo URLs:", newUrls);
+                  console.log("Adding new server-backed photo URLs:", newUrls);
                   setPhotoUrls(prev => [...prev, ...newUrls]);
+                  
+                  // Clear processing state after direct uploads complete
+                  setIsProcessingPhotos(false);
+                  console.log("✅ Direct photo upload completed - form submission now allowed");
                   
                   toast({
                     title: "Photos Added",
@@ -387,9 +462,19 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
             </div>
             
             {photoUrls.length > 0 ? (
-              <p className="text-sm text-green-600" data-testid="text-photos-uploaded">
-                ✓ {photoUrls.length} photo(s) uploaded successfully
-              </p>
+              isProcessingPhotos ? (
+                <p className="text-sm text-blue-600" data-testid="text-photos-processing">
+                  🔄 Processing {photoUrls.length} photo(s)... Please wait.
+                </p>
+              ) : hasTempOrInvalidUrls() ? (
+                <p className="text-sm text-red-600" data-testid="text-photos-failed">
+                  ❌ {photoUrls.filter(url => url.startsWith('temp-') || url.startsWith('local-') || url.startsWith('data:') || url.startsWith('photo-')).length} photo(s) failed to upload. Please re-upload.
+                </p>
+              ) : (
+                <p className="text-sm text-green-600" data-testid="text-photos-uploaded">
+                  ✅ {photoUrls.length} photo(s) uploaded successfully and ready for submission
+                </p>
+              )
             ) : (
               <p className="text-sm text-amber-600" data-testid="text-photos-required">
                 📸 Please upload at least one photo before checking in
@@ -421,11 +506,13 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting || photoUrls.length === 0}
+            disabled={isSubmitting || photoUrls.length === 0 || isProcessingPhotos || hasTempOrInvalidUrls()}
             data-testid="button-complete-checkin"
           >
             {isSubmitting ? "Processing..." : 
-             photoUrls.length === 0 ? "Upload Photos to Continue" : 
+             isProcessingPhotos ? "Processing Photos..." :
+             photoUrls.length === 0 ? "Upload Photos to Continue" :
+             hasTempOrInvalidUrls() ? "Photo Upload Failed - Re-upload Required" :
              "Complete Washout"}
           </Button>
 
