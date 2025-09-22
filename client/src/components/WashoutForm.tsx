@@ -78,6 +78,21 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       
       img.onload = async () => {
         try {
+          console.log("✅ Image loaded successfully:", file.name);
+          console.log("Image dimensions:", img.width, "x", img.height);
+          
+          // CRITICAL FIX: Validate image has meaningful dimensions
+          if (img.width <= 0 || img.height <= 0) {
+            console.error("❌ Invalid image dimensions:", img.width, "x", img.height);
+            throw new Error(`Invalid image dimensions: ${img.width}x${img.height}. This may be a corrupted or empty image file.`);
+          }
+          
+          // CRITICAL FIX: Check for suspiciously small images that might be corrupted
+          if (img.width < 10 || img.height < 10) {
+            console.error("❌ Image too small, likely corrupted:", img.width, "x", img.height);
+            throw new Error(`Image too small (${img.width}x${img.height}). Please use a proper photo with meaningful content.`);
+          }
+          
           // Calculate new dimensions (max 800px width/height)
           let { width, height } = img;
           const maxSize = 800;
@@ -95,11 +110,24 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
           canvas.width = width;
           canvas.height = height;
           
+          // CRITICAL FIX: Validate canvas context exists
+          if (!ctx) {
+            console.error("❌ Canvas context failed to initialize");
+            throw new Error("Image processing failed: Unable to create canvas context");
+          }
+          
           // Draw and compress
-          ctx?.drawImage(img, 0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
           
+          // CRITICAL FIX: Validate base64 output is meaningful
+          if (!compressedBase64 || compressedBase64 === 'data:,') {
+            console.error("❌ Canvas compression failed");
+            throw new Error("Image processing failed: Canvas compression produced no output");
+          }
+          
           console.log("Original size:", file.size, "Compressed base64 length:", compressedBase64.length);
+          console.log("Final processed dimensions:", width, "x", height);
           
           // Upload compressed photo to server
           console.log("Uploading photo to server...");
@@ -179,13 +207,14 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       };
       
       img.onerror = () => {
-        console.error("Image loading failed for file:", file.name);
+        console.error("❌ Image loading failed for file:", file.name);
+        console.error("This typically indicates a corrupted, invalid, or unsupported image format");
         toast({
-          title: "Image Processing Failed",
-          description: `Unable to process image ${file.name}. Please try selecting a different photo.`,
+          title: "Invalid Image File",
+          description: `Unable to load image ${file.name}. The file may be corrupted, in an unsupported format, or not a valid image. Please try a different photo.`,
           variant: "destructive",
         });
-        reject(new Error(`Image loading failed for ${file.name}`));
+        reject(new Error(`Invalid or corrupted image file: ${file.name}`));
       };
       
       img.src = URL.createObjectURL(file);
