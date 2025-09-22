@@ -67,129 +67,54 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
   });
 
   const handleDirectFileUpload = async (file: File): Promise<string> => {
-    console.log("🔧 SIMPLIFIED DIRECT FILE UPLOAD - Bypassing problematic Image() validation");
-    console.log("File:", file.name, file.size, file.type);
+    // ULTRA-SIMPLE UPLOAD - Bypass all complex client-side processing
+    alert(`🚨 DEBUG: Starting upload for ${file.name} (${file.size} bytes)`);
     
-    // CRITICAL FIX: Skip the problematic browser Image() API validation
-    // The Image API was causing backwards behavior (good photos failed, bad photos passed)
-    // Let the server handle all validation and processing instead
-    
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
+    try {
+      // Step 1: Convert file to base64 using the simplest possible method
+      alert("🔧 Step 1: Converting file to base64...");
       
-      reader.onload = async (e) => {
-        try {
-          console.log("📁 FileReader onload triggered");
-          const base64Result = e.target?.result as string;
-          
-          if (!base64Result || typeof base64Result !== 'string') {
-            console.error("❌ FileReader failed - no result:", base64Result);
-            throw new Error("Failed to read image file");
-          }
-          
-          console.log("✅ File read successfully:");
-          console.log("  - Original size:", file.size, "bytes");
-          console.log("  - Base64 length:", base64Result.length, "characters");
-          console.log("  - Base64 prefix:", base64Result.substring(0, 50) + "...");
-          
-          console.log("🌐 Making API request to /api/photos/upload-base64");
-          
-          // Upload original base64 to server - let server handle all processing
-          const response = await apiRequest("/api/photos/upload-base64", {
-            method: "POST",
-            body: JSON.stringify({
-              base64Data: base64Result,
-              filename: file.name
-            }),
-          });
-          
-          console.log("📡 API Response received:", response.status, response.statusText);
-          
-          if (response.ok) {
-            console.log("✅ Response status is OK, parsing JSON...");
-            const result = await response.json();
-            console.log("✅ Photo uploaded successfully:", result.objectPath);
-            resolve(result.objectPath);
-          } else if (response.status === 401) {
-            console.error("❌ AUTHENTICATION FAILED - 401 status received");
-            
-            toast({
-              title: "Authentication Required",
-              description: "Your session has expired. Please log in again to upload photos that can be seen on all devices.",
-              variant: "destructive",
-            });
-            
-            localStorage.removeItem('authToken');
-            reject(new Error("Authentication expired - please log in again"));
-            return;
-          } else {
-            console.error("❌ Server returned non-OK status:", response.status);
-            try {
-              const error = await response.json();
-              console.error("❌ Error response body:", error);
-              
-              toast({
-                title: "Photo Upload Failed",
-                description: `Server error: ${error.error || error.message || 'Unknown error'}`,
-                variant: "destructive",
-              });
-              
-              reject(new Error(`Photo upload failed: ${error.error || error.message || 'Server error'}`));
-            } catch (jsonError) {
-              console.error("❌ Failed to parse error response as JSON:", jsonError);
-              const errorText = await response.text();
-              console.error("❌ Error response text:", errorText);
-              
-              toast({
-                title: "Photo Upload Failed",
-                description: `Server error (${response.status}): ${errorText || 'Unknown error'}`,
-                variant: "destructive",
-              });
-              
-              reject(new Error(`Photo upload failed with status ${response.status}: ${errorText}`));
-            }
-          }
-        } catch (error) {
-          console.error("❌ CATCH BLOCK - Upload error:", error);
-          console.error("❌ Error type:", typeof error);
-          console.error("❌ Error message:", error instanceof Error ? error.message : String(error));
-          console.error("❌ Error stack:", error instanceof Error ? error.stack : 'No stack');
-          
-          if (error instanceof Error && error.message.includes('401')) {
-            console.error("❌ Detected 401 error in catch block");
-            toast({
-              title: "Authentication Required",
-              description: "Please log in again to upload photos.",
-              variant: "destructive",
-            });
-            reject(error);
-            return;
-          }
-          
-          console.error("❌ FINAL ERROR - Photo upload completely failed");
-          toast({
-            title: "Photo Upload Failed", 
-            description: `Upload error: ${error instanceof Error ? error.message : String(error)}`,
-            variant: "destructive",
-          });
-          
-          reject(error);
-        }
-      };
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("File reading failed"));
+        reader.readAsDataURL(file);
+      });
       
-      reader.onerror = () => {
-        console.error("❌ File reading failed for:", file.name);
-        toast({
-          title: "File Reading Failed",
-          description: `Unable to read image file ${file.name}. Please try a different photo.`,
-          variant: "destructive",
-        });
-        reject(new Error(`Failed to read image file: ${file.name}`));
-      };
+      alert("✅ Step 1 complete: File converted to base64");
       
-      // Read file as data URL (base64) - no client-side image validation
-      reader.readAsDataURL(file);
-    });
+      // Step 2: Make API request
+      alert("🌐 Step 2: Making API request...");
+      
+      const response = await fetch("/api/photos/upload-base64", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('authToken') || ''}`
+        },
+        body: JSON.stringify({
+          base64Data: base64,
+          filename: file.name
+        })
+      });
+      
+      alert(`📡 Step 2 complete: API response ${response.status}`);
+      
+      // Step 3: Handle response
+      if (response.ok) {
+        const result = await response.json();
+        alert(`✅ SUCCESS: Photo uploaded to ${result.objectPath}`);
+        return result.objectPath;
+      } else {
+        const errorText = await response.text();
+        alert(`❌ FAILED: Server error ${response.status}: ${errorText}`);
+        throw new Error(`Server error ${response.status}: ${errorText}`);
+      }
+      
+    } catch (error) {
+      alert(`💥 FATAL ERROR: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
   };
 
   const handleGetUploadParameters = async () => {
