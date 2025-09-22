@@ -14,9 +14,9 @@ console.log('Environment check:', {
 // Raw body parsing specifically for Stripe webhooks (must come before JSON parsing)
 app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }));
 
-// JSON parsing for all other routes
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// JSON parsing for all other routes with increased limits for photo uploads
+app.use(express.json({ limit: '10mb' })); // Allow up to 10MB for base64 photo uploads
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();
