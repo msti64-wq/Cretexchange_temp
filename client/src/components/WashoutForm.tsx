@@ -67,122 +67,68 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
   });
 
   const handleDirectFileUpload = async (file: File): Promise<string> => {
-    console.log("=== DIRECT FILE UPLOAD ===");
+    console.log("🔧 SIMPLIFIED DIRECT FILE UPLOAD - Bypassing problematic Image() validation");
     console.log("File:", file.name, file.size, file.type);
     
-    // Compress image before uploading to server
+    // CRITICAL FIX: Skip the problematic browser Image() API validation
+    // The Image API was causing backwards behavior (good photos failed, bad photos passed)
+    // Let the server handle all validation and processing instead
+    
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
+      const reader = new FileReader();
       
-      img.onload = async () => {
+      reader.onload = async (e) => {
         try {
-          console.log("✅ Image loaded successfully:", file.name);
-          console.log("Image dimensions:", img.width, "x", img.height);
+          const base64Result = e.target?.result as string;
           
-          // CRITICAL FIX: Validate image has meaningful dimensions
-          if (img.width <= 0 || img.height <= 0) {
-            console.error("❌ Invalid image dimensions:", img.width, "x", img.height);
-            throw new Error(`Invalid image dimensions: ${img.width}x${img.height}. This may be a corrupted or empty image file.`);
+          if (!base64Result || typeof base64Result !== 'string') {
+            throw new Error("Failed to read image file");
           }
           
-          // CRITICAL FIX: Check for suspiciously small images that might be corrupted
-          if (img.width < 10 || img.height < 10) {
-            console.error("❌ Image too small, likely corrupted:", img.width, "x", img.height);
-            throw new Error(`Image too small (${img.width}x${img.height}). Please use a proper photo with meaningful content.`);
-          }
+          console.log("✅ File read successfully, original size:", file.size);
+          console.log("✅ Uploading directly to server for processing and validation");
           
-          // Calculate new dimensions (max 800px width/height)
-          let { width, height } = img;
-          const maxSize = 800;
-          
-          if (width > maxSize || height > maxSize) {
-            if (width > height) {
-              height = (height * maxSize) / width;
-              width = maxSize;
-            } else {
-              width = (width * maxSize) / height;
-              height = maxSize;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          // CRITICAL FIX: Validate canvas context exists
-          if (!ctx) {
-            console.error("❌ Canvas context failed to initialize");
-            throw new Error("Image processing failed: Unable to create canvas context");
-          }
-          
-          // Draw and compress
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-          
-          // CRITICAL FIX: Validate base64 output is meaningful
-          if (!compressedBase64 || compressedBase64 === 'data:,') {
-            console.error("❌ Canvas compression failed");
-            throw new Error("Image processing failed: Canvas compression produced no output");
-          }
-          
-          console.log("Original size:", file.size, "Compressed base64 length:", compressedBase64.length);
-          console.log("Final processed dimensions:", width, "x", height);
-          
-          // Upload compressed photo to server
-          console.log("Uploading photo to server...");
+          // Upload original base64 to server - let server handle all processing
           const response = await apiRequest("/api/photos/upload-base64", {
             method: "POST",
             body: JSON.stringify({
-              base64Data: compressedBase64,
+              base64Data: base64Result,
               filename: file.name
             }),
           });
           
           if (response.ok) {
             const result = await response.json();
-            console.log("Photo uploaded successfully:", result.objectPath);
+            console.log("✅ Photo uploaded successfully:", result.objectPath);
             resolve(result.objectPath);
           } else if (response.status === 401) {
-            // CRITICAL FIX: Handle authentication errors properly
             console.error("❌ AUTHENTICATION FAILED - Token expired or invalid!");
-            console.error("This is why photos fall back to sessionStorage and break cross-platform access!");
             
-            // Show user-friendly error instead of silent fallback
             toast({
               title: "Authentication Required",
               description: "Your session has expired. Please log in again to upload photos that can be seen on all devices.",
               variant: "destructive",
             });
             
-            // Clear invalid token
             localStorage.removeItem('authToken');
-            
-            // Reject to prevent fallback - force user to re-authenticate
             reject(new Error("Authentication expired - please log in again"));
             return;
           } else {
             const error = await response.json();
             console.error("❌ PHOTO UPLOAD FAILED - Server error:", error, "Status:", response.status);
             
-            // CRITICAL FIX: DO NOT fall back to sessionStorage
-            // This was causing cross-platform photo display issues
             toast({
               title: "Photo Upload Failed",
               description: "Unable to upload photo to server. Please check your connection and try again. Without successful upload, photos won't be visible on other devices.",
               variant: "destructive",
             });
             
-            // Reject instead of fallback to prevent local-photo-* URLs in database
             reject(new Error(`Photo upload failed: ${error.message || 'Server error'}`));
           }
         } catch (error) {
-          console.error("Upload error:", error);
+          console.error("❌ Upload error:", error);
           
-          // Check if it's an auth error
           if (error instanceof Error && error.message.includes('401')) {
-            // Authentication error - don't fall back
-            console.error("❌ AUTHENTICATION ERROR DETECTED");
             toast({
               title: "Authentication Required",
               description: "Please log in again to upload photos.",
@@ -192,8 +138,6 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
             return;
           }
           
-          // CRITICAL FIX: DO NOT fall back to sessionStorage for ANY errors
-          // This was causing cross-platform photo display issues
           console.error("❌ PHOTO UPLOAD FAILED - Network or processing error:", error);
           toast({
             title: "Photo Upload Failed", 
@@ -201,23 +145,22 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
             variant: "destructive",
           });
           
-          // Reject instead of fallback to prevent local-photo-* URLs in database
           reject(error);
         }
       };
       
-      img.onerror = () => {
-        console.error("❌ Image loading failed for file:", file.name);
-        console.error("This typically indicates a corrupted, invalid, or unsupported image format");
+      reader.onerror = () => {
+        console.error("❌ File reading failed for:", file.name);
         toast({
-          title: "Invalid Image File",
-          description: `Unable to load image ${file.name}. The file may be corrupted, in an unsupported format, or not a valid image. Please try a different photo.`,
+          title: "File Reading Failed",
+          description: `Unable to read image file ${file.name}. Please try a different photo.`,
           variant: "destructive",
         });
-        reject(new Error(`Invalid or corrupted image file: ${file.name}`));
+        reject(new Error(`Failed to read image file: ${file.name}`));
       };
       
-      img.src = URL.createObjectURL(file);
+      // Read file as data URL (base64) - no client-side image validation
+      reader.readAsDataURL(file);
     });
   };
 
