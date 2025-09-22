@@ -179,9 +179,13 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       };
       
       img.onerror = () => {
-        console.error("Image loading failed");
-        const placeholder = `photo-${Date.now()}-${file.name}`;
-        resolve(placeholder);
+        console.error("Image loading failed for file:", file.name);
+        toast({
+          title: "Image Processing Failed",
+          description: `Unable to process image ${file.name}. Please try selecting a different photo.`,
+          variant: "destructive",
+        });
+        reject(new Error(`Image loading failed for ${file.name}`));
       };
       
       img.src = URL.createObjectURL(file);
