@@ -23,35 +23,22 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
         setLoading(true);
         setError(false);
         
-        console.log("🖼️ AuthenticatedImage: Fetching image from:", src);
-        console.log("🔑 Auth token available:", !!localStorage.getItem('authToken'));
-        
         // For server-side photos that require authentication
         if (src.startsWith('/objects/')) {
-          console.log("📁 Fetching authenticated object from server:", src);
           const response = await apiRequest(src);
-          console.log("📡 Server response:", response.status, response.statusText);
-          
           if (response.ok) {
             const blob = await response.blob();
             objectUrl = URL.createObjectURL(blob);
             setBlobUrl(objectUrl);
-            console.log("✅ Image loaded successfully, created blob URL");
           } else {
             throw new Error(`Failed to fetch image: ${response.status}`);
           }
         } else {
-          console.log("🌐 Using direct URL (not server object):", src);
           // For other URLs (sessionStorage, external URLs), use directly
           setBlobUrl(src);
         }
       } catch (err) {
-        console.error("❌ Error fetching authenticated image:", err);
-        console.error("❌ Error details:", {
-          src,
-          errorMessage: err instanceof Error ? err.message : String(err),
-          hasAuthToken: !!localStorage.getItem('authToken')
-        });
+        console.error("Error fetching authenticated image:", err);
         setError(true);
       } finally {
         setLoading(false);
