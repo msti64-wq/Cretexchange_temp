@@ -416,38 +416,84 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
                 multiple
                 accept="image/*"
                 onChange={async (e) => {
+                  console.log("=== FILE INPUT CHANGE EVENT TRIGGERED ===");
                   const files = Array.from(e.target.files || []);
-                  if (files.length === 0) return;
+                  console.log("Files from input:", files.length);
+                  
+                  if (files.length === 0) {
+                    console.log("❌ No files selected");
+                    return;
+                  }
                   
                   console.log("=== FILES SELECTED ===");
                   console.log("Number of files:", files.length);
+                  files.forEach((file, index) => {
+                    console.log(`File ${index + 1}: ${file.name}, ${file.size} bytes, ${file.type}`);
+                  });
                   
                   // CRITICAL FIX: Set processing state during direct upload
                   setIsProcessingPhotos(true);
                   console.log("🔄 Direct photo upload started - blocking form submission");
                   
                   const newUrls: string[] = [];
-                  for (const file of files) {
+                  const failedFiles: string[] = [];
+                  
+                  for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
                     try {
+                      console.log(`Processing file ${i + 1}/${files.length}: ${file.name}`);
                       const serverUrl = await handleDirectFileUpload(file);
+                      console.log(`✅ File ${i + 1} uploaded successfully:`, serverUrl);
                       newUrls.push(serverUrl);
                     } catch (error) {
-                      console.error("Direct upload failed for file:", file.name, error);
-                      // Don't add failed uploads to prevent temp URLs
+                      console.error(`❌ Direct upload failed for file ${i + 1} (${file.name}):`, error);
+                      failedFiles.push(file.name);
+                      
+                      // Show individual file error
+                      toast({
+                        title: "Photo Upload Failed",
+                        description: `Failed to upload ${file.name}. ${error instanceof Error ? error.message : 'Unknown error'}`,
+                        variant: "destructive",
+                      });
                     }
                   }
                   
-                  console.log("Adding new server-backed photo URLs:", newUrls);
-                  setPhotoUrls(prev => [...prev, ...newUrls]);
+                  console.log("=== UPLOAD SUMMARY ===");
+                  console.log("Successful uploads:", newUrls.length);
+                  console.log("Failed uploads:", failedFiles.length);
+                  console.log("New server-backed URLs:", newUrls);
+                  console.log("Failed files:", failedFiles);
+                  
+                  if (newUrls.length > 0) {
+                    console.log("Adding new URLs to state...");
+                    setPhotoUrls(prev => {
+                      const updated = [...prev, ...newUrls];
+                      console.log("Updated photoUrls state:", updated);
+                      return updated;
+                    });
+                  }
                   
                   // Clear processing state after direct uploads complete
                   setIsProcessingPhotos(false);
                   console.log("✅ Direct photo upload completed - form submission now allowed");
                   
-                  toast({
-                    title: "Photos Added",
-                    description: `${files.length} photo(s) added successfully.`,
-                  });
+                  // Show success message for successful uploads
+                  if (newUrls.length > 0) {
+                    toast({
+                      title: "Photos Added",
+                      description: `${newUrls.length} photo(s) uploaded successfully.` + 
+                                   (failedFiles.length > 0 ? ` ${failedFiles.length} failed.` : ''),
+                    });
+                  } else if (failedFiles.length > 0) {
+                    toast({
+                      title: "All Uploads Failed",
+                      description: `None of the ${failedFiles.length} photo(s) could be uploaded. Please try again or use different photos.`,
+                      variant: "destructive",
+                    });
+                  }
+                  
+                  // Reset the input so the same files can be selected again if needed
+                  e.target.value = '';
                 }}
                 className="hidden"
                 id="photo-input"
