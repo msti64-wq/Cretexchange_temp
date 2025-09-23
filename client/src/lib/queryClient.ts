@@ -47,13 +47,17 @@ export async function apiRequest(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  // Use API base URL in production to target the backend server
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  // Auto-detect published environment and use correct backend URL
+  const isPublishedApp = window.location.hostname.endsWith('.replit.app');
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 
+    (isPublishedApp ? 'https://washoutpro.toddkitta.repl.co' : '');
   const fullUrl = url.startsWith('/api') && apiBaseUrl ? `${apiBaseUrl}${url}` : url;
   
   // Debug logging for published app
   console.log('🚀 apiRequest DEBUG:', {
     originalUrl: url,
+    hostname: window.location.hostname,
+    isPublishedApp,
     apiBaseUrl,
     fullUrl,
     isApiCall: url.startsWith('/api'),
@@ -82,9 +86,11 @@ export const getQueryFn: <T>(options: {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    // Use API base URL in production to target the backend server  
+    // Auto-detect published environment and use correct backend URL
     const url = queryKey.join("/") as string;
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const isPublishedApp = window.location.hostname.endsWith('.replit.app');
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 
+      (isPublishedApp ? 'https://washoutpro.toddkitta.repl.co' : '');
     const fullUrl = url.startsWith('/api') && apiBaseUrl ? `${apiBaseUrl}${url}` : url;
     
     const res = await fetch(fullUrl, {
