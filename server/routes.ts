@@ -4441,6 +4441,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Photo presigned URL endpoint
   app.post('/api/objects/photos/sign', isAuthenticated, async (req: any, res) => {
+    console.log('📸 Photo presigned URL request received:', {
+      body: req.body,
+      userId: req.user?.id
+    });
     try {
       const { key } = req.body;
       if (!key || typeof key !== 'string') {
@@ -4463,10 +4467,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         method: 'GET',
         ttlSec: 120
       });
+      
+      console.log('✅ Presigned URL generated successfully:', {
+        key,
+        signedUrlLength: signedUrl.length,
+        signedUrlPreview: signedUrl.substring(0, 100) + '...'
+      });
 
       res.json({ signedUrl });
     } catch (error) {
-      console.error('Error generating presigned URL:', error);
+      console.error('❌ Error generating presigned URL:', {
+        error: error.message,
+        stack: error.stack,
+        key: req.body?.key
+      });
       res.status(500).json({ message: 'Failed to generate signed URL' });
     }
   });

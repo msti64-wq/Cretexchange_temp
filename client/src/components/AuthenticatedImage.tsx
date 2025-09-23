@@ -27,6 +27,7 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
         if (src.startsWith('/objects/photos/')) {
           // Extract the photo key from the path (e.g., '/objects/photos/photo-123.jpg' -> 'photo-123.jpg')
           const photoKey = src.replace('/objects/photos/', '');
+          console.log('🔍 AuthenticatedImage: Processing photo key:', { src, photoKey });
           
           // Get presigned URL from our API
           const response = await apiRequest('/api/objects/photos/sign', {
@@ -38,8 +39,16 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
           });
           if (response.ok) {
             const { signedUrl } = await response.json();
+            console.log('✅ AuthenticatedImage: Got signed URL:', {
+              signedUrlLength: signedUrl.length,
+              signedUrlPreview: signedUrl.substring(0, 100) + '...'
+            });
             setBlobUrl(signedUrl);
           } else {
+            console.error('❌ AuthenticatedImage: Failed to get signed URL:', {
+              status: response.status,
+              photoKey
+            });
             throw new Error(`Failed to get signed URL: ${response.status}`);
           }
         } else {
