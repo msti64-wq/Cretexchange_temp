@@ -29,11 +29,26 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
           const photoKey = src.replace('/objects/photos/', '');
           console.log('🔍 AuthenticatedImage: Processing photo key:', { src, photoKey });
           
-          // Use proxy endpoint to avoid CORS issues
+          // Fetch image data with authentication and create blob URL
           const proxyUrl = `/api/objects/photos/${encodeURIComponent(photoKey)}`;
-          console.log('🌐 AuthenticatedImage: Using proxy URL:', proxyUrl);
+          console.log('🌐 AuthenticatedImage: Fetching authenticated image:', proxyUrl);
           
-          setBlobUrl(proxyUrl);
+          const response = await apiRequest(proxyUrl);
+          if (response.ok) {
+            const blob = await response.blob();
+            objectUrl = URL.createObjectURL(blob);
+            console.log('✅ AuthenticatedImage: Created blob URL:', {
+              blobSize: blob.size,
+              blobType: blob.type
+            });
+            setBlobUrl(objectUrl);
+          } else {
+            console.error('❌ AuthenticatedImage: Failed to fetch image:', {
+              status: response.status,
+              statusText: response.statusText
+            });
+            throw new Error(`Failed to fetch image: ${response.status}`);
+          }
         } else {
           // For other URLs (sessionStorage, external URLs), use directly
           setBlobUrl(src);

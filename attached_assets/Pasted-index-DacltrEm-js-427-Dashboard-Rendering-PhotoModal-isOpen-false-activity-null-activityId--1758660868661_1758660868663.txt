@@ -1,0 +1,43 @@
+index-DacltrEm.js:427 🔧 Dashboard: Rendering PhotoModal {isOpen: false, activity: null, activityId: undefined}
+index-DacltrEm.js:427 🔧 Dashboard: Rendering PhotoModal {isOpen: false, activity: null, activityId: undefined}
+index-DacltrEm.js:427 🔧 Dashboard: Rendering PhotoModal {isOpen: false, activity: null, activityId: undefined}
+index-DacltrEm.js:427 🔧 Dashboard: Rendering PhotoModal {isOpen: false, activity: null, activityId: undefined}
+index-DacltrEm.js:427 Owner Photo Button Clicked: {id: 'c31a991c-2b9a-4346-988b-b57b98ec3ce5', driverId: 'fa5eda82-02f2-4f94-a407-8dd4af69ff47', locationId: 'ecad6bf6-0789-4493-a13c-54a649e3cda6', status: 'pending', amount: '5.00', …}
+index-DacltrEm.js:427 🔧 Dashboard: Setting modal state {activityId: 'c31a991c-2b9a-4346-988b-b57b98ec3ce5', currentModalOpen: false, currentSelectedActivity: undefined, activityData: {…}}
+index-DacltrEm.js:427 🔧 Dashboard: Modal state updated
+index-DacltrEm.js:427 🔧 Dashboard: Rendering PhotoModal {isOpen: true, activity: {…}, activityId: 'c31a991c-2b9a-4346-988b-b57b98ec3ce5'}
+index-DacltrEm.js:427 📷 PhotoModal: Activity data: {activityId: 'c31a991c-2b9a-4346-988b-b57b98ec3ce5', photoUrls: Array(1), photoUrlsLength: 1, activityKeys: Array(17), rawPhotoData: {…}}
+index-DacltrEm.js:427 🔍 AuthenticatedImage: Processing photo key: {src: '/objects/photos/photo-1758650321545-c0myngr20.jpg', photoKey: 'photo-1758650321545-c0myngr20.jpg'}
+index-DacltrEm.js:427 🌐 AuthenticatedImage: Using proxy URL: /api/objects/photos/photo-1758650321545-c0myngr20.jpg
+index-DacltrEm.js:427 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-DacltrEm.js:427
+Du @ index-DacltrEm.js:40
+Mi @ index-DacltrEm.js:40
+MA @ index-DacltrEm.js:40
+Sa @ index-DacltrEm.js:40
+Hg @ index-DacltrEm.js:40
+ga @ index-DacltrEm.js:38
+(anonymous) @ index-DacltrEm.js:40
+index-DacltrEm.js:427 🖼️ AuthenticatedImage: Rendering img element {hasBlobUrl: true, blobUrlLength: 53, blobUrlPreview: '/api/objects/photos/photo-1758650321545-c0myngr20.jpg...', loading: false, error: false}
+photo-1758650321545-c0myngr20.jpg:1  GET https://truck-wash-locator-msti64.replit.app/api/objects/photos/photo-1758650321545-c0myngr20.jpg 401 (Unauthorized)
+Image
+Bg @ index-DacltrEm.js:40
+w1 @ index-DacltrEm.js:40
+IA @ index-DacltrEm.js:40
+MA @ index-DacltrEm.js:40
+Sa @ index-DacltrEm.js:40
+j1 @ index-DacltrEm.js:40
+C @ index-DacltrEm.js:25
+F @ index-DacltrEm.js:25
+index-DacltrEm.js:427 ❌ AuthenticatedImage: Image failed to load {src: '/api/objects/photos/photo-1758650321545-c0myngr20.jpg...', error: t, naturalWidth: 0, naturalHeight: 0}
+onError @ index-DacltrEm.js:427
+rT @ index-DacltrEm.js:37
+aT @ index-DacltrEm.js:37
+iT @ index-DacltrEm.js:37
+xg @ index-DacltrEm.js:37
+PN @ index-DacltrEm.js:37
+(anonymous) @ index-DacltrEm.js:37
+Rp @ index-DacltrEm.js:40
+Yb @ index-DacltrEm.js:37
+_m @ index-DacltrEm.js:37
+ip @ index-DacltrEm.js:37
