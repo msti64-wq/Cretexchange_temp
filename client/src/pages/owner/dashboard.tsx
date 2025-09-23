@@ -41,19 +41,6 @@ export default function OwnerDashboard() {
     gcTime: 0, // Don't cache at all (renamed from cacheTime in v5)
   });
 
-  // Debug logging for activities query
-  console.log('🔧 ACTIVITIES QUERY DEBUG:', {
-    activitiesData,
-    isLoading: isActivitiesLoading,
-    isFetching: isActivitiesFetching,
-    error: activitiesError,
-    status: activitiesStatus,
-    dataType: typeof activitiesData,
-    isArray: Array.isArray(activitiesData),
-    dataLength: Array.isArray(activitiesData) ? activitiesData.length : 'N/A',
-    queryKey: [`/api/owners/activities?dateRange=${dateRange}`],
-    token: localStorage.getItem('authToken') ? 'present' : 'missing'
-  });
 
   const { data: subscriptionData } = useQuery({
     queryKey: ['/api/payments/subscription-status'],
