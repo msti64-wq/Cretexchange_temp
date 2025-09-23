@@ -4458,7 +4458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generate presigned URL for GET request with 2-minute expiry
       const signedUrl = await signObjectURL({
-        bucketName: process.env.OBJECT_BUCKET_NAME!,
+        bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
         objectName: key,
         method: 'GET',
         ttlSec: 120
