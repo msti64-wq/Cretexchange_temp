@@ -2841,22 +2841,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Object storage endpoints for photo uploads
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {
+    console.log(`📁 Object request: ${req.path} by user ${req.user?.username || 'unknown'}`);
+    
     const userId = req.user?.id;
     const objectStorageService = new ObjectStorageService();
     try {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      console.log(`📁 Object file found: ${req.path}`);
+      
       const canAccess = await objectStorageService.canAccessObjectEntity({
         objectFile,
         userId: userId,
         requestedPermission: ObjectPermission.READ,
       });
+      
       if (!canAccess) {
+        console.log(`❌ Access denied for user ${req.user?.username} to ${req.path}`);
         return res.sendStatus(401);
       }
+      
+      console.log(`✅ Access granted for user ${req.user?.username} to ${req.path}`);
       objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
       console.error("Error checking object access:", error);
       if (error instanceof ObjectNotFoundError) {
+        console.log(`❌ Object not found: ${req.path}`);
         return res.sendStatus(404);
       }
       return res.sendStatus(500);

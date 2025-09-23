@@ -229,8 +229,12 @@ export async function setupAuth(app: Express) {
 
 export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
   try {
+    console.log(`🔐 Auth check for ${req.method} ${req.path}`);
+    console.log(`🔐 Auth headers:`, req.headers.authorization ? 'Bearer token present' : 'No auth header');
+    
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log(`❌ Auth failed: Missing or invalid auth header`);
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -240,8 +244,11 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
     // Get user from database
     const user = await storage.getUserById(decoded.userId);
     if (!user) {
+      console.log(`❌ Auth failed: User not found for ID ${decoded.userId}`);
       return res.status(401).json({ message: "User not found" });
     }
+
+    console.log(`✅ Auth success: User ${user.username} (${user.role})`);
 
     // Remove password hash and attach user to request
     const { passwordHash, ...userWithoutPassword } = user;
