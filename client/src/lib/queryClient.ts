@@ -47,7 +47,11 @@ export async function apiRequest(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, {
+  // Use API base URL in production to target the backend server
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  const fullUrl = url.startsWith('/api') && apiBaseUrl ? `${apiBaseUrl}${url}` : url;
+  
+  const res = await fetch(fullUrl, {
     ...options,
     headers,
   });
@@ -69,7 +73,12 @@ export const getQueryFn: <T>(options: {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const res = await fetch(queryKey.join("/") as string, {
+    // Use API base URL in production to target the backend server  
+    const url = queryKey.join("/") as string;
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const fullUrl = url.startsWith('/api') && apiBaseUrl ? `${apiBaseUrl}${url}` : url;
+    
+    const res = await fetch(fullUrl, {
       headers,
     });
 
