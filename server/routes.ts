@@ -7,9 +7,9 @@ import { washoutActivities, withdrawals, walletTransactions, driverWallets } fro
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, signObjectURL } from "./objectStorage";
-import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
+import { ObjectPermission, setObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 // Initialize Stripe only if secret key is available
@@ -2786,7 +2786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`🔧 PHOTO UPLOAD ATTEMPT - User: ${req.user.id} (${req.user.username}), Environment: ${process.env.REPLIT_DEPLOYMENT ? 'production' : 'development'}`);
       
-      const { base64Data, filename } = req.body;
+      const { base64Data, filename, locationId } = req.body;
       
       if (!base64Data) {
         console.log("❌ PHOTO UPLOAD FAILED - No base64Data provided");
@@ -2830,11 +2830,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      // Set ACL to private
-      await setObjectAclPolicy(file, {
+      // Create ACL policy with location owner access
+      const aclPolicy: ObjectAclPolicy = {
         owner: req.user.id,
         visibility: "private"
-      });
+      };
+      
+      // If locationId is provided, add location owner read access
+      if (locationId) {
+        aclPolicy.aclRules = [
+          {
+            group: {
+              type: ObjectAccessGroupType.LOCATION_OWNER,
+              id: locationId,
+            },
+            permission: ObjectPermission.READ,
+          },
+        ];
+        console.log(`📷 Adding location owner access for location ${locationId} to uploaded photo`);
+      }
+      
+      // Set ACL policy with location owner access
+      await setObjectAclPolicy(file, aclPolicy);
       
       // Return the object path
       const objectPath = `/objects/photos/${uniqueFilename}`;
@@ -2912,21 +2929,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const userId = req.user?.id;
+    const { locationId } = req.body;
 
     try {
       const objectStorageService = new ObjectStorageService();
+      
+      // Create ACL policy with location owner access
+      const aclPolicy: ObjectAclPolicy = {
+        owner: userId,
+        visibility: "private",
+      };
+      
+      // If locationId is provided, add location owner read access
+      if (locationId) {
+        aclPolicy.aclRules = [
+          {
+            group: {
+              type: ObjectAccessGroupType.LOCATION_OWNER,
+              id: locationId,
+            },
+            permission: ObjectPermission.READ,
+          },
+        ];
+        console.log(`📷 Adding location owner access for location ${locationId} to photo ACL`);
+      }
+      
       const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
         req.body.photoURL,
-        {
-          owner: userId,
-          visibility: "private",
-        },
+        aclPolicy,
       );
 
       res.status(200).json({ objectPath });
     } catch (error) {
       console.error("Error setting photo ACL:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Backfill ACL policies for existing washout photos
+  app.post("/api/admin/backfill-photo-acls", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      
+      // Restrict to admin and super_admin roles only
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ 
+          error: 'Admin access required' 
+        });
+      }
+
+      console.log("🔄 Starting ACL backfill for existing washout photos...");
+      
+      // Get all washout activities with photo URLs
+      const activities = await db.select({
+        id: washoutActivities.id,
+        locationId: washoutActivities.locationId,
+        photoUrls: washoutActivities.photoUrls,
+        driverId: washoutActivities.driverId
+      })
+      .from(washoutActivities)
+      .where(sql`photo_urls IS NOT NULL AND array_length(photo_urls, 1) > 0`);
+
+      console.log(`Found ${activities.length} activities to process for ACL backfill`);
+
+      let updatedCount = 0;
+      let errorCount = 0;
+      const objectStorageService = new ObjectStorageService();
+
+      for (const activity of activities) {
+        if (!activity.photoUrls || activity.photoUrls.length === 0) {
+          continue;
+        }
+
+        for (const photoUrl of activity.photoUrls) {
+          try {
+            // Skip if not an object storage URL
+            if (!photoUrl.startsWith('/objects/photos/')) {
+              continue;
+            }
+
+            // Get the current ACL policy
+            const objectFile = await objectStorageService.getObjectEntityFile(photoUrl);
+            const currentPolicy = await getObjectAclPolicy(objectFile);
+
+            if (!currentPolicy) {
+              console.log(`⚠️ No ACL policy found for photo: ${photoUrl}`);
+              continue;
+            }
+
+            // Check if location owner access already exists
+            const hasLocationOwnerAccess = currentPolicy.aclRules?.some(rule => 
+              rule.group.type === ObjectAccessGroupType.LOCATION_OWNER &&
+              rule.group.id === activity.locationId
+            );
+
+            if (hasLocationOwnerAccess) {
+              console.log(`✅ Photo ${photoUrl} already has location owner access`);
+              continue;
+            }
+
+            // Add location owner access to existing ACL policy
+            const updatedPolicy: ObjectAclPolicy = {
+              ...currentPolicy,
+              aclRules: [
+                ...(currentPolicy.aclRules || []),
+                {
+                  group: {
+                    type: ObjectAccessGroupType.LOCATION_OWNER,
+                    id: activity.locationId,
+                  },
+                  permission: ObjectPermission.READ,
+                },
+              ],
+            };
+
+            await setObjectAclPolicy(objectFile, updatedPolicy);
+            updatedCount++;
+            console.log(`✅ Updated ACL for photo: ${photoUrl}, location: ${activity.locationId}`);
+
+          } catch (error) {
+            errorCount++;
+            console.error(`❌ Failed to update ACL for photo: ${photoUrl}`, error);
+          }
+        }
+      }
+
+      console.log(`🎯 ACL backfill completed: ${updatedCount} photos updated, ${errorCount} errors`);
+
+      res.json({
+        message: "ACL backfill completed",
+        activitiesProcessed: activities.length,
+        photosUpdated: updatedCount,
+        errors: errorCount
+      });
+
+    } catch (error) {
+      console.error("Error during ACL backfill:", error);
+      res.status(500).json({ error: "Failed to backfill ACL policies" });
     }
   });
 

@@ -1,4 +1,5 @@
 import { File } from "@google-cloud/storage";
+import { db } from "./db";
 
 const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
 
@@ -12,7 +13,9 @@ const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
 // - GROUP_MEMBER: the users who are members of a specific group;
 // - SUBSCRIBER: the users who are subscribers of a specific service / content
 //   creator.
-export enum ObjectAccessGroupType {}
+export enum ObjectAccessGroupType {
+  LOCATION_OWNER = "LOCATION_OWNER",
+}
 
 // The logic user group that can access the object.
 export interface ObjectAccessGroup {
@@ -82,10 +85,51 @@ abstract class BaseObjectAccessGroup implements ObjectAccessGroup {
   public abstract hasMember(userId: string): Promise<boolean>;
 }
 
+// Location owner access group - grants access to washout location owners
+class LocationOwnerAccessGroup extends BaseObjectAccessGroup {
+  constructor(locationId: string) {
+    super(ObjectAccessGroupType.LOCATION_OWNER, locationId);
+  }
+
+  // Check if the user is an owner of the specified washout location
+  public async hasMember(userId: string): Promise<boolean> {
+    try {
+      const { owners, washoutLocations } = await import("../shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+      
+      // Check if the user is an owner
+      const owner = await db.select()
+        .from(owners)
+        .where(eq(owners.userId, userId))
+        .limit(1);
+      
+      if (owner.length === 0) {
+        return false;
+      }
+      
+      // Check if this owner owns the specified location
+      const location = await db.select()
+        .from(washoutLocations)
+        .where(and(
+          eq(washoutLocations.id, this.id),
+          eq(washoutLocations.ownerId, owner[0].id)
+        ))
+        .limit(1);
+      
+      return location.length > 0;
+    } catch (error) {
+      console.error("Error checking location ownership:", error);
+      return false;
+    }
+  }
+}
+
 function createObjectAccessGroup(
   group: ObjectAccessGroup,
 ): BaseObjectAccessGroup {
   switch (group.type) {
+    case ObjectAccessGroupType.LOCATION_OWNER:
+      return new LocationOwnerAccessGroup(group.id);
     // Implement the case for each type of access group to instantiate.
     //
     // For example:

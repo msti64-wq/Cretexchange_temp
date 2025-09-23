@@ -87,7 +87,8 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
             method: "POST",
             body: JSON.stringify({
               base64Data: base64Result,
-              filename: file.name
+              filename: file.name,
+              locationId: location.id
             }),
           });
           
@@ -208,6 +209,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
         try {
           const response = await apiRequest("PUT", "/api/washout-photos", {
             photoURL: uploadURL,
+            locationId: location.id,
           });
           
           if (response.ok) {
