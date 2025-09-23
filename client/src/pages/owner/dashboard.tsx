@@ -41,6 +41,10 @@ export default function OwnerDashboard() {
     gcTime: 0, // Don't cache at all (renamed from cacheTime in v5)
   });
 
+  // Check for authentication errors
+  const isAuthError = activitiesError && activitiesError.toString().includes('401');
+  const isDashboardAuthError = activitiesError && activitiesError.toString().includes('Invalid token');
+
 
   const { data: subscriptionData } = useQuery({
     queryKey: ['/api/payments/subscription-status'],
@@ -116,7 +120,11 @@ export default function OwnerDashboard() {
   }
 
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
-  const recentActivities = Array.isArray(activitiesData) ? activitiesData : [];
+  
+  // CRITICAL FIX: Force empty activities when authentication fails to prevent phantom data
+  const recentActivities = (isAuthError || isDashboardAuthError) 
+    ? [] 
+    : Array.isArray(activitiesData) ? activitiesData : [];
   
   
 
@@ -403,12 +411,28 @@ export default function OwnerDashboard() {
                   </div>
                 ))}
               </div>
+            ) : (isAuthError || isDashboardAuthError) ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <X className="w-8 h-8 text-red-600 dark:text-red-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Authentication Required</h3>
+                <p className="text-muted-foreground mb-4">Your session has expired. Please log in again to view your washout activities.</p>
+                <Button
+                  onClick={logout}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  data-testid="button-reauth"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Log In Again
+                </Button>
+              </div>
             ) : !recentActivities?.length ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>No activity found for this time period</p>
-                <div className="mt-4 text-xs bg-red-100 p-2 rounded">
-                  DEBUG: user={user?.id} | dateRange={dateRange} | length={recentActivities?.length}
+                <div className="mt-4 text-xs bg-blue-100 dark:bg-blue-900/20 p-2 rounded">
+                  DEBUG: user={user?.id} | dateRange={dateRange} | length={recentActivities?.length} | authError={!!activitiesError}
                 </div>
               </div>
             ) : (
