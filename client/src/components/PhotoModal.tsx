@@ -66,13 +66,6 @@ export function PhotoModal({
   // Robust photo URL extraction to handle different API response formats
   const photoUrls = getPhotoUrls(activity);
   
-  // Debug photo URLs to understand what's happening
-  console.log("📸 PhotoModal: Activity data:", activity);
-  console.log("📸 PhotoModal: Extracted photo URLs:", photoUrls);
-  photoUrls.forEach((url, index) => {
-    console.log(`📸 Photo ${index + 1}: "${url}" - needs auth: ${needsAuthentication(url)}`);
-  });
-  
   const status = activity.status;
   const amount = activity.amount || 0;
   const driverName = `${activity.driver?.user?.firstName || ''} ${activity.driver?.user?.lastName || ''}`.trim();

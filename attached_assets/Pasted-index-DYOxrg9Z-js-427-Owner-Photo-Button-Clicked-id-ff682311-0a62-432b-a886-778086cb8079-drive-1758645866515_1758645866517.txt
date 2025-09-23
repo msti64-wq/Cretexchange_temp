@@ -1,0 +1,50 @@
+index-DYOxrg9Z.js:427 Owner Photo Button Clicked: {id: 'ff682311-0a62-432b-a886-778086cb8079', driverId: 'fa5eda82-02f2-4f94-a407-8dd4af69ff47', locationId: 'ecad6bf6-0789-4493-a13c-54a649e3cda6', status: 'pending', amount: '5.00', …}
+index-DYOxrg9Z.js:427 📸 PhotoModal: Activity data: {id: 'ff682311-0a62-432b-a886-778086cb8079', driverId: 'fa5eda82-02f2-4f94-a407-8dd4af69ff47', locationId: 'ecad6bf6-0789-4493-a13c-54a649e3cda6', status: 'pending', amount: '5.00', …}
+index-DYOxrg9Z.js:427 📸 PhotoModal: Extracted photo URLs: ['/objects/photos/photo-1758645781935-2kjnh7h6l.jpg']
+index-DYOxrg9Z.js:427 📸 PhotoModal: Activity data: {id: 'ff682311-0a62-432b-a886-778086cb8079', driverId: 'fa5eda82-02f2-4f94-a407-8dd4af69ff47', locationId: 'ecad6bf6-0789-4493-a13c-54a649e3cda6', status: 'pending', amount: '5.00', …}
+index-DYOxrg9Z.js:427 📸 PhotoModal: Extracted photo URLs: ['/objects/photos/photo-1758645781935-2kjnh7h6l.jpg']
+index-DYOxrg9Z.js:40 ReferenceError: Cannot access 'g' before initialization
+    at index-DYOxrg9Z.js:427:155678
+    at Array.forEach (<anonymous>)
+    at lm (index-DYOxrg9Z.js:427:155609)
+    at Sp (index-DYOxrg9Z.js:38:16998)
+    at Wf (index-DYOxrg9Z.js:40:3139)
+    at P1 (index-DYOxrg9Z.js:40:44804)
+    at S1 (index-DYOxrg9Z.js:40:39766)
+    at OA (index-DYOxrg9Z.js:40:39694)
+    at Kd (index-DYOxrg9Z.js:40:39547)
+    at th (index-DYOxrg9Z.js:40:35914)
+Bf @ index-DYOxrg9Z.js:40
+s.callback @ index-DYOxrg9Z.js:40
+Pg @ index-DYOxrg9Z.js:38
+Bg @ index-DYOxrg9Z.js:40
+w1 @ index-DYOxrg9Z.js:40
+IA @ index-DYOxrg9Z.js:40
+MA @ index-DYOxrg9Z.js:40
+Sa @ index-DYOxrg9Z.js:40
+Hg @ index-DYOxrg9Z.js:40
+ga @ index-DYOxrg9Z.js:38
+(anonymous) @ index-DYOxrg9Z.js:40
+index-DYOxrg9Z.js:427 Uncaught ReferenceError: Cannot access 'g' before initialization
+    at index-DYOxrg9Z.js:427:155678
+    at Array.forEach (<anonymous>)
+    at lm (index-DYOxrg9Z.js:427:155609)
+    at Sp (index-DYOxrg9Z.js:38:16998)
+    at Wf (index-DYOxrg9Z.js:40:3139)
+    at P1 (index-DYOxrg9Z.js:40:44804)
+    at S1 (index-DYOxrg9Z.js:40:39766)
+    at OA (index-DYOxrg9Z.js:40:39694)
+    at Kd (index-DYOxrg9Z.js:40:39547)
+    at th (index-DYOxrg9Z.js:40:35914)
+(anonymous) @ index-DYOxrg9Z.js:427
+lm @ index-DYOxrg9Z.js:427
+Sp @ index-DYOxrg9Z.js:38
+Wf @ index-DYOxrg9Z.js:40
+P1 @ index-DYOxrg9Z.js:40
+S1 @ index-DYOxrg9Z.js:40
+OA @ index-DYOxrg9Z.js:40
+Kd @ index-DYOxrg9Z.js:40
+th @ index-DYOxrg9Z.js:40
+Hg @ index-DYOxrg9Z.js:40
+ga @ index-DYOxrg9Z.js:38
+(anonymous) @ index-DYOxrg9Z.js:40
