@@ -484,8 +484,15 @@ export default function OwnerDashboard() {
                           className="text-xs h-9 px-3 min-w-[70px]"
                           onClick={() => {
                             console.log("Owner Photo Button Clicked:", activity);
+                            console.log("🔧 Dashboard: Setting modal state", {
+                              activityId: activity.id,
+                              currentModalOpen: isPhotoModalOpen,
+                              currentSelectedActivity: selectedActivity?.id,
+                              activityData: activity
+                            });
                             setSelectedActivity(activity);
                             setIsPhotoModalOpen(true);
+                            console.log("🔧 Dashboard: Modal state updated");
                           }}
                           data-testid={`button-view-photos-${index}`}
                         >
@@ -545,8 +552,15 @@ export default function OwnerDashboard() {
                           className="text-xs h-8 px-3"
                           onClick={() => {
                             console.log("Owner Photo Button Clicked:", activity);
+                            console.log("🔧 Dashboard: Setting modal state", {
+                              activityId: activity.id,
+                              currentModalOpen: isPhotoModalOpen,
+                              currentSelectedActivity: selectedActivity?.id,
+                              activityData: activity
+                            });
                             setSelectedActivity(activity);
                             setIsPhotoModalOpen(true);
+                            console.log("🔧 Dashboard: Modal state updated");
                           }}
                           data-testid={`button-view-photos-${index}`}
                         >
@@ -641,9 +655,15 @@ export default function OwnerDashboard() {
         </StatCard>
       </main>
 
+{console.log("🔧 Dashboard: Rendering PhotoModal", {
+        isOpen: isPhotoModalOpen,
+        activity: selectedActivity,
+        activityId: selectedActivity?.id
+      })}
       <PhotoModal
         isOpen={isPhotoModalOpen}
         onClose={() => {
+          console.log("🔧 Dashboard: PhotoModal onClose called");
           setIsPhotoModalOpen(false);
           setSelectedActivity(null);
         }}
