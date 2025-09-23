@@ -74,7 +74,7 @@ export const getQueryFn: <T>(options: {
     }
 
     // Published apps serve both frontend and backend from same domain
-    const url = queryKey.join("/") as string;
+    const url = queryKey[0] as string; // Use first element directly instead of joining
     
     const res = await fetch(url, {
       headers,
@@ -103,14 +103,3 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Targeted cache clearing for phantom data issues
-if (typeof window !== 'undefined') {
-  // Clear only activity-related queries
-  queryClient.removeQueries({ 
-    predicate: (query) => 
-      query.queryKey.some(key => 
-        typeof key === 'string' && key.includes('activities')
-      )
-  });
-  console.log('🧹 Cleared activity-related queries');
-}

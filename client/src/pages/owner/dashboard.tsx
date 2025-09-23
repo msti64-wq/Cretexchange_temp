@@ -118,20 +118,6 @@ export default function OwnerDashboard() {
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
   const recentActivities = Array.isArray(activitiesData) ? activitiesData : [];
   
-  // DEBUGGING: Log the exact data being processed
-  console.log('🎯 ACTIVITIES PROCESSING:', {
-    activitiesData,
-    dataType: typeof activitiesData,
-    isArray: Array.isArray(activitiesData),
-    length: Array.isArray(activitiesData) ? activitiesData.length : 'N/A',
-    recentActivitiesLength: recentActivities.length,
-    firstActivity: recentActivities.length > 0 ? recentActivities[0] : 'N/A',
-    firstActivityPhotoUrls: recentActivities.length > 0 ? recentActivities[0]?.photoUrls : 'N/A',
-    firstActivityKeys: recentActivities.length > 0 ? Object.keys(recentActivities[0]) : 'N/A',
-    allActivityIds: recentActivities.map((a: any) => a.id),
-    targetActivityId: '13664b1f-201c-4b7e-87b8-6b44776e1bcd',
-    targetActivity: recentActivities.find((a: any) => a.id === '13664b1f-201c-4b7e-87b8-6b44776e1bcd')
-  });
   
 
   // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
@@ -673,15 +659,9 @@ export default function OwnerDashboard() {
         </StatCard>
       </main>
 
-{console.log("🔧 Dashboard: Rendering PhotoModal", {
-        isOpen: isPhotoModalOpen,
-        activity: selectedActivity,
-        activityId: selectedActivity?.id
-      })}
       <PhotoModal
         isOpen={isPhotoModalOpen}
         onClose={() => {
-          console.log("🔧 Dashboard: PhotoModal onClose called");
           setIsPhotoModalOpen(false);
           setSelectedActivity(null);
         }}
