@@ -34,11 +34,25 @@ export default function OwnerDashboard() {
   });
 
   // Separate query for activities with date range filtering
-  const { data: activitiesData, isLoading: isActivitiesLoading, isFetching: isActivitiesFetching } = useQuery({
+  const { data: activitiesData, isLoading: isActivitiesLoading, isFetching: isActivitiesFetching, error: activitiesError, status: activitiesStatus } = useQuery({
     queryKey: [`/api/owners/activities?dateRange=${dateRange}`],
     refetchInterval: 30000, // Refresh every 30 seconds
     staleTime: 0, // Force fresh data
     gcTime: 0, // Don't cache at all (renamed from cacheTime in v5)
+  });
+
+  // Debug logging for activities query
+  console.log('🔧 ACTIVITIES QUERY DEBUG:', {
+    activitiesData,
+    isLoading: isActivitiesLoading,
+    isFetching: isActivitiesFetching,
+    error: activitiesError,
+    status: activitiesStatus,
+    dataType: typeof activitiesData,
+    isArray: Array.isArray(activitiesData),
+    dataLength: Array.isArray(activitiesData) ? activitiesData.length : 'N/A',
+    queryKey: [`/api/owners/activities?dateRange=${dateRange}`],
+    token: localStorage.getItem('authToken') ? 'present' : 'missing'
   });
 
   const { data: subscriptionData } = useQuery({
