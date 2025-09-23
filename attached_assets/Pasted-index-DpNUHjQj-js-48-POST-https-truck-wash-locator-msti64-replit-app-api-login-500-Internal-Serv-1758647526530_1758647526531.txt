@@ -1,0 +1,57 @@
+index-DpNUHjQj.js:48  POST https://truck-wash-locator-msti64.replit.app/api/login 500 (Internal Server Error)
+Oe @ index-DpNUHjQj.js:48
+mutationFn @ index-DpNUHjQj.js:427
+fn @ index-DpNUHjQj.js:48
+w @ index-DpNUHjQj.js:48
+start @ index-DpNUHjQj.js:48
+execute @ index-DpNUHjQj.js:48
+await in execute
+mutate @ index-DpNUHjQj.js:48
+(anonymous) @ index-DpNUHjQj.js:48
+u @ index-DpNUHjQj.js:427
+rT @ index-DpNUHjQj.js:37
+aT @ index-DpNUHjQj.js:37
+iT @ index-DpNUHjQj.js:37
+xg @ index-DpNUHjQj.js:37
+PN @ index-DpNUHjQj.js:37
+(anonymous) @ index-DpNUHjQj.js:37
+Rp @ index-DpNUHjQj.js:40
+Yb @ index-DpNUHjQj.js:37
+_m @ index-DpNUHjQj.js:37
+ip @ index-DpNUHjQj.js:37
+bT @ index-DpNUHjQj.js:37
+index-DpNUHjQj.js:427 Owner Photo Button Clicked: {id: 'ff682311-0a62-432b-a886-778086cb8079', driverId: 'fa5eda82-02f2-4f94-a407-8dd4af69ff47', locationId: 'ecad6bf6-0789-4493-a13c-54a649e3cda6', status: 'pending', amount: '5.00', …}
+index-DpNUHjQj.js:427 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-DpNUHjQj.js:427
+Du @ index-DpNUHjQj.js:40
+Mi @ index-DpNUHjQj.js:40
+MA @ index-DpNUHjQj.js:40
+Sa @ index-DpNUHjQj.js:40
+Hg @ index-DpNUHjQj.js:40
+ga @ index-DpNUHjQj.js:38
+(anonymous) @ index-DpNUHjQj.js:40
+index-DpNUHjQj.js:48  GET https://truck-wash-locator-msti64.replit.app/objects/photos/photo-1758645781935-2kjnh7h6l.jpg 401 (Unauthorized)
+Oe @ index-DpNUHjQj.js:48
+(anonymous) @ index-DpNUHjQj.js:427
+(anonymous) @ index-DpNUHjQj.js:427
+Du @ index-DpNUHjQj.js:40
+Mi @ index-DpNUHjQj.js:40
+MA @ index-DpNUHjQj.js:40
+Sa @ index-DpNUHjQj.js:40
+Hg @ index-DpNUHjQj.js:40
+ga @ index-DpNUHjQj.js:38
+(anonymous) @ index-DpNUHjQj.js:40
+index-DpNUHjQj.js:427 Error fetching authenticated image: Error: 401: Unauthorized
+    at aS (index-DpNUHjQj.js:48:42800)
+    at async Oe (index-DpNUHjQj.js:48:43123)
+    at async index-DpNUHjQj.js:427:154252
+(anonymous) @ index-DpNUHjQj.js:427
+await in (anonymous)
+(anonymous) @ index-DpNUHjQj.js:427
+Du @ index-DpNUHjQj.js:40
+Mi @ index-DpNUHjQj.js:40
+MA @ index-DpNUHjQj.js:40
+Sa @ index-DpNUHjQj.js:40
+Hg @ index-DpNUHjQj.js:40
+ga @ index-DpNUHjQj.js:38
+(anonymous) @ index-DpNUHjQj.js:40
