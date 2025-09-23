@@ -4477,8 +4477,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ signedUrl });
     } catch (error) {
       console.error('❌ Error generating presigned URL:', {
-        error: error.message,
-        stack: error.stack,
+        error: (error as Error).message,
+        stack: (error as Error).stack,
         key: req.body?.key
       });
       res.status(500).json({ message: 'Failed to generate signed URL' });

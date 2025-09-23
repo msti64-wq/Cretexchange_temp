@@ -66,6 +66,19 @@ export function PhotoModal({
   // Robust photo URL extraction to handle different API response formats
   const photoUrls = getPhotoUrls(activity);
   
+  // Debug logging to see what photo URLs we extracted
+  console.log('📷 PhotoModal: Activity data:', {
+    activityId: activity.id,
+    photoUrls,
+    photoUrlsLength: photoUrls.length,
+    activityKeys: Object.keys(activity),
+    rawPhotoData: {
+      photoUrls: activity.photoUrls,
+      photo_urls: activity.photo_urls,
+      washoutActivities: activity.washout_activities?.photo_urls
+    }
+  });
+  
   const status = activity.status;
   const amount = activity.amount || 0;
   const driverName = `${activity.driver?.user?.firstName || ''} ${activity.driver?.user?.lastName || ''}`.trim();
