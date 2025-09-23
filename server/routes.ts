@@ -7,7 +7,7 @@ import { washoutActivities, withdrawals, walletTransactions, driverWallets } fro
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, signObjectURL } from "./objectStorage";
-import { ObjectPermission, setObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType } from "./objectAcl";
+import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -3018,7 +3018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             // Check if location owner access already exists
-            const hasLocationOwnerAccess = currentPolicy.aclRules?.some(rule => 
+            const hasLocationOwnerAccess = currentPolicy.aclRules?.some((rule: any) => 
               rule.group.type === ObjectAccessGroupType.LOCATION_OWNER &&
               rule.group.id === activity.locationId
             );
@@ -4592,7 +4592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Photo proxy endpoint (CORS-free alternative to signed URLs)
+  // Photo proxy endpoint with ACL authorization
   app.get('/api/objects/photos/:key', isAuthenticated, async (req: any, res) => {
     try {
       const { key } = req.params;
@@ -4606,76 +4606,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Photo key is required' });
       }
 
-      // Validate user has access to this photo
+      // Validate user exists
       const user = await storage.getUser(req.user.id);
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      // For demo: Allow all authenticated users to access photos
-      // In production: Add proper authorization checks here
+      // Use ACL system to check if user has access to this photo
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = `/objects/photos/${key}`;
       
-      // Get signed URL for internal use
-      console.log('🔗 Creating signed URL for:', {
-        bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID,
-        objectName: key
+      console.log('🔒 Checking ACL permissions for:', {
+        objectPath,
+        userId: req.user.id
       });
-      
-      const signedUrl = await signObjectURL({
-        bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
-        objectName: key,
-        method: 'GET',
-        ttlSec: 120
-      });
-      
-      console.log('✅ Signed URL created, fetching image...');
-      
-      // Fetch image from GCS and proxy it
-      const imageResponse = await fetch(signedUrl);
-      console.log('📥 GCS response:', {
-        status: imageResponse.status,
-        statusText: imageResponse.statusText,
-        headers: Object.fromEntries(imageResponse.headers.entries())
-      });
-      
-      if (!imageResponse.ok) {
-        console.error('❌ Image not found in GCS:', {
-          key,
-          status: imageResponse.status,
-          statusText: imageResponse.statusText
+
+      try {
+        // Get the object file and check ACL permissions
+        const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+        const hasAccess = await canAccessObject({
+          userId: req.user.id,
+          objectFile,
+          requestedPermission: ObjectPermission.READ
         });
-        return res.status(404).json({ message: 'Image not found' });
-      }
+        
+        if (!hasAccess) {
+          console.log('❌ Access denied for user:', {
+            userId: req.user.id,
+            objectPath,
+            reason: 'ACL check failed'
+          });
+          return res.status(404).json({ message: 'Image not found' });
+        }
 
-      // Set appropriate headers for image serving
-      const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-      const contentLength = imageResponse.headers.get('content-length');
-      
-      res.set({
-        'Content-Type': contentType,
-        'Cache-Control': 'private, max-age=3600',
-        ...(contentLength && { 'Content-Length': contentLength })
-      });
-
-      // Stream the image data to the response
-      if (imageResponse.body) {
-        const reader = imageResponse.body.getReader();
-        const pump = async () => {
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              res.write(value);
-            }
-            res.end();
-          } catch (error) {
-            console.error('Error streaming image:', error);
-            res.end();
-          }
-        };
-        pump();
-      } else {
-        res.status(500).json({ message: 'Failed to stream image' });
+        console.log('✅ ACL check passed, serving photo');
+        
+        // Use the ObjectStorageService to properly download and serve the photo
+        await objectStorageService.downloadObject(objectFile, res);
+        
+      } catch (error: any) {
+        if (error instanceof ObjectNotFoundError) {
+          console.log('❌ Object not found:', {
+            objectPath,
+            error: error.message
+          });
+          return res.status(404).json({ message: 'Image not found' });
+        }
+        throw error;
       }
       
     } catch (error) {
