@@ -104,25 +104,44 @@ export const queryClient = new QueryClient({
   },
 });
 
-// EMERGENCY: Force complete cache clearing every time to eliminate phantom data
+// EMERGENCY: Force complete cache clearing and fresh data fetch
 if (typeof window !== 'undefined') {
+  // Clear all React Query caches
   queryClient.clear();
   queryClient.invalidateQueries();
   queryClient.removeQueries();
   
-  // Clear all possible storage locations
+  // Clear ALL browser storage
   try {
     localStorage.clear();
     sessionStorage.clear();
+    
+    // Clear browser caches
     if ('caches' in window) {
       caches.keys().then(names => {
         names.forEach(name => caches.delete(name));
       });
     }
+    
+    // Clear IndexedDB
+    if ('indexedDB' in window) {
+      const dbs = ['keyval-store', 'replit-app-data'];
+      dbs.forEach(dbName => {
+        indexedDB.deleteDatabase(dbName);
+      });
+    }
+    
   } catch (e) {
     console.warn('Cache clearing failed:', e);
   }
   
-  console.log('🔥 EMERGENCY CACHE CLEAR - All caches forcibly cleared');
+  console.log('🔥 EMERGENCY TOTAL CACHE CLEAR - All storage and caches cleared');
+  
+  // Force page reload to eliminate ALL cached data
+  setTimeout(() => {
+    if (location.pathname !== '/login') {
+      window.location.reload();
+    }
+  }, 1000);
 }
 
