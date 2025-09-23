@@ -103,8 +103,42 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Clear stale cached data on app load
+// Aggressive cache clearing to fix phantom data issues
 if (typeof window !== 'undefined') {
+  // Clear TanStack Query cache
   queryClient.clear();
-  console.log('🧹 Cleared all query cache to fix stale data issues');
+  
+  // Clear localStorage cache
+  try {
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('activity') || key.includes('activities') || key.includes('washout')) {
+        localStorage.removeItem(key);
+        console.log(`🧹 Removed localStorage key: ${key}`);
+      }
+    });
+  } catch (e) {
+    console.warn('Could not clear localStorage:', e);
+  }
+  
+  // Clear sessionStorage cache
+  try {
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.includes('activity') || key.includes('activities') || key.includes('washout')) {
+        sessionStorage.removeItem(key);
+        console.log(`🧹 Removed sessionStorage key: ${key}`);
+      }
+    });
+  } catch (e) {
+    console.warn('Could not clear sessionStorage:', e);
+  }
+  
+  // Force invalidate specific query keys
+  queryClient.invalidateQueries({ queryKey: ['/api/owners/activities'] });
+  queryClient.invalidateQueries({ predicate: (query) => 
+    query.queryKey.some(key => 
+      typeof key === 'string' && key.includes('activities')
+    )
+  });
+  
+  console.log('🧹 Cleared all caches (TanStack Query, localStorage, sessionStorage)');
 }
