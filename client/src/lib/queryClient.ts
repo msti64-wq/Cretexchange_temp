@@ -94,7 +94,7 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      staleTime: 5 * 60 * 1000, // 5 minutes instead of infinity
       retry: false,
     },
     mutations: {
@@ -102,3 +102,9 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Clear stale cached data on app load
+if (typeof window !== 'undefined') {
+  queryClient.clear();
+  console.log('🧹 Cleared all query cache to fix stale data issues');
+}
