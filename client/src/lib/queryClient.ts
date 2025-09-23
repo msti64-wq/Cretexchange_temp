@@ -49,8 +49,7 @@ export async function apiRequest(
 
   // Auto-detect published environment and use correct backend URL
   const isPublishedApp = window.location.hostname.endsWith('.replit.app');
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 
-    (isPublishedApp ? 'https://washoutpro.toddkitta.repl.co' : '');
+  const apiBaseUrl = isPublishedApp ? 'https://washoutpro.toddkitta.repl.co' : '';
   const fullUrl = url.startsWith('/api') && apiBaseUrl ? `${apiBaseUrl}${url}` : url;
   
   // Debug logging for published app
@@ -89,8 +88,7 @@ export const getQueryFn: <T>(options: {
     // Auto-detect published environment and use correct backend URL
     const url = queryKey.join("/") as string;
     const isPublishedApp = window.location.hostname.endsWith('.replit.app');
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 
-      (isPublishedApp ? 'https://washoutpro.toddkitta.repl.co' : '');
+    const apiBaseUrl = isPublishedApp ? 'https://washoutpro.toddkitta.repl.co' : '';
     const fullUrl = url.startsWith('/api') && apiBaseUrl ? `${apiBaseUrl}${url}` : url;
     
     const res = await fetch(fullUrl, {
