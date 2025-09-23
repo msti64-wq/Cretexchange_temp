@@ -94,7 +94,8 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes instead of infinity
+      staleTime: 0, // Force fresh data every time
+      gcTime: 0, // Don't cache at all
       retry: false,
     },
     mutations: {
@@ -102,4 +103,26 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// EMERGENCY: Force complete cache clearing every time to eliminate phantom data
+if (typeof window !== 'undefined') {
+  queryClient.clear();
+  queryClient.invalidateQueries();
+  queryClient.removeQueries();
+  
+  // Clear all possible storage locations
+  try {
+    localStorage.clear();
+    sessionStorage.clear();
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+  } catch (e) {
+    console.warn('Cache clearing failed:', e);
+  }
+  
+  console.log('🔥 EMERGENCY CACHE CLEAR - All caches forcibly cleared');
+}
 
