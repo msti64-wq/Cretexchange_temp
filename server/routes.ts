@@ -346,7 +346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/system/batch-job-info', (req, res) => {
     const environment = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
     const baseUrl = process.env.REPLIT_DEPLOYMENT 
-      ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+      ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || `${process.env.REPL_SLUG}.replit.app`}`
       : 'http://localhost:5000';
       
     res.json({
