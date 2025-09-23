@@ -4439,7 +4439,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Photo presigned URL endpoint
+  // Photo proxy endpoint (CORS-free alternative to signed URLs)
+  app.get('/api/objects/photos/:key', isAuthenticated, async (req: any, res) => {
+    try {
+      const { key } = req.params;
+      if (!key) {
+        return res.status(400).json({ message: 'Photo key is required' });
+      }
+
+      // Validate user has access to this photo
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // For demo: Allow all authenticated users to access photos
+      // In production: Add proper authorization checks here
+      
+      // Get signed URL for internal use
+      const signedUrl = await signObjectURL({
+        bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
+        objectName: key,
+        method: 'GET',
+        ttlSec: 120
+      });
+      
+      // Fetch image from GCS and proxy it
+      const imageResponse = await fetch(signedUrl);
+      if (!imageResponse.ok) {
+        return res.status(404).json({ message: 'Image not found' });
+      }
+
+      // Set appropriate headers for image serving
+      const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+      const contentLength = imageResponse.headers.get('content-length');
+      
+      res.set({
+        'Content-Type': contentType,
+        'Cache-Control': 'private, max-age=3600',
+        ...(contentLength && { 'Content-Length': contentLength })
+      });
+
+      // Stream the image data to the response
+      if (imageResponse.body) {
+        const reader = imageResponse.body.getReader();
+        const pump = async () => {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              res.write(value);
+            }
+            res.end();
+          } catch (error) {
+            console.error('Error streaming image:', error);
+            res.end();
+          }
+        };
+        pump();
+      } else {
+        res.status(500).json({ message: 'Failed to stream image' });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error serving photo:', {
+        error: (error as Error).message,
+        stack: (error as Error).stack,
+        key: req.params?.key
+      });
+      res.status(500).json({ message: 'Failed to serve photo' });
+    }
+  });
+
+  // Legacy photo presigned URL endpoint (for debugging)
   app.post('/api/objects/photos/sign', isAuthenticated, async (req: any, res) => {
     console.log('📸 Photo presigned URL request received:', {
       body: req.body,

@@ -29,32 +29,11 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
           const photoKey = src.replace('/objects/photos/', '');
           console.log('🔍 AuthenticatedImage: Processing photo key:', { src, photoKey });
           
-          // Get presigned URL from our API
-          console.log('🌐 AuthenticatedImage: Making API request to /api/objects/photos/sign');
-          const response = await apiRequest('/api/objects/photos/sign', {
-            method: 'POST',
-            body: JSON.stringify({ key: photoKey }),
-            headers: {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0',
-            },
-          });
-          if (response.ok) {
-            const { signedUrl } = await response.json();
-            console.log('✅ AuthenticatedImage: Got signed URL:', {
-              signedUrlLength: signedUrl.length,
-              signedUrlPreview: signedUrl.substring(0, 100) + '...'
-            });
-            setBlobUrl(signedUrl);
-          } else {
-            console.error('❌ AuthenticatedImage: Failed to get signed URL:', {
-              status: response.status,
-              photoKey
-            });
-            throw new Error(`Failed to get signed URL: ${response.status}`);
-          }
+          // Use proxy endpoint to avoid CORS issues
+          const proxyUrl = `/api/objects/photos/${encodeURIComponent(photoKey)}`;
+          console.log('🌐 AuthenticatedImage: Using proxy URL:', proxyUrl);
+          
+          setBlobUrl(proxyUrl);
         } else {
           // For other URLs (sessionStorage, external URLs), use directly
           setBlobUrl(src);
