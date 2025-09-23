@@ -1190,7 +1190,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/owners/activities', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      console.log('🔍 Owner activities request:', {
+        userId,
+        query: req.query,
+        timestamp: new Date().toISOString()
+      });
+      
       const owner = await storage.getOwner(userId);
+      console.log('👤 Owner lookup result:', {
+        found: !!owner,
+        ownerId: owner?.id,
+        ownerUserId: owner?.userId
+      });
       
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
@@ -1279,7 +1290,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           acc[activity.status] = (acc[activity.status] || 0) + 1;
           return acc;
         }, {} as Record<string, number>),
-        sampleActivityIds: activities.slice(0, 3).map(a => a.id)
+        sampleActivityIds: activities.slice(0, 3).map(a => a.id),
+        allActivityIds: activities.map(a => a.id),
+        activitiesWithPhotos: activities.filter(a => a.photoUrls && a.photoUrls.length > 0)
+          .map(a => ({ id: a.id, photoUrls: a.photoUrls }))
       });
 
       res.json(activities);
