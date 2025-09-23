@@ -125,7 +125,12 @@ export default function OwnerDashboard() {
     isArray: Array.isArray(activitiesData),
     length: Array.isArray(activitiesData) ? activitiesData.length : 'N/A',
     recentActivitiesLength: recentActivities.length,
-    firstActivity: recentActivities.length > 0 ? recentActivities[0] : 'N/A'
+    firstActivity: recentActivities.length > 0 ? recentActivities[0] : 'N/A',
+    firstActivityPhotoUrls: recentActivities.length > 0 ? recentActivities[0]?.photoUrls : 'N/A',
+    firstActivityKeys: recentActivities.length > 0 ? Object.keys(recentActivities[0]) : 'N/A',
+    allActivityIds: recentActivities.map((a: any) => a.id),
+    targetActivityId: '13664b1f-201c-4b7e-87b8-6b44776e1bcd',
+    targetActivity: recentActivities.find((a: any) => a.id === '13664b1f-201c-4b7e-87b8-6b44776e1bcd')
   });
   
 

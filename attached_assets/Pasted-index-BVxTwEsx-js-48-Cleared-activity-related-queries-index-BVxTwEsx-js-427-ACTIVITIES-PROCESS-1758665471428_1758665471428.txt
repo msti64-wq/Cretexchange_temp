@@ -1,0 +1,49 @@
+index-BVxTwEsx.js:48 🧹 Cleared activity-related queries
+index-BVxTwEsx.js:427 🎯 ACTIVITIES PROCESSING: {activitiesData: Array(4), dataType: 'object', isArray: true, length: 4, recentActivitiesLength: 4, …}
+index-BVxTwEsx.js:427 🔧 Dashboard: Rendering PhotoModal {isOpen: false, activity: null, activityId: undefined}
+index-BVxTwEsx.js:427 Owner Photo Button Clicked: {id: '13664b1f-201c-4b7e-87b8-6b44776e1bcd', driverId: 'fa5eda82-02f2-4f94-a407-8dd4af69ff47', locationId: 'ecad6bf6-0789-4493-a13c-54a649e3cda6', status: 'pending', amount: '5.00', …}
+index-BVxTwEsx.js:427 🔧 Dashboard: Setting modal state {activityId: '13664b1f-201c-4b7e-87b8-6b44776e1bcd', currentModalOpen: false, currentSelectedActivity: undefined, activityData: {…}}
+index-BVxTwEsx.js:427 🔧 Dashboard: Modal state updated
+index-BVxTwEsx.js:427 🎯 ACTIVITIES PROCESSING: {activitiesData: Array(4), dataType: 'object', isArray: true, length: 4, recentActivitiesLength: 4, …}
+index-BVxTwEsx.js:427 🔧 Dashboard: Rendering PhotoModal {isOpen: true, activity: {…}, activityId: '13664b1f-201c-4b7e-87b8-6b44776e1bcd'}
+index-BVxTwEsx.js:427 📷 PhotoModal: Activity data: {activityId: '13664b1f-201c-4b7e-87b8-6b44776e1bcd', photoUrls: Array(1), photoUrlsLength: 1, activityKeys: Array(17), rawPhotoData: {…}}
+index-BVxTwEsx.js:427 🔍 AuthenticatedImage: Processing photo key: {src: '/objects/photos/photo-1758664506209-2a45agdy1.jpg', photoKey: 'photo-1758664506209-2a45agdy1.jpg'}
+index-BVxTwEsx.js:427 🌐 AuthenticatedImage: Fetching authenticated image: /api/objects/photos/photo-1758664506209-2a45agdy1.jpg
+index-BVxTwEsx.js:427 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-BVxTwEsx.js:427
+Du @ index-BVxTwEsx.js:40
+Mi @ index-BVxTwEsx.js:40
+MA @ index-BVxTwEsx.js:40
+Sa @ index-BVxTwEsx.js:40
+Hg @ index-BVxTwEsx.js:40
+ga @ index-BVxTwEsx.js:38
+(anonymous) @ index-BVxTwEsx.js:40
+index-BVxTwEsx.js:427 📷 PhotoModal: Activity data: {activityId: '13664b1f-201c-4b7e-87b8-6b44776e1bcd', photoUrls: Array(1), photoUrlsLength: 1, activityKeys: Array(17), rawPhotoData: {…}}
+index-BVxTwEsx.js:48  GET https://truck-wash-locator-msti64.replit.app/api/objects/photos/photo-1758664506209-2a45agdy1.jpg 404 (Not Found)
+Fe @ index-BVxTwEsx.js:48
+(anonymous) @ index-BVxTwEsx.js:427
+(anonymous) @ index-BVxTwEsx.js:427
+Du @ index-BVxTwEsx.js:40
+Mi @ index-BVxTwEsx.js:40
+MA @ index-BVxTwEsx.js:40
+Sa @ index-BVxTwEsx.js:40
+Hg @ index-BVxTwEsx.js:40
+ga @ index-BVxTwEsx.js:38
+(anonymous) @ index-BVxTwEsx.js:40
+index-BVxTwEsx.js:427 Error fetching authenticated image: Error: 404: {"message":"Image not found"}
+    at aS (index-BVxTwEsx.js:48:42800)
+    at async Fe (index-BVxTwEsx.js:48:43123)
+    at async index-BVxTwEsx.js:427:154521
+(anonymous) @ index-BVxTwEsx.js:427
+await in (anonymous)
+(anonymous) @ index-BVxTwEsx.js:427
+Du @ index-BVxTwEsx.js:40
+Mi @ index-BVxTwEsx.js:40
+MA @ index-BVxTwEsx.js:40
+Sa @ index-BVxTwEsx.js:40
+Hg @ index-BVxTwEsx.js:40
+ga @ index-BVxTwEsx.js:38
+(anonymous) @ index-BVxTwEsx.js:40
+index-BVxTwEsx.js:427 🎯 ACTIVITIES PROCESSING: {activitiesData: Array(4), dataType: 'object', isArray: true, length: 4, recentActivitiesLength: 4, …}
+index-BVxTwEsx.js:427 🔧 Dashboard: Rendering PhotoModal {isOpen: true, activity: {…}, activityId: '13664b1f-201c-4b7e-87b8-6b44776e1bcd'}
+index-BVxTwEsx.js:427 📷 PhotoModal: Activity data: {activityId: '13664b1f-201c-4b7e-87b8-6b44776e1bcd', photoUrls: Array(1), photoUrlsLength: 1, activityKeys: Array(17), rawPhotoData: {…}}
