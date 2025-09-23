@@ -4592,12 +4592,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Photo proxy endpoint - temporarily bypass ACL for debugging
-  app.get('/api/objects/photos/:key', async (req: any, res) => {
+  // Photo proxy endpoint with proper authentication
+  app.get('/api/objects/photos/:key', isAuthenticated, async (req: any, res) => {
     try {
       const { key } = req.params;
-      console.log('📸 Photo proxy request (no auth required):', {
+      console.log('📸 Photo proxy request:', {
         key,
+        userId: req.user?.id,
         timestamp: new Date().toISOString()
       });
       
@@ -4605,8 +4606,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Photo key is required' });
       }
 
-      // Temporarily bypass authentication and ACL checks
-      console.log('🔓 Bypassing auth and ACL for debugging...');
+      // For now, allow all authenticated users to access photos
+      // TODO: Implement proper ACL checks based on location ownership
+      console.log('✅ Authenticated user accessing photo');
       
       // Get signed URL for internal use
       console.log('🔗 Creating signed URL for:', {
