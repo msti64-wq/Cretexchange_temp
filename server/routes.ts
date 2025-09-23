@@ -4443,6 +4443,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/objects/photos/:key', isAuthenticated, async (req: any, res) => {
     try {
       const { key } = req.params;
+      console.log('📸 Photo proxy request:', {
+        key,
+        userId: req.user?.id,
+        timestamp: new Date().toISOString()
+      });
+      
       if (!key) {
         return res.status(400).json({ message: 'Photo key is required' });
       }
@@ -4457,6 +4463,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // In production: Add proper authorization checks here
       
       // Get signed URL for internal use
+      console.log('🔗 Creating signed URL for:', {
+        bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID,
+        objectName: key
+      });
+      
       const signedUrl = await signObjectURL({
         bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
         objectName: key,
@@ -4464,9 +4475,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ttlSec: 120
       });
       
+      console.log('✅ Signed URL created, fetching image...');
+      
       // Fetch image from GCS and proxy it
       const imageResponse = await fetch(signedUrl);
+      console.log('📥 GCS response:', {
+        status: imageResponse.status,
+        statusText: imageResponse.statusText,
+        headers: Object.fromEntries(imageResponse.headers.entries())
+      });
+      
       if (!imageResponse.ok) {
+        console.error('❌ Image not found in GCS:', {
+          key,
+          status: imageResponse.status,
+          statusText: imageResponse.statusText
+        });
         return res.status(404).json({ message: 'Image not found' });
       }
 
