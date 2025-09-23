@@ -47,22 +47,9 @@ export async function apiRequest(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  // Auto-detect published environment and use correct backend URL
-  const isPublishedApp = window.location.hostname.endsWith('.replit.app');
-  const apiBaseUrl = isPublishedApp ? 
-    `https://${window.location.hostname.replace('.replit.app', '.repl.co')}` : '';
-  const fullUrl = url.startsWith('/api') && apiBaseUrl ? `${apiBaseUrl}${url}` : url;
-  
-  // Debug logging for published app
-  console.log('🚀 apiRequest DEBUG:', {
-    originalUrl: url,
-    hostname: window.location.hostname,
-    isPublishedApp,
-    apiBaseUrl,
-    fullUrl,
-    isApiCall: url.startsWith('/api'),
-    hasBaseUrl: !!apiBaseUrl
-  });
+  // Published apps serve both frontend and backend from same domain
+  // No need for cross-origin requests in production
+  const fullUrl = url;
   
   const res = await fetch(fullUrl, {
     ...options,
@@ -86,14 +73,10 @@ export const getQueryFn: <T>(options: {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    // Auto-detect published environment and use correct backend URL
+    // Published apps serve both frontend and backend from same domain
     const url = queryKey.join("/") as string;
-    const isPublishedApp = window.location.hostname.endsWith('.replit.app');
-    const apiBaseUrl = isPublishedApp ? 
-      `https://${window.location.hostname.replace('.replit.app', '.repl.co')}` : '';
-    const fullUrl = url.startsWith('/api') && apiBaseUrl ? `${apiBaseUrl}${url}` : url;
     
-    const res = await fetch(fullUrl, {
+    const res = await fetch(url, {
       headers,
     });
 
