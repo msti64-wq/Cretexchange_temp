@@ -103,13 +103,19 @@ export const queryClient = new QueryClient({
   },
 });
 
-// One-time cache clearing to fix phantom data issues
+// Aggressive cache clearing to fix persistent phantom data
 if (typeof window !== 'undefined') {
-  // Only clear cache once when the app loads
-  const hasCleared = sessionStorage.getItem('_cache_cleared');
-  if (!hasCleared) {
-    queryClient.clear();
-    sessionStorage.setItem('_cache_cleared', 'true');
-    console.log('🧹 One-time cache clear completed');
+  // Force complete cache clearing every time
+  queryClient.clear();
+  queryClient.invalidateQueries();
+  
+  // Clear all storage
+  try {
+    localStorage.clear();
+    sessionStorage.clear();
+  } catch (e) {
+    console.warn('Storage clear failed:', e);
   }
+  
+  console.log('🧹 AGGRESSIVE CACHE CLEAR - All caches and storage cleared');
 }
