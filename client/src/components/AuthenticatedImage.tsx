@@ -90,6 +90,14 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
     );
   }
 
+  console.log('🖼️ AuthenticatedImage: Rendering img element', {
+    hasBlobUrl: !!blobUrl,
+    blobUrlLength: blobUrl?.length,
+    blobUrlPreview: blobUrl?.substring(0, 100) + '...',
+    loading,
+    error
+  });
+
   return (
     <img
       src={blobUrl}
@@ -97,6 +105,19 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
       className={className}
       data-testid={testId}
       onClick={onClick}
+      onLoad={() => {
+        console.log('✅ AuthenticatedImage: Image loaded successfully', {
+          src: blobUrl?.substring(0, 100) + '...'
+        });
+      }}
+      onError={(e) => {
+        console.error('❌ AuthenticatedImage: Image failed to load', {
+          src: blobUrl?.substring(0, 100) + '...',
+          error: e,
+          naturalWidth: (e.target as HTMLImageElement)?.naturalWidth,
+          naturalHeight: (e.target as HTMLImageElement)?.naturalHeight
+        });
+      }}
     />
   );
 }
