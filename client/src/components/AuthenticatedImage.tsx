@@ -30,11 +30,15 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
           console.log('🔍 AuthenticatedImage: Processing photo key:', { src, photoKey });
           
           // Get presigned URL from our API
+          console.log('🌐 AuthenticatedImage: Making API request to /api/objects/photos/sign');
           const response = await apiRequest('/api/objects/photos/sign', {
             method: 'POST',
             body: JSON.stringify({ key: photoKey }),
             headers: {
               'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0',
             },
           });
           if (response.ok) {
