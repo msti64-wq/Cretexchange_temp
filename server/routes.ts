@@ -6,7 +6,7 @@ import { storage } from "./storage";
 import { washoutActivities, withdrawals, walletTransactions, driverWallets } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
-import { ObjectStorageService, ObjectNotFoundError, objectStorageClient } from "./objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, signObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
@@ -4436,6 +4436,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting default service payment account:", error);
       res.status(500).json({ message: "Failed to set default service payment account" });
+    }
+  });
+
+  // Photo presigned URL endpoint
+  app.post('/api/objects/photos/sign', isAuthenticated, async (req: any, res) => {
+    try {
+      const { key } = req.body;
+      if (!key || typeof key !== 'string') {
+        return res.status(400).json({ message: 'Photo key is required' });
+      }
+
+      // Validate user has access to this photo
+      const user = await storage.getUser(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // For demo: Allow all authenticated users to access photos
+      // In production: Add proper authorization checks here
+      
+      // Generate presigned URL for GET request with 2-minute expiry
+      const signedUrl = await signObjectURL({
+        bucketName: process.env.OBJECT_BUCKET_NAME!,
+        objectName: key,
+        method: 'GET',
+        ttlSec: 120
+      });
+
+      res.json({ signedUrl });
+    } catch (error) {
+      console.error('Error generating presigned URL:', error);
+      res.status(500).json({ message: 'Failed to generate signed URL' });
     }
   });
 

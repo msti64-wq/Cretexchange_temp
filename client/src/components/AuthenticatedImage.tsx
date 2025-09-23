@@ -24,14 +24,23 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
         setError(false);
         
         // For server-side photos that require authentication
-        if (src.startsWith('/objects/')) {
-          const response = await apiRequest(src);
+        if (src.startsWith('/objects/photos/')) {
+          // Extract the photo key from the path (e.g., '/objects/photos/photo-123.jpg' -> 'photo-123.jpg')
+          const photoKey = src.replace('/objects/photos/', '');
+          
+          // Get presigned URL from our API
+          const response = await apiRequest('/api/objects/photos/sign', {
+            method: 'POST',
+            body: JSON.stringify({ key: photoKey }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
           if (response.ok) {
-            const blob = await response.blob();
-            objectUrl = URL.createObjectURL(blob);
-            setBlobUrl(objectUrl);
+            const { signedUrl } = await response.json();
+            setBlobUrl(signedUrl);
           } else {
-            throw new Error(`Failed to fetch image: ${response.status}`);
+            throw new Error(`Failed to get signed URL: ${response.status}`);
           }
         } else {
           // For other URLs (sessionStorage, external URLs), use directly
