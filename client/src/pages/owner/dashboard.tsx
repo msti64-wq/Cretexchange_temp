@@ -118,6 +118,16 @@ export default function OwnerDashboard() {
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
   const recentActivities = Array.isArray(activitiesData) ? activitiesData : [];
   
+  // DEBUGGING: Log the exact data being processed
+  console.log('🎯 ACTIVITIES PROCESSING:', {
+    activitiesData,
+    dataType: typeof activitiesData,
+    isArray: Array.isArray(activitiesData),
+    length: Array.isArray(activitiesData) ? activitiesData.length : 'N/A',
+    recentActivitiesLength: recentActivities.length,
+    firstActivity: recentActivities.length > 0 ? recentActivities[0] : 'N/A'
+  });
+  
 
   // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
 

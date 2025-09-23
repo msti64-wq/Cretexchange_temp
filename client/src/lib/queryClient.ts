@@ -103,19 +103,14 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Aggressive cache clearing to fix persistent phantom data
+// Targeted cache clearing for phantom data issues
 if (typeof window !== 'undefined') {
-  // Force complete cache clearing every time
-  queryClient.clear();
-  queryClient.invalidateQueries();
-  
-  // Clear all storage
-  try {
-    localStorage.clear();
-    sessionStorage.clear();
-  } catch (e) {
-    console.warn('Storage clear failed:', e);
-  }
-  
-  console.log('🧹 AGGRESSIVE CACHE CLEAR - All caches and storage cleared');
+  // Clear only activity-related queries
+  queryClient.removeQueries({ 
+    predicate: (query) => 
+      query.queryKey.some(key => 
+        typeof key === 'string' && key.includes('activities')
+      )
+  });
+  console.log('🧹 Cleared activity-related queries');
 }
