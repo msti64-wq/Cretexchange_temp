@@ -33,12 +33,12 @@ export default function OwnerDashboard() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  // Separate query for activities with date range filtering + cache busting
+  // Separate query for activities with date range filtering
   const { data: activitiesData, isLoading: isActivitiesLoading, isFetching: isActivitiesFetching } = useQuery({
-    queryKey: [`/api/owners/activities?dateRange=${dateRange}&_t=${Date.now()}`],
+    queryKey: [`/api/owners/activities?dateRange=${dateRange}`],
     refetchInterval: 30000, // Refresh every 30 seconds
     staleTime: 0, // Force fresh data
-    cacheTime: 0, // Don't cache at all
+    gcTime: 0, // Don't cache at all (renamed from cacheTime in v5)
   });
 
   const { data: subscriptionData } = useQuery({

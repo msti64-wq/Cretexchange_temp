@@ -103,42 +103,13 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Aggressive cache clearing to fix phantom data issues
+// One-time cache clearing to fix phantom data issues
 if (typeof window !== 'undefined') {
-  // Clear TanStack Query cache
-  queryClient.clear();
-  
-  // Clear localStorage cache
-  try {
-    Object.keys(localStorage).forEach(key => {
-      if (key.includes('activity') || key.includes('activities') || key.includes('washout')) {
-        localStorage.removeItem(key);
-        console.log(`🧹 Removed localStorage key: ${key}`);
-      }
-    });
-  } catch (e) {
-    console.warn('Could not clear localStorage:', e);
+  // Only clear cache once when the app loads
+  const hasCleared = sessionStorage.getItem('_cache_cleared');
+  if (!hasCleared) {
+    queryClient.clear();
+    sessionStorage.setItem('_cache_cleared', 'true');
+    console.log('🧹 One-time cache clear completed');
   }
-  
-  // Clear sessionStorage cache
-  try {
-    Object.keys(sessionStorage).forEach(key => {
-      if (key.includes('activity') || key.includes('activities') || key.includes('washout')) {
-        sessionStorage.removeItem(key);
-        console.log(`🧹 Removed sessionStorage key: ${key}`);
-      }
-    });
-  } catch (e) {
-    console.warn('Could not clear sessionStorage:', e);
-  }
-  
-  // Force invalidate specific query keys
-  queryClient.invalidateQueries({ queryKey: ['/api/owners/activities'] });
-  queryClient.invalidateQueries({ predicate: (query) => 
-    query.queryKey.some(key => 
-      typeof key === 'string' && key.includes('activities')
-    )
-  });
-  
-  console.log('🧹 Cleared all caches (TanStack Query, localStorage, sessionStorage)');
 }
