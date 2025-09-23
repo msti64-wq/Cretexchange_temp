@@ -51,6 +51,15 @@ export async function apiRequest(
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
   const fullUrl = url.startsWith('/api') && apiBaseUrl ? `${apiBaseUrl}${url}` : url;
   
+  // Debug logging for published app
+  console.log('🚀 apiRequest DEBUG:', {
+    originalUrl: url,
+    apiBaseUrl,
+    fullUrl,
+    isApiCall: url.startsWith('/api'),
+    hasBaseUrl: !!apiBaseUrl
+  });
+  
   const res = await fetch(fullUrl, {
     ...options,
     headers,
