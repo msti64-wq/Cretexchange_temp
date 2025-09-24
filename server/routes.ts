@@ -4614,6 +4614,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== NEW CLEAN PHOTO SYSTEM =====
+  
+  // Get signed URLs for activity photos (for owners to view)
+  app.get('/api/photos/activity/:activityId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { activityId } = req.params;
+      const userId = req.user.id;
+      
+      // Get the activity to verify access
+      const activity = await storage.getWashoutActivity(activityId);
+      if (!activity) {
+        return res.status(404).json({ message: 'Activity not found' });
+      }
+      
+      // Verify user has access (owner of the location)
+      const location = await storage.getWashoutLocation(activity.locationId);
+      if (!location) {
+        return res.status(404).json({ message: 'Location not found' });
+      }
+      
+      const owner = await storage.getOwner(userId);
+      if (!owner || location.ownerId !== owner.id) {
+        return res.status(403).json({ message: 'Not authorized to view these photos' });
+      }
+      
+      // Get photos for this activity
+      const photos = await storage.getPhotosByActivity(activityId);
+      
+      // Generate signed URLs for each photo
+      const signedUrls = await Promise.all(
+        photos.map(async (photo) => {
+          const signedUrl = await signObjectURL({
+            bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
+            objectName: photo.storageKey,
+            method: 'GET',
+            ttlSec: 3600 // 1 hour expiry
+          });
+          
+          return {
+            id: photo.id,
+            url: signedUrl,
+            uploadedAt: photo.uploadedAt,
+            contentType: photo.contentType
+          };
+        })
+      );
+      
+      res.json({ photos: signedUrls });
+    } catch (error) {
+      console.error('Error getting activity photos:', error);
+      res.status(500).json({ message: 'Failed to get photos' });
+    }
+  });
+  
+  // Get upload URL for new photos
+  app.post('/api/photos/upload-url', isAuthenticated, async (req: any, res) => {
+    try {
+      const { contentType = 'image/jpeg' } = req.body;
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substr(2, 9);
+      const extension = contentType === 'image/png' ? 'png' : 'jpg';
+      const storageKey = `photo-${timestamp}-${randomId}.${extension}`;
+      
+      // Generate signed upload URL
+      const uploadUrl = await signObjectURL({
+        bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
+        objectName: storageKey,
+        method: 'PUT',
+        ttlSec: 600, // 10 minutes to complete upload
+        contentType
+      });
+      
+      res.json({ 
+        uploadUrl,
+        storageKey,
+        contentType 
+      });
+    } catch (error) {
+      console.error('Error generating upload URL:', error);
+      res.status(500).json({ message: 'Failed to generate upload URL' });
+    }
+  });
+  
+  // Create activity with photos (transactional)
+  app.post('/api/activities/create-with-photos', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { activityData, photoData } = req.body;
+      
+      // Validate input
+      const activityResult = insertWashoutActivitySchema.safeParse(activityData);
+      if (!activityResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid activity data", 
+          errors: activityResult.error.issues 
+        });
+      }
+      
+      // Verify user is a driver
+      const driver = await storage.getDriver(userId);
+      if (!driver) {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+      
+      // Prepare photos with driver verification
+      const photos = photoData?.map((photo: any) => ({
+        storageKey: photo.storageKey,
+        contentType: photo.contentType || 'image/jpeg',
+        fileSize: photo.fileSize,
+        uploadedAt: new Date()
+      })) || [];
+      
+      // Create activity with photos atomically
+      const result = await storage.createWashoutActivityWithPhotos(
+        activityResult.data,
+        photos
+      );
+      
+      res.json({
+        activity: result.activity,
+        photoCount: result.photos.length
+      });
+    } catch (error) {
+      console.error('Error creating activity with photos:', error);
+      res.status(500).json({ message: 'Failed to create activity' });
+    }
+  });
+
+  // ===== OLD COMPLEX PHOTO SYSTEM (TO BE REMOVED) =====
+  
   // Photo proxy endpoint with proper authentication
   app.get('/api/objects/photos/:key', isAuthenticated, async (req: any, res) => {
     try {

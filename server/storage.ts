@@ -4,6 +4,7 @@ import {
   owners,
   washoutLocations,
   washoutActivities,
+  washoutPhotos,
   payments,
   notifications,
   messages,
@@ -21,6 +22,7 @@ import {
   type Owner,
   type WashoutLocation,
   type WashoutActivity,
+  type WashoutPhoto,
   type Payment,
   type Notification,
   type Message,
@@ -35,6 +37,7 @@ import {
   type InsertOwner,
   type InsertWashoutLocation,
   type InsertWashoutActivity,
+  type InsertWashoutPhoto,
   type InsertPayment,
   type InsertNotification,
   type InsertMessage,
@@ -110,6 +113,17 @@ export interface IStorage {
   rejectWashoutActivity(activityId: string, rejectedBy: string): Promise<WashoutActivity>;
   getRecentActivitiesByDriver(driverId: string, limit?: number): Promise<(WashoutActivity & { location: WashoutLocation })[]>;
   getAllActivities(startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
+
+  // Photo operations - NEW clean photo system
+  createWashoutPhoto(photo: InsertWashoutPhoto): Promise<WashoutPhoto>;
+  getPhotosByActivity(activityId: string): Promise<WashoutPhoto[]>;
+  getPhotoById(photoId: string): Promise<WashoutPhoto | undefined>;
+  deletePhoto(photoId: string): Promise<boolean>;
+  // Transactional operation: create activity with photos atomically
+  createWashoutActivityWithPhotos(
+    activity: InsertWashoutActivity, 
+    photos: Omit<InsertWashoutPhoto, 'activityId'>[]
+  ): Promise<{ activity: WashoutActivity; photos: WashoutPhoto[] }>;
 
   // Payment operations
   createPayment(payment: InsertPayment): Promise<Payment>;
@@ -815,6 +829,59 @@ export class DatabaseStorage implements IStorage {
     );
 
     return mappedResults;
+  }
+
+  // Photo operations - NEW clean photo system
+  async createWashoutPhoto(photo: InsertWashoutPhoto): Promise<WashoutPhoto> {
+    const [newPhoto] = await db.insert(washoutPhotos).values(photo).returning();
+    return newPhoto;
+  }
+
+  async getPhotosByActivity(activityId: string): Promise<WashoutPhoto[]> {
+    return await db
+      .select()
+      .from(washoutPhotos)
+      .where(eq(washoutPhotos.activityId, activityId))
+      .orderBy(washoutPhotos.uploadedAt);
+  }
+
+  async getPhotoById(photoId: string): Promise<WashoutPhoto | undefined> {
+    const [photo] = await db
+      .select()
+      .from(washoutPhotos)
+      .where(eq(washoutPhotos.id, photoId));
+    return photo;
+  }
+
+  async deletePhoto(photoId: string): Promise<boolean> {
+    const result = await db
+      .delete(washoutPhotos)
+      .where(eq(washoutPhotos.id, photoId));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Transactional operation: create activity with photos atomically
+  async createWashoutActivityWithPhotos(
+    activity: InsertWashoutActivity, 
+    photos: Omit<InsertWashoutPhoto, 'activityId'>[]
+  ): Promise<{ activity: WashoutActivity; photos: WashoutPhoto[] }> {
+    return await db.transaction(async (tx) => {
+      // Create the activity first
+      const [newActivity] = await tx.insert(washoutActivities).values(activity).returning();
+      
+      // Create photos with the activity ID
+      const photoValues = photos.map(photo => ({
+        ...photo,
+        activityId: newActivity.id
+      }));
+      
+      const newPhotos = await tx.insert(washoutPhotos).values(photoValues).returning();
+      
+      return {
+        activity: newActivity,
+        photos: newPhotos
+      };
+    });
   }
 
   async verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity> {
