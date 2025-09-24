@@ -4711,12 +4711,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Driver access required" });
       }
       
-      // Add driverId and preprocess dates before validation
+      // Add driverId to activity data before validation
       const completeActivityData = {
         ...activityData,
-        driverId: driver.id,
-        // Convert ISO string to Date object for validation
-        checkInTime: activityData.checkInTime ? new Date(activityData.checkInTime) : new Date()
+        driverId: driver.id
       };
       
       // Validate input with complete data
