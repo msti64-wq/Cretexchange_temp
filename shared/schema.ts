@@ -147,7 +147,7 @@ export const washoutActivities = pgTable("washout_activities", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   checkInTime: timestamp("check_in_time").notNull(),
   checkOutTime: timestamp("check_out_time"),
-  photoUrls: text("photo_urls").array(),
+  photoUrls: text("photo_urls").array(), // Legacy field - will be removed after migration
   notes: text("notes"),
   verifiedBy: varchar("verified_by").references(() => users.id),
   verifiedAt: timestamp("verified_at"),
@@ -155,6 +155,17 @@ export const washoutActivities = pgTable("washout_activities", {
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// NEW: Clean photo table with referential integrity
+export const washoutPhotos = pgTable("washout_photos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
+  storageKey: varchar("storage_key").notNull(), // e.g., "photo-1758728697596-jji6m2mh1.jpg"
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+  fileSize: integer("file_size"), // Optional: track file size
+  contentType: varchar("content_type").default("image/jpeg"), // e.g., "image/jpeg"
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Payments
@@ -439,6 +450,11 @@ export const insertWashoutActivitySchema = createInsertSchema(washoutActivities)
   updatedAt: true,
 });
 
+export const insertWashoutPhotoSchema = createInsertSchema(washoutPhotos).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertPaymentSchema = createInsertSchema(payments).omit({
   id: true,
   createdAt: true,
@@ -598,6 +614,7 @@ export type Driver = typeof drivers.$inferSelect;
 export type Owner = typeof owners.$inferSelect;
 export type WashoutLocation = typeof washoutLocations.$inferSelect;
 export type WashoutActivity = typeof washoutActivities.$inferSelect;
+export type WashoutPhoto = typeof washoutPhotos.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type Message = typeof messages.$inferSelect;
@@ -606,6 +623,7 @@ export type InsertDriver = z.infer<typeof insertDriverSchema>;
 export type InsertOwner = z.infer<typeof insertOwnerSchema>;
 export type InsertWashoutLocation = z.infer<typeof insertWashoutLocationSchema>;
 export type InsertWashoutActivity = z.infer<typeof insertWashoutActivitySchema>;
+export type InsertWashoutPhoto = z.infer<typeof insertWashoutPhotoSchema>;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
