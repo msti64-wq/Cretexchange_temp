@@ -271,12 +271,15 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
   };
 
   const hasTempOrInvalidUrls = () => {
-    return photoUrls.some(url => 
+    console.log("🔍 Checking for temp/invalid URLs in:", photoUrls);
+    const hasInvalid = photoUrls.some(url => 
       url.startsWith('temp-photo-') ||
       url.startsWith('local-photo-') ||
       url.startsWith('data:') ||
-      url.startsWith('photo-') // Also catch placeholder URLs
+      (url.startsWith('photo-') && url.includes('temp-')) // Only temp photo URLs are invalid
     );
+    console.log("❌ Has invalid URLs:", hasInvalid);
+    return hasInvalid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
