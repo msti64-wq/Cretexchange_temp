@@ -24,12 +24,16 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    console.log('🔧 InstallPrompt component loaded');
+    
     // Check if running on iOS
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
     setIsIOS(isIOSDevice);
+    console.log('📱 iOS device detected:', isIOSDevice);
 
     // Handle the beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
+      console.log('⚡ beforeinstallprompt event fired!');
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
       // Save the event so it can be triggered later
@@ -40,19 +44,33 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
     // Check if app is already installed
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
     const isInWebAppiOS = (window.navigator as any).standalone === true;
+    console.log('🏠 App already installed:', isStandalone || isInWebAppiOS);
     
     if (!isStandalone && !isInWebAppiOS) {
       window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
+      console.log('👂 Listening for beforeinstallprompt event');
       
-      // For iOS, show manual instructions after a short delay
-      if (isIOSDevice) {
-        setTimeout(() => setShowPrompt(true), 1000);
-      }
-    }
-
-    return () => {
+      // For iOS or if no beforeinstallprompt after 2 seconds, show manual instructions
+      const fallbackTimer = setTimeout(() => {
+        console.log('⏰ Fallback timer: showing manual install prompt');
+        setShowPrompt(true);
+      }, 2000);
+      
+      // Clear fallback if beforeinstallprompt fires
+      const originalHandler = handleBeforeInstallPrompt;
+      const wrappedHandler = (e: BeforeInstallPromptEvent) => {
+        clearTimeout(fallbackTimer);
+        originalHandler(e);
+      };
+      
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
-    };
+      window.addEventListener('beforeinstallprompt', wrappedHandler as EventListener);
+      
+      return () => {
+        clearTimeout(fallbackTimer);
+        window.removeEventListener('beforeinstallprompt', wrappedHandler as EventListener);
+      };
+    }
   }, []);
 
   const handleInstallClick = async () => {
