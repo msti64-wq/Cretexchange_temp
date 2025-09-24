@@ -4659,9 +4659,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('❌ Image not found in GCS:', {
           key,
           status: imageResponse.status,
-          statusText: imageResponse.statusText
+          statusText: imageResponse.statusText,
+          signedUrl: signedUrl.substring(0, 100) + '...',
+          bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID,
+          environment: process.env.REPLIT_DEPLOYMENT ? 'PRODUCTION' : 'DEVELOPMENT'
         });
-        return res.status(404).json({ message: 'Image not found' });
+        
+        // TODO: Add photo cleanup job to remove orphaned database references
+        return res.status(404).json({ 
+          message: 'Image not found',
+          photoKey: key,
+          suggestion: 'Photo may have failed to upload properly or been deleted from storage'
+        });
       }
 
       // Set appropriate headers for image serving
