@@ -10,6 +10,7 @@ import {
   messages,
   passwordResetTokens,
   ownerFundingSources,
+  ownerWalletTransactions,
   driverWallets,
   walletTransactions,
   withdrawals,
@@ -28,6 +29,7 @@ import {
   type Message,
   type PasswordResetToken,
   type OwnerFundingSource,
+  type OwnerWalletTransaction,
   type DriverWallet,
   type WalletTransaction,
   type Withdrawal,
@@ -76,7 +78,7 @@ export interface IStorage {
   getDriverById(id: string): Promise<Driver | undefined>;
   // Removed: getDriverByConnectedAccountId - no longer using Stripe Connect
   updateDriver(driverId: string, driverData: Partial<InsertDriver>): Promise<Driver>;
-  updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: string; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver>;
+  updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: "ach" | "venmo" | "zelle"; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver>;
   updateDriverLocation(driverId: string, latitude: number, longitude: number): Promise<void>;
   getAllDrivers(): Promise<(Driver & { user: User })[]>;
   getAllAdmins(): Promise<User[]>;
@@ -367,10 +369,7 @@ export class DatabaseStorage implements IStorage {
     return driver;
   }
 
-  async getDriverByConnectedAccountId(connectedAccountId: string): Promise<Driver | undefined> {
-    const [driver] = await db.select().from(drivers).where(eq(drivers.connectedAccountId, connectedAccountId));
-    return driver;
-  }
+  // Removed: getDriverByConnectedAccountId - no longer using Stripe Connect
 
   async updateDriver(driverId: string, driverData: Partial<InsertDriver>): Promise<Driver> {
     const [updatedDriver] = await db
@@ -384,7 +383,7 @@ export class DatabaseStorage implements IStorage {
     return updatedDriver;
   }
 
-  async updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: string; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver> {
+  async updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: "ach" | "venmo" | "zelle"; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver> {
     const [updatedDriver] = await db
       .update(drivers)
       .set({
@@ -422,7 +421,7 @@ export class DatabaseStorage implements IStorage {
         currentLatitude: drivers.currentLatitude,
         currentLongitude: drivers.currentLongitude,
         lastLocationUpdate: drivers.lastLocationUpdate,
-        connectedAccountId: drivers.connectedAccountId,
+        // Removed connectedAccountId - no longer using Stripe Connect
         hasAgreedToTerms: drivers.hasAgreedToTerms,
         termsAgreedAt: drivers.termsAgreedAt,
         createdAt: drivers.createdAt,
@@ -440,8 +439,8 @@ export class DatabaseStorage implements IStorage {
           address: users.address,
           paymentMethod: users.paymentMethod,
           paymentFrequency: users.paymentFrequency,
-          stripeCustomerId: users.stripeCustomerId,
-          stripeSubscriptionId: users.stripeSubscriptionId,
+          columnCustomerId: users.columnCustomerId,
+          // Removed stripeSubscriptionId - using Column BaaS now
           isActive: users.isActive,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
@@ -592,8 +591,8 @@ export class DatabaseStorage implements IStorage {
           address: users.address,
           paymentMethod: users.paymentMethod,
           paymentFrequency: users.paymentFrequency,
-          stripeCustomerId: users.stripeCustomerId,
-          stripeSubscriptionId: users.stripeSubscriptionId,
+          columnCustomerId: users.columnCustomerId,
+          // Removed stripeSubscriptionId - using Column BaaS now
           isActive: users.isActive,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
@@ -2063,8 +2062,8 @@ export class DatabaseStorage implements IStorage {
           phone: users.phone,
           address: users.address,
           role: users.role,
-          stripeCustomerId: users.stripeCustomerId,
-          stripeSubscriptionId: users.stripeSubscriptionId,
+          columnCustomerId: users.columnCustomerId,
+          // Removed stripeSubscriptionId - using Column BaaS now
           isActive: users.isActive,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
@@ -2152,9 +2151,9 @@ export class DatabaseStorage implements IStorage {
           companyName: owners.companyName,
           businessLicense: owners.businessLicense,
           taxId: owners.taxId,
-          subscriptionStatus: owners.subscriptionStatus,
-          subscriptionPlan: owners.subscriptionPlan,
-          subscriptionEndsAt: owners.subscriptionEndsAt,
+          walletStatus: owners.walletStatus,
+          // Removed subscriptionPlan - using Column wallet model
+          // Removed subscriptionEndsAt - using Column wallet model
           pastDueDate: owners.pastDueDate,
           gracePeriodStartDate: owners.gracePeriodStartDate,
           lastReminderSent: owners.lastReminderSent,
@@ -2175,8 +2174,8 @@ export class DatabaseStorage implements IStorage {
             phone: users.phone,
             address: users.address,
             role: users.role,
-            stripeCustomerId: users.stripeCustomerId,
-            stripeSubscriptionId: users.stripeSubscriptionId,
+            columnCustomerId: users.columnCustomerId,
+            // Removed stripeSubscriptionId - using Column BaaS now
             isActive: users.isActive,
             createdAt: users.createdAt,
             updatedAt: users.updatedAt,
@@ -2298,11 +2297,11 @@ export class DatabaseStorage implements IStorage {
           id: owners.id,
           userId: owners.userId,
           companyName: owners.companyName,
-          subscriptionStatus: owners.subscriptionStatus,
+          walletStatus: owners.walletStatus,
         },
         user: {
           id: users.id,
-          stripeCustomerId: users.stripeCustomerId,
+          columnCustomerId: users.columnCustomerId,
           firstName: users.firstName,
           lastName: users.lastName,
         }
@@ -2409,9 +2408,9 @@ export class DatabaseStorage implements IStorage {
           companyName: owners.companyName,
           businessLicense: owners.businessLicense,
           taxId: owners.taxId,
-          subscriptionStatus: owners.subscriptionStatus,
-          subscriptionPlan: owners.subscriptionPlan,
-          subscriptionEndsAt: owners.subscriptionEndsAt,
+          walletStatus: owners.walletStatus,
+          // Removed subscriptionPlan - using Column wallet model
+          // Removed subscriptionEndsAt - using Column wallet model
           pastDueDate: owners.pastDueDate,
           gracePeriodStartDate: owners.gracePeriodStartDate,
           lastReminderSent: owners.lastReminderSent,
@@ -2432,8 +2431,8 @@ export class DatabaseStorage implements IStorage {
             phone: users.phone,
             address: users.address,
             role: users.role,
-            stripeCustomerId: users.stripeCustomerId,
-            stripeSubscriptionId: users.stripeSubscriptionId,
+            columnCustomerId: users.columnCustomerId,
+            // Removed stripeSubscriptionId - using Column BaaS now
             isActive: users.isActive,
             createdAt: users.createdAt,
             updatedAt: users.updatedAt,
@@ -2626,7 +2625,7 @@ export class DatabaseStorage implements IStorage {
           currentLatitude: drivers.currentLatitude,
           currentLongitude: drivers.currentLongitude,
           lastLocationUpdate: drivers.lastLocationUpdate,
-          connectedAccountId: drivers.connectedAccountId,
+          // Removed connectedAccountId - no longer using Stripe Connect
           hasAgreedToTerms: drivers.hasAgreedToTerms,
           termsAgreedAt: drivers.termsAgreedAt,
           createdAt: drivers.createdAt,
@@ -2640,8 +2639,8 @@ export class DatabaseStorage implements IStorage {
             phone: users.phone,
             address: users.address,
             role: users.role,
-            stripeCustomerId: users.stripeCustomerId,
-            stripeSubscriptionId: users.stripeSubscriptionId,
+            columnCustomerId: users.columnCustomerId,
+            // Removed stripeSubscriptionId - using Column BaaS now
             isActive: users.isActive,
             createdAt: users.createdAt,
             updatedAt: users.updatedAt,
@@ -2727,7 +2726,7 @@ export class DatabaseStorage implements IStorage {
           currentLatitude: drivers.currentLatitude,
           currentLongitude: drivers.currentLongitude,
           lastLocationUpdate: drivers.lastLocationUpdate,
-          connectedAccountId: drivers.connectedAccountId,
+          // Removed connectedAccountId - no longer using Stripe Connect
           hasAgreedToTerms: drivers.hasAgreedToTerms,
           termsAgreedAt: drivers.termsAgreedAt,
           createdAt: drivers.createdAt,
