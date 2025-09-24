@@ -304,12 +304,11 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId?: string): Promise<User> {
+  async updateUserColumnInfo(userId: string, columnCustomerId: string): Promise<User> {
     const [user] = await db
       .update(users)
       .set({ 
-        stripeCustomerId, 
-        stripeSubscriptionId,
+        columnCustomerId,
         updatedAt: new Date() 
       })
       .where(eq(users.id, userId))
@@ -378,6 +377,18 @@ export class DatabaseStorage implements IStorage {
       .update(drivers)
       .set({
         ...driverData,
+        updatedAt: new Date(),
+      })
+      .where(eq(drivers.id, driverId))
+      .returning();
+    return updatedDriver;
+  }
+
+  async updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: string; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver> {
+    const [updatedDriver] = await db
+      .update(drivers)
+      .set({
+        ...paymentData,
         updatedAt: new Date(),
       })
       .where(eq(drivers.id, driverId))
@@ -469,60 +480,74 @@ export class DatabaseStorage implements IStorage {
     return updatedOwner;
   }
 
-  async updateOwnerSubscription(ownerId: string, status: string, subscriptionId?: string, subscriptionEndsAt?: Date): Promise<Owner> {
-    const updateData: any = {
-      subscriptionStatus: status as any,
-      updatedAt: new Date(),
-    };
-    
-    if (subscriptionId) {
-      updateData.stripeSubscriptionId = subscriptionId;
-    }
-
-    if (subscriptionEndsAt) {
-      updateData.subscriptionEndsAt = subscriptionEndsAt;
-    }
-
-    // Handle grace period logic based on status
-    if (status === 'past_due') {
-      // If going to past_due and not already in grace period, start grace period
-      const currentOwner = await this.getOwner(ownerId);
-      if (currentOwner && !currentOwner.gracePeriodStartDate) {
-        updateData.pastDueDate = new Date();
-        updateData.gracePeriodStartDate = new Date();
-      }
-    } else if (status === 'active') {
-      // If becoming active, clear grace period fields
-      updateData.pastDueDate = null;
-      updateData.gracePeriodStartDate = null;
-      updateData.lastReminderSent = null;
-    }
-
+  // Owner wallet operations (replacing subscription model)
+  async getOwnerWalletBalance(ownerId: string): Promise<{ balance: string; status: string } | undefined> {
     const [owner] = await db
-      .update(owners)
-      .set(updateData)
-      .where(eq(owners.id, ownerId))
-      .returning();
+      .select({
+        balance: owners.walletBalance,
+        status: owners.walletStatus
+      })
+      .from(owners)
+      .where(eq(owners.id, ownerId));
     return owner;
   }
 
-  async getOwnerSubscriptionStatus(ownerId: string): Promise<{ subscriptionStatus: string } | undefined> {
-    const result = await db
-      .select({
-        subscriptionStatus: owners.subscriptionStatus,
-      })
-      .from(owners)
-      .where(eq(owners.id, ownerId))
-      .limit(1);
-    
-    if (!result[0] || result[0].subscriptionStatus === null) {
-      return undefined;
-    }
-    
-    return {
-      subscriptionStatus: result[0].subscriptionStatus
-    };
+  async updateOwnerWalletBalance(ownerId: string, amount: string, type: string, description?: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Get current balance
+      const [currentOwner] = await tx
+        .select({ balance: owners.walletBalance })
+        .from(owners)
+        .where(eq(owners.id, ownerId));
+      
+      if (!currentOwner) throw new Error('Owner not found');
+      
+      const currentBalance = parseFloat(currentOwner.balance);
+      const changeAmount = parseFloat(amount);
+      const newBalance = type === 'debit' ? currentBalance - changeAmount : currentBalance + changeAmount;
+      
+      // Update owner balance
+      await tx
+        .update(owners)
+        .set({ 
+          walletBalance: newBalance.toFixed(2),
+          updatedAt: new Date() 
+        })
+        .where(eq(owners.id, ownerId));
+      
+      // Record transaction
+      await tx.insert(ownerWalletTransactions).values({
+        ownerId,
+        type,
+        amount: changeAmount.toFixed(2),
+        balanceBefore: currentBalance.toFixed(2),
+        balanceAfter: newBalance.toFixed(2),
+        description
+      });
+    });
   }
+
+  async getOwnerWalletTransactions(ownerId: string, startDate?: Date, endDate?: Date): Promise<any[]> {
+    let query = db
+      .select()
+      .from(ownerWalletTransactions)
+      .where(eq(ownerWalletTransactions.ownerId, ownerId))
+      .orderBy(desc(ownerWalletTransactions.createdAt));
+
+    if (startDate && endDate) {
+      query = query.where(
+        and(
+          eq(ownerWalletTransactions.ownerId, ownerId),
+          gte(ownerWalletTransactions.createdAt, startDate),
+          lte(ownerWalletTransactions.createdAt, endDate)
+        )
+      );
+    }
+
+    return await query;
+  }
+
+  // Removed: getOwnerSubscriptionStatus - replaced by getOwnerWalletBalance
 
   async approveOwner(ownerId: string): Promise<Owner> {
     const [owner] = await db
@@ -541,12 +566,11 @@ export class DatabaseStorage implements IStorage {
         companyName: owners.companyName,
         businessLicense: owners.businessLicense,
         taxId: owners.taxId,
-        subscriptionStatus: owners.subscriptionStatus,
-        subscriptionPlan: owners.subscriptionPlan,
-        subscriptionEndsAt: owners.subscriptionEndsAt,
-        pastDueDate: owners.pastDueDate,
-        gracePeriodStartDate: owners.gracePeriodStartDate,
-        lastReminderSent: owners.lastReminderSent,
+        // Column BaaS wallet fields (replacing subscription fields)
+        columnAccountId: owners.columnAccountId,
+        columnEntityId: owners.columnEntityId,
+        walletBalance: owners.walletBalance,
+        walletStatus: owners.walletStatus,
         billingCadence: owners.billingCadence,
         billingCutoffTime: owners.billingCutoffTime,
         billingTimezone: owners.billingTimezone,
@@ -1366,58 +1390,58 @@ export class DatabaseStorage implements IStorage {
     return testUsers.map(u => u.username);
   }
 
-  // Payment methods operations
-  async createOwnerPaymentMethod(paymentMethod: InsertOwnerPaymentMethod): Promise<OwnerPaymentMethod> {
+  // Owner funding sources operations
+  async createOwnerFundingSource(fundingSource: InsertOwnerFundingSource): Promise<OwnerFundingSource> {
     // If this is set as default, unset all other defaults for this owner
-    if (paymentMethod.isDefault) {
+    if (fundingSource.isDefault) {
       await db
-        .update(ownerPaymentMethods)
+        .update(ownerFundingSources)
         .set({ isDefault: false })
-        .where(eq(ownerPaymentMethods.ownerId, paymentMethod.ownerId));
+        .where(eq(ownerFundingSources.ownerId, fundingSource.ownerId));
     }
 
-    const [newPaymentMethod] = await db.insert(ownerPaymentMethods).values(paymentMethod).returning();
-    return newPaymentMethod;
+    const [newFundingSource] = await db.insert(ownerFundingSources).values(fundingSource).returning();
+    return newFundingSource;
   }
 
-  async getOwnerPaymentMethods(ownerId: string): Promise<OwnerPaymentMethod[]> {
+  async getOwnerFundingSources(ownerId: string): Promise<OwnerFundingSource[]> {
     return await db
       .select()
-      .from(ownerPaymentMethods)
+      .from(ownerFundingSources)
       .where(and(
-        eq(ownerPaymentMethods.ownerId, ownerId),
-        eq(ownerPaymentMethods.isActive, true)
+        eq(ownerFundingSources.ownerId, ownerId),
+        eq(ownerFundingSources.isActive, true)
       ))
-      .orderBy(desc(ownerPaymentMethods.isDefault), desc(ownerPaymentMethods.createdAt));
+      .orderBy(desc(ownerFundingSources.isDefault), desc(ownerFundingSources.createdAt));
   }
 
-  async getOwnerPaymentMethodById(id: string): Promise<OwnerPaymentMethod | undefined> {
-    const [paymentMethod] = await db
+  async getOwnerFundingSourceById(id: string): Promise<OwnerFundingSource | undefined> {
+    const [fundingSource] = await db
       .select()
-      .from(ownerPaymentMethods)
-      .where(eq(ownerPaymentMethods.id, id));
-    return paymentMethod;
+      .from(ownerFundingSources)
+      .where(eq(ownerFundingSources.id, id));
+    return fundingSource;
   }
 
-  async deleteOwnerPaymentMethod(id: string): Promise<void> {
+  async deleteOwnerFundingSource(id: string): Promise<void> {
     await db
-      .update(ownerPaymentMethods)
+      .update(ownerFundingSources)
       .set({ isActive: false })
-      .where(eq(ownerPaymentMethods.id, id));
+      .where(eq(ownerFundingSources.id, id));
   }
 
-  async setDefaultPaymentMethod(ownerId: string, paymentMethodId: string): Promise<void> {
+  async setDefaultFundingSource(ownerId: string, fundingSourceId: string): Promise<void> {
     // First, unset all defaults for this owner
     await db
-      .update(ownerPaymentMethods)
+      .update(ownerFundingSources)
       .set({ isDefault: false })
-      .where(eq(ownerPaymentMethods.ownerId, ownerId));
+      .where(eq(ownerFundingSources.ownerId, ownerId));
 
     // Then set the specified one as default
     await db
-      .update(ownerPaymentMethods)
+      .update(ownerFundingSources)
       .set({ isDefault: true })
-      .where(eq(ownerPaymentMethods.id, paymentMethodId));
+      .where(eq(ownerFundingSources.id, fundingSourceId));
   }
 
   // Wallet operations
@@ -2020,12 +2044,11 @@ export class DatabaseStorage implements IStorage {
         companyName: owners.companyName,
         businessLicense: owners.businessLicense,
         taxId: owners.taxId,
-        subscriptionStatus: owners.subscriptionStatus,
-        subscriptionPlan: owners.subscriptionPlan,
-        subscriptionEndsAt: owners.subscriptionEndsAt,
-        pastDueDate: owners.pastDueDate,
-        gracePeriodStartDate: owners.gracePeriodStartDate,
-        lastReminderSent: owners.lastReminderSent,
+        // Column BaaS wallet fields (replacing subscription fields)
+        columnAccountId: owners.columnAccountId,
+        columnEntityId: owners.columnEntityId,
+        walletBalance: owners.walletBalance,
+        walletStatus: owners.walletStatus,
         isApproved: owners.isApproved,
         hasAgreedToTerms: owners.hasAgreedToTerms,
         termsAgreedAt: owners.termsAgreedAt,
