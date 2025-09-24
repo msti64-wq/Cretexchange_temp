@@ -448,6 +448,9 @@ export const insertWashoutActivitySchema = createInsertSchema(washoutActivities)
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  // Accept ISO string for checkInTime and convert to Date
+  checkInTime: z.string().datetime().transform(val => new Date(val)),
 });
 
 export const insertWashoutPhotoSchema = createInsertSchema(washoutPhotos).omit({
