@@ -10,10 +10,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft, Building2, User, Truck } from "lucide-react";
 import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 export default function Register({ preselectedRole }: { preselectedRole?: 'driver' | 'owner' }) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [registeredUserType, setRegisteredUserType] = useState<'driver' | 'owner' | null>(null);
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -62,7 +65,9 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
       // Invalidate auth query to refetch user data
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       
-      setLocation('/');
+      // Show install prompt for the registered user type
+      setRegisteredUserType(formData.role as 'driver' | 'owner');
+      setShowInstallPrompt(true);
     },
     onError: (error: any) => {
       toast({
@@ -309,6 +314,21 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
           </CardContent>
         </Card>
       </main>
+
+      {/* Show Install Prompt after successful registration */}
+      {showInstallPrompt && registeredUserType && (
+        <InstallPrompt
+          userType={registeredUserType}
+          onInstall={() => {
+            setShowInstallPrompt(false);
+            setTimeout(() => setLocation('/'), 1000); // Brief delay then redirect
+          }}
+          onDismiss={() => {
+            setShowInstallPrompt(false);
+            setLocation('/'); // Immediate redirect
+          }}
+        />
+      )}
     </div>
   );
 }
