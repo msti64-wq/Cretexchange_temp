@@ -37,7 +37,8 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 
 // Enums
 export const userRoleEnum = pgEnum("user_role", ["driver", "owner", "admin", "super_admin"]);
-export const paymentMethodEnum = pgEnum("payment_method", ["check", "venmo", "zelle", "ach", "credit_card"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["ach", "venmo", "zelle"]);
+export const ownerWalletStatusEnum = pgEnum("owner_wallet_status", ["active", "suspended", "pending_verification"]);
 export const paymentFrequencyEnum = pgEnum("payment_frequency", ["weekly", "biweekly", "monthly"]);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "trial", "past_due"]);
 export const washoutStatusEnum = pgEnum("washout_status", ["pending", "verified", "rejected"]);
@@ -66,10 +67,10 @@ export const users = pgTable("users", {
   role: userRoleEnum("role"),
   phone: varchar("phone"),
   address: text("address"),
-  paymentMethod: paymentMethodEnum("payment_method").default("check"),
+  paymentMethod: paymentMethodEnum("payment_method").default("ach"),
   paymentFrequency: paymentFrequencyEnum("payment_frequency").default("weekly"),
-  stripeCustomerId: varchar("stripe_customer_id"),
-  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  // Removed Stripe fields - now using Column BaaS for owner billing
+  columnCustomerId: varchar("column_customer_id"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -88,7 +89,16 @@ export const drivers = pgTable("drivers", {
   currentLatitude: decimal("current_latitude", { precision: 10, scale: 8 }),
   currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),
   lastLocationUpdate: timestamp("last_location_update"),
-  connectedAccountId: varchar("connected_account_id"), // Stripe Connect account ID for drivers
+  // Driver payment preferences for direct payment model
+  paymentMethod: paymentMethodEnum("payment_method").default("ach"),
+  // ACH payment details
+  bankName: varchar("bank_name"),
+  accountHolderName: varchar("account_holder_name"),
+  routingNumber: varchar("routing_number"),
+  accountNumber: varchar("account_number"), // Encrypted
+  // Venmo/Zelle details
+  venmoHandle: varchar("venmo_handle"),
+  zelleEmail: varchar("zelle_email"),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -102,12 +112,14 @@ export const owners = pgTable("owners", {
   companyName: varchar("company_name"),
   businessLicense: varchar("business_license"),
   taxId: varchar("tax_id"),
-  subscriptionStatus: subscriptionStatusEnum("subscription_status").default("trial"),
-  subscriptionPlan: varchar("subscription_plan").default("monthly"),
-  subscriptionEndsAt: timestamp("subscription_ends_at"),
-  pastDueDate: timestamp("past_due_date"), // When subscription first became past due
-  gracePeriodStartDate: timestamp("grace_period_start_date"), // When 7-day grace period started
-  lastReminderSent: timestamp("last_reminder_sent"), // Last time we sent a reminder
+  // Column BaaS wallet integration
+  columnAccountId: varchar("column_account_id"), // Column FBO sub-account ID
+  columnEntityId: varchar("column_entity_id"), // Column entity ID for KYC
+  walletBalance: decimal("wallet_balance", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  walletStatus: ownerWalletStatusEnum("wallet_status").default("pending_verification"),
+  lowBalanceThreshold: decimal("low_balance_threshold", { precision: 10, scale: 2 }).default("100.00"),
+  autoTopupEnabled: boolean("auto_topup_enabled").default(false),
+  autoTopupAmount: decimal("auto_topup_amount", { precision: 10, scale: 2 }).default("500.00"),
   // Billing configuration for daily batch processing
   billingCadence: billingCadenceEnum("billing_cadence").default("daily"),
   billingCutoffTime: varchar("billing_cutoff_time").default("23:59:00"), // Time of day for billing cutoff (HH:MM:SS)
@@ -177,7 +189,8 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   processingFee: decimal("processing_fee", { precision: 10, scale: 2 }).notNull(),
   washoutServiceFee: decimal("washout_service_fee", { precision: 10, scale: 2 }).notNull().default("8.00"),
-  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  // Direct payment tracking (no Stripe needed)
+  columnTransferId: varchar("column_transfer_id"), // Column ACH transfer ID
   status: varchar("status").notNull().default("pending"),
   // Batch tracking fields for daily billing
   batchId: varchar("batch_id").references(() => billingBatches.id),
@@ -197,7 +210,8 @@ export const billingBatches = pgTable("billing_batches", {
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
   totalFees: decimal("total_fees", { precision: 10, scale: 2 }).notNull().default("0.00"),
   paymentCount: integer("payment_count").notNull().default(0),
-  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  // Column transfer tracking for batch payments
+  columnBatchTransferId: varchar("column_batch_transfer_id"),
   status: batchStatusEnum("status").notNull().default("pending"),
   processingStartedAt: timestamp("processing_started_at"),
   completedAt: timestamp("completed_at"),
@@ -213,26 +227,41 @@ export const billingBatches = pgTable("billing_batches", {
   statusDateIndex: index("idx_billing_batches_status_date").on(table.status, table.businessDate),
 }));
 
-// Owner payment methods
-export const ownerPaymentMethods = pgTable("owner_payment_methods", {
+// Owner funding sources for Column wallet top-ups
+export const ownerFundingSources = pgTable("owner_funding_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
-  type: varchar("type").notNull(), // 'card' or 'bank'
-  last4: varchar("last4").notNull(),
-  // Card specific fields
-  expiryMonth: varchar("expiry_month"),
-  expiryYear: varchar("expiry_year"),
-  cardholderName: varchar("cardholder_name"),
-  // Bank specific fields
+  type: varchar("type").notNull(), // 'bank_account' only for ACH transfers
   bankName: varchar("bank_name"),
   accountHolderName: varchar("account_holder_name"),
-  // Stripe integration
-  stripePaymentMethodId: varchar("stripe_payment_method_id"),
+  routingNumber: varchar("routing_number"),
+  accountNumber: varchar("account_number"), // Encrypted
+  last4: varchar("last4").notNull(),
+  // Column integration
+  columnPaymentMethodId: varchar("column_payment_method_id"),
   isDefault: boolean("is_default").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Owner wallet transactions for Column BaaS accounts
+export const ownerWalletTransactions = pgTable("owner_wallet_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
+  type: varchar("type").notNull(), // 'topup', 'washout_debit', 'fee_debit', 'refund', 'adjustment'
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  balanceBefore: decimal("balance_before", { precision: 10, scale: 2 }).notNull(),
+  balanceAfter: decimal("balance_after", { precision: 10, scale: 2 }).notNull(),
+  description: text("description"),
+  // Related transaction references
+  paymentId: varchar("payment_id").references(() => payments.id),
+  batchId: varchar("batch_id").references(() => billingBatches.id),
+  columnTransferId: varchar("column_transfer_id"), // Reference to Column transfer
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  ownerDateIndex: index("idx_owner_wallet_transactions_owner_date").on(table.ownerId, table.createdAt),
+}));
 
 // Webhook events for idempotency handling
 export const webhookEvents = pgTable("webhook_events", {
@@ -337,7 +366,8 @@ export const ownersRelations = relations(owners, ({ one, many }) => ({
   user: one(users, { fields: [owners.userId], references: [users.id] }),
   locations: many(washoutLocations),
   payments: many(payments),
-  paymentMethods: many(ownerPaymentMethods),
+  fundingSources: many(ownerFundingSources),
+  walletTransactions: many(ownerWalletTransactions),
   billingBatches: many(billingBatches),
 }));
 
@@ -352,8 +382,14 @@ export const washoutActivitiesRelations = relations(washoutActivities, ({ one })
   payment: one(payments, { fields: [washoutActivities.id], references: [payments.activityId] }),
 }));
 
-export const ownerPaymentMethodsRelations = relations(ownerPaymentMethods, ({ one }) => ({
-  owner: one(owners, { fields: [ownerPaymentMethods.ownerId], references: [owners.id] }),
+export const ownerFundingSourcesRelations = relations(ownerFundingSources, ({ one }) => ({
+  owner: one(owners, { fields: [ownerFundingSources.ownerId], references: [owners.id] }),
+}));
+
+export const ownerWalletTransactionsRelations = relations(ownerWalletTransactions, ({ one }) => ({
+  owner: one(owners, { fields: [ownerWalletTransactions.ownerId], references: [owners.id] }),
+  payment: one(payments, { fields: [ownerWalletTransactions.paymentId], references: [payments.id] }),
+  batch: one(billingBatches, { fields: [ownerWalletTransactions.batchId], references: [billingBatches.id] }),
 }));
 
 export const paymentsRelations = relations(payments, ({ one }) => ({
@@ -479,7 +515,7 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
   createdAt: true,
 });
 
-export const insertOwnerPaymentMethodSchema = createInsertSchema(ownerPaymentMethods).omit({
+export const insertOwnerFundingSourceSchema = createInsertSchema(ownerFundingSources).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -632,8 +668,9 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
-export type OwnerPaymentMethod = typeof ownerPaymentMethods.$inferSelect;
-export type InsertOwnerPaymentMethod = z.infer<typeof insertOwnerPaymentMethodSchema>;
+export type OwnerFundingSource = typeof ownerFundingSources.$inferSelect;
+export type InsertOwnerFundingSource = z.infer<typeof insertOwnerFundingSourceSchema>;
+export type OwnerWalletTransaction = typeof ownerWalletTransactions.$inferSelect;
 export type DriverWallet = typeof driverWallets.$inferSelect;
 export type WalletTransaction = typeof walletTransactions.$inferSelect;
 export type Withdrawal = typeof withdrawals.$inferSelect;
