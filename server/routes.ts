@@ -2005,6 +2005,273 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // COLUMN WALLET API ENDPOINTS FOR OWNERS
+
+  // GET /api/owners/wallet - Get owner's wallet data (balance, status, settings)
+  app.get('/api/owners/wallet', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Mock wallet data for now - this will be replaced with actual Column API calls
+      const walletData = {
+        balance: owner.lowBalanceThreshold || '1000.00',
+        status: 'Active',
+        isConfigured: true, // This will check if Column wallet is set up
+        lowBalanceThreshold: owner.lowBalanceThreshold || '100.00',
+        autoTopupEnabled: owner.autoTopupEnabled || false,
+        autoTopupAmount: owner.autoTopupAmount || '500.00',
+        walletId: `wallet_${owner.id}`,
+        createdAt: owner.createdAt
+      };
+
+      res.json(walletData);
+    } catch (error: any) {
+      console.error("Error getting owner wallet:", error);
+      res.status(500).json({ message: "Failed to get wallet data: " + error.message });
+    }
+  });
+
+  // GET /api/owners/funding-sources - Get owner's Column funding sources
+  app.get('/api/owners/funding-sources', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Mock funding sources for now - this will be replaced with actual Column API calls
+      const fundingSources = [
+        {
+          id: `fs_bank_${owner.id}`,
+          sourceType: 'bank_account',
+          bankName: 'Chase Bank',
+          accountNumberLast4: '4567',
+          accountType: 'checking',
+          isPrimary: true,
+          isVerified: true,
+          status: 'active',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: `fs_card_${owner.id}`,
+          sourceType: 'credit_card',
+          cardBrand: 'Visa',
+          cardLast4: '1234',
+          expiryMonth: 12,
+          expiryYear: 2026,
+          isPrimary: false,
+          isVerified: true,
+          status: 'active',
+          createdAt: new Date().toISOString()
+        }
+      ];
+
+      res.json(fundingSources);
+    } catch (error: any) {
+      console.error("Error getting funding sources:", error);
+      res.status(500).json({ message: "Failed to get funding sources: " + error.message });
+    }
+  });
+
+  // GET /api/owners/wallet/transactions - Get owner's wallet transaction history
+  app.get('/api/owners/wallet/transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      const { dateRange } = req.query;
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Calculate date filter based on range
+      let startDate = new Date();
+      switch (dateRange) {
+        case '7days':
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case '30days':
+          startDate.setDate(startDate.getDate() - 30);
+          break;
+        case '90days':
+          startDate.setDate(startDate.getDate() - 90);
+          break;
+        default:
+          startDate = new Date('2024-01-01'); // All time
+      }
+
+      // Mock transaction data for now - this will be replaced with actual Column API calls
+      const transactions = [
+        {
+          id: `txn_fund_${Date.now()}`,
+          transactionType: 'funding',
+          amount: '500.00',
+          description: 'Wallet funding from Chase ****4567',
+          status: 'completed',
+          externalTransactionId: `ext_${Date.now()}`,
+          createdAt: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+        },
+        {
+          id: `txn_payment_${Date.now() - 1000}`,
+          transactionType: 'payment',
+          amount: '25.50',
+          description: 'Payment to driver for washout service',
+          status: 'completed',
+          externalTransactionId: `ext_${Date.now() - 1000}`,
+          createdAt: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+        },
+        {
+          id: `txn_fee_${Date.now() - 2000}`,
+          transactionType: 'fee',
+          amount: '2.55',
+          description: 'Processing fee (10%)',
+          status: 'completed',
+          externalTransactionId: `ext_${Date.now() - 2000}`,
+          createdAt: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+        }
+      ];
+
+      // Filter by date range
+      const filteredTransactions = transactions.filter(txn => 
+        new Date(txn.createdAt) >= startDate
+      );
+
+      res.json(filteredTransactions);
+    } catch (error: any) {
+      console.error("Error getting wallet transactions:", error);
+      res.status(500).json({ message: "Failed to get transactions: " + error.message });
+    }
+  });
+
+  // GET /api/owners/wallet/analytics - Get owner's wallet analytics
+  app.get('/api/owners/wallet/analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      const { dateRange } = req.query;
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Mock analytics data for now - this will be replaced with actual Column API calls
+      const analytics = {
+        totalFunded: '2500.00',
+        totalSpent: '425.75',
+        avgMonthlySpend: '142.58',
+        transactionCount: 15,
+        dateRange: dateRange || '30days'
+      };
+
+      res.json(analytics);
+    } catch (error: any) {
+      console.error("Error getting wallet analytics:", error);
+      res.status(500).json({ message: "Failed to get analytics: " + error.message });
+    }
+  });
+
+  // POST /api/owners/wallet/fund - Fund wallet from a funding source
+  app.post('/api/owners/wallet/fund', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { amount, fundingSourceId } = req.body;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (!amount || !fundingSourceId) {
+        return res.status(400).json({ message: "Amount and funding source are required" });
+      }
+
+      const fundAmount = parseFloat(amount);
+      if (isNaN(fundAmount) || fundAmount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+
+      // Mock funding process for now - this will be replaced with actual Column API calls
+      console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} from source ${fundingSourceId}`);
+
+      // In production, this would:
+      // 1. Call Column API to initiate funding
+      // 2. Handle the async response
+      // 3. Update wallet balance
+      // 4. Record transaction
+
+      const fundingResult = {
+        transactionId: `txn_fund_${Date.now()}`,
+        amount: fundAmount.toFixed(2),
+        status: 'completed',
+        fundingSource: fundingSourceId,
+        completedAt: new Date().toISOString()
+      };
+
+      res.json({
+        message: "Wallet funded successfully",
+        transaction: fundingResult
+      });
+    } catch (error: any) {
+      console.error("Error funding wallet:", error);
+      res.status(500).json({ message: "Failed to fund wallet: " + error.message });
+    }
+  });
+
+  // PUT /api/owners/wallet/settings - Update wallet settings (auto top-up, threshold)
+  app.put('/api/owners/wallet/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { lowBalanceThreshold, autoTopupEnabled, autoTopupAmount } = req.body;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Validate inputs
+      if (lowBalanceThreshold && (isNaN(parseFloat(lowBalanceThreshold)) || parseFloat(lowBalanceThreshold) < 0)) {
+        return res.status(400).json({ message: "Invalid low balance threshold" });
+      }
+
+      if (autoTopupAmount && (isNaN(parseFloat(autoTopupAmount)) || parseFloat(autoTopupAmount) <= 0)) {
+        return res.status(400).json({ message: "Invalid auto top-up amount" });
+      }
+
+      // Update owner settings
+      const updateData: any = {};
+      if (lowBalanceThreshold !== undefined) {
+        updateData.lowBalanceThreshold = parseFloat(lowBalanceThreshold).toFixed(2);
+      }
+      if (autoTopupEnabled !== undefined) {
+        updateData.autoTopupEnabled = autoTopupEnabled;
+      }
+      if (autoTopupAmount !== undefined) {
+        updateData.autoTopupAmount = parseFloat(autoTopupAmount).toFixed(2);
+      }
+
+      await storage.updateOwner(owner.id, updateData);
+
+      console.log(`Updated wallet settings for owner ${owner.id}:`, updateData);
+
+      res.json({
+        message: "Wallet settings updated successfully",
+        settings: updateData
+      });
+    } catch (error: any) {
+      console.error("Error updating wallet settings:", error);
+      res.status(500).json({ message: "Failed to update settings: " + error.message });
+    }
+  });
+
+  // END COLUMN WALLET API ENDPOINTS
+
   // Weekly payout processing endpoint
   app.post('/api/admin/process-weekly-payouts', isAuthenticated, async (req: any, res) => {
     try {
