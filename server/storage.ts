@@ -62,7 +62,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; phone?: string; address?: string; role: string }): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
-  updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId?: string): Promise<User>;
+  updateUserColumnInfo(userId: string, columnCustomerId: string): Promise<User>;
   updateUserPassword(userId: string, passwordHash: string): Promise<User>;
 
   // Password reset operations
@@ -74,8 +74,9 @@ export interface IStorage {
   createDriver(driver: InsertDriver): Promise<Driver>;
   getDriver(userId: string): Promise<Driver | undefined>;
   getDriverById(id: string): Promise<Driver | undefined>;
-  getDriverByConnectedAccountId(connectedAccountId: string): Promise<Driver | undefined>;
+  // Removed: getDriverByConnectedAccountId - no longer using Stripe Connect
   updateDriver(driverId: string, driverData: Partial<InsertDriver>): Promise<Driver>;
+  updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: string; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver>;
   updateDriverLocation(driverId: string, latitude: number, longitude: number): Promise<void>;
   getAllDrivers(): Promise<(Driver & { user: User })[]>;
   getAllAdmins(): Promise<User[]>;
@@ -86,8 +87,10 @@ export interface IStorage {
   getOwner(userId: string): Promise<Owner | undefined>;
   getOwnerById(id: string): Promise<Owner | undefined>;
   updateOwner(ownerId: string, ownerData: Partial<InsertOwner>): Promise<Owner>;
-  updateOwnerSubscription(ownerId: string, status: string, subscriptionId?: string, subscriptionEndsAt?: Date): Promise<Owner>;
-  getOwnerSubscriptionStatus(ownerId: string): Promise<{ subscriptionStatus: string } | undefined>;
+  // Owner wallet operations (replacing subscription model)
+  getOwnerWalletBalance(ownerId: string): Promise<{ balance: string; status: string } | undefined>;
+  updateOwnerWalletBalance(ownerId: string, amount: string, type: string, description?: string): Promise<void>;
+  getOwnerWalletTransactions(ownerId: string, startDate?: Date, endDate?: Date): Promise<any[]>;
   approveOwner(ownerId: string): Promise<Owner>;
   getAllOwners(): Promise<(Owner & { user: User })[]>;
 
@@ -129,7 +132,7 @@ export interface IStorage {
   createPayment(payment: InsertPayment): Promise<Payment>;
   getPaymentsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { location: WashoutLocation } })[]>;
   getPaymentsByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { driver: Driver & { user: User } } })[]>;
-  updatePaymentStatus(paymentId: string, status: string, stripePaymentIntentId?: string): Promise<Payment>;
+  updatePaymentStatus(paymentId: string, status: string, columnTransferId?: string): Promise<Payment>;
   getAllPayments(startDate?: Date, endDate?: Date): Promise<(Payment & { driver: Driver & { user: User }; owner: Owner & { user: User }; activity: WashoutActivity })[]>;
 
   // Statistics operations
@@ -148,18 +151,18 @@ export interface IStorage {
   getMessageById(messageId: string): Promise<(Message & { user: User }) | undefined>;
   updateMessageStatus(messageId: string, status: string): Promise<Message>;
 
-  // Webhook event operations for idempotency
-  createWebhookEvent(stripeEventId: string, eventType: string, accountId?: string): Promise<boolean>;
-  isWebhookEventProcessed(stripeEventId: string): Promise<boolean>;
-  markWebhookEventProcessed(stripeEventId: string): Promise<void>;
-  markWebhookEventFailed(stripeEventId: string, errorMessage: string): Promise<void>;
+  // Column webhook event operations for idempotency
+  createWebhookEvent(columnEventId: string, eventType: string, accountId?: string): Promise<boolean>;
+  isWebhookEventProcessed(columnEventId: string): Promise<boolean>;
+  markWebhookEventProcessed(columnEventId: string): Promise<void>;
+  markWebhookEventFailed(columnEventId: string, errorMessage: string): Promise<void>;
 
-  // Payment methods operations
-  createOwnerPaymentMethod(paymentMethod: InsertOwnerPaymentMethod): Promise<OwnerPaymentMethod>;
-  getOwnerPaymentMethods(ownerId: string): Promise<OwnerPaymentMethod[]>;
-  getOwnerPaymentMethodById(id: string): Promise<OwnerPaymentMethod | undefined>;
-  deleteOwnerPaymentMethod(id: string): Promise<void>;
-  setDefaultPaymentMethod(ownerId: string, paymentMethodId: string): Promise<void>;
+  // Owner funding sources operations (replacing payment methods)
+  createOwnerFundingSource(fundingSource: InsertOwnerFundingSource): Promise<OwnerFundingSource>;
+  getOwnerFundingSources(ownerId: string): Promise<OwnerFundingSource[]>;
+  getOwnerFundingSourceById(id: string): Promise<OwnerFundingSource | undefined>;
+  deleteOwnerFundingSource(id: string): Promise<void>;
+  setDefaultFundingSource(ownerId: string, fundingSourceId: string): Promise<void>;
 
   // Wallet operations
   createDriverWallet(wallet: InsertDriverWallet): Promise<DriverWallet>;
