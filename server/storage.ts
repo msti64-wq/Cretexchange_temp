@@ -800,31 +800,28 @@ export class DatabaseStorage implements IStorage {
 
     const mappedResults = results
       .filter(row => {
-        // Additional validation to prevent phantom activities
+        // Less aggressive filtering - focus on core data integrity only
         const activity = row.washout_activities;
         const location = row.washout_locations;
         const driver = row.drivers;
         const user = row.users;
         
-        // Ensure all required data is present and valid
+        // Only filter out records with missing critical IDs or owner mismatch
         const isValid = 
           activity?.id && 
           activity.driverId && 
           activity.locationId &&
           location?.id &&
-          location.ownerId === ownerId && // Double-check owner matches
+          location.ownerId === ownerId && // Ensure owner matches
           driver?.id &&
-          user?.id &&
-          user.firstName && // Ensure user has actual data
-          user.lastName;
+          user?.id; // Don't require firstName/lastName as they might be empty in production
         
         if (!isValid) {
-          console.log('🚨 INVALID ACTIVITY FILTERED OUT:', {
+          console.log('🚨 INVALID ACTIVITY FILTERED OUT (missing critical data):', {
             activityId: activity?.id,
             hasLocation: !!location?.id,
             hasDriver: !!driver?.id,
             hasUser: !!user?.id,
-            hasUserNames: !!(user?.firstName && user?.lastName),
             ownerMatches: location?.ownerId === ownerId
           });
         }

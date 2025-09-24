@@ -336,7 +336,7 @@ export default function OwnerDashboard() {
           <StatCard title="Locations & Revenue" className="text-center">
             <div className="space-y-2">
               <div className="text-2xl font-bold text-accent" data-testid="text-total-locations">
-                {locations || 0}
+                {Number(locations) || 0}
               </div>
               <div className="text-xs text-muted-foreground">Active Sites</div>
               <div className="text-lg font-semibold text-green-600 dark:text-green-500" data-testid="text-approved-payments">
