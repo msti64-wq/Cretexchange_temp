@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageIcon, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 interface PhotoModalProps {
   isOpen: boolean;
@@ -19,6 +20,17 @@ export function PhotoModal({
 }: PhotoModalProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   
+  // Fetch photos using new clean API
+  const { data: photosData, isLoading, error } = useQuery({
+    queryKey: ['activity-photos', activity?.id],
+    queryFn: async () => {
+      if (!activity?.id) return { photos: [] };
+      const response = await apiRequest(`/api/photos/activity/${activity.id}`);
+      return response.json();
+    },
+    enabled: !!activity?.id && isOpen
+  });
+  
   // Reset photo index when activity changes or modal opens
   useEffect(() => {
     setCurrentPhotoIndex(0);
@@ -26,59 +38,7 @@ export function PhotoModal({
   
   if (!activity) return null;
   
-  // Helper function to get photo URLs from different activity formats
-  const getPhotoUrls = (activity: any): string[] => {
-    // Check multiple possible sources for photo URLs
-    const possibleSources = [
-      activity.photoUrls,
-      activity.photo_urls,
-      activity.washout_activities?.photo_urls
-    ];
-    
-    for (const source of possibleSources) {
-      if (!source) continue;
-      
-      let urls: string[] = [];
-      
-      // Handle different data types
-      if (typeof source === 'string') {
-        // Handle Postgres array string format like "{url1,url2}"
-        if (source.startsWith('{') && source.endsWith('}')) {
-          urls = source.slice(1, -1).split(',').map(url => url.trim()).filter(Boolean);
-        } else {
-          // Single string URL
-          urls = [source];
-        }
-      } else if (Array.isArray(source)) {
-        // Already an array
-        urls = source.filter(Boolean); // Remove empty/null values
-      }
-      
-      // Return first non-empty array found
-      if (urls.length > 0) {
-        return urls;
-      }
-    }
-    
-    return []; // No photos found
-  };
-  
-  // Robust photo URL extraction to handle different API response formats
-  const photoUrls = getPhotoUrls(activity);
-  
-  // Debug logging to see what photo URLs we extracted
-  console.log('📷 PhotoModal: Activity data:', {
-    activityId: activity.id,
-    photoUrls,
-    photoUrlsLength: photoUrls.length,
-    activityKeys: Object.keys(activity),
-    rawPhotoData: {
-      photoUrls: activity.photoUrls,
-      photo_urls: activity.photo_urls,
-      washoutActivities: activity.washout_activities?.photo_urls
-    }
-  });
-  
+  const photos = photosData?.photos || [];
   const status = activity.status;
   const amount = activity.amount || 0;
   const driverName = `${activity.driver?.user?.firstName || ''} ${activity.driver?.user?.lastName || ''}`.trim();
@@ -86,31 +46,72 @@ export function PhotoModal({
   const locationName = activity.location?.name || '';
   const checkInTime = activity.checkInTime;
 
-  // Helper function to determine if photo needs authenticated fetching
-  const needsAuthentication = (photoUrl: string) => {
-    return photoUrl.startsWith('/objects/');
-  };
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Washout Photos</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="ml-2">Loading photos...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
-  // Helper function to get displayable photo URL for non-authenticated images
-  const getPhotoDisplayUrl = (photoUrl: string) => {
-    // Handle legacy sessionStorage photos (fallback for backward compatibility)
-    if (photoUrl.startsWith('local-photo-')) {
-      const base64Data = sessionStorage.getItem(photoUrl);
-      return base64Data || '/placeholder-image.jpg';
-    }
-    
-    // Handle other URL formats (cloud storage URLs, etc.)
-    return photoUrl;
-  };
+  // Show error state
+  if (error) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Washout Photos</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-8 text-red-600">
+            <ImageIcon className="h-8 w-8" />
+            <span className="ml-2">Failed to load photos</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (photos.length === 0) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Washout Verification</span>
+              <Badge 
+                variant={status === 'verified' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}
+              >
+                {status === 'verified' ? 'Approved' : status === 'pending' ? 'Pending' : 'Rejected'}
+              </Badge>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-8 text-gray-500">
+            <ImageIcon className="h-8 w-8" />
+            <span className="ml-2">No photos available for this washout</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const currentPhoto = photos[currentPhotoIndex];
 
   const nextPhoto = () => {
-    setCurrentPhotoIndex((prev) => (prev + 1) % photoUrls.length);
+    setCurrentPhotoIndex((prev) => (prev + 1) % photos.length);
   };
 
   const prevPhoto = () => {
-    setCurrentPhotoIndex((prev) => (prev - 1 + photoUrls.length) % photoUrls.length);
+    setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
   };
-
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -125,130 +126,107 @@ export function PhotoModal({
             </Badge>
           </DialogTitle>
         </DialogHeader>
-
+        
         <div className="space-y-4">
           {/* Activity Details */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <h3 className="font-semibold text-lg" data-testid="text-driver-info">
-                {driverName}
-                {String(truckNumber || '') && (
-                  <span className="text-muted-foreground font-normal">
-                    {driverName ? ' - ' : ''}Truck #{truckNumber}
-                  </span>
-                )}
-              </h3>
-              <p className="text-muted-foreground">{locationName}</p>
-              {checkInTime && (
-                <p className="text-sm text-muted-foreground">
-                  {new Date(checkInTime).toLocaleDateString()} at{' '}
-                  {new Date(checkInTime).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                  })}
-                </p>
-              )}
-              {(activity.latitude && activity.longitude) && (
-                <p className="text-sm text-muted-foreground" data-testid="text-gps-coordinates">
-                  🌐 GPS: {Number(activity.latitude).toFixed(6)}, {Number(activity.longitude).toFixed(6)}
-                </p>
-              )}
+              <span className="font-medium">Driver:</span> {driverName}
+              {truckNumber && <span className="text-gray-600"> (Truck #{truckNumber})</span>}
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-primary">{formatCurrency(Number(amount))}</div>
-              <p className="text-sm text-muted-foreground">Washout Amount</p>
+            <div>
+              <span className="font-medium">Location:</span> {locationName}
+            </div>
+            <div>
+              <span className="font-medium">Amount:</span> {formatCurrency(amount)}
+            </div>
+            <div>
+              <span className="font-medium">Check-in:</span> {
+                checkInTime ? new Date(checkInTime).toLocaleString() : 'N/A'
+              }
             </div>
           </div>
 
           {/* Photo Viewer */}
-          {photoUrls.length > 0 ? (
-            <div className="space-y-4">
-              <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: "16/9" }}>
-                {needsAuthentication(photoUrls[currentPhotoIndex]) ? (
-                  <AuthenticatedImage
-                    src={photoUrls[currentPhotoIndex]}
-                    alt={`Washout photo ${currentPhotoIndex + 1}`}
-                    className="w-full h-full object-contain"
-                    data-testid={`image-washout-photo-${currentPhotoIndex}`}
-                  />
-                ) : (
-                  <img
-                    src={getPhotoDisplayUrl(photoUrls[currentPhotoIndex])}
-                    alt={`Washout photo ${currentPhotoIndex + 1}`}
-                    className="w-full h-full object-contain"
-                    data-testid={`image-washout-photo-${currentPhotoIndex}`}
-                  />
-                )}
-                
-                {photoUrls.length > 1 && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
-                      onClick={prevPhoto}
-                      data-testid="button-prev-photo"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
-                      onClick={nextPhoto}
-                      data-testid="button-next-photo"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </>
-                )}
-                
-                {photoUrls.length > 1 && (
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white px-2 py-1 rounded text-sm">
-                    {currentPhotoIndex + 1} of {photoUrls.length}
-                  </div>
-                )}
-              </div>
+          <div className="relative">
+            <div className="flex items-center justify-center bg-gray-100 rounded-lg min-h-[400px] relative">
+              {/* Main Photo - NEW: Simple img tag with signed URL */}
+              <img
+                src={currentPhoto.url}
+                alt={`Washout photo ${currentPhotoIndex + 1}`}
+                className="max-w-full max-h-[500px] object-contain rounded-lg"
+                data-testid={`photo-${currentPhotoIndex}`}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder-image.jpg';
+                }}
+              />
 
-              {photoUrls.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {photoUrls.map((url: string, index: number) => (
-                    needsAuthentication(url) ? (
-                      <AuthenticatedImage
-                        key={index}
-                        src={url}
-                        alt={`Thumbnail ${index + 1}`}
-                        className={`w-16 h-16 object-cover rounded cursor-pointer border-2 flex-shrink-0 ${
-                          index === currentPhotoIndex ? 'border-primary' : 'border-transparent'
-                        }`}
-                        onClick={() => setCurrentPhotoIndex(index)}
-                        data-testid={`thumbnail-photo-${index}`}
-                      />
-                    ) : (
-                      <img
-                        key={index}
-                        src={getPhotoDisplayUrl(url)}
-                        alt={`Thumbnail ${index + 1}`}
-                        className={`w-16 h-16 object-cover rounded cursor-pointer border-2 flex-shrink-0 ${
-                          index === currentPhotoIndex ? 'border-primary' : 'border-transparent'
-                        }`}
-                        onClick={() => setCurrentPhotoIndex(index)}
-                        data-testid={`thumbnail-photo-${index}`}
-                      />
-                    )
-                  ))}
-                </div>
+              {/* Navigation buttons for multiple photos */}
+              {photos.length > 1 && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute left-2 bg-white/90 hover:bg-white"
+                    onClick={prevPhoto}
+                    data-testid="button-previous-photo"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute right-2 bg-white/90 hover:bg-white"
+                    onClick={nextPhoto}
+                    data-testid="button-next-photo"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </>
               )}
             </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No photos available for this washout</p>
-              
-            </div>
-          )}
 
+            {/* Photo Counter */}
+            {photos.length > 1 && (
+              <div className="flex justify-center mt-2">
+                <span className="text-sm text-gray-600" data-testid="text-photo-counter">
+                  Photo {currentPhotoIndex + 1} of {photos.length}
+                </span>
+              </div>
+            )}
+
+            {/* Photo Thumbnails for multiple photos */}
+            {photos.length > 1 && (
+              <div className="flex justify-center space-x-2 mt-4 overflow-x-auto">
+                {photos.map((photo, index) => (
+                  <button
+                    key={photo.id}
+                    onClick={() => setCurrentPhotoIndex(index)}
+                    className={`flex-shrink-0 w-16 h-16 rounded border-2 overflow-hidden ${
+                      index === currentPhotoIndex 
+                        ? 'border-blue-500' 
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                    data-testid={`thumbnail-${index}`}
+                  >
+                    <img
+                      src={photo.url}
+                      alt={`Thumbnail ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Photo Metadata */}
+          <div className="text-xs text-gray-500 text-center">
+            Uploaded: {currentPhoto.uploadedAt ? 
+              new Date(currentPhoto.uploadedAt).toLocaleString() : 'Unknown'
+            }
+          </div>
         </div>
       </DialogContent>
     </Dialog>
