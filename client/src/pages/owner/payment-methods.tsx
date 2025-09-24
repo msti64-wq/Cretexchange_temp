@@ -8,107 +8,103 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { useLocation } from "wouter";
-import { CreditCard, Building2, ArrowLeft, Plus, Check, AlertCircle, FileText } from "lucide-react";
+import { Wallet, Building2, ArrowLeft, Plus, Check, AlertCircle, CreditCard, Trash2, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { OwnerWalletWizard } from "@/components/OwnerWalletWizard";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function PaymentMethods() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [paymentType, setPaymentType] = useState<'card' | 'bank'>('card');
-  const [showTerms, setShowTerms] = useState(false);
-  const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
+  const [showWalletWizard, setShowWalletWizard] = useState(false);
+  const [sourceType, setSourceType] = useState<'ach' | 'credit_card'>('ach');
   const queryClient = useQueryClient();
 
-  const { data: paymentMethods, isLoading } = useQuery({
-    queryKey: ['/api/owners/payment-methods'],
+  // Query for wallet status and funding sources
+  const { data: walletData, isLoading: isWalletLoading } = useQuery({
+    queryKey: ['/api/owners/wallet'],
     refetchInterval: 30000,
   });
 
-  // Check if owner has agreed to terms
-  const { data: termsStatus } = useQuery({
-    queryKey: ['/api/owners/terms-status'],
+  const { data: fundingSources, isLoading: isSourcesLoading } = useQuery({
+    queryKey: ['/api/owners/funding-sources'],
     refetchInterval: 30000,
   });
 
   const [formData, setFormData] = useState({
+    // ACH fields
+    bankName: '',
+    accountHolderName: '',
+    routingNumber: '',
+    accountNumber: '',
     // Credit card fields
+    cardholderName: '',
     cardNumber: '',
     expiryMonth: '',
     expiryYear: '',
-    cvc: '',
-    cardholderName: '',
-    
-    // Bank account fields
-    accountNumber: '',
-    routingNumber: '',
-    accountHolderName: '',
-    bankName: '',
+    cvv: '',
   });
 
-  const addPaymentMethodMutation = useMutation({
+  const addFundingSourceMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/owners/payment-methods", data);
+      const response = await apiRequest("POST", "/api/owners/funding-sources", data);
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Payment method added successfully" });
+      toast({ 
+        title: "Funding source added successfully",
+        description: "Your new payment method is now available for wallet funding." 
+      });
       setShowAddForm(false);
       setFormData({
-        cardNumber: '', expiryMonth: '', expiryYear: '', cvc: '', cardholderName: '',
-        accountNumber: '', routingNumber: '', accountHolderName: '', bankName: '',
+        bankName: '', accountHolderName: '', routingNumber: '', accountNumber: '',
+        cardholderName: '', cardNumber: '', expiryMonth: '', expiryYear: '', cvv: '',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/payment-methods'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/funding-sources'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Failed to add payment method", 
+        title: "Failed to add funding source", 
         description: error.message,
         variant: "destructive" 
       });
     },
   });
 
-  const deletePaymentMethodMutation = useMutation({
-    mutationFn: async (methodId: string) => {
-      const response = await apiRequest("DELETE", `/api/owners/payment-methods/${methodId}`);
+  const deleteFundingSourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const response = await apiRequest("DELETE", `/api/owners/funding-sources/${sourceId}`);
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Payment method removed" });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/payment-methods'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+      toast({ title: "Funding source removed successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/funding-sources'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Failed to remove payment method", 
+        title: "Failed to remove funding source", 
         description: error.message,
         variant: "destructive" 
       });
     },
   });
 
-  const agreeToTermsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/owners/agree-to-terms", {});
+  const setPrimarySourceMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const response = await apiRequest("PUT", `/api/owners/funding-sources/${sourceId}/set-primary`);
       return response.json();
     },
     onSuccess: () => {
-      setHasAgreedToTerms(true);
-      setShowTerms(false);
-      toast({ 
-        title: "Terms accepted", 
-        description: "You can now add payment methods and locations" 
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/terms-status'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/payment-methods'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+      toast({ title: "Primary funding source updated" });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/funding-sources'] });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Failed to record agreement", 
+        title: "Failed to update primary source", 
         description: error.message,
         variant: "destructive" 
       });
@@ -119,27 +115,29 @@ export default function PaymentMethods() {
     e.preventDefault();
     
     const data = {
-      type: paymentType,
-      ...(paymentType === 'card' ? {
+      sourceType,
+      ...(sourceType === 'ach' ? {
+        bankName: formData.bankName,
+        accountHolderName: formData.accountHolderName,
+        routingNumber: formData.routingNumber,
+        accountNumber: formData.accountNumber,
+      } : {
+        cardholderName: formData.cardholderName,
         cardNumber: formData.cardNumber,
         expiryMonth: formData.expiryMonth,
         expiryYear: formData.expiryYear,
-        cvc: formData.cvc,
-        cardholderName: formData.cardholderName,
-      } : {
-        accountNumber: formData.accountNumber,
-        routingNumber: formData.routingNumber,
-        accountHolderName: formData.accountHolderName,
-        bankName: formData.bankName,
+        cvv: formData.cvv,
       })
     };
 
-    addPaymentMethodMutation.mutate(data);
+    addFundingSourceMutation.mutate(data);
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
+
+  const isLoading = isWalletLoading || isSourcesLoading;
 
   if (isLoading) {
     return (
@@ -148,6 +146,69 @@ export default function PaymentMethods() {
           <div className="h-20 bg-muted rounded-lg" />
           <div className="h-32 bg-muted rounded-lg" />
         </div>
+        <MobileNav role="owner" />
+      </div>
+    );
+  }
+
+  // Show wallet setup wizard if wallet is not configured
+  if (!walletData || !(walletData as any)?.isConfigured) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        {/* Header */}
+        <header className="gradient-bg text-white p-4 shadow-lg">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocation('/')}
+              className="text-white hover:bg-white/20 p-2"
+              data-testid="button-back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <Wallet className="w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="font-semibold text-lg">Wallet Setup Required</h1>
+                <p className="text-white/80 text-sm">Configure your Column wallet</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="p-4 space-y-6">
+          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+            <CardContent className="p-6 text-center">
+              <Wallet className="w-16 h-16 mx-auto mb-4 text-blue-600" />
+              <h3 className="text-lg font-semibold mb-2">Column Wallet Setup Required</h3>
+              <p className="text-muted-foreground mb-4">
+                Before you can manage funding sources, you need to set up your Column business wallet.
+                This enables secure payment processing and automatic driver payouts.
+              </p>
+              <Button 
+                onClick={() => setShowWalletWizard(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+                data-testid="button-setup-wallet"
+              >
+                <Wallet className="w-4 h-4 mr-2" />
+                Set Up Column Wallet
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+
+        <OwnerWalletWizard
+          isOpen={showWalletWizard}
+          onComplete={() => {
+            setShowWalletWizard(false);
+            queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
+          }}
+          onCancel={() => setShowWalletWizard(false)}
+        />
+
         <MobileNav role="owner" />
       </div>
     );
@@ -169,17 +230,39 @@ export default function PaymentMethods() {
           </Button>
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <CreditCard className="w-5 h-5" />
+              <Wallet className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-lg">Payment Methods</h1>
-              <p className="text-white/80 text-sm">Manage funding sources</p>
+              <h1 className="font-semibold text-lg">Funding Sources</h1>
+              <p className="text-white/80 text-sm">Manage wallet funding methods</p>
             </div>
           </div>
         </div>
       </header>
 
       <main className="p-4 space-y-6">
+        {/* Wallet Status Card */}
+        <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-start space-x-3">
+                <Wallet className="w-5 h-5 text-green-600 mt-0.5" />
+                <div className="text-sm">
+                  <h3 className="font-medium text-green-800 dark:text-green-200 mb-1">
+                    Column Wallet Status
+                  </h3>
+                  <p className="text-green-700 dark:text-green-300">
+                    Balance: ${(walletData as any)?.balance || '0.00'} • Status: {(walletData as any)?.status || 'Active'}
+                  </p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                {(walletData as any)?.status || 'Active'}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Info Card */}
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
           <CardContent className="p-4">
@@ -187,84 +270,99 @@ export default function PaymentMethods() {
               <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
               <div className="text-sm">
                 <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
-                  Automatic Driver Payouts
+                  Wallet Funding & Auto Top-up
                 </h3>
                 <p className="text-blue-700 dark:text-blue-300">
-                  Add a payment method to enable automatic weekly withdrawals for driver payouts.
+                  Add funding sources to manually fund your wallet or enable automatic top-up when balance is low.
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Existing Payment Methods */}
+        {/* Existing Funding Sources */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Your Payment Methods</h2>
+            <h2 className="text-lg font-semibold">Your Funding Sources</h2>
             <Button
               onClick={() => setShowAddForm(true)}
               className="bg-green-600 hover:bg-green-700"
-              data-testid="button-add-method"
+              data-testid="button-add-source"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Method
+              Add Source
             </Button>
           </div>
 
-          {!paymentMethods?.length ? (
+          {!(fundingSources as any[])?.length ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <CreditCard className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="font-medium mb-2">No Payment Methods Added</h3>
+                <h3 className="font-medium mb-2">No Funding Sources Added</h3>
                 <p className="text-muted-foreground mb-4">
-                  Add a credit card or bank account to enable automatic driver payouts
+                  Add a bank account or credit card to fund your wallet and enable automatic top-up
                 </p>
-                <Button onClick={() => setShowAddForm(true)} data-testid="button-add-first-method">
-                  Add Your First Payment Method
+                <Button onClick={() => setShowAddForm(true)} data-testid="button-add-first-source">
+                  Add Your First Funding Source
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            paymentMethods.map((method: any, index: number) => (
-              <Card key={method.id} data-testid={`card-payment-method-${index}`}>
+            ((fundingSources as any[]) || []).map((source: any, index: number) => (
+              <Card key={source.id} data-testid={`card-funding-source-${index}`}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      {method.type === 'card' ? (
+                      {source.sourceType === 'credit_card' ? (
                         <CreditCard className="w-8 h-8 text-blue-600" />
                       ) : (
                         <Building2 className="w-8 h-8 text-green-600" />
                       )}
                       <div>
                         <div className="font-medium">
-                          {method.type === 'card' ? (
-                            `**** **** **** ${method.last4}`
+                          {source.sourceType === 'credit_card' ? (
+                            `${source.cardBrand || 'Card'} ****${source.cardLast4}`
                           ) : (
-                            `${method.bankName} ****${method.last4}`
+                            `${source.bankName} ****${source.accountNumberLast4}`
                           )}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {method.type === 'card' ? 
-                            `Expires ${method.expiryMonth}/${method.expiryYear}` :
-                            'Bank Account'
+                          {source.sourceType === 'credit_card' ? 
+                            'Credit Card' :
+                            'Bank Account (ACH)'
                           }
+                          {source.isVerified && (
+                            <span className="text-green-600 ml-2">• Verified</span>
+                          )}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {method.isDefault && (
-                        <Badge variant="secondary" data-testid="badge-default">
-                          Default
+                      {source.isPrimary && (
+                        <Badge variant="secondary" data-testid={`badge-primary-${index}`}>
+                          <Star className="w-3 h-3 mr-1" />
+                          Primary
                         </Badge>
+                      )}
+                      {!source.isPrimary && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPrimarySourceMutation.mutate(source.id)}
+                          disabled={setPrimarySourceMutation.isPending}
+                          data-testid={`button-set-primary-${index}`}
+                        >
+                          Set Primary
+                        </Button>
                       )}
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => deletePaymentMethodMutation.mutate(method.id)}
-                        disabled={deletePaymentMethodMutation.isPending}
+                        onClick={() => deleteFundingSourceMutation.mutate(source.id)}
+                        disabled={deleteFundingSourceMutation.isPending}
                         data-testid={`button-delete-${index}`}
                       >
-                        Remove
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
@@ -274,43 +372,95 @@ export default function PaymentMethods() {
           )}
         </div>
 
-        {/* Add Payment Method Form */}
+        {/* Add Funding Source Form */}
         {showAddForm && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Plus className="w-5 h-5 mr-2" />
-                Add Payment Method
+                Add Funding Source
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Payment Type Selection */}
+                {/* Source Type Selection */}
                 <div className="grid grid-cols-2 gap-4">
                   <Button
                     type="button"
-                    variant={paymentType === 'card' ? 'default' : 'outline'}
+                    variant={sourceType === 'ach' ? 'default' : 'outline'}
                     className="h-12"
-                    onClick={() => setPaymentType('card')}
+                    onClick={() => setSourceType('ach')}
+                    data-testid="button-ach-type"
+                  >
+                    <Building2 className="w-4 h-4 mr-2" />
+                    Bank Account (ACH)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={sourceType === 'credit_card' ? 'default' : 'outline'}
+                    className="h-12"
+                    onClick={() => setSourceType('credit_card')}
                     data-testid="button-card-type"
                   >
                     <CreditCard className="w-4 h-4 mr-2" />
                     Credit Card
                   </Button>
-                  <Button
-                    type="button"
-                    variant={paymentType === 'bank' ? 'default' : 'outline'}
-                    className="h-12"
-                    onClick={() => setPaymentType('bank')}
-                    data-testid="button-bank-type"
-                  >
-                    <Building2 className="w-4 h-4 mr-2" />
-                    Bank Account
-                  </Button>
                 </div>
 
+                {/* ACH Form */}
+                {sourceType === 'ach' && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="bankName">Bank Name</Label>
+                      <Input
+                        id="bankName"
+                        value={formData.bankName}
+                        onChange={(e) => handleInputChange('bankName', e.target.value)}
+                        placeholder="Chase Bank"
+                        required
+                        data-testid="input-bank-name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="accountHolderName">Account Holder Name</Label>
+                      <Input
+                        id="accountHolderName"
+                        value={formData.accountHolderName}
+                        onChange={(e) => handleInputChange('accountHolderName', e.target.value)}
+                        placeholder="John Doe"
+                        required
+                        data-testid="input-account-holder-name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="routingNumber">Routing Number</Label>
+                      <Input
+                        id="routingNumber"
+                        value={formData.routingNumber}
+                        onChange={(e) => handleInputChange('routingNumber', e.target.value)}
+                        placeholder="021000021"
+                        maxLength={9}
+                        required
+                        data-testid="input-routing-number"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="accountNumber">Account Number</Label>
+                      <Input
+                        id="accountNumber"
+                        value={formData.accountNumber}
+                        onChange={(e) => handleInputChange('accountNumber', e.target.value)}
+                        placeholder="1234567890"
+                        type="password"
+                        required
+                        data-testid="input-account-number"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Credit Card Form */}
-                {paymentType === 'card' && (
+                {sourceType === 'credit_card' && (
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="cardholderName">Cardholder Name</Label>
@@ -360,68 +510,17 @@ export default function PaymentMethods() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="cvc">CVC</Label>
+                        <Label htmlFor="cvv">CVV</Label>
                         <Input
-                          id="cvc"
-                          value={formData.cvc}
-                          onChange={(e) => handleInputChange('cvc', e.target.value)}
+                          id="cvv"
+                          value={formData.cvv}
+                          onChange={(e) => handleInputChange('cvv', e.target.value)}
                           placeholder="123"
                           maxLength={4}
                           required
-                          data-testid="input-cvc"
+                          data-testid="input-cvv"
                         />
                       </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Bank Account Form */}
-                {paymentType === 'bank' && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="accountHolderName">Account Holder Name</Label>
-                      <Input
-                        id="accountHolderName"
-                        value={formData.accountHolderName}
-                        onChange={(e) => handleInputChange('accountHolderName', e.target.value)}
-                        placeholder="John Doe"
-                        required
-                        data-testid="input-account-holder-name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="bankName">Bank Name</Label>
-                      <Input
-                        id="bankName"
-                        value={formData.bankName}
-                        onChange={(e) => handleInputChange('bankName', e.target.value)}
-                        placeholder="Chase Bank"
-                        required
-                        data-testid="input-bank-name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="routingNumber">Routing Number</Label>
-                      <Input
-                        id="routingNumber"
-                        value={formData.routingNumber}
-                        onChange={(e) => handleInputChange('routingNumber', e.target.value)}
-                        placeholder="021000021"
-                        maxLength={9}
-                        required
-                        data-testid="input-routing-number"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="accountNumber">Account Number</Label>
-                      <Input
-                        id="accountNumber"
-                        value={formData.accountNumber}
-                        onChange={(e) => handleInputChange('accountNumber', e.target.value)}
-                        placeholder="1234567890"
-                        required
-                        data-testid="input-account-number"
-                      />
                     </div>
                   </div>
                 )}
@@ -430,10 +529,10 @@ export default function PaymentMethods() {
                 <div className="flex space-x-3 pt-4">
                   <Button
                     type="submit"
-                    disabled={addPaymentMethodMutation.isPending}
-                    data-testid="button-save-method"
+                    disabled={addFundingSourceMutation.isPending}
+                    data-testid="button-save-source"
                   >
-                    {addPaymentMethodMutation.isPending ? "Adding..." : "Add Payment Method"}
+                    {addFundingSourceMutation.isPending ? "Adding..." : "Add Funding Source"}
                   </Button>
                   <Button
                     type="button"
@@ -449,189 +548,52 @@ export default function PaymentMethods() {
           </Card>
         )}
 
-        {/* Payout Settings */}
-        {paymentMethods?.length > 0 && (
+        {/* Wallet Management */}
+        {(fundingSources as any[])?.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Check className="w-5 h-5 mr-2" />
-                Automatic Payout Settings
+                Wallet Management
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium">Weekly Driver Payouts</div>
+                    <div className="font-medium">Auto Top-up</div>
                     <div className="text-sm text-muted-foreground">
-                      Automatically pay drivers every Friday
+                      {(walletData as any)?.autoTopupEnabled ? 'Enabled' : 'Disabled'} • 
+                      Threshold: ${(walletData as any)?.lowBalanceThreshold || '100'}
+                      {(walletData as any)?.autoTopupEnabled && ` • Amount: $${(walletData as any)?.autoTopupAmount || '500'}`}
                     </div>
                   </div>
-                  <Badge variant="secondary">Active</Badge>
+                  <Badge variant={(walletData as any)?.autoTopupEnabled ? 'default' : 'secondary'}>
+                    {(walletData as any)?.autoTopupEnabled ? 'Active' : 'Inactive'}
+                  </Badge>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <p>• Drivers receive 100% of verified washout amounts</p>
-                  <p>• You pay 110% total (100% to drivers + 10% platform fee)</p>
-                  <p>• Payments processed using your default payment method</p>
-                  <p>• You'll receive email confirmations for all transactions</p>
+                  <p>• Automatic driver payouts are processed weekly</p>
+                  <p>• Platform fee (10%) is deducted from your wallet balance</p>
+                  <p>• Low balance alerts keep your wallet funded</p>
+                  <p>• All transactions are logged for your records</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Terms and Conditions */}
+        {/* Column Banking Info */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <FileText className="w-5 h-5 text-muted-foreground" />
-                <div>
-                  <div className="font-medium">Terms and Conditions</div>
-                  <div className="text-sm text-muted-foreground">
-                    Review payment terms and platform policies
-                  </div>
+            <div className="flex items-center space-x-3">
+              <Wallet className="w-5 h-5 text-muted-foreground" />
+              <div>
+                <div className="font-medium">Powered by Column Banking</div>
+                <div className="text-sm text-muted-foreground">
+                  FDIC-insured business banking with secure payment processing
                 </div>
               </div>
-              <Dialog open={showTerms} onOpenChange={setShowTerms}>
-                <DialogTrigger asChild>
-                  {hasAgreedToTerms || termsStatus?.hasAgreed ? (
-                    <Button variant="outline" size="sm" data-testid="button-terms" className="text-green-700 border-green-200">
-                      ✓ Terms Reviewed
-                    </Button>
-                  ) : (
-                    <Button className="bg-red-600 hover:bg-red-700 text-white font-semibold" size="sm" data-testid="button-terms">
-                      ⚠️ Must Read Terms
-                    </Button>
-                  )}
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Terms and Conditions - Required Reading</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 text-sm">
-                    <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                      <div className="flex items-center mb-2">
-                        <AlertCircle className="w-4 h-4 text-yellow-600 mr-2" />
-                        <span className="font-semibold text-yellow-800">Important Notice</span>
-                      </div>
-                      <p className="text-yellow-700 text-xs">
-                        You must read and agree to these terms before adding payment methods or locations.
-                      </p>
-                    </div>
-                    
-                    <div className="border rounded-lg p-4 bg-background">
-                      <div className="space-y-4 text-xs leading-relaxed max-h-96 overflow-y-auto">
-                        <div className="text-center">
-                          <h3 className="font-bold text-lg mb-2">WashOut Pro Terms and Conditions</h3>
-                          <p className="font-semibold">Agreement</p>
-                          <p className="font-medium">Effective Date: September 16, 2025</p>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          <p>
-                            This Terms and Conditions Agreement ("Agreement") is entered into by and between WashOut
-                            Pro, LLC ("WashOut Pro," "we," or "our") and each rock crushing yard operator ("Owner,"
-                            "you," or "your").
-                          </p>
-                          
-                          <p>
-                            By clicking "I Agree," enrolling in, and using the WashOut Pro system, you acknowledge that
-                            you have read, understood, and agree to be bound by the following terms:
-                          </p>
-                          
-                          <div className="space-y-4">
-                            <div>
-                              <h4 className="font-semibold mb-2">1. Subscription and Account</h4>
-                              <div className="space-y-2 ml-4">
-                                <p><strong>1.1 Subscription Fee:</strong> Each published location is subject to a monthly subscription fee as communicated to you by WashOut Pro.</p>
-                                <p><strong>1.2 Payment Method:</strong> You must provide and maintain a valid payment method (credit account, ACH, or linked bank account) for automatic withdrawals. Subscription fees will be billed monthly.</p>
-                                <p><strong>1.3 Authorization:</strong> By agreeing to this Agreement, you authorize WashOut Pro to automatically withdraw subscription fees, service charges, and other applicable fees from your designated account.</p>
-                                <p><strong>1.4 Payment Failure and Grace Period:</strong> If a subscription payment fails, your account will enter a 7-day grace period during which:</p>
-                                <div className="space-y-1 ml-4">
-                                  <p><strong>a. Grace Period Start:</strong> The grace period begins immediately upon payment failure, and you will receive notification via the platform.</p>
-                                  <p><strong>b. Feature Restrictions:</strong> During the grace period, you cannot add new locations or modify existing location settings, but you remain fully responsible for all driver payments and service fees for washouts performed at your locations.</p>
-                                  <p><strong>c. Payment Obligations Continue:</strong> All existing payment obligations to drivers and WashOut Pro service fees remain in effect during the grace period.</p>
-                                  <p><strong>d. Automatic Deactivation:</strong> If payment is not resolved within 7 days, your subscription will be automatically suspended, and your locations will be temporarily removed from the platform until payment is restored.</p>
-                                  <p><strong>e. Reactivation:</strong> Upon successful payment, your account will be immediately reactivated with full access restored.</p>
-                                </div>
-                                <p><strong>1.5 Renewal Reminders:</strong> WashOut Pro will send payment reminders 7 days before your subscription renewal date to help ensure uninterrupted service.</p>
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <h4 className="font-semibold mb-2">2. Payments to Drivers</h4>
-                              <div className="space-y-2 ml-4">
-                                <p><strong>2.1 Payment Obligation:</strong> Owners are responsible for compensating participating concrete truck drivers for washout services in the minimum amount of $5.00 per washout (or higher, as determined by you within the app).</p>
-                                <p><strong>2.2 Payment Schedule:</strong> Payments to drivers will be processed on a weekly basis.</p>
-                                <p><strong>2.3 Service Fee:</strong> For each payment made to a driver, WashOut Pro will assess a 10% service charge to the Owner, billed in addition to the driver's compensation. Drivers shall receive the full washout payment without any deduction for service fees.</p>
-                                <div className="bg-muted/50 p-2 rounded italic">
-                                  Example: If a driver is paid $5.00, the Owner will be billed $5.50 ($5.00 driver payment + $0.50 service fee).
-                                </div>
-                                <p><strong>2.4 Washout Verification:</strong> Washouts will vary in size and content. Drivers are required to upload a clear photo of the actual washout for verification. Owners will be provided this photo for approval.</p>
-                                <div className="space-y-2 ml-4">
-                                  <p><strong>a. Approval Requirement:</strong> Unless the driver fails to provide a photo, or provides a photo unrelated to the actual washout, Owners must approve the washout.</p>
-                                  <p><strong>b. No Other Grounds for Rejection:</strong> Washouts cannot be rejected based on size, volume, or other subjective factors.</p>
-                                  <p><strong>c. Improper Rejection:</strong> If an Owner rejects a washout for reasons other than those listed above, WashOut Pro reserves the right to automatically override the rejection, approve the washout, and process the payment on the Owner's behalf.</p>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <h4 className="font-semibold mb-2">3. System Participation</h4>
-                              <div className="space-y-2 ml-4">
-                                <p><strong>3.1 Eligibility:</strong> Only approved owners with active accounts may use the WashOut Pro platform.</p>
-                                <p><strong>3.2 Compliance:</strong> Owners agree to comply with all applicable laws, safety standards, and environmental regulations related to washout services.</p>
-                                <p><strong>3.3 Account Suspension:</strong> WashOut Pro reserves the right to suspend or terminate access to the system for non-payment, misuse, or violation of this Agreement.</p>
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <h4 className="font-semibold mb-2">4. Disclaimers and Liability</h4>
-                              <div className="space-y-2 ml-4">
-                                <p><strong>4.1 Independent Contractors:</strong> Drivers participating in WashOut Pro are independent contractors, not employees, agents, or representatives of WashOut Pro.</p>
-                                <p><strong>4.2 Limitation of Liability:</strong> WashOut Pro is not responsible for disputes, damages, or claims arising out of washout services performed by drivers.</p>
-                                <p><strong>4.3 Indemnification:</strong> You agree to indemnify and hold harmless WashOut Pro, its affiliates, and representatives from any claims, damages, or expenses resulting from your participation in the system.</p>
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <h4 className="font-semibold mb-2">5. Termination</h4>
-                              <div className="space-y-2 ml-4">
-                                <p><strong>5.1 By Owner:</strong> You may terminate your participation at any time by providing thirty (30) days written notice to WashOut Pro.</p>
-                                <p><strong>5.2 By WashOut Pro:</strong> WashOut Pro may terminate this Agreement immediately for failure to pay, fraudulent activity, or material breach of terms.</p>
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <h4 className="font-semibold mb-2">6. Miscellaneous</h4>
-                              <div className="space-y-2 ml-4">
-                                <p><strong>6.1 Governing Law:</strong> This Agreement shall be governed by the laws of the state of Texas.</p>
-                                <p><strong>6.2 Entire Agreement:</strong> This Agreement constitutes the full understanding between the parties and supersedes any prior agreements.</p>
-                                <p><strong>6.3 Amendments:</strong> WashOut Pro may update these Terms and Conditions with notice to participating Owners. Continued use of the system constitutes acceptance of updated terms.</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <p className="text-xs text-muted-foreground">
-                        By clicking "I Agree", you confirm you have read and accept all terms.
-                      </p>
-                      <Button 
-                        onClick={() => agreeToTermsMutation.mutate()}
-                        disabled={agreeToTermsMutation.isPending}
-                        className="bg-green-600 hover:bg-green-700 text-white font-semibold"
-                        data-testid="button-agree-terms"
-                      >
-                        {agreeToTermsMutation.isPending ? "Recording..." : "I Agree"}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
             </div>
           </CardContent>
         </Card>
