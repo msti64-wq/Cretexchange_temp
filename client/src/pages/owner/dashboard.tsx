@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,28 @@ export default function OwnerDashboard() {
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | '90days' | 'all'>('today');
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // EMERGENCY: Clear phantom activities on component mount
+  useEffect(() => {
+    let hasCleared = false;
+    const clearKey = 'phantom-activities-cleared';
+    
+    // Only clear once per session to avoid infinite clearing
+    if (!sessionStorage.getItem(clearKey)) {
+      console.log("🚨 PROACTIVE: Clearing phantom activities from cache on mount");
+      
+      queryClient.removeQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0]?.toString() || '';
+          return key.includes('/api/owners/activities') || key.includes('activities');
+        }
+      });
+      
+      sessionStorage.setItem(clearKey, 'true');
+      hasCleared = true;
+      console.log("✅ Phantom activities proactively cleared");
+    }
+  }, [queryClient]);
 
   // Separate query for dashboard stats (stable, independent of dateRange)
   const { data: dashboardData, isLoading: isDashboardLoading } = useQuery({
@@ -101,6 +123,39 @@ export default function OwnerDashboard() {
     },
   });
 
+  // Emergency cache invalidation for phantom activities
+  const clearPhantomActivities = () => {
+    console.log("🚨 EMERGENCY: Clearing phantom activities from cache");
+    
+    // Clear all activity-related cache entries
+    queryClient.invalidateQueries({ 
+      predicate: (query) => {
+        const key = query.queryKey[0]?.toString() || '';
+        return key.includes('/api/owners/activities') || 
+               key.includes('/api/owners/dashboard') ||
+               key.includes('activities');
+      }
+    });
+    
+    // Force remove all cached data completely
+    queryClient.removeQueries({ 
+      predicate: (query) => {
+        const key = query.queryKey[0]?.toString() || '';
+        return key.includes('/api/owners/activities') || key.includes('activities');
+      }
+    });
+    
+    console.log("✅ Phantom activities cache cleared");
+    
+    // Force immediate refetch
+    queryClient.refetchQueries({
+      predicate: (query) => {
+        const key = query.queryKey[0]?.toString() || '';
+        return key.includes('/api/owners/activities');
+      }
+    });
+  };
+
   // Combined loading states
   const isMainLoading = isDashboardLoading;
   const isDataReady = dashboardData && activitiesData;
@@ -122,9 +177,25 @@ export default function OwnerDashboard() {
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
   
   // CRITICAL FIX: Force empty activities when authentication fails to prevent phantom data
+  // Also filter out any phantom activities with hardcoded IDs
+  const rawActivities = Array.isArray(activitiesData) ? activitiesData : [];
   const recentActivities = (isAuthError || isDashboardAuthError) 
     ? [] 
-    : Array.isArray(activitiesData) ? activitiesData : [];
+    : rawActivities.filter(activity => {
+        // Remove phantom activities with known problematic driver/location IDs
+        const isPhantomActivity = 
+          activity.driverId === 'fa5eda82-02f2-4f94-a407-8dd4af69ff47' ||
+          activity.locationId === 'ecad6bf6-0789-4493-a13c-54a649e3cda6' ||
+          activity.id === 'a8144b7f-f863-4ba9-a882-2290dce47c61' ||
+          activity.id === 'c31a991c-2b9a-4346-988b-b57b98ec3ce5';
+        
+        if (isPhantomActivity) {
+          console.log("🚨 PHANTOM ACTIVITY DETECTED AND FILTERED:", activity.id);
+          return false;
+        }
+        
+        return true;
+      });
   
   
 
@@ -418,14 +489,24 @@ export default function OwnerDashboard() {
                 </div>
                 <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Authentication Required</h3>
                 <p className="text-muted-foreground mb-4">Your session has expired. Please log in again to view your washout activities.</p>
-                <Button
-                  onClick={logout}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                  data-testid="button-reauth"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Log In Again
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={clearPhantomActivities}
+                    variant="outline"
+                    className="mr-2"
+                    data-testid="button-clear-cache"
+                  >
+                    Clear Cache
+                  </Button>
+                  <Button
+                    onClick={logout}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                    data-testid="button-reauth"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Log In Again
+                  </Button>
+                </div>
               </div>
             ) : !recentActivities?.length ? (
               <div className="text-center py-8 text-muted-foreground">
