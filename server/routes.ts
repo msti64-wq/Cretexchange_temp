@@ -4705,19 +4705,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { activityData, photoData } = req.body;
       
-      // Validate input
-      const activityResult = insertWashoutActivitySchema.safeParse(activityData);
+      // Verify user is a driver FIRST
+      const driver = await storage.getDriver(userId);
+      if (!driver) {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+      
+      // Add driverId to activity data before validation
+      const completeActivityData = {
+        ...activityData,
+        driverId: driver.id
+      };
+      
+      // Validate input with complete data
+      const activityResult = insertWashoutActivitySchema.safeParse(completeActivityData);
       if (!activityResult.success) {
         return res.status(400).json({ 
           message: "Invalid activity data", 
           errors: activityResult.error.issues 
         });
-      }
-      
-      // Verify user is a driver
-      const driver = await storage.getDriver(userId);
-      if (!driver) {
-        return res.status(403).json({ message: "Driver access required" });
       }
       
       // Prepare photos with driver verification

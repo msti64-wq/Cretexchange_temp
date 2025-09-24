@@ -349,7 +349,8 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
           latitude: currentLocation?.lat?.toString(),
           longitude: currentLocation?.lng?.toString(),
           notes,
-          checkInTime: new Date(),
+          checkInTime: new Date().toISOString(), // Convert to ISO string for API
+          status: 'pending', // Add required status field
         },
         photoData: photoData,
       });
