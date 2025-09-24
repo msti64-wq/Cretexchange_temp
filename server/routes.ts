@@ -4628,14 +4628,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Activity not found' });
       }
       
-      // Verify user has access (owner of the location)
+      // Verify user has access (either owner of the location OR driver who performed the washout)
       const location = await storage.getWashoutLocation(activity.locationId);
       if (!location) {
         return res.status(404).json({ message: 'Location not found' });
       }
       
+      // Check if user is the location owner
       const owner = await storage.getOwner(userId);
-      if (!owner || location.ownerId !== owner.id) {
+      const isOwner = owner && location.ownerId === owner.id;
+      
+      // Check if user is the driver who performed this washout
+      const driver = await storage.getDriver(userId);
+      const isDriver = driver && activity.driverId === driver.id;
+      
+      if (!isOwner && !isDriver) {
         return res.status(403).json({ message: 'Not authorized to view these photos' });
       }
       
