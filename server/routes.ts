@@ -4729,6 +4729,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TEMPORARY ADMIN ROUTE: Fix photo ownership for production issue
+  app.post('/api/admin/fix-photo-ownership', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      
+      // Restrict to admin access only
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+
+      const { photoKey, newOwnerId } = req.body;
+      
+      if (!photoKey || !newOwnerId) {
+        return res.status(400).json({ error: 'photoKey and newOwnerId are required' });
+      }
+
+      console.log('🔧 Admin fixing photo ownership:', { photoKey, newOwnerId, adminId: user.id });
+
+      // Get the photo file from object storage
+      const objectStorage = new ObjectStorageService();
+      const objectFile = await objectStorage.getObjectEntityFile(`/objects/photos/${photoKey}`);
+      
+      // Get current ACL policy
+      const currentPolicy = await getObjectAclPolicy(objectFile);
+      
+      if (!currentPolicy) {
+        return res.status(404).json({ error: 'Photo ACL policy not found' });
+      }
+
+      console.log('📋 Current ACL policy:', currentPolicy);
+
+      // Update the owner field to the correct owner ID
+      const updatedPolicy = {
+        ...currentPolicy,
+        owner: newOwnerId
+      };
+
+      // Set the updated ACL policy
+      await setObjectAclPolicy(objectFile, updatedPolicy);
+
+      console.log('✅ Updated ACL policy:', updatedPolicy);
+
+      res.json({
+        success: true,
+        message: 'Photo ownership updated successfully',
+        oldOwner: currentPolicy.owner,
+        newOwner: newOwnerId,
+        photoKey
+      });
+
+    } catch (error) {
+      console.error('Error fixing photo ownership:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: errorMessage });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
