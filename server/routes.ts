@@ -4679,13 +4679,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const extension = contentType === 'image/png' ? 'png' : 'jpg';
       const storageKey = `photo-${timestamp}-${randomId}.${extension}`;
       
-      // Generate signed upload URL
+      // Generate signed upload URL  
       const uploadUrl = await signObjectURL({
         bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
         objectName: storageKey,
         method: 'PUT',
-        ttlSec: 600, // 10 minutes to complete upload
-        contentType
+        ttlSec: 600 // 10 minutes to complete upload
+        // Note: contentType parameter not supported by this function
       });
       
       res.json({ 

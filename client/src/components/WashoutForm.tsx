@@ -349,7 +349,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
           latitude: currentLocation?.lat?.toString(),
           longitude: currentLocation?.lng?.toString(),
           notes,
-          checkInTime: new Date().toISOString(), // Convert to ISO string for API
+          checkInTime: new Date(), // Send Date object as expected by schema
           status: 'pending', // Add required status field
         },
         photoData: photoData,
