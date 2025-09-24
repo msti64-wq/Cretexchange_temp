@@ -1203,6 +1203,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerUserId: owner?.userId
       });
       
+      // CRITICAL: Log every step to debug phantom activities
+      console.log('🔍 OWNER VERIFICATION:', {
+        authenticatedUserId: userId,
+        ownerRecordFound: !!owner,
+        ownerIdFromDb: owner?.id,
+        userIdMatches: owner?.userId === userId
+      });
+      
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
       }

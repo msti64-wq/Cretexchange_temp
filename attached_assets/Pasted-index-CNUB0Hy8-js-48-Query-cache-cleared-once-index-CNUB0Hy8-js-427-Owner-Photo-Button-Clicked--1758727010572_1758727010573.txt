@@ -1,0 +1,44 @@
+index-CNUB0Hy8.js:48 🔄 Query cache cleared once
+index-CNUB0Hy8.js:427 Owner Photo Button Clicked: {id: '36b70f69-3b28-43ce-9535-e75cd2f1c522', driverId: 'fa5eda82-02f2-4f94-a407-8dd4af69ff47', locationId: 'ecad6bf6-0789-4493-a13c-54a649e3cda6', status: 'pending', amount: '5.00', …}
+index-CNUB0Hy8.js:427 🔧 Dashboard: Setting modal state {activityId: '36b70f69-3b28-43ce-9535-e75cd2f1c522', currentModalOpen: false, currentSelectedActivity: undefined, activityData: {…}}
+index-CNUB0Hy8.js:427 🔧 Dashboard: Modal state updated
+index-CNUB0Hy8.js:427 📷 PhotoModal: Activity data: {activityId: '36b70f69-3b28-43ce-9535-e75cd2f1c522', photoUrls: Array(1), photoUrlsLength: 1, activityKeys: Array(17), rawPhotoData: {…}}
+index-CNUB0Hy8.js:427 🔍 AuthenticatedImage: Processing photo key: {src: '/objects/photos/photo-1758724830161-uk0blyut8.jpg', photoKey: 'photo-1758724830161-uk0blyut8.jpg'}
+index-CNUB0Hy8.js:427 🌐 AuthenticatedImage: Fetching authenticated image: /api/objects/photos/photo-1758724830161-uk0blyut8.jpg
+index-CNUB0Hy8.js:427 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-CNUB0Hy8.js:427
+Du @ index-CNUB0Hy8.js:40
+$i @ index-CNUB0Hy8.js:40
+MA @ index-CNUB0Hy8.js:40
+Sa @ index-CNUB0Hy8.js:40
+Hg @ index-CNUB0Hy8.js:40
+ga @ index-CNUB0Hy8.js:38
+(anonymous) @ index-CNUB0Hy8.js:40
+index-CNUB0Hy8.js:48  GET https://truck-wash-locator-msti64.replit.app/api/objects/photos/photo-1758724830161-uk0blyut8.jpg 404 (Not Found)
+Oe @ index-CNUB0Hy8.js:48
+(anonymous) @ index-CNUB0Hy8.js:427
+(anonymous) @ index-CNUB0Hy8.js:427
+Du @ index-CNUB0Hy8.js:40
+$i @ index-CNUB0Hy8.js:40
+MA @ index-CNUB0Hy8.js:40
+Sa @ index-CNUB0Hy8.js:40
+Hg @ index-CNUB0Hy8.js:40
+ga @ index-CNUB0Hy8.js:38
+(anonymous) @ index-CNUB0Hy8.js:40
+index-CNUB0Hy8.js:427 Error fetching authenticated image: Error: 404: {"message":"Image not found"}
+    at aS (index-CNUB0Hy8.js:48:42800)
+    at async Oe (index-CNUB0Hy8.js:48:43123)
+    at async index-CNUB0Hy8.js:427:154522
+(anonymous) @ index-CNUB0Hy8.js:427
+await in (anonymous)
+(anonymous) @ index-CNUB0Hy8.js:427
+Du @ index-CNUB0Hy8.js:40
+$i @ index-CNUB0Hy8.js:40
+MA @ index-CNUB0Hy8.js:40
+Sa @ index-CNUB0Hy8.js:40
+Hg @ index-CNUB0Hy8.js:40
+ga @ index-CNUB0Hy8.js:38
+(anonymous) @ index-CNUB0Hy8.js:40
+index-CNUB0Hy8.js:427 📷 PhotoModal: Activity data: {activityId: '36b70f69-3b28-43ce-9535-e75cd2f1c522', photoUrls: Array(1), photoUrlsLength: 1, activityKeys: Array(17), rawPhotoData: {…}}
+index-CNUB0Hy8.js:427 📷 PhotoModal: Activity data: {activityId: '36b70f69-3b28-43ce-9535-e75cd2f1c522', photoUrls: Array(1), photoUrlsLength: 1, activityKeys: Array(17), rawPhotoData: {…}}
+index-CNUB0Hy8.js:427 📷 PhotoModal: Activity data: {activityId: '36b70f69-3b28-43ce-9535-e75cd2f1c522', photoUrls: Array(1), photoUrlsLength: 1, activityKeys: Array(17), rawPhotoData: {…}}
