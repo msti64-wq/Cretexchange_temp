@@ -24,17 +24,23 @@ interface WashoutFormProps {
 export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFormProps) {
   const { toast } = useToast();
   const [notes, setNotes] = useState("");
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]); // Keep for compatibility
+  const [photoData, setPhotoData] = useState<Array<{
+    storageKey: string;
+    contentType: string;
+    fileSize: number;
+  }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
 
   const checkInMutation = useMutation({
     mutationFn: async (data: any) => {
-      console.log("=== CHECK-IN MUTATION START ===");
-      console.log("Data being sent:", data);
+      console.log("=== NEW: TRANSACTIONAL CHECK-IN START ===");
+      console.log("Activity data:", data.activityData);
+      console.log("Photo data:", data.photoData);
       console.log("Auth token:", localStorage.getItem('authToken') ? 'present' : 'missing');
       
-      const response = await apiRequest("/api/drivers/checkin", {
+      const response = await apiRequest("/api/activities/create-with-photos", {
         method: "POST",
         body: JSON.stringify(data),
       });
@@ -67,85 +73,64 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
   });
 
   const handleDirectFileUpload = async (file: File): Promise<string> => {
-    console.log("🔧 Direct file upload started for:", file.name, file.size, "bytes");
+    console.log("🔧 NEW: Direct file upload started for:", file.name, file.size, "bytes");
     
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
+    try {
+      // Step 1: Get signed upload URL from new endpoint
+      console.log("📡 Getting signed upload URL...");
+      const uploadUrlResponse = await apiRequest("/api/photos/upload-url", {
+        method: "POST",
+        body: JSON.stringify({
+          contentType: file.type || 'image/jpeg'
+        }),
+      });
       
-      reader.onload = async (e) => {
-        try {
-          const base64Result = e.target?.result as string;
-          
-          if (!base64Result || typeof base64Result !== 'string') {
-            console.error("❌ FileReader failed - no result:", base64Result);
-            throw new Error("Failed to read image file");
-          }
-          
-          console.log("✅ File read successfully, making API request...");
-          
-          const response = await apiRequest("/api/photos/upload-base64", {
-            method: "POST",
-            body: JSON.stringify({
-              base64Data: base64Result,
-              filename: file.name,
-              locationId: location.id
-            }),
-          });
-          
-          console.log("📡 API Response received:", response.status, response.statusText);
-          
-          if (response.ok) {
-            const result = await response.json();
-            console.log("✅ Photo uploaded successfully:", result.objectPath);
-            resolve(result.objectPath);
-          } else if (response.status === 401) {
-            console.error("❌ Authentication failed");
-            
-            toast({
-              title: "Authentication Required",
-              description: "Your session has expired. Please log in again.",
-              variant: "destructive",
-            });
-            
-            localStorage.removeItem('authToken');
-            reject(new Error("Authentication expired - please log in again"));
-          } else {
-            console.error("❌ Server error:", response.status);
-            const errorText = await response.text();
-            
-            toast({
-              title: "Photo Upload Failed",
-              description: `Server error (${response.status}): ${errorText}`,
-              variant: "destructive",
-            });
-            
-            reject(new Error(`Photo upload failed with status ${response.status}: ${errorText}`));
-          }
-        } catch (error) {
-          console.error("❌ Upload error:", error);
-          
-          toast({
-            title: "Photo Upload Failed", 
-            description: `Upload error: ${error instanceof Error ? error.message : String(error)}`,
-            variant: "destructive",
-          });
-          
-          reject(error);
-        }
+      if (!uploadUrlResponse.ok) {
+        throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status}`);
+      }
+      
+      const { uploadUrl, storageKey, contentType } = await uploadUrlResponse.json();
+      console.log("✅ Got signed upload URL:", { storageKey, contentType });
+      
+      // Step 2: Upload directly to cloud storage
+      console.log("☁️ Uploading to cloud storage...");
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': contentType,
+        },
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error(`Cloud upload failed: ${uploadResponse.status}`);
+      }
+      
+      console.log("✅ Photo uploaded successfully to storage:", storageKey);
+      
+      // Store photo metadata for later submission
+      const photoMetadata = {
+        storageKey,
+        contentType,
+        fileSize: file.size
       };
       
-      reader.onerror = () => {
-        console.error("❌ File reading failed for:", file.name);
-        toast({
-          title: "File Reading Failed",
-          description: `Unable to read image file ${file.name}. Please try a different photo.`,
-          variant: "destructive",
-        });
-        reject(new Error(`Failed to read image file: ${file.name}`));
-      };
+      setPhotoData(prev => [...prev, photoMetadata]);
+      console.log("📋 Stored photo metadata:", photoMetadata);
       
-      reader.readAsDataURL(file);
-    });
+      return storageKey; // Return storage key for compatibility
+      
+    } catch (error) {
+      console.error("❌ NEW: Upload error:", error);
+      
+      toast({
+        title: "Photo Upload Failed", 
+        description: `Upload error: ${error instanceof Error ? error.message : String(error)}`,
+        variant: "destructive",
+      });
+      
+      throw error;
+    }
   };
 
   const handleGetUploadParameters = async () => {
@@ -250,8 +235,18 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     console.log("Final photoUrls state should be:", realUrls);
   };
 
-  // CRITICAL FIX: Helper function to validate photo URLs
+  // NEW: Helper functions to validate photos using new system
   const areAllPhotosServerBacked = () => {
+    // NEW: For new system, check if we have valid photo metadata
+    if (photoData.length > 0) {
+      return photoData.every(photo => 
+        photo.storageKey && 
+        photo.contentType && 
+        photo.fileSize > 0
+      );
+    }
+    
+    // Fallback: Keep old URL validation for backwards compatibility
     return photoUrls.every(url => 
       url.includes('/objects/photos/') || 
       url.startsWith('/objects/photos/') ||
@@ -270,6 +265,17 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // NEW: Check if photos are required and present
+    if (photoData.length === 0 && photoUrls.length === 0) {
+      console.error("❌ SUBMISSION BLOCKED - No photos uploaded");
+      toast({
+        title: "Photos Required",
+        description: "Please upload at least one photo before checking in.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     // CRITICAL FIX: Validate all photos are server-backed before submission
     if (isProcessingPhotos) {
@@ -313,13 +319,20 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     setIsSubmitting(true);
 
     try {
-      console.log("✅ Submitting check-in with validated server-backed photoUrls:", photoUrls);
+      console.log("✅ NEW: Submitting transactional check-in with photos:");
+      console.log("Photo data:", photoData);
+      console.log("Activity details:", { locationId: location.id, amount: location.rate });
+      
       await checkInMutation.mutateAsync({
-        locationId: location.id,
-        latitude: currentLocation?.lat?.toString(),
-        longitude: currentLocation?.lng?.toString(),
-        notes,
-        photoUrls,
+        activityData: {
+          locationId: location.id,
+          amount: location.rate,
+          latitude: currentLocation?.lat?.toString(),
+          longitude: currentLocation?.lng?.toString(),
+          notes,
+          checkInTime: new Date(),
+        },
+        photoData: photoData,
       });
     } finally {
       setIsSubmitting(false);
@@ -464,14 +477,14 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
                 className="w-full mt-2"
               >
                 <Camera className="w-5 h-5 mr-2" />
-                Take Photos ({photoUrls.length}/5)
+                Take Photos ({Math.max(photoData.length, photoUrls.length)}/5)
               </Button>
             </div>
             
-            {photoUrls.length > 0 ? (
+            {(photoData.length > 0 || photoUrls.length > 0) ? (
               isProcessingPhotos ? (
                 <p className="text-sm text-blue-600" data-testid="text-photos-processing">
-                  🔄 Processing {photoUrls.length} photo(s)... Please wait.
+                  🔄 Processing {Math.max(photoData.length, photoUrls.length)} photo(s)... Please wait.
                 </p>
               ) : hasTempOrInvalidUrls() ? (
                 <p className="text-sm text-red-600" data-testid="text-photos-failed">
@@ -479,7 +492,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
                 </p>
               ) : (
                 <p className="text-sm text-green-600" data-testid="text-photos-uploaded">
-                  ✅ {photoUrls.length} photo(s) uploaded successfully and ready for submission
+                  ✅ {Math.max(photoData.length, photoUrls.length)} photo(s) uploaded successfully and ready for submission
                 </p>
               )
             ) : (
@@ -490,10 +503,17 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
             
             {/* Debug info */}
             <details className="text-xs text-muted-foreground">
-              <summary>Debug: Photo URLs ({photoUrls.length})</summary>
-              <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-auto max-h-20">
-                {JSON.stringify(photoUrls, null, 2)}
-              </pre>
+              <summary>Debug: NEW Photo Data ({photoData.length}) | OLD URLs ({photoUrls.length})</summary>
+              <div className="mt-1 p-2 bg-muted rounded text-xs overflow-auto max-h-32 space-y-2">
+                <div>
+                  <strong>NEW Photo Metadata:</strong>
+                  <pre>{JSON.stringify(photoData, null, 2)}</pre>
+                </div>
+                <div>
+                  <strong>OLD Photo URLs:</strong>
+                  <pre>{JSON.stringify(photoUrls, null, 2)}</pre>
+                </div>
+              </div>
             </details>
           </div>
 
