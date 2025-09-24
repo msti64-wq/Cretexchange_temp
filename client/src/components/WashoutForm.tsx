@@ -239,19 +239,35 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
   const areAllPhotosServerBacked = () => {
     // NEW: For new system, check if we have valid photo metadata
     if (photoData.length > 0) {
-      return photoData.every(photo => 
+      console.log("🔍 NEW: Validating photo metadata:", photoData);
+      const isValid = photoData.every(photo => 
         photo.storageKey && 
         photo.contentType && 
         photo.fileSize > 0
       );
+      console.log("✅ NEW: Photo metadata validation result:", isValid);
+      return isValid;
+    }
+    
+    // NEW: For new system storage keys, accept any non-temp storage key
+    if (photoUrls.length > 0 && photoUrls.every(url => url.startsWith('photo-'))) {
+      console.log("🔍 NEW: Validating storage keys:", photoUrls);
+      const isValid = photoUrls.every(url => 
+        url.startsWith('photo-') && !url.startsWith('temp-')
+      );
+      console.log("✅ NEW: Storage key validation result:", isValid);
+      return isValid;
     }
     
     // Fallback: Keep old URL validation for backwards compatibility
-    return photoUrls.every(url => 
+    console.log("🔍 OLD: Validating old-style URLs:", photoUrls);
+    const isValid = photoUrls.every(url => 
       url.includes('/objects/photos/') || 
       url.startsWith('/objects/photos/') ||
       url.startsWith('https://') && url.includes('/objects/photos/')
     );
+    console.log("✅ OLD: URL validation result:", isValid);
+    return isValid;
   };
 
   const hasTempOrInvalidUrls = () => {
