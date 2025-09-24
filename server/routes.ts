@@ -1210,6 +1210,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerIdFromDb: owner?.id,
         userIdMatches: owner?.userId === userId
       });
+
+      // CRITICAL: Get the actual user details to check identity mismatch
+      const authenticatedUser = await storage.getUser(userId);
+      console.log('🆔 AUTHENTICATED USER DETAILS:', {
+        userId: authenticatedUser?.id,
+        username: authenticatedUser?.username,
+        firstName: authenticatedUser?.firstName,
+        lastName: authenticatedUser?.lastName,
+        email: authenticatedUser?.email,
+        role: authenticatedUser?.role,
+        userExists: !!authenticatedUser
+      });
       
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
