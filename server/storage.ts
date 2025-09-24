@@ -777,6 +777,13 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(washoutActivities.checkInTime, endDate));
     }
 
+    console.log('🔍 getActivitiesByOwner query:', {
+      ownerId,
+      startDate: startDate?.toISOString(),
+      endDate: endDate?.toISOString(),
+      conditionsCount: conditions.length
+    });
+
     const results = await db
       .select()
       .from(washoutActivities)
@@ -786,14 +793,60 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(washoutActivities.checkInTime));
 
-    return results.map((row: any) => ({
-      ...row.washout_activities,
-      location: row.washout_locations,
-      driver: {
-        ...row.drivers,
-        user: row.users
-      }
-    }));
+    console.log('🔍 Raw query results:', {
+      resultsCount: results.length,
+      sampleIds: results.slice(0, 3).map(r => r.washout_activities.id)
+    });
+
+    const mappedResults = results
+      .filter(row => {
+        // Additional validation to prevent phantom activities
+        const activity = row.washout_activities;
+        const location = row.washout_locations;
+        const driver = row.drivers;
+        const user = row.users;
+        
+        // Ensure all required data is present and valid
+        const isValid = 
+          activity?.id && 
+          activity.driverId && 
+          activity.locationId &&
+          location?.id &&
+          location.ownerId === ownerId && // Double-check owner matches
+          driver?.id &&
+          user?.id &&
+          user.firstName && // Ensure user has actual data
+          user.lastName;
+        
+        if (!isValid) {
+          console.log('🚨 INVALID ACTIVITY FILTERED OUT:', {
+            activityId: activity?.id,
+            hasLocation: !!location?.id,
+            hasDriver: !!driver?.id,
+            hasUser: !!user?.id,
+            hasUserNames: !!(user?.firstName && user?.lastName),
+            ownerMatches: location?.ownerId === ownerId
+          });
+        }
+        
+        return isValid;
+      })
+      .map((row: any) => ({
+        ...row.washout_activities,
+        location: row.washout_locations,
+        driver: {
+          ...row.drivers,
+          user: row.users
+        }
+      }));
+
+    console.log('✅ Filtered activities returned:', {
+      originalCount: results.length,
+      filteredCount: mappedResults.length,
+      filteredOutCount: results.length - mappedResults.length
+    });
+
+    return mappedResults;
   }
 
   async verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity> {

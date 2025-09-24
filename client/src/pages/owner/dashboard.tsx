@@ -177,25 +177,10 @@ export default function OwnerDashboard() {
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
   
   // CRITICAL FIX: Force empty activities when authentication fails to prevent phantom data
-  // Also filter out any phantom activities with hardcoded IDs
-  const rawActivities = Array.isArray(activitiesData) ? activitiesData : [];
+  // Backend now handles phantom activity filtering, so we can trust the API response
   const recentActivities = (isAuthError || isDashboardAuthError) 
     ? [] 
-    : rawActivities.filter(activity => {
-        // Remove phantom activities with known problematic driver/location IDs
-        const isPhantomActivity = 
-          activity.driverId === 'fa5eda82-02f2-4f94-a407-8dd4af69ff47' ||
-          activity.locationId === 'ecad6bf6-0789-4493-a13c-54a649e3cda6' ||
-          activity.id === 'a8144b7f-f863-4ba9-a882-2290dce47c61' ||
-          activity.id === 'c31a991c-2b9a-4346-988b-b57b98ec3ce5';
-        
-        if (isPhantomActivity) {
-          console.log("🚨 PHANTOM ACTIVITY DETECTED AND FILTERED:", activity.id);
-          return false;
-        }
-        
-        return true;
-      });
+    : Array.isArray(activitiesData) ? activitiesData : [];
   
   
 
