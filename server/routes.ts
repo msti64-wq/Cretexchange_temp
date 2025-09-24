@@ -4648,12 +4648,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get photos for this activity
       const photos = await storage.getPhotosByActivity(activityId);
-      console.log('🔍 DEBUG: Photo query result:', {
-        activityId,
-        photosFound: photos.length,
-        photoIds: photos.map(p => p.id),
-        storageKeys: photos.map(p => p.storageKey)
-      });
       
       // Generate signed URLs for each photo
       const signedUrls = await Promise.all(
