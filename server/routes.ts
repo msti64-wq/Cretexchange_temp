@@ -1214,13 +1214,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // CRITICAL: Get the actual user details to check identity mismatch
       const authenticatedUser = await storage.getUser(userId);
       console.log('🆔 AUTHENTICATED USER DETAILS:', {
+        environment: process.env.REPLIT_DEPLOYMENT ? 'PRODUCTION' : 'DEVELOPMENT',
         userId: authenticatedUser?.id,
         username: authenticatedUser?.username,
         firstName: authenticatedUser?.firstName,
         lastName: authenticatedUser?.lastName,
         email: authenticatedUser?.email,
         role: authenticatedUser?.role,
-        userExists: !!authenticatedUser
+        userExists: !!authenticatedUser,
+        requestedUserId: userId
       });
       
       if (!owner) {
