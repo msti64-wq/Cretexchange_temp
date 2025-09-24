@@ -798,52 +798,73 @@ export class DatabaseStorage implements IStorage {
       sampleIds: results.slice(0, 3).map(r => r.washout_activities.id)
     });
 
-    const mappedResults = results
-      .filter(row => {
-        // Less aggressive filtering - focus on core data integrity only
-        const activity = row.washout_activities;
-        const location = row.washout_locations;
-        const driver = row.drivers;
-        const user = row.users;
-        
-        // Only filter out records with missing critical IDs or owner mismatch
-        const isValid = 
-          activity?.id && 
-          activity.driverId && 
-          activity.locationId &&
-          location?.id &&
-          location.ownerId === ownerId && // Ensure owner matches
-          driver?.id &&
-          user?.id; // Don't require firstName/lastName as they might be empty in production
-        
-        if (!isValid) {
-          console.log('🚨 INVALID ACTIVITY FILTERED OUT (missing critical data):', {
-            activityId: activity?.id,
-            hasLocation: !!location?.id,
-            hasDriver: !!driver?.id,
-            hasUser: !!user?.id,
-            ownerMatches: location?.ownerId === ownerId
-          });
-        }
-        
-        return isValid;
-      })
-      .map((row: any) => ({
-        ...row.washout_activities,
-        location: row.washout_locations,
-        driver: {
-          ...row.drivers,
-          user: row.users
-        }
-      }));
+    // Remove post-processing filter - rely on INNER JOIN constraints
+    // Add photo validation to prevent phantom activities with missing photos
+    const mappedResults = await Promise.all(
+      results.map(async (row: any) => {
+        const activity = {
+          ...row.washout_activities,
+          location: row.washout_locations,
+          driver: {
+            ...row.drivers,
+            user: row.users
+          }
+        };
 
-    console.log('✅ Filtered activities returned:', {
+        // Validate photo URLs exist in object storage for activities with photos
+        if (activity.photoUrls && Array.isArray(activity.photoUrls) && activity.photoUrls.length > 0) {
+          try {
+            const validPhotoUrls = [];
+            for (const photoUrl of activity.photoUrls) {
+              // Extract photo key from URL (e.g., "/objects/photos/photo-123.jpg" -> "photo-123.jpg")
+              const photoKey = photoUrl.replace(/^\/objects\/photos\//, '');
+              
+              // Check if photo exists in storage
+              const photoExists = await this.objectStorage.searchPublicObject(`photos/${photoKey}`) !== null;
+              
+              if (photoExists) {
+                validPhotoUrls.push(photoUrl);
+              } else {
+                console.log('🚨 PHANTOM PHOTO DETECTED - Photo does not exist in storage:', {
+                  activityId: activity.id,
+                  photoKey,
+                  photoUrl
+                });
+              }
+            }
+            
+            // If no valid photos found for an activity that claims to have photos, it's likely phantom
+            if (validPhotoUrls.length === 0 && activity.photoUrls.length > 0) {
+              console.log('🚫 PHANTOM ACTIVITY FILTERED OUT - No valid photos found:', {
+                activityId: activity.id,
+                originalPhotoCount: activity.photoUrls.length,
+                validPhotoCount: validPhotoUrls.length
+              });
+              return null; // Filter out phantom activity
+            }
+            
+            // Update activity with only valid photo URLs
+            activity.photoUrls = validPhotoUrls;
+          } catch (error) {
+            console.error('Error validating photos for activity:', activity.id, error);
+            // If photo validation fails, still return activity but log the issue
+          }
+        }
+
+        return activity;
+      })
+    );
+
+    // Filter out null results (phantom activities)
+    const validActivities = mappedResults.filter(activity => activity !== null);
+
+    console.log('✅ Photo-validated activities returned:', {
       originalCount: results.length,
-      filteredCount: mappedResults.length,
-      filteredOutCount: results.length - mappedResults.length
+      validCount: validActivities.length,
+      phantomCount: results.length - validActivities.length
     });
 
-    return mappedResults;
+    return validActivities;
   }
 
   async verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity> {
