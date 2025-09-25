@@ -307,7 +307,7 @@ export default function OwnerPayments() {
                     </div>
                     <div className="text-sm">
                       <span className="font-semibold text-red-600" data-testid={`text-total-fees-${index}`}>
-                        {formatCurrency((Number(activity.amount || 0) * 0.1) + 10)}
+                        {formatCurrency(9.00)}
                       </span>
                     </div>
                   </div>
