@@ -72,6 +72,12 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
       
       // Don't redirect immediately - let the install prompt show first
       console.log('⏳ Install prompt should appear now');
+      
+      // Fallback redirect in case install prompt fails (prevent getting stuck on 404)
+      setTimeout(() => {
+        console.log('🚨 Fallback redirect triggered - install prompt may have failed');
+        setLocation('/');
+      }, 5000); // 5 second fallback
     },
     onError: (error: any) => {
       toast({
