@@ -14,11 +14,13 @@ import { MobileNav } from "@/components/MobileNav";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
 import { User, Truck, CreditCard, Save, FileText, Eye } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 export default function DriverProfile() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   const { data: user, isLoading, refetch } = useQuery({
     queryKey: ['/api/auth/user'],
@@ -40,6 +42,15 @@ export default function DriverProfile() {
       });
       setIsEditing(false);
       refetch();
+      
+      // Check if this is first-time profile completion and show install prompt
+      const isFirstTimeCompletion = formData.phone && formData.address && 
+        formData.paymentMethod && formData.paymentMethod !== 'check';
+      
+      if (isFirstTimeCompletion) {
+        console.log('🎯 Profile completed for first time! Showing install prompt');
+        setShowInstallPrompt(true);
+      }
     },
     onError: (error) => {
       toast({
@@ -471,6 +482,21 @@ export default function DriverProfile() {
       />
 
       <MobileNav role="driver" />
+      
+      {/* Show Install Prompt after profile completion */}
+      {showInstallPrompt && (
+        <InstallPrompt
+          userType="driver"
+          onInstall={() => {
+            console.log('✅ User accepted install prompt from profile');
+            setShowInstallPrompt(false);
+          }}
+          onDismiss={() => {
+            console.log('❌ User dismissed install prompt from profile');
+            setShowInstallPrompt(false);
+          }}
+        />
+      )}
     </div>
   );
 }
