@@ -76,7 +76,15 @@ export default function DriverDashboard() {
 
       <main className="p-4 space-y-6">
         {/* Profile Completion Notice */}
-        {(dashboardData as any)?.user && (!(dashboardData as any).user.phone || !(dashboardData as any).user.address || !(dashboardData as any).user.paymentMethod || (dashboardData as any).user.paymentMethod === 'check') && (
+        {(dashboardData as any)?.user && (
+          !(dashboardData as any).user.phone || 
+          !(dashboardData as any).user.address || 
+          !(dashboardData as any).user.paymentMethod || 
+          (dashboardData as any).user.paymentMethod === 'check' ||
+          !(dashboardData as any).user.roleData?.employerName ||
+          !(dashboardData as any).user.roleData?.truckNumber ||
+          !(dashboardData as any).user.roleData?.hasAgreedToTerms
+        ) && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
