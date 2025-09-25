@@ -17,6 +17,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { InstallPrompt } from "@/components/InstallPrompt";
 
 export default function DriverProfile() {
+  console.log('🔍 DriverProfile component loading...');
+  
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
@@ -107,7 +109,10 @@ export default function DriverProfile() {
   };
 
 
+  console.log('🔍 Profile render - isLoading:', isLoading, 'user:', !!user, 'termsStatus:', !!termsStatus);
+
   if (isLoading) {
+    console.log('🔄 Profile showing loading state...');
     return (
       <div className="min-h-screen bg-background">
         <DriverHeader />
@@ -119,6 +124,8 @@ export default function DriverProfile() {
       </div>
     );
   }
+
+  console.log('✅ Profile rendering main content...');
 
   return (
     <div className="min-h-screen bg-background pb-20">
