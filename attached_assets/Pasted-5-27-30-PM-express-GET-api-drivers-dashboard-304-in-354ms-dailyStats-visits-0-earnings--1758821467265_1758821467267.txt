@@ -1,0 +1,39 @@
+5:27:30 PM [express] GET /api/drivers/dashboard 304 in 354ms :: {"dailyStats":{"visits":0,"earnings"…
+User registered successfully: 12749ff6-9a72-4667-9339-eff3d0509931
+5:28:30 PM [express] POST /api/register 200 in 344ms :: {"message":"Registration successful","user":…
+🔐 Auth check for GET /api/auth/user
+🔐 Auth headers: Bearer token present
+✅ Auth success: User td19 (driver)
+5:28:31 PM [express] GET /api/auth/user 200 in 176ms :: {"id":"12749ff6-9a72-4667-9339-eff3d0509931"…
+🔐 Auth check for GET /api/drivers/dashboard
+🔐 Auth headers: Bearer token present
+🔐 Auth check for GET /api/payments/driver-history
+🔐 Auth headers: Bearer token present
+✅ Auth success: User td19 (driver)
+5:28:31 PM [express] GET /api/drivers/dashboard 200 in 357ms :: {"dailyStats":{"visits":0,"earnings"…
+✅ Auth success: User td19 (driver)
+🔐 Auth check for GET /api/auth/user
+🔐 Auth headers: Bearer token present
+✅ Auth success: User td19 (driver)
+5:28:31 PM [express] GET /api/payments/driver-history 304 in 543ms :: []
+5:28:32 PM [express] GET /api/auth/user 304 in 177ms :: {"id":"12749ff6-9a72-4667-9339-eff3d0509931"…
+🔐 Auth check for GET /api/drivers/dashboard
+🔐 Auth headers: Bearer token present
+✅ Auth success: User td19 (driver)
+5:29:02 PM [express] GET /api/drivers/dashboard 304 in 356ms :: {"dailyStats":{"visits":0,"earnings"…
+🔐 Auth check for GET /api/auth/user
+🔐 Auth headers: Bearer token present
+✅ Auth success: User td19 (driver)
+5:29:33 PM [express] GET /api/auth/user 304 in 178ms :: {"id":"12749ff6-9a72-4667-9339-eff3d0509931"…
+🔐 Auth check for GET /api/drivers/dashboard
+🔐 Auth headers: Bearer token present
+🔐 Auth check for GET /api/payments/driver-history
+🔐 Auth headers: Bearer token present
+✅ Auth success: User td19 (driver)
+5:29:33 PM [express] GET /api/drivers/dashboard 304 in 358ms :: {"dailyStats":{"visits":0,"earnings"…
+✅ Auth success: User td19 (driver)
+🔐 Auth check for GET /api/auth/user
+🔐 Auth headers: Bearer token present
+✅ Auth success: User td19 (driver)
+5:29:33 PM [express] GET /api/payments/driver-history 304 in 579ms :: []
+5:29:33 PM [express] GET /api/auth/user 304 in 178ms :: {"id":"12749ff6-9a72-4667-9339-eff3d0509931"…
