@@ -43,10 +43,8 @@ export function useAuth() {
     localStorage.removeItem('authToken');
     // Clear all React Query cache to prevent stale data
     queryClient.clear();
-    // Redirect to home page
+    // Redirect to home page and let React handle the state transition
     setLocation('/');
-    // Force page reload to clear any cached user data
-    window.location.reload();
   };
 
   return {
