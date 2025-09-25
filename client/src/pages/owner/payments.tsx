@@ -69,10 +69,9 @@ export default function OwnerPayments() {
   const stats = {
     totalPayments: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0),
     totalFees: filteredActivities.reduce((sum: number, activity: any) => {
-      // NEW FEE STRUCTURE: Flat $8.00 base fee + 10% service fee = $8.80 per washout
-      const baseFee = 8.00;
-      const serviceFee = baseFee * 0.10; // 10% of base fee = $0.80
-      return sum + baseFee + serviceFee; // $8.80 total per washout
+      // NEW FEE STRUCTURE: Flat $9.00 fee per washout
+      const ownerFee = 9.00; // Owner pays $9.00 flat fee per washout
+      return sum + ownerFee;
     }, 0),
     completedCount: filteredActivities.filter((a: any) => a.status === 'verified').length,
     pendingCount: filteredActivities.filter((a: any) => a.status === 'pending').length,
@@ -128,7 +127,7 @@ export default function OwnerPayments() {
             <div className="text-2xl font-bold text-secondary" data-testid="text-total-fees">
               {formatCurrency(stats.totalFees)}
             </div>
-            <div className="text-xs text-muted-foreground">Base + Service Fees ($8.80/washout)</div>
+            <div className="text-xs text-muted-foreground">Platform Fees ($9.00/washout)</div>
           </StatCard>
         </div>
 
@@ -269,11 +268,8 @@ export default function OwnerPayments() {
                       <div className="text-xl font-bold text-foreground mb-1" data-testid={`text-payment-amount-${index}`}>
                         {formatCurrency(Number(activity.amount || 0))}
                       </div>
-                      <div className="text-xs text-muted-foreground mb-2" data-testid={`text-processing-fee-${index}`}>
-                        Processing: {formatCurrency(Number(activity.amount || 0) * 0.1)}
-                      </div>
-                      <div className="text-xs text-muted-foreground mb-2" data-testid={`text-service-fee-${index}`}>
-                        Service: {formatCurrency(10)}
+                      <div className="text-xs text-muted-foreground mb-2" data-testid={`text-platform-fee-${index}`}>
+                        Platform Fee: {formatCurrency(9.00)}
                       </div>
                       <Badge 
                         variant={
@@ -307,7 +303,7 @@ export default function OwnerPayments() {
 
                   <div className="flex items-center justify-between pt-3 border-t border-border">
                     <div className="text-sm text-muted-foreground">
-                      Total fees (Processing + Service)
+                      Platform fee
                     </div>
                     <div className="text-sm">
                       <span className="font-semibold text-red-600" data-testid={`text-total-fees-${index}`}>
