@@ -1,0 +1,3808 @@
+cdn.segment.com/v1/projects/dMePKGC4BqfBivpe0Hvl8IoPpzSHgjdX/settings:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+index.ts:46 Failed to fetch
+(anonymous) @ index.ts:46
+standalone.ts:45 [analytics.js] Failed to load Analytics.js TypeError: Failed to fetch
+    at o (sdk.min.js:1:23763)
+    at index.ts:34:26
+    at tslib.es6.js:103:23
+    at Object.next (tslib.es6.js:108:37)
+    at tslib.es6.js:80:8
+    at new Promise (<anonymous>)
+    at u (tslib.es6.js:72:27)
+    at re (index.ts:239:4)
+    at index.ts:338:7
+(anonymous) @ standalone.ts:45
+TruckWashLocator:1 [Intervention] Slow network is detected. See https://www.chromestatus.com/feature/5636954674692096 for more details. Fallback font will be used while loading: https://replit.com/public/fonts/ibm-plex-sans-v8-latin-regular.woff2
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+stallwart.build.js:1 stallwart: failed ping 1
+TruckWashLocator:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+TruckWashLocator:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
+TruckWashLocator:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
+o1151714.ingest.sentry.io/api/6318792/envelope/?sentry_key=8aa91189a4274b5a8c9b7b01d46ea360&sentry_version=7&sentry_client=sentry.javascript.browser%2F7.112.0:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+_app-3b2252d79016bbd1.js:34 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+featureassets.org/v1/initialize?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823599223&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&se=1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823599230&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823599231&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823599348&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+_app-3b2252d79016bbd1.js:34 [LaunchDarkly] LaunchDarkly client initialized
+prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823599812&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823599854&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=df7f2ae1-7eda-4875-9568-7429b56b160d:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+2944-1f21e8359b882ab0.js:4 [Intervention] Slow network is detected. See https://www.chromestatus.com/feature/5636954674692096 for more details. Fallback font will be used while loading: https://replit.com/public/fonts/ibm-plex-sans-v8-latin-500.woff2
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=798ed0d3-6756-4bf2-a4ee-8f0529663e0f:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=36dab41d-a344-4537-a06b-7e7354f414a2:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=768452fc-ba84-44ca-95d4-0fac8fa30fbd:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823601877&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823601886&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=96c16c09-066c-4dcc-bce7-7714726e1c23:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=2e4c2a50-3ee4-47d7-a83d-3c5d3a9bd542:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+TruckWashLocator:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=e8cb473e-305d-4e60-aa74-c68807e3aecb:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'ambient-light-sensor'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'battery'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-not-rendered'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'execution-while-out-of-viewport'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'layout-animations'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'legacy-image-formats'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'navigation-override'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'oversized-images'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'publickey-credentials'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'speaker-selection'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unoptimized-images'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+Unrecognized feature: 'unsized-media'.
+framework-168025c9f13334e4.js:1 Unrecognized feature: 'pointer-lock'.
+_ @ framework-168025c9f13334e4.js:1
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowfullscreen'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+Allow attribute will take precedence over 'allowpaymentrequest'.
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=27390bf4-a4e5-43ae-b0ea-dd60e5a844c8:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823606398&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+_app-3b2252d79016bbd1.js:34  ERROR  [Statsig] A networking error occurred during POST request to https://prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823606398&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1. TypeError: Failed to fetch TypeError: Failed to fetch
+    at _app-3b2252d79016bbd1.js:34:9046
+    at o.<anonymous> (2944-1f21e8359b882ab0.js:1:77094)
+    at Generator.next (<anonymous>)
+    at 2944-1f21e8359b882ab0.js:1:74524
+    at new Promise (<anonymous>)
+    at i (2944-1f21e8359b882ab0.js:1:74273)
+    at o._sendRequest (2944-1f21e8359b882ab0.js:1:76153)
+    at 2944-1f21e8359b882ab0.js:4:12779
+    at l._capture (2944-1f21e8359b882ab0.js:4:13077)
+    at e.<computed> [as _sendRequest] (2944-1f21e8359b882ab0.js:4:12748)
+    at o.<anonymous> (2944-1f21e8359b882ab0.js:1:78298)
+    at Generator.next (<anonymous>)
+    at o (2944-1f21e8359b882ab0.js:1:74329)
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34   WARN  [Statsig] Failed to flush events.
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823606428&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+_app-3b2252d79016bbd1.js:34  ERROR  [Statsig] A networking error occurred during POST request to https://prodregistryv2.org/v1/rgstr?k=client-Bp7m7pNB6H0fnSGjVtxN5BeWQw4BSAat4OFsXa3VcTF&st=javascript-client-react&sv=3.25.5&t=1758823606428&sid=04f6677f-7d9f-46f8-8894-bda51f8efca1&ec=1&gz=1. TypeError: Failed to fetch TypeError: Failed to fetch
+    at _app-3b2252d79016bbd1.js:34:9046
+    at o.<anonymous> (2944-1f21e8359b882ab0.js:1:77094)
+    at Generator.next (<anonymous>)
+    at 2944-1f21e8359b882ab0.js:1:74524
+    at new Promise (<anonymous>)
+    at i (2944-1f21e8359b882ab0.js:1:74273)
+    at o._sendRequest (2944-1f21e8359b882ab0.js:1:76153)
+    at 2944-1f21e8359b882ab0.js:4:12779
+    at l._capture (2944-1f21e8359b882ab0.js:4:13077)
+    at e.<computed> [as _sendRequest] (2944-1f21e8359b882ab0.js:4:12748)
+    at o.<anonymous> (2944-1f21e8359b882ab0.js:1:78298)
+    at Generator.next (<anonymous>)
+    at o (2944-1f21e8359b882ab0.js:1:74329)
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34   WARN  [Statsig] Failed to flush events.
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=acff5045-0f20-4773-bcce-ae7ce4f73276:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=9dde117f-3f94-4bab-884d-bb683347bc4e:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=21cd7c7e-0f54-48ee-b0c6-8e950d46db31:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=d2ee705f-8342-4fe8-a8f9-79394acbe6bf:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=46e86274-8a33-4d1f-87f1-95a2303b80a3:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=5d5f4e1d-a277-4eac-8dd6-bf78562ff8e1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=3457ca78-a951-41a6-969a-4b059c79e4d1:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=db5810ff-9f0d-4d36-86a6-3bb5b2db5403:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=e070770f-b2ca-4812-bba9-4a238b58ee38:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=d0fac366-6f63-44be-a8ae-eeeb3376ff6e:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+TruckWashLocator:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+TruckWashLocator:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+TruckWashLocator:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+TruckWashLocator:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=533f9b91-6791-44d1-b6ab-d2d446797fc7:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=b25f5b16-d39b-45aa-b855-8d3691ebc19c:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Abeacon%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=cc19de7b-d33c-47fa-a476-f5015432d087:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+o1151714.ingest.sentry.io/api/6318792/envelope/?sentry_key=8aa91189a4274b5a8c9b7b01d46ea360&sentry_version=7&sentry_client=sentry.javascript.browser%2F7.112.0:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=33fdcd24-dd5d-4f41-923d-959b9bd51405:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=9fc353b2-ea74-4aa8-8e4b-d18fe09a3233:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=f9e7ca4d-d491-4b7f-9e03-2fa399d1a6e4:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=e6c22873-71cf-4949-917e-464a21589b1a:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=77400ffe-9ee4-4bec-99da-269f6a9df26c:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=7c5177ec-35c6-4769-a731-b09ae1bed08b:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=8dc2ee79-6572-42d0-9300-d65fb547ef2b:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=878d2518-8b55-4c6d-97ea-dc8029b0e916:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=58206268-3fd7-47ee-a31f-2b84b2594559:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=bc21f8ae-ef7f-4666-80b3-9d670747d4d8:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=7fba8a2e-552a-4684-9259-b2d658ce31a6:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=13b9517a-79c6-4c7b-affa-c5ee0d660832:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=9d877f93-cf1c-45d9-b732-422c6bfc5003:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=9813e027-35da-473a-97d5-30754ebeaef0:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=25357df0-e120-4ed0-a02d-29e4e854d5d9:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=b8bcfc3b-3306-444f-b8f9-5587ad016134:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=8c589202-efe0-42db-9da1-7d52d165f63a:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=058b8d8b-4f6a-4323-8e1a-a9402bc55b8f:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=238c3abd-2982-4c00-a5c2-3fa5569ea878:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=6925d176-27f3-4fa1-a442-9d5a0b4242a3:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=0fc19cba-1030-490b-a07a-dc5945873c86:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=858b3ad7-fb93-4a60-820b-6c57145b43dd:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/src/lib/queryClient.ts:74 🔄 Query cache cleared once
+(index):157 SW registered:  ServiceWorkerRegistration
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=791c35ab-5c84-4f71-b87c-bdeef33e188c:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=375164d9-018f-4fa0-bf27-71fb27eef5a8:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+o1151714.ingest.sentry.io/api/6318792/envelope/?sentry_key=8aa91189a4274b5a8c9b7b01d46ea360&sentry_version=7&sentry_client=sentry.javascript.browser%2F7.112.0:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Abeacon%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=a3dbfae7-6fee-421b-b886-efef7c530636:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+o1151714.ingest.sentry.io/api/6318792/envelope/?sentry_key=8aa91189a4274b5a8c9b7b01d46ea360&sentry_version=7&sentry_client=sentry.javascript.browser%2F7.112.0:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Abeacon%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=5bfd90f9-f430-4228-9218-148555862e0a:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+o1151714.ingest.sentry.io/api/6318792/envelope/?sentry_key=8aa91189a4274b5a8c9b7b01d46ea360&sentry_version=7&sentry_client=sentry.javascript.browser%2F7.112.0:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=d3064087-84c7-44bb-bdb9-6b2135c88946:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=8d7ba47a-8598-4837-b356-0f63bf144550:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+o1151714.ingest.sentry.io/api/6318792/envelope/?sentry_key=8aa91189a4274b5a8c9b7b01d46ea360&sentry_version=7&sentry_client=sentry.javascript.browser%2F7.112.0:1  Failed to load resource: net::ERR_BLOCKED_BY_CLIENT
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: false
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: false
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: false
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=fe16ef31-f6e2-4c88-be87-d5eb765a4f0a net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=84de5a11-2564-421d-9711-4548dce5b84c net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+profile.tsx:36 🔍 DriverProfile component loading...
+profile.tsx:114 🔍 Profile render - isLoading: false user: true termsStatus: true
+profile.tsx:150 ✅ Profile rendering main content...
+queryClient.ts:74 🔄 Query cache cleared once
+(index):157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=e846c0b9-8b37-4ac9-a162-867c47b7d0bf net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=6752e450-ed78-4b1b-b11b-282660c94127 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=d904a9cc-7a45-47d9-8884-e5aa16f72074 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+acknowledgeMessage @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+t.trigger @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=6a375c32-2eb5-4944-b6a2-f84b9ef0f562 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+acknowledgeMessage @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+t.trigger @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=52079dbd-d6f0-49fb-bb44-a86480d093c5 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+ed @ 4945-3b57160b5ee9971b.js:1
+info @ 649-092124f13c62fb4e.js:1
+(anonymous) @ 649-092124f13c62fb4e.js:1
+z @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+apply @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+u @ 4945-3b57160b5ee9971b.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=d2000ad6-032d-41b7-a4cc-3487642e0dae net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+ed @ 4945-3b57160b5ee9971b.js:1
+info @ 649-092124f13c62fb4e.js:1
+(anonymous) @ 649-092124f13c62fb4e.js:1
+z @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+apply @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+u @ 4945-3b57160b5ee9971b.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=e4134dca-ed05-4675-9947-874a0e657e2b net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+info @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+apply @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+next @ 4060-d87b04f2efb77355.js:1
+next @ 4945-3b57160b5ee9971b.js:1
+next @ 5014-396a2253aed521e4.js:1
+next @ 5014-396a2253aed521e4.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 5014-396a2253aed521e4.js:1
+n.notify @ 5014-396a2253aed521e4.js:1
+t.set @ 5014-396a2253aed521e4.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+t.trigger @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=a6af6350-1370-4d37-8fa0-9f7a6b17c606 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+info @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+apply @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+next @ 4060-d87b04f2efb77355.js:1
+next @ 4945-3b57160b5ee9971b.js:1
+next @ 5014-396a2253aed521e4.js:1
+next @ 5014-396a2253aed521e4.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 5014-396a2253aed521e4.js:1
+n.notify @ 5014-396a2253aed521e4.js:1
+t.set @ 5014-396a2253aed521e4.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+t.trigger @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=0327d66c-99d6-46f7-987b-211269cfc036 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+n @ 4060-d87b04f2efb77355.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=0ac972b6-e313-4be7-ade9-eb71e82cf63c net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+n @ 4060-d87b04f2efb77355.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:36  POST https://o1151714.ingest.sentry.io/api/6318792/envelope/?sentry_key=8aa91189a4274b5a8c9b7b01d46ea360&sentry_version=7&sentry_client=sentry.javascript.browser%2F7.112.0 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+add @ _app-3b2252d79016bbd1.js:34
+i @ _app-3b2252d79016bbd1.js:34
+_sendEnvelope @ _app-3b2252d79016bbd1.js:34
+_flushOutcomes @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+queryClient.ts:74 🔄 Query cache cleared once
+(index):157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+queryClient.ts:74 🔄 Query cache cleared once
+login:157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=a032a0b5-6b9c-4e5f-af34-5486f4c5f9cc net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+b @ 7122-2a58cebaf14c813d.js:1
+U @ 7122-2a58cebaf14c813d.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=a54139ac-2383-46ed-bee1-06fa22b92d79 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+b @ 7122-2a58cebaf14c813d.js:1
+U @ 7122-2a58cebaf14c813d.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=7b433eab-19f4-4d08-9fa9-5078e8701513 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+ed @ 4945-3b57160b5ee9971b.js:1
+info @ 649-092124f13c62fb4e.js:1
+(anonymous) @ 649-092124f13c62fb4e.js:1
+z @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+apply @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+t.run @ 4945-3b57160b5ee9971b.js:1
+t.appendEvent @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+keydown @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 275e5802-29316999b571bb21.js:1
+runHandlers @ 275e5802-29316999b571bb21.js:1
+handleEvent @ 275e5802-29316999b571bb21.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=9c293c20-9ea9-41be-807a-ee34ed5a28b0 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+ed @ 4945-3b57160b5ee9971b.js:1
+info @ 649-092124f13c62fb4e.js:1
+(anonymous) @ 649-092124f13c62fb4e.js:1
+z @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+apply @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+t.run @ 4945-3b57160b5ee9971b.js:1
+t.appendEvent @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+keydown @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 275e5802-29316999b571bb21.js:1
+runHandlers @ 275e5802-29316999b571bb21.js:1
+handleEvent @ 275e5802-29316999b571bb21.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=3f55995f-e768-4040-9054-5aafb40ad776 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=b10c4355-8a64-4c92-bbe2-92e9f07b46bc net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+profile.tsx?t=1758825723668:120 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, paymentMethod: 'venmo', termsAgreed: true, showInstallPrompt: false}
+profile.tsx?t=1758825723668:129 ✅ Profile complete! Showing install prompt...
+InstallPrompt.tsx:102 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+InstallPrompt.tsx:104 ❌ InstallPrompt not showing because showPrompt is false
+InstallPrompt.tsx:28 🔧 InstallPrompt component loaded
+InstallPrompt.tsx:31 📱 iOS device detected: false
+InstallPrompt.tsx:40 🏠 App already installed: false
+InstallPrompt.tsx:43 👂 Listening for beforeinstallprompt event
+profile.tsx?t=1758825723668:120 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, paymentMethod: 'venmo', termsAgreed: true, showInstallPrompt: true}
+InstallPrompt.tsx:45 ⏰ Fallback timer: showing manual install prompt
+InstallPrompt.tsx:102 🎨 InstallPrompt render check: {showPrompt: true, userType: 'driver', deferredPrompt: false}
+InstallPrompt.tsx:107 ✨ InstallPrompt is rendering!
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=f3fcb1c7-eeb1-4f5e-9484-dcb1dde2fb4f net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+info @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+apply @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+next @ 4060-d87b04f2efb77355.js:1
+next @ 4945-3b57160b5ee9971b.js:1
+next @ 5014-396a2253aed521e4.js:1
+next @ 5014-396a2253aed521e4.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 5014-396a2253aed521e4.js:1
+n.notify @ 5014-396a2253aed521e4.js:1
+t.set @ 5014-396a2253aed521e4.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+t.trigger @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=c97da4ab-4331-4d4c-bed7-0b3a72971e31 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+info @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+apply @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+next @ 4060-d87b04f2efb77355.js:1
+next @ 4945-3b57160b5ee9971b.js:1
+next @ 5014-396a2253aed521e4.js:1
+next @ 5014-396a2253aed521e4.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 5014-396a2253aed521e4.js:1
+n.notify @ 5014-396a2253aed521e4.js:1
+t.set @ 5014-396a2253aed521e4.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+t.trigger @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=859001b1-d020-4820-bbae-c652a5d26a68 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+ed @ 4945-3b57160b5ee9971b.js:1
+info @ 649-092124f13c62fb4e.js:1
+(anonymous) @ 649-092124f13c62fb4e.js:1
+z @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+apply @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+t.run @ 4945-3b57160b5ee9971b.js:1
+t.appendEvent @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+keydown @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 275e5802-29316999b571bb21.js:1
+runHandlers @ 275e5802-29316999b571bb21.js:1
+handleEvent @ 275e5802-29316999b571bb21.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=6e277e73-3a55-4465-a8c8-59f2f9c18a9f net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+ed @ 4945-3b57160b5ee9971b.js:1
+info @ 649-092124f13c62fb4e.js:1
+(anonymous) @ 649-092124f13c62fb4e.js:1
+z @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+apply @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+t.run @ 4945-3b57160b5ee9971b.js:1
+t.appendEvent @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+keydown @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 275e5802-29316999b571bb21.js:1
+runHandlers @ 275e5802-29316999b571bb21.js:1
+handleEvent @ 275e5802-29316999b571bb21.js:1
+n @ _app-3b2252d79016bbd1.js:34
+profile.tsx?t=1758825723668:1116 ❌ User dismissed install prompt from profile
+profile.tsx?t=1758825723668:120 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, paymentMethod: 'venmo', termsAgreed: true, showInstallPrompt: false}
+queryClient.ts:74 🔄 Query cache cleared once
+(index):157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+queryClient.ts:74 🔄 Query cache cleared once
+login:157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+queryClient.ts:74 🔄 Query cache cleared once
+owner:157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=cca57e13-13b1-4bba-a093-082729dc585f net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+n @ 4060-d87b04f2efb77355.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=ac31155e-0331-4782-954f-3852caba7da0 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+n @ 4060-d87b04f2efb77355.js:1
+n @ _app-3b2252d79016bbd1.js:34
+queryClient.ts:30  POST https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/api/register 500 (Internal Server Error)
+apiRequest @ queryClient.ts:54
+mutationFn @ register.tsx:53
+fn @ @tanstack_react-query.js?v=df1ff2d7:1189
+run @ @tanstack_react-query.js?v=df1ff2d7:494
+start @ @tanstack_react-query.js?v=df1ff2d7:536
+execute @ @tanstack_react-query.js?v=df1ff2d7:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=df1ff2d7:2630
+(anonymous) @ @tanstack_react-query.js?v=df1ff2d7:3295
+handleSubmit @ register.tsx:104
+callCallback2 @ chunk-RPCDYKBN.js?v=df1ff2d7:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=df1ff2d7:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=df1ff2d7:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=df1ff2d7:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=df1ff2d7:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=df1ff2d7:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=df1ff2d7:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=df1ff2d7:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=df1ff2d7:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=df1ff2d7:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=df1ff2d7:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=df1ff2d7:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=df1ff2d7:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=df1ff2d7:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=df1ff2d7:5449
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=c197ab0d-c691-428e-9ffa-e34fb4771bd2 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+ed @ 4945-3b57160b5ee9971b.js:1
+info @ 649-092124f13c62fb4e.js:1
+(anonymous) @ 649-092124f13c62fb4e.js:1
+z @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+apply @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+t.run @ 4945-3b57160b5ee9971b.js:1
+t.appendEvent @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+keydown @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 275e5802-29316999b571bb21.js:1
+runHandlers @ 275e5802-29316999b571bb21.js:1
+handleEvent @ 275e5802-29316999b571bb21.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=79612033-6a45-4816-a55b-a8c52839b4b1 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+ed @ 4945-3b57160b5ee9971b.js:1
+info @ 649-092124f13c62fb4e.js:1
+(anonymous) @ 649-092124f13c62fb4e.js:1
+z @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+apply @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+t.run @ 4945-3b57160b5ee9971b.js:1
+t.appendEvent @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+keydown @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 275e5802-29316999b571bb21.js:1
+runHandlers @ 275e5802-29316999b571bb21.js:1
+handleEvent @ 275e5802-29316999b571bb21.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=974b8028-098d-44c9-b44c-9e9d75f5214c net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=863c6bf6-b705-4659-a253-8bbc14444dec net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+client:560 [vite] server connection lost. Polling for restart...
+queryClient.ts:74 🔄 Query cache cleared once
+(index):157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=97662078-4319-4fe5-9759-eaa0dd32c93d net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=2391e03f-feb1-414b-80c7-1004ea2836ea net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=bf0b8c38-1d29-4383-a8ce-e989b2942ed5 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=440ae1f1-b8f7-4cc0-953a-744374442cfb net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=cc3369f8-8ede-4941-89f4-ce182d60658a net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=d52c7388-5e27-4d92-aac9-296730caa9b1 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=4a1c27bc-df54-41f6-bb62-df8001306bc2 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=6ea144b7-7d52-4fad-aafc-9e1733aed85a net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=d681ee50-28d8-4e51-ab62-6928d903b8a0 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=155ea1c0-b428-4c59-9c16-711d2a0eb796 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+client:560 [vite] server connection lost. Polling for restart...
+queryClient.ts:74 🔄 Query cache cleared once
+(index):157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=779b3108-88a0-4c4c-aa06-8f308600b2a4 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+info @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+apply @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 7122-2a58cebaf14c813d.js:1
+oO @ framework-168025c9f13334e4.js:1
+uB @ framework-168025c9f13334e4.js:1
+u_ @ framework-168025c9f13334e4.js:1
+r6 @ framework-168025c9f13334e4.js:1
+(anonymous) @ framework-168025c9f13334e4.js:1
+uO @ framework-168025c9f13334e4.js:1
+uS @ framework-168025c9f13334e4.js:1
+C @ framework-168025c9f13334e4.js:1
+z @ framework-168025c9f13334e4.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=5bc96aec-45b9-4156-8823-2ef34d71b697 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+info @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+apply @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 7122-2a58cebaf14c813d.js:1
+oO @ framework-168025c9f13334e4.js:1
+uB @ framework-168025c9f13334e4.js:1
+u_ @ framework-168025c9f13334e4.js:1
+r6 @ framework-168025c9f13334e4.js:1
+(anonymous) @ framework-168025c9f13334e4.js:1
+uO @ framework-168025c9f13334e4.js:1
+uS @ framework-168025c9f13334e4.js:1
+C @ framework-168025c9f13334e4.js:1
+z @ framework-168025c9f13334e4.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=40c6da4f-8524-44ad-a2fa-f5bf679273bd net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+n @ 4060-d87b04f2efb77355.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=af23443f-ed69-45e2-8f7b-f75c4423190b net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+n @ 4060-d87b04f2efb77355.js:1
+n @ _app-3b2252d79016bbd1.js:34
+queryClient.ts:74 🔄 Query cache cleared once
+owner:157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=4b9f5974-4805-4f2a-a069-78cc64432612 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ replEnvironmentDesktop-5789a8e76174acc9.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ replEnvironmentDesktop-5789a8e76174acc9.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ replEnvironmentDesktop-5789a8e76174acc9.js:1
+oO @ framework-168025c9f13334e4.js:1
+uB @ framework-168025c9f13334e4.js:1
+(anonymous) @ framework-168025c9f13334e4.js:1
+C @ framework-168025c9f13334e4.js:1
+z @ framework-168025c9f13334e4.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=a800430e-7487-437d-9f53-ef992e416bc5 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ replEnvironmentDesktop-5789a8e76174acc9.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ replEnvironmentDesktop-5789a8e76174acc9.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ replEnvironmentDesktop-5789a8e76174acc9.js:1
+oO @ framework-168025c9f13334e4.js:1
+uB @ framework-168025c9f13334e4.js:1
+(anonymous) @ framework-168025c9f13334e4.js:1
+C @ framework-168025c9f13334e4.js:1
+z @ framework-168025c9f13334e4.js:1
+queryClient.ts:30  POST https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/api/register 400 (Bad Request)
+apiRequest @ VM2190 queryClient.ts:30
+mutationFn @ VM2210 register.tsx:65
+fn @ VM2187 @tanstack_react-query.js:1189
+run @ VM2187 @tanstack_react-query.js:494
+start @ VM2187 @tanstack_react-query.js:536
+execute @ VM2187 @tanstack_react-query.js:1225
+await in execute
+mutate @ VM2187 @tanstack_react-query.js:2630
+(anonymous) @ VM2187 @tanstack_react-query.js:3295
+handleSubmit @ VM2210 register.tsx:102
+callCallback2 @ VM2183 chunk-RPCDYKBN.js:3674
+invokeGuardedCallbackDev @ VM2183 chunk-RPCDYKBN.js:3699
+invokeGuardedCallback @ VM2183 chunk-RPCDYKBN.js:3733
+invokeGuardedCallbackAndCatchFirstError @ VM2183 chunk-RPCDYKBN.js:3736
+executeDispatch @ VM2183 chunk-RPCDYKBN.js:7014
+processDispatchQueueItemsInOrder @ VM2183 chunk-RPCDYKBN.js:7034
+processDispatchQueue @ VM2183 chunk-RPCDYKBN.js:7043
+dispatchEventsForPlugins @ VM2183 chunk-RPCDYKBN.js:7051
+(anonymous) @ VM2183 chunk-RPCDYKBN.js:7174
+batchedUpdates$1 @ VM2183 chunk-RPCDYKBN.js:18913
+batchedUpdates @ VM2183 chunk-RPCDYKBN.js:3579
+dispatchEventForPluginEventSystem @ VM2183 chunk-RPCDYKBN.js:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ VM2183 chunk-RPCDYKBN.js:5478
+dispatchEvent @ VM2183 chunk-RPCDYKBN.js:5472
+dispatchDiscreteEvent @ VM2183 chunk-RPCDYKBN.js:5449
+queryClient.ts:30  POST https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/api/register 400 (Bad Request)
+apiRequest @ VM2190 queryClient.ts:30
+mutationFn @ VM2210 register.tsx:65
+fn @ VM2187 @tanstack_react-query.js:1189
+run @ VM2187 @tanstack_react-query.js:494
+start @ VM2187 @tanstack_react-query.js:536
+execute @ VM2187 @tanstack_react-query.js:1225
+await in execute
+mutate @ VM2187 @tanstack_react-query.js:2630
+(anonymous) @ VM2187 @tanstack_react-query.js:3295
+handleSubmit @ VM2210 register.tsx:102
+callCallback2 @ VM2183 chunk-RPCDYKBN.js:3674
+invokeGuardedCallbackDev @ VM2183 chunk-RPCDYKBN.js:3699
+invokeGuardedCallback @ VM2183 chunk-RPCDYKBN.js:3733
+invokeGuardedCallbackAndCatchFirstError @ VM2183 chunk-RPCDYKBN.js:3736
+executeDispatch @ VM2183 chunk-RPCDYKBN.js:7014
+processDispatchQueueItemsInOrder @ VM2183 chunk-RPCDYKBN.js:7034
+processDispatchQueue @ VM2183 chunk-RPCDYKBN.js:7043
+dispatchEventsForPlugins @ VM2183 chunk-RPCDYKBN.js:7051
+(anonymous) @ VM2183 chunk-RPCDYKBN.js:7174
+batchedUpdates$1 @ VM2183 chunk-RPCDYKBN.js:18913
+batchedUpdates @ VM2183 chunk-RPCDYKBN.js:3579
+dispatchEventForPluginEventSystem @ VM2183 chunk-RPCDYKBN.js:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ VM2183 chunk-RPCDYKBN.js:5478
+dispatchEvent @ VM2183 chunk-RPCDYKBN.js:5472
+dispatchDiscreteEvent @ VM2183 chunk-RPCDYKBN.js:5449
+register.tsx:75 🎯 Registration successful! Setting up install prompt for: owner
+register.tsx:77 🔄 Redirecting to home route to prevent 404
+register.tsx:80 ⏳ Now showing install prompt on home route
+queryClient.ts:30  POST https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/api/owners/subscribe 500 (Internal Server Error)
+apiRequest @ VM2190 queryClient.ts:30
+mutationFn @ VM2225 subscribe.tsx:187
+fn @ VM2187 @tanstack_react-query.js:1189
+run @ VM2187 @tanstack_react-query.js:494
+start @ VM2187 @tanstack_react-query.js:536
+execute @ VM2187 @tanstack_react-query.js:1225
+await in execute
+mutate @ VM2187 @tanstack_react-query.js:2630
+(anonymous) @ VM2187 @tanstack_react-query.js:3295
+handleSubscribe @ VM2225 subscribe.tsx:210
+callCallback2 @ VM2183 chunk-RPCDYKBN.js:3674
+invokeGuardedCallbackDev @ VM2183 chunk-RPCDYKBN.js:3699
+invokeGuardedCallback @ VM2183 chunk-RPCDYKBN.js:3733
+invokeGuardedCallbackAndCatchFirstError @ VM2183 chunk-RPCDYKBN.js:3736
+executeDispatch @ VM2183 chunk-RPCDYKBN.js:7014
+processDispatchQueueItemsInOrder @ VM2183 chunk-RPCDYKBN.js:7034
+processDispatchQueue @ VM2183 chunk-RPCDYKBN.js:7043
+dispatchEventsForPlugins @ VM2183 chunk-RPCDYKBN.js:7051
+(anonymous) @ VM2183 chunk-RPCDYKBN.js:7174
+batchedUpdates$1 @ VM2183 chunk-RPCDYKBN.js:18913
+batchedUpdates @ VM2183 chunk-RPCDYKBN.js:3579
+dispatchEventForPluginEventSystem @ VM2183 chunk-RPCDYKBN.js:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ VM2183 chunk-RPCDYKBN.js:5478
+dispatchEvent @ VM2183 chunk-RPCDYKBN.js:5472
+dispatchDiscreteEvent @ VM2183 chunk-RPCDYKBN.js:5449
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=b8c6ecdb-8353-482c-b65f-859b56b967c8 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ 8519-4ac7a8d201a03016.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 8519-4ac7a8d201a03016.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=4d3717ee-39e5-4adf-b4d1-3acc9f589371 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ 8519-4ac7a8d201a03016.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 8519-4ac7a8d201a03016.js:1
+n @ _app-3b2252d79016bbd1.js:34
+queryClient.ts:30  POST https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/api/owners/subscribe 500 (Internal Server Error)
+apiRequest @ VM2190 queryClient.ts:30
+mutationFn @ VM2225 subscribe.tsx:187
+fn @ VM2187 @tanstack_react-query.js:1189
+run @ VM2187 @tanstack_react-query.js:494
+start @ VM2187 @tanstack_react-query.js:536
+execute @ VM2187 @tanstack_react-query.js:1225
+await in execute
+mutate @ VM2187 @tanstack_react-query.js:2630
+(anonymous) @ VM2187 @tanstack_react-query.js:3295
+handleSubscribe @ VM2225 subscribe.tsx:210
+callCallback2 @ VM2183 chunk-RPCDYKBN.js:3674
+invokeGuardedCallbackDev @ VM2183 chunk-RPCDYKBN.js:3699
+invokeGuardedCallback @ VM2183 chunk-RPCDYKBN.js:3733
+invokeGuardedCallbackAndCatchFirstError @ VM2183 chunk-RPCDYKBN.js:3736
+executeDispatch @ VM2183 chunk-RPCDYKBN.js:7014
+processDispatchQueueItemsInOrder @ VM2183 chunk-RPCDYKBN.js:7034
+processDispatchQueue @ VM2183 chunk-RPCDYKBN.js:7043
+dispatchEventsForPlugins @ VM2183 chunk-RPCDYKBN.js:7051
+(anonymous) @ VM2183 chunk-RPCDYKBN.js:7174
+batchedUpdates$1 @ VM2183 chunk-RPCDYKBN.js:18913
+batchedUpdates @ VM2183 chunk-RPCDYKBN.js:3579
+dispatchEventForPluginEventSystem @ VM2183 chunk-RPCDYKBN.js:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ VM2183 chunk-RPCDYKBN.js:5478
+dispatchEvent @ VM2183 chunk-RPCDYKBN.js:5472
+dispatchDiscreteEvent @ VM2183 chunk-RPCDYKBN.js:5449
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=fa4af26c-4791-4b84-b998-5c70a7a00e3d net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=ed2402ca-adea-48a0-8e34-7ca18fd94cb1 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+client:560 [vite] server connection lost. Polling for restart...
+queryClient.ts:112 🔄 Query cache cleared once
+(index):157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=ae4d9a3f-f0b3-4adc-9869-1e7cf00d0c2f net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=7331e623-be8c-4c0a-9f7e-d9d40b0c3a0c net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+queryClient.ts:54  POST https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/api/owners/subscribe 500 (Internal Server Error)
+apiRequest @ queryClient.ts:54
+mutationFn @ subscribe.tsx:152
+fn @ @tanstack_react-query.js?v=df1ff2d7:1189
+run @ @tanstack_react-query.js?v=df1ff2d7:494
+start @ @tanstack_react-query.js?v=df1ff2d7:536
+execute @ @tanstack_react-query.js?v=df1ff2d7:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=df1ff2d7:2630
+(anonymous) @ @tanstack_react-query.js?v=df1ff2d7:3295
+handleSubscribe @ subscribe.tsx:176
+callCallback2 @ chunk-RPCDYKBN.js?v=df1ff2d7:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=df1ff2d7:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=df1ff2d7:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=df1ff2d7:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=df1ff2d7:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=df1ff2d7:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=df1ff2d7:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=df1ff2d7:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=df1ff2d7:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=df1ff2d7:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=df1ff2d7:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=df1ff2d7:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=df1ff2d7:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=df1ff2d7:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=df1ff2d7:5449
+  POST https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/api/owners/subscribe 500 (Internal Server Error)
+apiRequest @ queryClient.ts:30
+mutationFn @ subscribe.tsx:187
+fn @ @tanstack_react-query.js:1189
+run @ @tanstack_react-query.js:494
+start @ @tanstack_react-query.js:536
+execute @ @tanstack_react-query.js:1225
+await in execute
+mutate @ @tanstack_react-query.js:2630
+(anonymous) @ @tanstack_react-query.js:3295
+handleSubscribe @ subscribe.tsx:210
+callCallback2 @ chunk-RPCDYKBN.js:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js:3736
+executeDispatch @ chunk-RPCDYKBN.js:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js:7034
+processDispatchQueue @ chunk-RPCDYKBN.js:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js:7051
+(anonymous) @ chunk-RPCDYKBN.js:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js:18913
+batchedUpdates @ chunk-RPCDYKBN.js:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js:5478
+dispatchEvent @ chunk-RPCDYKBN.js:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js:5449
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=49c3231f-9339-46d8-ba9a-0e2152051f95 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+info @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+apply @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+next @ 4060-d87b04f2efb77355.js:1
+next @ 4945-3b57160b5ee9971b.js:1
+next @ 5014-396a2253aed521e4.js:1
+next @ 5014-396a2253aed521e4.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 5014-396a2253aed521e4.js:1
+n.notify @ 5014-396a2253aed521e4.js:1
+t.set @ 5014-396a2253aed521e4.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+t.trigger @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=c55a5601-fb8f-4146-9576-85b29a38ae7e net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+info @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+apply @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+next @ 4060-d87b04f2efb77355.js:1
+next @ 4945-3b57160b5ee9971b.js:1
+next @ 5014-396a2253aed521e4.js:1
+next @ 5014-396a2253aed521e4.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 5014-396a2253aed521e4.js:1
+n.notify @ 5014-396a2253aed521e4.js:1
+t.set @ 5014-396a2253aed521e4.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+t.trigger @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=eb8764ad-efc7-4b23-9d62-6327c2119f74 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+ed @ 4945-3b57160b5ee9971b.js:1
+info @ 649-092124f13c62fb4e.js:1
+(anonymous) @ 649-092124f13c62fb4e.js:1
+z @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+apply @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+t.run @ 4945-3b57160b5ee9971b.js:1
+t.appendEvent @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+keydown @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 275e5802-29316999b571bb21.js:1
+runHandlers @ 275e5802-29316999b571bb21.js:1
+handleEvent @ 275e5802-29316999b571bb21.js:1
+n @ _app-3b2252d79016bbd1.js:34
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=4c9cc34f-d84e-4416-a959-1979e88c6cd3 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+ed @ 4945-3b57160b5ee9971b.js:1
+info @ 649-092124f13c62fb4e.js:1
+(anonymous) @ 649-092124f13c62fb4e.js:1
+z @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+apply @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+Promise.then
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+t.run @ 4945-3b57160b5ee9971b.js:1
+t.appendEvent @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+keydown @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 275e5802-29316999b571bb21.js:1
+runHandlers @ 275e5802-29316999b571bb21.js:1
+handleEvent @ 275e5802-29316999b571bb21.js:1
+n @ _app-3b2252d79016bbd1.js:34
+queryClient.ts:112 🔄 Query cache cleared once
+(index):157 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/', …}
+queryClient.ts:54  POST https://68f7715e-83e1-4fd1-8083-2db3bf0bbf4f-00-1x6vikpubs2bt.spock.replit.dev/api/owners/subscribe 500 (Internal Server Error)
+apiRequest @ queryClient.ts:54
+mutationFn @ subscribe.tsx:152
+fn @ @tanstack_react-query.js?v=df1ff2d7:1189
+run @ @tanstack_react-query.js?v=df1ff2d7:494
+start @ @tanstack_react-query.js?v=df1ff2d7:536
+execute @ @tanstack_react-query.js?v=df1ff2d7:1225
+await in execute
+mutate @ @tanstack_react-query.js?v=df1ff2d7:2630
+(anonymous) @ @tanstack_react-query.js?v=df1ff2d7:3295
+handleSubscribe @ subscribe.tsx:176
+callCallback2 @ chunk-RPCDYKBN.js?v=df1ff2d7:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=df1ff2d7:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=df1ff2d7:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=df1ff2d7:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=df1ff2d7:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=df1ff2d7:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=df1ff2d7:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=df1ff2d7:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=df1ff2d7:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=df1ff2d7:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=df1ff2d7:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=df1ff2d7:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=df1ff2d7:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=df1ff2d7:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=df1ff2d7:5449
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Afetch%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=b9eb0572-41ca-4cb2-bc1c-dfc18ac93b2b net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+info @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+apply @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+next @ 4060-d87b04f2efb77355.js:1
+next @ 4945-3b57160b5ee9971b.js:1
+next @ 5014-396a2253aed521e4.js:1
+next @ 5014-396a2253aed521e4.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 5014-396a2253aed521e4.js:1
+n.notify @ 5014-396a2253aed521e4.js:1
+t.set @ 5014-396a2253aed521e4.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+t.trigger @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+_app-3b2252d79016bbd1.js:34  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Axhr%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Ade3447e0&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=7115856f-0e3e-4cd2-8388-fe789b697bb6 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+_ @ _app-3b2252d79016bbd1.js:36
+(anonymous) @ _app-3b2252d79016bbd1.js:36
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+Promise.then
+o @ _app-3b2252d79016bbd1.js:36
+m @ _app-3b2252d79016bbd1.js:36
+g @ _app-3b2252d79016bbd1.js:36
+send @ _app-3b2252d79016bbd1.js:36
+e.flush @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+e.notify @ _app-3b2252d79016bbd1.js:1
+f @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+n @ _app-3b2252d79016bbd1.js:34
+setTimeout
+(anonymous) @ _app-3b2252d79016bbd1.js:34
+o @ _app-3b2252d79016bbd1.js:1
+notifyBeforeAddMessage @ _app-3b2252d79016bbd1.js:1
+e.push @ _app-3b2252d79016bbd1.js:1
+e.addOrUpdate @ _app-3b2252d79016bbd1.js:1
+e.add @ _app-3b2252d79016bbd1.js:1
+add @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.notify @ _app-3b2252d79016bbd1.js:10
+handleLog @ _app-3b2252d79016bbd1.js:10
+(anonymous) @ _app-3b2252d79016bbd1.js:10
+e.log @ _app-3b2252d79016bbd1.js:10
+d @ _app-3b2252d79016bbd1.js:1
+(anonymous) @ _app-3b2252d79016bbd1.js:1
+r.value @ _app-3b2252d79016bbd1.js:1
+e.info @ _app-3b2252d79016bbd1.js:10
+info @ _app-3b2252d79016bbd1.js:10
+A @ 7122-2a58cebaf14c813d.js:1
+info @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 6631-d10c4f32800331ff.js:1
+apply @ 6631-d10c4f32800331ff.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+next @ 4060-d87b04f2efb77355.js:1
+next @ 4945-3b57160b5ee9971b.js:1
+next @ 5014-396a2253aed521e4.js:1
+next @ 5014-396a2253aed521e4.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+v @ _app-3b2252d79016bbd1.js:4
+y @ _app-3b2252d79016bbd1.js:4
+t.next @ _app-3b2252d79016bbd1.js:4
+(anonymous) @ 5014-396a2253aed521e4.js:1
+n.notify @ 5014-396a2253aed521e4.js:1
+t.set @ 5014-396a2253aed521e4.js:1
+(anonymous) @ 4060-d87b04f2efb77355.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+t.trigger @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ 4945-3b57160b5ee9971b.js:1
+(anonymous) @ main-440348868fa569a2.js:1
+n @ main-440348868fa569a2.js:1
+u @ main-440348868fa569a2.js:1
