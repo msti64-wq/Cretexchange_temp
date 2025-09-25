@@ -68,16 +68,16 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
       // Show install prompt for the registered user type
       console.log('🎯 Registration successful! Setting up install prompt for:', formData.role);
       setRegisteredUserType(formData.role as 'driver' | 'owner');
-      setShowInstallPrompt(true);
       
-      // Don't redirect immediately - let the install prompt show first
-      console.log('⏳ Install prompt should appear now');
+      // Immediately redirect to home to prevent 404, then show install prompt
+      console.log('🔄 Redirecting to home route to prevent 404');
+      setLocation('/');
       
-      // Fallback redirect in case install prompt fails (prevent getting stuck on 404)
+      // Show install prompt after brief delay to ensure route change happens
       setTimeout(() => {
-        console.log('🚨 Fallback redirect triggered - install prompt may have failed');
-        setLocation('/');
-      }, 5000); // 5 second fallback
+        console.log('⏳ Now showing install prompt on home route');
+        setShowInstallPrompt(true);
+      }, 100);
     },
     onError: (error: any) => {
       toast({
