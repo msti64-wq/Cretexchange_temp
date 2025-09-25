@@ -804,6 +804,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user data for profile completion checks
       const user = await storage.getUser(userId);
+      
+      // Combine user data with driver-specific data for profile completion checks
+      const userWithRoleData = {
+        ...user,
+        roleData: {
+          employerName: driver.employerName,
+          employerAddress: driver.employerAddress,
+          employerPhone: driver.employerPhone,
+          truckNumber: driver.truckNumber,
+          licenseNumber: driver.licenseNumber,
+          hasAgreedToTerms: driver.hasAgreedToTerms,
+          termsAgreedAt: driver.termsAgreedAt,
+          isGpsEnabled: driver.isGpsEnabled,
+          currentLatitude: driver.currentLatitude,
+          currentLongitude: driver.currentLongitude,
+          lastLocationUpdate: driver.lastLocationUpdate,
+        }
+      };
 
       res.json({
         dailyStats: {
@@ -812,7 +830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         weeklyStats: weekStats,
         recentActivities,
-        user: user,
+        user: userWithRoleData,
       });
     } catch (error) {
       console.error("Error fetching driver dashboard:", error);
