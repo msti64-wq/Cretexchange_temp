@@ -42,18 +42,6 @@ export default function DriverProfile() {
       });
       setIsEditing(false);
       refetch();
-      
-      // Check if this is first-time profile completion and show install prompt
-      // Must match dashboard completion logic: basic info + driver-specific info + terms
-      const isFirstTimeCompletion = formData.phone && formData.address && 
-        formData.paymentMethod && formData.paymentMethod !== 'check' &&
-        formData.employerName && formData.truckNumber &&
-        termsStatus?.hasAgreed;
-      
-      if (isFirstTimeCompletion) {
-        console.log('🎯 Profile completed for first time! Showing install prompt');
-        setShowInstallPrompt(true);
-      }
     },
     onError: (error) => {
       toast({
@@ -83,6 +71,33 @@ export default function DriverProfile() {
     accountNumber: "",
     accountType: "checking",
   });
+
+  // Check for profile completion and show install prompt
+  useEffect(() => {
+    if (user && termsStatus && (user as any).roleData) {
+      const userData = user as any;
+      
+      // Check if profile is completed (matching dashboard logic)
+      const hasBasicInfo = userData.phone && userData.address && 
+        userData.paymentMethod && userData.paymentMethod !== 'check';
+      const hasDriverInfo = userData.employerName && userData.truckNumber;
+      const hasTermsAgreed = termsStatus.hasAgreed;
+      
+      const isProfileComplete = hasBasicInfo && hasDriverInfo && hasTermsAgreed;
+      
+      // Only show install prompt if we haven't shown it before and profile is newly complete
+      if (isProfileComplete && !showInstallPrompt) {
+        console.log('🎯 Profile is now complete! Checking if install prompt should show...');
+        console.log('Basic info:', hasBasicInfo, 'Driver info:', hasDriverInfo, 'Terms:', hasTermsAgreed);
+        
+        // Show install prompt after a short delay to ensure smooth UX
+        setTimeout(() => {
+          console.log('✨ Showing install prompt for completed profile');
+          setShowInstallPrompt(true);
+        }, 1000);
+      }
+    }
+  }, [user, termsStatus, showInstallPrompt]);
 
   // Update form data when user data loads
   useEffect(() => {
