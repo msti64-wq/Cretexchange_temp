@@ -1843,30 +1843,27 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Calculate pending balance from activities with status='pending'
+  // Calculate pending balance from wallet transactions with status='pending'
   async calculatePendingBalance(driverId: string): Promise<number> {
-    const pendingActivities = await db
+    const pendingTransactions = await db
       .select({
-        amount: washoutActivities.amount
+        amount: walletTransactions.amount
       })
-      .from(washoutActivities)
+      .from(walletTransactions)
       .where(
         and(
-          eq(washoutActivities.driverId, driverId),
-          eq(washoutActivities.status, 'pending')
+          eq(walletTransactions.driverId, driverId),
+          eq(walletTransactions.status, 'pending'),
+          eq(walletTransactions.direction, 'credit')
         )
       );
 
-    // Calculate total pending amount and apply 90% driver share (10% platform commission)
-    const totalPendingAmount = pendingActivities.reduce((total, activity) => {
-      return total + parseFloat(activity.amount);
+    // Sum up all pending credit transactions
+    const totalPendingAmount = pendingTransactions.reduce((total, transaction) => {
+      return total + parseFloat(transaction.amount);
     }, 0);
 
-    // Apply the same 90% calculation used when activities are verified
-    const platformCommission = totalPendingAmount * 0.10;
-    const driverPendingAmount = totalPendingAmount - platformCommission;
-
-    return Number(driverPendingAmount.toFixed(2));
+    return Number(totalPendingAmount.toFixed(2));
   }
 
   // Webhook event operations for idempotency
