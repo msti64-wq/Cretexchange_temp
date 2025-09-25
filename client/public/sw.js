@@ -2,9 +2,8 @@
 const CACHE_NAME = 'washout-pro-v1';
 const urlsToCache = [
   '/',
-  '/src/main.tsx',
-  '/src/index.css',
-  '/src/App.tsx'
+  '/manifest.json',
+  '/washout-pro-logo.png'
 ];
 
 // Install event - cache core resources
