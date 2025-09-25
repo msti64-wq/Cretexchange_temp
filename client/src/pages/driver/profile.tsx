@@ -33,7 +33,9 @@ export default function DriverProfile() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log('🚀 Mutation function called with data:', data);
       await apiRequest("PUT", "/api/drivers/profile", data);
+      console.log('✅ API request completed successfully');
     },
     onSuccess: () => {
       toast({
@@ -127,6 +129,11 @@ export default function DriverProfile() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('📝 Form submission attempted');
+    console.log('🔧 isEditing:', isEditing);
+    console.log('📋 formData:', formData);
+    console.log('⚙️ Mutation pending:', updateProfileMutation.isPending);
+    
     updateProfileMutation.mutate(formData);
   };
 
