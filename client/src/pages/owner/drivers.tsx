@@ -9,6 +9,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { Users, Search, Filter, MapPin, Clock, Image as ImageIcon } from "lucide-react";
+import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
 import { formatCurrency } from "@/lib/utils";
 
 export default function OwnerDrivers() {
@@ -95,9 +96,11 @@ export default function OwnerDrivers() {
       <header className="gradient-bg text-white p-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <Users className="w-5 h-5" />
-            </div>
+            <img 
+              src={logoImage}
+              alt="WashOut Pro Logo"
+              className="w-10 h-10 object-contain bg-white/20 rounded-full p-1"
+            />
             <div>
               <h1 className="font-semibold text-lg">Driver Activity</h1>
               <p className="text-white/80 text-sm">Monitor driver performance</p>

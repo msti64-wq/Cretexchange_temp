@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings } from "lucide-react";
+import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -223,9 +224,11 @@ export default function OwnerLocations() {
       <header className="gradient-bg text-white p-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <Building2 className="w-5 h-5" />
-            </div>
+            <img 
+              src={logoImage}
+              alt="WashOut Pro Logo"
+              className="w-10 h-10 object-contain bg-white/20 rounded-full p-1"
+            />
             <div>
               <h1 className="font-semibold text-lg">My Locations</h1>
               <p className="text-white/80 text-sm">Manage washout sites</p>
