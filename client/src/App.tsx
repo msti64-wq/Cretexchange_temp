@@ -46,8 +46,8 @@ const OwnerRegister = (props: RouteComponentProps) => <Register preselectedRole=
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
 
-  // Show loading spinner during initial load OR when user data is missing
-  if (isLoading || (isAuthenticated && !user)) {
+  // Show loading spinner only during initial load
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
