@@ -1918,9 +1918,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
+      // Column BaaS integration - check wallet status instead of Stripe subscription
       let subscriptionData = {
-        status: owner.subscriptionStatus,
-        plan: owner.subscriptionPlan,
+        status: owner.walletStatus === 'active' ? 'active' : (owner.subscriptionStatus || 'inactive'),
+        plan: owner.subscriptionPlan || 'monthly',
         endsAt: owner.subscriptionEndsAt,
       };
 
