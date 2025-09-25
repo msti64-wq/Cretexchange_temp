@@ -72,9 +72,6 @@ export default function DriverProfile() {
     accountType: "checking",
   });
 
-  // TODO: Re-enable install prompt detection after fixing infinite loop
-  // Temporarily disabled to fix spinning circle issue
-
   // Update form data when user data loads
   useEffect(() => {
     if (user && (user as any).roleData) {
@@ -100,6 +97,49 @@ export default function DriverProfile() {
       });
     }
   }, [user]);
+
+  // Check if profile is complete and show install prompt for first-time completion
+  useEffect(() => {
+    if (user && termsStatus && !isEditing) {
+      const userData = user as any;
+      const roleData = userData.roleData || {};
+      
+      // Profile completion criteria
+      const isProfileComplete = Boolean(
+        userData.phone &&
+        userData.address &&
+        userData.paymentMethod &&
+        userData.paymentMethod !== "check" && // "check" was invalid payment method
+        roleData.employerName &&
+        roleData.truckNumber &&
+        termsStatus.hasAgreed
+      );
+      
+      // Only show install prompt if profile was just completed
+      // Check if this is first time being complete by seeing if essential fields were just filled
+      const hasEssentialInfo = Boolean(
+        userData.phone && userData.address && roleData.employerName && roleData.truckNumber
+      );
+      
+      console.log('🔍 Profile completion check:', {
+        isProfileComplete,
+        hasEssentialInfo,
+        paymentMethod: userData.paymentMethod,
+        termsAgreed: termsStatus.hasAgreed,
+        showInstallPrompt
+      });
+      
+      if (isProfileComplete && hasEssentialInfo && !showInstallPrompt) {
+        // Small delay to ensure profile save completed before showing prompt
+        const timer = setTimeout(() => {
+          console.log('✅ Profile complete! Showing install prompt...');
+          setShowInstallPrompt(true);
+        }, 1500);
+        
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user, termsStatus, isEditing, showInstallPrompt]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
