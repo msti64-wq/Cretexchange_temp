@@ -117,7 +117,7 @@ export function PlatformPerformanceCard({ dateRange }: PlatformPerformanceCardPr
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">↳ Service Fees ($8.80/washout)</span>
+            <span className="text-muted-foreground">↳ Service Fees</span>
             <span className="font-medium text-green-600" data-testid="text-service-fees">
               {formatCurrency(data.moneyFromOwners - data.moneyPaidToDrivers)}
             </span>
@@ -134,9 +134,6 @@ export function PlatformPerformanceCard({ dateRange }: PlatformPerformanceCardPr
           </span>
         </div>
         
-        <div className="ml-6 text-xs text-muted-foreground">
-          $1 fee for withdrawals under $10, 10% for larger amounts
-        </div>
 
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
@@ -148,9 +145,6 @@ export function PlatformPerformanceCard({ dateRange }: PlatformPerformanceCardPr
           </span>
         </div>
         
-        <div className="ml-6 text-xs text-muted-foreground">
-          $29/month per active owner location
-        </div>
       </div>
 
       {/* Activity Summary */}

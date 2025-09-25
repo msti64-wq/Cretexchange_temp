@@ -483,8 +483,7 @@ export default function DriverProfile() {
               
               <div className="bg-muted/50 rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">
-                  Review the terms and conditions that govern your use of WashOut Pro, 
-                  including payment processing fees and service policies.
+                  Review the terms and conditions that govern your use of WashOut Pro.
                 </p>
               </div>
             </CardContent>
