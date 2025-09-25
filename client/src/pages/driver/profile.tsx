@@ -33,9 +33,7 @@ export default function DriverProfile() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
-      console.log('🚀 Mutation function called with data:', data);
       await apiRequest("PUT", "/api/drivers/profile", data);
-      console.log('✅ API request completed successfully');
     },
     onSuccess: () => {
       toast({
@@ -75,8 +73,10 @@ export default function DriverProfile() {
   });
 
   // Check for profile completion and show install prompt
+  const [hasTriggeredInstallPrompt, setHasTriggeredInstallPrompt] = useState(false);
+  
   useEffect(() => {
-    if (user && termsStatus && (user as any).roleData) {
+    if (user && termsStatus && (user as any).roleData && !hasTriggeredInstallPrompt && !showInstallPrompt) {
       const userData = user as any;
       
       // Check if profile is completed (matching dashboard logic)
@@ -87,19 +87,24 @@ export default function DriverProfile() {
       
       const isProfileComplete = hasBasicInfo && hasDriverInfo && hasTermsAgreed;
       
-      // Only show install prompt if we haven't shown it before and profile is newly complete
-      if (isProfileComplete && !showInstallPrompt) {
-        console.log('🎯 Profile is now complete! Checking if install prompt should show...');
+      // Only show install prompt once when profile is truly complete
+      if (isProfileComplete) {
+        console.log('🎯 Profile is now complete! Showing install prompt...');
         console.log('Basic info:', hasBasicInfo, 'Driver info:', hasDriverInfo, 'Terms:', hasTermsAgreed);
         
-        // Show install prompt after a short delay to ensure smooth UX
-        setTimeout(() => {
+        setHasTriggeredInstallPrompt(true); // Prevent multiple triggers
+        
+        // Show install prompt with a delay for better UX
+        const timeoutId = setTimeout(() => {
           console.log('✨ Showing install prompt for completed profile');
           setShowInstallPrompt(true);
         }, 1000);
+        
+        // Cleanup timeout if component unmounts
+        return () => clearTimeout(timeoutId);
       }
     }
-  }, [user, termsStatus]); // Removed showInstallPrompt to prevent infinite loop
+  }, [user, termsStatus, hasTriggeredInstallPrompt, showInstallPrompt]);
 
   // Update form data when user data loads
   useEffect(() => {
@@ -129,11 +134,6 @@ export default function DriverProfile() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('📝 Form submission attempted');
-    console.log('🔧 isEditing:', isEditing);
-    console.log('📋 formData:', formData);
-    console.log('⚙️ Mutation pending:', updateProfileMutation.isPending);
-    
     updateProfileMutation.mutate(formData);
   };
 
