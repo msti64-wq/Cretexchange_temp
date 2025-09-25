@@ -73,10 +73,8 @@ export default function DriverProfile() {
   });
 
   // Check for profile completion and show install prompt
-  const [hasTriggeredInstallPrompt, setHasTriggeredInstallPrompt] = useState(false);
-  
   useEffect(() => {
-    if (user && termsStatus && (user as any).roleData && !hasTriggeredInstallPrompt && !showInstallPrompt) {
+    if (user && termsStatus && (user as any).roleData) {
       const userData = user as any;
       
       // Check if profile is completed (matching dashboard logic)
@@ -88,23 +86,16 @@ export default function DriverProfile() {
       const isProfileComplete = hasBasicInfo && hasDriverInfo && hasTermsAgreed;
       
       // Only show install prompt once when profile is truly complete
-      if (isProfileComplete) {
+      if (isProfileComplete && !showInstallPrompt) {
         console.log('🎯 Profile is now complete! Showing install prompt...');
-        console.log('Basic info:', hasBasicInfo, 'Driver info:', hasDriverInfo, 'Terms:', hasTermsAgreed);
-        
-        setHasTriggeredInstallPrompt(true); // Prevent multiple triggers
         
         // Show install prompt with a delay for better UX
-        const timeoutId = setTimeout(() => {
-          console.log('✨ Showing install prompt for completed profile');
+        setTimeout(() => {
           setShowInstallPrompt(true);
-        }, 1000);
-        
-        // Cleanup timeout if component unmounts
-        return () => clearTimeout(timeoutId);
+        }, 1500);
       }
     }
-  }, [user, termsStatus, hasTriggeredInstallPrompt, showInstallPrompt]);
+  }, [user, termsStatus]); // Simplified dependencies
 
   // Update form data when user data loads
   useEffect(() => {
