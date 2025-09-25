@@ -1431,11 +1431,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify the activity
       const activity = await storage.verifyWashoutActivity(id, userId);
 
-      // NEW FEE STRUCTURE: Driver gets 100% of washout amount, owner pays flat $8.00 + 10% service fee
+      // NEW FEE STRUCTURE: Owner pays $9.00 flat fee, driver gets $5.00 minimum or posted amount
       const activityAmount = Number(activityDetails.amount);
-      const driverAmount = activityAmount; // Driver gets full washout amount
-      const baseFee = 8.00; // Flat $8.00 base fee
-      const serviceFee = baseFee * 0.10; // 10% service fee on base fee = $0.80
+      const driverAmount = Math.max(activityAmount, 5.00); // Driver gets washout amount or $5.00 minimum
+      const ownerFee = 9.00; // Flat $9.00 fee per washout
+      const platformFee = 4.00; // Platform keeps $4.00
 
       // Get owner's billing settings for business date calculation
       const billingSettings = await storage.getOwnerBillingSettings(owner.id);
@@ -1456,8 +1456,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverId: activityDetails.driverId,
         ownerId: owner.id,
         amount: driverAmount.toString(),
-        processingFee: serviceFee.toFixed(2), // 10% service fee ($0.80)
-        washoutServiceFee: baseFee.toFixed(2), // Flat $8.00 base fee
+        processingFee: platformFee.toFixed(2), // Platform fee ($4.00)
+        washoutServiceFee: (ownerFee - platformFee).toFixed(2), // Driver portion ($5.00)
         status: 'pending', // Will be processed by daily batch
         businessDate, // Set business date for batch grouping
         // batchId will be set later by the daily batch processor
@@ -1472,13 +1472,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Pending washout payment for activity ${id} (batch date: ${businessDate})`
       );
 
-      console.log(`✅ Created pending payment: Driver gets $${driverAmount}, Owner pays $${(baseFee + serviceFee).toFixed(2)} for activity ${id}, Payment ID: ${payment.id}, Business Date: ${businessDate}`);
-      console.log(`💰 Fee breakdown: Base $${baseFee.toFixed(2)} + Service $${serviceFee.toFixed(2)} = Total $${(baseFee + serviceFee).toFixed(2)}`);
+      console.log(`✅ Created pending payment: Driver gets $${driverAmount}, Owner pays $${ownerFee.toFixed(2)} for activity ${id}, Payment ID: ${payment.id}, Business Date: ${businessDate}`);
+      console.log(`💰 Fee breakdown: Owner pays $${ownerFee.toFixed(2)} (Platform $${platformFee.toFixed(2)} + Driver $${driverAmount.toFixed(2)})`);
       console.log(`📅 Payment will be processed in daily batch for ${businessDate} at ${billingSettings?.billingCutoffTime || '23:59:00'} ${billingSettings?.billingTimezone || 'America/Chicago'}`);
 
       // Daily batch processor will:
       // 1. Group all pending payments by owner and business date
-      // 2. Create single Stripe PaymentIntent per owner per day
+      // 2. Create single payment charge per owner per day
       // 3. On successful payment, move funds from pending to available balance
 
       res.json(activity);

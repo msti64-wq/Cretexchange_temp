@@ -574,7 +574,7 @@ export default function PaymentMethods() {
                 </div>
                 <div className="text-sm text-muted-foreground">
                   <p>• Automatic driver payouts are processed weekly</p>
-                  <p>• Platform fee (10%) is deducted from your wallet balance</p>
+                  <p>• $9.00 flat fee per washout deducted from wallet balance</p>
                   <p>• Low balance alerts keep your wallet funded</p>
                   <p>• All transactions are logged for your records</p>
                 </div>
