@@ -72,30 +72,8 @@ export default function DriverProfile() {
     accountType: "checking",
   });
 
-  // Check for profile completion and show install prompt
-  useEffect(() => {
-    if (user && termsStatus && (user as any).roleData) {
-      const userData = user as any;
-      
-      // Check if profile is completed (matching dashboard logic)
-      const hasBasicInfo = userData.phone && userData.address && 
-        userData.paymentMethod && userData.paymentMethod !== 'check';
-      const hasDriverInfo = userData.employerName && userData.truckNumber;
-      const hasTermsAgreed = termsStatus.hasAgreed;
-      
-      const isProfileComplete = hasBasicInfo && hasDriverInfo && hasTermsAgreed;
-      
-      // Only show install prompt once when profile is truly complete
-      if (isProfileComplete && !showInstallPrompt) {
-        console.log('🎯 Profile is now complete! Showing install prompt...');
-        
-        // Show install prompt with a delay for better UX
-        setTimeout(() => {
-          setShowInstallPrompt(true);
-        }, 1500);
-      }
-    }
-  }, [user, termsStatus]); // Simplified dependencies
+  // TODO: Re-enable install prompt detection after fixing infinite loop
+  // Temporarily disabled to fix spinning circle issue
 
   // Update form data when user data loads
   useEffect(() => {
