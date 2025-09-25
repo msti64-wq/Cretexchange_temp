@@ -46,9 +46,7 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
     const isInWebAppiOS = (window.navigator as any).standalone === true;
     console.log('🏠 App already installed:', isStandalone || isInWebAppiOS);
     
-    // TEMPORARY: Disable install check for testing
-    console.log('🧪 TESTING: Ignoring install check to debug prompt');
-    if (true) { // Changed from: if (!isStandalone && !isInWebAppiOS) {
+    if (!isStandalone && !isInWebAppiOS) {
       window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
       console.log('👂 Listening for beforeinstallprompt event');
       
