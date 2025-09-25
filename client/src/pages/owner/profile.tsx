@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +14,14 @@ import { Building2, CreditCard, Save, LogOut, AlertCircle, Crown, Lock, Eye, Eye
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 export default function OwnerProfile() {
   const { toast } = useToast();
   const { logout } = useAuth();
   const [, setLocation] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -92,7 +94,7 @@ export default function OwnerProfile() {
   });
 
   // Update form data when user data loads
-  useState(() => {
+  useEffect(() => {
     if (user && user.roleData) {
       setFormData({
         firstName: user.firstName || "",
@@ -107,6 +109,49 @@ export default function OwnerProfile() {
       });
     }
   }, [user]);
+
+  // Check for profile completion and show install prompt
+  useEffect(() => {
+    if (user && !isEditing) {
+      const userData = user as any;
+      const roleData = userData.roleData || {};
+      
+      // Owner profile completion criteria
+      const isProfileComplete = Boolean(
+        userData.firstName &&
+        userData.lastName &&
+        userData.phone &&
+        userData.address &&
+        userData.paymentMethod &&
+        roleData.companyName &&
+        roleData.businessLicense &&
+        roleData.taxId
+      );
+      
+      // Only show install prompt if profile was just completed
+      const hasEssentialInfo = Boolean(
+        userData.firstName && userData.lastName && userData.phone && 
+        userData.address && roleData.companyName
+      );
+      
+      console.log('🔍 Owner profile completion check:', {
+        isProfileComplete,
+        hasEssentialInfo,
+        paymentMethod: userData.paymentMethod,
+        showInstallPrompt
+      });
+      
+      if (isProfileComplete && hasEssentialInfo && !showInstallPrompt) {
+        // Small delay to ensure profile save completed before showing prompt
+        const timer = setTimeout(() => {
+          console.log('✅ Owner profile complete! Showing install prompt...');
+          setShowInstallPrompt(true);
+        }, 1500);
+        
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user, isEditing, showInstallPrompt]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -535,6 +580,20 @@ export default function OwnerProfile() {
       </div>
 
       <MobileNav role="owner" />
+      
+      {showInstallPrompt && (
+        <InstallPrompt
+          userType="owner"
+          onInstall={() => {
+            console.log('✅ Owner accepted install prompt from profile');
+            setShowInstallPrompt(false);
+          }}
+          onDismiss={() => {
+            console.log('❌ Owner dismissed install prompt from profile');
+            setShowInstallPrompt(false);
+          }}
+        />
+      )}
     </div>
   );
 }
