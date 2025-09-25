@@ -66,8 +66,12 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       
       // Show install prompt for the registered user type
+      console.log('🎯 Registration successful! Setting up install prompt for:', formData.role);
       setRegisteredUserType(formData.role as 'driver' | 'owner');
       setShowInstallPrompt(true);
+      
+      // Don't redirect immediately - let the install prompt show first
+      console.log('⏳ Install prompt should appear now');
     },
     onError: (error: any) => {
       toast({
@@ -320,10 +324,12 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
         <InstallPrompt
           userType={registeredUserType}
           onInstall={() => {
+            console.log('✅ User accepted install prompt');
             setShowInstallPrompt(false);
             setTimeout(() => setLocation('/'), 1000); // Brief delay then redirect
           }}
           onDismiss={() => {
+            console.log('❌ User dismissed install prompt');
             setShowInstallPrompt(false);
             setLocation('/'); // Immediate redirect
           }}

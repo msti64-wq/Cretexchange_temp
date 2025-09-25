@@ -123,7 +123,14 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
     }
   };
 
-  if (!showPrompt) return null;
+  console.log('🎨 InstallPrompt render check:', { showPrompt, userType, deferredPrompt: !!deferredPrompt });
+
+  if (!showPrompt) {
+    console.log('❌ InstallPrompt not showing because showPrompt is false');
+    return null;
+  }
+
+  console.log('✨ InstallPrompt is rendering!');
 
   const messaging = getMessaging();
 
