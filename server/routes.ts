@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import Stripe from "stripe";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { storage } from "./storage";
 import { washoutActivities, withdrawals, walletTransactions, driverWallets } from "../shared/schema";
 import { db } from "./db";
@@ -670,6 +671,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating driver:", error);
       res.status(400).json({ message: "Failed to create driver profile" });
+    }
+  });
+
+  // General registration endpoint (handles both drivers and owners)
+  app.post('/api/register', async (req: any, res) => {
+    try {
+      const { role, username, email, password, firstName, lastName, phone, address } = req.body;
+
+      // Validate required fields
+      if (!role || !username || !email || !password || !firstName || !lastName) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      if (role !== 'driver' && role !== 'owner') {
+        return res.status(400).json({ message: "Invalid role. Must be 'driver' or 'owner'" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Create user
+      const newUser = await storage.createUser({
+        username,
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+        phone: phone || null,
+        address: address || null,
+        role,
+      });
+
+      console.log(`User registered successfully: ${newUser.id}`);
+
+      // Generate token for immediate login
+      const token = jwt.sign(
+        { userId: newUser.id, username: newUser.username },
+        process.env.JWT_SECRET || 'development-secret',
+        { expiresIn: '30d' }
+      );
+
+      res.json({
+        message: "Registration successful",
+        token,
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          role: newUser.role,
+        }
+      });
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Registration failed: " + error.message });
     }
   });
 
