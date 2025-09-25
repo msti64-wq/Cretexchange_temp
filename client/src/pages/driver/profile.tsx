@@ -97,7 +97,7 @@ export default function DriverProfile() {
         }, 1000);
       }
     }
-  }, [user, termsStatus, showInstallPrompt]);
+  }, [user, termsStatus]); // Removed showInstallPrompt to prevent infinite loop
 
   // Update form data when user data loads
   useEffect(() => {

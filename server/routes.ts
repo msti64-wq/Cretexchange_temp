@@ -774,10 +774,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Driver endpoints
   app.get('/api/drivers/dashboard', isAuthenticated, async (req: any, res) => {
-    // Force fresh response for debugging - disable caching
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
     try {
       const userId = req.user.id;
       const driver = await storage.getDriver(userId);
@@ -826,18 +822,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastLocationUpdate: driver.lastLocationUpdate,
         }
       };
-
-      // Debug: Log user data structure for completion check troubleshooting
-      console.log('🔍 Dashboard API returning user data:', {
-        phone: userWithRoleData.phone,
-        address: userWithRoleData.address,
-        paymentMethod: userWithRoleData.paymentMethod,
-        roleData: {
-          employerName: userWithRoleData.roleData.employerName,
-          truckNumber: userWithRoleData.roleData.truckNumber,
-          hasAgreedToTerms: userWithRoleData.roleData.hasAgreedToTerms,
-        }
-      });
 
       res.json({
         dailyStats: {

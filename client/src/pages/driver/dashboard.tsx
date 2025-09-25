@@ -76,36 +76,15 @@ export default function DriverDashboard() {
 
       <main className="p-4 space-y-6">
         {/* Profile Completion Notice */}
-        {(() => {
-          const user = (dashboardData as any)?.user;
-          if (!user) return false;
-          
-          // Debug: Log completion check details
-          const checks = {
-            hasPhone: !!user.phone,
-            hasAddress: !!user.address,
-            hasPaymentMethod: !!user.paymentMethod,
-            validPaymentMethod: user.paymentMethod !== 'check',
-            hasEmployerName: !!user.roleData?.employerName,
-            hasTruckNumber: !!user.roleData?.truckNumber,
-            hasAgreedToTerms: !!user.roleData?.hasAgreedToTerms,
-          };
-          
-          console.log('🔍 Dashboard completion check for', user.username || 'unknown user', ':', checks);
-          console.log('📋 User data structure:', {
-            phone: user.phone,
-            address: user.address,
-            paymentMethod: user.paymentMethod,
-            roleData: user.roleData
-          });
-          
-          const shouldShowPrompt = !checks.hasPhone || !checks.hasAddress || !checks.hasPaymentMethod || 
-            !checks.validPaymentMethod || !checks.hasEmployerName || !checks.hasTruckNumber || !checks.hasAgreedToTerms;
-          
-          console.log('💡 Should show "Complete Profile" prompt:', shouldShowPrompt);
-          
-          return shouldShowPrompt;
-        })() && (
+        {(dashboardData as any)?.user && (
+          !(dashboardData as any).user.phone || 
+          !(dashboardData as any).user.address || 
+          !(dashboardData as any).user.paymentMethod || 
+          (dashboardData as any).user.paymentMethod === 'check' ||
+          !(dashboardData as any).user.roleData?.employerName ||
+          !(dashboardData as any).user.roleData?.truckNumber ||
+          !(dashboardData as any).user.roleData?.hasAgreedToTerms
+        ) && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
