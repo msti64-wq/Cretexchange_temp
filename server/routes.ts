@@ -1732,9 +1732,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User or owner not found" });
       }
 
-      if (owner.subscriptionStatus === 'active') {
-        console.log("Already subscribed");
-        return res.json({ message: "Already subscribed" });
+      if (owner.walletStatus === 'active') {
+        console.log("Wallet already active");
+        return res.json({ message: "Wallet already active" });
       }
 
       console.log("Setting up Column BaaS wallet and activating subscription...");
@@ -1749,9 +1749,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateUserColumnInfo(userId, columnCustomerId);
       }
 
-      // Activate owner subscription with Column BaaS
-      console.log("Activating owner subscription with Column BaaS:", subscriptionId);
-      await storage.updateOwnerSubscription(owner.id, 'active', subscriptionId);
+      // Activate owner wallet with Column BaaS
+      console.log("Activating owner wallet with Column BaaS:", subscriptionId);
+      await storage.updateOwner(owner.id, { 
+        walletStatus: 'active',
+        columnAccountId: subscriptionId // Use subscription ID as Column account reference
+      });
 
       console.log("Column BaaS subscription activated successfully");
 
