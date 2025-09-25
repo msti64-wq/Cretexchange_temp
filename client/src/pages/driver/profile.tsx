@@ -44,8 +44,11 @@ export default function DriverProfile() {
       refetch();
       
       // Check if this is first-time profile completion and show install prompt
+      // Must match dashboard completion logic: basic info + driver-specific info + terms
       const isFirstTimeCompletion = formData.phone && formData.address && 
-        formData.paymentMethod && formData.paymentMethod !== 'check';
+        formData.paymentMethod && formData.paymentMethod !== 'check' &&
+        formData.employerName && formData.truckNumber &&
+        termsStatus?.hasAgreed;
       
       if (isFirstTimeCompletion) {
         console.log('🎯 Profile completed for first time! Showing install prompt');
