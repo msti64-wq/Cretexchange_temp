@@ -338,8 +338,7 @@ export default function OwnerSubscribe() {
             {/* Pricing Details */}
             <Card>
               <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                <p>• No setup fees • Cancel anytime • 30-day money-back guarantee</p>
-                <p className="mt-2">• 10% processing fee per transaction</p>
+                <p>• No setup fees • Cancel anytime</p>
               </CardContent>
             </Card>
           </>
