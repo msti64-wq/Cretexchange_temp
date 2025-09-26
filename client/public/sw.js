@@ -1,44 +1,14 @@
-// Service Worker for WashOut Pro PWA
-const CACHE_NAME = 'washout-pro-v1';
-const urlsToCache = [
-  '/',
-  '/manifest.json',
-  '/washout-pro-logo.png'
-];
+// Simple Service Worker for WashOut Pro PWA
+console.log('Service Worker loaded');
 
-// Install event - cache core resources
+// Install event - skip waiting
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
+  console.log('Service Worker installing');
+  self.skipWaiting();
 });
 
-// Fetch event - serve from cache when offline
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      })
-  );
-});
-
-// Activate event - clean up old caches
+// Activate event - take control
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
+  console.log('Service Worker activating');
+  event.waitUntil(self.clients.claim());
 });
