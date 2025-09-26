@@ -28,6 +28,7 @@ import OwnerPayments from "@/pages/owner/payments";
 import OwnerProfile from "@/pages/owner/profile";
 import OwnerSubscribe from "@/pages/owner/subscribe";
 import OwnerPaymentMethods from "@/pages/owner/payment-methods";
+import OwnerWallet from "@/pages/owner/wallet";
 
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -103,6 +104,7 @@ function Router() {
         <Route path="/locations" component={OwnerLocations} />
         <Route path="/drivers" component={OwnerDrivers} />
         <Route path="/payments" component={OwnerPayments} />
+        <Route path="/wallet" component={OwnerWallet} />
         <Route path="/profile" component={OwnerProfile} />
         <Route path="/subscribe" component={OwnerSubscribe} />
         <Route path="/payment-methods" component={OwnerPaymentMethods} />
