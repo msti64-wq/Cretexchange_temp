@@ -40,8 +40,16 @@ export function useAuth() {
   });
 
   const logout = () => {
+    // Remove auth token first
     localStorage.removeItem('authToken');
+    
+    // Immediately set user state to null to prevent race conditions
+    queryClient.setQueryData(["/api/auth/user"], null);
+    
+    // Clear all cached data
     queryClient.clear();
+    
+    // Navigate to home page
     setLocation('/');
   };
 
