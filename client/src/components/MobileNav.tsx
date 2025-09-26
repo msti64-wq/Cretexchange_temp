@@ -29,8 +29,8 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/", icon: Home, label: "Dashboard" },
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/drivers", icon: Users, label: "Drivers" },
-          { path: "/owner/wallet", icon: Wallet, label: "Wallet" },
-          { path: "/owner/payment-methods", icon: DollarSign, label: "Payments" },
+          { path: "/wallet", icon: Wallet, label: "Wallet" },
+          { path: "/payment-methods", icon: DollarSign, label: "Payments" },
         ];
       case "admin":
       case "super_admin":
