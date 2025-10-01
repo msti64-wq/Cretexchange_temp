@@ -2211,27 +2211,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Column BaaS integration - check wallet status instead of Stripe subscription
-      let subscriptionData = {
-        status: owner.walletStatus === 'active' ? 'active' : (owner.subscriptionStatus || 'inactive'),
-        plan: owner.subscriptionPlan || 'monthly',
-        endsAt: owner.subscriptionEndsAt,
+      // Wallet-based prepaid system
+      // Owner wallet is activated when they click "Start Subscription"
+      // The walletStatus is set to 'active' by the subscribe endpoint
+      const subscriptionData = {
+        status: owner.walletStatus === 'active' ? 'active' : 'inactive',
+        plan: 'wallet', // Wallet-based prepaid billing
+        walletBalance: owner.walletBalance,
+        walletStatus: owner.walletStatus,
+        isApproved: owner.isApproved,
       };
-
-      // If we have Stripe and a subscription ID, get fresh data
-      if (stripe && user?.stripeSubscriptionId) {
-        try {
-          const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-          subscriptionData = {
-            status: subscription.status === 'active' ? 'active' : 'inactive',
-            plan: 'monthly', // or get from subscription metadata
-            endsAt: new Date(((subscription as any).current_period_end || (subscription as any).items?.data?.[0]?.current_period_end) * 1000),
-          };
-        } catch (stripeError) {
-          const errorMessage = stripeError instanceof Error ? stripeError.message : 'Unknown error';
-          console.log("Could not fetch Stripe subscription:", errorMessage);
-        }
-      }
 
       res.json(subscriptionData);
     } catch (error) {
