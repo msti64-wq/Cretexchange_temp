@@ -3314,8 +3314,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         feeAmount: parseFloat(withdrawal.feeAmount),
         amountNet: parseFloat(withdrawal.amountNet),
         status: withdrawal.status,
-        stripeTransferId: withdrawal.stripeTransferId,
-        stripePayoutId: withdrawal.stripePayoutId,
+        columnTransferId: withdrawal.columnTransferId,
+        columnCounterpartyId: withdrawal.columnCounterpartyId,
         failureReason: withdrawal.failureReason,
         createdAt: withdrawal.createdAt,
         processedAt: withdrawal.processedAt

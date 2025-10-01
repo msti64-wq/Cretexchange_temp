@@ -185,7 +185,7 @@ export interface IStorage {
   createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal>;
   getWithdrawalsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<Withdrawal[]>;
   getWithdrawal(id: string): Promise<Withdrawal | undefined>;
-  updateWithdrawalStatus(withdrawalId: string, status: string, stripeTransferId?: string, stripePayoutId?: string, failureReason?: string): Promise<Withdrawal>;
+  updateWithdrawalStatus(withdrawalId: string, status: string, columnTransferId?: string, failureReason?: string): Promise<Withdrawal>;
   getAllWithdrawals(startDate?: Date, endDate?: Date): Promise<(Withdrawal & { driver: Driver & { user: User } })[]>;
   
   // Wallet statistics
