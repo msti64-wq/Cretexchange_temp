@@ -794,6 +794,11 @@ export class DatabaseStorage implements IStorage {
     return activity;
   }
 
+  // Alias for getWashoutActivity (for compatibility)
+  async getActivity(id: string): Promise<WashoutActivity | undefined> {
+    return this.getWashoutActivity(id);
+  }
+
   async getActivitiesByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation })[]> {
     const conditions = [eq(washoutActivities.driverId, driverId)];
     
@@ -1524,6 +1529,34 @@ export class DatabaseStorage implements IStorage {
       .where(eq(driverWallets.driverId, driverId))
       .returning();
     return wallet;
+  }
+
+  async adjustDriverWalletBalance(driverId: string, availableChange: number, pendingChange: number): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Get current wallet with lock
+      const [wallet] = await tx
+        .select()
+        .from(driverWallets)
+        .where(eq(driverWallets.driverId, driverId))
+        .for('update');
+      
+      if (!wallet) {
+        throw new Error('Driver wallet not found');
+      }
+      
+      const newAvailable = parseFloat(wallet.availableBalance) + availableChange;
+      const newPending = parseFloat(wallet.pendingBalance) + pendingChange;
+      
+      // Update wallet
+      await tx
+        .update(driverWallets)
+        .set({
+          availableBalance: newAvailable.toFixed(2),
+          pendingBalance: newPending.toFixed(2),
+          updatedAt: new Date(),
+        })
+        .where(eq(driverWallets.driverId, driverId));
+    });
   }
 
   async creditDriverWallet(

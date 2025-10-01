@@ -342,8 +342,9 @@ export const withdrawals = pgTable("withdrawals", {
   feeAmount: decimal("fee_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
   amountNet: decimal("amount_net", { precision: 10, scale: 2 }).notNull(),
   status: withdrawalStatusEnum("status").notNull().default("requested"),
-  stripeTransferId: varchar("stripe_transfer_id"),
-  stripePayoutId: varchar("stripe_payout_id"),
+  // Column BaaS integration for ACH transfers
+  columnTransferId: varchar("column_transfer_id"), // Column transfer ID
+  columnCounterpartyId: varchar("column_counterparty_id"), // Column counterparty ID
   failureReason: text("failure_reason"),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -570,6 +571,27 @@ export const walletTransactionQuerySchema = z.object({
 export const adminWithdrawalUpdateSchema = z.object({
   status: z.enum(["processing", "paid", "failed", "canceled"]),
   failureReason: z.string().optional(),
+});
+
+// Column onboarding validation schemas
+export const columnOnboardingSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  ssn: z.string().regex(/^\d{9}$/, "SSN must be 9 digits"),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+  email: z.string().email("Invalid email format"),
+  address: z.object({
+    line1: z.string().min(1, "Address line 1 is required"),
+    city: z.string().min(1, "City is required"),
+    state: z.string().length(2, "State must be 2 letters"),
+    postalCode: z.string().regex(/^\d{5}$/, "Postal code must be 5 digits"),
+    countryCode: z.string().length(2, "Country code must be 2 letters").default("US"),
+  }),
+});
+
+// Driver payout request validation schema
+export const driverPayoutRequestSchema = z.object({
+  amount: z.number().positive().min(5, "Minimum payout amount is $5"),
 });
 
 // Location update validation schemas

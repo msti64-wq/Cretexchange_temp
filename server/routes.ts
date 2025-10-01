@@ -9,7 +9,7 @@ import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, signObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { columnService } from "./columnService";
@@ -788,20 +788,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Only drivers and owners can onboard to Column" });
       }
 
+      // Validate request body with Zod
+      const validatedData = columnOnboardingSchema.parse(req.body);
+
+      // Check for idempotency - if user already has Column entity, return existing data
+      if (user.role === 'driver') {
+        const driver = await storage.getDriver(userId);
+        if (driver?.columnEntityId) {
+          return res.json({
+            success: true,
+            entityId: driver.columnEntityId,
+            bankAccountId: driver.columnBankAccountId,
+            accountLast4: driver.columnAccountLast4,
+            message: "Already onboarded to Column",
+          });
+        }
+      } else if (user.role === 'owner') {
+        const owner = await storage.getOwner(userId);
+        if (owner?.columnEntityId) {
+          return res.json({
+            success: true,
+            entityId: owner.columnEntityId,
+            bankAccountId: owner.columnAccountId,
+            message: "Already onboarded to Column",
+          });
+        }
+      }
+
       // Create Column entity (person entity for now)
       const entityResult = await columnService.createPersonEntity({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        ssn: req.body.ssn, // SSN should be provided securely by the client
-        dateOfBirth: req.body.dateOfBirth, // YYYY-MM-DD format
-        email: user.email,
-        address: {
-          line1: req.body.address.line1 || user.address || '',
-          city: req.body.address.city,
-          state: req.body.address.state,
-          postalCode: req.body.address.postalCode,
-          countryCode: req.body.address.countryCode || 'USA',
-        },
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        ssn: validatedData.ssn,
+        dateOfBirth: validatedData.dateOfBirth,
+        email: validatedData.email,
+        address: validatedData.address,
       });
 
       const entityId = entityResult.id;
@@ -841,13 +862,210 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         entityId,
         bankAccountId,
-        accountNumber,
-        routingNumber,
         accountLast4,
+        message: "Successfully onboarded to Column",
       });
     } catch (error) {
       console.error("Error onboarding to Column:", error);
       res.status(500).json({ message: "Failed to onboard to Column" });
+    }
+  });
+
+  // Driver payout request endpoint - initiates ACH transfer via Column
+  app.post('/api/driver/payout', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'driver') {
+        return res.status(403).json({ message: "Only drivers can request payouts" });
+      }
+
+      const driver = await storage.getDriver(userId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      // Validate request
+      const { amount } = driverPayoutRequestSchema.parse(req.body);
+
+      // Check if driver has Column bank account
+      if (!driver.columnBankAccountId || !driver.columnEntityId) {
+        return res.status(400).json({ message: "Please complete Column onboarding first" });
+      }
+
+      // Get driver wallet
+      const wallet = await storage.getDriverWallet(driver.id);
+      if (!wallet) {
+        return res.status(404).json({ message: "Wallet not found" });
+      }
+
+      // Check available balance
+      const availableBalance = parseFloat(wallet.availableBalance);
+      if (availableBalance < amount) {
+        return res.status(400).json({ message: "Insufficient balance" });
+      }
+
+      // Create withdrawal record
+      const withdrawal = await storage.createWithdrawal({
+        driverId: driver.id,
+        amountRequested: amount.toString(),
+        feeAmount: "0.00", // No fee for now
+        amountNet: amount.toString(),
+        status: "requested",
+      });
+
+      // Create Column counterparty for the driver's bank account
+      // Note: In Column, we'll use the driver's Column bank account for transfer
+      // This is a placeholder - actual implementation depends on Column's transfer flow
+      
+      // Create ACH transfer via Column
+      // TODO: Implement actual Column transfer logic when Column API supports it
+      // For now, we'll mark as processing and handle via webhook/settlement
+      
+      // Update withdrawal with Column transfer ID (mock for now)
+      await storage.updateWithdrawalStatus(withdrawal.id, "processing", null);
+
+      // Deduct from available balance and add to pending
+      await storage.adjustDriverWalletBalance(
+        driver.id,
+        -amount, // Deduct from available
+        amount, // Add to pending (waiting for transfer to complete)
+      );
+
+      // Create wallet transaction record
+      await storage.createWalletTransaction({
+        driverId: driver.id,
+        amount: amount.toString(),
+        direction: "debit",
+        balanceAfter: (availableBalance - amount).toString(),
+        currency: "USD",
+        sourceType: "withdrawal",
+        sourceId: withdrawal.id,
+        status: "pending",
+        description: `Payout request for $${amount.toFixed(2)}`,
+      });
+
+      res.json({
+        success: true,
+        withdrawalId: withdrawal.id,
+        amount,
+        status: "processing",
+        message: "Payout request submitted successfully",
+      });
+    } catch (error) {
+      console.error("Error processing payout request:", error);
+      res.status(500).json({ message: "Failed to process payout request" });
+    }
+  });
+
+  // Process payment when washout is completed - charges owner wallet, credits driver wallet
+  app.post('/api/payments/process-washout', isAuthenticated, async (req: any, res) => {
+    try {
+      const { activityId } = req.body;
+      
+      if (!activityId) {
+        return res.status(400).json({ message: "Activity ID is required" });
+      }
+
+      // Get activity details
+      const activity = await storage.getActivity(activityId);
+      if (!activity) {
+        return res.status(404).json({ message: "Activity not found" });
+      }
+
+      // Verify activity is verified
+      if (activity.status !== 'verified') {
+        return res.status(400).json({ message: "Activity must be verified before processing payment" });
+      }
+
+      // Get location and owner
+      const location = await storage.getWashoutLocation(activity.locationId);
+      if (!location) {
+        return res.status(404).json({ message: "Location not found" });
+      }
+
+      const owner = await storage.getOwnerById(location.ownerId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Payment structure: $9.00 from owner
+      // - $4.00 platform fee
+      // - $5.00+ to driver
+      const WASHOUT_FEE = 9.00;
+      const PLATFORM_FEE = 4.00;
+      const DRIVER_PAYMENT = 5.00;
+
+      // Check owner wallet balance
+      const ownerBalance = parseFloat(owner.walletBalance);
+      if (ownerBalance < WASHOUT_FEE) {
+        return res.status(400).json({ message: "Insufficient owner wallet balance" });
+      }
+
+      // Deduct from owner wallet
+      await storage.updateOwnerWalletBalance(owner.id, -WASHOUT_FEE);
+
+      // Create owner wallet transaction
+      await storage.createOwnerWalletTransaction({
+        ownerId: owner.id,
+        amount: WASHOUT_FEE.toString(),
+        direction: "debit",
+        balanceAfter: (ownerBalance - WASHOUT_FEE).toString(),
+        description: `Washout fee for activity ${activityId}`,
+        metadata: { activityId, platformFee: PLATFORM_FEE, driverPayment: DRIVER_PAYMENT },
+      });
+
+      // Credit driver wallet
+      const driver = await storage.getDriverById(activity.driverId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driverWallet = await storage.getDriverWallet(driver.id);
+      if (!driverWallet) {
+        // Create wallet if doesn't exist
+        await storage.createDriverWallet({ driverId: driver.id });
+      }
+
+      await storage.adjustDriverWalletBalance(driver.id, DRIVER_PAYMENT, 0);
+
+      const updatedWallet = await storage.getDriverWallet(driver.id);
+      const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
+
+      // Create driver wallet transaction
+      await storage.createWalletTransaction({
+        driverId: driver.id,
+        amount: DRIVER_PAYMENT.toString(),
+        direction: "credit",
+        balanceAfter: newBalance.toString(),
+        currency: "USD",
+        sourceType: "washout",
+        sourceId: activityId,
+        status: "posted",
+        description: `Payment for washout at ${location.name}`,
+      });
+
+      // Create payment record
+      await storage.createPayment({
+        driverId: driver.id,
+        ownerId: owner.id,
+        activityId,
+        amount: DRIVER_PAYMENT.toString(),
+        platformFee: PLATFORM_FEE.toString(),
+        status: "completed",
+      });
+
+      res.json({
+        success: true,
+        ownerCharge: WASHOUT_FEE,
+        platformFee: PLATFORM_FEE,
+        driverPayment: DRIVER_PAYMENT,
+        message: "Payment processed successfully",
+      });
+    } catch (error) {
+      console.error("Error processing washout payment:", error);
+      res.status(500).json({ message: "Failed to process payment" });
     }
   });
 
