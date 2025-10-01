@@ -436,12 +436,6 @@ export class DatabaseStorage implements IStorage {
         currentLongitude: drivers.currentLongitude,
         lastLocationUpdate: drivers.lastLocationUpdate,
         paymentMethod: drivers.paymentMethod,
-        bankName: drivers.bankName,
-        accountHolderName: drivers.accountHolderName,
-        routingNumber: drivers.routingNumber,
-        accountNumber: drivers.accountNumber,
-        venmoHandle: drivers.venmoHandle,
-        zelleEmail: drivers.zelleEmail,
         columnEntityId: drivers.columnEntityId,
         columnBankAccountId: drivers.columnBankAccountId,
         columnAccountLast4: drivers.columnAccountLast4,
@@ -453,7 +447,6 @@ export class DatabaseStorage implements IStorage {
           id: users.id,
           username: users.username,
           email: users.email,
-          passwordHash: users.passwordHash,
           firstName: users.firstName,
           lastName: users.lastName,
           profileImageUrl: users.profileImageUrl,
@@ -463,7 +456,6 @@ export class DatabaseStorage implements IStorage {
           paymentMethod: users.paymentMethod,
           paymentFrequency: users.paymentFrequency,
           columnCustomerId: users.columnCustomerId,
-          // Removed stripeSubscriptionId - using Column BaaS now
           isActive: users.isActive,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
@@ -617,7 +609,6 @@ export class DatabaseStorage implements IStorage {
           id: users.id,
           username: users.username,
           email: users.email,
-          passwordHash: users.passwordHash,
           firstName: users.firstName,
           lastName: users.lastName,
           profileImageUrl: users.profileImageUrl,
@@ -627,7 +618,6 @@ export class DatabaseStorage implements IStorage {
           paymentMethod: users.paymentMethod,
           paymentFrequency: users.paymentFrequency,
           columnCustomerId: users.columnCustomerId,
-          // Removed stripeSubscriptionId - using Column BaaS now
           isActive: users.isActive,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
@@ -640,7 +630,23 @@ export class DatabaseStorage implements IStorage {
 
   async getAllAdmins(): Promise<User[]> {
     return await db
-      .select()
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        role: users.role,
+        phone: users.phone,
+        address: users.address,
+        paymentMethod: users.paymentMethod,
+        paymentFrequency: users.paymentFrequency,
+        columnCustomerId: users.columnCustomerId,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
       .from(users)
       .where(or(eq(users.role, 'admin'), eq(users.role, 'super_admin')))
       .orderBy(desc(users.createdAt));

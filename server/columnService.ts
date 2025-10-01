@@ -62,6 +62,16 @@ export class ColumnService {
     });
   }
 
+  private logError(message: string, error: any) {
+    // Only log safe error info - no PII from request config or response data
+    const safeError = {
+      message: error?.message,
+      status: error?.response?.status,
+      statusText: error?.response?.statusText,
+    };
+    console.error(message, safeError);
+  }
+
   async createPersonEntity(params: CreatePersonEntityParams) {
     try {
       const formData = new URLSearchParams();
@@ -79,7 +89,7 @@ export class ColumnService {
       const response = await this.client.post('/entities/person', formData);
       return response.data;
     } catch (error) {
-      console.error('Error creating Column person entity:', error);
+      this.logError('Error creating Column person entity:', error);
       throw error;
     }
   }
@@ -93,7 +103,7 @@ export class ColumnService {
       const response = await this.client.post('/bank-accounts', formData);
       return response.data;
     } catch (error) {
-      console.error('Error creating Column bank account:', error);
+      this.logError('Error creating Column bank account:', error);
       throw error;
     }
   }
@@ -103,7 +113,7 @@ export class ColumnService {
       const response = await this.client.get(`/bank-accounts/${bankAccountId}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching Column bank account:', error);
+      this.logError('Error fetching Column bank account:', error);
       throw error;
     }
   }
@@ -120,7 +130,7 @@ export class ColumnService {
       const response = await this.client.post('/counterparties', formData);
       return response.data;
     } catch (error) {
-      console.error('Error creating Column counterparty:', error);
+      this.logError('Error creating Column counterparty:', error);
       throw error;
     }
   }
@@ -138,7 +148,7 @@ export class ColumnService {
       const response = await this.client.post('/transfers/ach', formData);
       return response.data;
     } catch (error) {
-      console.error('Error creating Column ACH transfer:', error);
+      this.logError('Error creating Column ACH transfer:', error);
       throw error;
     }
   }
@@ -153,7 +163,7 @@ export class ColumnService {
       const response = await this.client.post('/simulate/receive-wire', formData);
       return response.data;
     } catch (error) {
-      console.error('Error simulating Column wire receipt:', error);
+      this.logError('Error simulating Column wire receipt:', error);
       throw error;
     }
   }
@@ -166,7 +176,7 @@ export class ColumnService {
       const response = await this.client.post('/simulate/settle-ach-transfer', formData);
       return response.data;
     } catch (error) {
-      console.error('Error settling Column ACH transfer:', error);
+      this.logError('Error settling Column ACH transfer:', error);
       throw error;
     }
   }
@@ -179,7 +189,7 @@ if (!columnApiKey) {
 
 // Use sandbox URL for development/testing, production URL for live
 const columnBaseURL = process.env.COLUMN_API_BASE_URL || 
-  (process.env.REPLIT_DEPLOYMENT ? 'https://api.column.com' : 'https://api.column.com');
+  (process.env.REPLIT_DEPLOYMENT ? 'https://api.column.com' : 'https://api.sandbox.column.com');
 
 export const columnService = new ColumnService({
   apiKey: columnApiKey,
