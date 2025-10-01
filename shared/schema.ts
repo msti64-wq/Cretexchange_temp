@@ -99,6 +99,10 @@ export const drivers = pgTable("drivers", {
   // Venmo/Zelle details
   venmoHandle: varchar("venmo_handle"),
   zelleEmail: varchar("zelle_email"),
+  // Column BaaS integration for payouts (server-managed)
+  columnEntityId: varchar("column_entity_id"), // Column entity ID for KYC
+  columnBankAccountId: varchar("column_bank_account_id"), // Column bank account ID for direct deposits
+  columnAccountLast4: varchar("column_account_last4"), // Last 4 digits of account number (for display)
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -462,12 +466,21 @@ export const insertDriverSchema = createInsertSchema(drivers).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  // Omit server-managed Column BaaS fields
+  columnEntityId: true,
+  columnBankAccountId: true,
+  columnAccountLast4: true,
 });
 
 export const insertOwnerSchema = createInsertSchema(owners).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  // Omit server-managed Column BaaS fields
+  columnAccountId: true,
+  columnEntityId: true,
+  walletBalance: true,
+  walletStatus: true,
 });
 
 export const insertWashoutLocationSchema = createInsertSchema(washoutLocations).omit({
