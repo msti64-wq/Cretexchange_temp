@@ -821,7 +821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === 'driver') {
         const driver = await storage.getDriver(userId);
         if (driver) {
-          await storage.updateDriver(driver.id, {
+          await storage.updateDriverColumnInfo(driver.id, {
             columnEntityId: entityId,
             columnBankAccountId: bankAccountId,
             columnAccountLast4: accountLast4,
@@ -830,7 +830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (user.role === 'owner') {
         const owner = await storage.getOwner(userId);
         if (owner) {
-          await storage.updateOwner(owner.id, {
+          await storage.updateOwnerColumnInfo(owner.id, {
             columnEntityId: entityId,
             columnAccountId: bankAccountId,
           });

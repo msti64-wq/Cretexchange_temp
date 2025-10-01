@@ -177,6 +177,11 @@ if (!columnApiKey) {
   throw new Error('COLUMN_API_KEY environment variable is required');
 }
 
+// Use sandbox URL for development/testing, production URL for live
+const columnBaseURL = process.env.COLUMN_API_BASE_URL || 
+  (process.env.REPLIT_DEPLOYMENT ? 'https://api.column.com' : 'https://api.column.com');
+
 export const columnService = new ColumnService({
   apiKey: columnApiKey,
+  baseURL: columnBaseURL,
 });

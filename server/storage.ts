@@ -78,6 +78,7 @@ export interface IStorage {
   getDriverById(id: string): Promise<Driver | undefined>;
   // Removed: getDriverByConnectedAccountId - no longer using Stripe Connect
   updateDriver(driverId: string, driverData: Partial<InsertDriver>): Promise<Driver>;
+  updateDriverColumnInfo(driverId: string, columnData: { columnEntityId?: string; columnBankAccountId?: string; columnAccountLast4?: string }): Promise<Driver>;
   updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: "ach" | "venmo" | "zelle"; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver>;
   updateDriverLocation(driverId: string, latitude: number, longitude: number): Promise<void>;
   getAllDrivers(): Promise<(Driver & { user: User })[]>;
@@ -89,6 +90,7 @@ export interface IStorage {
   getOwner(userId: string): Promise<Owner | undefined>;
   getOwnerById(id: string): Promise<Owner | undefined>;
   updateOwner(ownerId: string, ownerData: Partial<InsertOwner>): Promise<Owner>;
+  updateOwnerColumnInfo(ownerId: string, columnData: { columnEntityId?: string; columnAccountId?: string }): Promise<Owner>;
   // Owner wallet operations (replacing subscription model)
   getOwnerWalletBalance(ownerId: string): Promise<{ balance: string; status: string } | undefined>;
   updateOwnerWalletBalance(ownerId: string, amount: string, type: string, description?: string): Promise<void>;
@@ -383,6 +385,18 @@ export class DatabaseStorage implements IStorage {
     return updatedDriver;
   }
 
+  async updateDriverColumnInfo(driverId: string, columnData: { columnEntityId?: string; columnBankAccountId?: string; columnAccountLast4?: string }): Promise<Driver> {
+    const [updatedDriver] = await db
+      .update(drivers)
+      .set({
+        ...columnData,
+        updatedAt: new Date(),
+      })
+      .where(eq(drivers.id, driverId))
+      .returning();
+    return updatedDriver;
+  }
+
   async updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: "ach" | "venmo" | "zelle"; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver> {
     const [updatedDriver] = await db
       .update(drivers)
@@ -421,7 +435,16 @@ export class DatabaseStorage implements IStorage {
         currentLatitude: drivers.currentLatitude,
         currentLongitude: drivers.currentLongitude,
         lastLocationUpdate: drivers.lastLocationUpdate,
-        // Removed connectedAccountId - no longer using Stripe Connect
+        paymentMethod: drivers.paymentMethod,
+        bankName: drivers.bankName,
+        accountHolderName: drivers.accountHolderName,
+        routingNumber: drivers.routingNumber,
+        accountNumber: drivers.accountNumber,
+        venmoHandle: drivers.venmoHandle,
+        zelleEmail: drivers.zelleEmail,
+        columnEntityId: drivers.columnEntityId,
+        columnBankAccountId: drivers.columnBankAccountId,
+        columnAccountLast4: drivers.columnAccountLast4,
         hasAgreedToTerms: drivers.hasAgreedToTerms,
         termsAgreedAt: drivers.termsAgreedAt,
         createdAt: drivers.createdAt,
@@ -472,6 +495,18 @@ export class DatabaseStorage implements IStorage {
       .update(owners)
       .set({
         ...ownerData,
+        updatedAt: new Date(),
+      })
+      .where(eq(owners.id, ownerId))
+      .returning();
+    return updatedOwner;
+  }
+
+  async updateOwnerColumnInfo(ownerId: string, columnData: { columnEntityId?: string; columnAccountId?: string }): Promise<Owner> {
+    const [updatedOwner] = await db
+      .update(owners)
+      .set({
+        ...columnData,
         updatedAt: new Date(),
       })
       .where(eq(owners.id, ownerId))
