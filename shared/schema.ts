@@ -570,6 +570,7 @@ export const walletTransactionQuerySchema = z.object({
 
 export const adminWithdrawalUpdateSchema = z.object({
   status: z.enum(["processing", "paid", "failed", "canceled"]),
+  columnTransferId: z.string().optional(),
   failureReason: z.string().optional(),
 });
 

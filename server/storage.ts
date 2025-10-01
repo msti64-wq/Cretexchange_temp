@@ -1822,16 +1822,14 @@ export class DatabaseStorage implements IStorage {
   async updateWithdrawalStatus(
     withdrawalId: string, 
     status: string, 
-    stripeTransferId?: string, 
-    stripePayoutId?: string, 
+    columnTransferId?: string, 
     failureReason?: string
   ): Promise<Withdrawal> {
     const updateData: any = {
       status: status as any,
     };
 
-    if (stripeTransferId) updateData.stripeTransferId = stripeTransferId;
-    if (stripePayoutId) updateData.stripePayoutId = stripePayoutId;
+    if (columnTransferId) updateData.columnTransferId = columnTransferId;
     if (failureReason) updateData.failureReason = failureReason;
     if (status === 'paid' || status === 'failed') updateData.processedAt = new Date();
 

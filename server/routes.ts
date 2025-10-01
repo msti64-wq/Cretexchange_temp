@@ -923,8 +923,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // TODO: Implement actual Column transfer logic when Column API supports it
       // For now, we'll mark as processing and handle via webhook/settlement
       
-      // Update withdrawal with Column transfer ID (mock for now)
-      await storage.updateWithdrawalStatus(withdrawal.id, "processing", null);
+      // Update withdrawal with Column transfer ID (will be set by Column integration)
+      await storage.updateWithdrawalStatus(withdrawal.id, "processing");
 
       // Deduct from available balance and add to pending
       await storage.adjustDriverWalletBalance(
@@ -1003,18 +1003,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Insufficient owner wallet balance" });
       }
 
-      // Deduct from owner wallet
-      await storage.updateOwnerWalletBalance(owner.id, -WASHOUT_FEE);
-
-      // Create owner wallet transaction
-      await storage.createOwnerWalletTransaction({
-        ownerId: owner.id,
-        amount: WASHOUT_FEE.toString(),
-        direction: "debit",
-        balanceAfter: (ownerBalance - WASHOUT_FEE).toString(),
-        description: `Washout fee for activity ${activityId}`,
-        metadata: { activityId, platformFee: PLATFORM_FEE, driverPayment: DRIVER_PAYMENT },
-      });
+      // Deduct from owner wallet (this also creates a transaction record automatically)
+      await storage.updateOwnerWalletBalance(
+        owner.id, 
+        WASHOUT_FEE.toFixed(2), 
+        'debit',
+        `Washout fee for activity ${activityId}`
+      );
 
       // Credit driver wallet
       const driver = await storage.getDriverById(activity.driverId);
@@ -1051,8 +1046,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverId: driver.id,
         ownerId: owner.id,
         activityId,
-        amount: DRIVER_PAYMENT.toString(),
-        platformFee: PLATFORM_FEE.toString(),
+        amount: DRIVER_PAYMENT.toFixed(2),
+        processingFee: PLATFORM_FEE.toFixed(2),
+        washoutServiceFee: WASHOUT_FEE.toFixed(2),
         status: "completed",
       });
 
@@ -3371,8 +3367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedWithdrawal = await storage.updateWithdrawalStatus(
         withdrawalId,
         validatedData.status,
-        undefined, // stripeTransferId - would be set by actual Stripe processing
-        undefined, // stripePayoutId - would be set by actual Stripe processing  
+        validatedData.columnTransferId, // Column transfer ID if provided
         validatedData.failureReason
       );
 
