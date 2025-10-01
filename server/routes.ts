@@ -12,6 +12,7 @@ import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPoli
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { columnService } from "./columnService";
 
 // Initialize Stripe only if secret key is available
 let stripe: Stripe | null = null;
@@ -769,6 +770,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating owner:", error);
       res.status(400).json({ message: "Failed to create owner profile" });
+    }
+  });
+
+  // Column BaaS onboarding endpoint
+  app.post('/api/column/onboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user is a driver or owner
+      if (user.role !== 'driver' && user.role !== 'owner') {
+        return res.status(400).json({ message: "Only drivers and owners can onboard to Column" });
+      }
+
+      // Create Column entity (person entity for now)
+      const entityResult = await columnService.createPersonEntity({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        ssn: req.body.ssn, // SSN should be provided securely by the client
+        dateOfBirth: req.body.dateOfBirth, // YYYY-MM-DD format
+        email: user.email,
+        address: {
+          line1: req.body.address.line1 || user.address || '',
+          city: req.body.address.city,
+          state: req.body.address.state,
+          postalCode: req.body.address.postalCode,
+          countryCode: req.body.address.countryCode || 'USA',
+        },
+      });
+
+      const entityId = entityResult.id;
+
+      // Create bank account for the entity
+      const bankAccountResult = await columnService.createBankAccount({
+        entityId,
+        description: `${user.firstName} ${user.lastName} - WashOut Pro Account`,
+      });
+
+      const bankAccountId = bankAccountResult.id;
+      const accountNumber = bankAccountResult.default_account_number;
+      const routingNumber = bankAccountResult.routing_number;
+      const accountLast4 = accountNumber.slice(-4);
+
+      // Update user's Column data based on role
+      if (user.role === 'driver') {
+        const driver = await storage.getDriver(userId);
+        if (driver) {
+          await storage.updateDriver(driver.id, {
+            columnEntityId: entityId,
+            columnBankAccountId: bankAccountId,
+            columnAccountLast4: accountLast4,
+          });
+        }
+      } else if (user.role === 'owner') {
+        const owner = await storage.getOwner(userId);
+        if (owner) {
+          await storage.updateOwner(owner.id, {
+            columnEntityId: entityId,
+            columnAccountId: bankAccountId,
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        entityId,
+        bankAccountId,
+        accountNumber,
+        routingNumber,
+        accountLast4,
+      });
+    } catch (error) {
+      console.error("Error onboarding to Column:", error);
+      res.status(500).json({ message: "Failed to onboard to Column" });
     }
   });
 
