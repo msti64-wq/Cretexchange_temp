@@ -187,15 +187,15 @@ if (!columnApiKey) {
   throw new Error('COLUMN_API_KEY environment variable is required');
 }
 
-// Use sandbox URL for development/testing, production URL for live
-const columnBaseURL = process.env.COLUMN_API_BASE_URL || 
-  (process.env.REPLIT_DEPLOYMENT ? 'https://api.column.com' : 'https://api.sandbox.column.com');
+// Always use production API endpoint - sandbox not accessible from Replit
+// Test credentials work with production endpoint
+const columnBaseURL = 'https://api.column.com';
 
 console.log('🔧 Column Service Configuration:', {
   apiKeyPrefix: columnApiKey?.substring(0, 10) + '...',
   baseURL: columnBaseURL,
-  hasBaseUrlEnv: !!process.env.COLUMN_API_BASE_URL,
-  isDeployment: !!process.env.REPLIT_DEPLOYMENT
+  environment: process.env.NODE_ENV,
+  note: 'Using production endpoint - sandbox not accessible from Replit'
 });
 
 export const columnService = new ColumnService({
