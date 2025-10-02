@@ -271,7 +271,7 @@ export default function OwnerWallet() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setLocation('/owner/payment-methods')}
+                  onClick={() => setLocation('/payment-methods')}
                   className="w-full"
                   data-testid="button-manage-sources"
                 >
