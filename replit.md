@@ -85,7 +85,9 @@ Preferred communication style: Simple, everyday language.
 - **Column BaaS**: Banking-as-a-Service for wallet management:
   - Bank account creation and management
   - Balance tracking and synchronization
-  - ACH transfer initiation
+  - **ACH Transfer Integration**: Real ACH debit transfers from owner funding sources to Column wallets
+  - **Counterparty System**: Automatic creation of Column counterparties for external bank accounts
+  - **Auto Top-up**: Automated wallet funding when balance drops below threshold
   - Real-time balance sync from Column API
   - **Note**: Using production API endpoint (`api.column.com`) as sandbox endpoint is not accessible from Replit
   - Balance data retrieved from `balances.available_amount` field (in cents)
@@ -129,9 +131,55 @@ Preferred communication style: Simple, everyday language.
 - Column API is the authoritative source for balance data
 - Graceful fallback to database values if API is unavailable
 
+### ACH Transfer & Funding Source Integration
+**Funding Source Setup**:
+- When owners add bank accounts as funding sources, Column counterparties are automatically created
+- Counterparty IDs are stored in `owner_funding_sources.column_counterparty_id`
+- If counterparty creation fails initially, it's retried during the first funding attempt
+
+**Wallet Funding Flow**:
+1. Owner selects a funding source and enters amount
+2. System retrieves funding source and verifies Column counterparty exists
+3. Creates ACH DEBIT transfer via Column API (pulls money from external bank → owner's Column account)
+4. Records transaction in database with Column transfer ID
+5. Syncs balance from Column API
+6. Funds appear in 1-3 business days (standard ACH timeline)
+
+**Key Implementation Details**:
+- Transfer type is 'DEBIT' (pulls from external bank account into Column wallet)
+- All amounts converted to cents for Column API (e.g., $100.00 → 10000)
+- Transaction includes descriptive metadata (bank name, last 4 digits)
+- Balance sync ensures database reflects Column's authoritative balance
+
+### Auto Top-up System
+**Functionality**:
+- Automatically initiates ACH transfers when wallet balance drops below threshold
+- Requires: enabled auto top-up, configured threshold, default funding source, and active Column account
+- Top-up amount is configurable per owner (default: $500)
+
+**Trigger Points**:
+- After wallet funding completes
+- After wallet settings are updated
+- After payments are processed
+- Whenever balance sync detects low balance
+
+**Process Flow**:
+1. Check if balance < threshold AND auto top-up is enabled
+2. Get default funding source
+3. Create or retrieve Column counterparty for funding source
+4. Initiate ACH DEBIT transfer for configured top-up amount
+5. Record transaction in database
+6. Send notification to owner about auto top-up initiation
+
+**Error Handling**:
+- Missing funding source → notification sent to add payment method
+- Failed ACH transfer → notification sent with error details
+- No Column account → logged but no notification (onboarding required)
+
 ### Low Balance Alert System
 - Configurable threshold per owner
-- Automatic notification creation when balance drops below threshold
+- Automatic notification creation when balance drops below threshold (if auto top-up disabled)
 - Automatic notification clearing when balance recovers
+- Auto top-up takes precedence over low balance alerts
 - Visual warnings on wallet page
 - Bell icon badge showing unread count
