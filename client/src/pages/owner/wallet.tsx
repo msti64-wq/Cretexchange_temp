@@ -153,7 +153,7 @@ export default function OwnerWallet() {
 
   const handleFundButtonClick = () => {
     // Check if owner needs Column onboarding first
-    if (!(walletData as any)?.columnAccountId) {
+    if (!(walletData as any)?.hasColumnAccount) {
       setShowOnboardingDialog(true);
       return;
     }
