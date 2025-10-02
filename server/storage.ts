@@ -185,7 +185,7 @@ export interface IStorage {
   createWithdrawal(withdrawal: InsertWithdrawal): Promise<Withdrawal>;
   getWithdrawalsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<Withdrawal[]>;
   getWithdrawal(id: string): Promise<Withdrawal | undefined>;
-  updateWithdrawalStatus(withdrawalId: string, status: string, columnTransferId?: string, failureReason?: string): Promise<Withdrawal>;
+  updateWithdrawalStatus(withdrawalId: string, status: string, columnTransferId?: string, failureReason?: string, columnCounterpartyId?: string): Promise<Withdrawal>;
   getAllWithdrawals(startDate?: Date, endDate?: Date): Promise<(Withdrawal & { driver: Driver & { user: User } })[]>;
   
   // Wallet statistics
@@ -1823,13 +1823,15 @@ export class DatabaseStorage implements IStorage {
     withdrawalId: string, 
     status: string, 
     columnTransferId?: string, 
-    failureReason?: string
+    failureReason?: string,
+    columnCounterpartyId?: string
   ): Promise<Withdrawal> {
     const updateData: any = {
       status: status as any,
     };
 
     if (columnTransferId) updateData.columnTransferId = columnTransferId;
+    if (columnCounterpartyId) updateData.columnCounterpartyId = columnCounterpartyId;
     if (failureReason) updateData.failureReason = failureReason;
     if (status === 'paid' || status === 'failed') updateData.processedAt = new Date();
 

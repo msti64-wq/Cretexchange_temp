@@ -12,7 +12,7 @@ import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPoli
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { columnService } from "./columnService";
+import { columnService, platformConfig } from "./columnService";
 
 // Initialize Stripe only if secret key is available
 let stripe: Stripe | null = null;
@@ -915,16 +915,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "requested",
       });
 
-      // Create Column counterparty for the driver's bank account
-      // Note: In Column, we'll use the driver's Column bank account for transfer
-      // This is a placeholder - actual implementation depends on Column's transfer flow
+      // Get driver's Column bank account info to create counterparty
+      const driverBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
+      const driverAccountNumber = driverBankAccount.default_account_number;
+      const driverRoutingNumber = driverBankAccount.routing_number;
+
+      // Create or get Column counterparty for driver's bank account
+      let counterpartyId = driver.columnCounterpartyId;
       
-      // Create ACH transfer via Column
-      // TODO: Implement actual Column transfer logic when Column API supports it
-      // For now, we'll mark as processing and handle via webhook/settlement
+      if (!counterpartyId) {
+        const counterpartyResult = await columnService.createCounterparty({
+          accountNumber: driverAccountNumber,
+          routingNumber: driverRoutingNumber,
+          name: `${user.firstName} ${user.lastName}`,
+        });
+        counterpartyId = counterpartyResult.id;
+        
+        // Store counterparty ID in driver record
+        await storage.updateDriver(driver.id, {
+          columnCounterpartyId: counterpartyId,
+        });
+      }
+
+      // Create ACH transfer from platform account to driver
+      const transferResult = await columnService.createACHTransfer({
+        counterpartyId: counterpartyId,
+        bankAccountId: platformConfig.accountId,
+        type: 'CREDIT', // Credit to driver's account
+        amount: Math.round(amount * 100), // Convert to cents
+        currencyCode: 'USD',
+        description: `WashOut Pro payout - $${amount.toFixed(2)}`,
+      });
       
-      // Update withdrawal with Column transfer ID (will be set by Column integration)
-      await storage.updateWithdrawalStatus(withdrawal.id, "processing");
+      // Update withdrawal with Column transfer ID and counterparty
+      await storage.updateWithdrawalStatus(
+        withdrawal.id, 
+        "processing", 
+        transferResult.id,
+        undefined, // failureReason
+        counterpartyId
+      );
 
       // Deduct from available balance and add to pending
       await storage.adjustDriverWalletBalance(
