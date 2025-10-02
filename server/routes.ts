@@ -2356,7 +2356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // For bank accounts, create Column counterparty for ACH transfers
       let columnCounterpartyId = null;
-      if (type === 'bank_account' && accountNumber && routingNumber) {
+      if ((type === 'bank_account' || type === 'ach') && accountNumber && routingNumber) {
         try {
           console.log('Creating Column counterparty for funding source...');
           const counterpartyResult = await columnService.createCounterparty({
@@ -2372,10 +2372,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Normalize type for database (convert bank_account to ach)
+      const dbType = type === 'bank_account' ? 'ach' : type;
+      
       // Create payment method record in database
       const paymentMethodData = {
         ownerId: owner.id,
-        type,
+        type: dbType,
         last4: type === 'card' ? cardNumber.slice(-4) : accountNumber.slice(-4),
         ...(type === 'card' ? {
           expiryMonth,
@@ -2792,34 +2795,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Mock funding sources for now - this will be replaced with actual Column API calls
-      const fundingSources = [
-        {
-          id: `fs_bank_${owner.id}`,
-          sourceType: 'bank_account',
-          bankName: 'Chase Bank',
-          accountNumberLast4: '4567',
-          accountType: 'checking',
-          isPrimary: true,
-          isVerified: true,
-          status: 'active',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: `fs_card_${owner.id}`,
-          sourceType: 'credit_card',
-          cardBrand: 'Visa',
-          cardLast4: '1234',
-          expiryMonth: 12,
-          expiryYear: 2026,
-          isPrimary: false,
-          isVerified: true,
-          status: 'active',
-          createdAt: new Date().toISOString()
-        }
-      ];
+      // Get funding sources from database
+      const fundingSources = await storage.getOwnerFundingSources(owner.id);
+      
+      // Format for frontend
+      const formattedSources = fundingSources.map(source => ({
+        id: source.id,
+        sourceType: (source.type === 'ach' || source.type === 'bank_account') ? 'bank_account' : 'credit_card',
+        bankName: source.bankName || undefined,
+        accountNumberLast4: (source.type === 'ach' || source.type === 'bank_account') ? source.last4 : undefined,
+        accountType: (source.type === 'ach' || source.type === 'bank_account') ? 'checking' : undefined,
+        cardBrand: (source.type === 'credit_card' || source.type === 'debit_card') ? source.cardBrand : undefined,
+        cardLast4: (source.type === 'credit_card' || source.type === 'debit_card') ? source.last4 : undefined,
+        expiryMonth: source.expiryMonth || undefined,
+        expiryYear: source.expiryYear || undefined,
+        isPrimary: source.isDefault,
+        isVerified: source.isActive,
+        status: source.isActive ? 'active' : 'inactive',
+        columnCounterpartyId: source.columnCounterpartyId || undefined,
+        createdAt: source.createdAt.toISOString()
+      }));
 
-      res.json(fundingSources);
+      res.json(formattedSources);
     } catch (error: any) {
       console.error("Error getting funding sources:", error);
       res.status(500).json({ message: "Failed to get funding sources: " + error.message });
