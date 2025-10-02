@@ -78,6 +78,7 @@ export default function OwnerWallet() {
       setSelectedFundingSource("");
       queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/analytics'] });
     },
     onError: (error: any) => {
       toast({

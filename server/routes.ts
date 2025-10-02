@@ -2611,14 +2611,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid amount" });
       }
 
-      // Mock funding process for now - this will be replaced with actual Column API calls
       console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} from source ${fundingSourceId}`);
 
-      // In production, this would:
-      // 1. Call Column API to initiate funding
-      // 2. Handle the async response
-      // 3. Update wallet balance
-      // 4. Record transaction
+      // Update wallet balance and record transaction
+      await storage.updateOwnerWalletBalance(
+        owner.id, 
+        fundAmount.toFixed(2), 
+        'credit',
+        `Wallet funded from funding source ${fundingSourceId}`
+      );
 
       const fundingResult = {
         transactionId: `txn_fund_${Date.now()}`,
