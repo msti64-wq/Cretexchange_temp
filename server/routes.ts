@@ -2993,6 +2993,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Updated wallet settings for owner ${owner.id}:`, updateData);
 
+      // Get updated owner record and check for low balance alerts
+      const updatedOwner = await storage.getOwnerById(owner.id);
+      if (updatedOwner) {
+        await checkAndManageLowBalanceAlert(updatedOwner, userId);
+      }
+
       res.json({
         message: "Wallet settings updated successfully",
         settings: updateData
