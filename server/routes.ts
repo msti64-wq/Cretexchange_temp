@@ -2431,11 +2431,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Mock wallet data for now - this will be replaced with actual Column API calls
       const walletData = {
-        balance: owner.lowBalanceThreshold || '1000.00',
-        status: 'Active',
-        isConfigured: true, // This will check if Column wallet is set up
+        balance: owner.walletBalance || '0.00',
+        status: owner.walletStatus || 'active',
+        isConfigured: true,
         lowBalanceThreshold: owner.lowBalanceThreshold || '100.00',
         autoTopupEnabled: owner.autoTopupEnabled || false,
         autoTopupAmount: owner.autoTopupAmount || '500.00',
