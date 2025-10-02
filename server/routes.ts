@@ -2465,15 +2465,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If owner has Column account, fetch live balance from Column (authoritative source)
       if (owner.columnAccountId) {
-        console.log(`🔄 Attempting to sync balance from Column for account: ${owner.columnAccountId}`);
         try {
           const accountData = await columnService.getBankAccount(owner.columnAccountId);
           const columnBalanceCents = accountData?.balances?.available_amount;
-          console.log(`✅ Column API responded successfully:`, {
-            hasData: !!accountData,
-            availableAmountCents: columnBalanceCents,
-            balanceInDollars: columnBalanceCents !== undefined ? (columnBalanceCents / 100).toFixed(2) : 'N/A'
-          });
           
           if (accountData && columnBalanceCents !== undefined) {
             // Convert from cents to dollars
@@ -2492,16 +2486,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 })
                 .where(eq(owners.id, owner.id));
               
-              console.log(`📊 Auto-synced balance for owner ${owner.id}: $${currentBalance} -> $${columnBalanceDollars}`);
-            } else {
-              console.log(`✓ Balance already synced: $${columnBalanceDollars}`);
+              console.log(`💰 Column balance synced: $${currentBalance} -> $${columnBalanceDollars}`);
             }
             
             status = 'active';
           }
         } catch (error: any) {
-          console.error(`❌ Failed to fetch Column balance for owner ${owner.id}:`, error.message);
-          // Fall back to database value but log the error
+          console.error(`Column API error for owner ${owner.id}:`, error.message);
+          // Fall back to database value
         }
       }
 
