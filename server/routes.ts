@@ -2990,6 +2990,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // END COLUMN WALLET API ENDPOINTS
 
+  // NOTIFICATIONS API ENDPOINTS
+
+  // GET /api/notifications - Get all notifications for current user
+  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const notifications = await storage.getNotificationsByUser(userId);
+      res.json(notifications);
+    } catch (error: any) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications: " + error.message });
+    }
+  });
+
+  // GET /api/notifications/unread - Get unread notifications count
+  app.get('/api/notifications/unread', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const unreadNotifications = await storage.getUnreadNotificationsByUser(userId);
+      res.json({ count: unreadNotifications.length, notifications: unreadNotifications });
+    } catch (error: any) {
+      console.error("Error fetching unread notifications:", error);
+      res.status(500).json({ message: "Failed to fetch unread notifications: " + error.message });
+    }
+  });
+
+  // PUT /api/notifications/:id/read - Mark notification as read
+  app.put('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const notification = await storage.markNotificationAsRead(id);
+      res.json(notification);
+    } catch (error: any) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read: " + error.message });
+    }
+  });
+
+  // END NOTIFICATIONS API ENDPOINTS
+
   // Weekly payout processing endpoint
   app.post('/api/admin/process-weekly-payouts', isAuthenticated, async (req: any, res) => {
     try {
