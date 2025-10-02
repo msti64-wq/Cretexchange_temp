@@ -2558,13 +2558,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Mock analytics data for now - this will be replaced with actual Column API calls
+      // Calculate date filter based on range
+      let startDate: Date | undefined;
+      let endDate: Date | undefined = new Date();
+      let daysInRange = 30; // Default
+      
+      switch (dateRange) {
+        case '7days':
+          startDate = new Date();
+          startDate.setDate(startDate.getDate() - 7);
+          daysInRange = 7;
+          break;
+        case '30days':
+          startDate = new Date();
+          startDate.setDate(startDate.getDate() - 30);
+          daysInRange = 30;
+          break;
+        case '90days':
+          startDate = new Date();
+          startDate.setDate(startDate.getDate() - 90);
+          daysInRange = 90;
+          break;
+        default:
+          startDate = undefined; // All time
+          endDate = undefined;
+          daysInRange = 30; // Use 30 days for average calculation
+      }
+
+      // Get actual transactions from database
+      const transactions = await storage.getOwnerWalletTransactions(owner.id, startDate, endDate);
+      
+      // Calculate analytics from real data
+      let totalFunded = 0;
+      let totalSpent = 0;
+      
+      transactions.forEach((txn: any) => {
+        const amount = parseFloat(txn.amount);
+        
+        if (txn.type === 'funding') {
+          totalFunded += amount;
+        } else if (txn.type === 'payment' || txn.type === 'fee' || txn.type === 'withdrawal') {
+          totalSpent += amount;
+        }
+      });
+      
+      // Calculate average monthly spend
+      const monthsInRange = daysInRange / 30;
+      const avgMonthlySpend = monthsInRange > 0 ? totalSpent / monthsInRange : 0;
+
       const analytics = {
-        totalFunded: '2500.00',
-        totalSpent: '425.75',
-        avgMonthlySpend: '142.58',
-        transactionCount: 15,
-        dateRange: dateRange || '30days'
+        totalFunded: totalFunded.toFixed(2),
+        totalSpent: totalSpent.toFixed(2),
+        avgMonthlySpend: avgMonthlySpend.toFixed(2),
+        transactionCount: transactions.length,
+        dateRange: dateRange || 'all'
       };
 
       res.json(analytics);
