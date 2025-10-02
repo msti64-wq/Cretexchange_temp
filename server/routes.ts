@@ -2617,7 +2617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateOwnerWalletBalance(
         owner.id, 
         fundAmount.toFixed(2), 
-        'credit',
+        'topup',
         `Wallet funded from funding source ${fundingSourceId}`
       );
 
