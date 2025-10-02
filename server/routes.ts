@@ -2717,19 +2717,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/owners/wallet/fund - Fund wallet from a funding source
+  // POST /api/owners/wallet/fund - Fund wallet from a funding source via Column ACH
   app.post('/api/owners/wallet/fund', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { amount, fundingSourceId } = req.body;
+      const { amount, fundingSourceId, routingNumber, accountNumber } = req.body;
       const owner = await storage.getOwner(userId);
       
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      if (!amount || !fundingSourceId) {
-        return res.status(400).json({ message: "Amount and funding source are required" });
+      // Check if owner has completed Column onboarding
+      if (!owner.columnEntityId || !owner.columnAccountId) {
+        return res.status(400).json({ 
+          message: "Column account not set up. Please complete onboarding first.",
+          needsOnboarding: true
+        });
+      }
+
+      if (!amount) {
+        return res.status(400).json({ message: "Amount is required" });
       }
 
       const fundAmount = parseFloat(amount);
@@ -2737,27 +2745,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid amount" });
       }
 
-      console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} from source ${fundingSourceId}`);
+      console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} via Column ACH`);
 
-      // Update wallet balance and record transaction
+      // Create counterparty for the funding source (owner's external bank)
+      let counterpartyId = fundingSourceId;
+      
+      if (!fundingSourceId || fundingSourceId.startsWith('fs_')) {
+        // Create new counterparty from provided bank details
+        if (!routingNumber || !accountNumber) {
+          return res.status(400).json({ 
+            message: "Bank account details (routing number and account number) are required" 
+          });
+        }
+
+        const counterpartyResult = await columnService.createCounterparty({
+          entityId: owner.columnEntityId,
+          bankAccountNumber: accountNumber,
+          bankRoutingNumber: routingNumber,
+          accountType: 'CHECKING'
+        });
+
+        if (!counterpartyResult.success) {
+          return res.status(500).json({ 
+            message: "Failed to create bank account counterparty",
+            error: counterpartyResult.error 
+          });
+        }
+
+        counterpartyId = counterpartyResult.data!.id;
+      }
+
+      // Create ACH transfer from owner's external bank to their Column FBO account
+      const transferResult = await columnService.createACHTransfer({
+        fromAccountId: counterpartyId,
+        toAccountId: owner.columnAccountId,
+        amount: Math.round(fundAmount * 100), // Convert to cents
+        description: `Wallet funding - ${owner.companyName || 'Owner'}`
+      });
+
+      if (!transferResult.success) {
+        return res.status(500).json({ 
+          message: "Failed to create ACH transfer",
+          error: transferResult.error 
+        });
+      }
+
+      // Record the transaction in database with Column transfer ID
       await storage.updateOwnerWalletBalance(
         owner.id, 
         fundAmount.toFixed(2), 
         'funding',
-        `Wallet funded from funding source ${fundingSourceId}`
+        `ACH transfer from external bank - ${transferResult.data!.id}`
       );
 
-      const fundingResult = {
-        transactionId: `txn_fund_${Date.now()}`,
-        amount: fundAmount.toFixed(2),
-        status: 'completed',
-        fundingSource: fundingSourceId,
-        completedAt: new Date().toISOString()
-      };
-
       res.json({
-        message: "Wallet funded successfully",
-        transaction: fundingResult
+        message: "Wallet funding initiated successfully",
+        transaction: {
+          transactionId: transferResult.data!.id,
+          amount: fundAmount.toFixed(2),
+          status: transferResult.data!.status,
+          fundingSource: counterpartyId,
+          createdAt: transferResult.data!.createdAt,
+          estimatedCompletionDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() // ~3 business days
+        }
       });
     } catch (error: any) {
       console.error("Error funding wallet:", error);
