@@ -2421,6 +2421,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // COLUMN WALLET API ENDPOINTS FOR OWNERS
 
+  // Helper function to check and manage low balance alerts for owners
+  async function checkAndManageLowBalanceAlert(owner: any, userId: string) {
+    const balance = parseFloat(owner.walletBalance || '0');
+    const threshold = parseFloat(owner.lowBalanceThreshold || '100');
+    const isLowBalance = balance < threshold;
+
+    if (isLowBalance) {
+      // Create low balance notification if it doesn't exist
+      const existingNotifications = await storage.getNotificationsByUser(userId);
+      const hasLowBalanceAlert = existingNotifications.some(n => n.type === 'low_balance' && !n.isRead);
+      
+      if (!hasLowBalanceAlert) {
+        await storage.createNotification({
+          userId: userId,
+          title: 'Low Balance Alert',
+          message: `Your wallet balance (${formatCurrency(balance)}) is below your threshold of ${formatCurrency(threshold)}. ${owner.autoTopupEnabled ? 'Auto top-up is enabled.' : 'Please fund your wallet to continue service.'}`,
+          type: 'low_balance',
+          isRead: false,
+          data: { balance: balance.toFixed(2), threshold: threshold.toFixed(2) }
+        });
+        console.log(`Created low balance alert for owner ${owner.id}`);
+      }
+    } else {
+      // Clear any low balance notifications
+      await storage.clearNotificationsByType(userId, 'low_balance');
+      console.log(`Cleared low balance alerts for owner ${owner.id}`);
+    }
+  }
+
   // GET /api/owners/wallet - Get owner's wallet data (balance, status, settings)
   app.get('/api/owners/wallet', isAuthenticated, async (req: any, res) => {
     try {
@@ -2872,6 +2901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Sync balance from Column to ensure consistency
+      let updatedOwner = owner;
       try {
         const accountData = await columnService.getBankAccount(owner.columnAccountId);
         if (accountData && accountData.balance !== undefined) {
@@ -2883,11 +2913,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               updatedAt: new Date()
             })
             .where(eq(owners.id, owner.id));
+          
+          // Get updated owner record for alert check
+          updatedOwner = await storage.getOwnerById(owner.id) || owner;
         }
       } catch (syncError: any) {
         console.error('Balance sync failed:', syncError.message);
         // Continue even if sync fails
       }
+
+      // Check and manage low balance alerts after funding
+      await checkAndManageLowBalanceAlert(updatedOwner, userId);
 
       res.json({
         message: "Wallet funded successfully",

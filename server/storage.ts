@@ -147,7 +147,9 @@ export interface IStorage {
   // Notification operations
   createNotification(notification: InsertNotification): Promise<Notification>;
   getNotificationsByUser(userId: string): Promise<Notification[]>;
+  getUnreadNotificationsByUser(userId: string): Promise<Notification[]>;
   markNotificationAsRead(notificationId: string): Promise<Notification>;
+  clearNotificationsByType(userId: string, type: string): Promise<void>;
 
   // Message operations
   createMessage(message: InsertMessage): Promise<Message>;
@@ -1303,6 +1305,26 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.id, notificationId))
       .returning();
     return notification;
+  }
+
+  async getUnreadNotificationsByUser(userId: string): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async clearNotificationsByType(userId: string, type: string): Promise<void> {
+    await db
+      .delete(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.type, type)
+      ));
   }
 
   // Message operations
