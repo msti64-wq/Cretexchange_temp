@@ -111,6 +111,12 @@ export class ColumnService {
   async getBankAccount(bankAccountId: string) {
     try {
       const response = await this.client.get(`/bank-accounts/${bankAccountId}`);
+      console.log('📋 Column API Response Structure:', {
+        status: response.status,
+        hasBalances: 'balances' in (response.data || {}),
+        balances: response.data?.balances,
+        accountId: response.data?.id
+      });
       return response.data;
     } catch (error) {
       this.logError('Error fetching Column bank account:', error);

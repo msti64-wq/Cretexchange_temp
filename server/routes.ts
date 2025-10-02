@@ -2465,16 +2465,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If owner has Column account, fetch live balance from Column (authoritative source)
       if (owner.columnAccountId) {
+        console.log(`🔄 Attempting to sync balance from Column for account: ${owner.columnAccountId}`);
         try {
           const accountData = await columnService.getBankAccount(owner.columnAccountId);
-          if (accountData && accountData.balance !== undefined) {
+          const columnBalanceCents = accountData?.balances?.available_amount;
+          console.log(`✅ Column API responded successfully:`, {
+            hasData: !!accountData,
+            availableAmountCents: columnBalanceCents,
+            balanceInDollars: columnBalanceCents !== undefined ? (columnBalanceCents / 100).toFixed(2) : 'N/A'
+          });
+          
+          if (accountData && columnBalanceCents !== undefined) {
             // Convert from cents to dollars
-            balance = (accountData.balance / 100).toFixed(2);
+            balance = (columnBalanceCents / 100).toFixed(2);
             
             // Sync the balance to database if it differs
             const currentBalance = parseFloat(owner.walletBalance || '0');
-            const columnBalance = parseFloat(balance);
-            if (columnBalance !== currentBalance) {
+            const columnBalanceDollars = parseFloat(balance);
+            if (columnBalanceDollars !== currentBalance) {
               await db
                 .update(owners)
                 .set({
@@ -2484,13 +2492,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 })
                 .where(eq(owners.id, owner.id));
               
-              console.log(`Auto-synced balance for owner ${owner.id}: ${currentBalance} -> ${columnBalance}`);
+              console.log(`📊 Auto-synced balance for owner ${owner.id}: $${currentBalance} -> $${columnBalanceDollars}`);
+            } else {
+              console.log(`✓ Balance already synced: $${columnBalanceDollars}`);
             }
             
             status = 'active';
           }
         } catch (error: any) {
-          console.error(`Failed to fetch Column balance for owner ${owner.id}:`, error);
+          console.error(`❌ Failed to fetch Column balance for owner ${owner.id}:`, error.message);
           // Fall back to database value but log the error
         }
       }
