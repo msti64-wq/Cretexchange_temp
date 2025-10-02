@@ -2354,6 +2354,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("Adding payment method:", { type, owner: owner.id });
 
+      // For bank accounts, create Column counterparty for ACH transfers
+      let columnCounterpartyId = null;
+      if (type === 'bank_account' && accountNumber && routingNumber) {
+        try {
+          console.log('Creating Column counterparty for funding source...');
+          const counterpartyResult = await columnService.createCounterparty({
+            accountNumber: accountNumber,
+            routingNumber: routingNumber,
+            name: accountHolderName || `${user.firstName} ${user.lastName}`,
+          });
+          columnCounterpartyId = counterpartyResult.id;
+          console.log(`Column counterparty created: ${columnCounterpartyId}`);
+        } catch (error: any) {
+          console.error('Failed to create Column counterparty:', error.message);
+          // Continue without counterparty - can be created later
+        }
+      }
+
       // Create payment method record in database
       const paymentMethodData = {
         ownerId: owner.id,
@@ -2365,7 +2383,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cardholderName
         } : {
           bankName,
-          accountHolderName
+          accountHolderName,
+          routingNumber,
+          accountNumber,
+          columnCounterpartyId
         }),
         isDefault: true, // First method is default, or handle this logic
         stripePaymentMethodId: null, // Will be set when Stripe integration is complete
@@ -2386,7 +2407,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             cardholderName: savedMethod.cardholderName
           } : {
             bankName: savedMethod.bankName,
-            accountHolderName: savedMethod.accountHolderName
+            accountHolderName: savedMethod.accountHolderName,
+            columnCounterpartyId: savedMethod.columnCounterpartyId
           }),
           isDefault: savedMethod.isDefault,
         },
@@ -2428,20 +2450,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const isLowBalance = balance < threshold;
 
     if (isLowBalance) {
-      // Create low balance notification if it doesn't exist
-      const existingNotifications = await storage.getNotificationsByUser(userId);
-      const hasLowBalanceAlert = existingNotifications.some(n => n.type === 'low_balance' && !n.isRead);
-      
-      if (!hasLowBalanceAlert) {
-        await storage.createNotification({
-          userId: userId,
-          title: 'Low Balance Alert',
-          message: `Your wallet balance (${formatCurrency(balance)}) is below your threshold of ${formatCurrency(threshold)}. ${owner.autoTopupEnabled ? 'Auto top-up is enabled.' : 'Please fund your wallet to continue service.'}`,
-          type: 'low_balance',
-          isRead: false,
-          data: { balance: balance.toFixed(2), threshold: threshold.toFixed(2) }
-        });
-        console.log(`Created low balance alert for owner ${owner.id}`);
+      // Trigger auto top-up if enabled
+      if (owner.autoTopupEnabled) {
+        const autoTopupAmount = parseFloat(owner.autoTopupAmount || '500');
+        console.log(`⚡ Auto top-up check for owner ${owner.id}: balance $${balance}, threshold $${threshold}, top-up amount $${autoTopupAmount}`);
+        
+        try {
+          // Get default funding source
+          const fundingSources = await storage.getOwnerFundingSources(owner.id);
+          const defaultSource = fundingSources.find(fs => fs.isDefault && fs.isActive);
+          
+          if (!defaultSource) {
+            console.warn(`No default funding source found for auto top-up (owner ${owner.id})`);
+            // Create notification about missing funding source
+            await storage.createNotification({
+              userId: userId,
+              title: 'Auto Top-up Unable to Process',
+              message: `Your wallet balance is low but auto top-up requires a default payment method. Please add a payment method.`,
+              type: 'auto_topup_failed',
+              isRead: false,
+              data: {}
+            });
+          } else if (!owner.columnAccountId) {
+            console.warn(`Owner ${owner.id} has no Column account for auto top-up`);
+          } else {
+            // Create counterparty if needed
+            let counterpartyId = defaultSource.columnCounterpartyId;
+            if (!counterpartyId && defaultSource.routingNumber && defaultSource.accountNumber) {
+              const user = await storage.getUser(userId);
+              console.log('Creating Column counterparty for auto top-up...');
+              const counterpartyResult = await columnService.createCounterparty({
+                accountNumber: defaultSource.accountNumber,
+                routingNumber: defaultSource.routingNumber,
+                name: defaultSource.accountHolderName || `${user.firstName} ${user.lastName}`,
+              });
+              counterpartyId = counterpartyResult.id;
+              
+              // Update funding source with counterparty ID
+              await db
+                .update(ownerFundingSources)
+                .set({ columnCounterpartyId: counterpartyId })
+                .where(eq(ownerFundingSources.id, defaultSource.id));
+            }
+            
+            if (counterpartyId) {
+              // Create ACH debit transfer for auto top-up
+              const transferResult = await columnService.createACHTransfer({
+                counterpartyId: counterpartyId,
+                bankAccountId: owner.columnAccountId,
+                type: 'DEBIT',
+                amount: Math.round(autoTopupAmount * 100),
+                currencyCode: 'USD',
+                description: `Auto top-up - ${defaultSource.bankName || 'Bank Account'} ****${defaultSource.last4}`
+              });
+              
+              // Record the transaction
+              await storage.updateOwnerWalletBalance(
+                owner.id, 
+                autoTopupAmount.toFixed(2), 
+                'funding',
+                `Auto top-up from ${defaultSource.bankName || 'Bank Account'} ****${defaultSource.last4}`,
+                transferResult.id
+              );
+              
+              console.log(`✅ Auto top-up initiated: $${autoTopupAmount} (transfer: ${transferResult.id})`);
+              
+              // Create notification about auto top-up
+              await storage.createNotification({
+                userId: userId,
+                title: 'Auto Top-up Initiated',
+                message: `Your wallet has been automatically funded with $${autoTopupAmount.toFixed(2)} from ${defaultSource.bankName || 'Bank Account'} ****${defaultSource.last4}. Funds will appear in 1-3 business days.`,
+                type: 'auto_topup',
+                isRead: false,
+                data: { amount: autoTopupAmount.toFixed(2), transferId: transferResult.id }
+              });
+            }
+          }
+        } catch (error: any) {
+          console.error(`Auto top-up failed for owner ${owner.id}:`, error.message);
+          // Create notification about auto top-up failure
+          await storage.createNotification({
+            userId: userId,
+            title: 'Auto Top-up Failed',
+            message: `We were unable to automatically fund your wallet. Please fund your wallet manually or check your payment method.`,
+            type: 'auto_topup_failed',
+            isRead: false,
+            data: { error: error.message }
+          });
+        }
+      } else {
+        // Create low balance notification if auto top-up is disabled
+        const existingNotifications = await storage.getNotificationsByUser(userId);
+        const hasLowBalanceAlert = existingNotifications.some(n => n.type === 'low_balance' && !n.isRead);
+        
+        if (!hasLowBalanceAlert) {
+          await storage.createNotification({
+            userId: userId,
+            title: 'Low Balance Alert',
+            message: `Your wallet balance (${formatCurrency(balance)}) is below your threshold of ${formatCurrency(threshold)}. Please fund your wallet to continue service.`,
+            type: 'low_balance',
+            isRead: false,
+            data: { balance: balance.toFixed(2), threshold: threshold.toFixed(2) }
+          });
+          console.log(`Created low balance alert for owner ${owner.id}`);
+        }
       }
     } else {
       // Clear any low balance notifications
@@ -2846,7 +2958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/owners/wallet/fund', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const { amount, fundingSourceId, routingNumber, accountNumber } = req.body;
+      const { amount, fundingSourceId } = req.body;
       const owner = await storage.getOwner(userId);
       
       if (!owner) {
@@ -2865,39 +2977,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Amount is required" });
       }
 
+      if (!fundingSourceId) {
+        return res.status(400).json({ message: "Funding source is required" });
+      }
+
       const fundAmount = parseFloat(amount);
       if (isNaN(fundAmount) || fundAmount <= 0) {
         return res.status(400).json({ message: "Invalid amount" });
       }
 
-      console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} via simulated transfer`);
+      // Get the funding source
+      const fundingSource = await storage.getOwnerFundingSourceById(fundingSourceId);
+      if (!fundingSource || fundingSource.ownerId !== owner.id) {
+        return res.status(404).json({ message: "Funding source not found" });
+      }
 
-      // For testing: Simulate funding by directly updating wallet balance
-      // In production, this would create real ACH transfers through Column
-      
-      // Use Column wire simulation to add funds to the owner's account
-      let simulationData;
+      console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} from funding source ${fundingSourceId}`);
+
+      // Create or get Column counterparty for this funding source
+      let counterpartyId = fundingSource.columnCounterpartyId;
+      if (!counterpartyId && fundingSource.routingNumber && fundingSource.accountNumber) {
+        try {
+          const user = await storage.getUser(userId);
+          console.log('Creating Column counterparty for funding source...');
+          const counterpartyResult = await columnService.createCounterparty({
+            accountNumber: fundingSource.accountNumber,
+            routingNumber: fundingSource.routingNumber,
+            name: fundingSource.accountHolderName || `${user.firstName} ${user.lastName}`,
+          });
+          counterpartyId = counterpartyResult.id;
+          
+          // Update funding source with counterparty ID
+          await db
+            .update(ownerFundingSources)
+            .set({ columnCounterpartyId: counterpartyId })
+            .where(eq(ownerFundingSources.id, fundingSourceId));
+          
+          console.log(`Column counterparty created: ${counterpartyId}`);
+        } catch (error: any) {
+          console.error('Failed to create Column counterparty:', error.message);
+          return res.status(500).json({ 
+            message: "Failed to set up payment method. Please try again or contact support." 
+          });
+        }
+      }
+
+      if (!counterpartyId) {
+        return res.status(400).json({ 
+          message: "Funding source is not properly configured. Please re-add your payment method." 
+        });
+      }
+
+      // Create ACH debit transfer from funding source to owner's Column account
+      let transferResult;
       try {
-        console.log('📤 Sending wire simulation to Column:', {
-          destinationAccountNumberId: owner.columnAccountId,
+        console.log('📤 Creating ACH transfer:', {
+          counterpartyId,
+          bankAccountId: owner.columnAccountId,
+          type: 'DEBIT',
           amount: Math.round(fundAmount * 100),
-          currencyCode: 'USD'
         });
         
-        simulationData = await columnService.simulateReceiveWire({
-          destinationAccountNumberId: owner.columnAccountId,
+        transferResult = await columnService.createACHTransfer({
+          counterpartyId: counterpartyId,
+          bankAccountId: owner.columnAccountId,
+          type: 'DEBIT', // Debit from funding source (external bank)
           amount: Math.round(fundAmount * 100), // Convert to cents
-          currencyCode: 'USD'
+          currencyCode: 'USD',
+          description: `Wallet funding - ${fundingSource.bankName || 'Bank Account'} ****${fundingSource.last4}`
         });
         
-        console.log(`✅ Simulated wire transfer successful:`, simulationData);
+        console.log(`✅ ACH transfer created:`, transferResult.id);
       } catch (error: any) {
-        console.error('❌ Wire simulation failed:', error.message, error.response?.data);
-        // Fallback to direct balance update if simulation fails
-        simulationData = {
-          id: `sim_${Date.now()}`,
-          status: 'completed'
-        };
+        console.error('❌ ACH transfer failed:', error.message, error.response?.data);
+        return res.status(500).json({ 
+          message: "Failed to initiate transfer. Please check your bank account details and try again." 
+        });
       }
 
       // Record the transaction in database
@@ -2905,23 +3060,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         owner.id, 
         fundAmount.toFixed(2), 
         'funding',
-        `Simulated funding from ${fundingSourceId || 'bank account'}`
+        `Funding from ${fundingSource.bankName || 'Bank Account'} ****${fundingSource.last4}`,
+        transferResult.id
       );
 
       // Sync balance from Column to ensure consistency
       let updatedOwner = owner;
       try {
-        console.log('🔄 Syncing balance from Column for account:', owner.columnAccountId);
         const accountData = await columnService.getBankAccount(owner.columnAccountId);
-        console.log('📊 Column account data:', {
-          balance: accountData?.balance,
-          balanceInDollars: accountData?.balance ? (accountData.balance / 100).toFixed(2) : 'N/A',
-          status: accountData?.status
-        });
+        const columnBalanceCents = accountData?.balances?.available_amount;
         
-        if (accountData && accountData.balance !== undefined) {
-          const columnBalance = (accountData.balance / 100).toFixed(2);
-          console.log(`💰 Updating database balance to: $${columnBalance} (from Column)`);
+        if (accountData && columnBalanceCents !== undefined) {
+          const columnBalance = (columnBalanceCents / 100).toFixed(2);
           
           await db
             .update(owners)
@@ -2931,11 +3081,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
             .where(eq(owners.id, owner.id));
           
-          // Get updated owner record for alert check
           updatedOwner = await storage.getOwnerById(owner.id) || owner;
         }
       } catch (syncError: any) {
-        console.error('❌ Balance sync failed:', syncError.message, syncError.response?.data);
+        console.error('Balance sync failed:', syncError.message);
         // Continue even if sync fails
       }
 
@@ -2943,14 +3092,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await checkAndManageLowBalanceAlert(updatedOwner, userId);
 
       res.json({
-        message: "Wallet funded successfully",
+        message: "Wallet funding initiated successfully. Funds will appear in 1-3 business days.",
         transaction: {
-          transactionId: simulationData.id,
+          transactionId: transferResult.id,
           amount: fundAmount.toFixed(2),
-          status: 'completed',
+          status: transferResult.status || 'pending',
           fundingSource: fundingSourceId,
           createdAt: new Date().toISOString(),
-          estimatedCompletionDate: new Date().toISOString()
+          estimatedCompletionDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
         }
       });
     } catch (error: any) {

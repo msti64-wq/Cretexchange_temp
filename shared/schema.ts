@@ -242,8 +242,8 @@ export const ownerFundingSources = pgTable("owner_funding_sources", {
   routingNumber: varchar("routing_number"),
   accountNumber: varchar("account_number"), // Encrypted
   last4: varchar("last4").notNull(),
-  // Column integration
-  columnPaymentMethodId: varchar("column_payment_method_id"),
+  // Column integration - counterparty for ACH transfers
+  columnCounterpartyId: varchar("column_counterparty_id"),
   isDefault: boolean("is_default").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
