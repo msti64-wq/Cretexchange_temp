@@ -28,12 +28,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/utils";
+import { OwnerColumnOnboardingDialog } from "@/components/OwnerColumnOnboardingDialog";
 
 export default function OwnerWallet() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showFundDialog, setShowFundDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showOnboardingDialog, setShowOnboardingDialog] = useState(false);
   const [fundAmount, setFundAmount] = useState("");
   const [selectedFundingSource, setSelectedFundingSource] = useState("");
   const [dateRange, setDateRange] = useState<'7days' | '30days' | '90days' | 'all'>('30days');
@@ -111,11 +113,52 @@ export default function OwnerWallet() {
     },
   });
 
+  const columnOnboardingMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/owners/column/onboard", {
+        companyName: data.companyName,
+        businessLicense: data.businessLicense,
+        taxId: data.taxId,
+        address: {
+          line1: data.addressLine1,
+          city: data.city,
+          state: data.state,
+          postalCode: data.postalCode
+        }
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Payment account set up successfully",
+        description: "You can now fund your wallet and process payments.",
+      });
+      setShowOnboardingDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to set up payment account",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const [settingsData, setSettingsData] = useState({
     lowBalanceThreshold: '',
     autoTopupEnabled: false,
     autoTopupAmount: '',
   });
+
+  const handleFundButtonClick = () => {
+    // Check if owner needs Column onboarding first
+    if (!(walletData as any)?.columnAccountId) {
+      setShowOnboardingDialog(true);
+      return;
+    }
+    setShowFundDialog(true);
+  };
 
   const handleFundWallet = () => {
     if (!fundAmount || !selectedFundingSource) {
@@ -235,7 +278,7 @@ export default function OwnerWallet() {
                   {(walletData as any)?.status || 'Active'}
                 </Badge>
                 <Button
-                  onClick={() => setShowFundDialog(true)}
+                  onClick={handleFundButtonClick}
                   size="sm"
                   className="bg-white text-blue-600 hover:bg-blue-50"
                   data-testid="button-fund-wallet"
@@ -564,6 +607,16 @@ export default function OwnerWallet() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Column Onboarding Dialog */}
+      <OwnerColumnOnboardingDialog
+        open={showOnboardingDialog}
+        onOpenChange={setShowOnboardingDialog}
+        onSubmit={async (data) => {
+          await columnOnboardingMutation.mutateAsync(data);
+        }}
+        isPending={columnOnboardingMutation.isPending}
+      />
 
       <MobileNav role="owner" />
     </div>

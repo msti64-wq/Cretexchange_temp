@@ -2439,6 +2439,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         autoTopupEnabled: owner.autoTopupEnabled || false,
         autoTopupAmount: owner.autoTopupAmount || '500.00',
         walletId: `wallet_${owner.id}`,
+        columnAccountId: owner.columnAccountId,
+        columnEntityId: owner.columnEntityId,
+        hasColumnAccount: !!(owner.columnAccountId && owner.columnEntityId),
         createdAt: owner.createdAt
       };
 
