@@ -2449,6 +2449,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/owners/column/onboard - Create Column entity and bank account for owner
+  app.post('/api/owners/column/onboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      const user = await storage.getUser(userId);
+      
+      if (!owner || !user) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Check if already onboarded
+      if (owner.columnEntityId && owner.columnAccountId) {
+        return res.status(400).json({ 
+          message: "Owner already has Column account",
+          columnEntityId: owner.columnEntityId,
+          columnAccountId: owner.columnAccountId
+        });
+      }
+
+      const { companyName, businessLicense, taxId, address } = req.body;
+
+      if (!companyName || !taxId || !address) {
+        return res.status(400).json({ 
+          message: "Missing required fields: companyName, taxId, and address are required" 
+        });
+      }
+
+      // Create Column business entity
+      const entityResult = await columnService.createPersonEntity({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phoneNumber: user.phoneNumber || '',
+        dateOfBirth: '1990-01-01', // This should come from KYC form
+        address: {
+          line1: address.line1,
+          city: address.city,
+          state: address.state,
+          postalCode: address.postalCode
+        },
+        ssn: '' // This should come from KYC form for business owner
+      });
+
+      if (!entityResult.success) {
+        return res.status(500).json({ 
+          message: "Failed to create Column entity",
+          error: entityResult.error 
+        });
+      }
+
+      // Create Column FBO bank account for the owner's wallet
+      const accountResult = await columnService.createBankAccount({
+        entityId: entityResult.data!.id,
+        accountType: 'BUSINESS_CHECKING',
+        accountNickname: `${companyName} Wallet`
+      });
+
+      if (!accountResult.success) {
+        return res.status(500).json({ 
+          message: "Failed to create Column bank account",
+          error: accountResult.error 
+        });
+      }
+
+      // Store Column IDs in database
+      await storage.updateOwnerColumnInfo(owner.id, {
+        columnEntityId: entityResult.data!.id,
+        columnAccountId: accountResult.data!.id
+      });
+
+      // Update company info
+      await db
+        .update(owners)
+        .set({
+          companyName,
+          businessLicense,
+          taxId,
+          walletStatus: 'active',
+          updatedAt: new Date()
+        })
+        .where(eq(owners.id, owner.id));
+
+      res.json({
+        success: true,
+        message: "Column account created successfully",
+        columnEntityId: entityResult.data!.id,
+        columnAccountId: accountResult.data!.id,
+        accountNumber: accountResult.data!.accountNumber
+      });
+    } catch (error: any) {
+      console.error("Error onboarding owner to Column:", error);
+      res.status(500).json({ message: "Failed to onboard to Column: " + error.message });
+    }
+  });
+
   // GET /api/owners/funding-sources - Get owner's Column funding sources
   app.get('/api/owners/funding-sources', isAuthenticated, async (req: any, res) => {
     try {
