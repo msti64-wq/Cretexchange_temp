@@ -195,3 +195,16 @@ export const columnService = new ColumnService({
   apiKey: columnApiKey,
   baseURL: columnBaseURL,
 });
+
+// Platform operating account credentials
+export const platformConfig = {
+  entityId: process.env.COLUMN_PLATFORM_ENTITY_ID || '',
+  accountId: process.env.COLUMN_PLATFORM_ACCOUNT_ID || '',
+  routingNumber: process.env.COLUMN_PLATFORM_ROUTING || '',
+  accountNumber: process.env.COLUMN_PLATFORM_ACCOUNT_NUMBER || '',
+};
+
+// Validate platform config is complete
+if (!platformConfig.entityId || !platformConfig.accountId || !platformConfig.routingNumber || !platformConfig.accountNumber) {
+  console.warn('⚠️ Platform operating account credentials not fully configured. Some payment features may be limited.');
+}
