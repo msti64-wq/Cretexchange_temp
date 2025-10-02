@@ -82,6 +82,14 @@ Preferred communication style: Simple, everyday language.
   - Automated payouts
   - Webhook processing
 
+- **Column BaaS**: Banking-as-a-Service for wallet management:
+  - Bank account creation and management
+  - Balance tracking and synchronization
+  - ACH transfer initiation
+  - Real-time balance sync from Column API
+  - **Note**: Using production API endpoint (`api.column.com`) as sandbox endpoint is not accessible from Replit
+  - Balance data retrieved from `balances.available_amount` field (in cents)
+
 ### Cloud Storage
 - **Google Cloud Storage**: Object storage for file uploads with:
   - Presigned URL generation
@@ -102,3 +110,28 @@ Preferred communication style: Simple, everyday language.
 - **TypeScript**: Type system for both frontend and backend
 - **ESBuild**: Fast JavaScript bundler for production builds
 - **PostCSS**: CSS processing with Tailwind CSS and Autoprefixer
+
+## Technical Notes
+
+### Column API Integration
+**Issue Resolved**: Column sandbox API (`api.sandbox.column.com`) does not resolve from Replit environment (DNS ENOTFOUND error).
+
+**Solution**: Use production API endpoint (`https://api.column.com`) with test credentials. This is a supported configuration for Column's testing environment.
+
+**API Response Structure**:
+- Balance data is in `balances` object (plural), not `balance` field
+- Available balance: `balances.available_amount` (in cents)
+- Other balance fields: `balances.holding_amount`, `balances.locked_amount`, `balances.pending_amount`
+
+**Implementation**:
+- Automatic balance synchronization on wallet page load
+- Database serves as the local cache
+- Column API is the authoritative source for balance data
+- Graceful fallback to database values if API is unavailable
+
+### Low Balance Alert System
+- Configurable threshold per owner
+- Automatic notification creation when balance drops below threshold
+- Automatic notification clearing when balance recovers
+- Visual warnings on wallet page
+- Bell icon badge showing unread count
