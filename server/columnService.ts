@@ -191,6 +191,13 @@ if (!columnApiKey) {
 const columnBaseURL = process.env.COLUMN_API_BASE_URL || 
   (process.env.REPLIT_DEPLOYMENT ? 'https://api.column.com' : 'https://api.sandbox.column.com');
 
+console.log('🔧 Column Service Configuration:', {
+  apiKeyPrefix: columnApiKey?.substring(0, 10) + '...',
+  baseURL: columnBaseURL,
+  hasBaseUrlEnv: !!process.env.COLUMN_API_BASE_URL,
+  isDeployment: !!process.env.REPLIT_DEPLOYMENT
+});
+
 export const columnService = new ColumnService({
   apiKey: columnApiKey,
   baseURL: columnBaseURL,
