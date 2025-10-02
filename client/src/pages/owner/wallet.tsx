@@ -225,7 +225,7 @@ export default function OwnerWallet() {
                 <div>
                   <p className="text-blue-100 text-sm">Current Balance</p>
                   <h2 className="text-3xl font-bold" data-testid="text-wallet-balance">
-                    ${formatCurrency((walletData as any)?.balance || 0)}
+                    {formatCurrency((walletData as any)?.balance || 0)}
                   </h2>
                 </div>
                 <Wallet className="w-8 h-8 text-blue-200" />
@@ -293,7 +293,7 @@ export default function OwnerWallet() {
                   <div>
                     <p className="text-xs text-muted-foreground">Total Funded</p>
                     <p className="text-lg font-semibold text-green-600">
-                      ${formatCurrency((analytics as any)?.totalFunded || 0)}
+                      {formatCurrency((analytics as any)?.totalFunded || 0)}
                     </p>
                   </div>
                 </div>
@@ -307,7 +307,7 @@ export default function OwnerWallet() {
                   <div>
                     <p className="text-xs text-muted-foreground">Total Spent</p>
                     <p className="text-lg font-semibold text-red-600">
-                      ${formatCurrency((analytics as any)?.totalSpent || 0)}
+                      {formatCurrency((analytics as any)?.totalSpent || 0)}
                     </p>
                   </div>
                 </div>
@@ -321,7 +321,7 @@ export default function OwnerWallet() {
                   <div>
                     <p className="text-xs text-muted-foreground">Avg Monthly</p>
                     <p className="text-lg font-semibold text-blue-600">
-                      ${formatCurrency((analytics as any)?.avgMonthlySpend || 0)}
+                      {formatCurrency((analytics as any)?.avgMonthlySpend || 0)}
                     </p>
                   </div>
                 </div>
@@ -356,7 +356,7 @@ export default function OwnerWallet() {
                     Low Wallet Balance
                   </h3>
                   <p className="text-sm text-amber-700 dark:text-amber-300">
-                    Your wallet balance is below the ${(walletData as any)?.lowBalanceThreshold || 100} threshold. 
+                    Your wallet balance is below the {formatCurrency(parseFloat((walletData as any)?.lowBalanceThreshold || 100))} threshold. 
                     Consider funding your wallet to avoid payment delays.
                   </p>
                 </div>
@@ -426,7 +426,7 @@ export default function OwnerWallet() {
                     <div className={`text-right ${getTransactionColor(transaction.transactionType)}`}>
                       <div className="font-semibold">
                         {transaction.transactionType === 'funding' ? '+' : '-'}
-                        ${formatCurrency(transaction.amount)}
+                        {formatCurrency(transaction.amount)}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {transaction.externalTransactionId && 
