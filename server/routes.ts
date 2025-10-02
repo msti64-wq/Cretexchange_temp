@@ -2431,9 +2431,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
+      let balance = owner.walletBalance || '0.00';
+      let status = owner.walletStatus || 'pending_verification';
+
+      // If owner has Column account, fetch live balance from Column (authoritative source)
+      if (owner.columnAccountId) {
+        try {
+          const accountData = await columnService.getBankAccount(owner.columnAccountId);
+          if (accountData && accountData.balance !== undefined) {
+            // Convert from cents to dollars
+            balance = (accountData.balance / 100).toFixed(2);
+            
+            // Sync the balance to database if it differs
+            const currentBalance = parseFloat(owner.walletBalance || '0');
+            const columnBalance = parseFloat(balance);
+            if (columnBalance !== currentBalance) {
+              await db
+                .update(owners)
+                .set({
+                  walletBalance: balance,
+                  walletStatus: 'active',
+                  updatedAt: new Date()
+                })
+                .where(eq(owners.id, owner.id));
+              
+              console.log(`Auto-synced balance for owner ${owner.id}: ${currentBalance} -> ${columnBalance}`);
+            }
+            
+            status = 'active';
+          }
+        } catch (error: any) {
+          console.error(`Failed to fetch Column balance for owner ${owner.id}:`, error);
+          // Fall back to database value but log the error
+        }
+      }
+
       const walletData = {
-        balance: owner.walletBalance || '0.00',
-        status: owner.walletStatus || 'active',
+        balance,
+        status,
         isConfigured: true,
         lowBalanceThreshold: owner.lowBalanceThreshold || '100.00',
         autoTopupEnabled: owner.autoTopupEnabled || false,
@@ -2481,46 +2516,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create Column business entity
-      const entityResult = await columnService.createPersonEntity({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phoneNumber: user.phoneNumber || '',
-        dateOfBirth: '1990-01-01', // This should come from KYC form
-        address: {
-          line1: address.line1,
-          city: address.city,
-          state: address.state,
-          postalCode: address.postalCode
-        },
-        ssn: '' // This should come from KYC form for business owner
-      });
-
-      if (!entityResult.success) {
+      let entityData;
+      try {
+        entityData = await columnService.createPersonEntity({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          ssn: '000000000', // Placeholder - real implementation should collect from KYC form
+          dateOfBirth: '1990-01-01', // Placeholder - real implementation should collect from KYC form
+          address: {
+            line1: address.line1,
+            city: address.city,
+            state: address.state,
+            postalCode: address.postalCode,
+            countryCode: 'US'
+          }
+        });
+      } catch (error: any) {
         return res.status(500).json({ 
           message: "Failed to create Column entity",
-          error: entityResult.error 
+          error: error.message 
         });
       }
 
       // Create Column FBO bank account for the owner's wallet
-      const accountResult = await columnService.createBankAccount({
-        entityId: entityResult.data!.id,
-        accountType: 'BUSINESS_CHECKING',
-        accountNickname: `${companyName} Wallet`
-      });
-
-      if (!accountResult.success) {
+      let accountData;
+      try {
+        accountData = await columnService.createBankAccount({
+          entityId: entityData.id,
+          description: `${companyName} Wallet`
+        });
+      } catch (error: any) {
         return res.status(500).json({ 
           message: "Failed to create Column bank account",
-          error: accountResult.error 
+          error: error.message 
         });
       }
 
       // Store Column IDs in database
       await storage.updateOwnerColumnInfo(owner.id, {
-        columnEntityId: entityResult.data!.id,
-        columnAccountId: accountResult.data!.id
+        columnEntityId: entityData.id,
+        columnAccountId: accountData.id
       });
 
       // Update company info
@@ -2538,9 +2574,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         message: "Column account created successfully",
-        columnEntityId: entityResult.data!.id,
-        columnAccountId: accountResult.data!.id,
-        accountNumber: accountResult.data!.accountNumber
+        columnEntityId: entityData.id,
+        columnAccountId: accountData.id,
+        accountNumber: accountData.account_number || accountData.id
       });
     } catch (error: any) {
       console.error("Error onboarding owner to Column:", error);
@@ -2816,35 +2852,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        const counterpartyResult = await columnService.createCounterparty({
-          entityId: owner.columnEntityId,
-          bankAccountNumber: accountNumber,
-          bankRoutingNumber: routingNumber,
-          accountType: 'CHECKING'
-        });
+        try {
+          const counterpartyData = await columnService.createCounterparty({
+            accountNumber: accountNumber,
+            routingNumber: routingNumber,
+            name: owner.companyName || 'Owner Bank Account'
+          });
 
-        if (!counterpartyResult.success) {
+          counterpartyId = counterpartyData.id;
+        } catch (error: any) {
           return res.status(500).json({ 
             message: "Failed to create bank account counterparty",
-            error: counterpartyResult.error 
+            error: error.message 
           });
         }
-
-        counterpartyId = counterpartyResult.data!.id;
       }
 
       // Create ACH transfer from owner's external bank to their Column FBO account
-      const transferResult = await columnService.createACHTransfer({
-        fromAccountId: counterpartyId,
-        toAccountId: owner.columnAccountId,
-        amount: Math.round(fundAmount * 100), // Convert to cents
-        description: `Wallet funding - ${owner.companyName || 'Owner'}`
-      });
-
-      if (!transferResult.success) {
+      let transferData;
+      try {
+        transferData = await columnService.createACHTransfer({
+          counterpartyId: counterpartyId,
+          bankAccountId: owner.columnAccountId,
+          type: 'CREDIT', // Credit to the owner's account (incoming funds)
+          amount: Math.round(fundAmount * 100), // Convert to cents
+          currencyCode: 'USD',
+          description: `Wallet funding - ${owner.companyName || 'Owner'}`
+        });
+      } catch (error: any) {
         return res.status(500).json({ 
           message: "Failed to create ACH transfer",
-          error: transferResult.error 
+          error: error.message 
         });
       }
 
@@ -2853,17 +2891,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         owner.id, 
         fundAmount.toFixed(2), 
         'funding',
-        `ACH transfer from external bank - ${transferResult.data!.id}`
+        `ACH transfer from external bank - ${transferData.id}`
       );
 
       res.json({
         message: "Wallet funding initiated successfully",
         transaction: {
-          transactionId: transferResult.data!.id,
+          transactionId: transferData.id,
           amount: fundAmount.toFixed(2),
-          status: transferResult.data!.status,
+          status: transferData.status || 'pending',
           fundingSource: counterpartyId,
-          createdAt: transferResult.data!.createdAt,
+          createdAt: transferData.created_at || new Date().toISOString(),
           estimatedCompletionDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() // ~3 business days
         }
       });
