@@ -268,6 +268,46 @@ export default function OwnerWallet() {
       </header>
 
       <main className="p-4 space-y-6">
+        {/* Low Balance Warning Banner */}
+        {(() => {
+          const balance = parseFloat((walletData as any)?.balance || '0');
+          const threshold = parseFloat((walletData as any)?.lowBalanceThreshold || '100');
+          const isLowBalance = balance < threshold;
+          
+          if (isLowBalance) {
+            return (
+              <div className="bg-orange-50 dark:bg-orange-950 border-l-4 border-orange-500 p-4 rounded-r-lg" data-testid="alert-low-balance">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-orange-900 dark:text-orange-100">Low Balance Alert</h3>
+                    <p className="text-sm text-orange-700 dark:text-orange-200 mt-1">
+                      Your wallet balance ({formatCurrency(balance)}) is below your threshold of {formatCurrency(threshold)}. 
+                      {(walletData as any)?.autoTopupEnabled ? (
+                        <span className="font-medium"> Auto top-up is enabled.</span>
+                      ) : (
+                        <span className="font-medium"> Please fund your wallet to continue service.</span>
+                      )}
+                    </p>
+                    {!(walletData as any)?.autoTopupEnabled && (
+                      <Button
+                        size="sm"
+                        onClick={handleFundButtonClick}
+                        className="mt-3 bg-orange-600 hover:bg-orange-700 text-white"
+                        data-testid="button-fund-from-alert"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Fund Wallet Now
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {/* Wallet Balance Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
