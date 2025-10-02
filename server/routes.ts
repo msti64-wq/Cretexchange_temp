@@ -2841,30 +2841,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} via Column ACH`);
 
-      // Create counterparty for the funding source (owner's external bank)
+      // Create counterparty for the funding source
       let counterpartyId = fundingSourceId;
       
       if (!fundingSourceId || fundingSourceId.startsWith('fs_')) {
-        // Create new counterparty from provided bank details
+        // For mock funding sources, use the Column platform account as counterparty
+        // In production, this would use the owner's verified external bank account
         if (!routingNumber || !accountNumber) {
-          return res.status(400).json({ 
-            message: "Bank account details (routing number and account number) are required" 
-          });
-        }
+          // Use platform account details for testing
+          if (!platformConfig.accountNumber || !platformConfig.routingNumber) {
+            return res.status(400).json({ 
+              message: "Platform bank account not configured for testing. Please set COLUMN_PLATFORM_ACCOUNT_NUMBER and COLUMN_PLATFORM_ROUTING." 
+            });
+          }
+          
+          try {
+            const counterpartyData = await columnService.createCounterparty({
+              accountNumber: platformConfig.accountNumber,
+              routingNumber: platformConfig.routingNumber,
+              name: 'Platform Test Account'
+            });
 
-        try {
-          const counterpartyData = await columnService.createCounterparty({
-            accountNumber: accountNumber,
-            routingNumber: routingNumber,
-            name: owner.companyName || 'Owner Bank Account'
-          });
+            counterpartyId = counterpartyData.id;
+          } catch (error: any) {
+            return res.status(500).json({ 
+              message: "Failed to create platform counterparty",
+              error: error.message 
+            });
+          }
+        } else {
+          // User provided their own bank details
+          try {
+            const counterpartyData = await columnService.createCounterparty({
+              accountNumber: accountNumber,
+              routingNumber: routingNumber,
+              name: owner.companyName || 'Owner Bank Account'
+            });
 
-          counterpartyId = counterpartyData.id;
-        } catch (error: any) {
-          return res.status(500).json({ 
-            message: "Failed to create bank account counterparty",
-            error: error.message 
-          });
+            counterpartyId = counterpartyData.id;
+          } catch (error: any) {
+            return res.status(500).json({ 
+              message: "Failed to create bank account counterparty",
+              error: error.message 
+            });
+          }
         }
       }
 
