@@ -12,6 +12,7 @@ import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
+import { ColumnOnboardingDialog } from "@/components/ColumnOnboardingDialog";
 import { 
   Wallet, 
   DollarSign, 
@@ -49,13 +50,11 @@ interface WalletTransaction {
   metadata?: any;
 }
 
-interface StripeAccountStatus {
-  hasConnectedAccount: boolean;
-  accountId?: string;
-  chargesEnabled?: boolean;
-  payoutsEnabled?: boolean;
-  detailsSubmitted?: boolean;
-  requiresAction?: boolean;
+interface ColumnOnboardingStatus {
+  isOnboarded: boolean;
+  entityId?: string | null;
+  bankAccountId?: string | null;
+  accountLast4?: string | null;
 }
 
 export default function DriverWallet() {
@@ -63,6 +62,7 @@ export default function DriverWallet() {
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
+  const [showColumnOnboarding, setShowColumnOnboarding] = useState(false);
   const pageSize = 20;
 
   // Fetch wallet balance
@@ -91,9 +91,9 @@ export default function DriverWallet() {
     placeholderData: (previousData) => previousData,
   });
 
-  // Fetch Stripe Connect account status
-  const { data: stripeStatus, isLoading: stripeLoading, refetch: refetchStripeStatus } = useQuery<StripeAccountStatus>({
-    queryKey: ['/api/stripe/connect/account-status'],
+  // Fetch Column onboarding status
+  const { data: columnStatus, isLoading: columnLoading, refetch: refetchColumnStatus } = useQuery<ColumnOnboardingStatus>({
+    queryKey: ['/api/column/status'],
   });
 
   // Withdrawal mutation
@@ -119,105 +119,62 @@ export default function DriverWallet() {
     },
   });
 
-  // Create Stripe Connect account mutation
-  const createAccountMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("POST", "/api/stripe/connect/create-account");
+  // Column onboarding mutation
+  const columnOnboardingMutation = useMutation({
+    mutationFn: async (data: any) => {
+      // Transform form data to match API schema
+      const requestData = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        ssn: data.ssn,
+        dateOfBirth: data.dateOfBirth,
+        email: data.email,
+        address: {
+          line1: data.addressLine1,
+          city: data.city,
+          state: data.state,
+          postalCode: data.postalCode,
+          countryCode: "US",
+        },
+      };
+      return await apiRequest("POST", "/api/column/onboard", requestData);
     },
     onSuccess: () => {
       toast({
-        title: "Account Created",
-        description: "Your Stripe account has been created. Please complete onboarding to enable withdrawals.",
+        title: "Account Connected! 🎉",
+        description: "Your bank account has been successfully connected. You can now request withdrawals.",
       });
-      refetchStripeStatus();
+      setShowColumnOnboarding(false);
+      refetchColumnStatus();
     },
     onError: (error: any) => {
       toast({
-        title: "Account Creation Failed",
-        description: error.message,
+        title: "Connection Failed",
+        description: error.message || "Failed to connect bank account",
         variant: "destructive",
       });
     },
   });
-
-  // Get onboarding link mutation
-  const getOnboardingLinkMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("GET", "/api/stripe/connect/onboarding-link");
-    },
-    onSuccess: (data: any) => {
-      window.open(data.url, '_blank');
-      
-      // Set up focus listener to refresh when user returns
-      // Use a flag to prevent immediate triggering
-      let hasLeftPage = false;
-      
-      const handleFocus = () => {
-        if (hasLeftPage) {
-          setTimeout(() => {
-            refetchStripeStatus();
-          }, 2000);
-        }
-      };
-      
-      const handleBlur = () => {
-        hasLeftPage = true;
-      };
-      
-      // Add both focus and blur listeners with delay to avoid immediate trigger
-      setTimeout(() => {
-        window.addEventListener('focus', handleFocus);
-        window.addEventListener('blur', handleBlur);
-        
-        // Clean up listeners after 5 minutes
-        setTimeout(() => {
-          window.removeEventListener('focus', handleFocus);
-          window.removeEventListener('blur', handleBlur);
-        }, 300000);
-      }, 3000); // Longer delay before setting up listeners
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Auto-refresh stripe status when the component mounts and periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (stripeStatus?.hasConnectedAccount && !stripeStatus?.payoutsEnabled) {
-        refetchStripeStatus();
-      }
-    }, 10000); // Check every 10 seconds if account exists but payouts not enabled
-
-    return () => clearInterval(interval);
-  }, [stripeStatus, refetchStripeStatus]);
 
   // Track when account becomes verified to show success message
-  const [previousCanWithdraw, setPreviousCanWithdraw] = useState<boolean | null>(null);
+  const [previousIsOnboarded, setPreviousIsOnboarded] = useState<boolean | null>(null);
   
   useEffect(() => {
-    const currentCanWithdraw = 
-      stripeStatus?.hasConnectedAccount && 
-      stripeStatus?.payoutsEnabled && 
-      stripeStatus?.detailsSubmitted;
+    const currentIsOnboarded = columnStatus?.isOnboarded === true;
       
-    if (previousCanWithdraw === false && currentCanWithdraw === true) {
+    if (previousIsOnboarded === false && currentIsOnboarded === true) {
       toast({
-        title: "Account Verified! 🎉",
-        description: "Your payment account is now ready for withdrawals.",
+        title: "Account Connected! 🎉",
+        description: "Your bank account is now ready for withdrawals.",
       });
     }
     
-    if (previousCanWithdraw !== null) {
-      setPreviousCanWithdraw(currentCanWithdraw || false);
+    if (previousIsOnboarded !== null) {
+      setPreviousIsOnboarded(currentIsOnboarded);
     } else {
-      setPreviousCanWithdraw(currentCanWithdraw || false);
+      setPreviousIsOnboarded(currentIsOnboarded);
     }
-  }, [stripeStatus, toast, previousCanWithdraw]);
+  }, [columnStatus, toast, previousIsOnboarded]);
 
   const handleWithdrawal = () => {
     // Handle terms status loading and error states
@@ -294,7 +251,7 @@ export default function DriverWallet() {
   const refreshAllData = () => {
     refetchBalance();
     refetchTransactions();
-    refetchStripeStatus();
+    refetchColumnStatus();
     toast({
       title: "Data Refreshed",
       description: "Wallet information has been updated",
@@ -333,12 +290,9 @@ export default function DriverWallet() {
     }
   };
 
-  const canWithdraw = 
-    stripeStatus?.hasConnectedAccount && 
-    stripeStatus?.payoutsEnabled && 
-    stripeStatus?.detailsSubmitted;
+  const canWithdraw = columnStatus?.isOnboarded === true;
 
-  if (balanceLoading || stripeLoading) {
+  if (balanceLoading || columnLoading) {
     return (
       <div className="min-h-screen bg-background">
         <DriverHeader />
@@ -416,7 +370,7 @@ export default function DriverWallet() {
           </div>
         </StatCard>
 
-        {/* Stripe Account Status */}
+        {/* Bank Account Status */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -425,7 +379,7 @@ export default function DriverWallet() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!stripeStatus?.hasConnectedAccount ? (
+            {!columnStatus?.isOnboarded ? (
               <div className="text-center py-6">
                 <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
                 <h3 className="font-semibold mb-2">Setup Required</h3>
@@ -433,15 +387,10 @@ export default function DriverWallet() {
                   Connect your bank account to receive payments
                 </p>
                 <Button
-                  onClick={() => createAccountMutation.mutate()}
-                  disabled={createAccountMutation.isPending}
+                  onClick={() => setShowColumnOnboarding(true)}
                   data-testid="button-create-account"
                 >
-                  {createAccountMutation.isPending ? (
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <CreditCard className="w-4 h-4 mr-2" />
-                  )}
+                  <CreditCard className="w-4 h-4 mr-2" />
                   Connect Bank Account
                 </Button>
               </div>
@@ -450,74 +399,41 @@ export default function DriverWallet() {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Account Status</span>
                   <Badge 
-                    variant={canWithdraw ? "default" : "secondary"}
-                    className={canWithdraw ? "bg-green-600 hover:bg-green-700" : ""}
+                    variant="default"
+                    className="bg-green-600 hover:bg-green-700"
                     data-testid="badge-account-status"
                   >
-                    {canWithdraw ? (
-                      <>
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                        Verified & Ready
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="w-3 h-3 mr-1" />
-                        Pending Verification
-                      </>
-                    )}
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Connected & Ready
                   </Badge>
                 </div>
 
                 {/* Show account connection details */}
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${stripeStatus?.hasConnectedAccount ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    <span className="text-muted-foreground">Account Created</span>
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-muted-foreground">Bank Account Connected</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${stripeStatus?.detailsSubmitted ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    <span className="text-muted-foreground">Details Complete</span>
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-muted-foreground">Identity Verified</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${stripeStatus?.chargesEnabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    <span className="text-muted-foreground">Charges Enabled</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${stripeStatus?.payoutsEnabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                    <span className="text-muted-foreground">Payouts Enabled</span>
-                  </div>
+                  {columnStatus?.accountLast4 && (
+                    <div className="flex items-center space-x-2 col-span-2">
+                      <Banknote className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">
+                        Account ending in {columnStatus.accountLast4}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
-                {!canWithdraw && (
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      {!stripeStatus?.detailsSubmitted 
-                        ? "Complete your account verification to enable withdrawals."
-                        : "Your account is being reviewed. This usually takes a few minutes."
-                      }
-                      {!stripeStatus?.detailsSubmitted && (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="ml-2 p-0 h-auto"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (!getOnboardingLinkMutation.isPending) {
-                              getOnboardingLinkMutation.mutate();
-                            }
-                          }}
-                          disabled={getOnboardingLinkMutation.isPending}
-                          data-testid="button-complete-onboarding"
-                        >
-                          {getOnboardingLinkMutation.isPending ? "Opening..." : "Complete Setup"}
-                          <ExternalLink className="w-3 h-3 ml-1" />
-                        </Button>
-                      )}
-                    </AlertDescription>
-                  </Alert>
-                )}
+                <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    Your bank account is ready to receive payments
+                  </AlertDescription>
+                </Alert>
               </div>
             )}
           </CardContent>
@@ -716,8 +632,17 @@ export default function DriverWallet() {
         open={showTermsDialog}
         onOpenChange={setShowTermsDialog}
         onAccepted={handleTermsAccepted}
-        // Explicitly set readOnly to false for wallet
         readOnly={false}
+      />
+
+      {/* Column Onboarding Dialog */}
+      <ColumnOnboardingDialog
+        open={showColumnOnboarding}
+        onOpenChange={setShowColumnOnboarding}
+        onSubmit={async (data) => {
+          await columnOnboardingMutation.mutateAsync(data);
+        }}
+        isPending={columnOnboardingMutation.isPending}
       />
 
       <MobileNav />

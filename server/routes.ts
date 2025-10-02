@@ -773,6 +773,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get Column onboarding status
+  app.get('/api/column/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let isOnboarded = false;
+      let entityId: string | null = null;
+      let bankAccountId: string | null = null;
+      let accountLast4: string | null = null;
+
+      if (user.role === 'driver') {
+        const driver = await storage.getDriver(userId);
+        if (driver?.columnEntityId) {
+          isOnboarded = true;
+          entityId = driver.columnEntityId;
+          bankAccountId = driver.columnBankAccountId || null;
+          accountLast4 = driver.columnAccountLast4 || null;
+        }
+      } else if (user.role === 'owner') {
+        const owner = await storage.getOwner(userId);
+        if (owner?.columnEntityId) {
+          isOnboarded = true;
+          entityId = owner.columnEntityId;
+          bankAccountId = owner.columnAccountId || null;
+        }
+      }
+
+      res.json({
+        isOnboarded,
+        entityId,
+        bankAccountId,
+        accountLast4,
+      });
+    } catch (error) {
+      console.error("Error checking Column status:", error);
+      res.status(500).json({ message: "Failed to check Column status" });
+    }
+  });
+
   // Column BaaS onboarding endpoint
   app.post('/api/column/onboard', isAuthenticated, async (req: any, res) => {
     try {
