@@ -2505,58 +2505,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate date filter based on range
-      let startDate = new Date();
+      let startDate: Date | undefined;
+      let endDate: Date | undefined = new Date();
+      
       switch (dateRange) {
         case '7days':
+          startDate = new Date();
           startDate.setDate(startDate.getDate() - 7);
           break;
         case '30days':
+          startDate = new Date();
           startDate.setDate(startDate.getDate() - 30);
           break;
         case '90days':
+          startDate = new Date();
           startDate.setDate(startDate.getDate() - 90);
           break;
         default:
-          startDate = new Date('2024-01-01'); // All time
+          startDate = undefined; // All time
+          endDate = undefined;
       }
 
-      // Mock transaction data for now - this will be replaced with actual Column API calls
-      const transactions = [
-        {
-          id: `txn_fund_${Date.now()}`,
-          transactionType: 'funding',
-          amount: '500.00',
-          description: 'Wallet funding from Chase ****4567',
-          status: 'completed',
-          externalTransactionId: `ext_${Date.now()}`,
-          createdAt: new Date(Date.now() - 86400000).toISOString() // 1 day ago
-        },
-        {
-          id: `txn_payment_${Date.now() - 1000}`,
-          transactionType: 'payment',
-          amount: '25.50',
-          description: 'Payment to driver for washout service',
-          status: 'completed',
-          externalTransactionId: `ext_${Date.now() - 1000}`,
-          createdAt: new Date(Date.now() - 172800000).toISOString() // 2 days ago
-        },
-        {
-          id: `txn_fee_${Date.now() - 2000}`,
-          transactionType: 'fee',
-          amount: '2.55',
-          description: 'Processing fee (10%)',
-          status: 'completed',
-          externalTransactionId: `ext_${Date.now() - 2000}`,
-          createdAt: new Date(Date.now() - 172800000).toISOString() // 2 days ago
-        }
-      ];
+      // Get actual transactions from database
+      const dbTransactions = await storage.getOwnerWalletTransactions(owner.id, startDate, endDate);
+      
+      // Format transactions for frontend
+      const transactions = dbTransactions.map((txn: any) => ({
+        id: txn.id,
+        transactionType: txn.type,
+        amount: txn.amount,
+        description: txn.description || `${txn.type} transaction`,
+        status: 'completed',
+        externalTransactionId: null,
+        createdAt: txn.createdAt
+      }));
 
-      // Filter by date range
-      const filteredTransactions = transactions.filter(txn => 
-        new Date(txn.createdAt) >= startDate
-      );
-
-      res.json(filteredTransactions);
+      res.json(transactions);
     } catch (error: any) {
       console.error("Error getting wallet transactions:", error);
       res.status(500).json({ message: "Failed to get transactions: " + error.message });
