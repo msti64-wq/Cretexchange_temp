@@ -2876,15 +2876,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use Column wire simulation to add funds to the owner's account
       let simulationData;
       try {
+        console.log('📤 Sending wire simulation to Column:', {
+          destinationAccountNumberId: owner.columnAccountId,
+          amount: Math.round(fundAmount * 100),
+          currencyCode: 'USD'
+        });
+        
         simulationData = await columnService.simulateReceiveWire({
           destinationAccountNumberId: owner.columnAccountId,
           amount: Math.round(fundAmount * 100), // Convert to cents
           currencyCode: 'USD'
         });
         
-        console.log(`Simulated wire transfer successful: ${simulationData.id}`);
+        console.log(`✅ Simulated wire transfer successful:`, simulationData);
       } catch (error: any) {
-        console.error('Wire simulation failed, using direct balance update:', error.message);
+        console.error('❌ Wire simulation failed:', error.message, error.response?.data);
         // Fallback to direct balance update if simulation fails
         simulationData = {
           id: `sim_${Date.now()}`,
@@ -2903,9 +2909,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sync balance from Column to ensure consistency
       let updatedOwner = owner;
       try {
+        console.log('🔄 Syncing balance from Column for account:', owner.columnAccountId);
         const accountData = await columnService.getBankAccount(owner.columnAccountId);
+        console.log('📊 Column account data:', {
+          balance: accountData?.balance,
+          balanceInDollars: accountData?.balance ? (accountData.balance / 100).toFixed(2) : 'N/A',
+          status: accountData?.status
+        });
+        
         if (accountData && accountData.balance !== undefined) {
           const columnBalance = (accountData.balance / 100).toFixed(2);
+          console.log(`💰 Updating database balance to: $${columnBalance} (from Column)`);
+          
           await db
             .update(owners)
             .set({
@@ -2918,7 +2933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedOwner = await storage.getOwnerById(owner.id) || owner;
         }
       } catch (syncError: any) {
-        console.error('Balance sync failed:', syncError.message);
+        console.error('❌ Balance sync failed:', syncError.message, syncError.response?.data);
         // Continue even if sync fails
       }
 
