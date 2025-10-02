@@ -25,6 +25,7 @@ import {
   DollarSign
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/utils";
@@ -247,15 +248,22 @@ export default function OwnerWallet() {
               <p className="text-white/80 text-sm">Column Banking</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSettingsDialog(true)}
-            className="text-white hover:bg-white/20 p-2"
-            data-testid="button-settings"
-          >
-            <Settings className="w-5 h-5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSettingsDialog(true)}
+                className="text-white hover:bg-white/20 p-2"
+                data-testid="button-settings"
+              >
+                <Settings className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Configure low balance alerts & auto top-up</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </header>
 
