@@ -2545,6 +2545,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/owners/wallet/sync - Sync wallet balance from Column
+  app.post('/api/owners/wallet/sync', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (!owner.columnAccountId) {
+        return res.status(400).json({ 
+          message: "No Column account found. Please complete onboarding first.",
+          needsOnboarding: true
+        });
+      }
+
+      // Fetch balance from Column
+      const accountData = await columnService.getBankAccount(owner.columnAccountId);
+      
+      if (!accountData) {
+        return res.status(500).json({ message: "Failed to fetch Column account data" });
+      }
+
+      // Convert balance from cents to dollars
+      const columnBalance = (accountData.balance / 100).toFixed(2);
+      const currentBalance = parseFloat(owner.walletBalance || '0');
+      const columnBalanceFloat = parseFloat(columnBalance);
+
+      // Update database balance to match Column
+      if (columnBalanceFloat !== currentBalance) {
+        await db
+          .update(owners)
+          .set({
+            walletBalance: columnBalance,
+            updatedAt: new Date()
+          })
+          .where(eq(owners.id, owner.id));
+
+        console.log(`Synced balance for owner ${owner.id}: ${currentBalance} -> ${columnBalance}`);
+      }
+
+      res.json({
+        success: true,
+        message: "Balance synced successfully",
+        balance: columnBalance,
+        previousBalance: currentBalance.toFixed(2),
+        syncedAt: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Error syncing wallet balance:", error);
+      res.status(500).json({ message: "Failed to sync balance: " + error.message });
+    }
+  });
+
   // GET /api/owners/funding-sources - Get owner's Column funding sources
   app.get('/api/owners/funding-sources', isAuthenticated, async (req: any, res) => {
     try {
