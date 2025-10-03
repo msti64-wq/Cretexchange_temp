@@ -54,6 +54,9 @@ export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["requested", "p
 // Billing system enums
 export const billingCadenceEnum = pgEnum("billing_cadence", ["daily"]);
 export const batchStatusEnum = pgEnum("batch_status", ["pending", "processing", "completed", "failed", "cancelled"]);
+export const feeTypeEnum = pgEnum("fee_type", ["location_monthly", "subscription_monthly", "subscription_annual"]);
+export const feeStatusEnum = pgEnum("fee_status", ["pending", "paid", "failed", "past_due", "waived"]);
+export const subscriptionPlanEnum = pgEnum("subscription_plan", ["none", "monthly", "annual"]);
 
 // User storage table - local authentication
 export const users = pgTable("users", {
@@ -135,6 +138,11 @@ export const owners = pgTable("owners", {
   billingCadence: billingCadenceEnum("billing_cadence").default("daily"),
   billingCutoffTime: varchar("billing_cutoff_time").default("23:59:00"), // Time of day for billing cutoff (HH:MM:SS)
   billingTimezone: varchar("billing_timezone").default("America/Chicago"), // Owner's timezone for billing cutoff
+  // Monthly subscription billing
+  subscriptionPlan: subscriptionPlanEnum("subscription_plan").default("none"),
+  subscriptionFeeCents: integer("subscription_fee_cents").default(0), // Monthly or annual fee in cents
+  feeAnchorDay: integer("fee_anchor_day").default(1), // Day of month (1-28) for monthly billing
+  lastFeeBillingDate: varchar("last_fee_billing_date"), // YYYY-MM-DD format of last fee billing
   isApproved: boolean("is_approved").default(false),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
@@ -151,6 +159,7 @@ export const washoutLocations = pgTable("washout_locations", {
   latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
   longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
   rate: decimal("rate", { precision: 10, scale: 2 }).notNull().default("5.00"),
+  monthlyFeeCents: integer("monthly_fee_cents").default(5000), // Monthly listing fee in cents (default $50)
   isActive: boolean("is_active").default(true),
   isVisible: boolean("is_visible").default(true),
   description: text("description"),
@@ -236,6 +245,33 @@ export const billingBatches = pgTable("billing_batches", {
   uniqueBatchPerDay: uniqueIndex("uniq_billing_batches_owner_date").on(table.ownerId, table.businessDate),
   // Index for efficient queries by status and date
   statusDateIndex: index("idx_billing_batches_status_date").on(table.status, table.businessDate),
+}));
+
+// Fees ledger for monthly recurring fees (location and subscription fees)
+export const feesLedger = pgTable("fees_ledger", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
+  feeType: feeTypeEnum("fee_type").notNull(),
+  locationId: varchar("location_id").references(() => washoutLocations.id, { onDelete: "set null" }), // Nullable for subscription fees
+  amountCents: integer("amount_cents").notNull(), // Fee amount in cents
+  periodStart: varchar("period_start").notNull(), // YYYY-MM-DD format
+  periodEnd: varchar("period_end").notNull(), // YYYY-MM-DD format
+  status: feeStatusEnum("status").notNull().default("pending"),
+  // Payment tracking
+  walletTxId: varchar("wallet_tx_id").references(() => ownerWalletTransactions.id),
+  columnTransferId: varchar("column_transfer_id"), // Column book transfer ID
+  batchId: varchar("batch_id").references(() => billingBatches.id), // Link to billing batch
+  paidAt: timestamp("paid_at"),
+  failureReason: text("failure_reason"),
+  retryCount: integer("retry_count").notNull().default(0),
+  metadata: jsonb("metadata"), // Store additional details (location name, plan type, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  // Index for efficient queries by owner and period
+  ownerPeriodIndex: index("idx_fees_ledger_owner_period").on(table.ownerId, table.periodStart),
+  // Index for status queries
+  statusIndex: index("idx_fees_ledger_status").on(table.status),
 }));
 
 // Owner funding sources for Column wallet top-ups
@@ -414,6 +450,14 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
 export const billingBatchesRelations = relations(billingBatches, ({ one, many }) => ({
   owner: one(owners, { fields: [billingBatches.ownerId], references: [owners.id] }),
   payments: many(payments),
+  fees: many(feesLedger),
+}));
+
+export const feesLedgerRelations = relations(feesLedger, ({ one }) => ({
+  owner: one(owners, { fields: [feesLedger.ownerId], references: [owners.id] }),
+  location: one(washoutLocations, { fields: [feesLedger.locationId], references: [washoutLocations.id] }),
+  walletTransaction: one(ownerWalletTransactions, { fields: [feesLedger.walletTxId], references: [ownerWalletTransactions.id] }),
+  batch: one(billingBatches, { fields: [feesLedger.batchId], references: [billingBatches.id] }),
 }));
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
@@ -560,6 +604,12 @@ export const insertWithdrawalSchema = createInsertSchema(withdrawals).omit({
 });
 
 export const insertBillingBatchSchema = createInsertSchema(billingBatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFeeLedgerSchema = createInsertSchema(feesLedger).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -725,6 +775,8 @@ export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSche
 export type InsertWithdrawal = z.infer<typeof insertWithdrawalSchema>;
 export type BillingBatch = typeof billingBatches.$inferSelect;
 export type InsertBillingBatch = z.infer<typeof insertBillingBatchSchema>;
+export type FeeLedger = typeof feesLedger.$inferSelect;
+export type InsertFeeLedger = z.infer<typeof insertFeeLedgerSchema>;
 export type ServicePaymentAccount = typeof servicePaymentAccounts.$inferSelect;
 export type InsertServicePaymentAccount = z.infer<typeof insertServicePaymentAccountSchema>;
 export type UpdateServicePaymentAccount = z.infer<typeof updateServicePaymentAccountSchema>;
