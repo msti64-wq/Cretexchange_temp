@@ -150,6 +150,9 @@ export class ColumnService {
       formData.append('entry_class_code', params.entryClassCode || 'WEB');
       // Receiver name (max 22 characters)
       formData.append('receiver_name', params.receiverName.substring(0, 22));
+      // Receiver ID (max 15 characters) - required for WEB entry class code
+      // Use last 15 chars of counterparty ID as unique identifier
+      formData.append('receiver_id', params.counterpartyId.substring(0, 15));
 
       const response = await this.client.post('/transfers/ach', formData);
       return response.data;
