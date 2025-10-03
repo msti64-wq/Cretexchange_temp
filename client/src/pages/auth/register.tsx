@@ -25,7 +25,10 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
     firstName: "",
     lastName: "",
     phone: "",
-    address: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
     role: "",
   });
 
@@ -209,15 +212,57 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="street">Street Address</Label>
                 <Input
-                  id="address"
+                  id="street"
                   type="text"
-                  placeholder="123 Main St, City, State 12345"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="123 Main St"
+                  value={formData.street}
+                  onChange={(e) => setFormData({ ...formData, street: e.target.value })}
                   required
-                  data-testid="input-address"
+                  data-testid="input-street"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    type="text"
+                    placeholder="City"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    required
+                    data-testid="input-city"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    type="text"
+                    placeholder="CA"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    required
+                    maxLength={2}
+                    data-testid="input-state"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="zip">ZIP Code</Label>
+                <Input
+                  id="zip"
+                  type="text"
+                  placeholder="12345"
+                  value={formData.zip}
+                  onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                  required
+                  data-testid="input-zip"
                 />
               </div>
 

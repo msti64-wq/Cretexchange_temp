@@ -678,7 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // General registration endpoint (handles both drivers and owners)
   app.post('/api/register', async (req: any, res) => {
     try {
-      const { role, username, email, password, firstName, lastName, phone, address } = req.body;
+      const { role, username, email, password, firstName, lastName, phone, street, city, state, zip } = req.body;
 
       // Validate required fields
       if (!role || !username || !email || !password || !firstName || !lastName) {
@@ -711,7 +711,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName,
         lastName,
         phone: phone || null,
-        address: address || null,
+        street: street || null,
+        city: city || null,
+        state: state || null,
+        zip: zip || null,
         role,
       });
 
