@@ -84,7 +84,10 @@ export default function OwnerProfile() {
     lastName: "",
     email: "",
     phone: "",
-    address: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
     paymentMethod: "ach",
     companyName: "",
     businessLicense: "",
@@ -99,7 +102,10 @@ export default function OwnerProfile() {
         lastName: user.lastName || "",
         email: user.email || "",
         phone: user.phone || "",
-        address: user.address || "",
+        street: user.street || "",
+        city: user.city || "",
+        state: user.state || "",
+        zip: user.zip || "",
         paymentMethod: user.paymentMethod || "ach",
         companyName: user.roleData.companyName || "",
         businessLicense: user.roleData.businessLicense || "",
@@ -309,13 +315,49 @@ export default function OwnerProfile() {
               </div>
               
               <div>
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                <Label htmlFor="street">Street Address</Label>
+                <Input
+                  id="street"
+                  value={formData.street}
+                  onChange={(e) => setFormData({...formData, street: e.target.value})}
                   disabled={!isEditing}
-                  data-testid="textarea-address"
+                  data-testid="input-street"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({...formData, city: e.target.value})}
+                    disabled={!isEditing}
+                    data-testid="input-city"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    value={formData.state}
+                    onChange={(e) => setFormData({...formData, state: e.target.value})}
+                    disabled={!isEditing}
+                    maxLength={2}
+                    data-testid="input-state"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="zip">ZIP Code</Label>
+                <Input
+                  id="zip"
+                  value={formData.zip}
+                  onChange={(e) => setFormData({...formData, zip: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="input-zip"
                 />
               </div>
             </CardContent>
