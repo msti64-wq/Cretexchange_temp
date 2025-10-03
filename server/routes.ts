@@ -1412,7 +1412,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: req.body.lastName,
         email: req.body.email,
         phone: req.body.phone,
-        address: req.body.address,
+        street: req.body.street,
+        city: req.body.city,
+        state: req.body.state,
+        zip: req.body.zip,
         paymentMethod: req.body.paymentMethod,
         paymentFrequency: req.body.paymentFrequency,
         role: currentUser.role, // Preserve existing role
@@ -2005,7 +2008,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: req.body.lastName,
         email: req.body.email,
         phone: req.body.phone,
-        address: req.body.address,
+        street: req.body.street,
+        city: req.body.city,
+        state: req.body.state,
+        zip: req.body.zip,
         paymentMethod: req.body.paymentMethod,
         role: currentUser.role, // Preserve existing role
       });
