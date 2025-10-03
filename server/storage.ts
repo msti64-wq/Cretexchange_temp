@@ -17,6 +17,7 @@ import {
   webhookEvents,
   servicePaymentAccounts,
   billingBatches,
+  feesLedger,
   type User,
   type UpsertUser,
   type Driver,
@@ -35,6 +36,7 @@ import {
   type Withdrawal,
   type ServicePaymentAccount,
   type BillingBatch,
+  type FeeLedger,
   type InsertDriver,
   type InsertOwner,
   type InsertWashoutLocation,
@@ -51,6 +53,7 @@ import {
   type InsertServicePaymentAccount,
   type UpdateServicePaymentAccount,
   type InsertBillingBatch,
+  type InsertFeeLedger,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
@@ -240,6 +243,18 @@ export interface IStorage {
   movePendingToAvailable(driverId: string, amount: string, sourceTransactionId: string, batchId: string): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }>;
   getOwnerBillingSettings(ownerId: string): Promise<{ billingCadence: string; billingCutoffTime: string; billingTimezone: string } | undefined>;
   updateOwnerBillingSettings(ownerId: string, settings: { billingCadence?: string; billingCutoffTime?: string; billingTimezone?: string }): Promise<Owner>;
+
+  // Monthly fee ledger operations
+  createFeeLedgerEntry(fee: InsertFeeLedger): Promise<FeeLedger>;
+  getFeeLedgerEntry(id: string): Promise<FeeLedger | undefined>;
+  getFeeLedgerEntriesByOwner(ownerId: string, startDate?: string, endDate?: string): Promise<(FeeLedger & { location?: WashoutLocation })[]>;
+  getFeeLedgerEntriesByStatus(status: string): Promise<(FeeLedger & { owner: Owner & { user: User }, location?: WashoutLocation })[]>;
+  updateFeeLedgerStatus(feeId: string, status: string, walletTxId?: string, columnTransferId?: string, failureReason?: string): Promise<FeeLedger>;
+  markFeeLedgerPaid(feeId: string, walletTxId: string, columnTransferId: string): Promise<FeeLedger>;
+  updateFeeLedgerRetryCount(feeId: string): Promise<FeeLedger>;
+  getOwnerSubscriptionSettings(ownerId: string): Promise<{ subscriptionPlan: string; subscriptionFeeCents: number; feeAnchorDay: number; lastFeeBillingDate: string | null } | undefined>;
+  updateOwnerSubscriptionSettings(ownerId: string, settings: { subscriptionPlan?: string; subscriptionFeeCents?: number; feeAnchorDay?: number }): Promise<Owner>;
+  generateMonthlyFeesForDate(billingDate: string): Promise<{ created: number; owners: string[] }>;
 
   // Debug operations
   getUserCount(): Promise<number>;
@@ -3320,6 +3335,239 @@ export class DatabaseStorage implements IStorage {
         throw error; // Will rollback transaction
       }
     });
+  }
+
+  // ============= FEE LEDGER OPERATIONS =============
+
+  async createFeeLedgerEntry(fee: InsertFeeLedger): Promise<FeeLedger> {
+    const [entry] = await db
+      .insert(feesLedger)
+      .values(fee)
+      .returning();
+    return entry;
+  }
+
+  async getFeeLedgerEntry(id: string): Promise<FeeLedger | undefined> {
+    const [entry] = await db
+      .select()
+      .from(feesLedger)
+      .where(eq(feesLedger.id, id));
+    return entry;
+  }
+
+  async getFeeLedgerEntriesByOwner(
+    ownerId: string, 
+    startDate?: string, 
+    endDate?: string
+  ): Promise<(FeeLedger & { location?: WashoutLocation })[]> {
+    const query = db
+      .select({
+        ...getTableColumns(feesLedger),
+        location: washoutLocations,
+      })
+      .from(feesLedger)
+      .leftJoin(washoutLocations, eq(feesLedger.locationId, washoutLocations.id))
+      .where(eq(feesLedger.ownerId, ownerId))
+      .$dynamic();
+
+    if (startDate) {
+      query.where(gte(feesLedger.periodStart, startDate));
+    }
+    if (endDate) {
+      query.where(lte(feesLedger.periodEnd, endDate));
+    }
+
+    const results = await query.orderBy(desc(feesLedger.createdAt));
+    return results as any;
+  }
+
+  async getFeeLedgerEntriesByStatus(
+    status: string
+  ): Promise<(FeeLedger & { owner: Owner & { user: User }, location?: WashoutLocation })[]> {
+    const results = await db
+      .select({
+        ...getTableColumns(feesLedger),
+        owner: owners,
+        user: users,
+        location: washoutLocations,
+      })
+      .from(feesLedger)
+      .innerJoin(owners, eq(feesLedger.ownerId, owners.id))
+      .innerJoin(users, eq(owners.userId, users.id))
+      .leftJoin(washoutLocations, eq(feesLedger.locationId, washoutLocations.id))
+      .where(eq(feesLedger.status, status))
+      .orderBy(desc(feesLedger.createdAt));
+
+    return results.map(r => ({
+      ...r,
+      owner: { ...r.owner, user: r.user }
+    })) as any;
+  }
+
+  async updateFeeLedgerStatus(
+    feeId: string, 
+    status: string, 
+    walletTxId?: string, 
+    columnTransferId?: string, 
+    failureReason?: string
+  ): Promise<FeeLedger> {
+    const updates: any = { status, updatedAt: new Date() };
+    if (walletTxId) updates.walletTxId = walletTxId;
+    if (columnTransferId) updates.columnTransferId = columnTransferId;
+    if (failureReason) updates.failureReason = failureReason;
+    if (status === 'paid') updates.paidAt = new Date();
+
+    const [updated] = await db
+      .update(feesLedger)
+      .set(updates)
+      .where(eq(feesLedger.id, feeId))
+      .returning();
+    return updated;
+  }
+
+  async markFeeLedgerPaid(
+    feeId: string, 
+    walletTxId: string, 
+    columnTransferId: string
+  ): Promise<FeeLedger> {
+    const [updated] = await db
+      .update(feesLedger)
+      .set({
+        status: 'paid',
+        walletTxId,
+        columnTransferId,
+        paidAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(feesLedger.id, feeId))
+      .returning();
+    return updated;
+  }
+
+  async updateFeeLedgerRetryCount(feeId: string): Promise<FeeLedger> {
+    const [updated] = await db
+      .update(feesLedger)
+      .set({
+        retryCount: sql`${feesLedger.retryCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(feesLedger.id, feeId))
+      .returning();
+    return updated;
+  }
+
+  async getOwnerSubscriptionSettings(
+    ownerId: string
+  ): Promise<{ subscriptionPlan: string; subscriptionFeeCents: number; feeAnchorDay: number; lastFeeBillingDate: string | null } | undefined> {
+    const [owner] = await db
+      .select({
+        subscriptionPlan: owners.subscriptionPlan,
+        subscriptionFeeCents: owners.subscriptionFeeCents,
+        feeAnchorDay: owners.feeAnchorDay,
+        lastFeeBillingDate: owners.lastFeeBillingDate,
+      })
+      .from(owners)
+      .where(eq(owners.id, ownerId));
+    return owner;
+  }
+
+  async updateOwnerSubscriptionSettings(
+    ownerId: string, 
+    settings: { subscriptionPlan?: string; subscriptionFeeCents?: number; feeAnchorDay?: number }
+  ): Promise<Owner> {
+    const [updated] = await db
+      .update(owners)
+      .set({
+        ...settings,
+        updatedAt: new Date(),
+      })
+      .where(eq(owners.id, ownerId))
+      .returning();
+    return updated;
+  }
+
+  async generateMonthlyFeesForDate(billingDate: string): Promise<{ created: number; owners: string[] }> {
+    const day = new Date(billingDate).getDate();
+    
+    // Find all owners whose billing anchor day matches today
+    const ownersToBill = await db
+      .select()
+      .from(owners)
+      .where(
+        and(
+          eq(owners.feeAnchorDay, day),
+          or(
+            isNull(owners.lastFeeBillingDate),
+            ne(owners.lastFeeBillingDate, billingDate)
+          )
+        )
+      );
+
+    let created = 0;
+    const processedOwners: string[] = [];
+
+    for (const owner of ownersToBill) {
+      try {
+        // Calculate period dates
+        const periodStart = billingDate;
+        const periodEndDate = new Date(billingDate);
+        periodEndDate.setMonth(periodEndDate.getMonth() + 1);
+        periodEndDate.setDate(periodEndDate.getDate() - 1);
+        const periodEnd = periodEndDate.toISOString().split('T')[0];
+
+        // Create subscription fee if applicable
+        if (owner.subscriptionPlan && owner.subscriptionPlan !== 'none' && owner.subscriptionFeeCents && owner.subscriptionFeeCents > 0) {
+          await this.createFeeLedgerEntry({
+            ownerId: owner.id,
+            feeType: owner.subscriptionPlan === 'annual' ? 'subscription_annual' : 'subscription_monthly',
+            amountCents: owner.subscriptionFeeCents,
+            periodStart,
+            periodEnd,
+            status: 'pending',
+            metadata: {
+              planType: owner.subscriptionPlan,
+              generatedAt: new Date().toISOString(),
+            },
+          });
+          created++;
+        }
+
+        // Create location fees for all active locations
+        const locations = await this.getLocationsByOwner(owner.id);
+        for (const location of locations) {
+          if (location.isActive && location.monthlyFeeCents && location.monthlyFeeCents > 0) {
+            await this.createFeeLedgerEntry({
+              ownerId: owner.id,
+              feeType: 'location_monthly',
+              locationId: location.id,
+              amountCents: location.monthlyFeeCents,
+              periodStart,
+              periodEnd,
+              status: 'pending',
+              metadata: {
+                locationName: location.name,
+                locationAddress: location.address,
+                generatedAt: new Date().toISOString(),
+              },
+            });
+            created++;
+          }
+        }
+
+        // Update owner's last billing date
+        await db
+          .update(owners)
+          .set({ lastFeeBillingDate: billingDate })
+          .where(eq(owners.id, owner.id));
+
+        processedOwners.push(owner.id);
+
+      } catch (error: any) {
+        console.error(`Error generating fees for owner ${owner.id}:`, error);
+      }
+    }
+
+    return { created, owners: processedOwners };
   }
 }
 
