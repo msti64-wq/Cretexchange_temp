@@ -85,6 +85,7 @@ Preferred communication style: Simple, everyday language.
 - **Column BaaS**: Banking-as-a-Service for wallet management:
   - Bank account creation and management
   - Balance tracking and synchronization
+  - **Book Transfer Integration**: Instant internal transfers between Column accounts for washout payments
   - **ACH Transfer Integration**: Real ACH debit transfers from owner funding sources to Column wallets
   - **Counterparty System**: Automatic creation of Column counterparties for external bank accounts
   - **Auto Top-up**: Automated wallet funding when balance drops below threshold
@@ -183,3 +184,28 @@ Preferred communication style: Simple, everyday language.
 - Auto top-up takes precedence over low balance alerts
 - Visual warnings on wallet page
 - Bell icon badge showing unread count
+
+### Book Transfer Integration (Washout Payments)
+**Payment Flow**:
+When an owner approves a washout, two instant book transfers are executed:
+1. **Owner → Driver**: Minimum $10 (or location rate if higher)
+2. **Owner → Platform**: $4 platform fee
+
+**Key Implementation Details**:
+- Uses Column's `/transfers/book` API endpoint
+- Parameters: `sender_bank_account_id` and `receiver_bank_account_id` (use bank account IDs like `bacc_xxx`, not account number IDs)
+- Transfers are **instant** - funds move immediately between Column accounts
+- No settlement delay (unlike ACH which takes 1-3 business days)
+- Zero fees for book transfers between Column accounts
+- Both accounts must be Column accounts for book transfers to work
+
+**Fee Structure**:
+- Driver receives: $10.00 minimum (configurable based on location rate)
+- Platform receives: $4.00 (fixed)
+- Owner pays: Driver amount + $4.00 (e.g., $10 + $4 = $14 total)
+
+**Database Recording**:
+- Owner wallet debited $14 in local database
+- Payment record created with Column transfer ID
+- Driver pending balance credited $10
+- Transfers appear instantly in Column Sandbox/Production
