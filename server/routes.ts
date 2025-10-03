@@ -1893,14 +1893,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const ownerBankAccount = await columnService.getBankAccount(owner.columnAccountId);
               console.log(`🔍 Owner bank account structure:`, JSON.stringify(ownerBankAccount, null, 2));
               
-              // Try multiple ways to access account number ID
-              let ownerAccountNumberId = ownerBankAccount.default_account_number?.id;
-              
-              // Fallback: check account_numbers array if default_account_number doesn't exist
-              if (!ownerAccountNumberId && ownerBankAccount.account_numbers && ownerBankAccount.account_numbers.length > 0) {
-                ownerAccountNumberId = ownerBankAccount.account_numbers[0].id;
-                console.log(`✅ Using account_numbers[0].id: ${ownerAccountNumberId}`);
-              }
+              // Get account number ID - it's a direct property, not nested
+              let ownerAccountNumberId = ownerBankAccount.default_account_number_id;
               
               if (!ownerAccountNumberId) {
                 console.error('❌ Owner account number ID not found in response');
@@ -1913,11 +1907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (driver?.columnBankAccountId) {
                 console.log(`💰 Creating book transfer: Owner → Driver ($${driverAmount})...`);
                 const driverBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
-                
-                let driverAccountNumberId = driverBankAccount.default_account_number?.id;
-                if (!driverAccountNumberId && driverBankAccount.account_numbers && driverBankAccount.account_numbers.length > 0) {
-                  driverAccountNumberId = driverBankAccount.account_numbers[0].id;
-                }
+                const driverAccountNumberId = driverBankAccount.default_account_number_id;
                 
                 if (!driverAccountNumberId) {
                   console.error('❌ Driver account number ID not found');
@@ -1948,11 +1938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.error('❌ COLUMN_PLATFORM_ACCOUNT_ID not configured');
               } else {
                 const platformBankAccount = await columnService.getBankAccount(platformAccountId);
-                
-                let platformAccountNumberId = platformBankAccount.default_account_number?.id;
-                if (!platformAccountNumberId && platformBankAccount.account_numbers && platformBankAccount.account_numbers.length > 0) {
-                  platformAccountNumberId = platformBankAccount.account_numbers[0].id;
-                }
+                const platformAccountNumberId = platformBankAccount.default_account_number_id;
                 
                 if (!platformAccountNumberId) {
                   console.error('❌ Platform account number ID not found');
