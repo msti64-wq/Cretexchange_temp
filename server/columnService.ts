@@ -42,6 +42,15 @@ interface CreateACHTransferParams {
   receiverName: string; // Name of the receiver (max 22 characters)
 }
 
+interface CreateBookTransferParams {
+  sourceAccountNumberId: string;
+  destinationAccountNumberId: string;
+  amount: number; // in cents
+  currencyCode: string;
+  description: string;
+  idempotencyKey: string;
+}
+
 interface SimulateReceiveWireParams {
   destinationAccountNumberId: string;
   amount: number; // in cents
@@ -161,6 +170,27 @@ export class ColumnService {
       // Log the full error response for debugging
       if (error.response?.data) {
         console.error('❌ ACH transfer failed:', error.message, error.response.data);
+      }
+      throw error;
+    }
+  }
+
+  async createBookTransfer(params: CreateBookTransferParams) {
+    try {
+      const formData = new URLSearchParams();
+      formData.append('source_account_number_id', params.sourceAccountNumberId);
+      formData.append('destination_account_number_id', params.destinationAccountNumberId);
+      formData.append('amount', params.amount.toString());
+      formData.append('currency_code', params.currencyCode);
+      formData.append('description', params.description);
+      formData.append('idempotency_key', params.idempotencyKey);
+
+      const response = await this.client.post('/transfers/book', formData);
+      return response.data;
+    } catch (error: any) {
+      this.logError('Error creating Column book transfer:', error);
+      if (error.response?.data) {
+        console.error('❌ Book transfer failed:', error.message, error.response.data);
       }
       throw error;
     }

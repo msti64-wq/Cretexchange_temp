@@ -1799,11 +1799,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify the activity
       const activity = await storage.verifyWashoutActivity(id, userId);
 
-      // NEW FEE STRUCTURE: Owner pays $9.00 flat fee, driver gets $5.00 minimum or posted amount
+      // NEW FEE STRUCTURE: Owner pays driver amount + $4.00 platform fee
       const activityAmount = Number(activityDetails.amount);
       const driverAmount = Math.max(activityAmount, 5.00); // Driver gets washout amount or $5.00 minimum
-      const ownerFee = 9.00; // Flat $9.00 fee per washout
       const platformFee = 4.00; // Platform keeps $4.00
+      const ownerFee = driverAmount + platformFee; // Owner pays total: driver amount + platform fee
 
       // Get owner's billing settings for business date calculation
       const billingSettings = await storage.getOwnerBillingSettings(owner.id);
@@ -1887,62 +1887,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 columnCounterpartyId: driver?.columnCounterpartyId
               });
               
-              // 3.5. Create counterparty if driver has Column account but no counterparty yet
-              if (driver?.columnBankAccountId && !driver?.columnCounterpartyId) {
-                try {
-                  console.log(`🔧 Creating counterparty for driver ${driver.id}...`);
-                  const driverBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
-                  const driverAccountNumber = driverBankAccount.default_account_number;
-                  const driverRoutingNumber = driverBankAccount.routing_number;
-                  
-                  const counterpartyResult = await columnService.createCounterparty({
-                    accountNumber: driverAccountNumber,
-                    routingNumber: driverRoutingNumber,
-                    name: `${driverUser?.firstName || ''} ${driverUser?.lastName || ''}`.trim() || 'Driver',
-                  });
-                  
-                  // Update driver record with counterparty ID
-                  await storage.updateDriver(driver.id, {
-                    columnCounterpartyId: counterpartyResult.id,
-                  });
-                  
-                  // Update the driver object so we can use it immediately
-                  driver.columnCounterpartyId = counterpartyResult.id;
-                  console.log(`✅ Counterparty created for driver ${driver.id}: ${counterpartyResult.id}`);
-                } catch (counterpartyError) {
-                  console.error(`❌ Failed to create counterparty for driver ${driver.id}:`, counterpartyError);
-                }
+              // 3. Get account number IDs for book transfers (instant, internal Column transfers)
+              // Get owner's account number ID
+              console.log(`📋 Fetching Column account details for book transfers...`);
+              const ownerBankAccount = await columnService.getBankAccount(owner.columnAccountId);
+              const ownerAccountNumberId = ownerBankAccount.default_account_number?.id;
+              
+              if (!ownerAccountNumberId) {
+                throw new Error('Owner account number ID not found');
               }
               
-              // 4. Create Column transfer to driver ($10.00) from owner's account
-              if (driver?.columnBankAccountId && driver?.columnCounterpartyId) {
-                console.log(`💰 Creating Column CREDIT transfer to driver ${driver.id} for $${driverAmount} from owner's account ${owner.columnAccountId}...`);
+              // 4. Transfer to driver (if driver has Column account)
+              if (driver?.columnBankAccountId) {
+                console.log(`💰 Creating book transfer: Owner → Driver ($${driverAmount})...`);
+                const driverBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
+                const driverAccountNumberId = driverBankAccount.default_account_number?.id;
                 
-                if (!owner.columnAccountId) {
-                  console.error('❌ Owner Column account ID not configured');
+                if (!driverAccountNumberId) {
+                  console.error('❌ Driver account number ID not found');
                 } else {
-                  const driverTransfer = await columnService.createACHTransfer({
-                    counterpartyId: driver.columnCounterpartyId,
-                    bankAccountId: owner.columnAccountId, // Use owner's Column account, not platform
-                    type: 'CREDIT',
+                  const driverTransfer = await columnService.createBookTransfer({
+                    sourceAccountNumberId: ownerAccountNumberId,
+                    destinationAccountNumberId: driverAccountNumberId,
                     amount: Math.round(driverAmount * 100), // Convert to cents
                     currencyCode: 'USD',
                     description: `Washout payment - Activity ${id}`,
-                    entryClassCode: 'WEB',
-                    receiverName: `${driverUser?.firstName || ''} ${driverUser?.lastName || ''}`.trim() || 'Driver'
+                    idempotencyKey: `washout-driver-${id}-${Date.now()}`
                   });
                   
-                  console.log(`✅ Driver Column transfer created: ${driverTransfer.id} for $${driverAmount}`);
+                  console.log(`✅ Driver book transfer created: ${driverTransfer.id} for $${driverAmount}`);
                   
                   // Record the Column transfer ID in the payment
                   await storage.updatePaymentStatus(payment.id, 'completed', driverTransfer.id);
                 }
               } else {
-                console.log(`⚠️ Driver ${driver?.id} does not have Column account configured - driver will receive payment via internal wallet only`);
+                console.log(`⚠️ Driver ${driver?.id} does not have Column account - driver will receive payment via internal wallet only`);
               }
               
-              // 5. Platform fee stays in the platform account (already there, no transfer needed)
-              console.log(`✅ Platform fee of $${platformFee} retained in operating account`);
+              // 5. Transfer platform fee to operating account
+              console.log(`💰 Creating book transfer: Owner → Platform ($${platformFee})...`);
+              const platformAccountId = process.env.COLUMN_PLATFORM_ACCOUNT_ID;
+              if (!platformAccountId) {
+                console.error('❌ COLUMN_PLATFORM_ACCOUNT_ID not configured');
+              } else {
+                const platformBankAccount = await columnService.getBankAccount(platformAccountId);
+                const platformAccountNumberId = platformBankAccount.default_account_number?.id;
+                
+                if (!platformAccountNumberId) {
+                  console.error('❌ Platform account number ID not found');
+                } else {
+                  const platformTransfer = await columnService.createBookTransfer({
+                    sourceAccountNumberId: ownerAccountNumberId,
+                    destinationAccountNumberId: platformAccountNumberId,
+                    amount: Math.round(platformFee * 100), // Convert to cents
+                    currencyCode: 'USD',
+                    description: `Platform fee - Activity ${id}`,
+                    idempotencyKey: `washout-platform-${id}-${Date.now()}`
+                  });
+                  
+                  console.log(`✅ Platform fee book transfer created: ${platformTransfer.id} for $${platformFee}`);
+                }
+              }
               
               console.log(`✅ All Column transfers processed successfully for washout ${id}`);
             }
