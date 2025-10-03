@@ -3109,6 +3109,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/owners/wallet/simulate-settlement - Simulate ACH settlement (sandbox only)
+  app.post('/api/owners/wallet/simulate-settlement', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { columnTransferId } = req.body;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (!columnTransferId) {
+        return res.status(400).json({ message: "Transfer ID is required" });
+      }
+
+      console.log(`🧪 Simulating settlement for transfer ${columnTransferId}`);
+
+      // Simulate ACH settlement via Column API
+      await columnService.settleACHTransfer(columnTransferId);
+
+      // Sync balance from Column to get updated balance
+      try {
+        const accountData = await columnService.getBankAccount(owner.columnAccountId);
+        const columnBalanceCents = accountData?.balances?.available_amount;
+        
+        if (accountData && columnBalanceCents !== undefined) {
+          const columnBalance = (columnBalanceCents / 100).toFixed(2);
+          
+          await db
+            .update(owners)
+            .set({
+              walletBalance: columnBalance,
+              updatedAt: new Date()
+            })
+            .where(eq(owners.id, owner.id));
+          
+          console.log(`✅ Settlement simulated. New balance: $${columnBalance}`);
+        }
+      } catch (syncError: any) {
+        console.error('Balance sync failed after settlement:', syncError.message);
+      }
+
+      res.json({
+        message: "Transfer settled successfully",
+        success: true
+      });
+    } catch (error: any) {
+      console.error("Error simulating settlement:", error);
+      res.status(500).json({ message: "Failed to simulate settlement: " + error.message });
+    }
+  });
+
   // PUT /api/owners/wallet/settings - Update wallet settings (auto top-up, threshold)
   app.put('/api/owners/wallet/settings', isAuthenticated, async (req: any, res) => {
     try {

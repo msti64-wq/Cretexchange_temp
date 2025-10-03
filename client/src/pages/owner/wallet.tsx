@@ -114,6 +114,30 @@ export default function OwnerWallet() {
     },
   });
 
+  const simulateSettlementMutation = useMutation({
+    mutationFn: async (columnTransferId: string) => {
+      const response = await apiRequest("POST", "/api/owners/wallet/simulate-settlement", {
+        columnTransferId
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Transfer settled",
+        description: "The ACH transfer has been settled and your balance updated.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/transactions'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Settlement failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const columnOnboardingMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("POST", "/api/owners/column/onboard", {
@@ -514,15 +538,28 @@ export default function OwnerWallet() {
                         </div>
                       </div>
                     </div>
-                    <div className={`text-right ${getTransactionColor(transaction.transactionType)}`}>
-                      <div className="font-semibold">
-                        {transaction.transactionType === 'funding' ? '+' : '-'}
-                        {formatCurrency(transaction.amount)}
+                    <div className="flex items-center space-x-3">
+                      <div className={`text-right ${getTransactionColor(transaction.transactionType)}`}>
+                        <div className="font-semibold">
+                          {transaction.transactionType === 'funding' ? '+' : '-'}
+                          {formatCurrency(transaction.amount)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {transaction.externalTransactionId && 
+                           `ID: ${transaction.externalTransactionId.slice(-6)}`}
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {transaction.externalTransactionId && 
-                         `ID: ${transaction.externalTransactionId.slice(-6)}`}
-                      </div>
+                      {transaction.status === 'pending' && transaction.externalTransactionId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => simulateSettlementMutation.mutate(transaction.externalTransactionId)}
+                          disabled={simulateSettlementMutation.isPending}
+                          data-testid={`button-settle-${index}`}
+                        >
+                          {simulateSettlementMutation.isPending ? 'Settling...' : 'Settle'}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
