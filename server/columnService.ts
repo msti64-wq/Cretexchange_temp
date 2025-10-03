@@ -39,6 +39,7 @@ interface CreateACHTransferParams {
   currencyCode: string;
   description: string;
   entryClassCode?: string; // Default: 'WEB' for internet-initiated consumer transactions
+  receiverName: string; // Name of the receiver (max 22 characters)
 }
 
 interface SimulateReceiveWireParams {
@@ -147,6 +148,8 @@ export class ColumnService {
       formData.append('description', params.description);
       // Entry class code: WEB for internet-initiated consumer transactions
       formData.append('entry_class_code', params.entryClassCode || 'WEB');
+      // Receiver name (max 22 characters)
+      formData.append('receiver_name', params.receiverName.substring(0, 22));
 
       const response = await this.client.post('/transfers/ach', formData);
       return response.data;

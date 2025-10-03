@@ -989,6 +989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: Math.round(amount * 100), // Convert to cents
         currencyCode: 'USD',
         description: `WashOut Pro payout - $${amount.toFixed(2)}`,
+        receiverName: `${user.firstName} ${user.lastName}`.substring(0, 22)
       });
       
       // Update withdrawal with Column transfer ID and counterparty
@@ -2498,13 +2499,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             if (counterpartyId) {
               // Create ACH debit transfer for auto top-up
+              const user = await storage.getUser(userId);
               const transferResult = await columnService.createACHTransfer({
                 counterpartyId: counterpartyId,
                 bankAccountId: owner.columnAccountId,
                 type: 'DEBIT',
                 amount: Math.round(autoTopupAmount * 100),
                 currencyCode: 'USD',
-                description: `Auto top-up - ${defaultSource.bankName || 'Bank Account'} ****${defaultSource.last4}`
+                description: `Auto top-up - ${defaultSource.bankName || 'Bank Account'} ****${defaultSource.last4}`,
+                receiverName: user ? `${user.firstName} ${user.lastName}`.substring(0, 22) : 'WashOut Owner'
               });
               
               // Record the transaction
@@ -2956,6 +2959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const { amount, fundingSourceId } = req.body;
+      const user = await storage.getUser(userId);
       const owner = await storage.getOwner(userId);
       
       if (!owner) {
@@ -2995,12 +2999,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let counterpartyId = fundingSource.columnCounterpartyId;
       if (!counterpartyId && fundingSource.routingNumber && fundingSource.accountNumber) {
         try {
-          const user = await storage.getUser(userId);
           console.log('Creating Column counterparty for funding source...');
           const counterpartyResult = await columnService.createCounterparty({
             accountNumber: fundingSource.accountNumber,
             routingNumber: fundingSource.routingNumber,
-            name: fundingSource.accountHolderName || `${user.firstName} ${user.lastName}`,
+            name: fundingSource.accountHolderName || `${user?.firstName} ${user?.lastName}`,
           });
           counterpartyId = counterpartyResult.id;
           
@@ -3041,7 +3044,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'DEBIT', // Debit from funding source (external bank)
           amount: Math.round(fundAmount * 100), // Convert to cents
           currencyCode: 'USD',
-          description: `Wallet funding - ${fundingSource.bankName || 'Bank Account'} ****${fundingSource.last4}`
+          description: `Wallet funding - ${fundingSource.bankName || 'Bank Account'} ****${fundingSource.last4}`,
+          receiverName: user ? `${user.firstName} ${user.lastName}`.substring(0, 22) : 'WashOut Owner'
         });
         
         console.log(`✅ ACH transfer created:`, transferResult.id);
