@@ -1914,17 +1914,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
               
-              // 4. Create Column transfer to driver ($5.00)
+              // 4. Create Column transfer to driver ($10.00) from owner's account
               if (driver?.columnBankAccountId && driver?.columnCounterpartyId) {
-                console.log(`💰 Creating Column CREDIT transfer to driver ${driver.id} for $${driverAmount}...`);
+                console.log(`💰 Creating Column CREDIT transfer to driver ${driver.id} for $${driverAmount} from owner's account ${owner.columnAccountId}...`);
                 
-                const platformAccountId = process.env.COLUMN_PLATFORM_ACCOUNT_ID;
-                if (!platformAccountId) {
-                  console.error('❌ COLUMN_PLATFORM_ACCOUNT_ID not configured');
+                if (!owner.columnAccountId) {
+                  console.error('❌ Owner Column account ID not configured');
                 } else {
                   const driverTransfer = await columnService.createACHTransfer({
                     counterpartyId: driver.columnCounterpartyId,
-                    bankAccountId: platformAccountId,
+                    bankAccountId: owner.columnAccountId, // Use owner's Column account, not platform
                     type: 'CREDIT',
                     amount: Math.round(driverAmount * 100), // Convert to cents
                     currencyCode: 'USD',
