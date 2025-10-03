@@ -3037,6 +3037,28 @@ export class DatabaseStorage implements IStorage {
       }
 
       console.log(`✅ Batch processing complete - Processed: ${results.processed}, Failed: ${results.failed}`);
+
+      // ===== MONTHLY FEE PROCESSING =====
+      try {
+        const billingDate = cutoffDate || new Date().toISOString().split('T')[0];
+        console.log(`💳 Checking for monthly fees on ${billingDate}...`);
+
+        // Generate monthly fee entries for owners whose billing anchor day is today
+        const feeGenResult = await this.generateMonthlyFeesForDate(billingDate);
+        console.log(`💳 Generated ${feeGenResult.created} fee entries for ${feeGenResult.owners.length} owners`);
+
+        // Process pending fees (debit owner wallets via Column book transfers)
+        if (feeGenResult.created > 0) {
+          const feeProcessResult = await this.processPendingFees();
+          console.log(`💳 Fee processing: ${feeProcessResult.processed} paid, ${feeProcessResult.failed} failed`);
+          
+          results.errors.push(...feeProcessResult.errors);
+        }
+      } catch (error: any) {
+        console.error('❌ Monthly fee processing error:', error);
+        results.errors.push(`Monthly fees: ${error.message}`);
+      }
+
       return results;
     } catch (error: any) {
       console.error('❌ Daily batch processing failed:', error);
@@ -3568,6 +3590,176 @@ export class DatabaseStorage implements IStorage {
     }
 
     return { created, owners: processedOwners };
+  }
+
+  async processPendingFees(): Promise<{ processed: number; failed: number; errors: string[] }> {
+    const results = {
+      processed: 0,
+      failed: 0,
+      errors: [] as string[]
+    };
+
+    try {
+      // Get all pending fees
+      const pendingFees = await this.getFeeLedgerEntriesByStatus('pending');
+      console.log(`💳 Found ${pendingFees.length} pending fees to process`);
+
+      for (const fee of pendingFees) {
+        try {
+          const owner = fee.owner;
+          
+          // Check if owner has sufficient wallet balance
+          const walletBalance = await this.getOwnerWalletBalance(owner.id);
+          if (!walletBalance) {
+            throw new Error('Owner wallet not found');
+          }
+
+          const balanceCents = Math.round(parseFloat(walletBalance.balance) * 100);
+          const feeCents = fee.amountCents;
+
+          if (balanceCents < feeCents) {
+            // Insufficient funds - mark as failed
+            console.warn(`⚠️  Insufficient funds for fee ${fee.id}: balance $${(balanceCents / 100).toFixed(2)} < fee $${(feeCents / 100).toFixed(2)}`);
+            
+            await this.updateFeeLedgerStatus(
+              fee.id,
+              'failed',
+              undefined,
+              undefined,
+              `Insufficient funds: balance $${(balanceCents / 100).toFixed(2)}, required $${(feeCents / 100).toFixed(2)}`
+            );
+            
+            // Create notification for owner
+            await this.createNotification({
+              userId: owner.userId,
+              title: 'Monthly Fee Payment Failed',
+              message: `Insufficient wallet balance to pay ${fee.feeType} fee of $${(feeCents / 100).toFixed(2)}. Please add funds to your wallet.`,
+              type: 'error',
+            });
+
+            results.failed++;
+            results.errors.push(`Fee ${fee.id}: Insufficient funds`);
+            continue;
+          }
+
+          // Debit owner wallet and transfer to platform via Column
+          await db.transaction(async (tx) => {
+            const feeAmount = (feeCents / 100).toFixed(2);
+            const balanceBefore = walletBalance.balance;
+            const balanceAfter = ((balanceCents - feeCents) / 100).toFixed(2);
+
+            // Create wallet transaction record
+            const [walletTx] = await tx
+              .insert(ownerWalletTransactions)
+              .values({
+                ownerId: owner.id,
+                type: 'fee_debit',
+                amount: feeAmount,
+                balanceBefore,
+                balanceAfter,
+                description: `${fee.feeType} fee for period ${fee.periodStart} to ${fee.periodEnd}${fee.location ? ` (${fee.location.name})` : ''}`,
+                paymentId: null,
+                batchId: null,
+                columnTransferId: null, // Will be updated after Column transfer
+              })
+              .returning();
+
+            // Update owner wallet balance
+            await tx
+              .update(owners)
+              .set({ 
+                walletBalance: balanceAfter,
+                updatedAt: new Date()
+              })
+              .where(eq(owners.id, owner.id));
+
+            // Attempt Column book transfer to platform account
+            let columnTransferId: string | null = null;
+            try {
+              // Import columnService for book transfers
+              const { columnService } = await import('./columnService');
+              
+              // Get platform account from service_payment_accounts
+              const [platformAccount] = await tx
+                .select()
+                .from(servicePaymentAccounts)
+                .where(eq(servicePaymentAccounts.accountType, 'platform'))
+                .limit(1);
+
+              if (!platformAccount || !platformAccount.columnBankAccountId) {
+                throw new Error('Platform Column account not configured');
+              }
+
+              if (!owner.columnAccountId) {
+                throw new Error('Owner Column account not configured');
+              }
+
+              // Create Column book transfer (owner → platform)
+              const columnTransfer = await columnService.createBookTransfer({
+                sender_bank_account_id: owner.columnAccountId,
+                receiver_bank_account_id: platformAccount.columnBankAccountId,
+                amount: feeCents,
+                description: `${fee.feeType} fee - period ${fee.periodStart} to ${fee.periodEnd}`,
+              });
+
+              columnTransferId = columnTransfer.id;
+              console.log(`✅ Column book transfer created: ${columnTransferId} for fee ${fee.id}`);
+
+              // Update wallet transaction with Column transfer ID
+              await tx
+                .update(ownerWalletTransactions)
+                .set({ columnTransferId })
+                .where(eq(ownerWalletTransactions.id, walletTx.id));
+
+            } catch (columnError: any) {
+              console.error(`❌ Column transfer failed for fee ${fee.id}:`, columnError);
+              // If Column transfer fails, we still debited the wallet, so mark as failed with retry
+              await this.updateFeeLedgerStatus(
+                fee.id,
+                'failed',
+                walletTx.id,
+                undefined,
+                `Column transfer failed: ${columnError.message}`
+              );
+              await this.updateFeeLedgerRetryCount(fee.id);
+              
+              results.failed++;
+              results.errors.push(`Fee ${fee.id}: Column transfer failed - ${columnError.message}`);
+              return; // Exit transaction handler
+            }
+
+            // Mark fee as paid
+            await tx
+              .update(feesLedger)
+              .set({
+                status: 'paid',
+                walletTxId: walletTx.id,
+                columnTransferId,
+                paidAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(feesLedger.id, fee.id));
+
+            console.log(`✅ Fee ${fee.id} paid successfully: $${feeAmount} (${fee.feeType})`);
+            results.processed++;
+          });
+
+        } catch (error: any) {
+          console.error(`❌ Error processing fee ${fee.id}:`, error);
+          results.failed++;
+          results.errors.push(`Fee ${fee.id}: ${error.message}`);
+          
+          // Update retry count
+          await this.updateFeeLedgerRetryCount(fee.id);
+        }
+      }
+
+      return results;
+    } catch (error: any) {
+      console.error('❌ Fee processing failed:', error);
+      results.errors.push(`System error: ${error.message}`);
+      return results;
+    }
   }
 }
 
