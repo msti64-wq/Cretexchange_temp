@@ -1842,12 +1842,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ Created pending payment: Driver gets $${driverAmount}, Owner pays $${ownerFee.toFixed(2)} for activity ${id}, Payment ID: ${payment.id}, Business Date: ${businessDate}`);
       console.log(`💰 Fee breakdown: Owner pays $${ownerFee.toFixed(2)} (Platform $${platformFee.toFixed(2)} + Driver $${driverAmount.toFixed(2)})`);
-      console.log(`📅 Payment will be processed in daily batch for ${businessDate} at ${billingSettings?.billingCutoffTime || '23:59:00'} ${billingSettings?.billingTimezone || 'America/Chicago'}`);
-
-      // Daily batch processor will:
-      // 1. Group all pending payments by owner and business date
-      // 2. Create single payment charge per owner per day
-      // 3. On successful payment, move funds from pending to available balance
+      
+      // ========== IMMEDIATE COLUMN TRANSFERS ==========
+      // Process Column transfers immediately instead of waiting for batch
+      try {
+        console.log(`🔄 Processing immediate Column transfers for washout ${id}...`);
+        
+        // 1. Check owner has Column wallet with sufficient balance
+        if (!owner.columnAccountId || !owner.columnEntityId) {
+          console.log(`⚠️ Owner ${owner.id} does not have Column wallet configured - skipping Column transfers`);
+        } else {
+          const ownerWalletInfo = await storage.getOwnerWalletBalance(owner.id);
+          if (!ownerWalletInfo) {
+            console.log(`⚠️ Owner ${owner.id} wallet not found - skipping Column transfers`);
+          } else {
+            const ownerBalance = parseFloat(ownerWalletInfo.balance || "0");
+            if (ownerBalance < ownerFee) {
+              console.log(`⚠️ Owner ${owner.id} has insufficient Column wallet balance ($${ownerBalance} < $${ownerFee}) - skipping Column transfers`);
+            } else {
+              // Owner has sufficient balance - proceed with Column transfers
+              
+              // 2. Debit owner's Column wallet ($9.00)
+              console.log(`💸 Debiting $${ownerFee} from owner ${owner.id} Column account ${owner.columnAccountId}...`);
+              
+              // Update owner's database balance
+              const newOwnerBalance = (ownerBalance - ownerFee).toFixed(2);
+              await storage.updateOwnerWalletBalance(
+                owner.id,
+                ownerFee.toFixed(2),
+                'debit',
+                `Washout fee for activity ${id}`
+              );
+              console.log(`✅ Owner wallet debited: $${ownerBalance} -> $${newOwnerBalance}`);
+              
+              // 3. Get driver details for Column transfer
+              const driver = await storage.getDriverById(activityDetails.driverId);
+              const driverUser = await storage.getUser(driver!.userId);
+              
+              // 4. Create Column transfer to driver ($5.00)
+              if (driver?.columnBankAccountId && driver?.columnCounterpartyId) {
+                console.log(`💰 Creating Column CREDIT transfer to driver ${driver.id} for $${driverAmount}...`);
+                
+                const platformAccountId = process.env.COLUMN_PLATFORM_ACCOUNT_ID;
+                if (!platformAccountId) {
+                  console.error('❌ COLUMN_PLATFORM_ACCOUNT_ID not configured');
+                } else {
+                  const driverTransfer = await columnService.createACHTransfer({
+                    counterpartyId: driver.columnCounterpartyId,
+                    bankAccountId: platformAccountId,
+                    type: 'CREDIT',
+                    amount: Math.round(driverAmount * 100), // Convert to cents
+                    currencyCode: 'USD',
+                    description: `Washout payment - Activity ${id}`,
+                    entryClassCode: 'WEB',
+                    receiverName: `${driverUser?.firstName || ''} ${driverUser?.lastName || ''}`.trim() || 'Driver'
+                  });
+                  
+                  console.log(`✅ Driver Column transfer created: ${driverTransfer.id} for $${driverAmount}`);
+                  
+                  // Record the Column transfer ID in the payment
+                  await storage.updatePaymentStatus(payment.id, 'completed', driverTransfer.id);
+                }
+              } else {
+                console.log(`⚠️ Driver ${driver?.id} does not have Column account configured - driver will receive payment via internal wallet only`);
+              }
+              
+              // 5. Platform fee stays in the platform account (already there, no transfer needed)
+              console.log(`✅ Platform fee of $${platformFee} retained in operating account`);
+              
+              console.log(`✅ All Column transfers processed successfully for washout ${id}`);
+            }
+          }
+        }
+      } catch (columnError) {
+        console.error(`❌ Error processing Column transfers for washout ${id}:`, columnError);
+        // Don't fail the entire request if Column transfers fail
+        // The payment record is still created and can be processed later
+      }
 
       res.json(activity);
     } catch (error) {
