@@ -56,7 +56,7 @@ export default function OwnerNotifications() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setLocation('/owner')}
+              onClick={() => setLocation('/dashboard')}
               className="text-white hover:bg-white/20 p-2"
               data-testid="button-back"
             >
