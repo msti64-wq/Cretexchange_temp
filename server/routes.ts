@@ -5602,6 +5602,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== MONTHLY FEE LEDGER ADMIN ENDPOINTS ====================
+
+  // Get all fee ledger entries with filtering (admin only)
+  app.get('/api/admin/fees/ledger', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { status = 'pending' } = req.query;
+      const fees = await storage.getFeeLedgerEntriesByStatus(status as string);
+      
+      res.json(fees);
+    } catch (error) {
+      console.error("Error fetching fee ledger:", error);
+      res.status(500).json({ message: "Failed to fetch fee ledger" });
+    }
+  });
+
+  // Get specific fee details (admin only)
+  app.get('/api/admin/fees/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { id } = req.params;
+      const fee = await storage.getFeeLedgerEntry(id);
+      
+      if (!fee) {
+        return res.status(404).json({ message: "Fee not found" });
+      }
+
+      res.json(fee);
+    } catch (error) {
+      console.error("Error fetching fee details:", error);
+      res.status(500).json({ message: "Failed to fetch fee details" });
+    }
+  });
+
+  // Get fees for a specific owner (admin only)
+  app.get('/api/admin/fees/owner/:ownerId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { ownerId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      const fees = await storage.getFeeLedgerEntriesByOwner(
+        ownerId,
+        startDate as string,
+        endDate as string
+      );
+      
+      res.json(fees);
+    } catch (error) {
+      console.error("Error fetching owner fees:", error);
+      res.status(500).json({ message: "Failed to fetch owner fees" });
+    }
+  });
+
+  // Get fee summary statistics (admin only)
+  app.get('/api/admin/fees/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const pendingFees = await storage.getFeeLedgerEntriesByStatus('pending');
+      const paidFees = await storage.getFeeLedgerEntriesByStatus('paid');
+      const failedFees = await storage.getFeeLedgerEntriesByStatus('failed');
+
+      const summary = {
+        pending: {
+          count: pendingFees.length,
+          totalAmount: pendingFees.reduce((sum, f) => sum + f.amountCents, 0) / 100,
+        },
+        paid: {
+          count: paidFees.length,
+          totalAmount: paidFees.reduce((sum, f) => sum + f.amountCents, 0) / 100,
+        },
+        failed: {
+          count: failedFees.length,
+          totalAmount: failedFees.reduce((sum, f) => sum + f.amountCents, 0) / 100,
+        },
+        total: {
+          count: pendingFees.length + paidFees.length + failedFees.length,
+          totalAmount: (
+            pendingFees.reduce((sum, f) => sum + f.amountCents, 0) +
+            paidFees.reduce((sum, f) => sum + f.amountCents, 0) +
+            failedFees.reduce((sum, f) => sum + f.amountCents, 0)
+          ) / 100,
+        },
+      };
+
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching fee summary:", error);
+      res.status(500).json({ message: "Failed to fetch fee summary" });
+    }
+  });
+
+  // Retry failed fee (admin only)
+  app.post('/api/admin/fees/:id/retry', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { id } = req.params;
+      const fee = await storage.getFeeLedgerEntry(id);
+      
+      if (!fee) {
+        return res.status(404).json({ message: "Fee not found" });
+      }
+
+      if (fee.status !== 'failed') {
+        return res.status(400).json({ message: "Only failed fees can be retried" });
+      }
+
+      // Reset status to pending for retry
+      await storage.updateFeeLedgerStatus(id, 'pending');
+
+      // Trigger fee processing
+      const result = await storage.processPendingFees();
+
+      res.json({
+        message: "Fee retry initiated",
+        result,
+      });
+    } catch (error) {
+      console.error("Error retrying fee:", error);
+      res.status(500).json({ message: "Failed to retry fee" });
+    }
+  });
+
+  // Manual fee generation (admin only - for testing)
+  app.post('/api/admin/fees/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { billingDate } = req.body;
+      const date = billingDate || new Date().toISOString().split('T')[0];
+
+      console.log(`🔧 Admin triggered manual fee generation for ${date}`);
+      
+      const result = await storage.generateMonthlyFeesForDate(date);
+      
+      res.json({
+        message: "Fee generation completed",
+        billingDate: date,
+        result,
+      });
+    } catch (error) {
+      console.error("Error generating fees:", error);
+      res.status(500).json({ message: "Failed to generate fees" });
+    }
+  });
+
   // Get pending payments summary for current business date
   app.get('/api/owners/billing/pending-summary', isAuthenticated, async (req: any, res) => {
     try {
