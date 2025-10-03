@@ -532,7 +532,9 @@ export class DatabaseStorage implements IStorage {
       
       const currentBalance = parseFloat(currentOwner.balance);
       const changeAmount = parseFloat(amount);
-      const newBalance = type === 'debit' ? currentBalance - changeAmount : currentBalance + changeAmount;
+      // Debit types: subtract from balance
+      const isDebit = type.includes('debit') || type === 'fee_debit';
+      const newBalance = isDebit ? currentBalance - changeAmount : currentBalance + changeAmount;
       
       // Update owner balance
       await tx

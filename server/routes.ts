@@ -1870,7 +1870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.updateOwnerWalletBalance(
                 owner.id,
                 ownerFee.toFixed(2),
-                'debit',
+                'washout_debit',
                 `Washout fee for activity ${id}`
               );
               console.log(`✅ Owner wallet debited: $${ownerBalance} -> $${newOwnerBalance}`);
