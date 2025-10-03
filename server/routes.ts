@@ -1879,6 +1879,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const driver = await storage.getDriverById(activityDetails.driverId);
               const driverUser = await storage.getUser(driver!.userId);
               
+              // 3.5. Create counterparty if driver has Column account but no counterparty yet
+              if (driver?.columnBankAccountId && !driver?.columnCounterpartyId) {
+                try {
+                  console.log(`🔧 Creating counterparty for driver ${driver.id}...`);
+                  const driverBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
+                  const driverAccountNumber = driverBankAccount.default_account_number;
+                  const driverRoutingNumber = driverBankAccount.routing_number;
+                  
+                  const counterpartyResult = await columnService.createCounterparty({
+                    accountNumber: driverAccountNumber,
+                    routingNumber: driverRoutingNumber,
+                    name: `${driverUser?.firstName || ''} ${driverUser?.lastName || ''}`.trim() || 'Driver',
+                  });
+                  
+                  // Update driver record with counterparty ID
+                  await storage.updateDriver(driver.id, {
+                    columnCounterpartyId: counterpartyResult.id,
+                  });
+                  
+                  // Update the driver object so we can use it immediately
+                  driver.columnCounterpartyId = counterpartyResult.id;
+                  console.log(`✅ Counterparty created for driver ${driver.id}: ${counterpartyResult.id}`);
+                } catch (counterpartyError) {
+                  console.error(`❌ Failed to create counterparty for driver ${driver.id}:`, counterpartyError);
+                }
+              }
+              
               // 4. Create Column transfer to driver ($5.00)
               if (driver?.columnBankAccountId && driver?.columnCounterpartyId) {
                 console.log(`💰 Creating Column CREDIT transfer to driver ${driver.id} for $${driverAmount}...`);
