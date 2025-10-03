@@ -47,6 +47,19 @@ Preferred communication style: Simple, everyday language.
 - **Subscription Management**: Monthly/annual billing for washout location owners
 - **Transaction Fees**: 10% processing fee charged to location owners
 
+### Automated Batch Processing
+- **Daily Batch Processor**: Automated system for processing payments and recurring fees
+- **API Endpoint**: `/api/system/daily-batch-job` (authenticated via CRON_JOB_SECRET env var)
+- **Storage Method**: `storage.processDailyBatches()` handles all batch operations
+- **Scheduling**: Designed for external cron services (GitHub Actions, cron-job.org, etc.)
+- **Recommended Frequency**: Every 6 hours to handle different timezone cutoffs
+- **Documentation Endpoint**: `/api/system/batch-job-info` provides setup instructions
+- **Monthly Billing**: Automatically generates and processes monthly location fees based on billing anchor days
+- **Fee Processing**: Debits owner wallets via Column book transfers for location and subscription fees
+- **Insufficient Funds Handling**: Creates notifications, increments retry counters, schedules automatic retries
+- **Idempotency**: Prevents duplicate processing with database checks and transaction locks
+- **Multi-timezone Support**: Each owner's billing processed according to their configured timezone and cutoff time
+
 ### File Management
 - **Google Cloud Storage**: Secure file storage for washout verification photos
 - **Object ACL System**: Granular access control for uploaded images
@@ -209,3 +222,45 @@ When an owner approves a washout, two instant book transfers are executed:
 - Payment record created with Column transfer ID
 - Driver pending balance credited $10
 - Transfers appear instantly in Column Sandbox/Production
+
+### Monthly Billing System
+**Overview**:
+- Automated monthly recurring fees for location subscriptions charged via Column book transfers
+- Super Admin dashboard at `/fees` for monitoring and management
+- Fee types: `location_monthly`, `subscription_monthly`, `subscription_annual`
+
+**Database Schema**:
+- `fees_ledger` table tracks all fee charges with status (pending, paid, failed, cancelled)
+- `owners` table includes `billing_anchor_day` (1-28) for monthly billing date
+- `washout_locations` table includes `monthly_fee` amount per location
+
+**Automated Processing**:
+1. Daily batch processor runs and checks current date against owner billing anchor days
+2. `storage.generateMonthlyFeesForDate()` creates fee entries for qualifying owners
+3. `storage.processPendingFees()` debits owner wallets via Column book transfers
+4. Each fee generates two book transfers: Location fee + Platform fee
+
+**Fee Structure Example**:
+- Location monthly fee: $50 (configurable per location)
+- Owner wallet debited: $50 via Column book transfer
+- Platform account credited: $50 instantly
+
+**Insufficient Funds Handling**:
+- Fee status set to 'failed' with descriptive error message
+- `retry_count` incremented (max 3 retries)
+- Notification created for owner to add funds
+- Next batch run automatically retries failed fees
+- After max retries, fee status remains 'failed' for manual review
+
+**Super Admin Dashboard**:
+- View all fee ledger entries with filtering by owner, status, date range
+- See fee statistics (total collected, pending, failed counts)
+- Manually generate fees for specific owners
+- Retry failed fee processing
+- Export fee data for accounting
+
+**API Endpoints**:
+- `GET /api/admin/fees/ledger` - Query fee ledger with filters
+- `GET /api/admin/fees/summary` - Aggregate fee statistics
+- `POST /api/admin/fees/generate/:ownerId` - Manual fee generation
+- `POST /api/admin/fees/retry/:feeId` - Retry failed fee processing
