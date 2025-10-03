@@ -57,11 +57,17 @@ export default function DriverProfile() {
     lastName: "",
     email: "",
     phone: "",
-    address: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
     paymentMethod: "check",
     paymentFrequency: "weekly",
     employerName: "",
-    employerAddress: "",
+    employerStreet: "",
+    employerCity: "",
+    employerState: "",
+    employerZip: "",
     employerPhone: "",
     truckNumber: "",
     venmoUsername: "",
@@ -81,11 +87,17 @@ export default function DriverProfile() {
         lastName: userData.lastName || "",
         email: userData.email || "",
         phone: userData.phone || "",
-        address: userData.address || "",
+        street: userData.street || "",
+        city: userData.city || "",
+        state: userData.state || "",
+        zip: userData.zip || "",
         paymentMethod: userData.paymentMethod || "check",
         paymentFrequency: userData.paymentFrequency || "weekly",
         employerName: userData.roleData.employerName || "",
-        employerAddress: userData.roleData.employerAddress || "",
+        employerStreet: userData.roleData.employerStreet || "",
+        employerCity: userData.roleData.employerCity || "",
+        employerState: userData.roleData.employerState || "",
+        employerZip: userData.roleData.employerZip || "",
         employerPhone: userData.roleData.employerPhone || "",
         truckNumber: userData.roleData.truckNumber || "",
         venmoUsername: "",
@@ -107,7 +119,10 @@ export default function DriverProfile() {
       // Profile completion criteria
       const isProfileComplete = Boolean(
         userData.phone &&
-        userData.address &&
+        userData.street &&
+        userData.city &&
+        userData.state &&
+        userData.zip &&
         userData.paymentMethod &&
         userData.paymentMethod !== "check" && // "check" was invalid payment method
         roleData.employerName &&
@@ -118,7 +133,7 @@ export default function DriverProfile() {
       // Only show install prompt if profile was just completed
       // Check if this is first time being complete by seeing if essential fields were just filled
       const hasEssentialInfo = Boolean(
-        userData.phone && userData.address && roleData.employerName && roleData.truckNumber
+        userData.phone && userData.street && userData.city && userData.state && userData.zip && roleData.employerName && roleData.truckNumber
       );
       
       console.log('🔍 Profile completion check:', {
@@ -245,13 +260,49 @@ export default function DriverProfile() {
               </div>
               
               <div>
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                <Label htmlFor="street">Street Address</Label>
+                <Input
+                  id="street"
+                  value={formData.street}
+                  onChange={(e) => setFormData({...formData, street: e.target.value})}
                   disabled={!isEditing}
-                  data-testid="textarea-address"
+                  data-testid="input-street"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => setFormData({...formData, city: e.target.value})}
+                    disabled={!isEditing}
+                    data-testid="input-city"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    value={formData.state}
+                    onChange={(e) => setFormData({...formData, state: e.target.value})}
+                    disabled={!isEditing}
+                    maxLength={2}
+                    data-testid="input-state"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="zip">ZIP Code</Label>
+                <Input
+                  id="zip"
+                  value={formData.zip}
+                  onChange={(e) => setFormData({...formData, zip: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="input-zip"
                 />
               </div>
             </CardContent>
@@ -278,13 +329,49 @@ export default function DriverProfile() {
               </div>
               
               <div>
-                <Label htmlFor="employerAddress">Employer Address</Label>
-                <Textarea
-                  id="employerAddress"
-                  value={formData.employerAddress}
-                  onChange={(e) => setFormData({...formData, employerAddress: e.target.value})}
+                <Label htmlFor="employerStreet">Employer Street Address</Label>
+                <Input
+                  id="employerStreet"
+                  value={formData.employerStreet}
+                  onChange={(e) => setFormData({...formData, employerStreet: e.target.value})}
                   disabled={!isEditing}
-                  data-testid="textarea-employer-address"
+                  data-testid="input-employer-street"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="employerCity">Employer City</Label>
+                  <Input
+                    id="employerCity"
+                    value={formData.employerCity}
+                    onChange={(e) => setFormData({...formData, employerCity: e.target.value})}
+                    disabled={!isEditing}
+                    data-testid="input-employer-city"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="employerState">Employer State</Label>
+                  <Input
+                    id="employerState"
+                    value={formData.employerState}
+                    onChange={(e) => setFormData({...formData, employerState: e.target.value})}
+                    disabled={!isEditing}
+                    maxLength={2}
+                    data-testid="input-employer-state"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="employerZip">Employer ZIP Code</Label>
+                <Input
+                  id="employerZip"
+                  value={formData.employerZip}
+                  onChange={(e) => setFormData({...formData, employerZip: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="input-employer-zip"
                 />
               </div>
               
