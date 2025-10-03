@@ -37,6 +37,7 @@ import AdminUsers from "@/pages/admin/users";
 import AdminLocations from "@/pages/admin/locations";
 import AdminPayments from "@/pages/admin/payments";
 import AdminSubscriptions from "@/pages/admin/subscriptions";
+import AdminFees from "@/pages/admin/fees";
 import AdminProfile from "@/pages/admin/profile";
 import ServiceAccountsPage from "@/pages/admin/service-accounts";
 
@@ -123,6 +124,7 @@ function Router() {
         <Route path="/locations" component={AdminLocations} />
         <Route path="/payments" component={AdminPayments} />
         <Route path="/subscriptions" component={AdminSubscriptions} />
+        <Route path="/fees" component={AdminFees} />
         <Route path="/profile" component={AdminProfile} />
         <Route path="/service-accounts" component={ServiceAccountsPage} />
         <Route component={NotFound} />
