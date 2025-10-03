@@ -1887,46 +1887,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 columnCounterpartyId: driver?.columnCounterpartyId
               });
               
-              // 3. Get account number IDs for book transfers (instant, internal Column transfers)
-              // Get owner's account number ID
-              console.log(`📋 Fetching Column account details for book transfers...`);
-              const ownerBankAccount = await columnService.getBankAccount(owner.columnAccountId);
-              console.log(`🔍 Owner bank account structure:`, JSON.stringify(ownerBankAccount, null, 2));
-              
-              // Get account number ID - it's a direct property, not nested
-              let ownerAccountNumberId = ownerBankAccount.default_account_number_id;
-              
-              if (!ownerAccountNumberId) {
-                console.error('❌ Owner account number ID not found in response');
-                throw new Error('Owner account number ID not found');
-              }
-              
-              console.log(`✅ Owner account number ID: ${ownerAccountNumberId}`);
+              // 3. Book transfers use bank account IDs, not account number IDs
+              console.log(`📋 Using bank account IDs for book transfers...`);
+              console.log(`✅ Owner bank account ID: ${owner.columnAccountId}`);
               
               // 4. Transfer to driver (if driver has Column account)
               if (driver?.columnBankAccountId) {
                 console.log(`💰 Creating book transfer: Owner → Driver ($${driverAmount})...`);
-                const driverBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
-                const driverAccountNumberId = driverBankAccount.default_account_number_id;
+                console.log(`   Source: ${owner.columnAccountId}`);
+                console.log(`   Destination: ${driver.columnBankAccountId}`);
                 
-                if (!driverAccountNumberId) {
-                  console.error('❌ Driver account number ID not found');
-                } else {
-                  console.log(`✅ Driver account number ID: ${driverAccountNumberId}`);
-                  const driverTransfer = await columnService.createBookTransfer({
-                    sourceAccountNumberId: ownerAccountNumberId,
-                    destinationAccountNumberId: driverAccountNumberId,
-                    amount: Math.round(driverAmount * 100), // Convert to cents
-                    currencyCode: 'USD',
-                    description: `Washout payment - Activity ${id}`,
-                    idempotencyKey: `washout-driver-${id}-${Date.now()}`
-                  });
-                  
-                  console.log(`✅ Driver book transfer created: ${driverTransfer.id} for $${driverAmount}`);
-                  
-                  // Record the Column transfer ID in the payment
-                  await storage.updatePaymentStatus(payment.id, 'completed', driverTransfer.id);
-                }
+                const driverTransfer = await columnService.createBookTransfer({
+                  senderBankAccountId: owner.columnAccountId,
+                  receiverBankAccountId: driver.columnBankAccountId,
+                  amount: Math.round(driverAmount * 100), // Convert to cents
+                  currencyCode: 'USD',
+                  description: `Washout payment - Activity ${id}`
+                });
+                
+                console.log(`✅ Driver book transfer created: ${driverTransfer.id} for $${driverAmount}`);
+                
+                // Record the Column transfer ID in the payment
+                await storage.updatePaymentStatus(payment.id, 'completed', driverTransfer.id);
               } else {
                 console.log(`⚠️ Driver ${driver?.id} does not have Column account - driver will receive payment via internal wallet only`);
               }
@@ -1937,24 +1919,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (!platformAccountId) {
                 console.error('❌ COLUMN_PLATFORM_ACCOUNT_ID not configured');
               } else {
-                const platformBankAccount = await columnService.getBankAccount(platformAccountId);
-                const platformAccountNumberId = platformBankAccount.default_account_number_id;
+                console.log(`   Source: ${owner.columnAccountId}`);
+                console.log(`   Destination: ${platformAccountId}`);
                 
-                if (!platformAccountNumberId) {
-                  console.error('❌ Platform account number ID not found');
-                } else {
-                  console.log(`✅ Platform account number ID: ${platformAccountNumberId}`);
-                  const platformTransfer = await columnService.createBookTransfer({
-                    sourceAccountNumberId: ownerAccountNumberId,
-                    destinationAccountNumberId: platformAccountNumberId,
-                    amount: Math.round(platformFee * 100), // Convert to cents
-                    currencyCode: 'USD',
-                    description: `Platform fee - Activity ${id}`,
-                    idempotencyKey: `washout-platform-${id}-${Date.now()}`
-                  });
-                  
-                  console.log(`✅ Platform fee book transfer created: ${platformTransfer.id} for $${platformFee}`);
-                }
+                const platformTransfer = await columnService.createBookTransfer({
+                  senderBankAccountId: owner.columnAccountId,
+                  receiverBankAccountId: platformAccountId,
+                  amount: Math.round(platformFee * 100), // Convert to cents
+                  currencyCode: 'USD',
+                  description: `Platform fee - Activity ${id}`
+                });
+                
+                console.log(`✅ Platform fee book transfer created: ${platformTransfer.id} for $${platformFee}`);
               }
               
               console.log(`✅ All Column transfers processed successfully for washout ${id}`);

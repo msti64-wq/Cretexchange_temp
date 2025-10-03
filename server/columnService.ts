@@ -43,12 +43,11 @@ interface CreateACHTransferParams {
 }
 
 interface CreateBookTransferParams {
-  sourceAccountNumberId: string;
-  destinationAccountNumberId: string;
+  senderBankAccountId: string;
+  receiverBankAccountId: string;
   amount: number; // in cents
   currencyCode: string;
   description: string;
-  idempotencyKey: string;
 }
 
 interface SimulateReceiveWireParams {
@@ -178,12 +177,11 @@ export class ColumnService {
   async createBookTransfer(params: CreateBookTransferParams) {
     try {
       const formData = new URLSearchParams();
-      formData.append('source_account_number_id', params.sourceAccountNumberId);
-      formData.append('destination_account_number_id', params.destinationAccountNumberId);
+      formData.append('sender_bank_account_id', params.senderBankAccountId);
+      formData.append('receiver_bank_account_id', params.receiverBankAccountId);
       formData.append('amount', params.amount.toString());
       formData.append('currency_code', params.currencyCode);
       formData.append('description', params.description);
-      formData.append('idempotency_key', params.idempotencyKey);
 
       const response = await this.client.post('/transfers/book', formData);
       return response.data;
