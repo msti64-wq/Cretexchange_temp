@@ -14,13 +14,19 @@ import { Save } from "lucide-react";
 const driverSchema = z.object({
   user: z.object({
     phone: z.string().min(1, "Phone number is required"),
-    address: z.string().min(1, "Address is required"),
+    street: z.string().min(1, "Street is required"),
+    city: z.string().min(1, "City is required"),
+    state: z.string().min(2, "State is required"),
+    zip: z.string().min(5, "ZIP code is required"),
     paymentMethod: z.enum(["check", "venmo", "zelle", "ach"]),
     paymentFrequency: z.enum(["weekly", "biweekly", "monthly"]),
   }),
   driver: z.object({
     employerName: z.string().min(1, "Employer name is required"),
-    employerAddress: z.string().min(1, "Employer address is required"), 
+    employerStreet: z.string().min(1, "Employer street is required"),
+    employerCity: z.string().min(1, "Employer city is required"),
+    employerState: z.string().min(2, "Employer state is required"),
+    employerZip: z.string().min(5, "Employer ZIP is required"),
     employerPhone: z.string().min(1, "Employer phone is required"),
     licenseNumber: z.string().optional(),
     truckNumber: z.string().optional(),
@@ -30,7 +36,10 @@ const driverSchema = z.object({
 const ownerSchema = z.object({
   user: z.object({
     phone: z.string().min(1, "Phone number is required"),
-    address: z.string().min(1, "Address is required"),
+    street: z.string().min(1, "Street is required"),
+    city: z.string().min(1, "City is required"),
+    state: z.string().min(2, "State is required"),
+    zip: z.string().min(5, "ZIP code is required"),
     paymentMethod: z.enum(["ach", "credit_card"]),
   }),
   owner: z.object({
@@ -43,7 +52,10 @@ const ownerSchema = z.object({
 const adminSchema = z.object({
   user: z.object({
     phone: z.string().min(1, "Phone number is required"),
-    address: z.string().min(1, "Address is required"),
+    street: z.string().min(1, "Street is required"),
+    city: z.string().min(1, "City is required"),
+    state: z.string().min(2, "State is required"),
+    zip: z.string().min(5, "ZIP code is required"),
   }),
 });
 
@@ -72,13 +84,19 @@ export function RegistrationForm({ type, onSubmit, isLoading }: RegistrationForm
     defaultValues: {
       user: {
         phone: "",
-        address: "",
+        street: "",
+        city: "",
+        state: "",
+        zip: "",
         paymentMethod: type === "owner" ? "ach" : "check",
         paymentFrequency: "weekly",
       },
       driver: {
         employerName: "",
-        employerAddress: "",
+        employerStreet: "",
+        employerCity: "",
+        employerState: "",
+        employerZip: "",
         employerPhone: "",
         licenseNumber: "",
         truckNumber: "",
@@ -119,12 +137,56 @@ export function RegistrationForm({ type, onSubmit, isLoading }: RegistrationForm
 
               <FormField
                 control={form.control}
-                name="user.address"
+                name="user.street"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Address</FormLabel>
+                    <FormLabel>Street Address</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Your full address" data-testid="textarea-address" />
+                      <Input {...field} placeholder="123 Main St" data-testid="input-street" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="user.city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="City" data-testid="input-city" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="user.state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="ST" maxLength={2} data-testid="input-state" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="user.zip"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ZIP Code</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="12345" data-testid="input-zip" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -218,12 +280,56 @@ export function RegistrationForm({ type, onSubmit, isLoading }: RegistrationForm
 
                 <FormField
                   control={form.control}
-                  name="driver.employerAddress"
+                  name="driver.employerStreet"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Employer Address</FormLabel>
+                      <FormLabel>Employer Street Address</FormLabel>
                       <FormControl>
-                        <Textarea {...field} placeholder="Employer's full address" data-testid="textarea-employer-address" />
+                        <Input {...field} placeholder="123 Business Blvd" data-testid="input-employer-street" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="driver.employerCity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Employer City</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="City" data-testid="input-employer-city" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="driver.employerState"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Employer State</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="ST" maxLength={2} data-testid="input-employer-state" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="driver.employerZip"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Employer ZIP Code</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="12345" data-testid="input-employer-zip" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
