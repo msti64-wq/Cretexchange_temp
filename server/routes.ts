@@ -2620,7 +2620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.updateOwnerWalletBalance(
                 owner.id, 
                 autoTopupAmount.toFixed(2), 
-                'funding',
+                'topup',
                 `Auto top-up from ${defaultSource.bankName || 'Bank Account'} ****${defaultSource.last4}`,
                 transferResult.id
               );
@@ -2659,7 +2659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createNotification({
             userId: userId,
             title: 'Low Balance Alert',
-            message: `Your wallet balance (${formatCurrency(balance)}) is below your threshold of ${formatCurrency(threshold)}. Please fund your wallet to continue service.`,
+            message: `Your wallet balance ($${balance.toFixed(2)}) is below your threshold of $${threshold.toFixed(2)}. Please fund your wallet to continue service.`,
             type: 'low_balance',
             isRead: false,
             data: { balance: balance.toFixed(2), threshold: threshold.toFixed(2) }
