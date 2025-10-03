@@ -1879,6 +1879,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const driver = await storage.getDriverById(activityDetails.driverId);
               const driverUser = await storage.getUser(driver!.userId);
               
+              console.log(`🔍 Driver Column status check:`, {
+                driverId: driver?.id,
+                hasColumnBankAccountId: !!driver?.columnBankAccountId,
+                columnBankAccountId: driver?.columnBankAccountId,
+                hasColumnCounterpartyId: !!driver?.columnCounterpartyId,
+                columnCounterpartyId: driver?.columnCounterpartyId
+              });
+              
               // 3.5. Create counterparty if driver has Column account but no counterparty yet
               if (driver?.columnBankAccountId && !driver?.columnCounterpartyId) {
                 try {
@@ -3026,9 +3034,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       transactions.forEach((txn: any) => {
         const amount = parseFloat(txn.amount);
         
-        if (txn.type === 'funding') {
+        if (txn.type === 'topup') {
           totalFunded += amount;
-        } else if (txn.type === 'payment' || txn.type === 'fee' || txn.type === 'withdrawal') {
+        } else if (txn.type === 'payment' || txn.type === 'fee' || txn.type === 'withdrawal' || txn.type === 'washout_debit' || txn.type === 'fee_debit') {
           totalSpent += amount;
         }
       });
@@ -3158,7 +3166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateOwnerWalletBalance(
         owner.id, 
         fundAmount.toFixed(2), 
-        'funding',
+        'topup',
         `Funding from ${fundingSource.bankName || 'Bank Account'} ****${fundingSource.last4}`,
         transferResult.id
       );
