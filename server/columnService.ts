@@ -38,6 +38,7 @@ interface CreateACHTransferParams {
   amount: number; // in cents
   currencyCode: string;
   description: string;
+  entryClassCode?: string; // Default: 'WEB' for internet-initiated consumer transactions
 }
 
 interface SimulateReceiveWireParams {
@@ -144,11 +145,17 @@ export class ColumnService {
       formData.append('amount', params.amount.toString());
       formData.append('currency_code', params.currencyCode);
       formData.append('description', params.description);
+      // Entry class code: WEB for internet-initiated consumer transactions
+      formData.append('entry_class_code', params.entryClassCode || 'WEB');
 
       const response = await this.client.post('/transfers/ach', formData);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       this.logError('Error creating Column ACH transfer:', error);
+      // Log the full error response for debugging
+      if (error.response?.data) {
+        console.error('❌ ACH transfer failed:', error.message, error.response.data);
+      }
       throw error;
     }
   }
