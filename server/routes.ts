@@ -1799,11 +1799,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify the activity
       const activity = await storage.verifyWashoutActivity(id, userId);
 
-      // NEW FEE STRUCTURE: Owner pays driver amount + $4.00 platform fee
+      // FEE STRUCTURE: Owner pays driver amount (min $10) + $4.00 platform fee
       const activityAmount = Number(activityDetails.amount);
-      const driverAmount = Math.max(activityAmount, 5.00); // Driver gets washout amount or $5.00 minimum
+      const driverAmount = Math.max(activityAmount, 10.00); // Driver gets washout amount or $10.00 minimum
       const platformFee = 4.00; // Platform keeps $4.00
-      const ownerFee = driverAmount + platformFee; // Owner pays total: driver amount + platform fee
+      const ownerFee = driverAmount + platformFee; // Owner pays total: driver amount + platform fee (e.g., $10 + $4 = $14)
 
       // Get owner's billing settings for business date calculation
       const billingSettings = await storage.getOwnerBillingSettings(owner.id);
