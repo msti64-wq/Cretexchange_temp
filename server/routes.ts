@@ -2187,12 +2187,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Owner subscription with Column BaaS
+  // Create Stripe payment intent for $1,500 membership fee
+  app.post('/api/owners/create-membership-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      const owner = await storage.getOwner(userId);
+
+      if (!user || !owner) {
+        return res.status(404).json({ message: "User or owner not found" });
+      }
+
+      if (owner.walletStatus === 'active') {
+        return res.status(400).json({ message: "Membership already activated" });
+      }
+
+      if (!stripe) {
+        return res.status(500).json({ message: "Payment processing is not configured" });
+      }
+
+      const membershipFee = 150000; // $1,500 in cents
+      
+      // Create payment intent with metadata
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: membershipFee,
+        currency: "usd",
+        metadata: {
+          userId: userId,
+          ownerId: owner.id,
+          type: 'membership_fee',
+          plan: 'annual'
+        },
+        description: 'WashOut Pro Platform Membership - One-time Fee'
+      });
+
+      console.log(`💳 Created Stripe payment intent for membership: ${paymentIntent.id} - $1,500`);
+
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id
+      });
+    } catch (error: any) {
+      console.error("Error creating membership payment intent:", error);
+      res.status(500).json({ 
+        message: "Failed to create payment intent",
+        error: error.message 
+      });
+    }
+  });
+
+  // Owner subscription with Column BaaS (requires Stripe payment verification)
   app.post('/api/owners/subscribe', isAuthenticated, async (req: any, res) => {
     try {
       console.log("Column BaaS subscription request started for user:", req.user.id);
       
       const userId = req.user.id;
+      const { paymentIntentId } = req.body;
+      
       const user = await storage.getUser(userId);
       const owner = await storage.getOwner(userId);
 
@@ -2208,31 +2259,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ message: "Wallet already active" });
       }
 
+      // Verify Stripe payment was successful
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "Payment intent ID required" });
+      }
+
+      if (!stripe) {
+        return res.status(500).json({ message: "Payment processing is not configured" });
+      }
+
+      console.log("Verifying Stripe payment intent:", paymentIntentId);
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        console.log("Payment not completed:", paymentIntent.status);
+        return res.status(400).json({ 
+          message: "Payment not completed", 
+          status: paymentIntent.status 
+        });
+      }
+
+      if (paymentIntent.amount !== 150000) { // $1,500 in cents
+        return res.status(400).json({ message: "Invalid payment amount" });
+      }
+
+      console.log("✅ Payment verified - $1,500 received via Stripe");
       console.log("Setting up Column BaaS wallet and activating subscription...");
       
       // Generate subscription ID for Column BaaS
       const subscriptionId = `column_sub_${Date.now()}_${owner.id.substring(0, 8)}`;
       
-      // Set up Column BaaS wallet if needed (Column account will be created via integration)
+      // Set up Column BaaS wallet if needed
       if (!user.columnCustomerId) {
         const columnCustomerId = `column_customer_${Date.now()}_${userId.substring(0, 8)}`;
         console.log("Creating Column BaaS customer:", columnCustomerId);
         await storage.updateUserColumnInfo(userId, columnCustomerId);
       }
 
-      // Activate owner wallet with Column BaaS
-      console.log("Activating owner wallet with Column BaaS:", subscriptionId);
+      // Update owner with subscription info and payment reference
       await storage.updateOwner(owner.id, { 
         walletStatus: 'active',
-        columnAccountId: subscriptionId // Use subscription ID as Column account reference
+        columnAccountId: subscriptionId,
+        subscriptionPlan: 'annual', // One-time membership
+        subscriptionStatus: 'active',
+        stripeCustomerId: paymentIntent.customer as string || null,
+        stripePaymentIntentId: paymentIntentId
       });
 
-      console.log("Column BaaS subscription activated successfully");
+      console.log("✅ Column BaaS subscription activated successfully");
 
       res.json({
         subscriptionId: subscriptionId,
-        message: "Subscription activated with Column BaaS wallet",
-        walletStatus: owner.walletStatus || 'pending_verification'
+        message: "Membership activated - payment received",
+        walletStatus: 'active',
+        paymentStatus: 'completed'
       });
     } catch (error: any) {
       console.error("Column BaaS subscription error:", {
