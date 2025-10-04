@@ -3096,8 +3096,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Funding source not found" });
       }
 
-      console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} from funding source ${fundingSourceId}`);
+      console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} from funding source ${fundingSourceId} (type: ${fundingSource.type})`);
 
+      // Handle credit card funding via Stripe
+      if (fundingSource.type === 'credit_card' || fundingSource.type === 'card') {
+        if (!stripe) {
+          return res.status(400).json({ 
+            message: "Credit card payments are not configured. Please use ACH bank transfer." 
+          });
+        }
+
+        try {
+          console.log('💳 Processing credit card payment via Stripe...');
+          
+          // Create or get Stripe customer for this owner
+          let stripeCustomerId = owner.stripeCustomerId;
+          if (!stripeCustomerId) {
+            const customer = await stripe.customers.create({
+              email: user?.email,
+              name: `${user?.firstName} ${user?.lastName}`,
+              metadata: {
+                ownerId: owner.id,
+                userId: userId,
+              }
+            });
+            stripeCustomerId = customer.id;
+            
+            // Update owner with Stripe customer ID
+            await db
+              .update(owners)
+              .set({ stripeCustomerId })
+              .where(eq(owners.id, owner.id));
+            
+            console.log(`✅ Stripe customer created: ${stripeCustomerId}`);
+          }
+
+          // Create or retrieve Stripe payment method
+          let stripePaymentMethodId = fundingSource.stripePaymentMethodId;
+          if (!stripePaymentMethodId) {
+            // For now, return error - card should already be on file
+            return res.status(400).json({ 
+              message: "Credit card is not properly configured. Please re-add your card." 
+            });
+          }
+
+          // Create payment intent
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(fundAmount * 100), // Convert to cents
+            currency: 'usd',
+            customer: stripeCustomerId,
+            payment_method: stripePaymentMethodId,
+            off_session: true,
+            confirm: true,
+            description: `Wallet funding - ${owner.companyName || 'WashOut Owner'}`,
+            metadata: {
+              ownerId: owner.id,
+              type: 'wallet_funding',
+            }
+          });
+
+          console.log(`✅ Stripe payment intent created: ${paymentIntent.id}, status: ${paymentIntent.status}`);
+
+          if (paymentIntent.status === 'succeeded') {
+            // Record the transaction in database
+            await storage.updateOwnerWalletBalance(
+              owner.id, 
+              fundAmount.toFixed(2), 
+              'topup',
+              `Credit card funding ****${fundingSource.last4}`,
+              paymentIntent.id
+            );
+
+            // Check and manage low balance alerts after funding
+            const updatedOwner = await storage.getOwnerById(owner.id) || owner;
+            await checkAndManageLowBalanceAlert(updatedOwner, userId);
+
+            return res.json({
+              message: "Wallet funded successfully via credit card.",
+              transaction: {
+                transactionId: paymentIntent.id,
+                amount: fundAmount.toFixed(2),
+                status: 'completed',
+                fundingSource: fundingSourceId,
+                createdAt: new Date().toISOString(),
+              }
+            });
+          } else {
+            return res.status(400).json({ 
+              message: `Payment ${paymentIntent.status}. Please try again or contact support.` 
+            });
+          }
+        } catch (error: any) {
+          console.error('❌ Stripe payment failed:', error.message);
+          return res.status(500).json({ 
+            message: error.message || "Credit card payment failed. Please verify your card details and try again." 
+          });
+        }
+      }
+
+      // Handle ACH funding via Column
       // Create or get Column counterparty for this funding source
       let counterpartyId = fundingSource.columnCounterpartyId;
       if (!counterpartyId && fundingSource.routingNumber && fundingSource.accountNumber) {
