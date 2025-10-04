@@ -38,7 +38,11 @@ const initializeStripe = async () => {
   }
 };
 
-const SubscribeForm = ({ clientSecret, onSuccess }: { clientSecret: string; onSuccess: () => void }) => {
+const SubscribeForm = ({ clientSecret, paymentIntentId, onSuccess }: { 
+  clientSecret: string; 
+  paymentIntentId: string;
+  onSuccess: (paymentIntentId: string) => void 
+}) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -57,10 +61,10 @@ const SubscribeForm = ({ clientSecret, onSuccess }: { clientSecret: string; onSu
     setIsProcessing(true);
 
     try {
-      const { error } = await stripe.confirmPayment({
+      const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: window.location.origin,
+          return_url: `${window.location.origin}/owner/subscribe`,
         },
         redirect: 'if_required',
       });
@@ -72,12 +76,12 @@ const SubscribeForm = ({ clientSecret, onSuccess }: { clientSecret: string; onSu
           description: error.message,
           variant: "destructive",
         });
-      } else {
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         toast({
-          title: "Subscription Activated",
-          description: "Your subscription has been activated successfully!",
+          title: "Payment Successful",
+          description: "Activating your membership...",
         });
-        onSuccess();
+        onSuccess(paymentIntent.id);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
@@ -93,36 +97,48 @@ const SubscribeForm = ({ clientSecret, onSuccess }: { clientSecret: string; onSu
   };
 
   return (
-    <div className="space-y-4">
-      {paymentError && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
-            <p className="text-sm text-red-700 dark:text-red-300">{paymentError}</p>
-          </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Payment Details</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Complete your $1,500 membership payment to activate your account
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {paymentError && (
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <p className="text-sm text-red-700 dark:text-red-300">{paymentError}</p>
+              </div>
+            </div>
+          )}
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <PaymentElement />
+            <Button
+              type="submit"
+              className="w-full py-6 text-lg font-semibold"
+              disabled={!stripe || isProcessing}
+              data-testid="button-complete-payment"
+            >
+              <CreditCard className="w-5 h-5 mr-2" />
+              {isProcessing ? "Processing Payment..." : "Pay $1,500 & Activate"}
+            </Button>
+          </form>
         </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <PaymentElement />
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={!stripe || isProcessing}
-          data-testid="button-subscribe"
-        >
-          {isProcessing ? "Processing..." : "Subscribe Now"}
-        </Button>
-      </form>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
 export default function OwnerSubscribe() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "annual">("monthly");
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "annual">("annual");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [stripeLoading, setStripeLoading] = useState(true);
   const [stripeError, setStripeError] = useState<string | null>(null);
 
@@ -147,37 +163,55 @@ export default function OwnerSubscribe() {
     loadStripe();
   }, []);
 
-  const subscribeMutation = useMutation({
+  // Create payment intent for membership
+  const createPaymentMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/owners/subscribe");
+      const response = await apiRequest("POST", "/api/owners/create-membership-payment");
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.clientSecret) {
-        setClientSecret(data.clientSecret);
-      } else {
-        toast({
-          title: "Already Subscribed",
-          description: data.message || "You already have an active subscription.",
-        });
-        setLocation('/');
-      }
+      setClientSecret(data.clientSecret);
+      setPaymentIntentId(data.paymentIntentId);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Subscription Failed",
-        description: error.message,
+        title: "Payment Setup Failed",
+        description: error.message || "Failed to initialize payment",
         variant: "destructive",
       });
     },
   });
 
-  const handleSubscribe = () => {
-    subscribeMutation.mutate();
+  // Activate subscription after successful payment
+  const activateMembershipMutation = useMutation({
+    mutationFn: async (paymentIntentId: string) => {
+      const response = await apiRequest("POST", "/api/owners/subscribe", {
+        paymentIntentId
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Membership Activated!",
+        description: "Welcome to WashOut Pro. Redirecting to dashboard...",
+      });
+      setTimeout(() => setLocation('/owner/dashboard'), 2000);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Activation Failed",
+        description: error.message || "Payment received but activation failed. Please contact support.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStartPayment = () => {
+    createPaymentMutation.mutate();
   };
 
-  const handleSubscriptionSuccess = () => {
-    setLocation('/');
+  const handlePaymentSuccess = (confirmedPaymentIntentId: string) => {
+    activateMembershipMutation.mutate(confirmedPaymentIntentId);
   };
 
   const plans = [
@@ -276,13 +310,13 @@ export default function OwnerSubscribe() {
 
             {/* Subscribe Button */}
             <Button
-              onClick={handleSubscribe}
+              onClick={handleStartPayment}
               className="w-full py-6 text-lg font-semibold bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
-              disabled={subscribeMutation.isPending}
+              disabled={createPaymentMutation.isPending}
               data-testid="button-start-subscription"
             >
               <CreditCard className="w-5 h-5 mr-2" />
-              {subscribeMutation.isPending ? "Processing..." : "Activate Membership - $1,500"}
+              {createPaymentMutation.isPending ? "Setting up payment..." : "Continue to Payment"}
             </Button>
 
             {/* Features Summary */}
@@ -326,37 +360,19 @@ export default function OwnerSubscribe() {
             </Card>
           </>
         ) : (
-          /* Payment Form or Development Mode */
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CreditCard className="w-5 h-5 mr-2" />
-                {clientSecret === 'dev_client_secret' ? 'Development Mode' : 'Complete Your Subscription'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {clientSecret === 'dev_client_secret' ? (
-                <div className="text-center space-y-4">
-                  <p className="text-green-600 font-medium">
-                    Your subscription has been activated in development mode!
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    In production, this would require payment processing through Stripe.
-                  </p>
-                  <Button 
-                    onClick={handleSubscriptionSuccess} 
-                    className="w-full"
-                    data-testid="button-dev-continue"
-                  >
-                    Continue to Dashboard
-                  </Button>
-                </div>
-              ) : stripeLoading ? (
+          /* Payment Form */
+          stripeLoading ? (
+            <Card>
+              <CardContent className="p-8">
                 <div className="text-center space-y-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                   <p className="text-sm text-muted-foreground">Loading payment system...</p>
                 </div>
-              ) : stripeError ? (
+              </CardContent>
+            </Card>
+          ) : stripeError ? (
+            <Card>
+              <CardContent className="p-6">
                 <div className="text-center space-y-4">
                   <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                     <div className="flex items-center justify-center space-x-2 mb-3">
@@ -386,34 +402,32 @@ export default function OwnerSubscribe() {
                     Back to Dashboard
                   </Button>
                 </div>
-              ) : stripePromise ? (
-                <Elements stripe={stripePromise} options={{ clientSecret }}>
-                  <SubscribeForm 
-                    clientSecret={clientSecret} 
-                    onSuccess={handleSubscriptionSuccess}
-                  />
-                </Elements>
-              ) : (
+              </CardContent>
+            </Card>
+          ) : stripePromise && paymentIntentId ? (
+            <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <SubscribeForm 
+                clientSecret={clientSecret} 
+                paymentIntentId={paymentIntentId}
+                onSuccess={handlePaymentSuccess}
+              />
+            </Elements>
+          ) : (
+            <Card>
+              <CardContent className="p-6">
                 <div className="text-center space-y-4">
                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <p className="text-blue-700 dark:text-blue-300 font-medium mb-2">
-                      Development Mode
+                      Payment Setup Required
                     </p>
                     <p className="text-sm text-blue-600 dark:text-blue-400">
-                      Payment processing is disabled. Stripe is not configured.
+                      Setting up payment... Please wait.
                     </p>
                   </div>
-                  <Button 
-                    onClick={() => setLocation('/')} 
-                    variant="ghost"
-                    data-testid="button-back-to-dashboard-dev"
-                  >
-                    Back to Dashboard
-                  </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )
         )}
       </main>
 
