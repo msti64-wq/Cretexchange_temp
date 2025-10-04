@@ -636,6 +636,10 @@ export class DatabaseStorage implements IStorage {
         billingCadence: owners.billingCadence,
         billingCutoffTime: owners.billingCutoffTime,
         billingTimezone: owners.billingTimezone,
+        membershipPaymentMethod: owners.membershipPaymentMethod,
+        membershipPaymentNotes: owners.membershipPaymentNotes,
+        membershipActivatedBy: owners.membershipActivatedBy,
+        membershipActivatedAt: owners.membershipActivatedAt,
         isApproved: owners.isApproved,
         hasAgreedToTerms: owners.hasAgreedToTerms,
         termsAgreedAt: owners.termsAgreedAt,
@@ -1289,11 +1293,11 @@ export class DatabaseStorage implements IStorage {
         ne(washoutActivities.status, 'rejected')
       ));
 
-    // Get subscription statistics
+    // Get owner statistics (using wallet status instead of subscription status)
     const subscriptionStats = await db
       .select({
-        activeLicenses: sql<number>`COUNT(*) FILTER (WHERE ${owners.subscriptionStatus} = 'active')`,
-        licenseRenewals: sql<number>`COUNT(*) FILTER (WHERE ${owners.subscriptionStatus} = 'active' AND ${owners.updatedAt} >= ${startDate})`,
+        activeLicenses: sql<number>`COUNT(*) FILTER (WHERE ${owners.isApproved} = true)`,
+        licenseRenewals: sql<number>`COUNT(*) FILTER (WHERE ${owners.isApproved} = true AND ${owners.updatedAt} >= ${startDate})`,
       })
       .from(owners);
 
@@ -1438,13 +1442,13 @@ export class DatabaseStorage implements IStorage {
       .from(withdrawals)
       .where(gte(withdrawals.createdAt, startDate));
 
-    // Calculate subscription fees (based on active owners)
+    // Calculate subscription fees (based on approved owners)
     const activeOwners = await db
       .select({
         count: count(owners.id),
       })
       .from(owners)
-      .where(eq(owners.subscriptionStatus, 'active'));
+      .where(eq(owners.isApproved, true));
 
     const stats = paymentStats[0] || { totalDriverPayments: 0, totalServiceFees: 0, totalWashouts: 0 };
     const wStats = withdrawalStats[0] || { totalWithdrawalFees: 0, totalWithdrawals: 0 };
