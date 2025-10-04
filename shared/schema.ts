@@ -794,3 +794,9 @@ export const dateRangeSchema = z.enum(['today', 'yesterday', '7days', '30days', 
 export const ownerActivitiesQuerySchema = z.object({
   dateRange: dateRangeSchema.optional(),
 });
+
+// Manual membership activation schema
+export const activateMembershipSchema = z.object({
+  paymentMethod: z.enum(['stripe', 'cash', 'check', 'bank_transfer', 'waived', 'other']),
+  paymentNotes: z.string().optional(),
+});
