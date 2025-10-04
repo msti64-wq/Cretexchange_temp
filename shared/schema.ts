@@ -57,6 +57,7 @@ export const batchStatusEnum = pgEnum("batch_status", ["pending", "processing", 
 export const feeTypeEnum = pgEnum("fee_type", ["location_monthly", "subscription_monthly", "subscription_annual"]);
 export const feeStatusEnum = pgEnum("fee_status", ["pending", "paid", "failed", "past_due", "waived"]);
 export const subscriptionPlanEnum = pgEnum("subscription_plan", ["none", "monthly", "annual"]);
+export const membershipPaymentMethodEnum = pgEnum("membership_payment_method", ["stripe", "cash", "check", "bank_transfer", "waived", "other"]);
 
 // User storage table - local authentication
 export const users = pgTable("users", {
@@ -143,6 +144,11 @@ export const owners = pgTable("owners", {
   subscriptionFeeCents: integer("subscription_fee_cents").default(0), // Monthly or annual fee in cents
   feeAnchorDay: integer("fee_anchor_day").default(1), // Day of month (1-28) for monthly billing
   lastFeeBillingDate: varchar("last_fee_billing_date"), // YYYY-MM-DD format of last fee billing
+  // Membership payment tracking
+  membershipPaymentMethod: membershipPaymentMethodEnum("membership_payment_method"), // How membership fee was paid
+  membershipPaymentNotes: text("membership_payment_notes"), // Optional notes about payment
+  membershipActivatedBy: varchar("membership_activated_by"), // Admin user ID who manually activated (if applicable)
+  membershipActivatedAt: timestamp("membership_activated_at"), // When membership was activated
   isApproved: boolean("is_approved").default(false),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
