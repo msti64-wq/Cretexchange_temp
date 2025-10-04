@@ -609,29 +609,33 @@ export default function OwnerLocations() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <div className="flex gap-1">
-                        <div className="flex flex-wrap gap-1">
-                          <Button
-                            size="sm"
-                            variant={location.isActive ? "default" : "secondary"}
-                            onClick={() => handleToggleStatus(location.id, location.isActive)}
-                            disabled={toggleStatusMutation.isPending}
-                            className={location.isActive ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 hover:bg-gray-600"}
-                            data-testid={`button-toggle-status-${index}`}
-                          >
-                            {location.isActive ? (
-                              <>
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Active
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="w-3 h-3 mr-1" />
-                                Inactive
-                              </>
-                            )}
-                          </Button>
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Set to Inactive to temporarily hide this location from drivers
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex gap-1">
+                          <div className="flex flex-wrap gap-1">
+                            <Button
+                              size="sm"
+                              variant={location.isActive ? "default" : "secondary"}
+                              onClick={() => handleToggleStatus(location.id, location.isActive)}
+                              disabled={toggleStatusMutation.isPending}
+                              className={location.isActive ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 hover:bg-gray-600"}
+                              data-testid={`button-toggle-status-${index}`}
+                            >
+                              {location.isActive ? (
+                                <>
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Active
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-3 h-3 mr-1" />
+                                  Inactive
+                                </>
+                              )}
+                            </Button>
                           <Button
                             size="sm"
                             variant="ghost"
@@ -673,6 +677,7 @@ export default function OwnerLocations() {
                     <div>
                       Created: {new Date(location.createdAt).toLocaleDateString()}
                     </div>
+                  </div>
                   </div>
                 </CardContent>
               </Card>
