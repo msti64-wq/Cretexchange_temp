@@ -26,12 +26,19 @@ const createAdminSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
 });
 
+const activateMembershipSchema = z.object({
+  paymentMethod: z.enum(['stripe', 'cash', 'check', 'bank_transfer', 'waived', 'other']),
+  paymentNotes: z.string().optional(),
+});
+
 export default function AdminUsers() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [activationDialogOpen, setActivationDialogOpen] = useState(false);
+  const [selectedOwner, setSelectedOwner] = useState<any>(null);
 
   const createAdminForm = useForm<z.infer<typeof createAdminSchema>>({
     resolver: zodResolver(createAdminSchema),
@@ -41,6 +48,14 @@ export default function AdminUsers() {
       password: "",
       firstName: "",
       lastName: "",
+    },
+  });
+
+  const activationForm = useForm<z.infer<typeof activateMembershipSchema>>({
+    resolver: zodResolver(activateMembershipSchema),
+    defaultValues: {
+      paymentMethod: 'cash',
+      paymentNotes: '',
     },
   });
 
@@ -84,6 +99,43 @@ export default function AdminUsers() {
 
   const handleCreateAdmin = (data: z.infer<typeof createAdminSchema>) => {
     createAdminMutation.mutate(data);
+  };
+
+  const activateMembershipMutation = useMutation({
+    mutationFn: async (data: { ownerId: string; paymentMethod: string; paymentNotes?: string }) => {
+      const response = await apiRequest("POST", `/api/admin/owners/${data.ownerId}/activate-membership`, {
+        paymentMethod: data.paymentMethod,
+        paymentNotes: data.paymentNotes,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Membership Activated",
+        description: "Owner membership has been activated successfully.",
+      });
+      setActivationDialogOpen(false);
+      setSelectedOwner(null);
+      activationForm.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Activation Failed",
+        description: error.message || "Failed to activate membership",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleActivateMembership = (data: z.infer<typeof activateMembershipSchema>) => {
+    if (selectedOwner) {
+      activateMembershipMutation.mutate({
+        ownerId: selectedOwner.id,
+        paymentMethod: data.paymentMethod,
+        paymentNotes: data.paymentNotes,
+      });
+    }
   };
 
   // Get current user to check if super admin
@@ -503,15 +555,29 @@ export default function AdminUsers() {
                     </div>
                     <div className="flex gap-2">
                       {user.role === 'owner' && !user.roleData?.isApproved && (
-                        <Button
-                          size="sm"
-                          onClick={() => approveOwnerMutation.mutate(user.roleData.id)}
-                          disabled={approveOwnerMutation.isPending}
-                          data-testid={`button-approve-${index}`}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Approve
-                        </Button>
+                        currentUser?.user?.role === 'super_admin' ? (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSelectedOwner(user.roleData);
+                              setActivationDialogOpen(true);
+                            }}
+                            data-testid={`button-manual-activate-${index}`}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Manual Activate
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => approveOwnerMutation.mutate(user.roleData.id)}
+                            disabled={approveOwnerMutation.isPending}
+                            data-testid={`button-approve-${index}`}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                        )
                       )}
                       <Button
                         size="sm"
@@ -543,6 +609,95 @@ export default function AdminUsers() {
           )}
         </div>
       </main>
+
+      {/* Manual Activation Dialog */}
+      <Dialog open={activationDialogOpen} onOpenChange={setActivationDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Manually Activate Membership</DialogTitle>
+          </DialogHeader>
+          
+          <div className="mb-4 text-sm text-muted-foreground">
+            {selectedOwner && (
+              <>
+                <p className="mb-1">
+                  <span className="font-medium">Company:</span> {selectedOwner.companyName}
+                </p>
+                <p>Use this form to activate an owner who paid the membership fee through an alternative method (cash, check, bank transfer, etc.)</p>
+              </>
+            )}
+          </div>
+
+          <Form {...activationForm}>
+            <form onSubmit={activationForm.handleSubmit(handleActivateMembership)} className="space-y-4">
+              <FormField
+                control={activationForm.control}
+                name="paymentMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Method</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-payment-method">
+                          <SelectValue placeholder="Select payment method" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="check">Check</SelectItem>
+                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="waived">Waived (No Payment)</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={activationForm.control}
+                name="paymentNotes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Add any notes about the payment..." 
+                        {...field} 
+                        data-testid="input-payment-notes" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setActivationDialogOpen(false);
+                    setSelectedOwner(null);
+                    activationForm.reset();
+                  }}
+                  data-testid="button-cancel-activation"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={activateMembershipMutation.isPending}
+                  data-testid="button-submit-activation"
+                >
+                  {activateMembershipMutation.isPending ? "Activating..." : "Activate Membership"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <MobileNav role="admin" />
     </div>
