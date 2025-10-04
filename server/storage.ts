@@ -281,6 +281,31 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
+    
+    // Auto-create driver/owner profiles if role is set and profile doesn't exist
+    if (user.role === 'driver') {
+      const existingDriver = await this.getDriver(user.id);
+      if (!existingDriver) {
+        await this.createDriver({
+          userId: user.id,
+          licenseNumber: '',
+          employerName: '',
+          employerPhone: '',
+          truckNumber: '',
+        });
+      }
+    } else if (user.role === 'owner') {
+      const existingOwner = await this.getOwner(user.id);
+      if (!existingOwner) {
+        await this.createOwner({
+          userId: user.id,
+          companyName: '',
+          businessLicense: '',
+          taxId: '',
+        });
+      }
+    }
+    
     return user;
   }
 
@@ -304,7 +329,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(userData: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; phone?: string; address?: string; role: string }): Promise<User> {
+  async createUser(userData: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; phone?: string; street?: string; city?: string; state?: string; zip?: string; role: string }): Promise<User> {
     try {
       const [user] = await db
         .insert(users)
@@ -315,7 +340,10 @@ export class DatabaseStorage implements IStorage {
           firstName: userData.firstName,
           lastName: userData.lastName,
           phone: userData.phone,
-          address: userData.address,
+          street: userData.street,
+          city: userData.city,
+          state: userData.state,
+          zip: userData.zip,
           role: userData.role as any, // Cast to handle enum validation
         })
         .returning();

@@ -54,7 +54,7 @@ export async function setupAuth(app: Express) {
   // Registration route
   app.post("/api/register", async (req, res) => {
     try {
-      const { username, email, password, firstName, lastName, phone, address, role } = req.body;
+      const { username, email, password, firstName, lastName, phone, street, city, state, zip, role } = req.body;
 
       // Validate role field
       if (!role || !['driver', 'owner', 'admin', 'super_admin'].includes(role)) {
@@ -85,7 +85,10 @@ export async function setupAuth(app: Express) {
         firstName,
         lastName,
         phone,
-        address,
+        street,
+        city,
+        state,
+        zip,
         role,
       });
 
