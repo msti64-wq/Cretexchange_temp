@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building, Search, Filter, Eye, EyeOff, MapPin, DollarSign } from "lucide-react";
+import { Building, Search, Filter, Eye, EyeOff, MapPin } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -322,7 +322,7 @@ export default function AdminLocations() {
                       Created: {new Date(location.createdAt).toLocaleDateString()}
                     </div>
                     <div className="flex items-center">
-                      <DollarSign className="w-4 h-4 mr-1" />
+                      <MapPin className="w-4 h-4 mr-1" />
                       GPS: {location.latitude}, {location.longitude}
                     </div>
                   </div>
