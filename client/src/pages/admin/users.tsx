@@ -555,7 +555,7 @@ export default function AdminUsers() {
                     </div>
                     <div className="flex gap-2">
                       {user.role === 'owner' && !user.roleData?.isApproved && (
-                        currentUser?.user?.role === 'super_admin' ? (
+                        (currentUser as any)?.role === 'super_admin' ? (
                           <Button
                             size="sm"
                             onClick={() => {
