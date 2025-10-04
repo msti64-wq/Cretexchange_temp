@@ -225,25 +225,30 @@ When an owner approves a washout, two instant book transfers are executed:
 
 ### Monthly Billing System
 **Overview**:
-- Automated monthly recurring fees for location subscriptions charged via Column book transfers
+- Automated monthly recurring fees for washout locations charged via Column book transfers
 - Super Admin dashboard at `/fees` for monitoring and management
-- Fee types: `location_monthly`, `subscription_monthly`, `subscription_annual`
+- Fee types: `location_monthly` only (subscription fees are one-time during signup)
+
+**Pricing Structure**:
+- **One-time Platform Membership**: $1,500 (paid once during owner signup/subscription activation)
+- **Per-Location Monthly Fee**: $100/month per active washout location
+- No recurring subscription fees - monthly billing only generates location fees
 
 **Database Schema**:
 - `fees_ledger` table tracks all fee charges with status (pending, paid, failed, cancelled)
 - `owners` table includes `billing_anchor_day` (1-28) for monthly billing date
-- `washout_locations` table includes `monthly_fee` amount per location
+- `washout_locations` table includes `monthly_fee` amount per location (default: $100)
 
 **Automated Processing**:
 1. Daily batch processor runs and checks current date against owner billing anchor days
-2. `storage.generateMonthlyFeesForDate()` creates fee entries for qualifying owners
+2. `storage.generateMonthlyFeesForDate()` creates location fee entries for qualifying owners
 3. `storage.processPendingFees()` debits owner wallets via Column book transfers
-4. Each fee generates two book transfers: Location fee + Platform fee
+4. Each location fee generates a Column book transfer from owner to platform
 
-**Fee Structure Example**:
-- Location monthly fee: $50 (configurable per location)
-- Owner wallet debited: $50 via Column book transfer
-- Platform account credited: $50 instantly
+**Fee Structure**:
+- Location monthly fee: $100 per location (configurable)
+- Owner wallet debited: $100 per location via Column book transfer
+- Platform account credited: $100 per location instantly
 
 **Insufficient Funds Handling**:
 - Fee status set to 'failed' with descriptive error message

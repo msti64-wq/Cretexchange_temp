@@ -3537,22 +3537,8 @@ export class DatabaseStorage implements IStorage {
         periodEndDate.setDate(periodEndDate.getDate() - 1);
         const periodEnd = periodEndDate.toISOString().split('T')[0];
 
-        // Create subscription fee if applicable
-        if (owner.subscriptionPlan && owner.subscriptionPlan !== 'none' && owner.subscriptionFeeCents && owner.subscriptionFeeCents > 0) {
-          await this.createFeeLedgerEntry({
-            ownerId: owner.id,
-            feeType: owner.subscriptionPlan === 'annual' ? 'subscription_annual' : 'subscription_monthly',
-            amountCents: owner.subscriptionFeeCents,
-            periodStart,
-            periodEnd,
-            status: 'pending',
-            metadata: {
-              planType: owner.subscriptionPlan,
-              generatedAt: new Date().toISOString(),
-            },
-          });
-          created++;
-        }
+        // Skip subscription fees - membership is now one-time $1500 payment during signup
+        // Only charge monthly location fees (handled below)
 
         // Create location fees for all active locations
         const locations = await this.getLocationsByOwner(owner.id);

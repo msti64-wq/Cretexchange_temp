@@ -182,36 +182,22 @@ export default function OwnerSubscribe() {
 
   const plans = [
     {
-      id: "monthly",
-      name: "Monthly",
-      price: 100,
-      period: "month",
-      features: [
-        "Unlimited locations",
-        "Real-time driver tracking",
-        "Photo verification",
-        "Payment processing",
-        "Customer support",
-        "Analytics dashboard"
-      ],
-      popular: false,
-    },
-    {
       id: "annual",
-      name: "Annual",
-      price: 1000,
-      period: "year",
-      originalPrice: 1200,
-      savings: 200,
+      name: "Platform Membership",
+      price: 1500,
+      period: "one-time",
       features: [
-        "All monthly features",
-        "Priority support",
-        "Advanced analytics",
-        "Custom reporting",
+        "Unlimited washout locations",
+        "Real-time driver tracking",
+        "Photo verification for washouts",
+        "Automated payment processing",
+        "Priority customer support",
+        "Analytics & reporting dashboard",
         "API access",
         "White-label options"
       ],
       popular: true,
+      description: "$100/month per location + one-time $1,500 membership fee"
     }
   ];
 
@@ -234,8 +220,8 @@ export default function OwnerSubscribe() {
               <Crown className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-lg">Choose Your Plan</h1>
-              <p className="text-white/80 text-sm">Upgrade to unlock all features</p>
+              <h1 className="font-semibold text-lg">Platform Membership</h1>
+              <p className="text-white/80 text-sm">Join WashOut Pro</p>
             </div>
           </div>
         </div>
@@ -267,15 +253,12 @@ export default function OwnerSubscribe() {
                         <div className="text-3xl font-bold text-primary" data-testid={`text-price-${plan.id}`}>
                           ${plan.price}
                         </div>
-                        <div className="text-sm text-muted-foreground">per {plan.period}</div>
-                        {plan.originalPrice && (
-                          <div className="text-sm text-muted-foreground">
-                            <span className="line-through">${plan.originalPrice}</span>
-                            <span className="text-green-600 ml-2">Save ${plan.savings}</span>
-                          </div>
-                        )}
+                        <div className="text-sm text-muted-foreground">{plan.period}</div>
                       </div>
                     </div>
+                    {plan.description && (
+                      <p className="text-sm text-muted-foreground mt-2 px-1">{plan.description}</p>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2">
@@ -299,7 +282,7 @@ export default function OwnerSubscribe() {
               data-testid="button-start-subscription"
             >
               <CreditCard className="w-5 h-5 mr-2" />
-              {subscribeMutation.isPending ? "Setting up..." : "Start Subscription"}
+              {subscribeMutation.isPending ? "Processing..." : "Activate Membership - $1,500"}
             </Button>
 
             {/* Features Summary */}
