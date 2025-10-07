@@ -195,7 +195,7 @@ export default function OwnerSubscribe() {
         title: "Membership Activated!",
         description: "Welcome to WashOut Pro. Redirecting to dashboard...",
       });
-      setTimeout(() => setLocation('/owner/dashboard'), 2000);
+      setTimeout(() => setLocation('/dashboard'), 2000);
     },
     onError: (error: any) => {
       toast({
