@@ -3173,7 +3173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // For bank accounts, create Column counterparty for ACH transfers
       let columnCounterpartyId = null;
-      if (sourceType === 'bank_account' && accountNumber && routingNumber) {
+      if ((sourceType === 'bank_account' || sourceType === 'ach') && accountNumber && routingNumber) {
         try {
           console.log('Creating Column counterparty for ACH funding source...');
           const counterpartyResult = await columnService.createCounterparty({
@@ -3194,11 +3194,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Prepare funding source data
       const fundingSourceData: any = {
         ownerId: owner.id,
-        type: sourceType === 'bank_account' ? 'ach' : sourceType,
+        type: sourceType === 'bank_account' || sourceType === 'ach' ? 'ach' : sourceType,
         isDefault: true,
       };
 
-      if (sourceType === 'bank_account') {
+      if (sourceType === 'bank_account' || sourceType === 'ach') {
         fundingSourceData.bankName = bankName;
         fundingSourceData.accountHolderName = accountHolderName;
         fundingSourceData.routingNumber = routingNumber;
