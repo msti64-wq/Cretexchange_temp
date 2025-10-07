@@ -15,7 +15,18 @@ export interface Address {
  */
 export function formatAddress(address: Address | { street?: string; city?: string; state?: string; zip?: string }): string {
   const { street, city, state, zip } = address;
-  return `${street || ''}, ${city || ''}, ${state || ''} ${zip || ''}`.replace(/,\s*,/g, ',').trim();
+  
+  // Build address parts array, filtering out empty values
+  const parts: string[] = [];
+  
+  if (street?.trim()) parts.push(street.trim());
+  if (city?.trim()) parts.push(city.trim());
+  
+  // Combine state and zip if both present
+  const stateZip = [state?.trim(), zip?.trim()].filter(Boolean).join(' ');
+  if (stateZip) parts.push(stateZip);
+  
+  return parts.join(', ');
 }
 
 /**
