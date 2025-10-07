@@ -14,6 +14,7 @@ import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Set
 import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatAddress } from "@shared/addressUtils";
 
 export default function OwnerLocations() {
   const { toast } = useToast();
@@ -123,7 +124,10 @@ export default function OwnerLocations() {
 
   const [formData, setFormData] = useState({
     name: "",
-    address: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
     latitude: "",
     longitude: "",
     rate: "5.00",
@@ -133,7 +137,10 @@ export default function OwnerLocations() {
 
   const [editFormData, setEditFormData] = useState({
     name: "",
-    address: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
     latitude: "",
     longitude: "",
     rate: "5.00",
@@ -164,7 +171,10 @@ export default function OwnerLocations() {
     setLocationToEdit(location);
     setEditFormData({
       name: location.name || "",
-      address: location.address || "",
+      street: location.street || "",
+      city: location.city || "",
+      state: location.state || "",
+      zip: location.zip || "",
       latitude: location.latitude?.toString() || "",
       longitude: location.longitude?.toString() || "",
       rate: location.rate?.toString() || "5.00",
@@ -276,13 +286,53 @@ export default function OwnerLocations() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Textarea
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  <Label htmlFor="street">Street Address</Label>
+                  <Input
+                    id="street"
+                    value={formData.street}
+                    onChange={(e) => setFormData({...formData, street: e.target.value})}
+                    placeholder="123 Main Street"
                     required
-                    data-testid="textarea-address"
+                    data-testid="input-street"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      value={formData.city}
+                      onChange={(e) => setFormData({...formData, city: e.target.value})}
+                      placeholder="Austin"
+                      required
+                      data-testid="input-city"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="state">State</Label>
+                    <Input
+                      id="state"
+                      value={formData.state}
+                      onChange={(e) => setFormData({...formData, state: e.target.value})}
+                      placeholder="TX"
+                      maxLength={2}
+                      required
+                      data-testid="input-state"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="zip">ZIP Code</Label>
+                  <Input
+                    id="zip"
+                    value={formData.zip}
+                    onChange={(e) => setFormData({...formData, zip: e.target.value})}
+                    placeholder="78701"
+                    maxLength={10}
+                    required
+                    data-testid="input-zip"
                   />
                 </div>
 
@@ -380,13 +430,53 @@ export default function OwnerLocations() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="edit-address">Address</Label>
-                  <Textarea
-                    id="edit-address"
-                    value={editFormData.address}
-                    onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
+                  <Label htmlFor="edit-street">Street Address</Label>
+                  <Input
+                    id="edit-street"
+                    value={editFormData.street}
+                    onChange={(e) => setEditFormData({...editFormData, street: e.target.value})}
+                    placeholder="123 Main Street"
                     required
-                    data-testid="textarea-edit-address"
+                    data-testid="input-edit-street"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-city">City</Label>
+                    <Input
+                      id="edit-city"
+                      value={editFormData.city}
+                      onChange={(e) => setEditFormData({...editFormData, city: e.target.value})}
+                      placeholder="Austin"
+                      required
+                      data-testid="input-edit-city"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-state">State</Label>
+                    <Input
+                      id="edit-state"
+                      value={editFormData.state}
+                      onChange={(e) => setEditFormData({...editFormData, state: e.target.value})}
+                      placeholder="TX"
+                      maxLength={2}
+                      required
+                      data-testid="input-edit-state"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="edit-zip">ZIP Code</Label>
+                  <Input
+                    id="edit-zip"
+                    value={editFormData.zip}
+                    onChange={(e) => setEditFormData({...editFormData, zip: e.target.value})}
+                    placeholder="78701"
+                    maxLength={10}
+                    required
+                    data-testid="input-edit-zip"
                   />
                 </div>
 
@@ -590,7 +680,12 @@ export default function OwnerLocations() {
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground" data-testid={`text-location-address-${index}`}>
-                          {location.address}
+                          {formatAddress({
+                            street: location.street,
+                            city: location.city,
+                            state: location.state,
+                            zip: location.zip
+                          })}
                         </p>
                         {location.description && (
                           <p className="text-sm text-muted-foreground mt-1" data-testid={`text-location-description-${index}`}>
