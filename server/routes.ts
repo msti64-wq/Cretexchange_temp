@@ -2436,6 +2436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         walletStatus: 'active',
         subscriptionPlan: 'annual', // One-time membership
         subscriptionStatus: 'active',
+        isApproved: true, // Auto-approve after successful payment
         stripeCustomerId: paymentIntent.customer as string || null,
         stripePaymentIntentId: paymentIntentId
       });
