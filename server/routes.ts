@@ -3169,7 +3169,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cvv
       } = req.body;
 
-      console.log(`Adding funding source for owner ${owner.id}:`, { sourceType });
+      console.log(`Adding funding source for owner ${owner.id}:`, { 
+        sourceType, 
+        bankName, 
+        accountHolderName, 
+        routingNumber, 
+        accountNumber: accountNumber ? `${accountNumber.substring(0, 4)}****` : undefined 
+      });
 
       // For bank accounts, create Column counterparty for ACH transfers
       let columnCounterpartyId = null;
