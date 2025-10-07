@@ -176,6 +176,32 @@ export class ColumnService {
 
   async createBookTransfer(params: CreateBookTransferParams) {
     try {
+      // Check if we're using fake test account IDs in development
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const isFakeTestAccount = params.senderBankAccountId.startsWith('bacc_test_') || 
+                                params.receiverBankAccountId.startsWith('bacc_test_');
+      
+      // In development with fake test IDs, simulate the transfer
+      if (isDevelopment && isFakeTestAccount) {
+        console.log('🔧 Development mode: Simulating Column book transfer (fake test accounts)');
+        console.log(`   From: ${params.senderBankAccountId}`);
+        console.log(`   To: ${params.receiverBankAccountId}`);
+        console.log(`   Amount: ${params.amount} cents ($${(params.amount / 100).toFixed(2)})`);
+        
+        // Return a simulated response
+        return {
+          id: `btfr_sim_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+          sender_bank_account_id: params.senderBankAccountId,
+          receiver_bank_account_id: params.receiverBankAccountId,
+          amount: params.amount,
+          currency_code: params.currencyCode,
+          description: params.description,
+          status: 'completed',
+          created_at: new Date().toISOString(),
+          simulated: true
+        };
+      }
+
       const formData = new URLSearchParams();
       formData.append('sender_bank_account_id', params.senderBankAccountId);
       formData.append('receiver_bank_account_id', params.receiverBankAccountId);
