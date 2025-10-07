@@ -230,8 +230,8 @@ export default function OwnerSubscribe() {
         "API access",
         "White-label options"
       ],
-      popular: true,
-      description: "$100/month per location + one-time $1,500 membership fee"
+      popular: false,
+      description: ""
     }
   ];
 
