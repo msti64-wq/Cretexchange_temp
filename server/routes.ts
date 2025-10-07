@@ -2395,20 +2395,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("✅ Payment verified - $1,500 received via Stripe");
       console.log("Setting up Column BaaS wallet and activating subscription...");
       
-      // Generate subscription ID for Column BaaS
-      const subscriptionId = `column_sub_${Date.now()}_${owner.id.substring(0, 8)}`;
-      
-      // Set up Column BaaS wallet if needed
-      if (!user.columnCustomerId) {
-        const columnCustomerId = `column_customer_${Date.now()}_${userId.substring(0, 8)}`;
-        console.log("Creating Column BaaS customer:", columnCustomerId);
-        await storage.updateUserColumnInfo(userId, columnCustomerId);
+      // Create Column entity and bank account
+      let entityData, accountData;
+      try {
+        // Create Column person entity (using sandbox-safe test data)
+        entityData = await columnService.createPersonEntity({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          ssn: '000000000', // Sandbox test value
+          dateOfBirth: '1990-01-01', // Sandbox test value
+          address: {
+            line1: '123 Main St',
+            city: 'San Francisco',
+            state: 'CA',
+            postalCode: '94105',
+            countryCode: 'US'
+          }
+        });
+        console.log("✅ Created Column entity:", entityData.id);
+
+        // Create Column bank account for the owner's wallet
+        accountData = await columnService.createBankAccount({
+          entityId: entityData.id,
+          description: `${user.firstName} ${user.lastName} - WashOut Pro Wallet`
+        });
+        console.log("✅ Created Column bank account:", accountData.id);
+      } catch (error: any) {
+        console.error("Failed to create Column account:", error);
+        return res.status(500).json({ 
+          message: "Payment received but failed to create wallet account. Please contact support.",
+          error: error.message 
+        });
       }
 
-      // Update owner with subscription info and payment reference
+      // Update owner with Column info and subscription
       await storage.updateOwner(owner.id, { 
+        columnEntityId: entityData.id,
+        columnAccountId: accountData.id,
         walletStatus: 'active',
-        columnAccountId: subscriptionId,
         subscriptionPlan: 'annual', // One-time membership
         subscriptionStatus: 'active',
         stripeCustomerId: paymentIntent.customer as string || null,
@@ -2418,8 +2443,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("✅ Column BaaS subscription activated successfully");
 
       res.json({
-        subscriptionId: subscriptionId,
-        message: "Membership activated - payment received",
+        success: true,
+        columnEntityId: entityData.id,
+        columnAccountId: accountData.id,
+        message: "Membership activated - payment received and wallet created",
         walletStatus: 'active',
         paymentStatus: 'completed'
       });
