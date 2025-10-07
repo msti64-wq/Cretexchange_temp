@@ -3009,6 +3009,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/owners/funding-sources - Add a new funding source
+  app.post('/api/owners/funding-sources', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      const user = await storage.getUser(userId);
+      
+      if (!owner || !user) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const { 
+        sourceType,
+        bankName,
+        accountHolderName,
+        routingNumber,
+        accountNumber,
+        cardholderName,
+        cardNumber,
+        expiryMonth,
+        expiryYear,
+        cvv
+      } = req.body;
+
+      console.log(`Adding funding source for owner ${owner.id}:`, { sourceType });
+
+      // For bank accounts, create Column counterparty for ACH transfers
+      let columnCounterpartyId = null;
+      if (sourceType === 'bank_account' && accountNumber && routingNumber) {
+        try {
+          console.log('Creating Column counterparty for ACH funding source...');
+          const counterpartyResult = await columnService.createCounterparty({
+            accountNumber: accountNumber,
+            routingNumber: routingNumber,
+            name: accountHolderName || `${user.firstName} ${user.lastName}`,
+          });
+          columnCounterpartyId = counterpartyResult.id;
+          console.log(`Column counterparty created: ${columnCounterpartyId}`);
+        } catch (error: any) {
+          console.error('Failed to create Column counterparty:', error.message);
+          return res.status(500).json({ 
+            message: "Failed to create Column counterparty: " + error.message 
+          });
+        }
+      }
+
+      // Prepare funding source data
+      const fundingSourceData: any = {
+        ownerId: owner.id,
+        type: sourceType === 'bank_account' ? 'ach' : sourceType,
+        isDefault: true,
+      };
+
+      if (sourceType === 'bank_account') {
+        fundingSourceData.bankName = bankName;
+        fundingSourceData.accountHolderName = accountHolderName;
+        fundingSourceData.routingNumber = routingNumber;
+        fundingSourceData.accountNumber = accountNumber;
+        fundingSourceData.last4 = accountNumber.slice(-4);
+        fundingSourceData.columnCounterpartyId = columnCounterpartyId;
+      } else if (sourceType === 'credit_card') {
+        fundingSourceData.cardholderName = cardholderName;
+        fundingSourceData.last4 = cardNumber.slice(-4);
+        fundingSourceData.expiryMonth = expiryMonth;
+        fundingSourceData.expiryYear = expiryYear;
+        // Note: CVV should never be stored
+      }
+
+      // Save to database
+      const savedSource = await storage.createOwnerFundingSource(fundingSourceData);
+
+      res.json({
+        message: "Funding source added successfully",
+        source: {
+          id: savedSource.id,
+          sourceType: savedSource.type === 'ach' ? 'bank_account' : savedSource.type,
+          bankName: savedSource.bankName,
+          accountNumberLast4: savedSource.last4,
+          isPrimary: savedSource.isDefault,
+          isVerified: savedSource.isActive,
+          columnCounterpartyId: savedSource.columnCounterpartyId,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error adding funding source:", error);
+      res.status(500).json({ message: "Failed to add funding source: " + error.message });
+    }
+  });
+
   // GET /api/owners/wallet/transactions - Get owner's wallet transaction history
   app.get('/api/owners/wallet/transactions', isAuthenticated, async (req: any, res) => {
     try {
