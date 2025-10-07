@@ -1472,13 +1472,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Owner not approved" });
       }
 
+      // Check if owner has sufficient wallet balance for monthly fee
+      const monthlyFeeCents = 10000; // $100 in cents
+      const monthlyFee = (monthlyFeeCents / 100).toFixed(2);
+      const currentBalance = parseFloat(owner.walletBalance || '0');
+      
+      if (currentBalance < parseFloat(monthlyFee)) {
+        return res.status(400).json({ 
+          message: `Insufficient wallet balance. $${monthlyFee} required for monthly location fee, current balance: $${currentBalance.toFixed(2)}` 
+        });
+      }
+
+      // Validate location data
       const locationData = insertWashoutLocationSchema.parse({
         ...req.body,
         ownerId: owner.id,
       });
 
+      // Create the location
       const location = await storage.createWashoutLocation(locationData);
-      res.json(location);
+      console.log(`📍 Location created: ${location.id} - ${location.name}`);
+
+      // Calculate billing period (current month)
+      const now = new Date();
+      const periodStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const periodEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+      console.log(`💰 Processing monthly fee: $${monthlyFee} for period ${periodStart} to ${periodEnd}`);
+
+      try {
+        // 1. Create fees_ledger record
+        const feeRecord = await storage.createFeeLedgerEntry({
+          ownerId: owner.id,
+          feeType: 'monthly_location_fee',
+          locationId: location.id,
+          amountCents: monthlyFeeCents,
+          periodStart,
+          periodEnd,
+          status: 'pending',
+          metadata: {
+            locationName: location.name,
+            chargedOnCreation: true
+          }
+        });
+        console.log(`📝 Fee ledger entry created: ${feeRecord.id}`);
+
+        // 2. Process Column book transfer (owner → platform)
+        const platformAccountId = process.env.COLUMN_PLATFORM_ACCOUNT_ID;
+        if (!platformAccountId) {
+          throw new Error('Platform Column account not configured');
+        }
+
+        if (!owner.columnAccountId) {
+          throw new Error('Owner Column account not configured');
+        }
+
+        console.log(`💸 Creating Column book transfer: Owner ${owner.id} → Platform`);
+        console.log(`   Amount: $${monthlyFee} (${monthlyFeeCents} cents)`);
+        console.log(`   From: ${owner.columnAccountId}`);
+        console.log(`   To: ${platformAccountId}`);
+
+        const columnTransfer = await columnService.createBookTransfer({
+          senderBankAccountId: owner.columnAccountId,
+          receiverBankAccountId: platformAccountId,
+          amount: monthlyFeeCents,
+          currencyCode: 'USD',
+          description: `Monthly location fee - ${location.name} (${periodStart})`
+        });
+        console.log(`✅ Column book transfer created: ${columnTransfer.id}`);
+
+        // 3. Update owner's wallet balance and create transaction record
+        // This method handles both balance update and transaction creation atomically
+        await storage.updateOwnerWalletBalance(
+          owner.id,
+          monthlyFee,
+          'fee_debit',
+          `Monthly location fee - ${location.name}`
+        );
+        console.log(`💰 Owner wallet debited: $${monthlyFee}`);
+
+        // 4. Get the wallet transaction that was just created
+        const transactions = await storage.getOwnerWalletTransactions(owner.id);
+        const walletTx = transactions[0]; // Most recent transaction
+        console.log(`💳 Wallet transaction recorded: ${walletTx.id}`);
+
+        // 5. Mark fee as paid in ledger
+        await storage.markFeeLedgerPaid(
+          feeRecord.id,
+          walletTx.id,
+          columnTransfer.id
+        );
+        console.log(`✅ Fee marked as paid in ledger`);
+
+        console.log(`🎉 Location created and monthly fee charged successfully`);
+
+      } catch (feeError: any) {
+        console.error('❌ Error processing monthly fee:', feeError);
+        // Location was created but fee failed - log this
+        console.error(`⚠️ Location ${location.id} created but fee charge failed. Manual intervention required.`);
+        
+        // Return location but indicate fee processing failed
+        return res.status(201).json({
+          location,
+          warning: 'Location created but monthly fee charge failed. Please contact support.',
+          feeError: feeError.message
+        });
+      }
+
+      // Success - return location with fee confirmation
+      res.status(201).json({
+        location,
+        feeCharged: true,
+        feeAmount: monthlyFee,
+        billingPeriod: { start: periodStart, end: periodEnd }
+      });
+
     } catch (error) {
       console.error("Error creating location:", error);
       res.status(400).json({ message: "Failed to create location" });
