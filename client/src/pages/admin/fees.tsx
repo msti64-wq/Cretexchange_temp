@@ -12,6 +12,7 @@ import { DollarSign, RefreshCw, AlertCircle, CheckCircle, Clock, Download } from
 import { formatCurrency } from "@/lib/utils";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatAddress } from "@shared/addressUtils";
 
 // Types
 interface FeeLedger {
@@ -43,7 +44,10 @@ interface FeeLedger {
   };
   location?: {
     name: string;
-    address: string;
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
   } | null;
 }
 
@@ -346,7 +350,14 @@ export default function AdminFees() {
                           {fee.location ? (
                             <div className="text-sm">
                               <div className="font-medium">{fee.location.name}</div>
-                              <div className="text-muted-foreground">{fee.location.address}</div>
+                              <div className="text-muted-foreground">
+                                {formatAddress({
+                                  street: fee.location.street,
+                                  city: fee.location.city,
+                                  state: fee.location.state,
+                                  zip: fee.location.zip
+                                })}
+                              </div>
                             </div>
                           ) : (
                             <span className="text-muted-foreground">-</span>

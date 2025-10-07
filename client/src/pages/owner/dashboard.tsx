@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { OwnerHeader } from "@/components/OwnerHeader";
 import { useToast } from "@/hooks/use-toast";
+import { formatAddress } from "@shared/addressUtils";
 
 export default function OwnerDashboard() {
   const [, setLocation] = useLocation();
@@ -482,9 +483,14 @@ export default function OwnerDashboard() {
                     <div className="text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
                       📍 {activity.location?.name}
                     </div>
-                    {activity.location?.address && (
+                    {activity.location && (
                       <div className="text-xs text-muted-foreground mt-1">
-                        {activity.location.address}
+                        {formatAddress({
+                          street: activity.location.street || '',
+                          city: activity.location.city || '',
+                          state: activity.location.state || '',
+                          zip: activity.location.zip || ''
+                        })}
                       </div>
                     )}
                     {(activity.latitude && activity.longitude) && (

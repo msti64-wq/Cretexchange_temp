@@ -10,6 +10,7 @@ import { StatCard } from "@/components/StatCard";
 import { DollarSign, Download, Calendar, Filter, TrendingUp } from "lucide-react";
 import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
 import { formatCurrency } from "@/lib/utils";
+import { formatAddress } from "@shared/addressUtils";
 
 export default function OwnerPayments() {
   const [startDate, setStartDate] = useState("");
@@ -249,9 +250,14 @@ export default function OwnerPayments() {
                       <p className="text-sm text-muted-foreground mb-2" data-testid={`text-location-name-${index}`}>
                         📍 {activity.location?.name}
                       </p>
-                      {activity.location?.address && (
+                      {activity.location && (
                         <p className="text-xs text-muted-foreground mb-2">
-                          {activity.location.address}
+                          {formatAddress({
+                            street: activity.location.street || '',
+                            city: activity.location.city || '',
+                            state: activity.location.state || '',
+                            zip: activity.location.zip || ''
+                          })}
                         </p>
                       )}
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">

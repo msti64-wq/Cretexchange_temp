@@ -9,12 +9,16 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { Camera, MapPin, Clock } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { UploadResult } from "@uppy/core";
+import { formatAddress } from "@shared/addressUtils";
 
 interface WashoutFormProps {
   location: {
     id: string;
     name: string;
-    address: string;
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
     rate: string;
   };
   currentLocation?: { lat: number; lng: number };
@@ -366,7 +370,14 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
           <MapPin className="w-5 h-5 mr-2" />
           Check-in at {location.name}
         </CardTitle>
-        <p className="text-sm text-muted-foreground">{location.address}</p>
+        <p className="text-sm text-muted-foreground">
+          {formatAddress({
+            street: location.street,
+            city: location.city,
+            state: location.state,
+            zip: location.zip
+          })}
+        </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -11,6 +11,7 @@ import { LocationMap } from "@/components/LocationMap";
 import { MapPin, Search, Navigation, Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { getCurrentLocation } from "@/lib/gps";
+import { formatAddress } from "@shared/addressUtils";
 
 export default function DriverLocations() {
   const [, setLocation] = useLocation();
@@ -56,9 +57,13 @@ export default function DriverLocations() {
 
   const filteredAndSortedLocations = Array.isArray(locations) ? locations.filter((item: any) => {
     const location = item.washout_locations || item;
+    const searchLower = searchTerm.toLowerCase();
     return (
-      (location.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (location.address || '').toLowerCase().includes(searchTerm.toLowerCase())
+      (location.name || '').toLowerCase().includes(searchLower) ||
+      (location.street || '').toLowerCase().includes(searchLower) ||
+      (location.city || '').toLowerCase().includes(searchLower) ||
+      (location.state || '').toLowerCase().includes(searchLower) ||
+      (location.zip || '').toLowerCase().includes(searchLower)
     );
   }).map((item: any) => {
     const location = item.washout_locations || item;
@@ -189,7 +194,12 @@ export default function DriverLocations() {
                         {location.name}
                       </h3>
                       <p className="text-muted-foreground text-sm mb-2" data-testid={`text-location-address-${index}`}>
-                        {location.address}
+                        {formatAddress({
+                          street: location.street,
+                          city: location.city,
+                          state: location.state,
+                          zip: location.zip
+                        })}
                       </p>
                       {(item.owner?.user || location.owner?.user) && (
                         <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-name-${index}`}>

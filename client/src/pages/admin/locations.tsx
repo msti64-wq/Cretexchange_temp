@@ -12,6 +12,7 @@ import { Building, Search, Filter, Eye, EyeOff, MapPin } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { formatAddress } from "@shared/addressUtils";
 
 export default function AdminLocations() {
   const { toast } = useToast();
@@ -78,12 +79,16 @@ export default function AdminLocations() {
   }
 
   const filteredLocations = locations?.filter((location: any) => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
-      location.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      location.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      location.owner?.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      location.owner?.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      location.owner?.companyName?.toLowerCase().includes(searchTerm.toLowerCase());
+      location.name?.toLowerCase().includes(searchLower) ||
+      location.street?.toLowerCase().includes(searchLower) ||
+      location.city?.toLowerCase().includes(searchLower) ||
+      location.state?.toLowerCase().includes(searchLower) ||
+      location.zip?.toLowerCase().includes(searchLower) ||
+      location.owner?.user?.firstName?.toLowerCase().includes(searchLower) ||
+      location.owner?.user?.lastName?.toLowerCase().includes(searchLower) ||
+      location.owner?.companyName?.toLowerCase().includes(searchLower);
     
     const matchesStatus = filterStatus === "all" || 
       (filterStatus === "visible" && location.isVisible && location.isActive) ||
@@ -252,7 +257,12 @@ export default function AdminLocations() {
                       
                       <p className="text-sm text-muted-foreground mb-2" data-testid={`text-location-address-${index}`}>
                         <MapPin className="w-4 h-4 inline mr-1" />
-                        {location.address}
+                        {formatAddress({
+                          street: location.street,
+                          city: location.city,
+                          state: location.state,
+                          zip: location.zip
+                        })}
                       </p>
                       
                       <div className="text-sm text-muted-foreground">
