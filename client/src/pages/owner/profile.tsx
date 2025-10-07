@@ -227,20 +227,30 @@ export default function OwnerProfile() {
             )}
 
             <Badge 
-              variant={owner?.subscriptionStatus === 'active' ? "default" : "secondary"}
-              data-testid="badge-subscription-status"
+              variant={owner?.isApproved ? "default" : "secondary"}
+              data-testid="badge-membership-status"
             >
-              Subscription: {owner?.subscriptionStatus || 'Trial'}
+              Membership: {owner?.isApproved ? 'Active' : 'Pending Payment'}
             </Badge>
             
-            {owner?.subscriptionStatus !== 'active' && (
-              <Button 
-                className="mt-4"
-                onClick={() => setLocation('/subscribe')}
-                data-testid="button-subscribe"
-              >
-                Upgrade Subscription
-              </Button>
+            {!owner?.isApproved && (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Complete your one-time $1,500 membership payment to activate your account.
+                </p>
+                <Button 
+                  onClick={() => setLocation('/subscribe')}
+                  data-testid="button-pay-membership"
+                >
+                  Pay Membership Fee
+                </Button>
+              </div>
+            )}
+            
+            {owner?.isApproved && (
+              <p className="text-sm text-muted-foreground mt-4">
+                $100/month per active location is automatically deducted from your Column wallet.
+              </p>
             )}
           </CardContent>
         </Card>
