@@ -1505,7 +1505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 1. Create fees_ledger record
         const feeRecord = await storage.createFeeLedgerEntry({
           ownerId: owner.id,
-          feeType: 'monthly_location_fee',
+          feeType: 'location_monthly',
           locationId: location.id,
           amountCents: monthlyFeeCents,
           periodStart,
