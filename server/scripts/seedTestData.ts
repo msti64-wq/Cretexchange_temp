@@ -171,11 +171,12 @@ async function seedTestData() {
         } else {
           userId = existingUser[0].id;
           
-          // Update existing user with latest data
+          // Update existing user with latest data (including password hash)
           await tx
             .update(users)
             .set({
               email: testUser.email,
+              passwordHash: TEST_PASSWORD_HASH,
               firstName: testUser.firstName,
               lastName: testUser.lastName,
               phone: testUser.phone,
