@@ -78,7 +78,10 @@ export default function DriverDashboard() {
         {/* Profile Completion Notice */}
         {(dashboardData as any)?.user && (
           !(dashboardData as any).user.phone || 
-          !(dashboardData as any).user.address || 
+          !(dashboardData as any).user.street || 
+          !(dashboardData as any).user.city || 
+          !(dashboardData as any).user.state || 
+          !(dashboardData as any).user.zip || 
           !(dashboardData as any).user.paymentMethod || 
           (dashboardData as any).user.paymentMethod === 'check' ||
           !(dashboardData as any).user.roleData?.employerName ||
