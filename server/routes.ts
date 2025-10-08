@@ -1068,23 +1068,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Payment structure: $9.00 from owner
-      // - $4.00 platform fee
-      // - $5.00+ to driver
-      const WASHOUT_FEE = 9.00;
+      // Payment structure: Flat $4.00 platform fee per washout
+      // - Driver receives full location rate
+      // - Owner pays location rate + $4.00 platform fee
+      const locationRate = parseFloat(location.rate);
       const PLATFORM_FEE = 4.00;
-      const DRIVER_PAYMENT = 5.00;
+      const DRIVER_PAYMENT = locationRate;
+      const OWNER_CHARGE = locationRate + PLATFORM_FEE;
 
       // Check owner wallet balance
       const ownerBalance = parseFloat(owner.walletBalance);
-      if (ownerBalance < WASHOUT_FEE) {
+      if (ownerBalance < OWNER_CHARGE) {
         return res.status(400).json({ message: "Insufficient owner wallet balance" });
       }
 
       // Deduct from owner wallet (this also creates a transaction record automatically)
       await storage.updateOwnerWalletBalance(
         owner.id, 
-        WASHOUT_FEE.toFixed(2), 
+        OWNER_CHARGE.toFixed(2), 
         'debit',
         `Washout fee for activity ${activityId}`
       );
@@ -1126,13 +1127,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activityId,
         amount: DRIVER_PAYMENT.toFixed(2),
         processingFee: PLATFORM_FEE.toFixed(2),
-        washoutServiceFee: WASHOUT_FEE.toFixed(2),
+        washoutServiceFee: OWNER_CHARGE.toFixed(2),
         status: "completed",
       });
 
       res.json({
         success: true,
-        ownerCharge: WASHOUT_FEE,
+        ownerCharge: OWNER_CHARGE,
         platformFee: PLATFORM_FEE,
         driverPayment: DRIVER_PAYMENT,
         message: "Payment processed successfully",
