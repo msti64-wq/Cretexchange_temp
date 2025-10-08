@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
-import { User, Truck, CreditCard, Save, FileText, Eye } from "lucide-react";
+import { User, Truck, CreditCard, Save, FileText, Eye, Smartphone } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { InstallPrompt } from "@/components/InstallPrompt";
 
@@ -525,6 +525,44 @@ export default function DriverProfile() {
                 </div>
                 <p className="text-sm text-blue-700">
                   Payments are processed weekly on Fridays for all completed washout activities from the previous week.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* App Settings Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Smartphone className="w-5 h-5" />
+                App Installation
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Install WashOut Pro</p>
+                  <p className="text-xs text-muted-foreground">
+                    Add to your home screen for quick access while on the road
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    localStorage.removeItem('pwaInstallDismissed');
+                    setShowInstallPrompt(true);
+                  }}
+                  data-testid="button-install-app-manual"
+                >
+                  <Smartphone className="w-4 h-4 mr-2" />
+                  Install App
+                </Button>
+              </div>
+              
+              <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  Installing the app provides offline access, faster loading, and a native app experience.
                 </p>
               </div>
             </CardContent>

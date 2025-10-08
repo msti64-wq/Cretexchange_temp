@@ -26,6 +26,15 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
   useEffect(() => {
     console.log('🔧 InstallPrompt component loaded');
     
+    // Check if user has dismissed the install prompt before
+    const hasUserDismissed = localStorage.getItem('pwaInstallDismissed') === 'true';
+    console.log('👤 User previously dismissed install prompt:', hasUserDismissed);
+    
+    if (hasUserDismissed) {
+      console.log('⏭️ Skipping install prompt - user previously dismissed');
+      return;
+    }
+    
     // Check if running on iOS
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
     setIsIOS(isIOSDevice);
@@ -93,6 +102,8 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
   };
 
   const handleDismiss = () => {
+    console.log('🚫 User dismissed install prompt - saving preference');
+    localStorage.setItem('pwaInstallDismissed', 'true');
     setShowPrompt(false);
     onDismiss?.();
   };
