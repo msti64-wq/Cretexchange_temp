@@ -1376,17 +1376,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       
-      console.log('📝 Driver profile update request:', {
-        userId,
-        employerName: req.body.employerName,
-        employerStreet: req.body.employerStreet,
-        employerCity: req.body.employerCity,
-        employerState: req.body.employerState,
-        employerZip: req.body.employerZip,
-        employerPhone: req.body.employerPhone,
-        truckNumber: req.body.truckNumber,
-      });
-      
       // First, get or create the driver record
       let driver = await storage.getDriver(userId);
       if (!driver) {
@@ -1402,11 +1391,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           licenseNumber: req.body.licenseNumber || "",
           truckNumber: req.body.truckNumber || "",
         };
-        console.log('📝 Creating new driver with data:', driverData);
         driver = await storage.createDriver(driverData);
       } else {
         // Update existing driver record
-        const updateData = {
+        driver = await storage.updateDriver(driver.id, {
           employerName: req.body.employerName || driver.employerName,
           employerStreet: req.body.employerStreet || driver.employerStreet,
           employerCity: req.body.employerCity || driver.employerCity,
@@ -1415,9 +1403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           employerPhone: req.body.employerPhone || driver.employerPhone,
           licenseNumber: req.body.licenseNumber || driver.licenseNumber,
           truckNumber: req.body.truckNumber || driver.truckNumber,
-        };
-        console.log('📝 Updating existing driver:', { driverId: driver.id, updateData });
-        driver = await storage.updateDriver(driver.id, updateData);
+        });
       }
 
       // Get current user to preserve username and other required fields
