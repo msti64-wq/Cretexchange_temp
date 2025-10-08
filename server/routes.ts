@@ -936,9 +936,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request
       const { amount } = driverPayoutRequestSchema.parse(req.body);
 
-      // Check if driver has Column bank account
+      // Check payment method and provide appropriate error messages
       if (!driver.columnBankAccountId || !driver.columnEntityId) {
-        return res.status(400).json({ message: "Please complete Column onboarding first" });
+        // Check what payment method the driver has selected
+        if (driver.paymentMethod === 'venmo') {
+          return res.status(400).json({ 
+            message: "Venmo payouts are not currently supported. Please update your payment method to ACH (Direct Deposit) in your profile and complete bank account setup." 
+          });
+        } else if (driver.paymentMethod === 'zelle') {
+          return res.status(400).json({ 
+            message: "Zelle payouts are not currently supported. Please update your payment method to ACH (Direct Deposit) in your profile and complete bank account setup." 
+          });
+        } else {
+          return res.status(400).json({ 
+            message: "Please complete bank account setup for ACH payouts. Go to your profile to connect your bank account." 
+          });
+        }
       }
 
       // Get driver wallet
@@ -1404,6 +1417,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           employerPhone: req.body.employerPhone || driver.employerPhone,
           licenseNumber: req.body.licenseNumber || driver.licenseNumber,
           truckNumber: req.body.truckNumber || driver.truckNumber,
+          // Payment details - map frontend field names to database column names
+          paymentMethod: req.body.paymentMethod || driver.paymentMethod,
+          venmoHandle: req.body.venmoUsername || driver.venmoHandle,
+          zelleEmail: req.body.zelleInfo || driver.zelleEmail,
+          bankName: req.body.bankName || driver.bankName,
+          routingNumber: req.body.routingNumber || driver.routingNumber,
+          accountNumber: req.body.accountNumber || driver.accountNumber,
+          accountHolderName: req.body.accountHolderName || driver.accountHolderName,
         });
       }
 
