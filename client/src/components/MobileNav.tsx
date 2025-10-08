@@ -43,22 +43,23 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/notifications", icon: Bell, label: "Alerts" },
         ];
       case "admin":
+        // Regular admins only see Dashboard, Users, and Locations
+        return [
+          { path: "/", icon: BarChart3, label: "Dashboard" },
+          { path: "/users", icon: Users, label: "Users" },
+          { path: "/locations", icon: Building, label: "Locations" },
+        ];
       case "super_admin":
-        const adminNavItems = [
+        // Super admins see everything
+        return [
           { path: "/", icon: BarChart3, label: "Dashboard" },
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/payments", icon: DollarSign, label: "Payments" },
           { path: "/subscriptions", icon: Receipt, label: "Subscriptions" },
           { path: "/fees", icon: FileText, label: "Fees" },
+          { path: "/service-accounts", icon: CreditCard, label: "Service Accounts" },
         ];
-        
-        // Add service accounts for super_admin
-        if ((user as any)?.role === 'super_admin') {
-          adminNavItems.push({ path: "/service-accounts", icon: CreditCard, label: "Service Accounts" });
-        }
-        
-        return adminNavItems;
       default:
         return [];
     }

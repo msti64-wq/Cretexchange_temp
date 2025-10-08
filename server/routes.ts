@@ -3831,12 +3831,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin payments endpoint
+  // Admin payments endpoint (super admin only)
   app.get('/api/admin/payments', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
       }
 
       const { startDate, endDate } = req.query;
@@ -3852,12 +3852,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin subscription management endpoint (Column wallet-based)
+  // Admin subscription management endpoint (super admin only)
   app.get('/api/admin/subscriptions', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
       }
 
       // Get all owners with subscription information
@@ -5973,12 +5973,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== MONTHLY FEE LEDGER ADMIN ENDPOINTS ====================
 
-  // Get all fee ledger entries with filtering (admin only)
+  // Get all fee ledger entries with filtering (super admin only)
   app.get('/api/admin/fees/ledger', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
       }
 
       const { status = 'pending' } = req.query;
@@ -5991,12 +5991,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get fee summary statistics (admin only) - MUST come before /:id route
+  // Get fee summary statistics (super admin only) - MUST come before /:id route
   app.get('/api/admin/fees/summary', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
       }
 
       const pendingFees = await storage.getFeeLedgerEntriesByStatus('pending');
@@ -6033,12 +6033,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get fees for a specific owner (admin only) - specific route before /:id
+  // Get fees for a specific owner (super admin only) - specific route before /:id
   app.get('/api/admin/fees/owner/:ownerId', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
       }
 
       const { ownerId } = req.params;
@@ -6057,12 +6057,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get specific fee details (admin only) - parameterized route comes LAST
+  // Get specific fee details (super admin only) - parameterized route comes LAST
   app.get('/api/admin/fees/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
       }
 
       const { id } = req.params;
@@ -6079,12 +6079,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Retry failed fee (admin only)
+  // Retry failed fee (super admin only)
   app.post('/api/admin/fees/:id/retry', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
       }
 
       const { id } = req.params;
@@ -6114,12 +6114,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Manual fee generation (admin only - for testing)
+  // Manual fee generation (super admin only - for testing)
   app.post('/api/admin/fees/generate', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
       }
 
       const { billingDate } = req.body;
