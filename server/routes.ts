@@ -3872,6 +3872,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map((owner, index) => ({ owner, user: ownerUsers[index] }))
         .filter(({ user }) => user !== null);
 
+      // Get location counts for each owner to calculate monthly revenue
+      const locationCountsPromises = validOwnerData.map(({ owner }) => 
+        storage.getLocationsByOwner(owner.id).then(locations => ({
+          ownerId: owner.id,
+          activeLocationCount: locations.filter(loc => loc.isActive).length
+        }))
+      );
+      const locationCounts = await Promise.all(locationCountsPromises);
+      const locationCountMap = new Map(locationCounts.map(lc => [lc.ownerId, lc.activeLocationCount]));
+
       // Prepare subscription data for wallet-based system
       const subscriptionsData = validOwnerData.map(({ owner, user }) => {
         // Determine status based on wallet and approval
@@ -3882,6 +3892,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status = 'active';
         }
 
+        const activeLocations = locationCountMap.get(owner.id) || 0;
+        const monthlyRevenue = activeLocations * 100; // $100 per location per month
+
         return {
           id: owner.columnAccountId || owner.id, // Use Column account ID or owner ID
           ownerId: owner.id, // Add unique owner ID for table keys
@@ -3890,14 +3903,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user!.email,
           companyName: owner.companyName || 'N/A',
           status: status,
-          plan: owner.subscriptionPlan || 'wallet', // Wallet-based billing
+          plan: 'wallet', // Wallet-based billing ($100/location/month)
           localEndsAt: null, // No subscription end date for wallet-based
           stripeCustomerId: owner.stripeCustomerId || null,
           stripeSubscriptionId: null, // No Stripe subscription in wallet system
           createdAt: user!.createdAt,
-          nextBillingDate: null, // Monthly fees are charged per location, not subscription
+          nextBillingDate: null, // Fees charged when locations are active
           currentPeriodEnd: null,
-          amount: 1500, // One-time $1,500 membership fee
+          amount: monthlyRevenue, // Monthly revenue from active locations
           currency: 'usd',
           cancelAtPeriodEnd: false,
           cancelAt: null,
@@ -3907,6 +3920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           columnAccountId: owner.columnAccountId,
           membershipPaymentMethod: owner.membershipPaymentMethod,
           membershipActivatedAt: owner.membershipActivatedAt,
+          activeLocations: activeLocations, // Number of active locations
         };
       });
 
