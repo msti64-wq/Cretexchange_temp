@@ -3852,7 +3852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin subscription management endpoint
+  // Admin subscription management endpoint (Column wallet-based)
   app.get('/api/admin/subscriptions', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
@@ -3872,83 +3872,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map((owner, index) => ({ owner, user: ownerUsers[index] }))
         .filter(({ user }) => user !== null);
 
-      // Prepare base subscription data for all owners
-      const baseSubscriptionsData = validOwnerData.map(({ owner, user }) => ({
-        id: user!.stripeSubscriptionId || 'N/A', // Use Stripe subscription ID as primary identifier
-        ownerId: owner.id, // Add unique owner ID for table keys
-        userId: owner.userId,
-        ownerName: `${user!.firstName} ${user!.lastName}`,
-        email: user!.email,
-        companyName: owner.companyName || 'N/A',
-        status: owner.isApproved ? owner.subscriptionStatus : 'pending_approval',
-        plan: owner.subscriptionPlan || 'monthly',
-        localEndsAt: owner.subscriptionEndsAt,
-        stripeCustomerId: user!.stripeCustomerId,
-        stripeSubscriptionId: user!.stripeSubscriptionId,
-        createdAt: user!.createdAt,
-        nextBillingDate: null,
-        currentPeriodEnd: null,
-        amount: null,
-        currency: 'usd',
-        cancelAtPeriodEnd: false,
-        cancelAt: null,
-        trialEnd: null
-      }));
-
-      // Get fresh Stripe data for all subscriptions in parallel (performance improvement)
-      const stripeDataPromises = baseSubscriptionsData.map(async (subscriptionData) => {
-        if (stripe && subscriptionData.stripeSubscriptionId) {
-          try {
-            const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionData.stripeSubscriptionId);
-            
-            // Calculate total amount across ALL subscription items (not just first one)
-            const totalAmount = stripeSubscription.items.data.reduce((sum, item) => {
-              return sum + (item.price?.unit_amount || 0);
-            }, 0);
-
-            // Find the owner to check approval status
-            const owner = validOwnerData.find(({ user }) => user!.stripeSubscriptionId === subscriptionData.stripeSubscriptionId)?.owner;
-            const effectiveStatus = owner?.isApproved ? stripeSubscription.status : 'pending_approval';
-
-            return {
-              ...subscriptionData,
-              id: stripeSubscription.id, // Use Stripe subscription ID as consistent identifier
-              status: effectiveStatus,
-              currentPeriodEnd: new Date(((stripeSubscription as any).current_period_end || (stripeSubscription as any).items?.data?.[0]?.current_period_end) * 1000),
-              nextBillingDate: new Date(((stripeSubscription as any).current_period_end || (stripeSubscription as any).items?.data?.[0]?.current_period_end) * 1000),
-              amount: totalAmount > 0 ? (totalAmount / 100).toFixed(2) : null,
-              currency: stripeSubscription.items.data[0]?.price?.currency || 'usd',
-              cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-              cancelAt: stripeSubscription.cancel_at ? new Date(stripeSubscription.cancel_at * 1000) : null,
-              trialEnd: stripeSubscription.trial_end ? new Date(stripeSubscription.trial_end * 1000) : null
-            };
-          } catch (stripeError) {
-            console.log(`Could not fetch Stripe subscription for ${subscriptionData.email}:`, stripeError instanceof Error ? stripeError.message : 'Unknown error');
-            // Return base data if Stripe fails
-            return subscriptionData;
-          }
+      // Prepare subscription data for wallet-based system
+      const subscriptionsData = validOwnerData.map(({ owner, user }) => {
+        // Determine status based on wallet and approval
+        let status = 'inactive';
+        if (!owner.isApproved) {
+          status = 'pending_approval';
+        } else if (owner.walletStatus === 'active') {
+          status = 'active';
         }
-        return subscriptionData;
+
+        return {
+          id: owner.columnAccountId || owner.id, // Use Column account ID or owner ID
+          ownerId: owner.id, // Add unique owner ID for table keys
+          userId: owner.userId,
+          ownerName: `${user!.firstName} ${user!.lastName}`,
+          email: user!.email,
+          companyName: owner.companyName || 'N/A',
+          status: status,
+          plan: owner.subscriptionPlan || 'wallet', // Wallet-based billing
+          localEndsAt: null, // No subscription end date for wallet-based
+          stripeCustomerId: owner.stripeCustomerId || null,
+          stripeSubscriptionId: null, // No Stripe subscription in wallet system
+          createdAt: user!.createdAt,
+          nextBillingDate: null, // Monthly fees are charged per location, not subscription
+          currentPeriodEnd: null,
+          amount: 1500, // One-time $1,500 membership fee
+          currency: 'usd',
+          cancelAtPeriodEnd: false,
+          cancelAt: null,
+          trialEnd: null,
+          walletBalance: owner.walletBalance,
+          walletStatus: owner.walletStatus,
+          columnAccountId: owner.columnAccountId,
+          membershipPaymentMethod: owner.membershipPaymentMethod,
+          membershipActivatedAt: owner.membershipActivatedAt,
+        };
       });
 
-      const subscriptionsWithStripeData = await Promise.all(stripeDataPromises);
-
-      // Get truly active subscriptions for stats  
-      const activeSubscriptions = subscriptionsWithStripeData.filter(subscription => 
+      // Get active subscriptions (approved owners with active wallets)
+      const activeSubscriptions = subscriptionsData.filter(subscription => 
         subscription.status === 'active'
       );
 
-      // Sort all subscriptions by next billing date
-      subscriptionsWithStripeData.sort((a, b) => {
-        const aDate = a.nextBillingDate || a.currentPeriodEnd || a.localEndsAt || new Date(0);
-        const bDate = b.nextBillingDate || b.currentPeriodEnd || b.localEndsAt || new Date(0);
-        return new Date(aDate).getTime() - new Date(bDate).getTime();
+      // Sort by creation date (newest first)
+      subscriptionsData.sort((a, b) => {
+        const aDate = new Date(a.createdAt || 0);
+        const bDate = new Date(b.createdAt || 0);
+        return bDate.getTime() - aDate.getTime();
       });
 
       res.json({
-        subscriptions: subscriptionsWithStripeData,  // Return all subscriptions, not just active
+        subscriptions: subscriptionsData,
         totalActive: activeSubscriptions.length,
-        totalSubscriptions: subscriptionsWithStripeData.length
+        totalSubscriptions: subscriptionsData.length
       });
     } catch (error) {
       console.error("Error fetching subscription data:", error);
