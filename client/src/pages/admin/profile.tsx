@@ -99,7 +99,7 @@ export default function AdminProfile() {
           <div className="h-32 bg-muted rounded-lg" />
           <div className="h-48 bg-muted rounded-lg" />
         </div>
-        <MobileNav role={(authUser as any)?.role || "admin"} />
+        <MobileNav role={authUser?.role || "admin"} />
       </div>
     );
   }
@@ -124,7 +124,7 @@ export default function AdminProfile() {
             </CardContent>
           </Card>
         </div>
-        <MobileNav role={(authUser as any)?.role || "admin"} />
+        <MobileNav role={authUser?.role || "admin"} />
       </div>
     );
   }

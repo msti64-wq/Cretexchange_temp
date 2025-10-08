@@ -73,7 +73,7 @@ export default function AdminLocations() {
             ))}
           </div>
         </div>
-        <MobileNav role={(user as any)?.role || "admin"} />
+        <MobileNav role={user?.role || "admin"} />
       </div>
     );
   }
@@ -343,7 +343,7 @@ export default function AdminLocations() {
         </div>
       </main>
 
-      <MobileNav role={(user as any)?.role || "admin"} />
+      <MobileNav role={user?.role || "admin"} />
     </div>
   );
 }

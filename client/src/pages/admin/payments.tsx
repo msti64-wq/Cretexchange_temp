@@ -91,7 +91,7 @@ export default function AdminPayments() {
             ))}
           </div>
         </div>
-        <MobileNav role={(user as any)?.role || "admin"} />
+        <MobileNav role={user?.role || "admin"} />
       </div>
     );
   }
@@ -411,7 +411,7 @@ export default function AdminPayments() {
         </div>
       </main>
 
-      <MobileNav role={(user as any)?.role || "admin"} />
+      <MobileNav role={user?.role || "admin"} />
     </div>
   );
 }

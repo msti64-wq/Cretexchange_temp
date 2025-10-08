@@ -8,7 +8,7 @@ interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: "driver" | "owner" | "admin";
+  role: "driver" | "owner" | "admin" | "super_admin";
 }
 
 export function useAuth() {

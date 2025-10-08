@@ -108,7 +108,7 @@ export default function AdminDashboard() {
           </div>
           <div className="h-48 bg-muted rounded-lg" />
         </div>
-        <MobileNav role={(user as any)?.role || "admin"} />
+        <MobileNav role={user?.role || "admin"} />
       </div>
     );
   }
@@ -495,7 +495,7 @@ export default function AdminDashboard() {
 
       </main>
 
-      <MobileNav role="admin" />
+      <MobileNav role={user?.role || "admin"} />
     </div>
   );
 }
