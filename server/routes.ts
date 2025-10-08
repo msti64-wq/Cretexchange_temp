@@ -1924,11 +1924,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify the activity
       const activity = await storage.verifyWashoutActivity(id, userId);
 
-      // FEE STRUCTURE: Owner pays driver amount (min $10) + $4.00 platform fee
-      const activityAmount = Number(activityDetails.amount);
-      const driverAmount = Math.max(activityAmount, 10.00); // Driver gets washout amount or $10.00 minimum
-      const platformFee = 4.00; // Platform keeps $4.00
-      const ownerFee = driverAmount + platformFee; // Owner pays total: driver amount + platform fee (e.g., $10 + $4 = $14)
+      // FEE STRUCTURE: Flat $4.00 platform fee per washout
+      // - Driver receives full location rate
+      // - Owner pays location rate + $4.00 platform fee
+      const driverAmount = Number(activityDetails.amount); // Driver gets exact location rate
+      const platformFee = 4.00; // Platform keeps $4.00 flat fee
+      const ownerFee = driverAmount + platformFee; // Owner pays total: driver amount + platform fee
 
       // Get owner's billing settings for business date calculation
       const billingSettings = await storage.getOwnerBillingSettings(owner.id);
@@ -1956,14 +1957,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // batchId will be set later by the daily batch processor
       });
 
-      // Credit driver's wallet to PENDING balance (not available until batch processes)
-      const walletCredit = await storage.creditDriverPendingBalance(
-        activityDetails.driverId,
-        driverAmount.toString(),
-        'washout',
-        id,
-        `Pending washout payment for activity ${id} (batch date: ${businessDate})`
-      );
+      // Credit driver's wallet to AVAILABLE balance immediately (since we're doing instant Column transfers)
+      const driver = await storage.getDriverById(activityDetails.driverId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+      
+      // Ensure driver has a wallet
+      let driverWallet = await storage.getDriverWallet(driver.id);
+      if (!driverWallet) {
+        await storage.createDriverWallet({ driverId: driver.id });
+      }
+      
+      // Credit available balance immediately
+      await storage.adjustDriverWalletBalance(driver.id, driverAmount, 0);
+      
+      // Get updated wallet for transaction record
+      const updatedWallet = await storage.getDriverWallet(driver.id);
+      const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
+      
+      // Create wallet transaction record
+      await storage.createWalletTransaction({
+        driverId: driver.id,
+        amount: driverAmount.toString(),
+        direction: "credit",
+        balanceAfter: newBalance.toString(),
+        currency: "USD",
+        sourceType: "washout",
+        sourceId: id,
+        status: "posted",
+        description: `Washout payment for activity ${id}`,
+      });
 
       console.log(`✅ Created pending payment: Driver gets $${driverAmount}, Owner pays $${ownerFee.toFixed(2)} for activity ${id}, Payment ID: ${payment.id}, Business Date: ${businessDate}`);
       console.log(`💰 Fee breakdown: Owner pays $${ownerFee.toFixed(2)} (Platform $${platformFee.toFixed(2)} + Driver $${driverAmount.toFixed(2)})`);
@@ -2000,10 +2024,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               );
               console.log(`✅ Owner wallet debited: $${ownerBalance} -> $${newOwnerBalance}`);
               
-              // 3. Get driver details for Column transfer
-              const driver = await storage.getDriverById(activityDetails.driverId);
-              const driverUser = await storage.getUser(driver!.userId);
-              
+              // 3. Driver details already fetched above, check Column status
               console.log(`🔍 Driver Column status check:`, {
                 driverId: driver?.id,
                 hasColumnBankAccountId: !!driver?.columnBankAccountId,
