@@ -531,7 +531,7 @@ export default function OwnerWallet() {
                            `${transaction.transactionType.charAt(0).toUpperCase() + transaction.transactionType.slice(1)}`}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {new Date(transaction.createdAt).toLocaleDateString()} • 
+                          {new Date(transaction.createdAt).toLocaleDateString()} {new Date(transaction.createdAt).toLocaleTimeString()} • 
                           <Badge variant="outline" className="ml-2">
                             {transaction.status}
                           </Badge>
