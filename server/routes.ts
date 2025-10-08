@@ -3922,11 +3922,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return bDate.getTime() - aDate.getTime();
       });
 
-      res.json({
+      const responseData = {
         subscriptions: subscriptionsData,
         totalActive: activeSubscriptions.length,
         totalSubscriptions: subscriptionsData.length
+      };
+
+      console.log('📊 Subscription data:', {
+        totalOwners: owners.length,
+        validOwners: validOwnerData.length,
+        totalActive: activeSubscriptions.length,
+        totalSubscriptions: subscriptionsData.length,
+        sampleSubscription: subscriptionsData[0] || null
       });
+
+      // Set cache-control headers to prevent caching
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
+      res.json(responseData);
     } catch (error) {
       console.error("Error fetching subscription data:", error);
       res.status(500).json({ message: "Failed to fetch subscription data" });
