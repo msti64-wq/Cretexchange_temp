@@ -69,6 +69,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserColumnInfo(userId: string, columnCustomerId: string): Promise<User>;
   updateUserPassword(userId: string, passwordHash: string): Promise<User>;
+  updateUserStatus(userId: string, isActive: boolean): Promise<User | undefined>;
 
   // Password reset operations
   createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
@@ -371,6 +372,18 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ 
         passwordHash,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserStatus(userId: string, isActive: boolean): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        isActive,
         updatedAt: new Date() 
       })
       .where(eq(users.id, userId))

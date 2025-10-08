@@ -4010,6 +4010,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user status (activate/deactivate)
+  app.put('/api/admin/users/:userId/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { userId } = req.params;
+      const { isActive } = req.body;
+
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ message: "isActive must be a boolean" });
+      }
+
+      // Update user status
+      const updatedUser = await storage.updateUserStatus(userId, isActive);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ message: "User status updated successfully", user: updatedUser });
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      res.status(500).json({ message: "Failed to update user status" });
+    }
+  });
+
   app.get('/api/admin/locations', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
