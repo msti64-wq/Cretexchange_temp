@@ -1181,7 +1181,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...user,
         roleData: {
           employerName: driver.employerName,
-          employerAddress: driver.employerAddress,
+          employerStreet: driver.employerStreet,
+          employerCity: driver.employerCity,
+          employerState: driver.employerState,
+          employerZip: driver.employerZip,
           employerPhone: driver.employerPhone,
           truckNumber: driver.truckNumber,
           licenseNumber: driver.licenseNumber,
@@ -1380,7 +1383,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const driverData = {
           userId,
           employerName: req.body.employerName || "",
-          employerAddress: req.body.employerAddress || "",
+          employerStreet: req.body.employerStreet || "",
+          employerCity: req.body.employerCity || "",
+          employerState: req.body.employerState || "",
+          employerZip: req.body.employerZip || "",
           employerPhone: req.body.employerPhone || "",
           licenseNumber: req.body.licenseNumber || "",
           truckNumber: req.body.truckNumber || "",
@@ -1390,7 +1396,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update existing driver record
         driver = await storage.updateDriver(driver.id, {
           employerName: req.body.employerName || driver.employerName,
-          employerAddress: req.body.employerAddress || driver.employerAddress,
+          employerStreet: req.body.employerStreet || driver.employerStreet,
+          employerCity: req.body.employerCity || driver.employerCity,
+          employerState: req.body.employerState || driver.employerState,
+          employerZip: req.body.employerZip || driver.employerZip,
           employerPhone: req.body.employerPhone || driver.employerPhone,
           licenseNumber: req.body.licenseNumber || driver.licenseNumber,
           truckNumber: req.body.truckNumber || driver.truckNumber,
