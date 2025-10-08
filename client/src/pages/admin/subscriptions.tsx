@@ -151,7 +151,7 @@ export default function AdminSubscriptions() {
             ))}
           </div>
         </div>
-        <MobileNav role="admin" />
+        <MobileNav role={(user as any)?.role || "admin"} />
       </div>
     );
   }
@@ -451,7 +451,7 @@ export default function AdminSubscriptions() {
         </div>
       </main>
 
-      <MobileNav role="admin" />
+      <MobileNav role={(user as any)?.role || "admin"} />
     </div>
   );
 }

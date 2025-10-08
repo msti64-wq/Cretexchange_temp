@@ -15,7 +15,7 @@ import { useLocation } from "wouter";
 
 export default function AdminProfile() {
   const { toast } = useToast();
-  const { logout } = useAuth();
+  const { logout, user: authUser } = useAuth();
   const [, setLocation] = useLocation();
   const [showChangeEmail, setShowChangeEmail] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -99,7 +99,7 @@ export default function AdminProfile() {
           <div className="h-32 bg-muted rounded-lg" />
           <div className="h-48 bg-muted rounded-lg" />
         </div>
-        <MobileNav role="admin" />
+        <MobileNav role={(authUser as any)?.role || "admin"} />
       </div>
     );
   }
@@ -124,7 +124,7 @@ export default function AdminProfile() {
             </CardContent>
           </Card>
         </div>
-        <MobileNav role="admin" />
+        <MobileNav role={(authUser as any)?.role || "admin"} />
       </div>
     );
   }
@@ -323,7 +323,7 @@ export default function AdminProfile() {
         </Card>
       </div>
 
-      <MobileNav role="admin" />
+      <MobileNav role={(user as any)?.role || "admin"} />
     </div>
   );
 }

@@ -213,7 +213,7 @@ export default function AdminUsers() {
             ))}
           </div>
         </div>
-        <MobileNav role="admin" />
+        <MobileNav role={(user as any)?.role || "admin"} />
       </div>
     );
   }
@@ -701,7 +701,7 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      <MobileNav role="admin" />
+      <MobileNav role={(user as any)?.role || "admin"} />
     </div>
   );
 }

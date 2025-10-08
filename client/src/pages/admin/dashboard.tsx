@@ -16,7 +16,7 @@ import { PlatformPerformanceCard } from "@/components/PlatformPerformanceCard";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const queryClient = useQueryClient();
   const [dateRange, setDateRange] = useState("30");
   const [messageSearchTerm, setMessageSearchTerm] = useState("");
@@ -108,7 +108,7 @@ export default function AdminDashboard() {
           </div>
           <div className="h-48 bg-muted rounded-lg" />
         </div>
-        <MobileNav role="admin" />
+        <MobileNav role={(user as any)?.role || "admin"} />
       </div>
     );
   }
