@@ -160,15 +160,16 @@ export default function AdminSubscriptions() {
   // Monthly revenue and average should always be calculated from active subscriptions only
   const activeSubscriptions = subscriptions.filter((s: Subscription) => s.status === 'active' && s.amount);
   
+  // Calculate total active locations from monthly revenue ($100 per location)
+  const totalActiveLocations = activeSubscriptions
+    .reduce((sum: number, s: Subscription) => sum + Number(s.amount), 0) / 100;
+  
   const stats = {
     totalActive,
     totalSubscriptions,
     monthlyRevenue: activeSubscriptions
       .reduce((sum: number, s: Subscription) => sum + Number(s.amount), 0),
-    avgSubscription: activeSubscriptions.length > 0 ? 
-      activeSubscriptions
-        .reduce((sum: number, s: Subscription) => sum + Number(s.amount), 0) / 
-        activeSubscriptions.length : 0,
+    totalActiveLocations: totalActiveLocations,
     upcomingBillings: filteredSubscriptions.filter((s: Subscription) => {
       if (!s.nextBillingDate) return false;
       try {
@@ -251,11 +252,11 @@ export default function AdminSubscriptions() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard title="Average Plan" className="text-center">
-            <div className="text-xl font-bold text-foreground" data-testid="text-avg-subscription">
-              {formatCurrency(stats.avgSubscription)}
+          <StatCard title="Active Locations" className="text-center">
+            <div className="text-xl font-bold text-foreground" data-testid="text-active-locations">
+              {stats.totalActiveLocations}
             </div>
-            <div className="text-xs text-muted-foreground">Per Month</div>
+            <div className="text-xs text-muted-foreground">$100/month each</div>
           </StatCard>
 
           <StatCard title="Upcoming Billings" className="text-center">
