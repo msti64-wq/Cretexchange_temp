@@ -108,14 +108,7 @@ export default function AdminFees() {
   });
 
   const { data: fees, isLoading: feesLoading, error: feesError, refetch } = useQuery<FeeLedger[]>({
-    queryKey: ['/api/admin/fees/ledger', filterStatus],
-    queryFn: async () => {
-      const response = await fetch(`/api/admin/fees/ledger?status=${filterStatus}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch fees');
-      return response.json();
-    },
+    queryKey: [`/api/admin/fees/ledger?status=${filterStatus}`],
     retry: false,
   });
 

@@ -5991,53 +5991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get specific fee details (admin only)
-  app.get('/api/admin/fees/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
-      const { id } = req.params;
-      const fee = await storage.getFeeLedgerEntry(id);
-      
-      if (!fee) {
-        return res.status(404).json({ message: "Fee not found" });
-      }
-
-      res.json(fee);
-    } catch (error) {
-      console.error("Error fetching fee details:", error);
-      res.status(500).json({ message: "Failed to fetch fee details" });
-    }
-  });
-
-  // Get fees for a specific owner (admin only)
-  app.get('/api/admin/fees/owner/:ownerId', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
-      const { ownerId } = req.params;
-      const { startDate, endDate } = req.query;
-      
-      const fees = await storage.getFeeLedgerEntriesByOwner(
-        ownerId,
-        startDate as string,
-        endDate as string
-      );
-      
-      res.json(fees);
-    } catch (error) {
-      console.error("Error fetching owner fees:", error);
-      res.status(500).json({ message: "Failed to fetch owner fees" });
-    }
-  });
-
-  // Get fee summary statistics (admin only)
+  // Get fee summary statistics (admin only) - MUST come before /:id route
   app.get('/api/admin/fees/summary', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
@@ -6076,6 +6030,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching fee summary:", error);
       res.status(500).json({ message: "Failed to fetch fee summary" });
+    }
+  });
+
+  // Get fees for a specific owner (admin only) - specific route before /:id
+  app.get('/api/admin/fees/owner/:ownerId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { ownerId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      const fees = await storage.getFeeLedgerEntriesByOwner(
+        ownerId,
+        startDate as string,
+        endDate as string
+      );
+      
+      res.json(fees);
+    } catch (error) {
+      console.error("Error fetching owner fees:", error);
+      res.status(500).json({ message: "Failed to fetch owner fees" });
+    }
+  });
+
+  // Get specific fee details (admin only) - parameterized route comes LAST
+  app.get('/api/admin/fees/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { id } = req.params;
+      const fee = await storage.getFeeLedgerEntry(id);
+      
+      if (!fee) {
+        return res.status(404).json({ message: "Fee not found" });
+      }
+
+      res.json(fee);
+    } catch (error) {
+      console.error("Error fetching fee details:", error);
+      res.status(500).json({ message: "Failed to fetch fee details" });
     }
   });
 
