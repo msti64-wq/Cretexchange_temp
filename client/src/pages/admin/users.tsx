@@ -579,28 +579,30 @@ export default function AdminUsers() {
                           </Button>
                         )
                       )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => toggleUserStatusMutation.mutate({ 
-                          userId: user.id, 
-                          isActive: !user.isActive 
-                        })}
-                        disabled={toggleUserStatusMutation.isPending}
-                        data-testid={`button-toggle-status-${index}`}
-                      >
-                        {user.isActive ? (
-                          <>
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Deactivate
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Activate
-                          </>
-                        )}
-                      </Button>
+                      {user.role !== 'super_admin' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => toggleUserStatusMutation.mutate({ 
+                            userId: user.id, 
+                            isActive: !user.isActive 
+                          })}
+                          disabled={toggleUserStatusMutation.isPending}
+                          data-testid={`button-toggle-status-${index}`}
+                        >
+                          {user.isActive ? (
+                            <>
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Deactivate
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Activate
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
