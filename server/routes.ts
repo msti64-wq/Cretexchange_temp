@@ -2348,6 +2348,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debit card request endpoints
+  // Get debit card request status
+  app.get('/api/drivers/debit-card-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const driver = await storage.getDriver(userId);
+      
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const cardRequest = await storage.getDebitCardRequestByDriverId(driver.id);
+      
+      if (!cardRequest) {
+        return res.json({ hasRequested: false });
+      }
+
+      res.json({
+        hasRequested: true,
+        status: cardRequest.cardStatus,
+        cardLast4: cardRequest.cardLast4,
+        requestedAt: cardRequest.requestedAt,
+        issuedAt: cardRequest.issuedAt,
+        activatedAt: cardRequest.activatedAt
+      });
+    } catch (error) {
+      console.error("Error getting debit card status:", error);
+      res.status(500).json({ message: "Failed to get card status" });
+    }
+  });
+
+  // Request a debit card
+  app.post('/api/drivers/request-debit-card', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      // Verify user is a driver
+      if (!user || user.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+
+      const driver = await storage.getDriver(userId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      // Check if driver has Column account
+      if (!driver.columnEntityId || !driver.columnBankAccountId) {
+        return res.status(400).json({ message: "Column account required. Please complete bank account setup first." });
+      }
+
+      // Check if driver already has a card request
+      const existingRequest = await storage.getDebitCardRequestByDriverId(driver.id);
+      if (existingRequest && existingRequest.cardStatus !== 'cancelled') {
+        return res.status(400).json({ 
+          message: "Card request already exists",
+          status: existingRequest.cardStatus 
+        });
+      }
+
+      // Validate request data
+      const { shippingName, shippingStreet, shippingCity, shippingState, shippingZip } = req.body;
+      
+      if (!shippingName || !shippingStreet || !shippingCity || !shippingState || !shippingZip) {
+        return res.status(400).json({ message: "All shipping address fields are required" });
+      }
+
+      // Create debit card request record
+      const cardRequest = await storage.createDebitCardRequest({
+        driverId: driver.id,
+        userId: userId,
+        shippingName,
+        shippingStreet,
+        shippingCity,
+        shippingState,
+        shippingZip,
+        cardType: 'physical'
+      });
+
+      // TODO: Integrate with Lithic API to actually order the card
+      // For now, we just create the request record
+      // In production, this would call Lithic's card creation API:
+      // const lithicCard = await lithicService.createCard({
+      //   accountId: driver.columnBankAccountId,
+      //   shipping: { name: shippingName, address: { ... } }
+      // });
+
+      console.log(`💳 Debit card requested for driver ${driver.id} - ${shippingName}`);
+
+      res.json({
+        success: true,
+        message: "Debit card request submitted successfully",
+        requestId: cardRequest.id,
+        status: cardRequest.cardStatus
+      });
+    } catch (error) {
+      console.error("Error requesting debit card:", error);
+      res.status(500).json({ message: "Failed to request debit card" });
+    }
+  });
+
   // Create Stripe payment intent for $1,500 membership fee
   app.post('/api/owners/create-membership-payment', isAuthenticated, async (req: any, res) => {
     try {

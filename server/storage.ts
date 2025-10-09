@@ -14,6 +14,7 @@ import {
   driverWallets,
   walletTransactions,
   withdrawals,
+  debitCardRequests,
   webhookEvents,
   servicePaymentAccounts,
   billingBatches,
@@ -34,6 +35,7 @@ import {
   type DriverWallet,
   type WalletTransaction,
   type Withdrawal,
+  type DebitCardRequest,
   type ServicePaymentAccount,
   type BillingBatch,
   type FeeLedger,
@@ -50,6 +52,7 @@ import {
   type InsertDriverWallet,
   type InsertWalletTransaction,
   type InsertWithdrawal,
+  type InsertDebitCardRequest,
   type InsertServicePaymentAccount,
   type UpdateServicePaymentAccount,
   type InsertBillingBatch,
@@ -200,6 +203,12 @@ export interface IStorage {
   
   // Dynamic pending balance calculation
   calculatePendingBalance(driverId: string): Promise<number>;
+  
+  // Debit card request operations
+  createDebitCardRequest(request: Partial<InsertDebitCardRequest>): Promise<DebitCardRequest>;
+  getDebitCardRequestByDriverId(driverId: string): Promise<DebitCardRequest | undefined>;
+  getDebitCardRequest(id: string): Promise<DebitCardRequest | undefined>;
+  updateDebitCardRequest(id: string, requestData: Partial<InsertDebitCardRequest>): Promise<DebitCardRequest>;
   
   // Service Payment Account operations (superadmin only)
   createServicePaymentAccount(account: InsertServicePaymentAccount): Promise<ServicePaymentAccount>;
@@ -2051,6 +2060,41 @@ export class DatabaseStorage implements IStorage {
     }, 0);
 
     return Number(totalPendingAmount.toFixed(2));
+  }
+
+  // Debit card request operations
+  async createDebitCardRequest(request: Partial<InsertDebitCardRequest>): Promise<DebitCardRequest> {
+    const [newRequest] = await db
+      .insert(debitCardRequests)
+      .values(request as any)
+      .returning();
+    return newRequest;
+  }
+
+  async getDebitCardRequestByDriverId(driverId: string): Promise<DebitCardRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(debitCardRequests)
+      .where(eq(debitCardRequests.driverId, driverId))
+      .orderBy(desc(debitCardRequests.createdAt));
+    return request;
+  }
+
+  async getDebitCardRequest(id: string): Promise<DebitCardRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(debitCardRequests)
+      .where(eq(debitCardRequests.id, id));
+    return request;
+  }
+
+  async updateDebitCardRequest(id: string, requestData: Partial<InsertDebitCardRequest>): Promise<DebitCardRequest> {
+    const [updated] = await db
+      .update(debitCardRequests)
+      .set(requestData as any)
+      .where(eq(debitCardRequests.id, id))
+      .returning();
+    return updated;
   }
 
   // Webhook event operations for idempotency
