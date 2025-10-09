@@ -57,18 +57,22 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
 
   // Build card creation payload
   const cardPayload: any = {
-    type: request.cardType.toUpperCase(),
-    shipping_address: {
+    type: request.cardType.toUpperCase()
+  };
+
+  // Only add shipping info for physical cards
+  if (request.cardType.toUpperCase() === 'PHYSICAL') {
+    cardPayload.shipping_address = {
       first_name: request.shipping.firstName,
       last_name: request.shipping.lastName,
-      line1: request.shipping.address.street,
+      address1: request.shipping.address.street,
       city: request.shipping.address.city,
       state: request.shipping.address.state,
       postal_code: request.shipping.address.zip,
       country: 'USA'
-    },
-    shipping_method: 'STANDARD'
-  };
+    };
+    cardPayload.shipping_method = 'STANDARD';
+  }
 
   // Add account_token if provided (required for multi-account setups)
   // In sandbox without account enrollment, this can be omitted

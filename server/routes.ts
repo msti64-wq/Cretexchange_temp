@@ -2414,6 +2414,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lastName = nameParts.slice(1).join(' ') || nameParts[0]; // Use first name as last if only one name
 
       // Create debit card via Lithic API
+      // Note: In sandbox, we use VIRTUAL cards since physical cards require product_id setup
+      // In production, switch to 'physical' after configuring product_id in Lithic dashboard
       let lithicCard;
       try {
         lithicCard = await lithicService.createDebitCard({
@@ -2428,7 +2430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               zip: shippingZip
             }
           },
-          cardType: 'physical'
+          cardType: 'virtual' // Using virtual for sandbox testing
         });
         console.log(`✅ Lithic card created: ${lithicCard.token}, last4: ${lithicCard.last4}`);
       } catch (lithicError: any) {
@@ -2464,7 +2466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shippingCity,
         shippingState,
         shippingZip,
-        cardType: 'physical',
+        cardType: 'virtual', // Sandbox uses virtual cards
         cardStatus,
         lithicCardId: lithicCard.token,
         cardLast4: lithicCard.last4,
