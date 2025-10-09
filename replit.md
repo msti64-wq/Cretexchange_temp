@@ -29,6 +29,7 @@ Preferred communication style: Simple, everyday language.
 -   **Subscription Management**: One-time platform membership fee processed via Stripe for owners.
 -   **Wallet System**: Column BaaS integration for wallet management, including balance tracking, ACH transfers for funding, auto top-up functionality, and low balance alerts.
 -   **Book Transfers**: Instant internal transfers for washout payments between owner and driver, and owner to platform fees.
+-   **Debit Card Integration**: Lithic-powered debit cards for instant fund access. Drivers can request physical debit cards linked to their Column bank accounts for immediate wallet fund access at ATMs and stores. Infrastructure includes card request management, shipping address collection, and placeholder for Lithic API integration.
 
 ## External Dependencies
 
@@ -42,6 +43,7 @@ Preferred communication style: Simple, everyday language.
 ### Payment Processing
 -   **Stripe**: For customer management, subscription billing, payment methods, automated payouts, and webhook processing.
 -   **Column BaaS**: Banking-as-a-Service for wallet management, bank account creation, balance tracking, book transfers, and ACH transfers. Uses the production API endpoint with test credentials.
+-   **Lithic** (planned): Card issuing platform for instant debit card access. Provides processor-only model that integrates with Column bank accounts for instant fund access via physical/virtual debit cards.
 
 ### Cloud Storage
 -   **Google Cloud Storage**: For object storage, presigned URL generation, and access control.
