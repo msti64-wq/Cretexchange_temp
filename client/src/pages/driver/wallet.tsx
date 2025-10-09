@@ -520,6 +520,34 @@ export default function DriverWallet() {
                   )}
                   Request Withdrawal
                 </Button>
+
+                {/* Withdrawal timing and debit card guidance */}
+                <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800 dark:text-blue-200">
+                    <div className="space-y-2">
+                      <p className="font-medium">Bank transfers typically arrive in 1-2 business days</p>
+                      <p className="text-sm">
+                        <strong>Want faster access?</strong> Request a debit card linked to your account for instant access to your funds at ATMs and stores.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 border-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900"
+                        onClick={() => {
+                          toast({
+                            title: "Debit Card Coming Soon",
+                            description: "We're working on adding instant debit card access. Check back soon!",
+                          });
+                        }}
+                        data-testid="button-request-debit-card"
+                      >
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        Request Debit Card (Coming Soon)
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
               </>
             )}
           </div>
