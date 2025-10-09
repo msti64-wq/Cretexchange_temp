@@ -4177,45 +4177,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver profile not found" });
       }
 
-      let availableBalance = 0;
-      let balanceSource = 'local'; // Track where balance came from
-
-      // Try to get balance from Column if driver has a bank account
-      if (driver.columnBankAccountId) {
-        try {
-          const bankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
-          // Column balance is in cents, convert to dollars
-          availableBalance = parseFloat(bankAccount.available_balance || 0) / 100;
-          balanceSource = 'column';
-        } catch (columnError) {
-          console.error('Error fetching Column balance, falling back to local:', columnError);
-          // Fall back to local wallet if Column fails
-          const wallet = await storage.getDriverWallet(driver.id);
-          availableBalance = wallet ? parseFloat(wallet.availableBalance) : 0;
-        }
-      } else {
-        // No Column account, use local wallet balance
-        const wallet = await storage.getDriverWallet(driver.id);
-        if (!wallet) {
-          await storage.createDriverWallet({
-            driverId: driver.id,
-            availableBalance: "0.00",
-            pendingBalance: "0.00"
-          });
-          availableBalance = 0;
-        } else {
-          availableBalance = parseFloat(wallet.availableBalance);
-        }
+      // Get or create wallet (WashOut Pro internal wallet for earnings)
+      let wallet = await storage.getDriverWallet(driver.id);
+      if (!wallet) {
+        wallet = await storage.createDriverWallet({
+          driverId: driver.id,
+          availableBalance: "0.00",
+          pendingBalance: "0.00"
+        });
       }
 
       // Calculate pending balance dynamically from activities with status='pending'
       const dynamicPendingBalance = await storage.calculatePendingBalance(driver.id);
 
       res.json({
-        availableBalance: availableBalance,
+        availableBalance: parseFloat(wallet.availableBalance),
         pendingBalance: dynamicPendingBalance,
-        totalBalance: availableBalance + dynamicPendingBalance,
-        balanceSource: balanceSource // 'column' or 'local'
+        totalBalance: parseFloat(wallet.availableBalance) + dynamicPendingBalance
       });
     } catch (error) {
       console.error("Error getting wallet balance:", error);
