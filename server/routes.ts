@@ -4402,7 +4402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amountNet: netAmount.toString(),
           status: "requested",
           metadata: {
-            stripeAccountId: driver.connectedAccountId,
+            columnBankAccountId: driver.columnBankAccountId,
             requestedAt: new Date().toISOString()
           }
         }).returning();
@@ -4432,6 +4432,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         return { withdrawal, newBalance };
       });
+
+      // Create Column ACH transfer to driver's bank account
+      try {
+        // Get driver's Column bank account info to create counterparty
+        const driverBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
+        const driverAccountNumber = driverBankAccount.default_account_number;
+        const driverRoutingNumber = driverBankAccount.routing_number;
+
+        // Create or get Column counterparty for driver's bank account
+        let counterpartyId = driver.columnCounterpartyId;
+        
+        if (!counterpartyId) {
+          const counterpartyResult = await columnService.createCounterparty({
+            accountNumber: driverAccountNumber,
+            routingNumber: driverRoutingNumber,
+            name: `${user.firstName} ${user.lastName}`,
+          });
+          counterpartyId = counterpartyResult.id;
+          
+          // Store counterparty ID in driver record
+          await storage.updateDriver(driver.id, {
+            columnCounterpartyId: counterpartyId,
+          });
+        }
+
+        // Create ACH transfer from platform account to driver
+        const transferResult = await columnService.createACHTransfer({
+          counterpartyId: counterpartyId,
+          bankAccountId: platformConfig.accountId,
+          type: 'CREDIT', // Credit to driver's account
+          amount: Math.round(netAmount * 100), // Convert to cents
+          currencyCode: 'USD',
+          description: `WashOut Pro payout - $${netAmount.toFixed(2)}`,
+          receiverName: `${user.firstName} ${user.lastName}`.substring(0, 22)
+        });
+
+        // Update withdrawal record with Column transfer ID
+        await storage.updateWithdrawal(withdrawal.id, {
+          columnTransferId: transferResult.id,
+          columnCounterpartyId: counterpartyId,
+          status: 'processing'
+        });
+
+        console.log(`✅ Column ACH transfer created: ${transferResult.id} for withdrawal ${withdrawal.id}`);
+      } catch (columnError) {
+        console.error('❌ Error creating Column ACH transfer:', columnError);
+        // Update withdrawal status to failed
+        await storage.updateWithdrawal(withdrawal.id, {
+          status: 'failed',
+          failureReason: columnError instanceof Error ? columnError.message : 'Failed to create Column transfer'
+        });
+        
+        // Refund the wallet balance
+        await storage.updateDriverWalletBalance(driver.id, availableBalance.toString());
+        
+        throw new Error('Failed to process withdrawal via Column. Please try again later.');
+      }
 
       res.json({
         withdrawal: {
