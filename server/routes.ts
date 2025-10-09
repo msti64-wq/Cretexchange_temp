@@ -4352,10 +4352,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Rate limiting: Check for recent withdrawal attempts (last 5 minutes)
+      // Rate limiting: Check for recent successful withdrawal attempts (last 5 minutes)
+      // Exclude failed withdrawals from rate limiting to allow retry
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
       const recentWithdrawals = existingPendingWithdrawals.filter(w => 
-        w.createdAt && new Date(w.createdAt) > fiveMinutesAgo
+        w.createdAt && 
+        new Date(w.createdAt) > fiveMinutesAgo &&
+        w.status !== 'failed' // Exclude failed withdrawals
       );
       
       if (recentWithdrawals.length > 0) {
