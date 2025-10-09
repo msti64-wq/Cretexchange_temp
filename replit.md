@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 ### Payment Processing
 -   **Stripe**: For customer management, subscription billing, payment methods, automated payouts, and webhook processing.
 -   **Column BaaS**: Banking-as-a-Service for wallet management, bank account creation, balance tracking, book transfers, and ACH transfers. Uses the production API endpoint with test credentials.
--   **Lithic** (planned): Card issuing platform for instant debit card access. Provides processor-only model that integrates with Column bank accounts for instant fund access via physical/virtual debit cards.
+-   **Lithic**: Card issuing platform for instant debit card access. Sandbox integration configured with physical card creation, status tracking, and card management. Provides processor-only model that integrates with Column bank accounts for instant fund access via physical/virtual debit cards.
 
 ### Cloud Storage
 -   **Google Cloud Storage**: For object storage, presigned URL generation, and access control.
