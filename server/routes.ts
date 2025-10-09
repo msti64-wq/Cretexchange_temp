@@ -975,18 +975,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "requested",
       });
 
-      // Get driver's Column bank account info to create counterparty
-      const driverBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
-      const driverAccountNumber = driverBankAccount.default_account_number;
-      const driverRoutingNumber = driverBankAccount.routing_number;
+      // Get driver's external bank account info (where they want to receive funds)
+      if (!driver.routingNumber || !driver.accountNumber) {
+        return res.status(400).json({ 
+          message: "External bank account not configured. Please add your bank details in settings." 
+        });
+      }
 
-      // Create or get Column counterparty for driver's bank account
+      // Create or get Column counterparty for driver's EXTERNAL bank account
       let counterpartyId = driver.columnCounterpartyId;
       
       if (!counterpartyId) {
         const counterpartyResult = await columnService.createCounterparty({
-          accountNumber: driverAccountNumber,
-          routingNumber: driverRoutingNumber,
+          accountNumber: driver.accountNumber,
+          routingNumber: driver.routingNumber,
           name: `${user.firstName} ${user.lastName}`,
         });
         counterpartyId = counterpartyResult.id;
@@ -997,14 +999,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create ACH transfer from platform account to driver
+      // Create ACH transfer from driver's Column wallet to their external bank
       const transferResult = await columnService.createACHTransfer({
         counterpartyId: counterpartyId,
-        bankAccountId: platformConfig.accountId,
-        type: 'CREDIT', // Credit to driver's account
+        bankAccountId: driver.columnBankAccountId, // Driver's Column wallet (source)
+        type: 'DEBIT', // Debit from driver's Column wallet to external account
         amount: Math.round(amount * 100), // Convert to cents
         currencyCode: 'USD',
-        description: `WashOut Pro payout - $${amount.toFixed(2)}`,
+        description: `WashOut Pro withdrawal - $${amount.toFixed(2)}`,
         receiverName: `${user.firstName} ${user.lastName}`.substring(0, 22)
       });
       
@@ -4559,20 +4561,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { withdrawal, newBalance };
       });
 
-      // Create Column ACH transfer to driver's bank account
+      // Create Column ACH transfer to driver's external bank account
       try {
-        // Get driver's Column bank account info to create counterparty
-        const driverBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
-        const driverAccountNumber = driverBankAccount.default_account_number;
-        const driverRoutingNumber = driverBankAccount.routing_number;
+        // Check if driver has external bank account configured
+        if (!driver.routingNumber || !driver.accountNumber) {
+          throw new Error("External bank account not configured. Please add your bank details in settings.");
+        }
 
-        // Create or get Column counterparty for driver's bank account
+        // Create or get Column counterparty for driver's EXTERNAL bank account
         let counterpartyId = driver.columnCounterpartyId;
         
         if (!counterpartyId) {
           const counterpartyResult = await columnService.createCounterparty({
-            accountNumber: driverAccountNumber,
-            routingNumber: driverRoutingNumber,
+            accountNumber: driver.accountNumber,
+            routingNumber: driver.routingNumber,
             name: `${user.firstName} ${user.lastName}`,
           });
           counterpartyId = counterpartyResult.id;
@@ -4583,14 +4585,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Create ACH transfer from platform account to driver
+        // Create ACH transfer from driver's Column wallet to their external bank
         const transferResult = await columnService.createACHTransfer({
           counterpartyId: counterpartyId,
-          bankAccountId: platformConfig.accountId,
-          type: 'CREDIT', // Credit to driver's account
+          bankAccountId: driver.columnBankAccountId, // Driver's Column wallet (source)
+          type: 'DEBIT', // Debit from driver's Column wallet to external account
           amount: Math.round(netAmount * 100), // Convert to cents
           currencyCode: 'USD',
-          description: `WashOut Pro payout - $${netAmount.toFixed(2)}`,
+          description: `WashOut Pro withdrawal - $${netAmount.toFixed(2)}`,
           receiverName: `${user.firstName} ${user.lastName}`.substring(0, 22)
         });
 
