@@ -4367,27 +4367,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if driver has connected Stripe account with payouts enabled
-      if (stripe && driver.connectedAccountId) {
-        try {
-          const account = await stripe.accounts.retrieve(driver.connectedAccountId);
-          if (!account.payouts_enabled || !account.details_submitted) {
-            return res.status(400).json({ 
-              message: "Bank account setup incomplete. Please complete your bank account setup to withdraw funds.",
-              accountStatus: {
-                payoutsEnabled: account.payouts_enabled,
-                detailsSubmitted: account.details_submitted
-              }
-            });
-          }
-        } catch (stripeError) {
-          console.error("Error checking Stripe account:", stripeError);
-          return res.status(500).json({ message: "Unable to verify bank account status" });
+      // Check if driver has Column bank account for ACH payouts
+      if (!driver.columnBankAccountId || !driver.columnEntityId) {
+        // Check what payment method the driver has selected and provide specific guidance
+        if (driver.paymentMethod === 'venmo') {
+          return res.status(400).json({ 
+            message: "Venmo payouts are not currently supported. Please update your payment method to ACH (Direct Deposit) in your profile and complete bank account setup to withdraw funds." 
+          });
+        } else if (driver.paymentMethod === 'zelle') {
+          return res.status(400).json({ 
+            message: "Zelle payouts are not currently supported. Please update your payment method to ACH (Direct Deposit) in your profile and complete bank account setup to withdraw funds." 
+          });
+        } else {
+          return res.status(400).json({ 
+            message: "No bank account connected. Please complete bank account setup for ACH payouts in your profile to withdraw funds." 
+          });
         }
-      } else if (!driver.connectedAccountId) {
-        return res.status(400).json({ 
-          message: "No bank account connected. Please connect a bank account to withdraw funds."
-        });
       }
 
       // Calculate fee based on tiered structure and net amount - using cent-safe arithmetic
