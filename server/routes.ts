@@ -936,22 +936,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request
       const { amount } = driverPayoutRequestSchema.parse(req.body);
 
-      // Check payment method and provide appropriate error messages
+      // Check if Column wallet is set up
       if (!driver.columnBankAccountId || !driver.columnEntityId) {
-        // Check what payment method the driver has selected
-        if (driver.paymentMethod === 'venmo') {
-          return res.status(400).json({ 
-            message: "Venmo payouts are not currently supported. Please update your payment method to ACH (Direct Deposit) in your profile and complete bank account setup." 
-          });
-        } else if (driver.paymentMethod === 'zelle') {
-          return res.status(400).json({ 
-            message: "Zelle payouts are not currently supported. Please update your payment method to ACH (Direct Deposit) in your profile and complete bank account setup." 
-          });
-        } else {
-          return res.status(400).json({ 
-            message: "Please complete bank account setup for ACH payouts. Go to your profile to connect your bank account." 
-          });
-        }
+        return res.status(400).json({ 
+          message: "Please complete bank account setup for ACH withdrawals. Go to your profile to connect your bank account." 
+        });
       }
 
       // Get driver wallet
@@ -4495,22 +4484,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if driver has Column bank account for ACH payouts
+      // Check if driver has Column wallet set up
       if (!driver.columnBankAccountId || !driver.columnEntityId) {
-        // Check what payment method the driver has selected and provide specific guidance
-        if (driver.paymentMethod === 'venmo') {
-          return res.status(400).json({ 
-            message: "Venmo payouts are not currently supported. Please update your payment method to ACH (Direct Deposit) in your profile and complete bank account setup to withdraw funds." 
-          });
-        } else if (driver.paymentMethod === 'zelle') {
-          return res.status(400).json({ 
-            message: "Zelle payouts are not currently supported. Please update your payment method to ACH (Direct Deposit) in your profile and complete bank account setup to withdraw funds." 
-          });
-        } else {
-          return res.status(400).json({ 
-            message: "No bank account connected. Please complete bank account setup for ACH payouts in your profile to withdraw funds." 
-          });
-        }
+        return res.status(400).json({ 
+          message: "Please complete bank account setup for ACH withdrawals. Go to your profile to connect your bank account." 
+        });
       }
 
       // Calculate fee based on tiered structure and net amount - using cent-safe arithmetic
