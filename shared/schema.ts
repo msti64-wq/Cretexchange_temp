@@ -102,16 +102,15 @@ export const drivers = pgTable("drivers", {
   currentLatitude: decimal("current_latitude", { precision: 10, scale: 8 }),
   currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),
   lastLocationUpdate: timestamp("last_location_update"),
-  // Driver payment preferences for direct payment model
-  paymentMethod: paymentMethodEnum("payment_method").default("ach"),
-  // ACH payment details
+  // ACH bank account details for withdrawals
   bankName: varchar("bank_name"),
   accountHolderName: varchar("account_holder_name"),
   routingNumber: varchar("routing_number"),
   accountNumber: varchar("account_number"), // Encrypted
-  // Venmo/Zelle details
+  // Venmo/Zelle details (stored for records only, not used for withdrawals)
   venmoHandle: varchar("venmo_handle"),
   zelleEmail: varchar("zelle_email"),
+  paymentMethod: paymentMethodEnum("payment_method").default("ach"), // Legacy field - kept for backward compatibility
   // Column BaaS integration for payouts (server-managed)
   columnEntityId: varchar("column_entity_id"), // Column entity ID for KYC
   columnBankAccountId: varchar("column_bank_account_id"), // Column bank account ID for direct deposits
