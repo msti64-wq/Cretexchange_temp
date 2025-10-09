@@ -4616,8 +4616,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           columnError instanceof Error ? columnError.message : 'Failed to create Column transfer'
         );
         
-        // Refund the wallet balance
-        await storage.updateDriverWalletBalance(driver.id, availableBalance.toString());
+        // Refund the wallet balance back to available (add back the withdrawn amount)
+        await storage.updateWalletBalance(
+          driver.id, 
+          (availableBalance + withdrawalAmount).toString(),
+          '0.00'
+        );
         
         throw new Error('Failed to process withdrawal via Column. Please try again later.');
       }
