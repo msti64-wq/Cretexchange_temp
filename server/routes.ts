@@ -4469,20 +4469,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Update withdrawal record with Column transfer ID
-        await storage.updateWithdrawal(withdrawal.id, {
-          columnTransferId: transferResult.id,
-          columnCounterpartyId: counterpartyId,
-          status: 'processing'
-        });
+        await storage.updateWithdrawalStatus(
+          withdrawal.id, 
+          'processing',
+          transferResult.id,
+          undefined,
+          counterpartyId
+        );
 
         console.log(`✅ Column ACH transfer created: ${transferResult.id} for withdrawal ${withdrawal.id}`);
       } catch (columnError) {
         console.error('❌ Error creating Column ACH transfer:', columnError);
         // Update withdrawal status to failed
-        await storage.updateWithdrawal(withdrawal.id, {
-          status: 'failed',
-          failureReason: columnError instanceof Error ? columnError.message : 'Failed to create Column transfer'
-        });
+        await storage.updateWithdrawalStatus(
+          withdrawal.id,
+          'failed',
+          undefined,
+          columnError instanceof Error ? columnError.message : 'Failed to create Column transfer'
+        );
         
         // Refund the wallet balance
         await storage.updateDriverWalletBalance(driver.id, availableBalance.toString());
