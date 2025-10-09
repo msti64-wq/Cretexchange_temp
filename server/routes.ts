@@ -13,6 +13,7 @@ import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, ins
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { columnService, platformConfig } from "./columnService";
+import * as lithicService from "./lithicService";
 
 // Initialize Stripe only if secret key is available
 let stripe: Stripe | null = null;
@@ -2407,7 +2408,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "All shipping address fields are required" });
       }
 
-      // Create debit card request record
+      // Split shipping name into first and last name
+      const nameParts = shippingName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || nameParts[0]; // Use first name as last if only one name
+
+      // Create debit card via Lithic API
+      let lithicCard;
+      try {
+        lithicCard = await lithicService.createDebitCard({
+          accountId: driver.columnBankAccountId!,
+          shipping: {
+            firstName,
+            lastName,
+            address: {
+              street: shippingStreet,
+              city: shippingCity,
+              state: shippingState,
+              zip: shippingZip
+            }
+          },
+          cardType: 'physical'
+        });
+        console.log(`✅ Lithic card created: ${lithicCard.token}, last4: ${lithicCard.last4}`);
+      } catch (lithicError: any) {
+        console.error("❌ Lithic card creation failed:", lithicError.message);
+        return res.status(500).json({ 
+          message: "Failed to create debit card with card issuer",
+          error: lithicError.message 
+        });
+      }
+
+      // Map Lithic card state to our status enum
+      // Lithic states: PENDING_FULFILLMENT, PENDING_ACTIVATION, OPEN, PAUSED, CLOSED
+      // Our enum: requested, processing, issued, active, blocked, cancelled
+      let cardStatus: 'requested' | 'processing' | 'issued' | 'active' | 'blocked' | 'cancelled' = 'processing';
+      if (lithicCard.state === 'OPEN') {
+        cardStatus = 'active';
+      } else if (lithicCard.state === 'PENDING_FULFILLMENT') {
+        cardStatus = 'processing';
+      } else if (lithicCard.state === 'PENDING_ACTIVATION') {
+        cardStatus = 'issued';
+      } else if (lithicCard.state === 'PAUSED') {
+        cardStatus = 'blocked';
+      } else if (lithicCard.state === 'CLOSED') {
+        cardStatus = 'cancelled';
+      }
+
+      // Create debit card request record with Lithic card details
       const cardRequest = await storage.createDebitCardRequest({
         driverId: driver.id,
         userId: userId,
@@ -2416,16 +2464,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shippingCity,
         shippingState,
         shippingZip,
-        cardType: 'physical'
+        cardType: 'physical',
+        cardStatus,
+        lithicCardId: lithicCard.token,
+        cardLast4: lithicCard.last4,
+        expirationMonth: lithicCard.expirationMonth,
+        expirationYear: lithicCard.expirationYear,
+        issuedAt: new Date()
       });
-
-      // TODO: Integrate with Lithic API to actually order the card
-      // For now, we just create the request record
-      // In production, this would call Lithic's card creation API:
-      // const lithicCard = await lithicService.createCard({
-      //   accountId: driver.columnBankAccountId,
-      //   shipping: { name: shippingName, address: { ... } }
-      // });
 
       console.log(`💳 Debit card requested for driver ${driver.id} - ${shippingName}`);
 

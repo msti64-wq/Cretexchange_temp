@@ -15,7 +15,7 @@
 
 // Lithic API configuration
 const LITHIC_API_KEY = process.env.LITHIC_API_KEY;
-const LITHIC_BASE_URL = process.env.LITHIC_BASE_URL || 'https://api.lithic.com/v1';
+const LITHIC_BASE_URL = 'https://sandbox.lithic.com/v1'; // Using sandbox for testing
 
 interface LithicCardRequest {
   accountId: string; // Column bank account ID
@@ -55,34 +55,46 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
     throw new Error('Lithic API key not configured. Add LITHIC_API_KEY to Replit Secrets.');
   }
 
-  // TODO: Implement Lithic API integration
-  // Example implementation:
-  /*
+  // Build card creation payload
+  const cardPayload: any = {
+    type: request.cardType.toUpperCase(),
+    shipping_address: {
+      first_name: request.shipping.firstName,
+      last_name: request.shipping.lastName,
+      line1: request.shipping.address.street,
+      city: request.shipping.address.city,
+      state: request.shipping.address.state,
+      postal_code: request.shipping.address.zip,
+      country: 'USA'
+    },
+    shipping_method: 'STANDARD'
+  };
+
+  // Add account_token if provided (required for multi-account setups)
+  // In sandbox without account enrollment, this can be omitted
+  if (request.accountId) {
+    cardPayload.account_token = request.accountId;
+  }
+
   const response = await fetch(`${LITHIC_BASE_URL}/cards`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${LITHIC_API_KEY}`,
+      'Authorization': LITHIC_API_KEY,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      type: request.cardType.toUpperCase(),
-      account_token: request.accountId,
-      shipping_address: {
-        first_name: request.shipping.firstName,
-        last_name: request.shipping.lastName,
-        line1: request.shipping.address.street,
-        city: request.shipping.address.city,
-        state: request.shipping.address.state,
-        postal_code: request.shipping.address.zip,
-        country: 'USA'
-      },
-      shipping_method: 'STANDARD'
-    })
+    body: JSON.stringify(cardPayload)
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`Lithic API error: ${error.message || response.statusText}`);
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.message || error.error || errorText;
+    } catch {
+      errorMessage = errorText;
+    }
+    throw new Error(`Lithic API error: ${errorMessage}`);
   }
 
   const card = await response.json();
@@ -96,10 +108,6 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
     type: card.type,
     created: card.created
   };
-  */
-
-  // Placeholder response for development
-  throw new Error('Lithic integration not yet implemented. Please add Lithic API key and uncomment the implementation above.');
 }
 
 /**
@@ -110,8 +118,37 @@ export async function getCard(cardToken: string): Promise<LithicCard> {
     throw new Error('Lithic API key not configured');
   }
 
-  // TODO: Implement
-  throw new Error('Not implemented');
+  const response = await fetch(`${LITHIC_BASE_URL}/cards/${cardToken}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': LITHIC_API_KEY,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.message || error.error || errorText;
+    } catch {
+      errorMessage = errorText;
+    }
+    throw new Error(`Lithic API error: ${errorMessage}`);
+  }
+
+  const card = await response.json();
+  
+  return {
+    token: card.token,
+    last4: card.last_four,
+    expirationMonth: card.exp_month,
+    expirationYear: card.exp_year,
+    state: card.state,
+    type: card.type,
+    created: card.created
+  };
 }
 
 /**
@@ -122,8 +159,28 @@ export async function activateCard(cardToken: string): Promise<void> {
     throw new Error('Lithic API key not configured');
   }
 
-  // TODO: Implement card activation via Lithic API
-  throw new Error('Not implemented');
+  const response = await fetch(`${LITHIC_BASE_URL}/cards/${cardToken}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': LITHIC_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      state: 'OPEN'
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.message || error.error || errorText;
+    } catch {
+      errorMessage = errorText;
+    }
+    throw new Error(`Lithic API error: ${errorMessage}`);
+  }
 }
 
 /**
@@ -134,8 +191,26 @@ export async function updateCardStatus(cardToken: string, state: 'OPEN' | 'PAUSE
     throw new Error('Lithic API key not configured');
   }
 
-  // TODO: Implement
-  throw new Error('Not implemented');
+  const response = await fetch(`${LITHIC_BASE_URL}/cards/${cardToken}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': LITHIC_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ state })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.message || error.error || errorText;
+    } catch {
+      errorMessage = errorText;
+    }
+    throw new Error(`Lithic API error: ${errorMessage}`);
+  }
 }
 
 /**
@@ -146,8 +221,28 @@ export async function closeCard(cardToken: string): Promise<void> {
     throw new Error('Lithic API key not configured');
   }
 
-  // TODO: Implement
-  throw new Error('Not implemented');
+  const response = await fetch(`${LITHIC_BASE_URL}/cards/${cardToken}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': LITHIC_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      state: 'CLOSED'
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.message || error.error || errorText;
+    } catch {
+      errorMessage = errorText;
+    }
+    throw new Error(`Lithic API error: ${errorMessage}`);
+  }
 }
 
 export default {
