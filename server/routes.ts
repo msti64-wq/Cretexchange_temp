@@ -2419,7 +2419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let lithicCard;
       try {
         lithicCard = await lithicService.createDebitCard({
-          accountId: driver.columnBankAccountId!,
+          accountId: '', // Omit account_token for sandbox testing (no Lithic account enrollment)
           shipping: {
             firstName,
             lastName,
