@@ -61,8 +61,6 @@ export default function DriverProfile() {
     city: "",
     state: "",
     zip: "",
-    paymentMethod: "check",
-    paymentFrequency: "weekly",
     employerName: "",
     employerStreet: "",
     employerCity: "",
@@ -70,8 +68,6 @@ export default function DriverProfile() {
     employerZip: "",
     employerPhone: "",
     truckNumber: "",
-    venmoUsername: "",
-    zelleInfo: "",
     bankName: "",
     routingNumber: "",
     accountNumber: "",
@@ -91,8 +87,6 @@ export default function DriverProfile() {
         city: userData.city || "",
         state: userData.state || "",
         zip: userData.zip || "",
-        paymentMethod: userData.roleData.paymentMethod || userData.paymentMethod || "check",
-        paymentFrequency: userData.paymentFrequency || "weekly",
         employerName: userData.roleData.employerName || "",
         employerStreet: userData.roleData.employerStreet || "",
         employerCity: userData.roleData.employerCity || "",
@@ -100,8 +94,6 @@ export default function DriverProfile() {
         employerZip: userData.roleData.employerZip || "",
         employerPhone: userData.roleData.employerPhone || "",
         truckNumber: userData.roleData.truckNumber || "",
-        venmoUsername: userData.roleData.venmoHandle || "",
-        zelleInfo: userData.roleData.zelleEmail || "",
         bankName: userData.roleData.bankName || "",
         routingNumber: userData.roleData.routingNumber || "",
         accountNumber: userData.roleData.accountNumber || "",
@@ -123,8 +115,6 @@ export default function DriverProfile() {
         userData.city &&
         userData.state &&
         userData.zip &&
-        userData.paymentMethod &&
-        userData.paymentMethod !== "check" && // "check" was invalid payment method
         roleData.employerName &&
         roleData.truckNumber &&
         termsStatus.hasAgreed
@@ -139,7 +129,6 @@ export default function DriverProfile() {
       console.log('🔍 Profile completion check:', {
         isProfileComplete,
         hasEssentialInfo,
-        paymentMethod: userData.paymentMethod,
         termsAgreed: termsStatus.hasAgreed,
         showInstallPrompt
       });

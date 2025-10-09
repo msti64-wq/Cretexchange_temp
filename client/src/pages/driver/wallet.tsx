@@ -452,8 +452,8 @@ export default function DriverWallet() {
           subtitle={
             <span className="text-sm text-muted-foreground">
               {!termsStatus?.hasAgreed 
-                ? "$1 fee under $10, then 10% • Funds arrive in 1-2 business days"
-                : "Funds arrive in 1-2 business days"
+                ? "$1 fee under $10, then 10% • ACH transfer to your bank (1-2 business days)"
+                : "ACH transfer to your bank (1-2 business days)"
               }
             </span>
           }
@@ -533,9 +533,9 @@ export default function DriverWallet() {
                   <Clock className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800 dark:text-blue-200">
                     <div className="space-y-2">
-                      <p className="font-medium">Bank transfers typically arrive in 1-2 business days</p>
+                      <p className="font-medium">ACH withdrawals to your bank account typically arrive in 1-2 business days</p>
                       <p className="text-sm">
-                        <strong>Want faster access?</strong> Request a debit card linked to your account for instant access to your funds at ATMs and stores.
+                        <strong>Need instant access?</strong> Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
                       </p>
                       <Button
                         variant="outline"
