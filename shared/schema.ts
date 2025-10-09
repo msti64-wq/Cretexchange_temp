@@ -51,6 +51,9 @@ export const transactionSourceTypeEnum = pgEnum("transaction_source_type", ["was
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "posted", "failed"]);
 export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["requested", "processing", "paid", "failed", "canceled"]);
 
+// Debit card enums
+export const debitCardStatusEnum = pgEnum("debit_card_status", ["requested", "processing", "issued", "active", "blocked", "cancelled"]);
+
 // Billing system enums
 export const billingCadenceEnum = pgEnum("billing_cadence", ["daily"]);
 export const batchStatusEnum = pgEnum("batch_status", ["pending", "processing", "completed", "failed", "cancelled"]);
@@ -116,6 +119,33 @@ export const drivers = pgTable("drivers", {
   columnCounterpartyId: varchar("column_counterparty_id"), // Column counterparty ID for ACH transfers
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Debit card requests
+export const debitCardRequests = pgTable("debit_card_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // Shipping information
+  shippingName: varchar("shipping_name").notNull(),
+  shippingStreet: varchar("shipping_street").notNull(),
+  shippingCity: varchar("shipping_city").notNull(),
+  shippingState: varchar("shipping_state").notNull(),
+  shippingZip: varchar("shipping_zip").notNull(),
+  // Card details from issuer processor
+  cardStatus: debitCardStatusEnum("card_status").notNull().default("requested"),
+  lithicCardId: varchar("lithic_card_id"), // Lithic card token/ID
+  cardLast4: varchar("card_last4"), // Last 4 digits of card
+  cardType: varchar("card_type").default("physical"), // physical or virtual
+  expirationMonth: varchar("expiration_month"), // MM
+  expirationYear: varchar("expiration_year"), // YYYY
+  // Tracking
+  requestedAt: timestamp("requested_at").defaultNow(),
+  issuedAt: timestamp("issued_at"),
+  activatedAt: timestamp("activated_at"),
+  cancelledAt: timestamp("cancelled_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -536,6 +566,22 @@ export const insertDriverSchema = createInsertSchema(drivers).omit({
   columnAccountLast4: true,
 });
 
+export const insertDebitCardRequestSchema = createInsertSchema(debitCardRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  requestedAt: true,
+  issuedAt: true,
+  activatedAt: true,
+  cancelledAt: true,
+  // Omit server-managed fields from issuer processor
+  lithicCardId: true,
+  cardLast4: true,
+  cardStatus: true,
+  expirationMonth: true,
+  expirationYear: true,
+});
+
 export const insertOwnerSchema = createInsertSchema(owners).omit({
   id: true,
   createdAt: true,
@@ -764,6 +810,8 @@ export type Notification = typeof notifications.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 
 export type InsertDriver = z.infer<typeof insertDriverSchema>;
+export type DebitCardRequest = typeof debitCardRequests.$inferSelect;
+export type InsertDebitCardRequest = z.infer<typeof insertDebitCardRequestSchema>;
 export type InsertOwner = z.infer<typeof insertOwnerSchema>;
 export type InsertWashoutLocation = z.infer<typeof insertWashoutLocationSchema>;
 export type InsertWashoutActivity = z.infer<typeof insertWashoutActivitySchema>;
