@@ -13,6 +13,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
 import { ColumnOnboardingDialog } from "@/components/ColumnOnboardingDialog";
+import { DebitCardRequestDialog } from "@/components/DebitCardRequestDialog";
 import { 
   Wallet, 
   DollarSign, 
@@ -63,6 +64,7 @@ export default function DriverWallet() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [showColumnOnboarding, setShowColumnOnboarding] = useState(false);
+  const [showDebitCardDialog, setShowDebitCardDialog] = useState(false);
   const pageSize = 20;
 
   // Fetch wallet balance
@@ -94,6 +96,11 @@ export default function DriverWallet() {
   // Fetch Column onboarding status
   const { data: columnStatus, isLoading: columnLoading, refetch: refetchColumnStatus } = useQuery<ColumnOnboardingStatus>({
     queryKey: ['/api/column/status'],
+  });
+
+  // Fetch user profile for debit card pre-population
+  const { data: userProfile } = useQuery<any>({
+    queryKey: ['/api/profile'],
   });
 
   // Withdrawal mutation
@@ -534,16 +541,12 @@ export default function DriverWallet() {
                         variant="outline"
                         size="sm"
                         className="mt-2 border-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900"
-                        onClick={() => {
-                          toast({
-                            title: "Debit Card Coming Soon",
-                            description: "We're working on adding instant debit card access. Check back soon!",
-                          });
-                        }}
+                        onClick={() => setShowDebitCardDialog(true)}
+                        disabled={!columnStatus?.isOnboarded}
                         data-testid="button-request-debit-card"
                       >
                         <CreditCard className="w-4 h-4 mr-2" />
-                        Request Debit Card (Coming Soon)
+                        Request Debit Card
                       </Button>
                     </div>
                   </AlertDescription>
@@ -671,6 +674,19 @@ export default function DriverWallet() {
           await columnOnboardingMutation.mutateAsync(data);
         }}
         isPending={columnOnboardingMutation.isPending}
+      />
+
+      {/* Debit Card Request Dialog */}
+      <DebitCardRequestDialog
+        open={showDebitCardDialog}
+        onOpenChange={setShowDebitCardDialog}
+        driverName={userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : ""}
+        driverAddress={{
+          street: userProfile?.street,
+          city: userProfile?.city,
+          state: userProfile?.state,
+          zip: userProfile?.zip,
+        }}
       />
 
       <MobileNav />
