@@ -394,6 +394,89 @@ export async function getAccountHolder(accountHolderToken: string): Promise<any>
   return await response.json();
 }
 
+/**
+ * Create Financial Account in Lithic
+ * 
+ * This links a Lithic account holder to their Column bank account.
+ * Lithic will validate the account exists and belongs to the account holder.
+ */
+export async function createFinancialAccount(data: {
+  accountHolderToken: string;
+  columnAccountNumber: string;
+  columnRoutingNumber: string;
+  ownerName: string;
+}): Promise<{ token: string }> {
+  if (!LITHIC_API_KEY) {
+    throw new Error('Lithic API key not configured');
+  }
+
+  const payload = {
+    account_holder_token: data.accountHolderToken,
+    type: 'OPERATING',
+    bank_account: {
+      account_number: data.columnAccountNumber,
+      routing_number: data.columnRoutingNumber,
+      account_type: 'CHECKING',
+      owner_name: data.ownerName
+    }
+  };
+
+  const response = await fetch(`${LITHIC_BASE_URL}/financial_accounts`, {
+    method: 'POST',
+    headers: {
+      'Authorization': LITHIC_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.message || error.error || errorText;
+    } catch {
+      errorMessage = errorText;
+    }
+    throw new Error(`Lithic financial account creation failed: ${errorMessage}`);
+  }
+
+  const result = await response.json();
+  return { token: result.token };
+}
+
+/**
+ * Get Financial Account details from Lithic
+ */
+export async function getFinancialAccount(financialAccountToken: string): Promise<any> {
+  if (!LITHIC_API_KEY) {
+    throw new Error('Lithic API key not configured');
+  }
+
+  const response = await fetch(`${LITHIC_BASE_URL}/financial_accounts/${financialAccountToken}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': LITHIC_API_KEY,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.message || error.error || errorText;
+    } catch {
+      errorMessage = errorText;
+    }
+    throw new Error(`Lithic API error: ${errorMessage}`);
+  }
+
+  return await response.json();
+}
+
 export default {
   createDebitCard,
   getCard,
@@ -402,4 +485,6 @@ export default {
   closeCard,
   createAccountHolder,
   getAccountHolder,
+  createFinancialAccount,
+  getFinancialAccount,
 };
