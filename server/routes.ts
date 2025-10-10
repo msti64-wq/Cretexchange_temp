@@ -917,21 +917,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             console.log('Lithic account holder created:', accountHolderResult.token);
+            console.log('Lithic financial account (auto-created):', accountHolderResult.accountToken);
 
-            // Step 2: Create Lithic financial account linked to Column bank account
-            const financialAccountResult = await lithicService.createFinancialAccount({
-              accountHolderToken: accountHolderResult.token,
-              columnAccountNumber: accountNumber,
-              columnRoutingNumber: routingNumber,
-              ownerName: `${validatedData.firstName} ${validatedData.lastName}`,
-            });
-
-            console.log('Lithic financial account created:', financialAccountResult.token);
-
-            // Step 3: Store Lithic tokens in driver record
+            // Step 2: Store Lithic tokens in driver record (financial account auto-created with account holder)
             await storage.updateDriverLithicInfo(driver.id, {
               lithicAccountHolderToken: accountHolderResult.token,
-              lithicFinancialAccountToken: financialAccountResult.token,
+              lithicFinancialAccountToken: accountHolderResult.accountToken, // Auto-created
             });
 
             console.log('Lithic enrollment completed for driver:', driver.id);
@@ -7317,24 +7308,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log('✅ Lithic account holder created:', accountHolderResult.token);
+      console.log('✅ Lithic financial account (auto-created):', accountHolderResult.accountToken);
 
-      // Get Column routing info (hardcoded for Column)
-      const columnRouting = '011103093';
-      
-      // Create financial account
-      const financialAccountResult = await lithicService.createFinancialAccount({
-        accountHolderToken: accountHolderResult.token,
-        columnAccountNumber: driver.columnBankAccountId || '',
-        columnRoutingNumber: columnRouting,
-        ownerName: `${user.firstName} ${user.lastName}`
-      });
-
-      console.log('✅ Lithic financial account created:', financialAccountResult.token);
-
-      // Update driver record
+      // Update driver record (financial account auto-created with account holder)
       await storage.updateDriverLithicInfo(driver.id, {
         lithicAccountHolderToken: accountHolderResult.token,
-        lithicFinancialAccountToken: financialAccountResult.token
+        lithicFinancialAccountToken: accountHolderResult.accountToken // Auto-created
       });
 
       res.json({
