@@ -6,11 +6,58 @@
  * 
  * Documentation: https://docs.lithic.com
  * 
- * SETUP INSTRUCTIONS:
- * 1. Sign up for Lithic at https://lithic.com
- * 2. Get your API key from the Lithic dashboard
- * 3. Add LITHIC_API_KEY to your Replit Secrets
- * 4. Uncomment the implementation below
+ * ============================================================================
+ * COLUMN-LITHIC INTEGRATION ARCHITECTURE
+ * ============================================================================
+ * 
+ * CURRENT STATE (Sandbox):
+ * - Virtual cards created without account enrollment
+ * - Column bank account ID passed as account_token but not validated
+ * - Cards work in Lithic sandbox for testing UI/UX flows
+ * - NOT connected to actual Column wallet funds
+ * 
+ * PRODUCTION REQUIREMENTS:
+ * 
+ * Option 1: Lithic Financial Accounts (Recommended)
+ * --------------------------------------------------
+ * 1. Create Lithic Account Holder when driver completes Column onboarding:
+ *    - Use driver's KYC data (name, DOB, SSN, address) already collected for Column
+ *    - POST /account_holders with individual type
+ *    - Receive account_holder_token
+ * 
+ * 2. Create Lithic Financial Account linked to Column:
+ *    - POST /financial_accounts with account_holder_token
+ *    - Link to Column using routing_number and account_number from Column API
+ *    - Lithic will validate the Column account exists
+ *    - Receive financial_account_token
+ * 
+ * 3. Issue card against Lithic Financial Account:
+ *    - POST /cards with financial_account_token
+ *    - Card transactions will pull funds from linked Column account
+ *    - Real-time balance checks against Column wallet
+ * 
+ * Option 2: Direct Bank Account Linking
+ * --------------------------------------
+ * 1. Configure Lithic to recognize Column's BIN/routing structure
+ * 2. Use Column bank account ID as Lithic account_token
+ * 3. Requires partnership agreement between Column and Lithic
+ * 4. May need custom integration work
+ * 
+ * SETUP INSTRUCTIONS FOR PRODUCTION:
+ * 1. Sign up for Lithic production account at https://lithic.com
+ * 2. Get production API key from Lithic dashboard
+ * 3. Add LITHIC_API_KEY to Replit Secrets (production key)
+ * 4. Update LITHIC_BASE_URL to production endpoint
+ * 5. Configure product_id for physical card issuance
+ * 6. Implement account holder enrollment flow (Option 1 recommended)
+ * 7. Set up Lithic webhooks for card status updates
+ * 8. Test with Column test accounts before going live
+ * 
+ * SECURITY NOTES:
+ * - Never log card numbers or CVV
+ * - Use Lithic's tokenization for sensitive card data
+ * - Implement card controls (spending limits, merchant categories)
+ * - Monitor for fraudulent transactions
  */
 
 // Lithic API configuration
