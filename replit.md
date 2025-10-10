@@ -31,6 +31,52 @@ Preferred communication style: Simple, everyday language.
 -   **Book Transfers**: Instant internal transfers for washout payments between owner and driver, and owner to platform fees.
 -   **Debit Card Integration**: Lithic-powered debit cards for instant fund access. Drivers can request virtual debit cards (sandbox: virtual cards for testing, production: physical cards) linked to their Column bank accounts for immediate wallet fund access at ATMs and stores. Infrastructure includes card request management, shipping address collection, and full Lithic API integration. The wallet UI dynamically shows card details after successful issuance or the request button if no card exists.
 
+## Column-Lithic Integration Architecture
+
+### Current State (Sandbox)
+-   **Card Creation**: Virtual cards created in Lithic sandbox for UI/UX testing
+-   **Account Linking**: Column bank account ID passed to Lithic but not validated in sandbox
+-   **Funding**: Cards NOT connected to actual Column wallet funds (sandbox limitation)
+-   **Purpose**: Test card request flows, UI display, and user experience
+
+### Production Requirements
+For live deployment, the following integration must be completed:
+
+#### Option 1: Lithic Financial Accounts (Recommended)
+1. **Account Holder Enrollment**:
+   - Create Lithic account holder when driver completes Column onboarding
+   - Use existing KYC data (name, DOB, SSN, address) collected for Column
+   - Store `lithic_account_holder_token` in driver record
+
+2. **Financial Account Setup**:
+   - Create Lithic financial account linked to Column bank account
+   - Provide Column routing number and account number to Lithic
+   - Lithic validates Column account exists
+   - Store `lithic_financial_account_token` in driver record
+
+3. **Card Issuance**:
+   - Issue cards against Lithic financial account token
+   - Card transactions pull funds from linked Column account
+   - Real-time balance validation against Column wallet
+
+#### Option 2: Direct Integration
+-   Requires partnership agreement between Column and Lithic
+-   Configure Lithic to recognize Column's BIN/routing structure
+-   May require custom integration work
+
+### Production Checklist
+- [ ] Obtain Lithic production API key
+- [ ] Update `LITHIC_BASE_URL` to production endpoint (`https://api.lithic.com/v1`)
+- [ ] Configure `product_id` for physical card issuance in Lithic dashboard
+- [ ] Implement Lithic account holder enrollment flow
+- [ ] Implement Lithic financial account creation linked to Column
+- [ ] Set up Lithic webhooks for card status updates
+- [ ] Implement card controls (spending limits, merchant restrictions)
+- [ ] Add fraud monitoring and transaction alerts
+- [ ] Test end-to-end with Column test accounts
+- [ ] Security audit: ensure no card numbers/CVV are logged
+- [ ] Update database schema to store Lithic account holder and financial account tokens
+
 ## External Dependencies
 
 ### Database & Hosting
