@@ -318,6 +318,9 @@ export async function createAccountHolder(data: {
   }
 
   const payload = {
+    workflow: 'KYC_EXEMPT',
+    kyc_exemption_type: 'AUTHORIZED_USER',
+    tos_timestamp: new Date().toISOString(),
     individual: {
       first_name: data.firstName,
       last_name: data.lastName,
