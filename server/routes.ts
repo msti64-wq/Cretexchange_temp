@@ -7243,6 +7243,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to retry Lithic enrollment
+  app.post('/api/admin/retry-lithic-enrollment/:driverId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { driverId } = req.params;
+      
+      const driver = await storage.getDriverById(driverId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const user = await storage.getUser(driver.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      console.log('🔄 Retrying Lithic enrollment for driver:', driverId);
+
+      // Create account holder
+      const accountHolderResult = await lithicService.createAccountHolder({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        dob: '1990-01-01', // Test data - in production use actual DOB from KYC
+        ssn: '123456789', // Test data
+        email: user.email,
+        phoneNumber: user.phone ? `+1${user.phone}` : '+15555555555',
+        address: {
+          street: '123 Test St',
+          city: 'Dallas',
+          state: 'TX',
+          zip: '75001'
+        }
+      });
+
+      console.log('✅ Lithic account holder created:', accountHolderResult.token);
+
+      // Get Column routing info (hardcoded for Column)
+      const columnRouting = '011103093';
+      
+      // Create financial account
+      const financialAccountResult = await lithicService.createFinancialAccount({
+        accountHolderToken: accountHolderResult.token,
+        columnAccountNumber: driver.columnBankAccountId || '',
+        columnRoutingNumber: columnRouting,
+        ownerName: `${user.firstName} ${user.lastName}`
+      });
+
+      console.log('✅ Lithic financial account created:', financialAccountResult.token);
+
+      // Update driver record
+      await storage.updateDriverLithicInfo(driver.id, {
+        lithicAccountHolderToken: accountHolderResult.token,
+        lithicFinancialAccountToken: financialAccountResult.token
+      });
+
+      res.json({
+        success: true,
+        accountHolderToken: accountHolderResult.token,
+        financialAccountToken: financialAccountResult.token
+      });
+    } catch (error) {
+      console.error('❌ Lithic retry failed:', error);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : 'Lithic enrollment failed' 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
