@@ -52,7 +52,7 @@ export function DebitCardRequestDialog({
     onSuccess: () => {
       toast({
         title: "Debit Card Requested!",
-        description: "Your virtual debit card has been created and is ready to use! Card details are now visible in your wallet.",
+        description: "Your virtual debit card has been created and is ready to use immediately! Card details are now visible in your wallet. Physical cards typically arrive within 7-10 business days when shipped.",
       });
       onOpenChange(false);
       // Invalidate the debit card query to refetch the new card
