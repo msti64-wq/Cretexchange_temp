@@ -2482,18 +2482,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // Create Lithic account holder
           // Using Lithic sandbox test values that pass validation
+          // NOTE: SSN "000-00-0001" triggers ADDRESS_VERIFICATION_FAILURE, use any other value
           const accountHolderResult = await lithicService.createAccountHolder({
             firstName: user.firstName,
             lastName: user.lastName,
             dob: '1991-01-01', // Lithic sandbox test DOB
-            ssn: '000000001', // Lithic sandbox test SSN
+            ssn: '123456789', // Valid test SSN (not 000-00-0001 which triggers address failure)
             email: user.email,
             phoneNumber: user.phone ? `+1${user.phone}` : '+15555555555',
             address: {
-              street: '123 Test St',
-              city: 'Dallas',
-              state: 'TX',
-              zip: '75001'
+              street: '456 Test Lane',
+              city: 'San Francisco',
+              state: 'CA',
+              zip: '94105'
             }
           });
 
