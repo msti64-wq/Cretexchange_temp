@@ -124,6 +124,11 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
     cardPayload.shipping_method = 'STANDARD';
   }
 
+  console.log('🔍 Lithic Card Creation Request:', {
+    url: `${LITHIC_BASE_URL}/cards`,
+    payload: JSON.stringify(cardPayload, null, 2)
+  });
+
   const response = await fetch(`${LITHIC_BASE_URL}/cards`, {
     method: 'POST',
     headers: {
