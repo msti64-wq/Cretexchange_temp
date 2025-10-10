@@ -366,7 +366,12 @@ export async function createAccountHolder(data: {
   }
 
   const result = await response.json();
-  return { token: result.token };
+  console.log('🔍 Lithic Account Holder Response:', JSON.stringify(result, null, 2));
+  
+  return { 
+    token: result.token,
+    accountToken: result.account_token // Financial account auto-created with account holder
+  };
 }
 
 /**

@@ -2507,21 +2507,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           console.log('✅ Lithic account holder created:', accountHolderResult.token);
+          console.log('✅ Lithic financial account (auto-created):', accountHolderResult.accountToken);
 
-          // Create Lithic financial account linked to Column
-          const financialAccountResult = await lithicService.createFinancialAccount({
-            accountHolderToken: accountHolderResult.token,
-            columnAccountNumber: driver.columnBankAccountId || '',
-            columnRoutingNumber: '011103093', // Column routing number
-            ownerName: `${user.firstName} ${user.lastName}`
-          });
-
-          console.log('✅ Lithic financial account created:', financialAccountResult.token);
-
-          // Update driver record
+          // Update driver record with Lithic tokens
           await storage.updateDriverLithicInfo(driver.id, {
             lithicAccountHolderToken: accountHolderResult.token,
-            lithicFinancialAccountToken: financialAccountResult.token
+            lithicFinancialAccountToken: accountHolderResult.accountToken // Auto-created with account holder
           });
 
           // Refresh driver data
