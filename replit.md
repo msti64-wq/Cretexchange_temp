@@ -29,7 +29,7 @@ Preferred communication style: Simple, everyday language.
 -   **Subscription Management**: One-time platform membership fee processed via Stripe for owners.
 -   **Wallet System**: Column BaaS integration for wallet management, including balance tracking, ACH transfers for funding, auto top-up functionality, and low balance alerts.
 -   **Book Transfers**: Instant internal transfers for washout payments between owner and driver, and owner to platform fees.
--   **Debit Card Integration**: Lithic-powered debit cards for instant fund access. Drivers can request physical debit cards linked to their Column bank accounts for immediate wallet fund access at ATMs and stores. Infrastructure includes card request management, shipping address collection, and placeholder for Lithic API integration.
+-   **Debit Card Integration**: Lithic-powered debit cards for instant fund access. Drivers can request virtual debit cards (sandbox: virtual cards for testing, production: physical cards) linked to their Column bank accounts for immediate wallet fund access at ATMs and stores. Infrastructure includes card request management, shipping address collection, and full Lithic API integration. The wallet UI dynamically shows card details after successful issuance or the request button if no card exists.
 
 ## External Dependencies
 

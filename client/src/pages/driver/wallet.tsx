@@ -103,6 +103,24 @@ export default function DriverWallet() {
     queryKey: ['/api/profile'],
   });
 
+  // Fetch debit card status
+  const { data: debitCardStatus, refetch: refetchDebitCard } = useQuery<{
+    hasCard: boolean;
+    card?: {
+      id: string;
+      cardType: string;
+      cardLast4: string;
+      cardStatus: string;
+      expirationMonth: string;
+      expirationYear: string;
+      requestedAt: string;
+      issuedAt: string | null;
+    };
+  }>({
+    queryKey: ['/api/drivers/debit-card'],
+    enabled: columnStatus?.isOnboarded === true,
+  });
+
   // Withdrawal mutation
   const withdrawalMutation = useMutation({
     mutationFn: async (amount: number) => {
@@ -534,20 +552,46 @@ export default function DriverWallet() {
                   <AlertDescription className="text-blue-800 dark:text-blue-200">
                     <div className="space-y-2">
                       <p className="font-medium">ACH withdrawals to your bank account typically arrive in 1-2 business days</p>
-                      <p className="text-sm">
-                        <strong>Need instant access?</strong> Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 border-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900"
-                        onClick={() => setShowDebitCardDialog(true)}
-                        disabled={!columnStatus?.isOnboarded}
-                        data-testid="button-request-debit-card"
-                      >
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Request Debit Card
-                      </Button>
+                      
+                      {debitCardStatus?.hasCard ? (
+                        // Show card details if they have one
+                        <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                Debit Card {debitCardStatus.card?.cardStatus === 'active' ? 'Active' : 'Requested'}
+                              </p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {debitCardStatus.card?.cardType === 'virtual' ? 'Virtual' : 'Physical'} Card •••• {debitCardStatus.card?.cardLast4}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                Expires {debitCardStatus.card?.expirationMonth}/{debitCardStatus.card?.expirationYear}
+                              </p>
+                            </div>
+                            <Badge variant={debitCardStatus.card?.cardStatus === 'active' ? 'default' : 'secondary'}>
+                              {debitCardStatus.card?.cardStatus}
+                            </Badge>
+                          </div>
+                        </div>
+                      ) : (
+                        // Show request button if they don't have one
+                        <>
+                          <p className="text-sm">
+                            <strong>Need instant access?</strong> Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 border-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900"
+                            onClick={() => setShowDebitCardDialog(true)}
+                            disabled={!columnStatus?.isOnboarded}
+                            data-testid="button-request-debit-card"
+                          >
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Request Debit Card
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </AlertDescription>
                 </Alert>

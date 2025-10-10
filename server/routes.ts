@@ -2371,6 +2371,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get driver's debit card status
+  app.get('/api/drivers/debit-card', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+
+      if (!user || user.role !== 'driver') {
+        return res.status(403).json({ message: "Only drivers can access debit cards" });
+      }
+
+      const driver = await storage.getDriverByUserId(userId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      // Fetch the driver's debit card if they have one
+      const debitCard = await db
+        .select()
+        .from(debitCardRequests)
+        .where(eq(debitCardRequests.driverId, driver.id))
+        .limit(1);
+
+      if (debitCard.length === 0) {
+        return res.json({ hasCard: false });
+      }
+
+      const card = debitCard[0];
+      return res.json({
+        hasCard: true,
+        card: {
+          id: card.id,
+          cardType: card.cardType,
+          cardLast4: card.cardLast4,
+          cardStatus: card.cardStatus,
+          expirationMonth: card.expirationMonth,
+          expirationYear: card.expirationYear,
+          requestedAt: card.requestedAt,
+          issuedAt: card.issuedAt,
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching debit card status:", error);
+      return res.status(500).json({ message: "Failed to fetch debit card status" });
+    }
+  });
+
   // Request a debit card
   app.post('/api/drivers/request-debit-card', isAuthenticated, async (req: any, res) => {
     try {

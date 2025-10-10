@@ -52,10 +52,11 @@ export function DebitCardRequestDialog({
     onSuccess: () => {
       toast({
         title: "Debit Card Requested!",
-        description: "Your debit card request has been submitted. You'll receive it at the address provided within 7-10 business days.",
+        description: "Your virtual debit card has been created and is ready to use! Card details are now visible in your wallet.",
       });
       onOpenChange(false);
-      queryClient.invalidateQueries({ queryKey: ['/api/drivers/debit-card-status'] });
+      // Invalidate the debit card query to refetch the new card
+      queryClient.invalidateQueries({ queryKey: ['/api/drivers/debit-card'] });
     },
     onError: (error: any) => {
       toast({
