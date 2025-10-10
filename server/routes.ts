@@ -2490,11 +2490,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         try {
           // Create Lithic account holder
+          // Using Lithic sandbox test values that pass validation
           const accountHolderResult = await lithicService.createAccountHolder({
             firstName: user.firstName,
             lastName: user.lastName,
-            dob: '1990-01-01', // Sandbox test data
-            ssn: '123456789', // Sandbox test data
+            dob: '1991-01-01', // Lithic sandbox test DOB
+            ssn: '000000001', // Lithic sandbox test SSN
             email: user.email,
             phoneNumber: user.phone ? `+1${user.phone}` : '+15555555555',
             address: {
