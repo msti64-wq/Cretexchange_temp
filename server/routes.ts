@@ -2381,7 +2381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only drivers can access debit cards" });
       }
 
-      const driver = await storage.getDriverByUserId(userId);
+      const driver = await storage.getDriver(userId);
       if (!driver) {
         return res.status(404).json({ message: "Driver profile not found" });
       }
