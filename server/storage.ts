@@ -86,6 +86,7 @@ export interface IStorage {
   // Removed: getDriverByConnectedAccountId - no longer using Stripe Connect
   updateDriver(driverId: string, driverData: Partial<InsertDriver>): Promise<Driver>;
   updateDriverColumnInfo(driverId: string, columnData: { columnEntityId?: string; columnBankAccountId?: string; columnAccountLast4?: string }): Promise<Driver>;
+  updateDriverLithicInfo(driverId: string, lithicData: { lithicAccountHolderToken?: string; lithicFinancialAccountToken?: string }): Promise<Driver>;
   updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: "ach" | "venmo" | "zelle"; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver>;
   updateDriverLocation(driverId: string, latitude: number, longitude: number): Promise<void>;
   getAllDrivers(): Promise<(Driver & { user: User })[]>;
@@ -458,6 +459,18 @@ export class DatabaseStorage implements IStorage {
       .update(drivers)
       .set({
         ...columnData,
+        updatedAt: new Date(),
+      })
+      .where(eq(drivers.id, driverId))
+      .returning();
+    return updatedDriver;
+  }
+
+  async updateDriverLithicInfo(driverId: string, lithicData: { lithicAccountHolderToken?: string; lithicFinancialAccountToken?: string }): Promise<Driver> {
+    const [updatedDriver] = await db
+      .update(drivers)
+      .set({
+        ...lithicData,
         updatedAt: new Date(),
       })
       .where(eq(drivers.id, driverId))

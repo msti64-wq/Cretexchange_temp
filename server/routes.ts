@@ -895,6 +895,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
             columnBankAccountId: bankAccountId,
             columnAccountLast4: accountLast4,
           });
+
+          // Enroll driver in Lithic for debit card access
+          try {
+            console.log('Starting Lithic enrollment for driver:', driver.id);
+
+            // Step 1: Create Lithic account holder using Column KYC data
+            const accountHolderResult = await lithicService.createAccountHolder({
+              firstName: validatedData.firstName,
+              lastName: validatedData.lastName,
+              dob: validatedData.dateOfBirth,
+              ssn: validatedData.ssn,
+              email: validatedData.email,
+              phoneNumber: user.phone || '',
+              address: {
+                street: validatedData.address.street,
+                city: validatedData.address.city,
+                state: validatedData.address.state,
+                zip: validatedData.address.zip,
+              }
+            });
+
+            console.log('Lithic account holder created:', accountHolderResult.token);
+
+            // Step 2: Create Lithic financial account linked to Column bank account
+            const financialAccountResult = await lithicService.createFinancialAccount({
+              accountHolderToken: accountHolderResult.token,
+              columnAccountNumber: accountNumber,
+              columnRoutingNumber: routingNumber,
+              ownerName: `${validatedData.firstName} ${validatedData.lastName}`,
+            });
+
+            console.log('Lithic financial account created:', financialAccountResult.token);
+
+            // Step 3: Store Lithic tokens in driver record
+            await storage.updateDriverLithicInfo(driver.id, {
+              lithicAccountHolderToken: accountHolderResult.token,
+              lithicFinancialAccountToken: financialAccountResult.token,
+            });
+
+            console.log('Lithic enrollment completed for driver:', driver.id);
+          } catch (lithicError) {
+            // Log Lithic enrollment error but don't fail the onboarding
+            // Driver can still use the platform, just won't have debit card access yet
+            console.error('Lithic enrollment failed (non-fatal):', lithicError);
+          }
         }
       } else if (user.role === 'owner') {
         const owner = await storage.getOwner(userId);
