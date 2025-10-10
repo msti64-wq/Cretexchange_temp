@@ -296,10 +296,110 @@ export async function closeCard(cardToken: string): Promise<void> {
   }
 }
 
+/**
+ * Create Account Holder in Lithic
+ * 
+ * This enrolls a driver as an account holder in Lithic using their KYC data
+ * from Column onboarding. Required before creating financial accounts.
+ */
+export async function createAccountHolder(data: {
+  firstName: string;
+  lastName: string;
+  dob: string; // YYYY-MM-DD
+  ssn: string;
+  email: string;
+  phoneNumber: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+}): Promise<{ token: string }> {
+  if (!LITHIC_API_KEY) {
+    throw new Error('Lithic API key not configured');
+  }
+
+  const payload = {
+    individual: {
+      first_name: data.firstName,
+      last_name: data.lastName,
+      dob: data.dob,
+      ssn: data.ssn,
+      phone_number: data.phoneNumber,
+      email: data.email,
+      address: {
+        address1: data.address.street,
+        city: data.address.city,
+        state: data.address.state,
+        postal_code: data.address.zip,
+        country: 'USA'
+      }
+    }
+  };
+
+  const response = await fetch(`${LITHIC_BASE_URL}/account_holders`, {
+    method: 'POST',
+    headers: {
+      'Authorization': LITHIC_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.message || error.error || errorText;
+    } catch {
+      errorMessage = errorText;
+    }
+    throw new Error(`Lithic account holder creation failed: ${errorMessage}`);
+  }
+
+  const result = await response.json();
+  return { token: result.token };
+}
+
+/**
+ * Get Account Holder details from Lithic
+ */
+export async function getAccountHolder(accountHolderToken: string): Promise<any> {
+  if (!LITHIC_API_KEY) {
+    throw new Error('Lithic API key not configured');
+  }
+
+  const response = await fetch(`${LITHIC_BASE_URL}/account_holders/${accountHolderToken}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': LITHIC_API_KEY,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+    try {
+      const error = JSON.parse(errorText);
+      errorMessage = error.message || error.error || errorText;
+    } catch {
+      errorMessage = errorText;
+    }
+    throw new Error(`Lithic API error: ${errorMessage}`);
+  }
+
+  return await response.json();
+}
+
 export default {
   createDebitCard,
   getCard,
   activateCard,
   updateCardStatus,
   closeCard,
+  createAccountHolder,
+  getAccountHolder,
 };
