@@ -107,7 +107,7 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
     type: request.cardType.toUpperCase(),
     // Link card to Lithic Financial Account (connected to Column bank account)
     // This enables real fund access in production
-    financial_account_token: request.financialAccountToken
+    account_token: request.financialAccountToken // Lithic uses 'account_token' to link to financial account
   };
 
   // Only add shipping info for physical cards
