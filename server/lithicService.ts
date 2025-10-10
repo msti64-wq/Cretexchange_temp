@@ -321,20 +321,18 @@ export async function createAccountHolder(data: {
     workflow: 'KYC_EXEMPT',
     kyc_exemption_type: 'AUTHORIZED_USER',
     tos_timestamp: new Date().toISOString(),
-    individual: {
-      first_name: data.firstName,
-      last_name: data.lastName,
-      dob: data.dob,
-      ssn: data.ssn,
-      phone_number: data.phoneNumber,
-      email: data.email,
-      address: {
-        address1: data.address.street,
-        city: data.address.city,
-        state: data.address.state,
-        postal_code: data.address.zip,
-        country: 'USA'
-      }
+    first_name: data.firstName,
+    last_name: data.lastName,
+    dob: data.dob,
+    ssn: data.ssn,
+    phone_number: data.phoneNumber,
+    email: data.email,
+    address: {
+      address1: data.address.street,
+      city: data.address.city,
+      state: data.address.state,
+      postal_code: data.address.zip,
+      country: 'USA'
     }
   };
 
