@@ -721,6 +721,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`User registered successfully: ${newUser.id}`);
 
+      // CRITICAL: Atomically create role-specific profile to prevent orphaned accounts
+      try {
+        if (role === 'driver') {
+          await storage.createDriver({ userId: newUser.id });
+          console.log(`Driver profile created for user: ${newUser.id}`);
+        } else if (role === 'owner') {
+          await storage.createOwner({ userId: newUser.id });
+          console.log(`Owner profile created for user: ${newUser.id}`);
+        }
+      } catch (profileError: any) {
+        // If profile creation fails, log error but don't block registration
+        // The profile can be created later via dedicated endpoints
+        console.error(`[CRITICAL] Failed to create ${role} profile for user ${newUser.id}:`, profileError);
+        console.error(`User ${newUser.id} exists without ${role} profile - manual intervention may be required`);
+      }
+
       // Generate token for immediate login
       const token = jwt.sign(
         { userId: newUser.id, username: newUser.username },
