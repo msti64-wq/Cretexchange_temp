@@ -65,7 +65,7 @@ const LITHIC_API_KEY = process.env.LITHIC_API_KEY;
 const LITHIC_BASE_URL = 'https://sandbox.lithic.com/v1'; // Using sandbox for testing
 
 interface LithicCardRequest {
-  accountId: string; // Column bank account ID
+  financialAccountToken: string; // Lithic Financial Account Token (linked to Column bank account)
   shipping: {
     firstName: string;
     lastName: string;
@@ -104,7 +104,10 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
 
   // Build card creation payload
   const cardPayload: any = {
-    type: request.cardType.toUpperCase()
+    type: request.cardType.toUpperCase(),
+    // Link card to Lithic Financial Account (connected to Column bank account)
+    // This enables real fund access in production
+    financial_account_token: request.financialAccountToken
   };
 
   // Only add shipping info for physical cards
@@ -119,12 +122,6 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
       country: 'USA'
     };
     cardPayload.shipping_method = 'STANDARD';
-  }
-
-  // Add account_token if provided (required for multi-account setups)
-  // In sandbox without account enrollment, this can be omitted
-  if (request.accountId) {
-    cardPayload.account_token = request.accountId;
   }
 
   const response = await fetch(`${LITHIC_BASE_URL}/cards`, {

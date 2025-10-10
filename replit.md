@@ -65,17 +65,31 @@ For live deployment, the following integration must be completed:
 -   May require custom integration work
 
 ### Production Checklist
-- [ ] Obtain Lithic production API key
-- [ ] Update `LITHIC_BASE_URL` to production endpoint (`https://api.lithic.com/v1`)
+
+#### ✅ Completed (Development)
+- [x] Implement Lithic account holder enrollment flow
+- [x] Implement Lithic financial account creation linked to Column
+- [x] Update database schema to store Lithic account holder and financial account tokens
+- [x] Integrate enrollment into Column onboarding flow
+- [x] Update card creation to use `financial_account_token` instead of `account_token`
+- [x] Add validation to ensure drivers have Lithic enrollment before card issuance
+
+#### 🚀 Required for Production Launch
+- [ ] Obtain Lithic production API key from dashboard
+- [ ] Update `LITHIC_BASE_URL` environment variable to `https://api.lithic.com/v1`
 - [ ] Configure `product_id` for physical card issuance in Lithic dashboard
-- [ ] Implement Lithic account holder enrollment flow
-- [ ] Implement Lithic financial account creation linked to Column
 - [ ] Set up Lithic webhooks for card status updates
 - [ ] Implement card controls (spending limits, merchant restrictions)
 - [ ] Add fraud monitoring and transaction alerts
-- [ ] Test end-to-end with Column test accounts
+- [ ] Run end-to-end test with Column test accounts
 - [ ] Security audit: ensure no card numbers/CVV are logged
-- [ ] Update database schema to store Lithic account holder and financial account tokens
+- [ ] Test complete flow: Column onboarding → Lithic enrollment → Card issuance
+
+#### 📝 Environment Configuration
+Production deployment requires these environment variables:
+- `LITHIC_API_KEY`: Production API key from Lithic dashboard
+- `LITHIC_BASE_URL`: Set to `https://api.lithic.com/v1` (currently hardcoded to sandbox)
+- Note: Base URL should be configurable via environment variable for easy production/sandbox switching
 
 ## External Dependencies
 

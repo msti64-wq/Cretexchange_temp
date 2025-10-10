@@ -2524,7 +2524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let lithicCard;
       try {
         lithicCard = await lithicService.createDebitCard({
-          accountId: driver.lithicFinancialAccountToken, // Production: Link to Lithic Financial Account
+          financialAccountToken: driver.lithicFinancialAccountToken, // Production: Link to Lithic Financial Account
           shipping: {
             firstName,
             lastName,
