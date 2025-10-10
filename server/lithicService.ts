@@ -122,6 +122,13 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
       country: 'USA'
     };
     cardPayload.shipping_method = 'STANDARD';
+    
+    // Add product_id for physical cards (required in production)
+    // This must be configured in Lithic dashboard after ordering card inventory
+    const LITHIC_PRODUCT_ID = process.env.LITHIC_PRODUCT_ID;
+    if (LITHIC_PRODUCT_ID) {
+      cardPayload.product_id = LITHIC_PRODUCT_ID;
+    }
   }
 
   console.log('🔍 Lithic Card Creation Request:', {

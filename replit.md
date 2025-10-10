@@ -76,20 +76,35 @@ For live deployment, the following integration must be completed:
 - [x] **CRITICAL:** Properly link Column bank accounts to Lithic financial accounts for fund access
 
 #### 🚀 Required for Production Launch
+
+**Physical Card Setup:**
+- [ ] **Order physical card inventory from Lithic**
+  - Contact Lithic sales to design and order cards
+  - Choose card material (plastic, metal, etc.) and design/branding
+  - Order minimum quantity (typically 500-1,000 cards)
+  - Receive `product_id` from Lithic after order placement
+- [ ] **Configure product_id in environment**
+  - Add `LITHIC_PRODUCT_ID` to Replit Secrets with your Lithic product ID
+  - Update card type from 'virtual' to 'physical' in routes.ts (line ~2590)
+
+**API & Production Configuration:**
 - [ ] Obtain Lithic production API key from dashboard
 - [ ] Update `LITHIC_BASE_URL` environment variable to `https://api.lithic.com/v1`
-- [ ] Configure `product_id` for physical card issuance in Lithic dashboard
 - [ ] Set up Lithic webhooks for card status updates
 - [ ] Implement card controls (spending limits, merchant restrictions)
 - [ ] Add fraud monitoring and transaction alerts
+
+**Testing & Security:**
 - [ ] Run end-to-end test with Column test accounts
 - [ ] Security audit: ensure no card numbers/CVV are logged
 - [ ] Test complete flow: Column onboarding → Lithic enrollment → Card issuance
+- [ ] Test physical card delivery (7-10 business days)
 
 #### 📝 Environment Configuration
 Production deployment requires these environment variables:
 - `LITHIC_API_KEY`: Production API key from Lithic dashboard
 - `LITHIC_BASE_URL`: Set to `https://api.lithic.com/v1` (currently hardcoded to sandbox)
+- `LITHIC_PRODUCT_ID`: Product ID for physical cards (obtained from Lithic after ordering card inventory)
 - Note: Base URL should be configurable via environment variable for easy production/sandbox switching
 
 ## External Dependencies
