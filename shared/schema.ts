@@ -116,6 +116,9 @@ export const drivers = pgTable("drivers", {
   columnBankAccountId: varchar("column_bank_account_id"), // Column bank account ID for direct deposits
   columnAccountLast4: varchar("column_account_last4"), // Last 4 digits of account number (for display)
   columnCounterpartyId: varchar("column_counterparty_id"), // Column counterparty ID for ACH transfers
+  // Lithic card issuing integration (production financial accounts)
+  lithicAccountHolderToken: varchar("lithic_account_holder_token"), // Lithic account holder token for card enrollment
+  lithicFinancialAccountToken: varchar("lithic_financial_account_token"), // Lithic financial account token linked to Column
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
   createdAt: timestamp("created_at").defaultNow(),
