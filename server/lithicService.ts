@@ -317,22 +317,25 @@ export async function createAccountHolder(data: {
     throw new Error('Lithic API key not configured');
   }
 
+  // Use KYC_ADVANCED workflow for individual account holders
+  // Fields must be nested under 'individual' object
   const payload = {
-    workflow: 'KYC_EXEMPT',
-    kyc_exemption_type: 'AUTHORIZED_USER',
+    workflow: 'KYC_ADVANCED',
     tos_timestamp: new Date().toISOString(),
-    first_name: data.firstName,
-    last_name: data.lastName,
-    dob: data.dob,
-    ssn: data.ssn,
-    phone_number: data.phoneNumber,
-    email: data.email,
-    address: {
-      address1: data.address.street,
-      city: data.address.city,
-      state: data.address.state,
-      postal_code: data.address.zip,
-      country: 'USA'
+    individual: {
+      first_name: data.firstName,
+      last_name: data.lastName,
+      dob: data.dob,
+      government_id: data.ssn,
+      phone_number: data.phoneNumber,
+      email: data.email,
+      address: {
+        address1: data.address.street,
+        city: data.address.city,
+        state: data.address.state,
+        postal_code: data.address.zip,
+        country: 'USA'
+      }
     }
   };
 
