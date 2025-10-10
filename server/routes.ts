@@ -2462,10 +2462,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create debit card via Lithic API
       // Note: In sandbox, we use VIRTUAL cards since physical cards require product_id setup
       // In production, switch to 'physical' after configuring product_id in Lithic dashboard
+      //
+      // IMPORTANT: Column-Lithic Integration
+      // - We pass Column bank account ID as the account_token
+      // - In PRODUCTION, this requires Lithic account holder enrollment linked to Column
+      // - In SANDBOX, account_token validation is relaxed for testing
+      // - For live deployment: Configure Lithic to recognize Column account structure
       let lithicCard;
       try {
         lithicCard = await lithicService.createDebitCard({
-          accountId: '', // Omit account_token for sandbox testing (no Lithic account enrollment)
+          accountId: driver.columnBankAccountId || '', // Link card to Column bank account
           shipping: {
             firstName,
             lastName,
