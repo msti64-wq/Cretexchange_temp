@@ -2480,7 +2480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('⚠️  Driver missing Lithic enrollment, attempting automatic enrollment...');
         
         try {
-          // Create Lithic account holder
+          // Step 1: Create Lithic account holder
           // Using Lithic sandbox test values that pass validation
           // NOTE: SSN "000-00-0001" triggers ADDRESS_VERIFICATION_FAILURE, use any other value
           const accountHolderResult = await lithicService.createAccountHolder({
@@ -2499,12 +2499,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           console.log('✅ Lithic account holder created:', accountHolderResult.token);
-          console.log('✅ Lithic financial account (auto-created):', accountHolderResult.accountToken);
+
+          // Step 2: Get Column bank account details for linking
+          const columnBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
+          const columnRoutingNumber = process.env.COLUMN_PLATFORM_ROUTING || '';
+          
+          if (!columnBankAccount || !columnRoutingNumber) {
+            throw new Error('Column bank account details not available for Lithic linking');
+          }
+
+          console.log('📋 Column account retrieved for Lithic linking');
+
+          // Step 3: Create Lithic Financial Account linked to Column bank account
+          // This is CRITICAL for production - it enables cards to access Column wallet funds
+          const financialAccountResult = await lithicService.createFinancialAccount({
+            accountHolderToken: accountHolderResult.token,
+            columnAccountNumber: columnBankAccount.account_number || columnBankAccount.id,
+            columnRoutingNumber: columnRoutingNumber,
+            ownerName: `${user.firstName} ${user.lastName}`
+          });
+
+          console.log('✅ Lithic financial account created (linked to Column):', financialAccountResult.token);
 
           // Update driver record with Lithic tokens
           await storage.updateDriverLithicInfo(driver.id, {
             lithicAccountHolderToken: accountHolderResult.token,
-            lithicFinancialAccountToken: accountHolderResult.accountToken // Auto-created with account holder
+            lithicFinancialAccountToken: financialAccountResult.token // Production: Linked to Column funds
           });
 
           // Refresh driver data
@@ -2513,7 +2533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             Object.assign(driver, updatedDriver);
           }
 
-          console.log('✅ Automatic Lithic enrollment completed successfully');
+          console.log('✅ Automatic Lithic enrollment completed successfully (Column-linked)');
         } catch (lithicError) {
           console.error('❌ Automatic Lithic enrollment failed:', lithicError);
           return res.status(400).json({ 

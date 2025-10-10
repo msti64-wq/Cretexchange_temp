@@ -68,11 +68,12 @@ For live deployment, the following integration must be completed:
 
 #### ✅ Completed (Development)
 - [x] Implement Lithic account holder enrollment flow
-- [x] Implement Lithic financial account creation linked to Column
+- [x] Implement Lithic financial account creation linked to Column (with Column routing/account numbers)
 - [x] Update database schema to store Lithic account holder and financial account tokens
-- [x] Integrate enrollment into Column onboarding flow
-- [x] Update card creation to use `financial_account_token` instead of `account_token`
+- [x] Integrate enrollment into card request flow (automatic enrollment if missing)
+- [x] Update card creation to use `account_token` parameter (Lithic API requirement)
 - [x] Add validation to ensure drivers have Lithic enrollment before card issuance
+- [x] **CRITICAL:** Properly link Column bank accounts to Lithic financial accounts for fund access
 
 #### 🚀 Required for Production Launch
 - [ ] Obtain Lithic production API key from dashboard
