@@ -60,7 +60,6 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
-import { logAudit, calculateChanges, type AuditContext } from "./auditService";
 
 export interface IStorage {
   // User operations - local authentication

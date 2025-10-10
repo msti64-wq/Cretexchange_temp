@@ -82,9 +82,6 @@ export const users = pgTable("users", {
   // Removed Stripe fields - now using Column BaaS for owner billing
   columnCustomerId: varchar("column_customer_id"),
   isActive: boolean("is_active").default(true),
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -124,9 +121,6 @@ export const drivers = pgTable("drivers", {
   lithicFinancialAccountToken: varchar("lithic_financial_account_token"), // Lithic financial account token linked to Column
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -154,9 +148,6 @@ export const debitCardRequests = pgTable("debit_card_requests", {
   issuedAt: timestamp("issued_at"),
   activatedAt: timestamp("activated_at"),
   cancelledAt: timestamp("cancelled_at"),
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -193,9 +184,6 @@ export const owners = pgTable("owners", {
   isApproved: boolean("is_approved").default(false),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -219,9 +207,6 @@ export const washoutLocations = pgTable("washout_locations", {
   amenities: text("amenities").array(),
   operatingHours: jsonb("operating_hours"),
   permitUrls: text("permit_urls").array(),
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -241,9 +226,6 @@ export const washoutActivities = pgTable("washout_activities", {
   verifiedAt: timestamp("verified_at"),
   latitude: decimal("latitude", { precision: 9, scale: 6 }),
   longitude: decimal("longitude", { precision: 10, scale: 6 }),
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -275,9 +257,6 @@ export const payments = pgTable("payments", {
   batchId: varchar("batch_id").references(() => billingBatches.id),
   businessDate: varchar("business_date"), // YYYY-MM-DD format for the business day
   paidAt: timestamp("paid_at"),
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -300,9 +279,6 @@ export const billingBatches = pgTable("billing_batches", {
   failureReason: text("failure_reason"),
   retryCount: integer("retry_count").notNull().default(0),
   metadata: jsonb("metadata"),
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -330,9 +306,6 @@ export const feesLedger = pgTable("fees_ledger", {
   failureReason: text("failure_reason"),
   retryCount: integer("retry_count").notNull().default(0),
   metadata: jsonb("metadata"), // Store additional details (location name, plan type, etc.)
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -373,9 +346,6 @@ export const ownerWalletTransactions = pgTable("owner_wallet_transactions", {
   paymentId: varchar("payment_id").references(() => payments.id),
   batchId: varchar("batch_id").references(() => billingBatches.id),
   columnTransferId: varchar("column_transfer_id"), // Reference to Column transfer
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   ownerDateIndex: index("idx_owner_wallet_transactions_owner_date").on(table.ownerId, table.createdAt),
@@ -440,9 +410,6 @@ export const walletTransactions = pgTable("wallet_transactions", {
   status: transactionStatusEnum("status").notNull().default("pending"),
   description: text("description"),
   metadata: jsonb("metadata"),
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   // Index for performance
@@ -464,9 +431,6 @@ export const withdrawals = pgTable("withdrawals", {
   columnCounterpartyId: varchar("column_counterparty_id"), // Column counterparty ID
   failureReason: text("failure_reason"),
   metadata: jsonb("metadata"),
-  // Soft delete fields
-  deletedAt: timestamp("deleted_at"),
-  deletedBy: varchar("deleted_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   processedAt: timestamp("processed_at"),
 });
@@ -835,55 +799,6 @@ export const updateServicePaymentAccountSchema = insertServicePaymentAccountSche
   minimumPayoutAmount: z.coerce.number().min(0.01, "Minimum payout must be >= $0.01").transform(val => val.toString()).optional(),
 });
 
-// =======================
-// AUDIT LOG SYSTEM
-// =======================
-// Tracks all critical data modifications for accountability and recovery
-export const auditActionEnum = pgEnum("audit_action", [
-  "create", "update", "delete", "soft_delete", "restore"
-]);
-
-export const auditEntityEnum = pgEnum("audit_entity", [
-  "user", "driver", "owner", "location", "washout", "payment", 
-  "wallet", "withdrawal", "debit_card", "billing"
-]);
-
-export const auditLogs = pgTable("audit_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
-  // Who performed the action
-  userId: varchar("user_id").references(() => users.id),
-  username: varchar("username"), // Cached for lookup even if user deleted
-  userRole: varchar("user_role"), // Cached role at time of action
-  
-  // What was changed
-  entityType: auditEntityEnum("entity_type").notNull(), // What type of record
-  entityId: varchar("entity_id").notNull(), // ID of the affected record
-  action: auditActionEnum("action").notNull(), // What happened
-  
-  // Details
-  oldData: jsonb("old_data"), // Previous state (for updates/deletes)
-  newData: jsonb("new_data"), // New state (for creates/updates)
-  changes: jsonb("changes"), // Specific fields that changed
-  
-  // Context
-  reason: text("reason"), // Why the change was made
-  ipAddress: varchar("ip_address"), // Source IP
-  userAgent: text("user_agent"), // Browser/client info
-  
-  // Metadata
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_audit_logs_entity").on(table.entityType, table.entityId),
-  index("idx_audit_logs_user").on(table.userId),
-  index("idx_audit_logs_created_at").on(table.createdAt),
-]);
-
-export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ 
-  id: true, 
-  createdAt: true 
-});
-
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -924,8 +839,6 @@ export type InsertFeeLedger = z.infer<typeof insertFeeLedgerSchema>;
 export type ServicePaymentAccount = typeof servicePaymentAccounts.$inferSelect;
 export type InsertServicePaymentAccount = z.infer<typeof insertServicePaymentAccountSchema>;
 export type UpdateServicePaymentAccount = z.infer<typeof updateServicePaymentAccountSchema>;
-export type AuditLog = typeof auditLogs.$inferSelect;
-export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 // Date range validation schema
 export const dateRangeSchema = z.enum(['today', 'yesterday', '7days', '30days', '90days', 'all']).default('today');
