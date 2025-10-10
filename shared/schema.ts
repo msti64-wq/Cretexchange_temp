@@ -799,6 +799,55 @@ export const updateServicePaymentAccountSchema = insertServicePaymentAccountSche
   minimumPayoutAmount: z.coerce.number().min(0.01, "Minimum payout must be >= $0.01").transform(val => val.toString()).optional(),
 });
 
+// =======================
+// AUDIT LOG SYSTEM
+// =======================
+// Tracks all critical data modifications for accountability and recovery
+export const auditActionEnum = pgEnum("audit_action", [
+  "create", "update", "delete", "soft_delete", "restore"
+]);
+
+export const auditEntityEnum = pgEnum("audit_entity", [
+  "user", "driver", "owner", "location", "washout", "payment", 
+  "wallet", "withdrawal", "debit_card", "billing"
+]);
+
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Who performed the action
+  userId: varchar("user_id").references(() => users.id),
+  username: varchar("username"), // Cached for lookup even if user deleted
+  userRole: varchar("user_role"), // Cached role at time of action
+  
+  // What was changed
+  entityType: auditEntityEnum("entity_type").notNull(), // What type of record
+  entityId: varchar("entity_id").notNull(), // ID of the affected record
+  action: auditActionEnum("action").notNull(), // What happened
+  
+  // Details
+  oldData: jsonb("old_data"), // Previous state (for updates/deletes)
+  newData: jsonb("new_data"), // New state (for creates/updates)
+  changes: jsonb("changes"), // Specific fields that changed
+  
+  // Context
+  reason: text("reason"), // Why the change was made
+  ipAddress: varchar("ip_address"), // Source IP
+  userAgent: text("user_agent"), // Browser/client info
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_audit_logs_entity").on(table.entityType, table.entityId),
+  index("idx_audit_logs_user").on(table.userId),
+  index("idx_audit_logs_created_at").on(table.createdAt),
+]);
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -839,6 +888,8 @@ export type InsertFeeLedger = z.infer<typeof insertFeeLedgerSchema>;
 export type ServicePaymentAccount = typeof servicePaymentAccounts.$inferSelect;
 export type InsertServicePaymentAccount = z.infer<typeof insertServicePaymentAccountSchema>;
 export type UpdateServicePaymentAccount = z.infer<typeof updateServicePaymentAccountSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 // Date range validation schema
 export const dateRangeSchema = z.enum(['today', 'yesterday', '7days', '30days', '90days', 'all']).default('today');
