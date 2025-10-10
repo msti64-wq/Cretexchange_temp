@@ -338,6 +338,11 @@ export async function createAccountHolder(data: {
     }
   };
 
+  console.log('🔍 Lithic API Request:', {
+    url: `${LITHIC_BASE_URL}/account_holders`,
+    payload: JSON.stringify(payload, null, 2)
+  });
+
   const response = await fetch(`${LITHIC_BASE_URL}/account_holders`, {
     method: 'POST',
     headers: {
