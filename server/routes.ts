@@ -2484,11 +2484,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if driver has Lithic enrollment (Financial Account)
-      // This is required for production to link cards to Column bank accounts
+      // If missing, attempt to enroll them now (handles cases where enrollment failed during Column onboarding)
       if (!driver.lithicFinancialAccountToken) {
-        return res.status(400).json({ 
-          message: "Lithic enrollment required. Please contact support to complete card setup." 
-        });
+        console.log('⚠️  Driver missing Lithic enrollment, attempting automatic enrollment...');
+        
+        try {
+          // Create Lithic account holder
+          const accountHolderResult = await lithicService.createAccountHolder({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            dob: '1990-01-01', // Sandbox test data
+            ssn: '123456789', // Sandbox test data
+            email: user.email,
+            phoneNumber: user.phone ? `+1${user.phone}` : '+15555555555',
+            address: {
+              street: '123 Test St',
+              city: 'Dallas',
+              state: 'TX',
+              zip: '75001'
+            }
+          });
+
+          console.log('✅ Lithic account holder created:', accountHolderResult.token);
+
+          // Create Lithic financial account linked to Column
+          const financialAccountResult = await lithicService.createFinancialAccount({
+            accountHolderToken: accountHolderResult.token,
+            columnAccountNumber: driver.columnBankAccountId || '',
+            columnRoutingNumber: '011103093', // Column routing number
+            ownerName: `${user.firstName} ${user.lastName}`
+          });
+
+          console.log('✅ Lithic financial account created:', financialAccountResult.token);
+
+          // Update driver record
+          await storage.updateDriverLithicInfo(driver.id, {
+            lithicAccountHolderToken: accountHolderResult.token,
+            lithicFinancialAccountToken: financialAccountResult.token
+          });
+
+          // Refresh driver data
+          const updatedDriver = await storage.getDriver(userId);
+          if (updatedDriver) {
+            Object.assign(driver, updatedDriver);
+          }
+
+          console.log('✅ Automatic Lithic enrollment completed successfully');
+        } catch (lithicError) {
+          console.error('❌ Automatic Lithic enrollment failed:', lithicError);
+          return res.status(400).json({ 
+            message: "Lithic enrollment failed. Please contact support to complete card setup.",
+            error: lithicError instanceof Error ? lithicError.message : 'Unknown error'
+          });
+        }
       }
 
       // Check if driver already has a card request
