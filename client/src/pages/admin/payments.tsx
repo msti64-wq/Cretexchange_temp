@@ -11,9 +11,11 @@ import { StatCard } from "@/components/StatCard";
 import { DollarSign, Download, Filter, Calendar, TrendingUp, Truck, Building2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminPayments() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");

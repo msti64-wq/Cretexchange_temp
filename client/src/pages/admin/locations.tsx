@@ -13,9 +13,11 @@ import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { formatAddress } from "@shared/addressUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminLocations() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterOwnerStatus, setFilterOwnerStatus] = useState("all");

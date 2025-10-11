@@ -11,6 +11,7 @@ import { StatCard } from "@/components/StatCard";
 import { CreditCard, Download, Filter, Calendar, TrendingUp, CheckCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 // Types
 interface Subscription {
@@ -50,6 +51,7 @@ const formatDate = (dateString: string | null | undefined): string => {
 
 export default function AdminSubscriptions() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [filterStatus, setFilterStatus] = useState("all");
 
   // Handle URL parameters for filtering
