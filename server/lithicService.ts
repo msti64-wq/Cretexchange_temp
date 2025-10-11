@@ -65,6 +65,33 @@ const LITHIC_API_KEY = process.env.LITHIC_API_KEY;
 const LITHIC_BASE_URL = process.env.LITHIC_BASE_URL || 'https://sandbox.lithic.com/v1'; // Defaults to sandbox if not set
 const LITHIC_CARD_PROGRAM_TOKEN = process.env.LITHIC_CARD_PROGRAM_TOKEN; // Column BIN linkage (production only)
 
+/**
+ * Sanitize Lithic API error messages to prevent leaking sensitive data
+ * Removes SSNs, tokens, routing numbers, and other PII from error messages
+ */
+function sanitizeErrorMessage(errorText: string): string {
+  // Remove common sensitive patterns
+  let sanitized = errorText
+    // Remove SSN patterns (XXX-XX-XXXX or XXXXXXXXX)
+    .replace(/\b\d{3}-?\d{2}-?\d{4}\b/g, '[SSN_REDACTED]')
+    // Remove account/routing numbers (9+ digits)
+    .replace(/\b\d{9,}\b/g, '[ACCOUNT_REDACTED]')
+    // Remove token-like strings (long alphanumeric with underscores)
+    .replace(/\b[a-f0-9]{20,}\b/gi, '[TOKEN_REDACTED]')
+    .replace(/\b[a-z]+_[a-f0-9]{16,}\b/gi, '[TOKEN_REDACTED]')
+    // Remove email addresses
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, '[EMAIL_REDACTED]')
+    // Remove phone numbers
+    .replace(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g, '[PHONE_REDACTED]');
+  
+  // If error seems to contain sensitive data, return generic message
+  if (sanitized.includes('_REDACTED]')) {
+    return 'Request failed - sensitive data validation error. Please contact support.';
+  }
+  
+  return sanitized;
+}
+
 interface LithicCardRequest {
   financialAccountToken: string; // Lithic Financial Account Token (auto-created with account holder)
   shipping: {
@@ -142,16 +169,13 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
     }
   }
 
-  // Log request for debugging, but redact sensitive tokens
-  const redactedPayload = {
-    ...cardPayload,
-    account_token: cardPayload.account_token ? '[REDACTED]' : undefined,
-    card_program_token: cardPayload.card_program_token ? '[REDACTED]' : undefined
-  };
-  
-  console.log('🔍 Lithic Card Creation Request:', {
-    url: `${LITHIC_BASE_URL}/cards`,
-    payload: JSON.stringify(redactedPayload, null, 2)
+  // Log minimal info for debugging - no PII or tokens
+  console.log('🔍 Lithic Card Creation:', {
+    type: cardPayload.type,
+    hasAccountToken: !!cardPayload.account_token,
+    hasCardProgramToken: !!cardPayload.card_program_token,
+    hasShipping: !!cardPayload.shipping_address,
+    timestamp: new Date().toISOString()
   });
 
   const response = await fetch(`${LITHIC_BASE_URL}/cards`, {
@@ -172,7 +196,8 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
     } catch {
       errorMessage = errorText;
     }
-    throw new Error(`Lithic API error: ${errorMessage}`);
+    // Sanitize error message to prevent leaking sensitive data
+    throw new Error(`Lithic API error: ${sanitizeErrorMessage(errorMessage)}`);
   }
 
   const card = await response.json();
@@ -213,7 +238,8 @@ export async function getCard(cardToken: string): Promise<LithicCard> {
     } catch {
       errorMessage = errorText;
     }
-    throw new Error(`Lithic API error: ${errorMessage}`);
+    // Sanitize error message to prevent leaking sensitive data
+    throw new Error(`Lithic API error: ${sanitizeErrorMessage(errorMessage)}`);
   }
 
   const card = await response.json();
@@ -257,7 +283,8 @@ export async function activateCard(cardToken: string): Promise<void> {
     } catch {
       errorMessage = errorText;
     }
-    throw new Error(`Lithic API error: ${errorMessage}`);
+    // Sanitize error message to prevent leaking sensitive data
+    throw new Error(`Lithic API error: ${sanitizeErrorMessage(errorMessage)}`);
   }
 }
 
@@ -287,7 +314,8 @@ export async function updateCardStatus(cardToken: string, state: 'OPEN' | 'PAUSE
     } catch {
       errorMessage = errorText;
     }
-    throw new Error(`Lithic API error: ${errorMessage}`);
+    // Sanitize error message to prevent leaking sensitive data
+    throw new Error(`Lithic API error: ${sanitizeErrorMessage(errorMessage)}`);
   }
 }
 
@@ -319,7 +347,8 @@ export async function closeCard(cardToken: string): Promise<void> {
     } catch {
       errorMessage = errorText;
     }
-    throw new Error(`Lithic API error: ${errorMessage}`);
+    // Sanitize error message to prevent leaking sensitive data
+    throw new Error(`Lithic API error: ${sanitizeErrorMessage(errorMessage)}`);
   }
 }
 
@@ -393,7 +422,8 @@ export async function createAccountHolder(data: {
     } catch {
       errorMessage = errorText;
     }
-    throw new Error(`Lithic account holder creation failed: ${errorMessage}`);
+    // Sanitize error message to prevent leaking sensitive data
+    throw new Error(`Lithic account holder creation failed: ${sanitizeErrorMessage(errorMessage)}`);
   }
 
   const result = await response.json();
@@ -435,7 +465,8 @@ export async function getAccountHolder(accountHolderToken: string): Promise<any>
     } catch {
       errorMessage = errorText;
     }
-    throw new Error(`Lithic API error: ${errorMessage}`);
+    // Sanitize error message to prevent leaking sensitive data
+    throw new Error(`Lithic API error: ${sanitizeErrorMessage(errorMessage)}`);
   }
 
   return await response.json();
@@ -486,7 +517,8 @@ export async function createFinancialAccount(data: {
     } catch {
       errorMessage = errorText;
     }
-    throw new Error(`Lithic financial account creation failed: ${errorMessage}`);
+    // Sanitize error message to prevent leaking sensitive data
+    throw new Error(`Lithic financial account creation failed: ${sanitizeErrorMessage(errorMessage)}`);
   }
 
   const result = await response.json();
@@ -518,7 +550,8 @@ export async function getFinancialAccount(financialAccountToken: string): Promis
     } catch {
       errorMessage = errorText;
     }
-    throw new Error(`Lithic API error: ${errorMessage}`);
+    // Sanitize error message to prevent leaking sensitive data
+    throw new Error(`Lithic API error: ${sanitizeErrorMessage(errorMessage)}`);
   }
 
   return await response.json();
