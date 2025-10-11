@@ -35,31 +35,41 @@ Preferred communication style: Simple, everyday language.
 
 ### Current State (Sandbox)
 -   **Card Creation**: Virtual cards created in Lithic sandbox for UI/UX testing
--   **Account Linking**: Column bank account ID passed to Lithic but not validated in sandbox
--   **Funding**: Cards NOT connected to actual Column wallet funds (sandbox limitation)
+-   **Account Linking**: Using Lithic's auto-created financial accounts (sandbox)
+-   **Funding**: Cards use Lithic's test balance (sandbox limitation - no Column fund access)
 -   **Purpose**: Test card request flows, UI display, and user experience
 
 ### Production Requirements
-For live deployment, the following integration approach is implemented:
+For live deployment using Column's BIN sponsorship with Lithic as processor:
 
-#### Current Implementation: Lithic Auto-Created Financial Accounts
-1. **Account Holder Enrollment**:
-   - Create Lithic account holder when driver completes Column onboarding
-   - Use existing KYC data (name, DOB, SSN, address) collected for Column
-   - Lithic **automatically creates a financial account** (account_token) with the account holder
-   - Store both `lithic_account_holder_token` and auto-created `account_token` in driver record
+#### Column-Lithic Integration Architecture (BYOB Model)
+Lithic supports "Bring Your Own Bank" (BYOB) model, allowing Column to act as BIN sponsor while Lithic handles card processing:
 
-2. **Card Issuance**:
-   - Issue cards against the auto-created financial account token
-   - Cards use Lithic's internal balance system
+1. **Column's Role** (BIN Sponsor):
+   - Provides dedicated BIN (Bank Identification Number)
+   - Holds customer bank accounts and funds
+   - Handles regulatory compliance and network settlement
+   - Typical approval timeline: 90-120 days
 
-3. **Column-Lithic Integration Note**:
-   - **Lithic's API does not support linking external bank accounts** (Column) via standard API calls
-   - Fields like `bank_account` and external routing numbers are **not permitted** in Lithic's financial account creation
-   - For true Column wallet integration, requires:
-     - Direct partnership agreement between Column and Lithic
-     - Custom integration work to configure Lithic to recognize Column's BIN/routing structure
-     - Special API access beyond standard Lithic endpoints
+2. **Lithic's Role** (Issuer Processor):
+   - Processes card authorizations and transactions
+   - Provides card management API
+   - Handles card production and fulfillment
+   - Links to Column's BIN via `card_program_token`
+
+3. **Integration Flow**:
+   - **Step 1**: Apply for Column BIN sponsorship (contact Column sales)
+   - **Step 2**: Column approves and provides dedicated BIN
+   - **Step 3**: Lithic configures BIN and provides `card_program_token`
+   - **Step 4**: Create cards with `card_program_token` → Cards automatically linked to Column BIN
+   - **Result**: Cards pull funds from Column bank accounts ✅
+
+#### Current Implementation Status
+- ✅ Lithic account holder enrollment (creates account_token automatically)
+- ✅ Card creation API with `account_token` parameter
+- ✅ `card_program_token` support added (links to Column BIN when available)
+- ⏳ Column BIN sponsorship application (requires formal partnership)
+- ⏳ Lithic card_program_token (received after BIN approval)
 
 ### Production Checklist
 
@@ -73,6 +83,21 @@ For live deployment, the following integration approach is implemented:
 - [x] **CRITICAL:** Properly link Column bank accounts to Lithic financial accounts for fund access
 
 #### 🚀 Required for Production Launch
+
+**Column BIN Sponsorship (Critical First Step):**
+- [ ] **Apply for Column BIN sponsorship**
+  - Contact Column sales team (sales@column.com)
+  - Provide program details: card type (debit), target users (drivers), use case (washout payments)
+  - Complete compliance review and program documentation
+  - Timeline: 90-120 days for approval
+- [ ] **Coordinate with Lithic after Column BIN approval**
+  - Column provides dedicated BIN to you
+  - Share Column BIN details with Lithic implementation team
+  - Lithic configures BIN in their system
+  - Receive `card_program_token` from Lithic (enables Column fund access)
+- [ ] **Configure card_program_token in environment**
+  - Add `LITHIC_CARD_PROGRAM_TOKEN` to Replit Secrets
+  - This links all cards to Column's BIN and enables Column wallet fund access
 
 **Physical Card Setup:**
 - [ ] **Order physical card inventory from Lithic**
@@ -101,6 +126,7 @@ For live deployment, the following integration approach is implemented:
 Production deployment requires these environment variables:
 - `LITHIC_API_KEY`: Production API key from Lithic dashboard
 - `LITHIC_BASE_URL`: Set to `https://api.lithic.com/v1` (currently hardcoded to sandbox)
+- `LITHIC_CARD_PROGRAM_TOKEN`: Token linking Lithic to Column's BIN (provided by Lithic after Column BIN sponsorship approval)
 - `LITHIC_PRODUCT_ID`: Product ID for physical cards (obtained from Lithic after ordering card inventory)
 - Note: Base URL should be configurable via environment variable for easy production/sandbox switching
 
