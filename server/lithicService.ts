@@ -62,7 +62,7 @@
 
 // Lithic API configuration
 const LITHIC_API_KEY = process.env.LITHIC_API_KEY;
-const LITHIC_BASE_URL = 'https://sandbox.lithic.com/v1'; // Using sandbox for testing
+const LITHIC_BASE_URL = process.env.LITHIC_BASE_URL || 'https://sandbox.lithic.com/v1'; // Defaults to sandbox if not set
 const LITHIC_CARD_PROGRAM_TOKEN = process.env.LITHIC_CARD_PROGRAM_TOKEN; // Column BIN linkage (production only)
 
 interface LithicCardRequest {
@@ -369,9 +369,22 @@ export async function createAccountHolder(data: {
     }
   };
 
-  console.log('🔍 Lithic API Request:', {
+  // Log request for debugging, but redact sensitive PII
+  const redactedPayload = {
+    ...payload,
+    individual: {
+      ...payload.individual,
+      government_id: '[REDACTED]',
+      phone_number: '[REDACTED]',
+      email: '[REDACTED]'
+    }
+  };
+  
+  console.log('🔍 Lithic Account Holder Creation:', {
     url: `${LITHIC_BASE_URL}/account_holders`,
-    payload: JSON.stringify(payload, null, 2)
+    workflow: payload.workflow,
+    firstName: data.firstName,
+    lastName: data.lastName
   });
 
   const response = await fetch(`${LITHIC_BASE_URL}/account_holders`, {
@@ -396,7 +409,12 @@ export async function createAccountHolder(data: {
   }
 
   const result = await response.json();
-  console.log('🔍 Lithic Account Holder Response:', JSON.stringify(result, null, 2));
+  // Log response status only, don't expose tokens
+  console.log('✅ Lithic Account Holder Created:', {
+    status: result.status,
+    hasToken: !!result.token,
+    hasAccountToken: !!result.account_token
+  });
   
   return { 
     token: result.token,

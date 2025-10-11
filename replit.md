@@ -125,10 +125,9 @@ Lithic supports "Bring Your Own Bank" (BYOB) model, allowing Column to act as BI
 #### 📝 Environment Configuration
 Production deployment requires these environment variables:
 - `LITHIC_API_KEY`: Production API key from Lithic dashboard
-- `LITHIC_BASE_URL`: Set to `https://api.lithic.com/v1` (currently hardcoded to sandbox)
+- `LITHIC_BASE_URL`: Set to `https://api.lithic.com/v1` for production (defaults to sandbox if not set)
 - `LITHIC_CARD_PROGRAM_TOKEN`: Token linking Lithic to Column's BIN (provided by Lithic after Column BIN sponsorship approval)
 - `LITHIC_PRODUCT_ID`: Product ID for physical cards (obtained from Lithic after ordering card inventory)
-- Note: Base URL should be configurable via environment variable for easy production/sandbox switching
 
 ## External Dependencies
 
