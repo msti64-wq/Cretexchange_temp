@@ -362,9 +362,45 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
    - Choose deployment type (Autoscale recommended)
    - Configure custom domain (optional)
    - Review settings and confirm
+   - **Wait for deployment to complete** (production database will be created automatically)
 
-4. **Post-Deployment**
+4. **Run Database Migrations** ⚠️ CRITICAL STEP
+   
+   After deployment completes, the production database is created but empty. You must run migrations:
+   
+   **Option A: Using Replit Shell (Recommended)**
+   ```bash
+   # In your Replit workspace, open the Shell
+   # Temporarily set production database URL
+   export DATABASE_URL="<your-production-database-url>"
+   
+   # Run migrations
+   npm run db:push
+   
+   # Confirm schema creation
+   # You should see: "✓ Everything is up to date"
+   ```
+   
+   **Option B: Using Production DATABASE_URL from Secrets**
+   ```bash
+   # Find production DATABASE_URL:
+   # 1. Go to your deployment page
+   # 2. Click "Environment" or "Secrets"
+   # 3. Copy the production DATABASE_URL value
+   
+   # Then run:
+   DATABASE_URL="<production-url>" npm run db:push
+   ```
+   
+   **Important Notes**:
+   - Production DATABASE_URL is different from development
+   - This step creates all tables, indexes, and constraints
+   - Run this immediately after first deployment
+   - Safe to run multiple times (idempotent)
+
+5. **Post-Deployment**
    - Verify deployment health at `https://<app-name>.replit.app`
+   - Confirm database tables created (check logs for "✓ Everything is up to date")
    - Test on mobile devices
    - Monitor logs for errors
    - Set up monitoring/alerting
@@ -455,6 +491,37 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
 ## Troubleshooting
 
 ### Common Issues
+
+#### 0. Database Migration Failed / Copy Development to Production Failed
+
+**Symptom**: Cannot publish because "copy development database to production" fails
+
+**Cause**: Replit's database copy feature is still in development (beta limitation)
+
+**Solution**:
+This is expected behavior. Follow this workaround:
+
+1. **Let Replit create a fresh production database**:
+   - Proceed with deployment normally
+   - Production database will be created automatically (but empty)
+
+2. **Run migrations after deployment**:
+   ```bash
+   # In Replit Shell:
+   export DATABASE_URL="<production-database-url>"
+   npm run db:push
+   ```
+
+3. **Verify schema creation**:
+   - Look for "✓ Everything is up to date" message
+   - Check production app - database tables should now exist
+
+4. **Alternative: Use Drizzle Studio**:
+   - Open Database pane in Replit
+   - Switch to Production database
+   - Run migrations using Drizzle Studio UI
+
+**Prevention**: Always run `npm run db:push` immediately after first deployment to any new environment.
 
 #### 1. Lithic Card Creation Fails
 
