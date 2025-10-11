@@ -579,6 +579,9 @@ export default function DriverWallet() {
                           <p className="text-sm">
                             <strong>Need instant access?</strong> Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
                           </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                            Physical cards typically arrive within 7-10 business days at your registered address.
+                          </p>
                           <Button
                             variant="outline"
                             size="sm"
