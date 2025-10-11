@@ -142,9 +142,16 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
     }
   }
 
+  // Log request for debugging, but redact sensitive tokens
+  const redactedPayload = {
+    ...cardPayload,
+    account_token: cardPayload.account_token ? '[REDACTED]' : undefined,
+    card_program_token: cardPayload.card_program_token ? '[REDACTED]' : undefined
+  };
+  
   console.log('🔍 Lithic Card Creation Request:', {
     url: `${LITHIC_BASE_URL}/cards`,
-    payload: JSON.stringify(cardPayload, null, 2)
+    payload: JSON.stringify(redactedPayload, null, 2)
   });
 
   const response = await fetch(`${LITHIC_BASE_URL}/cards`, {
