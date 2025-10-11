@@ -63,9 +63,10 @@
 // Lithic API configuration
 const LITHIC_API_KEY = process.env.LITHIC_API_KEY;
 const LITHIC_BASE_URL = 'https://sandbox.lithic.com/v1'; // Using sandbox for testing
+const LITHIC_CARD_PROGRAM_TOKEN = process.env.LITHIC_CARD_PROGRAM_TOKEN; // Column BIN linkage (production only)
 
 interface LithicCardRequest {
-  financialAccountToken: string; // Lithic Financial Account Token (linked to Column bank account)
+  financialAccountToken: string; // Lithic Financial Account Token (auto-created with account holder)
   shipping: {
     firstName: string;
     lastName: string;
@@ -105,10 +106,20 @@ export async function createDebitCard(request: LithicCardRequest): Promise<Lithi
   // Build card creation payload
   const cardPayload: any = {
     type: request.cardType.toUpperCase(),
-    // Link card to Lithic Financial Account (connected to Column bank account)
-    // This enables real fund access in production
-    account_token: request.financialAccountToken // Lithic uses 'account_token' to link to financial account
+    // Link card to Lithic Financial Account (auto-created with account holder)
+    account_token: request.financialAccountToken
   };
+
+  // Add card_program_token if available (links to Column's BIN in production)
+  // This token is provided by Lithic after Column BIN sponsorship is approved
+  // Sandbox mode: optional (uses Lithic's test BIN)
+  // Production mode: required (links to Column's dedicated BIN)
+  if (LITHIC_CARD_PROGRAM_TOKEN) {
+    cardPayload.card_program_token = LITHIC_CARD_PROGRAM_TOKEN;
+    console.log('✅ Using card program token for Column BIN linkage');
+  } else {
+    console.log('⚠️  No card program token - using Lithic sandbox BIN (cards won\'t access Column funds)');
+  }
 
   // Only add shipping info for physical cards
   if (request.cardType.toUpperCase() === 'PHYSICAL') {
