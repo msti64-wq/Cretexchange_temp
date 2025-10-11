@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -446,12 +447,11 @@ export default function PaymentMethods() {
                     </div>
                     <div>
                       <Label htmlFor="accountNumber">Account Number</Label>
-                      <Input
+                      <PasswordInput
                         id="accountNumber"
                         value={formData.accountNumber}
                         onChange={(e) => handleInputChange('accountNumber', e.target.value)}
                         placeholder="1234567890"
-                        type="password"
                         required
                         data-testid="input-account-number"
                       />

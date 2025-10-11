@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -162,9 +163,8 @@ export function ColumnOnboardingDialog({ open, onOpenChange, onSubmit, isPending
                   <FormItem>
                     <FormLabel>Social Security Number</FormLabel>
                     <FormControl>
-                      <Input
+                      <PasswordInput
                         {...field}
-                        type="password"
                         placeholder="123456789"
                         maxLength={9}
                         data-testid="input-ssn"
