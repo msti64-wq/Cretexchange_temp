@@ -40,29 +40,26 @@ Preferred communication style: Simple, everyday language.
 -   **Purpose**: Test card request flows, UI display, and user experience
 
 ### Production Requirements
-For live deployment, the following integration must be completed:
+For live deployment, the following integration approach is implemented:
 
-#### Option 1: Lithic Financial Accounts (Recommended)
+#### Current Implementation: Lithic Auto-Created Financial Accounts
 1. **Account Holder Enrollment**:
    - Create Lithic account holder when driver completes Column onboarding
    - Use existing KYC data (name, DOB, SSN, address) collected for Column
-   - Store `lithic_account_holder_token` in driver record
+   - Lithic **automatically creates a financial account** (account_token) with the account holder
+   - Store both `lithic_account_holder_token` and auto-created `account_token` in driver record
 
-2. **Financial Account Setup**:
-   - Create Lithic financial account linked to Column bank account
-   - Provide Column routing number and account number to Lithic
-   - Lithic validates Column account exists
-   - Store `lithic_financial_account_token` in driver record
+2. **Card Issuance**:
+   - Issue cards against the auto-created financial account token
+   - Cards use Lithic's internal balance system
 
-3. **Card Issuance**:
-   - Issue cards against Lithic financial account token
-   - Card transactions pull funds from linked Column account
-   - Real-time balance validation against Column wallet
-
-#### Option 2: Direct Integration
--   Requires partnership agreement between Column and Lithic
--   Configure Lithic to recognize Column's BIN/routing structure
--   May require custom integration work
+3. **Column-Lithic Integration Note**:
+   - **Lithic's API does not support linking external bank accounts** (Column) via standard API calls
+   - Fields like `bank_account` and external routing numbers are **not permitted** in Lithic's financial account creation
+   - For true Column wallet integration, requires:
+     - Direct partnership agreement between Column and Lithic
+     - Custom integration work to configure Lithic to recognize Column's BIN/routing structure
+     - Special API access beyond standard Lithic endpoints
 
 ### Production Checklist
 

@@ -2499,32 +2499,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           console.log('✅ Lithic account holder created:', accountHolderResult.token);
+          console.log('✅ Lithic financial account auto-created:', accountHolderResult.accountToken);
 
-          // Step 2: Get Column bank account details for linking
-          const columnBankAccount = await columnService.getBankAccount(driver.columnBankAccountId);
-          const columnRoutingNumber = process.env.COLUMN_PLATFORM_ROUTING || '';
-          
-          if (!columnBankAccount || !columnRoutingNumber) {
-            throw new Error('Column bank account details not available for Lithic linking');
-          }
-
-          console.log('📋 Column account retrieved for Lithic linking');
-
-          // Step 3: Create Lithic Financial Account linked to Column bank account
-          // This is CRITICAL for production - it enables cards to access Column wallet funds
-          const financialAccountResult = await lithicService.createFinancialAccount({
-            accountHolderToken: accountHolderResult.token,
-            columnAccountNumber: columnBankAccount.account_number || columnBankAccount.id,
-            columnRoutingNumber: columnRoutingNumber,
-            ownerName: `${user.firstName} ${user.lastName}`
-          });
-
-          console.log('✅ Lithic financial account created (linked to Column):', financialAccountResult.token);
+          // Note: Lithic automatically creates a financial account (account_token) when creating an account holder
+          // In production, for Column integration, we would need Lithic's partnership to link external bank accounts
+          // For now, we use the auto-created financial account from Lithic
 
           // Update driver record with Lithic tokens
           await storage.updateDriverLithicInfo(driver.id, {
             lithicAccountHolderToken: accountHolderResult.token,
-            lithicFinancialAccountToken: financialAccountResult.token // Production: Linked to Column funds
+            lithicFinancialAccountToken: accountHolderResult.accountToken // Auto-created by Lithic
           });
 
           // Refresh driver data
@@ -2533,7 +2517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             Object.assign(driver, updatedDriver);
           }
 
-          console.log('✅ Automatic Lithic enrollment completed successfully (Column-linked)');
+          console.log('✅ Automatic Lithic enrollment completed successfully');
         } catch (lithicError) {
           console.error('❌ Automatic Lithic enrollment failed:', lithicError);
           return res.status(400).json({ 
@@ -2568,11 +2552,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Note: In sandbox, we use VIRTUAL cards since physical cards require product_id setup
       // In production, switch to 'physical' after configuring product_id in Lithic dashboard
       //
-      // PRODUCTION-READY: Column-Lithic Financial Accounts Integration
-      // - Cards are created against lithicFinancialAccountToken (linked to Column bank account)
-      // - Financial account validates Column account ownership and enables real fund access
+      // Lithic Integration:
+      // - Cards are created against lithicFinancialAccountToken (auto-created with account holder)
       // - Account holder token ensures KYC compliance
-      // - This enables instant debit card access to Column wallet funds
+      // - For Column wallet integration, Lithic partnership would be required to link external bank accounts
       let lithicCard;
       try {
         lithicCard = await lithicService.createDebitCard({
