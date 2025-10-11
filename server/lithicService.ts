@@ -369,22 +369,10 @@ export async function createAccountHolder(data: {
     }
   };
 
-  // Log request for debugging, but redact sensitive PII
-  const redactedPayload = {
-    ...payload,
-    individual: {
-      ...payload.individual,
-      government_id: '[REDACTED]',
-      phone_number: '[REDACTED]',
-      email: '[REDACTED]'
-    }
-  };
-  
+  // Log minimal info for debugging - no PII
   console.log('🔍 Lithic Account Holder Creation:', {
-    url: `${LITHIC_BASE_URL}/account_holders`,
     workflow: payload.workflow,
-    firstName: data.firstName,
-    lastName: data.lastName
+    timestamp: new Date().toISOString()
   });
 
   const response = await fetch(`${LITHIC_BASE_URL}/account_holders`, {
