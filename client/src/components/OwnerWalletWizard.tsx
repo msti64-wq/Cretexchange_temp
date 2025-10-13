@@ -15,8 +15,9 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { Wallet, Building2, CreditCard, Shield, CheckCircle, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react";
+import { Wallet, Building2, CreditCard, Shield, CheckCircle, ArrowRight, ArrowLeft, AlertCircle, FileText } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { OwnerTermsDialog } from "./OwnerTermsDialog";
 
 // Wizard step schemas
 const businessInfoSchema = z.object({
@@ -83,6 +84,7 @@ interface OwnerWalletWizardProps {
 export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletWizardProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [wizardData, setWizardData] = useState<any>({});
+  const [showOwnerTerms, setShowOwnerTerms] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -636,10 +638,23 @@ export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletW
                           data-testid="checkbox-platform-terms"
                         />
                       </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>I agree to WashOut Pro's Platform Terms *</FormLabel>
+                      <div className="space-y-1 leading-none flex-1">
+                        <div className="flex items-center justify-between">
+                          <FormLabel>I agree to WashOut Pro's Platform Terms *</FormLabel>
+                          <Button
+                            type="button"
+                            variant="link"
+                            size="sm"
+                            onClick={() => setShowOwnerTerms(true)}
+                            className="h-auto p-0 text-primary underline"
+                            data-testid="button-view-owner-terms"
+                          >
+                            <FileText className="w-3 h-3 mr-1" />
+                            View Full Terms
+                          </Button>
+                        </div>
                         <p className="text-sm text-muted-foreground">
-                          By checking this box, you agree to our platform's payment processing terms.
+                          By checking this box, you agree to our platform's fees, billing, and payment processing terms.
                         </p>
                       </div>
                     </FormItem>
@@ -714,6 +729,12 @@ export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletW
           )}
         </div>
       </Card>
+
+      <OwnerTermsDialog
+        open={showOwnerTerms}
+        onOpenChange={setShowOwnerTerms}
+        readOnly={true}
+      />
     </div>
   );
 }
