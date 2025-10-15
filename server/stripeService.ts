@@ -85,12 +85,16 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
   try {
     const accountParams: Stripe.AccountCreateParams = {
       type: params.type,
+      country: 'US', // Required for custom accounts
       email: params.email,
       capabilities: {
         transfers: { requested: true }, // Enable payouts
-        treasury: { requested: true }, // Enable wallet features
       },
       business_type: params.businessType || 'individual',
+      business_profile: {
+        url: 'https://cretexchange.com', // Platform URL
+        support_email: params.email, // Support email required for custom accounts
+      },
     };
 
     // Add individual information if provided
@@ -190,7 +194,6 @@ export async function createFinancialAccount(connectedAccountId: string): Promis
     console.log('✅ Created Treasury Financial Account:', {
       financialAccountId: financialAccount.id,
       connectedAccountId,
-      balance: financialAccount.balance.cash.usd,
     });
 
     return financialAccount;
