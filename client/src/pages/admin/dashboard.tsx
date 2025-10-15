@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X } from "lucide-react";
+import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -465,7 +465,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <Button 
             variant="outline" 
             className="h-20 flex-col space-y-2"
@@ -489,6 +489,19 @@ export default function AdminDashboard() {
             <div className="text-center">
               <div className="font-medium">Locations</div>
               <div className="text-xs text-muted-foreground">Monitor Sites</div>
+            </div>
+          </Button>
+
+          <Button 
+            variant="outline" 
+            className="h-20 flex-col space-y-2"
+            onClick={() => window.location.href = '/feature-flags'}
+            data-testid="button-feature-flags"
+          >
+            <Flag className="w-6 h-6 text-green-600" />
+            <div className="text-center">
+              <div className="font-medium">Feature Flags</div>
+              <div className="text-xs text-muted-foreground">Control Rollouts</div>
             </div>
           </Button>
         </div>
