@@ -12,8 +12,7 @@ import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPoli
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { columnService, platformConfig } from "./columnService";
-import * as lithicService from "./lithicService";
+import * as stripeService from "./stripeService";
 
 // Initialize Stripe only if secret key is available
 let stripe: Stripe | null = null;
@@ -777,7 +776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get Column onboarding status
+  // Get Stripe onboarding status
   app.get('/api/column/status', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -794,18 +793,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (user.role === 'driver') {
         const driver = await storage.getDriver(userId);
-        if (driver?.columnEntityId) {
+        if (driver?.stripeConnectAccountId) {
           isOnboarded = true;
-          entityId = driver.columnEntityId;
-          bankAccountId = driver.columnBankAccountId || null;
-          accountLast4 = driver.columnAccountLast4 || null;
+          entityId = driver.stripeConnectAccountId;
+          bankAccountId = driver.stripeTreasuryAccountId || null;
         }
       } else if (user.role === 'owner') {
         const owner = await storage.getOwner(userId);
-        if (owner?.columnEntityId) {
+        if (owner?.stripeConnectAccountId) {
           isOnboarded = true;
-          entityId = owner.columnEntityId;
-          bankAccountId = owner.columnAccountId || null;
+          entityId = owner.stripeConnectAccountId;
+          bankAccountId = owner.stripeTreasuryAccountId || null;
         }
       }
 
@@ -816,12 +814,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountLast4,
       });
     } catch (error) {
-      console.error("Error checking Column status:", error);
-      res.status(500).json({ message: "Failed to check Column status" });
+      console.error("Error checking Stripe onboarding status:", error);
+      res.status(500).json({ message: "Failed to check onboarding status" });
     }
   });
 
-  // Column BaaS onboarding endpoint
+  // Stripe onboarding endpoint (replaces Column/Lithic)
   app.post('/api/column/onboard', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -833,128 +831,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if user is a driver or owner
       if (user.role !== 'driver' && user.role !== 'owner') {
-        return res.status(400).json({ message: "Only drivers and owners can onboard to Column" });
+        return res.status(400).json({ message: "Only drivers and owners can complete onboarding" });
       }
 
       // Validate request body with Zod
       const validatedData = columnOnboardingSchema.parse(req.body);
 
-      // Check for idempotency - if user already has Column entity, return existing data
+      // Check for idempotency - if user already has Stripe accounts, return existing data
       if (user.role === 'driver') {
         const driver = await storage.getDriver(userId);
-        if (driver?.columnEntityId) {
+        if (driver?.stripeConnectAccountId) {
           return res.json({
             success: true,
-            entityId: driver.columnEntityId,
-            bankAccountId: driver.columnBankAccountId,
-            accountLast4: driver.columnAccountLast4,
-            message: "Already onboarded to Column",
+            entityId: driver.stripeConnectAccountId,
+            bankAccountId: driver.stripeTreasuryAccountId,
+            message: "Already onboarded",
           });
         }
       } else if (user.role === 'owner') {
         const owner = await storage.getOwner(userId);
-        if (owner?.columnEntityId) {
+        if (owner?.stripeConnectAccountId) {
           return res.json({
             success: true,
-            entityId: owner.columnEntityId,
-            bankAccountId: owner.columnAccountId,
-            message: "Already onboarded to Column",
+            entityId: owner.stripeConnectAccountId,
+            bankAccountId: owner.stripeTreasuryAccountId,
+            message: "Already onboarded",
           });
         }
       }
 
-      // Create Column entity (person entity for now)
-      const entityResult = await columnService.createPersonEntity({
-        firstName: validatedData.firstName,
-        lastName: validatedData.lastName,
-        ssn: validatedData.ssn,
-        dateOfBirth: validatedData.dateOfBirth,
+      // Step 1: Create Stripe Connect Account
+      const connectedAccount = await stripeService.createConnectedAccount({
+        type: 'custom',
         email: validatedData.email,
-        address: validatedData.address,
+        businessType: 'individual',
+        individual: {
+          first_name: validatedData.firstName,
+          last_name: validatedData.lastName,
+          dob: {
+            day: parseInt(validatedData.dateOfBirth.split('-')[2]),
+            month: parseInt(validatedData.dateOfBirth.split('-')[1]),
+            year: parseInt(validatedData.dateOfBirth.split('-')[0]),
+          },
+          email: validatedData.email,
+          phone: user.phone || undefined,
+          ssn_last_4: validatedData.ssn.slice(-4),
+          address: {
+            line1: validatedData.address.line1,
+            city: validatedData.address.city,
+            state: validatedData.address.state,
+            postal_code: validatedData.address.postalCode,
+            country: 'US',
+          },
+        },
       });
 
-      const entityId = entityResult.id;
+      const connectAccountId = connectedAccount.id;
 
-      // Create bank account for the entity
-      const bankAccountResult = await columnService.createBankAccount({
-        entityId,
-        description: `${user.firstName} ${user.lastName} - CreteXchange Account`,
+      // Step 2: Create Stripe Treasury Financial Account (wallet)
+      const treasuryAccount = await stripeService.createTreasuryFinancialAccount({
+        connectedAccountId: connectAccountId,
+        supportedCurrencies: ['usd'],
+        displayName: `${user.firstName} ${user.lastName} Wallet`,
       });
 
-      const bankAccountId = bankAccountResult.id;
-      const accountNumber = bankAccountResult.default_account_number;
-      const routingNumber = bankAccountResult.routing_number;
-      const accountLast4 = accountNumber.slice(-4);
+      const treasuryAccountId = treasuryAccount.id;
 
-      // Update user's Column data based on role
+      // Update user's Stripe data based on role
       if (user.role === 'driver') {
         const driver = await storage.getDriver(userId);
         if (driver) {
-          await storage.updateDriverColumnInfo(driver.id, {
-            columnEntityId: entityId,
-            columnBankAccountId: bankAccountId,
-            columnAccountLast4: accountLast4,
+          await storage.updateDriver(driver.id, {
+            stripeConnectAccountId: connectAccountId,
+            stripeTreasuryAccountId: treasuryAccountId,
           });
 
-          // Enroll driver in Lithic for debit card access
+          // Step 3: Create Stripe Issuing Cardholder for driver (for debit cards)
           try {
-            console.log('Starting Lithic enrollment for driver:', driver.id);
+            console.log('Creating Stripe Issuing cardholder for driver:', driver.id);
 
-            // Step 1: Create Lithic account holder using Column KYC data
-            const accountHolderResult = await lithicService.createAccountHolder({
-              firstName: validatedData.firstName,
-              lastName: validatedData.lastName,
-              dob: validatedData.dateOfBirth,
-              ssn: validatedData.ssn,
+            const cardholder = await stripeService.createIssuingCardholder({
+              connectedAccountId: connectAccountId,
+              name: `${validatedData.firstName} ${validatedData.lastName}`,
               email: validatedData.email,
-              phoneNumber: user.phone || '',
-              address: {
-                street: validatedData.address.street,
-                city: validatedData.address.city,
-                state: validatedData.address.state,
-                zip: validatedData.address.zip,
-              }
+              phoneNumber: user.phone || undefined,
+              billing: {
+                address: {
+                  line1: validatedData.address.line1,
+                  city: validatedData.address.city,
+                  state: validatedData.address.state,
+                  postal_code: validatedData.address.postalCode,
+                  country: 'US',
+                },
+              },
             });
 
-            console.log('Lithic account holder created:', accountHolderResult.token);
-
-            // Step 2: Store Lithic tokens in driver record
-            await storage.updateDriverLithicInfo(driver.id, {
-              lithicAccountHolderToken: accountHolderResult.token,
-              lithicFinancialAccountToken: null, // Financial account must be created separately if needed
+            await storage.updateDriver(driver.id, {
+              stripeIssuingCardholderId: cardholder.id,
             });
 
-            console.log('Lithic enrollment completed for driver:', driver.id);
-          } catch (lithicError) {
-            // Log Lithic enrollment error but don't fail the onboarding
-            // Driver can still use the platform, just won't have debit card access yet
-            console.error('Lithic enrollment failed (non-fatal):', lithicError);
+            console.log('Stripe Issuing cardholder created:', cardholder.id);
+          } catch (cardholderError) {
+            // Log error but don't fail onboarding - driver can still use platform
+            console.error('Stripe Issuing cardholder creation failed (non-fatal):', cardholderError);
           }
         }
       } else if (user.role === 'owner') {
         const owner = await storage.getOwner(userId);
         if (owner) {
-          await storage.updateOwnerColumnInfo(owner.id, {
-            columnEntityId: entityId,
-            columnAccountId: bankAccountId,
+          await storage.updateOwner(owner.id, {
+            stripeConnectAccountId: connectAccountId,
+            stripeTreasuryAccountId: treasuryAccountId,
           });
         }
       }
 
       res.json({
         success: true,
-        entityId,
-        bankAccountId,
-        accountLast4,
-        message: "Successfully onboarded to Column",
+        entityId: connectAccountId,
+        bankAccountId: treasuryAccountId,
+        message: "Successfully onboarded to payment platform",
       });
     } catch (error) {
-      console.error("Error onboarding to Column:", error);
-      res.status(500).json({ message: "Failed to onboard to Column" });
+      console.error("Error during onboarding:", error);
+      res.status(500).json({ message: "Failed to complete onboarding" });
     }
   });
 
-  // Driver payout request endpoint - initiates ACH transfer via Column
+  // Driver payout request endpoint - initiates ACH transfer via Stripe Treasury
   app.post('/api/driver/payout', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -972,10 +976,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request
       const { amount } = driverPayoutRequestSchema.parse(req.body);
 
-      // Check if Column wallet is set up
-      if (!driver.columnBankAccountId || !driver.columnEntityId) {
+      // Check if Stripe wallet is set up
+      if (!driver.stripeTreasuryAccountId || !driver.stripeConnectAccountId) {
         return res.status(400).json({ 
-          message: "Please complete bank account setup for ACH withdrawals. Go to your profile to connect your bank account." 
+          message: "Please complete account setup for withdrawals. Go to your profile to complete onboarding." 
         });
       }
 
@@ -1007,41 +1011,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create or get Column counterparty for driver's EXTERNAL bank account
-      let counterpartyId = driver.columnCounterpartyId;
-      
-      if (!counterpartyId) {
-        const counterpartyResult = await columnService.createCounterparty({
+      // Create ACH transfer from driver's Stripe Treasury wallet to their external bank
+      const transferResult = await stripeService.createACHTransfer({
+        connectedAccountId: driver.stripeConnectAccountId,
+        financialAccountId: driver.stripeTreasuryAccountId,
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: 'usd',
+        externalBankAccount: {
           accountNumber: driver.accountNumber,
           routingNumber: driver.routingNumber,
-          name: `${user.firstName} ${user.lastName}`,
-        });
-        counterpartyId = counterpartyResult.id;
-        
-        // Store counterparty ID in driver record
-        await storage.updateDriver(driver.id, {
-          columnCounterpartyId: counterpartyId,
-        });
-      }
-
-      // Create ACH transfer from driver's Column wallet to their external bank
-      const transferResult = await columnService.createACHTransfer({
-        counterpartyId: counterpartyId,
-        bankAccountId: driver.columnBankAccountId, // Driver's Column wallet (source)
-        type: 'DEBIT', // Debit from driver's Column wallet to external account
-        amount: Math.round(amount * 100), // Convert to cents
-        currencyCode: 'USD',
+          accountHolderName: `${user.firstName} ${user.lastName}`,
+        },
         description: `CreteXchange withdrawal - $${amount.toFixed(2)}`,
-        receiverName: `${user.firstName} ${user.lastName}`.substring(0, 22)
       });
       
-      // Update withdrawal with Column transfer ID and counterparty
+      // Update withdrawal with Stripe transfer ID
       await storage.updateWithdrawalStatus(
         withdrawal.id, 
         "processing", 
         transferResult.id,
         undefined, // failureReason
-        counterpartyId
+        undefined // counterpartyId not needed with Stripe
       );
 
       // Deduct from available balance and add to pending
@@ -1576,29 +1566,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         console.log(`📝 Fee ledger entry created: ${feeRecord.id}`);
 
-        // 2. Process Column book transfer (owner → platform)
-        const platformAccountId = process.env.COLUMN_PLATFORM_ACCOUNT_ID;
-        if (!platformAccountId) {
-          throw new Error('Platform Column account not configured');
+        // 2. Process Stripe Treasury internal transfer (owner → platform)
+        const platformTreasuryId = process.env.STRIPE_PLATFORM_TREASURY_ACCOUNT_ID;
+        if (!platformTreasuryId) {
+          throw new Error('Platform Stripe Treasury account not configured');
         }
 
-        if (!owner.columnAccountId) {
-          throw new Error('Owner Column account not configured');
+        if (!owner.stripeTreasuryAccountId) {
+          throw new Error('Owner Stripe Treasury account not configured');
         }
 
-        console.log(`💸 Creating Column book transfer: Owner ${owner.id} → Platform`);
+        console.log(`💸 Creating Stripe Treasury transfer: Owner ${owner.id} → Platform`);
         console.log(`   Amount: $${monthlyFee} (${monthlyFeeCents} cents)`);
-        console.log(`   From: ${owner.columnAccountId}`);
-        console.log(`   To: ${platformAccountId}`);
+        console.log(`   From: ${owner.stripeTreasuryAccountId}`);
+        console.log(`   To: ${platformTreasuryId}`);
 
-        const columnTransfer = await columnService.createBookTransfer({
-          senderBankAccountId: owner.columnAccountId,
-          receiverBankAccountId: platformAccountId,
+        const stripeTransfer = await stripeService.createInternalTransfer({
+          sourceFinancialAccountId: owner.stripeTreasuryAccountId,
+          destinationFinancialAccountId: platformTreasuryId,
           amount: monthlyFeeCents,
-          currencyCode: 'USD',
+          currency: 'usd',
           description: `Monthly location fee - ${location.name} (${periodStart})`
         });
-        console.log(`✅ Column book transfer created: ${columnTransfer.id}`);
+        console.log(`✅ Stripe Treasury transfer created: ${stripeTransfer.id}`);
 
         // 3. Update owner's wallet balance and create transaction record
         // This method handles both balance update and transaction creation atomically
@@ -1619,7 +1609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.markFeeLedgerPaid(
           feeRecord.id,
           walletTx.id,
-          columnTransfer.id
+          stripeTransfer.id
         );
         console.log(`✅ Fee marked as paid in ledger`);
 
@@ -2055,12 +2045,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             const ownerBalance = parseFloat(ownerWalletInfo.balance || "0");
             if (ownerBalance < ownerFee) {
-              console.log(`⚠️ Owner ${owner.id} has insufficient Column wallet balance ($${ownerBalance} < $${ownerFee}) - skipping Column transfers`);
+              console.log(`⚠️ Owner ${owner.id} has insufficient wallet balance ($${ownerBalance} < $${ownerFee}) - skipping Stripe transfers`);
             } else {
-              // Owner has sufficient balance - proceed with Column transfers
+              // Owner has sufficient balance - proceed with Stripe Treasury transfers
               
-              // 2. Debit owner's Column wallet ($9.00)
-              console.log(`💸 Debiting $${ownerFee} from owner ${owner.id} Column account ${owner.columnAccountId}...`);
+              // 2. Debit owner's wallet ($9.00)
+              console.log(`💸 Debiting $${ownerFee} from owner ${owner.id} Stripe Treasury account ${owner.stripeTreasuryAccountId}...`);
               
               // Update owner's database balance
               const newOwnerBalance = (ownerBalance - ownerFee).toFixed(2);
@@ -2072,68 +2062,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
               );
               console.log(`✅ Owner wallet debited: $${ownerBalance} -> $${newOwnerBalance}`);
               
-              // 3. Driver details already fetched above, check Column status
-              console.log(`🔍 Driver Column status check:`, {
+              // 3. Driver details already fetched above, check Stripe status
+              console.log(`🔍 Driver Stripe status check:`, {
                 driverId: driver?.id,
-                hasColumnBankAccountId: !!driver?.columnBankAccountId,
-                columnBankAccountId: driver?.columnBankAccountId,
-                hasColumnCounterpartyId: !!driver?.columnCounterpartyId,
-                columnCounterpartyId: driver?.columnCounterpartyId
+                hasStripeTreasuryAccountId: !!driver?.stripeTreasuryAccountId,
+                stripeTreasuryAccountId: driver?.stripeTreasuryAccountId,
               });
               
-              // 3. Book transfers use bank account IDs, not account number IDs
-              console.log(`📋 Using bank account IDs for book transfers...`);
-              console.log(`✅ Owner bank account ID: ${owner.columnAccountId}`);
+              // 3. Transfers use Stripe Treasury account IDs
+              console.log(`📋 Using Stripe Treasury account IDs for transfers...`);
+              console.log(`✅ Owner Treasury account ID: ${owner.stripeTreasuryAccountId}`);
               
-              // 4. Transfer to driver (if driver has Column account)
-              if (driver?.columnBankAccountId) {
-                console.log(`💰 Creating book transfer: Owner → Driver ($${driverAmount})...`);
-                console.log(`   Source: ${owner.columnAccountId}`);
-                console.log(`   Destination: ${driver.columnBankAccountId}`);
+              // 4. Transfer to driver (if driver has Stripe Treasury account)
+              if (driver?.stripeTreasuryAccountId) {
+                console.log(`💰 Creating Stripe Treasury transfer: Owner → Driver ($${driverAmount})...`);
+                console.log(`   Source: ${owner.stripeTreasuryAccountId}`);
+                console.log(`   Destination: ${driver.stripeTreasuryAccountId}`);
                 
-                const driverTransfer = await columnService.createBookTransfer({
-                  senderBankAccountId: owner.columnAccountId,
-                  receiverBankAccountId: driver.columnBankAccountId,
+                const driverTransfer = await stripeService.createInternalTransfer({
+                  sourceFinancialAccountId: owner.stripeTreasuryAccountId,
+                  destinationFinancialAccountId: driver.stripeTreasuryAccountId,
                   amount: Math.round(driverAmount * 100), // Convert to cents
-                  currencyCode: 'USD',
+                  currency: 'usd',
                   description: `Washout payment - Activity ${id}`
                 });
                 
-                console.log(`✅ Driver book transfer created: ${driverTransfer.id} for $${driverAmount}`);
+                console.log(`✅ Driver transfer created: ${driverTransfer.id} for $${driverAmount}`);
                 
-                // Record the Column transfer ID in the payment
+                // Record the Stripe transfer ID in the payment
                 await storage.updatePaymentStatus(payment.id, 'completed', driverTransfer.id);
               } else {
-                console.log(`⚠️ Driver ${driver?.id} does not have Column account - driver will receive payment via internal wallet only`);
+                console.log(`⚠️ Driver ${driver?.id} does not have Stripe Treasury account - driver will receive payment via internal wallet only`);
               }
               
               // 5. Transfer platform fee to operating account
-              console.log(`💰 Creating book transfer: Owner → Platform ($${platformFee})...`);
-              const platformAccountId = process.env.COLUMN_PLATFORM_ACCOUNT_ID;
-              if (!platformAccountId) {
-                console.error('❌ COLUMN_PLATFORM_ACCOUNT_ID not configured');
+              console.log(`💰 Creating Stripe Treasury transfer: Owner → Platform ($${platformFee})...`);
+              const platformTreasuryId = process.env.STRIPE_PLATFORM_TREASURY_ACCOUNT_ID;
+              if (!platformTreasuryId) {
+                console.error('❌ STRIPE_PLATFORM_TREASURY_ACCOUNT_ID not configured');
               } else {
-                console.log(`   Source: ${owner.columnAccountId}`);
-                console.log(`   Destination: ${platformAccountId}`);
+                console.log(`   Source: ${owner.stripeTreasuryAccountId}`);
+                console.log(`   Destination: ${platformTreasuryId}`);
                 
-                const platformTransfer = await columnService.createBookTransfer({
-                  senderBankAccountId: owner.columnAccountId,
-                  receiverBankAccountId: platformAccountId,
+                const platformTransfer = await stripeService.createInternalTransfer({
+                  sourceFinancialAccountId: owner.stripeTreasuryAccountId,
+                  destinationFinancialAccountId: platformTreasuryId,
                   amount: Math.round(platformFee * 100), // Convert to cents
-                  currencyCode: 'USD',
+                  currency: 'usd',
                   description: `Platform fee - Activity ${id}`
                 });
                 
-                console.log(`✅ Platform fee book transfer created: ${platformTransfer.id} for $${platformFee}`);
+                console.log(`✅ Platform fee transfer created: ${platformTransfer.id} for $${platformFee}`);
               }
               
-              console.log(`✅ All Column transfers processed successfully for washout ${id}`);
+              console.log(`✅ All Stripe transfers processed successfully for washout ${id}`);
             }
           }
         }
-      } catch (columnError) {
-        console.error(`❌ Error processing Column transfers for washout ${id}:`, columnError);
-        // Don't fail the entire request if Column transfers fail
+      } catch (stripeTransferError) {
+        console.error(`❌ Error processing Stripe transfers for washout ${id}:`, stripeTransferError);
+        // Don't fail the entire request if Stripe transfers fail
         // The payment record is still created and can be processed later
       }
 
@@ -2452,7 +2440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Request a debit card
+  // Request a debit card (Stripe Issuing)
   app.post('/api/drivers/request-debit-card', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -2468,44 +2456,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver profile not found" });
       }
 
-      // Check if driver has Column account
-      if (!driver.columnEntityId || !driver.columnBankAccountId) {
-        return res.status(400).json({ message: "Column account required. Please complete bank account setup first." });
+      // Check if driver has Stripe accounts set up
+      if (!driver.stripeConnectAccountId || !driver.stripeTreasuryAccountId) {
+        return res.status(400).json({ message: "Payment account required. Please complete account setup first." });
       }
 
-      // Check if driver has Lithic enrollment (Financial Account)
-      // If missing, attempt to enroll them now (handles cases where enrollment failed during Column onboarding)
-      if (!driver.lithicFinancialAccountToken) {
-        console.log('⚠️  Driver missing Lithic enrollment, attempting automatic enrollment...');
+      // Check if driver has Stripe Issuing cardholder
+      // If missing, create one automatically
+      if (!driver.stripeIssuingCardholderId) {
+        console.log('⚠️  Driver missing Stripe Issuing cardholder, creating one...');
         
         try {
-          // Step 1: Create Lithic account holder
-          // Using Lithic sandbox test values that pass validation
-          // NOTE: SSN "000-00-0001" triggers ADDRESS_VERIFICATION_FAILURE, use any other value
-          const accountHolderResult = await lithicService.createAccountHolder({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            dob: '1991-01-01', // Lithic sandbox test DOB
-            ssn: '123456789', // Valid test SSN (not 000-00-0001 which triggers address failure)
+          const cardholder = await stripeService.createIssuingCardholder({
+            connectedAccountId: driver.stripeConnectAccountId,
+            name: `${user.firstName} ${user.lastName}`,
             email: user.email,
-            phoneNumber: user.phone ? `+1${user.phone}` : '+15555555555',
-            address: {
-              street: '456 Test Lane',
-              city: 'San Francisco',
-              state: 'CA',
-              zip: '94105'
-            }
+            phoneNumber: user.phone || undefined,
+            billing: {
+              address: {
+                line1: '123 Main St', // Default address, will be updated with shipping address
+                city: 'San Francisco',
+                state: 'CA',
+                postal_code: '94105',
+                country: 'US',
+              },
+            },
           });
 
-          console.log('✅ Lithic account holder created:', accountHolderResult.token);
-
-          // Note: In production, for Column integration, we would need to create a separate financial account
-          // linked to the Column bank account. For sandbox, we store only the account holder token.
-
-          // Update driver record with Lithic tokens
-          await storage.updateDriverLithicInfo(driver.id, {
-            lithicAccountHolderToken: accountHolderResult.token,
-            lithicFinancialAccountToken: null // Financial account must be created separately
+          await storage.updateDriver(driver.id, {
+            stripeIssuingCardholderId: cardholder.id,
           });
 
           // Refresh driver data
@@ -2514,12 +2493,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             Object.assign(driver, updatedDriver);
           }
 
-          console.log('✅ Automatic Lithic enrollment completed successfully');
-        } catch (lithicError) {
-          console.error('❌ Automatic Lithic enrollment failed:', lithicError);
+          console.log('✅ Stripe Issuing cardholder created:', cardholder.id);
+        } catch (cardholderError) {
+          console.error('❌ Cardholder creation failed:', cardholderError);
           return res.status(400).json({ 
-            message: "Lithic enrollment failed. Please contact support to complete card setup.",
-            error: lithicError instanceof Error ? lithicError.message : 'Unknown error'
+            message: "Card setup failed. Please contact support.",
+            error: cardholderError instanceof Error ? cardholderError.message : 'Unknown error'
           });
         }
       }
@@ -2534,67 +2513,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate request data
-      const { shippingName, shippingStreet, shippingCity, shippingState, shippingZip } = req.body;
+      const { shippingName, shippingStreet, shippingCity, shippingState, shippingZip, cardType } = req.body;
       
       if (!shippingName || !shippingStreet || !shippingCity || !shippingState || !shippingZip) {
         return res.status(400).json({ message: "All shipping address fields are required" });
       }
 
-      // Split shipping name into first and last name
-      const nameParts = shippingName.trim().split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || nameParts[0]; // Use first name as last if only one name
+      const requestedCardType = cardType || 'virtual'; // Default to virtual ($0.10), physical is $3.00
 
-      // Create debit card via Lithic API
-      // Note: In sandbox, we use VIRTUAL cards since physical cards require product_id setup
-      // In production, switch to 'physical' after configuring product_id in Lithic dashboard
-      //
-      // Lithic Integration:
-      // - Cards are created against lithicFinancialAccountToken (auto-created with account holder)
-      // - Account holder token ensures KYC compliance
-      // - For Column wallet integration, Lithic partnership would be required to link external bank accounts
-      let lithicCard;
+      // Create debit card via Stripe Issuing
+      let stripeCard;
       try {
-        lithicCard = await lithicService.createDebitCard({
-          financialAccountToken: driver.lithicFinancialAccountToken, // Production: Link to Lithic Financial Account
-          shipping: {
-            firstName,
-            lastName,
+        stripeCard = await stripeService.createIssuingCard({
+          connectedAccountId: driver.stripeConnectAccountId,
+          cardholderId: driver.stripeIssuingCardholderId!,
+          type: requestedCardType,
+          financialAccountId: driver.stripeTreasuryAccountId,
+          shipping: requestedCardType === 'physical' ? {
+            name: shippingName,
             address: {
-              street: shippingStreet,
+              line1: shippingStreet,
               city: shippingCity,
               state: shippingState,
-              zip: shippingZip
-            }
-          },
-          cardType: 'virtual' // Using virtual for sandbox testing
+              postal_code: shippingZip,
+              country: 'US',
+            },
+          } : undefined,
         });
-        console.log(`✅ Lithic card created: ${lithicCard.token}, last4: ${lithicCard.last4}`);
-      } catch (lithicError: any) {
-        console.error("❌ Lithic card creation failed:", lithicError.message);
+        console.log(`✅ Stripe Issuing card created: ${stripeCard.id}, last4: ${stripeCard.last4}`);
+      } catch (cardError: any) {
+        console.error("❌ Stripe card creation failed:", cardError.message);
         return res.status(500).json({ 
-          message: "Failed to create debit card with card issuer",
-          error: lithicError.message 
+          message: "Failed to create debit card",
+          error: cardError.message 
         });
       }
 
-      // Map Lithic card state to our status enum
-      // Lithic states: PENDING_FULFILLMENT, PENDING_ACTIVATION, OPEN, PAUSED, CLOSED
+      // Map Stripe card status to our status enum
+      // Stripe statuses: active, inactive, canceled, pending
       // Our enum: requested, processing, issued, active, blocked, cancelled
       let cardStatus: 'requested' | 'processing' | 'issued' | 'active' | 'blocked' | 'cancelled' = 'processing';
-      if (lithicCard.state === 'OPEN') {
+      if (stripeCard.status === 'active') {
         cardStatus = 'active';
-      } else if (lithicCard.state === 'PENDING_FULFILLMENT') {
-        cardStatus = 'processing';
-      } else if (lithicCard.state === 'PENDING_ACTIVATION') {
+      } else if (stripeCard.status === 'inactive') {
         cardStatus = 'issued';
-      } else if (lithicCard.state === 'PAUSED') {
-        cardStatus = 'blocked';
-      } else if (lithicCard.state === 'CLOSED') {
+      } else if (stripeCard.status === 'canceled') {
         cardStatus = 'cancelled';
       }
 
-      // Create debit card request record with Lithic card details
+      // Create debit card request record with Stripe card details
       const cardRequest = await storage.createDebitCardRequest({
         driverId: driver.id,
         userId: userId,
@@ -2603,22 +2570,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shippingCity,
         shippingState,
         shippingZip,
-        cardType: 'virtual', // Sandbox uses virtual cards
+        cardType: requestedCardType,
         cardStatus,
-        lithicCardId: lithicCard.token,
-        cardLast4: lithicCard.last4,
-        expirationMonth: lithicCard.expirationMonth,
-        expirationYear: lithicCard.expirationYear,
+        stripeIssuingCardId: stripeCard.id,
+        cardLast4: stripeCard.last4,
+        expirationMonth: stripeCard.exp_month.toString(),
+        expirationYear: stripeCard.exp_year.toString(),
         issuedAt: new Date()
       });
 
-      console.log(`💳 Debit card requested for driver ${driver.id} - ${shippingName}`);
+      console.log(`💳 Debit card requested for driver ${driver.id} - ${shippingName} (${requestedCardType})`);
 
       res.json({
         success: true,
-        message: "Debit card request submitted successfully",
+        message: `Debit card request submitted successfully (${requestedCardType === 'virtual' ? '$0.10' : '$3.00 with 2-day shipping'})`,
         requestId: cardRequest.id,
-        status: cardRequest.cardStatus
+        status: cardRequest.cardStatus,
+        cardType: requestedCardType,
+        fee: requestedCardType === 'virtual' ? 0.10 : 3.00
       });
     } catch (error) {
       console.error("Error requesting debit card:", error);
@@ -2723,46 +2692,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log("✅ Payment verified - $1,500 received via Stripe");
-      console.log("Setting up Column BaaS wallet and activating subscription...");
+      console.log("Setting up Stripe Connect and Treasury wallet, activating subscription...");
       
-      // Create Column entity and bank account
-      let entityData, accountData;
+      // Create Stripe Connected Account and Treasury wallet
+      let connectedAccount, treasuryAccount;
       try {
-        // Create Column person entity (using sandbox-safe test data)
-        entityData = await columnService.createPersonEntity({
-          firstName: user.firstName,
-          lastName: user.lastName,
+        // Create Stripe Connect Account
+        connectedAccount = await stripeService.createConnectedAccount({
+          type: 'custom',
           email: user.email,
-          ssn: '000000000', // Sandbox test value
-          dateOfBirth: '1990-01-01', // Sandbox test value
-          address: {
-            line1: '123 Main St',
-            city: 'San Francisco',
-            state: 'CA',
-            postalCode: '94105',
-            countryCode: 'US'
-          }
+          businessType: 'individual',
+          individual: {
+            first_name: user.firstName,
+            last_name: user.lastName,
+            dob: {
+              day: 1,
+              month: 1,
+              year: 1990,
+            },
+            email: user.email,
+            phone: user.phone || undefined,
+            ssn_last_4: '0000', // Test value
+            address: {
+              line1: '123 Main St',
+              city: 'San Francisco',
+              state: 'CA',
+              postal_code: '94105',
+              country: 'US',
+            },
+          },
         });
-        console.log("✅ Created Column entity:", entityData.id);
+        console.log("✅ Created Stripe Connect account:", connectedAccount.id);
 
-        // Create Column bank account for the owner's wallet
-        accountData = await columnService.createBankAccount({
-          entityId: entityData.id,
-          description: `${user.firstName} ${user.lastName} - CreteXchange Wallet`
+        // Create Stripe Treasury Financial Account (wallet)
+        treasuryAccount = await stripeService.createTreasuryFinancialAccount({
+          connectedAccountId: connectedAccount.id,
+          supportedCurrencies: ['usd'],
+          displayName: `${user.firstName} ${user.lastName} Wallet`,
         });
-        console.log("✅ Created Column bank account:", accountData.id);
+        console.log("✅ Created Stripe Treasury account:", treasuryAccount.id);
       } catch (error: any) {
-        console.error("Failed to create Column account:", error);
+        console.error("Failed to create Stripe accounts:", error);
         return res.status(500).json({ 
           message: "Payment received but failed to create wallet account. Please contact support.",
           error: error.message 
         });
       }
 
-      // Update owner with Column info and subscription
+      // Update owner with Stripe info and subscription
       await storage.updateOwner(owner.id, { 
-        columnEntityId: entityData.id,
-        columnAccountId: accountData.id,
+        stripeConnectAccountId: connectedAccount.id,
+        stripeTreasuryAccountId: treasuryAccount.id,
         walletStatus: 'active',
         subscriptionPlan: 'annual', // One-time membership
         subscriptionStatus: 'active',
@@ -2771,33 +2751,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stripePaymentIntentId: paymentIntentId
       });
 
-      console.log("✅ Column BaaS subscription activated successfully");
+      console.log("✅ Subscription activated successfully");
 
       res.json({
         success: true,
-        columnEntityId: entityData.id,
-        columnAccountId: accountData.id,
+        connectAccountId: connectedAccount.id,
+        treasuryAccountId: treasuryAccount.id,
         message: "Membership activated - payment received and wallet created",
         walletStatus: 'active',
         paymentStatus: 'completed'
       });
     } catch (error: any) {
-      console.error("Column BaaS subscription error:", {
+      console.error("Subscription error:", {
         message: error.message,
         stack: error.stack
       });
       res.status(500).json({ 
-        message: "Failed to create Column BaaS subscription",
+        message: "Failed to create subscription",
         error: error.message 
       });
     }
   });
 
-  // Column BaaS payment handling - no payment intents needed
+  // Payment handling for additional features
   app.post('/api/payments/create-payment-intent', isAuthenticated, async (req: any, res) => {
     try {
-      // Column BaaS handles payments automatically - no client-side payment intents needed
-      console.log("Column BaaS payment request - handled via wallet system");
+      console.log("Payment request - processing via Stripe");
       
       const { amount } = req.body;
       const userId = req.user.id;
@@ -3231,20 +3210,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let balance = owner.walletBalance || '0.00';
       let status = owner.walletStatus || 'pending_verification';
 
-      // If owner has Column account, fetch live balance from Column (authoritative source)
-      if (owner.columnAccountId) {
+      // If owner has Stripe Treasury account, fetch live balance (authoritative source)
+      if (owner.stripeTreasuryAccountId && owner.stripeConnectAccountId) {
         try {
-          const accountData = await columnService.getBankAccount(owner.columnAccountId);
-          const columnBalanceCents = accountData?.balances?.available_amount;
+          const treasuryBalance = await stripeService.getTreasuryBalance({
+            connectedAccountId: owner.stripeConnectAccountId,
+            financialAccountId: owner.stripeTreasuryAccountId,
+          });
           
-          if (accountData && columnBalanceCents !== undefined) {
+          if (treasuryBalance) {
             // Convert from cents to dollars
-            balance = (columnBalanceCents / 100).toFixed(2);
+            balance = (treasuryBalance.balance / 100).toFixed(2);
             
             // Sync the balance to database if it differs
             const currentBalance = parseFloat(owner.walletBalance || '0');
-            const columnBalanceDollars = parseFloat(balance);
-            if (columnBalanceDollars !== currentBalance) {
+            const treasuryBalanceDollars = parseFloat(balance);
+            if (treasuryBalanceDollars !== currentBalance) {
               await db
                 .update(owners)
                 .set({
@@ -3254,13 +3235,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 })
                 .where(eq(owners.id, owner.id));
               
-              console.log(`💰 Column balance synced: $${currentBalance} -> $${columnBalanceDollars}`);
+              console.log(`💰 Stripe Treasury balance synced: $${currentBalance} -> $${treasuryBalanceDollars}`);
             }
             
             status = 'active';
           }
         } catch (error: any) {
-          console.error(`Column API error for owner ${owner.id}:`, error.message);
+          console.error(`Stripe Treasury API error for owner ${owner.id}:`, error.message);
           // Fall back to database value
         }
       }
@@ -3273,9 +3254,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         autoTopupEnabled: owner.autoTopupEnabled || false,
         autoTopupAmount: owner.autoTopupAmount || '500.00',
         walletId: `wallet_${owner.id}`,
-        columnAccountId: owner.columnAccountId,
-        columnEntityId: owner.columnEntityId,
-        hasColumnAccount: !!(owner.columnAccountId && owner.columnEntityId),
+        stripeConnectAccountId: owner.stripeConnectAccountId,
+        stripeTreasuryAccountId: owner.stripeTreasuryAccountId,
+        hasStripeAccount: !!(owner.stripeConnectAccountId && owner.stripeTreasuryAccountId),
         createdAt: owner.createdAt
       };
 
@@ -3383,7 +3364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/owners/wallet/sync - Sync wallet balance from Column
+  // POST /api/owners/wallet/sync - Sync wallet balance from Stripe Treasury
   app.post('/api/owners/wallet/sync', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -3393,42 +3374,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      if (!owner.columnAccountId) {
+      if (!owner.stripeTreasuryAccountId || !owner.stripeConnectAccountId) {
         return res.status(400).json({ 
-          message: "No Column account found. Please complete onboarding first.",
+          message: "No payment account found. Please complete onboarding first.",
           needsOnboarding: true
         });
       }
 
-      // Fetch balance from Column
-      const accountData = await columnService.getBankAccount(owner.columnAccountId);
+      // Fetch balance from Stripe Treasury
+      const treasuryBalance = await stripeService.getTreasuryBalance({
+        connectedAccountId: owner.stripeConnectAccountId,
+        financialAccountId: owner.stripeTreasuryAccountId,
+      });
       
-      if (!accountData) {
-        return res.status(500).json({ message: "Failed to fetch Column account data" });
+      if (!treasuryBalance) {
+        return res.status(500).json({ message: "Failed to fetch account data" });
       }
 
       // Convert balance from cents to dollars
-      const columnBalance = (accountData.balance / 100).toFixed(2);
+      const balance = (treasuryBalance.balance / 100).toFixed(2);
       const currentBalance = parseFloat(owner.walletBalance || '0');
-      const columnBalanceFloat = parseFloat(columnBalance);
+      const balanceFloat = parseFloat(balance);
 
-      // Update database balance to match Column
-      if (columnBalanceFloat !== currentBalance) {
+      // Update database balance to match Stripe Treasury
+      if (balanceFloat !== currentBalance) {
         await db
           .update(owners)
           .set({
-            walletBalance: columnBalance,
+            walletBalance: balance,
             updatedAt: new Date()
           })
           .where(eq(owners.id, owner.id));
 
-        console.log(`Synced balance for owner ${owner.id}: ${currentBalance} -> ${columnBalance}`);
+        console.log(`Synced balance for owner ${owner.id}: ${currentBalance} -> ${balance}`);
       }
 
       res.json({
         success: true,
         message: "Balance synced successfully",
-        balance: columnBalance,
+        balance: balance,
         previousBalance: currentBalance.toFixed(2),
         syncedAt: new Date().toISOString()
       });
