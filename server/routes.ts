@@ -7410,6 +7410,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update allowed roles for a feature flag (admin only)
+  app.put("/api/feature-flags/:flagKey/roles", isAuthenticated, async (req: any, res) => {
+    try {
+      const { flagKey } = req.params;
+      const { allowedRoles } = req.body;
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const flag = await storage.updateFeatureFlagRoles(flagKey, allowedRoles);
+      res.json(flag);
+    } catch (error) {
+      console.error('❌ Error updating feature flag roles:', error);
+      res.status(500).json({ message: 'Failed to update feature flag roles' });
+    }
+  });
+
   // Create a new feature flag (admin only)
   app.post("/api/feature-flags", isAuthenticated, async (req: any, res) => {
     try {

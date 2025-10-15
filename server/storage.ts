@@ -282,6 +282,7 @@ export interface IStorage {
   getAllFeatureFlags(): Promise<any[]>;
   createFeatureFlag(flag: { flagKey: string; enabled: boolean; description?: string; allowedRoles?: string[] }): Promise<any>;
   updateFeatureFlag(flagKey: string, enabled: boolean): Promise<any>;
+  updateFeatureFlagRoles(flagKey: string, allowedRoles: string[]): Promise<any>;
   getFeatureFlagOverride(flagKey: string, userId: string): Promise<any | undefined>;
   setFeatureFlagOverride(flagKey: string, userId: string, enabled: boolean): Promise<any>;
   checkFeatureFlag(flagKey: string, userId: string, userRole: string): Promise<boolean>;
@@ -3930,6 +3931,15 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(featureFlags)
       .set({ enabled, updatedAt: new Date() })
+      .where(eq(featureFlags.flagKey, flagKey))
+      .returning();
+    return updated;
+  }
+
+  async updateFeatureFlagRoles(flagKey: string, allowedRoles: string[]): Promise<FeatureFlag> {
+    const [updated] = await db
+      .update(featureFlags)
+      .set({ allowedRoles, updatedAt: new Date() })
       .where(eq(featureFlags.flagKey, flagKey))
       .returning();
     return updated;
