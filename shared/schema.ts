@@ -840,6 +840,46 @@ export type ServicePaymentAccount = typeof servicePaymentAccounts.$inferSelect;
 export type InsertServicePaymentAccount = z.infer<typeof insertServicePaymentAccountSchema>;
 export type UpdateServicePaymentAccount = z.infer<typeof updateServicePaymentAccountSchema>;
 
+// Feature Flags System
+export const featureFlags = pgTable("feature_flags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  flagKey: varchar("flag_key").notNull().unique(),
+  enabled: boolean("enabled").default(false).notNull(),
+  description: text("description"),
+  allowedRoles: text("allowed_roles").array(), // Array of roles that can access this feature
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const featureFlagOverrides = pgTable("feature_flag_overrides", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  flagId: varchar("flag_id").notNull().references(() => featureFlags.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("unique_flag_user").on(table.flagId, table.userId),
+]);
+
+// Feature flag schemas
+export const insertFeatureFlagSchema = createInsertSchema(featureFlags).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFeatureFlagOverrideSchema = createInsertSchema(featureFlagOverrides).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type FeatureFlag = typeof featureFlags.$inferSelect;
+export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
+export type FeatureFlagOverride = typeof featureFlagOverrides.$inferSelect;
+export type InsertFeatureFlagOverride = z.infer<typeof insertFeatureFlagOverrideSchema>;
+
 // Date range validation schema
 export const dateRangeSchema = z.enum(['today', 'yesterday', '7days', '30days', '90days', 'all']).default('today');
 
