@@ -7333,6 +7333,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ====================================
+  // Feature Flag Management Routes
+  // ====================================
+
+  // Get all feature flags (admin only)
+  router.get("/api/feature-flags", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const flags = await storage.getAllFeatureFlags();
+      res.json(flags);
+    } catch (error) {
+      console.error('❌ Error fetching feature flags:', error);
+      res.status(500).json({ message: 'Failed to fetch feature flags' });
+    }
+  });
+
+  // Check if a feature is enabled for current user
+  router.get("/api/feature-flags/:flagKey/check", requireAuth, async (req, res) => {
+    try {
+      const { flagKey } = req.params;
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const enabled = await storage.checkFeatureFlag(flagKey, user.id, user.role);
+      res.json({ enabled });
+    } catch (error) {
+      console.error('❌ Error checking feature flag:', error);
+      res.status(500).json({ message: 'Failed to check feature flag' });
+    }
+  });
+
+  // Toggle feature flag globally (admin only)
+  router.put("/api/feature-flags/:flagKey/toggle", requireAuth, async (req, res) => {
+    try {
+      const { flagKey } = req.params;
+      const { enabled } = req.body;
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const flag = await storage.updateFeatureFlag(flagKey, enabled);
+      res.json(flag);
+    } catch (error) {
+      console.error('❌ Error toggling feature flag:', error);
+      res.status(500).json({ message: 'Failed to toggle feature flag' });
+    }
+  });
+
+  // Set user-specific override (admin only)
+  router.put("/api/feature-flags/:flagKey/override/:userId", requireAuth, async (req, res) => {
+    try {
+      const { flagKey, userId } = req.params;
+      const { enabled } = req.body;
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const override = await storage.setFeatureFlagOverride(flagKey, userId, enabled);
+      res.json(override);
+    } catch (error) {
+      console.error('❌ Error setting feature flag override:', error);
+      res.status(500).json({ message: 'Failed to set feature flag override' });
+    }
+  });
+
+  // Create a new feature flag (admin only)
+  router.post("/api/feature-flags", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const flag = await storage.createFeatureFlag(req.body);
+      res.json(flag);
+    } catch (error) {
+      console.error('❌ Error creating feature flag:', error);
+      res.status(500).json({ message: 'Failed to create feature flag' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
