@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Production deployment startup script
-console.log('🚀 Starting WashOut Pro production deployment...');
+console.log('🚀 Starting CreteXchange production deployment...');
 
 // Set production environment
 process.env.NODE_ENV = 'production';

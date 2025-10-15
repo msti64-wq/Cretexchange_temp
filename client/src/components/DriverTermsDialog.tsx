@@ -70,14 +70,14 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
           <div className="border rounded-lg p-4 bg-background">
             <div className="space-y-4 text-xs leading-relaxed max-h-96 overflow-y-auto">
               <div className="text-center">
-                <h3 className="font-bold text-lg mb-2">WashOut Pro Driver Terms</h3>
+                <h3 className="font-bold text-lg mb-2">CreteXchange Driver Terms</h3>
                 <p className="font-semibold">Driver Payment, Wallet & Debit Card Agreement</p>
                 <p className="font-medium">Effective Date: October 13, 2025</p>
               </div>
               
               <div className="space-y-4">
                 <p className="text-center text-sm">
-                  By clicking "I Agree," you acknowledge that you have read, understood, and agree to be bound by the following terms for using the WashOut Pro wallet system:
+                  By clicking "I Agree," you acknowledge that you have read, understood, and agree to be bound by the following terms for using the CreteXchange wallet system:
                 </p>
                 
                 <div className="space-y-4">
@@ -135,7 +135,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                       3. Withdrawal Fees and Processing
                     </h4>
                     <div className="space-y-2 ml-6 bg-muted/30 p-3 rounded">
-                      <p><strong>3.1 Processing Fees:</strong> WashOut Pro charges the following withdrawal fees:</p>
+                      <p><strong>3.1 Processing Fees:</strong> CreteXchange charges the following withdrawal fees:</p>
                       <div className="ml-4 space-y-1">
                         <p>• <strong>Withdrawals under $10.00:</strong> $1.00 flat fee</p>
                         <p>• <strong>Withdrawals $10.00 and above:</strong> 10% processing fee</p>
@@ -185,7 +185,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                     <div className="space-y-2 ml-6">
                       <p><strong>5.1 Service Usage:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• Use the WashOut Pro platform in accordance with all applicable laws</p>
+                        <p>• Use the CreteXchange platform in accordance with all applicable laws</p>
                         <p>• Follow location-specific rules and safety protocols</p>
                         <p>• Properly dispose of concrete washout materials as directed</p>
                         <p>• Maintain professional conduct at all washout locations</p>
@@ -193,7 +193,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                       
                       <p className="pt-2"><strong>5.2 Independent Contractor:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• You are an independent contractor, not a WashOut Pro employee</p>
+                        <p>• You are an independent contractor, not a CreteXchange employee</p>
                         <p>• Responsible for your own taxes and business expenses</p>
                         <p>• No employment benefits or guarantees provided</p>
                         <p>• Set your own schedule and choose locations</p>
@@ -209,7 +209,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                       
                       <p className="pt-2"><strong>5.4 Changes:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• WashOut Pro may update these terms with 30 days advance notice</p>
+                        <p>• CreteXchange may update these terms with 30 days advance notice</p>
                         <p>• Continued use constitutes acceptance of updated terms</p>
                         <p>• Significant fee changes require explicit re-acceptance</p>
                       </div>

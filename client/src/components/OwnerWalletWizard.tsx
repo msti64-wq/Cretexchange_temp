@@ -640,7 +640,7 @@ export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletW
                       </FormControl>
                       <div className="space-y-1 leading-none flex-1">
                         <div className="flex items-center justify-between">
-                          <FormLabel>I agree to WashOut Pro's Platform Terms *</FormLabel>
+                          <FormLabel>I agree to CreteXchange's Platform Terms *</FormLabel>
                           <Button
                             type="button"
                             variant="link"

@@ -478,7 +478,7 @@ export default function DriverProfile() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">Install WashOut Pro</p>
+                  <p className="text-sm font-medium">Install CreteXchange</p>
                   <p className="text-xs text-muted-foreground">
                     Add to your home screen for quick access while on the road
                   </p>
@@ -545,7 +545,7 @@ export default function DriverProfile() {
               
               <div className="bg-muted/50 rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">
-                  Review the terms and conditions that govern your use of WashOut Pro.
+                  Review the terms and conditions that govern your use of CreteXchange.
                 </p>
               </div>
             </CardContent>

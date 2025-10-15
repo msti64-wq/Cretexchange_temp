@@ -1,6 +1,6 @@
 {
-  "name": "WashOut Pro",
-  "short_name": "WashOut Pro",
+  "name": "CreteXchange",
+  "short_name": "CreteXchange",
   "description": "Find concrete washout locations for truck drivers and manage washout services for location owners",
   "start_url": "/",
   "display": "standalone",

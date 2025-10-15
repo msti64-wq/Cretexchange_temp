@@ -17,7 +17,7 @@ export default function Setup() {
     { username: 'prodtest', password: 'test123', firstName: 'Prod', lastName: 'Test', email: 'prodtest@example.com', role: 'driver' },
     { username: 'D1', password: 'D1', firstName: 'D1', lastName: 'Driver', email: 'D1@email.com', role: 'driver' },
     { username: 'O1', password: 'O1', firstName: 'O1', lastName: 'Owner', email: 'O1@email.com', role: 'owner' },
-    { username: 'admin', password: 'admin123', firstName: 'Super', lastName: 'Admin', email: 'admin@washoutpro.com', role: 'super_admin' },
+    { username: 'admin', password: 'admin123', firstName: 'Super', lastName: 'Admin', email: 'admin@cretexchange.com', role: 'super_admin' },
     { username: 'testdriver', password: 'test123', firstName: 'Test', lastName: 'Driver', email: 'test@example.com', role: 'driver' }
   ];
 
@@ -101,7 +101,7 @@ export default function Setup() {
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <Truck className="w-6 h-6 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">WashOut Pro</h1>
+            <h1 className="text-2xl font-bold text-foreground">CreteXchange</h1>
           </div>
         </div>
       </header>

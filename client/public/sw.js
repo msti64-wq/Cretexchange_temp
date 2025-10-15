@@ -1,4 +1,4 @@
-// Simple Service Worker for WashOut Pro PWA
+// Simple Service Worker for CreteXchange PWA
 console.log('Service Worker loaded');
 
 // Install event - skip waiting

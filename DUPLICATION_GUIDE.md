@@ -1,6 +1,6 @@
-# WashOut Pro - App Duplication Guide
+# CreteXchange - App Duplication Guide
 
-This guide will help you create a complete copy of your WashOut Pro application to start a new revision without affecting the current app.
+This guide will help you create a complete copy of your CreteXchange application to start a new revision without affecting the current app.
 
 ## Overview
 
@@ -15,14 +15,14 @@ We'll use GitHub as a bridge to duplicate your app:
 
 ### Option A: Using Replit's Git Integration (Recommended)
 
-1. **In your current WashOut Pro workspace:**
+1. **In your current CreteXchange workspace:**
    - Open the Shell tool (bottom panel)
    - Replit already has git initialized for you
 
 2. **Create a GitHub repository:**
    - Go to [github.com/new](https://github.com/new)
    - Repository name: `washout-pro-v2` (or your preferred name)
-   - Description: "WashOut Pro - Concrete Washout Management Platform (Copy)"
+   - Description: "CreteXchange - Concrete Washout Management Platform (Copy)"
    - Choose **Private** (recommended for production apps)
    - **DO NOT** initialize with README, .gitignore, or license
    - Click "Create repository"
@@ -39,7 +39,7 @@ git remote add github https://github.com/YOUR_USERNAME/washout-pro-v2.git
 git add .
 
 # Commit the code
-git commit -m "Initial commit - WashOut Pro app duplication"
+git commit -m "Initial commit - CreteXchange app duplication"
 
 # Push to GitHub
 git push -u github main
@@ -200,8 +200,8 @@ Make sure both apps are truly independent:
 After successful duplication:
 
 1. **Rename for clarity:**
-   - Original app: "WashOut Pro - Production"
-   - New app: "WashOut Pro - V2 Development"
+   - Original app: "CreteXchange - Production"
+   - New app: "CreteXchange - V2 Development"
 
 2. **Start development on new app:**
    - Make changes freely
@@ -236,4 +236,4 @@ After successful duplication:
 ---
 
 **Created:** October 13, 2025  
-**Purpose:** Safe duplication of WashOut Pro for development/testing
+**Purpose:** Safe duplication of CreteXchange for development/testing

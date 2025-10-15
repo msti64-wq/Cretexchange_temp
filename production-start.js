@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Robust production startup script to prevent crashes
-console.log('🚀 Starting WashOut Pro production server...');
+console.log('🚀 Starting CreteXchange production server...');
 
 // Set production environment
 process.env.NODE_ENV = 'production';

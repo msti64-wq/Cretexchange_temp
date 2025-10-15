@@ -122,10 +122,10 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
           <div className="flex items-center space-x-3">
             <img 
               src={logoImage}
-              alt="WashOut Pro Logo"
+              alt="CreteXchange Logo"
               className="w-16 h-16 object-contain"
             />
-            <h1 className="text-2xl font-bold text-foreground">WashOut Pro</h1>
+            <h1 className="text-2xl font-bold text-foreground">CreteXchange</h1>
           </div>
         </div>
       </header>
@@ -139,7 +139,7 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               {formData.role ? (
                 `Complete your registration as a ${formData.role === 'driver' ? 'Concrete Truck Driver' : 'Location Owner'}.`
               ) : (
-                'Join WashOut Pro to get started as a driver or location owner.'
+                'Join CreteXchange to get started as a driver or location owner.'
               )}
             </p>
           </CardHeader>

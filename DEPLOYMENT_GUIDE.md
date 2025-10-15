@@ -1,4 +1,4 @@
-# WashOut Pro - Deployment Guide
+# CreteXchange - Deployment Guide
 
 ## Table of Contents
 - [Overview](#overview)
@@ -14,7 +14,7 @@
 
 ## Overview
 
-WashOut Pro is a Progressive Web App (PWA) connecting concrete truck drivers with verified washout locations. The platform includes:
+CreteXchange is a Progressive Web App (PWA) connecting concrete truck drivers with verified washout locations. The platform includes:
 
 - **User Types**: Drivers, Location Owners, Super Admins
 - **Core Features**: Washout location discovery, payment processing, wallet management, debit card issuance
@@ -665,7 +665,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
 ```
 Driver: TD002 / password: test123
 Owner: TO001 / password: test123
-Admin: admin@washoutpro.com / password: test123
+Admin: admin@cretexchange.com / password: test123
 ```
 
 **Test Cards** (Stripe):
@@ -715,12 +715,12 @@ Failure: 000-00-0001 (triggers verification failure)
 ## Contact & Support
 
 **Development Team**:
-- Technical Support: support@washoutpro.com
-- Bug Reports: https://github.com/washoutpro/issues
+- Technical Support: support@cretexchange.com
+- Bug Reports: https://github.com/cretexchange/issues
 
 **Business Inquiries**:
-- Sales: sales@washoutpro.com
-- Partnerships: partners@washoutpro.com
+- Sales: sales@cretexchange.com
+- Partnerships: partners@cretexchange.com
 
 ---
 

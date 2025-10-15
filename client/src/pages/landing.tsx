@@ -18,11 +18,11 @@ export default function Landing() {
         <div className="container mx-auto flex items-center justify-between">
           <img 
             src={logoImage}
-            alt="WashOut Pro Logo"
+            alt="CreteXchange Logo"
             className="w-16 h-16 object-contain"
           />
           <div className="flex-1 flex justify-center">
-            <h1 className="text-2xl font-bold text-foreground">WashOut Pro</h1>
+            <h1 className="text-2xl font-bold text-foreground">CreteXchange</h1>
           </div>
           <Button 
             onClick={() => window.location.href = '/login'}
@@ -177,7 +177,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t bg-card/50 backdrop-blur py-8">
         <div className="container mx-auto px-6 text-center text-muted-foreground">
-          <p>&copy; 2024 WashOut Pro. All rights reserved.</p>
+          <p>&copy; 2024 CreteXchange. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -1,7 +1,7 @@
-# WashOut Pro - Concrete Washout Location Management Platform
+# CreteXchange - Concrete Washout Location Management Platform
 
 ## Overview
-WashOut Pro is a comprehensive web application designed to connect concrete truck drivers with verified washout locations for drum cleaning services. It acts as a marketplace facilitating washout services, payments, and location management for three distinct user types: concrete truck drivers, location owners, and super administrators. The platform aims to streamline the process of finding and utilizing washout services, managing facilities, and processing payments.
+CreteXchange is a comprehensive web application designed to connect concrete truck drivers with verified washout locations for drum cleaning services. It acts as a marketplace facilitating washout services, payments, and location management for three distinct user types: concrete truck drivers, location owners, and super administrators. The platform aims to streamline the process of finding and utilizing washout services, managing facilities, and processing payments.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

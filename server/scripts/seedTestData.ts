@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Production Seed Script: Test Data for WashOut Pro
+ * Production Seed Script: Test Data for CreteXchange
  * 
  * This script seeds test data that can be used for testing in both
  * development and production environments. It creates:

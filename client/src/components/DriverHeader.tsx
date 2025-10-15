@@ -13,7 +13,7 @@ export function DriverHeader() {
         <div className="flex items-center space-x-3 flex-1">
           <img 
             src={logoImage}
-            alt="WashOut Pro Logo"
+            alt="CreteXchange Logo"
             className="w-12 h-12 object-contain bg-white/20 rounded-full p-1 flex-shrink-0"
           />
           <div className="flex-1 min-w-0">

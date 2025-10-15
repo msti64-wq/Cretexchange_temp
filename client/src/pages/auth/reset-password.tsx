@@ -99,10 +99,10 @@ export default function ResetPassword() {
           <div className="flex items-center space-x-3">
             <img 
               src={logoImage}
-              alt="WashOut Pro Logo"
+              alt="CreteXchange Logo"
               className="w-16 h-16 object-contain"
             />
-            <h1 className="text-2xl font-bold text-foreground">WashOut Pro</h1>
+            <h1 className="text-2xl font-bold text-foreground">CreteXchange</h1>
           </div>
         </div>
       </header>

@@ -40,7 +40,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
             <p className="text-blue-700 text-xs">
               {readOnly 
                 ? "Review the platform terms and conditions you have agreed to." 
-                : "You must read and agree to these terms to use WashOut Pro as a location owner."
+                : "You must read and agree to these terms to use CreteXchange as a location owner."
               }
             </p>
           </div>
@@ -48,14 +48,14 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
           <div className="border rounded-lg p-4 bg-background">
             <div className="space-y-4 text-xs leading-relaxed max-h-[500px] overflow-y-auto">
               <div className="text-center">
-                <h3 className="font-bold text-lg mb-2">WashOut Pro Platform Terms</h3>
+                <h3 className="font-bold text-lg mb-2">CreteXchange Platform Terms</h3>
                 <p className="font-semibold">Location Owner Service Agreement</p>
                 <p className="font-medium">Effective Date: October 13, 2025</p>
               </div>
               
               <div className="space-y-4">
                 <p className="text-center text-sm">
-                  By clicking "I Agree," you acknowledge that you have read, understood, and agree to be bound by the following terms for operating washout locations on the WashOut Pro platform:
+                  By clicking "I Agree," you acknowledge that you have read, understood, and agree to be bound by the following terms for operating washout locations on the CreteXchange platform:
                 </p>
                 
                 <div className="space-y-4">
@@ -84,7 +84,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       
                       <p className="pt-2"><strong>1.3 Transaction Fees:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• WashOut Pro retains a <strong>$4.00 flat fee per completed washout</strong></p>
+                        <p>• CreteXchange retains a <strong>$4.00 flat fee per completed washout</strong></p>
                         <p>• Fee is automatically deducted from washout payments via Column book transfer</p>
                         <p>• You receive the washout rate you set minus the $4.00 platform fee</p>
                       </div>
@@ -143,7 +143,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                         <p>• Review and approve/reject driver washout submissions within 24 hours</p>
                         <p>• Verify photo evidence shows proper washout at your location</p>
                         <p>• Only approve legitimate washouts to prevent fraud</p>
-                        <p>• Report suspicious activity to WashOut Pro support</p>
+                        <p>• Report suspicious activity to CreteXchange support</p>
                       </div>
                       
                       <p className="pt-2"><strong>3.3 Location Status:</strong></p>
@@ -179,10 +179,10 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       
                       <p className="pt-2"><strong>4.3 Independent Business:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• You operate as an independent business, not WashOut Pro employee</p>
+                        <p>• You operate as an independent business, not CreteXchange employee</p>
                         <p>• Responsible for your own taxes, insurance, and business operations</p>
                         <p>• Set your own washout rates and operating hours</p>
-                        <p>• WashOut Pro provides the technology platform only</p>
+                        <p>• CreteXchange provides the technology platform only</p>
                       </div>
                     </div>
                   </div>
@@ -226,7 +226,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       
                       <p className="pt-2"><strong>6.2 Platform Liability:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• WashOut Pro provides the technology platform "as is"</p>
+                        <p>• CreteXchange provides the technology platform "as is"</p>
                         <p>• Not responsible for disputes between owners and drivers</p>
                         <p>• Not liable for business losses or operational issues</p>
                         <p>• Support available to help resolve payment or technical issues</p>
@@ -249,12 +249,12 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                         <p>• You may close your account anytime (membership fee non-refundable)</p>
                         <p>• Withdraw remaining wallet balance before account closure</p>
                         <p>• Pending washouts must be resolved before termination</p>
-                        <p>• WashOut Pro may suspend accounts for Terms violations</p>
+                        <p>• CreteXchange may suspend accounts for Terms violations</p>
                       </div>
                       
                       <p className="pt-2"><strong>7.2 Terms Updates:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• WashOut Pro may update these terms with 30 days advance notice</p>
+                        <p>• CreteXchange may update these terms with 30 days advance notice</p>
                         <p>• Continued use after changes constitutes acceptance</p>
                         <p>• Significant fee changes require explicit re-acceptance</p>
                       </div>

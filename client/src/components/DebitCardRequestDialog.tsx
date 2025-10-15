@@ -95,7 +95,7 @@ export function DebitCardRequestDialog({
             Request Debit Card
           </DialogTitle>
           <DialogDescription>
-            Get instant access to your funds with a debit card linked to your WashOut Pro account
+            Get instant access to your funds with a debit card linked to your CreteXchange account
           </DialogDescription>
         </DialogHeader>
 
@@ -187,7 +187,7 @@ export function DebitCardRequestDialog({
               htmlFor="agreeToTerms"
               className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
-              I agree to receive a debit card and understand that it will be linked to my WashOut Pro account. 
+              I agree to receive a debit card and understand that it will be linked to my CreteXchange account. 
               Card activation and usage are subject to terms and conditions.
             </label>
           </div>

@@ -98,7 +98,7 @@ export default function OwnerDrivers() {
           <div className="flex items-center space-x-3">
             <img 
               src={logoImage}
-              alt="WashOut Pro Logo"
+              alt="CreteXchange Logo"
               className="w-10 h-10 object-contain bg-white/20 rounded-full p-1"
             />
             <div>

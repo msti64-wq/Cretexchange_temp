@@ -560,7 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { username: 'O1', password: 'O1', firstName: 'O1', lastName: 'Owner', role: 'owner' as const,
           email: 'O1@email.com', phone: '9723321192', address: '870 N Preston Rd, Celina, TX 75009' },
         { username: 'admin', password: 'admin123', firstName: 'Super', lastName: 'Admin', role: 'super_admin' as const,
-          email: 'admin@washoutpro.com' },
+          email: 'admin@cretexchange.com' },
         { username: 'testdriver', password: 'test123', firstName: 'Test', lastName: 'Driver', role: 'driver' as const,
           email: 'test@example.com', phone: '555-123-4567', address: '123 Main St' },
         { username: 'prodtest', password: 'test123', firstName: 'Prod', lastName: 'Test', role: 'driver' as const,
@@ -878,7 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create bank account for the entity
       const bankAccountResult = await columnService.createBankAccount({
         entityId,
-        description: `${user.firstName} ${user.lastName} - WashOut Pro Account`,
+        description: `${user.firstName} ${user.lastName} - CreteXchange Account`,
       });
 
       const bankAccountId = bankAccountResult.id;
@@ -1032,7 +1032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'DEBIT', // Debit from driver's Column wallet to external account
         amount: Math.round(amount * 100), // Convert to cents
         currencyCode: 'USD',
-        description: `WashOut Pro withdrawal - $${amount.toFixed(2)}`,
+        description: `CreteXchange withdrawal - $${amount.toFixed(2)}`,
         receiverName: `${user.firstName} ${user.lastName}`.substring(0, 22)
       });
       
@@ -2660,7 +2660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'membership_fee',
           plan: 'annual'
         },
-        description: 'WashOut Pro Platform Membership - One-time Fee'
+        description: 'CreteXchange Platform Membership - One-time Fee'
       });
 
       console.log(`💳 Created Stripe payment intent for membership: ${paymentIntent.id} - $1,500`);
@@ -2751,7 +2751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create Column bank account for the owner's wallet
         accountData = await columnService.createBankAccount({
           entityId: entityData.id,
-          description: `${user.firstName} ${user.lastName} - WashOut Pro Wallet`
+          description: `${user.firstName} ${user.lastName} - CreteXchange Wallet`
         });
         console.log("✅ Created Column bank account:", accountData.id);
       } catch (error: any) {
@@ -3160,7 +3160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 amount: Math.round(autoTopupAmount * 100),
                 currencyCode: 'USD',
                 description: `Auto top-up - ${defaultSource.bankName || 'Bank Account'} ****${defaultSource.last4}`,
-                receiverName: user ? `${user.firstName} ${user.lastName}`.substring(0, 22) : 'WashOut Owner'
+                receiverName: user ? `${user.firstName} ${user.lastName}`.substring(0, 22) : 'CreteXchange Owner'
               });
               
               // Record the transaction
@@ -3800,7 +3800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: Math.round(fundAmount * 100), // Convert to cents
           currencyCode: 'USD',
           description: `Wallet funding - ${fundingSource.bankName || 'Bank Account'} ****${fundingSource.last4}`,
-          receiverName: user ? `${user.firstName} ${user.lastName}`.substring(0, 22) : 'WashOut Owner'
+          receiverName: user ? `${user.firstName} ${user.lastName}`.substring(0, 22) : 'CreteXchange Owner'
         });
         
         console.log(`✅ ACH transfer created:`, transferResult.id);
@@ -4758,7 +4758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'DEBIT', // Debit from driver's Column wallet to external account
           amount: Math.round(netAmount * 100), // Convert to cents
           currencyCode: 'USD',
-          description: `WashOut Pro withdrawal - $${netAmount.toFixed(2)}`,
+          description: `CreteXchange withdrawal - $${netAmount.toFixed(2)}`,
           receiverName: `${user.firstName} ${user.lastName}`.substring(0, 22)
         });
 

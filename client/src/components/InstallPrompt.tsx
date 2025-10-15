@@ -111,7 +111,7 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
   const getMessaging = () => {
     if (userType === 'driver') {
       return {
-        title: "🚛 Add WashOut Pro to Home Screen",
+        title: "🚛 Add CreteXchange to Home Screen",
         description: "Get instant access while driving! Tap once to find nearby washout locations.",
         benefits: [
           "One-tap access from your home screen",
@@ -122,7 +122,7 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
       };
     } else {
       return {
-        title: "🏢 Add WashOut Pro to Home Screen", 
+        title: "🏢 Add CreteXchange to Home Screen", 
         description: "Manage your washout locations with instant access from your phone.",
         benefits: [
           "Quick access to manage your locations",

@@ -193,7 +193,7 @@ export default function OwnerSubscribe() {
     onSuccess: (data) => {
       toast({
         title: "Membership Activated!",
-        description: "Welcome to WashOut Pro. Redirecting to dashboard...",
+        description: "Welcome to CreteXchange. Redirecting to dashboard...",
       });
       setTimeout(() => setLocation('/dashboard'), 2000);
     },
@@ -255,7 +255,7 @@ export default function OwnerSubscribe() {
             </div>
             <div>
               <h1 className="font-semibold text-lg">Platform Membership</h1>
-              <p className="text-white/80 text-sm">Join WashOut Pro</p>
+              <p className="text-white/80 text-sm">Join CreteXchange</p>
             </div>
           </div>
         </div>

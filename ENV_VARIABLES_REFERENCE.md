@@ -1,6 +1,6 @@
 # Environment Variables Reference
 
-## Required Secrets for WashOut Pro
+## Required Secrets for CreteXchange
 
 When setting up the duplicated app, configure these environment variables in Replit Secrets:
 
