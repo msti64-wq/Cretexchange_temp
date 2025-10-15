@@ -79,8 +79,9 @@ export const users = pgTable("users", {
   zip: varchar("zip"),
   paymentMethod: paymentMethodEnum("payment_method").default("ach"),
   paymentFrequency: paymentFrequencyEnum("payment_frequency").default("weekly"),
-  // Removed Stripe fields - now using Column BaaS for owner billing
-  columnCustomerId: varchar("column_customer_id"),
+  // Stripe Connect integration - all users are connected accounts
+  stripeConnectAccountId: varchar("stripe_connect_account_id"),
+  stripeCustomerId: varchar("stripe_customer_id"), // For platform-level billing if needed
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -111,14 +112,11 @@ export const drivers = pgTable("drivers", {
   venmoHandle: varchar("venmo_handle"),
   zelleEmail: varchar("zelle_email"),
   paymentMethod: paymentMethodEnum("payment_method").default("ach"), // Legacy field - kept for backward compatibility
-  // Column BaaS integration for payouts (server-managed)
-  columnEntityId: varchar("column_entity_id"), // Column entity ID for KYC
-  columnBankAccountId: varchar("column_bank_account_id"), // Column bank account ID for direct deposits
-  columnAccountLast4: varchar("column_account_last4"), // Last 4 digits of account number (for display)
-  columnCounterpartyId: varchar("column_counterparty_id"), // Column counterparty ID for ACH transfers
-  // Lithic card issuing integration (production financial accounts)
-  lithicAccountHolderToken: varchar("lithic_account_holder_token"), // Lithic account holder token for card enrollment
-  lithicFinancialAccountToken: varchar("lithic_financial_account_token"), // Lithic financial account token linked to Column
+  // Stripe Treasury integration for wallet management
+  stripeTreasuryAccountId: varchar("stripe_treasury_account_id"), // Stripe Financial Account ID for wallet
+  stripeTreasuryAccountLast4: varchar("stripe_treasury_account_last4"), // Last 4 digits for display
+  // Stripe Issuing integration for debit cards
+  stripeIssuingCardholderId: varchar("stripe_issuing_cardholder_id"), // Stripe Issuing cardholder ID
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -136,9 +134,9 @@ export const debitCardRequests = pgTable("debit_card_requests", {
   shippingCity: varchar("shipping_city").notNull(),
   shippingState: varchar("shipping_state").notNull(),
   shippingZip: varchar("shipping_zip").notNull(),
-  // Card details from issuer processor
+  // Card details from Stripe Issuing
   cardStatus: debitCardStatusEnum("card_status").notNull().default("requested"),
-  lithicCardId: varchar("lithic_card_id"), // Lithic card token/ID
+  stripeIssuingCardId: varchar("stripe_issuing_card_id"), // Stripe Issuing card ID
   cardLast4: varchar("card_last4"), // Last 4 digits of card
   cardType: varchar("card_type").default("physical"), // physical or virtual
   expirationMonth: varchar("expiration_month"), // MM
@@ -159,9 +157,8 @@ export const owners = pgTable("owners", {
   companyName: varchar("company_name"),
   businessLicense: varchar("business_license"),
   taxId: varchar("tax_id"),
-  // Column BaaS wallet integration
-  columnAccountId: varchar("column_account_id"), // Column FBO sub-account ID
-  columnEntityId: varchar("column_entity_id"), // Column entity ID for KYC
+  // Stripe Treasury wallet integration
+  stripeTreasuryAccountId: varchar("stripe_treasury_account_id"), // Stripe Financial Account ID
   walletBalance: decimal("wallet_balance", { precision: 10, scale: 2 }).notNull().default("0.00"),
   walletStatus: ownerWalletStatusEnum("wallet_status").default("pending_verification"),
   lowBalanceThreshold: decimal("low_balance_threshold", { precision: 10, scale: 2 }).default("100.00"),
@@ -250,8 +247,8 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   processingFee: decimal("processing_fee", { precision: 10, scale: 2 }).notNull(),
   washoutServiceFee: decimal("washout_service_fee", { precision: 10, scale: 2 }).notNull().default("8.00"),
-  // Direct payment tracking (no Stripe needed)
-  columnTransferId: varchar("column_transfer_id"), // Column ACH transfer ID
+  // Stripe transfer tracking
+  stripeTransferId: varchar("stripe_transfer_id"), // Stripe Transfer ID
   status: varchar("status").notNull().default("pending"),
   // Batch tracking fields for daily billing
   batchId: varchar("batch_id").references(() => billingBatches.id),
@@ -271,8 +268,8 @@ export const billingBatches = pgTable("billing_batches", {
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
   totalFees: decimal("total_fees", { precision: 10, scale: 2 }).notNull().default("0.00"),
   paymentCount: integer("payment_count").notNull().default(0),
-  // Column transfer tracking for batch payments
-  columnBatchTransferId: varchar("column_batch_transfer_id"),
+  // Stripe transfer tracking for batch payments
+  stripeBatchTransferId: varchar("stripe_batch_transfer_id"),
   status: batchStatusEnum("status").notNull().default("pending"),
   processingStartedAt: timestamp("processing_started_at"),
   completedAt: timestamp("completed_at"),
@@ -300,7 +297,7 @@ export const feesLedger = pgTable("fees_ledger", {
   status: feeStatusEnum("status").notNull().default("pending"),
   // Payment tracking
   walletTxId: varchar("wallet_tx_id").references(() => ownerWalletTransactions.id),
-  columnTransferId: varchar("column_transfer_id"), // Column book transfer ID
+  stripeTransferId: varchar("stripe_transfer_id"), // Stripe Transfer ID
   batchId: varchar("batch_id").references(() => billingBatches.id), // Link to billing batch
   paidAt: timestamp("paid_at"),
   failureReason: text("failure_reason"),
@@ -315,25 +312,25 @@ export const feesLedger = pgTable("fees_ledger", {
   statusIndex: index("idx_fees_ledger_status").on(table.status),
 }));
 
-// Owner funding sources for Column wallet top-ups
+// Owner funding sources for Stripe Treasury wallet top-ups
 export const ownerFundingSources = pgTable("owner_funding_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
-  type: varchar("type").notNull(), // 'bank_account' only for ACH transfers
+  type: varchar("type").notNull(), // 'bank_account' for ACH transfers
   bankName: varchar("bank_name"),
   accountHolderName: varchar("account_holder_name"),
   routingNumber: varchar("routing_number"),
   accountNumber: varchar("account_number"), // Encrypted
   last4: varchar("last4").notNull(),
-  // Column integration - counterparty for ACH transfers
-  columnCounterpartyId: varchar("column_counterparty_id"),
+  // Stripe integration - payment method for ACH transfers
+  stripePaymentMethodId: varchar("stripe_payment_method_id"),
   isDefault: boolean("is_default").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Owner wallet transactions for Column BaaS accounts
+// Owner wallet transactions for Stripe Treasury accounts
 export const ownerWalletTransactions = pgTable("owner_wallet_transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
@@ -345,7 +342,7 @@ export const ownerWalletTransactions = pgTable("owner_wallet_transactions", {
   // Related transaction references
   paymentId: varchar("payment_id").references(() => payments.id),
   batchId: varchar("batch_id").references(() => billingBatches.id),
-  columnTransferId: varchar("column_transfer_id"), // Reference to Column transfer
+  stripeTransferId: varchar("stripe_transfer_id"), // Reference to Stripe transfer
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   ownerDateIndex: index("idx_owner_wallet_transactions_owner_date").on(table.ownerId, table.createdAt),
@@ -426,9 +423,9 @@ export const withdrawals = pgTable("withdrawals", {
   feeAmount: decimal("fee_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
   amountNet: decimal("amount_net", { precision: 10, scale: 2 }).notNull(),
   status: withdrawalStatusEnum("status").notNull().default("requested"),
-  // Column BaaS integration for ACH transfers
-  columnTransferId: varchar("column_transfer_id"), // Column transfer ID
-  columnCounterpartyId: varchar("column_counterparty_id"), // Column counterparty ID
+  // Stripe Treasury integration for payouts
+  stripePayoutId: varchar("stripe_payout_id"), // Stripe Payout ID
+  stripePaymentMethodId: varchar("stripe_payment_method_id"), // Stripe Payment Method ID
   failureReason: text("failure_reason"),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
