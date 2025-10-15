@@ -7338,7 +7338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ====================================
 
   // Get all feature flags (admin only)
-  router.get("/api/feature-flags", requireAuth, async (req, res) => {
+  app.get("/api/feature-flags", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
       
@@ -7355,7 +7355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check if a feature is enabled for current user
-  router.get("/api/feature-flags/:flagKey/check", requireAuth, async (req, res) => {
+  app.get("/api/feature-flags/:flagKey/check", isAuthenticated, async (req: any, res) => {
     try {
       const { flagKey } = req.params;
       const user = await storage.getUser(req.user.id);
@@ -7373,7 +7373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Toggle feature flag globally (admin only)
-  router.put("/api/feature-flags/:flagKey/toggle", requireAuth, async (req, res) => {
+  app.put("/api/feature-flags/:flagKey/toggle", isAuthenticated, async (req: any, res) => {
     try {
       const { flagKey } = req.params;
       const { enabled } = req.body;
@@ -7392,7 +7392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Set user-specific override (admin only)
-  router.put("/api/feature-flags/:flagKey/override/:userId", requireAuth, async (req, res) => {
+  app.put("/api/feature-flags/:flagKey/override/:userId", isAuthenticated, async (req: any, res) => {
     try {
       const { flagKey, userId } = req.params;
       const { enabled } = req.body;
@@ -7411,7 +7411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new feature flag (admin only)
-  router.post("/api/feature-flags", requireAuth, async (req, res) => {
+  app.post("/api/feature-flags", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
       
