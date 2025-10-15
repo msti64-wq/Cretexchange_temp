@@ -19,6 +19,8 @@ import {
   servicePaymentAccounts,
   billingBatches,
   feesLedger,
+  featureFlags,
+  featureFlagOverrides,
   type User,
   type UpsertUser,
   type Driver,
@@ -39,6 +41,9 @@ import {
   type ServicePaymentAccount,
   type BillingBatch,
   type FeeLedger,
+  type FeatureFlag,
+  type InsertFeatureFlag,
+  type FeatureFlagOverride,
   type InsertDriver,
   type InsertOwner,
   type InsertWashoutLocation,
@@ -271,6 +276,15 @@ export interface IStorage {
   // Debug operations
   getUserCount(): Promise<number>;
   getTestUsers(): Promise<string[]>;
+
+  // Feature flag operations
+  getFeatureFlag(flagKey: string): Promise<any | undefined>;
+  getAllFeatureFlags(): Promise<any[]>;
+  createFeatureFlag(flag: { flagKey: string; enabled: boolean; description?: string; allowedRoles?: string[] }): Promise<any>;
+  updateFeatureFlag(flagKey: string, enabled: boolean): Promise<any>;
+  getFeatureFlagOverride(flagKey: string, userId: string): Promise<any | undefined>;
+  setFeatureFlagOverride(flagKey: string, userId: string, enabled: boolean): Promise<any>;
+  checkFeatureFlag(flagKey: string, userId: string, userRole: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3895,6 +3909,77 @@ export class DatabaseStorage implements IStorage {
       results.errors.push(`System error: ${error.message}`);
       return results;
     }
+  }
+
+  // Feature Flag operations
+  async getFeatureFlag(flagKey: string): Promise<FeatureFlag | undefined> {
+    const [flag] = await db.select().from(featureFlags).where(eq(featureFlags.flagKey, flagKey));
+    return flag;
+  }
+
+  async getAllFeatureFlags(): Promise<FeatureFlag[]> {
+    return await db.select().from(featureFlags).orderBy(featureFlags.flagKey);
+  }
+
+  async createFeatureFlag(flag: InsertFeatureFlag): Promise<FeatureFlag> {
+    const [newFlag] = await db.insert(featureFlags).values(flag).returning();
+    return newFlag;
+  }
+
+  async updateFeatureFlag(flagKey: string, enabled: boolean): Promise<FeatureFlag> {
+    const [updated] = await db
+      .update(featureFlags)
+      .set({ enabled, updatedAt: new Date() })
+      .where(eq(featureFlags.flagKey, flagKey))
+      .returning();
+    return updated;
+  }
+
+  async getFeatureFlagOverride(flagKey: string, userId: string): Promise<FeatureFlagOverride | undefined> {
+    const flag = await this.getFeatureFlag(flagKey);
+    if (!flag) return undefined;
+
+    const [override] = await db
+      .select()
+      .from(featureFlagOverrides)
+      .where(and(eq(featureFlagOverrides.flagId, flag.id), eq(featureFlagOverrides.userId, userId)));
+    return override;
+  }
+
+  async setFeatureFlagOverride(flagKey: string, userId: string, enabled: boolean): Promise<FeatureFlagOverride> {
+    const flag = await this.getFeatureFlag(flagKey);
+    if (!flag) throw new Error(`Feature flag ${flagKey} not found`);
+
+    const [override] = await db
+      .insert(featureFlagOverrides)
+      .values({ flagId: flag.id, userId, enabled })
+      .onConflictDoUpdate({
+        target: [featureFlagOverrides.flagId, featureFlagOverrides.userId],
+        set: { enabled, updatedAt: new Date() },
+      })
+      .returning();
+    return override;
+  }
+
+  async checkFeatureFlag(flagKey: string, userId: string, userRole: string): Promise<boolean> {
+    const flag = await this.getFeatureFlag(flagKey);
+    if (!flag) return false;
+
+    // Check role-based access
+    if (flag.allowedRoles && flag.allowedRoles.length > 0) {
+      if (!flag.allowedRoles.includes(userRole)) {
+        return false; // Role not allowed
+      }
+    }
+
+    // Check user-specific override
+    const override = await this.getFeatureFlagOverride(flagKey, userId);
+    if (override !== undefined) {
+      return override.enabled;
+    }
+
+    // Fall back to global flag setting
+    return flag.enabled;
   }
 }
 
