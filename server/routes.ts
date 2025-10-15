@@ -917,12 +917,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             console.log('Lithic account holder created:', accountHolderResult.token);
-            console.log('Lithic financial account (auto-created):', accountHolderResult.accountToken);
 
-            // Step 2: Store Lithic tokens in driver record (financial account auto-created with account holder)
+            // Step 2: Store Lithic tokens in driver record
             await storage.updateDriverLithicInfo(driver.id, {
               lithicAccountHolderToken: accountHolderResult.token,
-              lithicFinancialAccountToken: accountHolderResult.accountToken, // Auto-created
+              lithicFinancialAccountToken: null, // Financial account must be created separately if needed
             });
 
             console.log('Lithic enrollment completed for driver:', driver.id);
@@ -2499,16 +2498,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           console.log('✅ Lithic account holder created:', accountHolderResult.token);
-          console.log('✅ Lithic financial account auto-created:', accountHolderResult.accountToken);
 
-          // Note: Lithic automatically creates a financial account (account_token) when creating an account holder
-          // In production, for Column integration, we would need Lithic's partnership to link external bank accounts
-          // For now, we use the auto-created financial account from Lithic
+          // Note: In production, for Column integration, we would need to create a separate financial account
+          // linked to the Column bank account. For sandbox, we store only the account holder token.
 
           // Update driver record with Lithic tokens
           await storage.updateDriverLithicInfo(driver.id, {
             lithicAccountHolderToken: accountHolderResult.token,
-            lithicFinancialAccountToken: accountHolderResult.accountToken // Auto-created by Lithic
+            lithicFinancialAccountToken: null // Financial account must be created separately
           });
 
           // Refresh driver data
@@ -7312,18 +7309,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log('✅ Lithic account holder created:', accountHolderResult.token);
-      console.log('✅ Lithic financial account (auto-created):', accountHolderResult.accountToken);
 
-      // Update driver record (financial account auto-created with account holder)
+      // Update driver record
       await storage.updateDriverLithicInfo(driver.id, {
         lithicAccountHolderToken: accountHolderResult.token,
-        lithicFinancialAccountToken: accountHolderResult.accountToken // Auto-created
+        lithicFinancialAccountToken: null // Financial account must be created separately
       });
 
       res.json({
         success: true,
-        accountHolderToken: accountHolderResult.token,
-        financialAccountToken: financialAccountResult.token
+        accountHolderToken: accountHolderResult.token
       });
     } catch (error) {
       console.error('❌ Lithic retry failed:', error);
