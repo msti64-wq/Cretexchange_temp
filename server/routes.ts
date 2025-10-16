@@ -3678,11 +3678,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Check if owner has completed payment account onboarding
-      if (!owner.stripeConnectAccountId || !owner.stripeTreasuryAccountId) {
+      // Check if owner has completed payment account onboarding (Connect account required, Treasury optional)
+      if (!owner.stripeConnectAccountId) {
         return res.status(400).json({ 
           message: "Payment account not set up. Please complete onboarding first.",
           needsOnboarding: true
+        });
+      }
+
+      // Check if Treasury is available for wallet funding
+      if (!owner.stripeTreasuryAccountId) {
+        return res.status(400).json({ 
+          message: "Wallet funding requires Stripe Treasury. Please activate Treasury in your Stripe dashboard to enable this feature.",
+          needsTreasury: true
         });
       }
 
