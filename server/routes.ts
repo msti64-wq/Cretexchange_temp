@@ -2928,15 +2928,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Wallet-based prepaid system
-      // Owner wallet is activated when they click "Start Subscription"
-      // The walletStatus is set to 'active' by the subscribe endpoint
+      // Check subscription status - approved owners with active subscription or active wallet
+      const isSubscriptionActive = owner.subscriptionStatus === 'active' || 
+                                    (owner.isApproved && owner.subscriptionPlan !== 'none');
+      
       const subscriptionData = {
-        status: owner.walletStatus === 'active' ? 'active' : 'inactive',
-        plan: 'wallet', // Wallet-based prepaid billing
+        status: isSubscriptionActive ? 'active' : 'inactive',
+        plan: owner.subscriptionPlan || 'wallet', // Show actual plan
         walletBalance: owner.walletBalance,
         walletStatus: owner.walletStatus,
         isApproved: owner.isApproved,
+        subscriptionPlan: owner.subscriptionPlan,
       };
 
       res.json(subscriptionData);
