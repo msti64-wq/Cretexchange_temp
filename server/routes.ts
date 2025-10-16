@@ -4018,8 +4018,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyName: o.companyName,
           businessLicense: o.businessLicense,
           taxId: o.taxId,
-          columnAccountId: o.columnAccountId,
-          columnEntityId: o.columnEntityId,
+          stripeConnectAccountId: o.stripeConnectAccountId,
+          stripeTreasuryAccountId: o.stripeTreasuryAccountId,
+          stripeCustomerId: o.stripeCustomerId,
+          subscriptionStatus: o.subscriptionStatus,
+          subscriptionPlan: o.subscriptionPlan,
           walletBalance: o.walletBalance,
           walletStatus: o.walletStatus,
           membershipPaymentMethod: o.membershipPaymentMethod,
@@ -4106,16 +4109,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const monthlyRevenue = activeLocations * 100; // $100 per location per month
 
         return {
-          id: owner.columnAccountId || owner.id, // Use Column account ID or owner ID
+          id: owner.id,
           ownerId: owner.id, // Add unique owner ID for table keys
           userId: owner.userId,
           ownerName: `${user!.firstName} ${user!.lastName}`,
           email: user!.email,
           companyName: owner.companyName || 'N/A',
           status: status,
-          plan: 'wallet', // Wallet-based billing ($100/location/month)
+          plan: owner.subscriptionPlan || 'none',
           localEndsAt: null, // No subscription end date for wallet-based
           stripeCustomerId: owner.stripeCustomerId || null,
+          stripeConnectAccountId: owner.stripeConnectAccountId || null,
+          stripeTreasuryAccountId: owner.stripeTreasuryAccountId || null,
           stripeSubscriptionId: null, // No Stripe subscription in wallet system
           createdAt: user!.createdAt,
           nextBillingDate: null, // Fees charged when locations are active
@@ -4127,7 +4132,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           trialEnd: null,
           walletBalance: owner.walletBalance,
           walletStatus: owner.walletStatus,
-          columnAccountId: owner.columnAccountId,
           membershipPaymentMethod: owner.membershipPaymentMethod,
           membershipActivatedAt: owner.membershipActivatedAt,
           activeLocations: activeLocations, // Number of active locations

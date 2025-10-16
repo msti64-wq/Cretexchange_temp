@@ -157,6 +157,10 @@ export const owners = pgTable("owners", {
   companyName: varchar("company_name"),
   businessLicense: varchar("business_license"),
   taxId: varchar("tax_id"),
+  // Stripe Connect integration
+  stripeConnectAccountId: varchar("stripe_connect_account_id"),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
   // Stripe Treasury wallet integration
   stripeTreasuryAccountId: varchar("stripe_treasury_account_id"), // Stripe Financial Account ID
   walletBalance: decimal("wallet_balance", { precision: 10, scale: 2 }).notNull().default("0.00"),
@@ -170,6 +174,7 @@ export const owners = pgTable("owners", {
   billingTimezone: varchar("billing_timezone").default("America/Chicago"), // Owner's timezone for billing cutoff
   // Monthly subscription billing
   subscriptionPlan: subscriptionPlanEnum("subscription_plan").default("none"),
+  subscriptionStatus: subscriptionStatusEnum("subscription_status").default("inactive"),
   subscriptionFeeCents: integer("subscription_fee_cents").default(0), // Monthly or annual fee in cents
   feeAnchorDay: integer("fee_anchor_day").default(1), // Day of month (1-28) for monthly billing
   lastFeeBillingDate: varchar("last_fee_billing_date"), // YYYY-MM-DD format of last fee billing
