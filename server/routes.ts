@@ -3826,7 +3826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerId: owner.id,
           amount: fundAmount.toFixed(2),
           transactionType: 'funding',
-          status: 'completed',
+          status: 'posted',
           description: `[TEST] Simulated wallet funding`,
           externalTransactionId: `sim_${crypto.randomUUID().slice(0, 8)}`,
           createdAt: new Date()
