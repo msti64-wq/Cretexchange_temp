@@ -2305,8 +2305,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver profile not found" });
       }
 
-      // Check for idempotency - if already agreed, return existing agreement
+      // Check for idempotency - if already agreed, check if they need Stripe account
       if (driver.hasAgreedToTerms) {
+        // If they agreed but don't have Stripe account, create one now (migration support)
+        if (!driver.stripeConnectAccountId) {
+          try {
+            console.log(`🔧 Migrating driver ${driver.id} - creating missing Stripe Connect account...`);
+            const connectAccount = await stripeService.createConnectedAccount({
+              type: 'express',
+              email: user.email,
+              businessType: 'individual',
+              individual: {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone || undefined
+              },
+              capabilities: {
+                transfers: true
+              }
+            });
+            await storage.updateDriver(driver.id, {
+              stripeConnectAccountId: connectAccount.id
+            });
+            console.log(`✅ Migration complete: Stripe Connect account ${connectAccount.id} created for driver ${driver.id}`);
+            return res.json({ 
+              success: true, 
+              message: "Terms already accepted, payment account now configured",
+              agreedAt: driver.termsAgreedAt
+            });
+          } catch (stripeError: any) {
+            console.error('Failed to create Stripe Connect account during migration:', stripeError);
+            return res.status(500).json({ message: "Failed to configure payment account" });
+          }
+        }
+        
         return res.json({ 
           success: true, 
           message: "Terms already accepted",
@@ -2329,10 +2362,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.get('user-agent') || 'unknown'
       };
 
+      // Create Stripe Connect account for driver if they don't have one
+      let stripeConnectAccountId = driver.stripeConnectAccountId;
+      if (!stripeConnectAccountId) {
+        try {
+          console.log(`🔵 Creating Stripe Connect account for driver ${driver.id}...`);
+          const connectAccount = await stripeService.createConnectedAccount({
+            type: 'express',
+            email: user.email,
+            businessType: 'individual',
+            individual: {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              phone: user.phone || undefined
+            },
+            capabilities: {
+              transfers: true
+            }
+          });
+          stripeConnectAccountId = connectAccount.id;
+          console.log(`✅ Stripe Connect account created: ${stripeConnectAccountId}`);
+        } catch (stripeError: any) {
+          console.error('Failed to create Stripe Connect account for driver:', stripeError);
+          // Continue anyway - they can retry later
+        }
+      }
+
       // Safe partial update - only update the fields we need to change
       await storage.updateDriver(driver.id, {
         hasAgreedToTerms: true,
-        termsAgreedAt: now
+        termsAgreedAt: now,
+        ...(stripeConnectAccountId && !driver.stripeConnectAccountId ? { stripeConnectAccountId } : {})
       });
 
       // Create admin notification message (remove unsupported 'priority' field)
