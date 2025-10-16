@@ -88,7 +88,7 @@ export function DebitCardRequestDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]" data-testid="dialog-debit-card-request">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto" data-testid="dialog-debit-card-request">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <CreditCard className="w-5 h-5 mr-2" />
@@ -99,7 +99,7 @@ export function DebitCardRequestDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pb-2">
           {/* Benefits Alert */}
           <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
