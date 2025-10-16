@@ -3225,7 +3225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         walletId: `wallet_${owner.id}`,
         stripeConnectAccountId: owner.stripeConnectAccountId,
         stripeTreasuryAccountId: owner.stripeTreasuryAccountId,
-        hasStripeAccount: !!(owner.stripeConnectAccountId && owner.stripeTreasuryAccountId),
+        hasStripeAccount: !!owner.stripeConnectAccountId, // Only require Connect account; Treasury is optional
         createdAt: owner.createdAt
       };
 
