@@ -2513,9 +2513,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver profile not found" });
       }
 
-      // Check if driver has Stripe accounts set up
-      if (!driver.stripeConnectAccountId || !driver.stripeTreasuryAccountId) {
-        return res.status(400).json({ message: "Payment account required. Please complete account setup first." });
+      // Check if driver has Stripe accounts set up - if not, create them automatically
+      if (!driver.stripeConnectAccountId) {
+        console.log('⚠️  Driver missing Stripe Connect account, creating one...');
+        
+        try {
+          const connectAccount = await stripeService.createConnectedAccount({
+            type: 'custom' as any, // Express account for simplified onboarding
+            email: user.email,
+            business_profile: {
+              name: `${user.firstName} ${user.lastName}`,
+              product_description: 'Concrete washout services',
+            },
+          });
+
+          await storage.updateDriver(driver.id, {
+            stripeConnectAccountId: connectAccount.id,
+          });
+
+          driver.stripeConnectAccountId = connectAccount.id;
+          console.log('✅ Stripe Connect account created:', connectAccount.id);
+        } catch (error) {
+          console.error('❌ Stripe Connect account creation failed:', error);
+          return res.status(400).json({ 
+            message: "Account setup failed. Please try again or contact support.",
+          });
+        }
+      }
+
+      if (!driver.stripeTreasuryAccountId) {
+        console.log('⚠️  Driver missing Stripe Treasury account, creating one...');
+        
+        try {
+          const treasuryAccount = await stripeService.createFinancialAccount({
+            connectedAccountId: driver.stripeConnectAccountId!,
+          });
+
+          await storage.updateDriver(driver.id, {
+            stripeTreasuryAccountId: treasuryAccount.id,
+          });
+
+          driver.stripeTreasuryAccountId = treasuryAccount.id;
+          console.log('✅ Stripe Treasury account created:', treasuryAccount.id);
+        } catch (error) {
+          console.error('❌ Stripe Treasury account creation failed:', error);
+          return res.status(400).json({ 
+            message: "Wallet setup failed. Please try again or contact support.",
+          });
+        }
       }
 
       // Check if driver has Stripe Issuing cardholder
