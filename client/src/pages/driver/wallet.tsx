@@ -601,6 +601,64 @@ export default function DriverWallet() {
           </div>
         </StatCard>
 
+        {/* Debit Card Section */}
+        <StatCard
+          title="Debit Card"
+          subtitle={
+            <span className="text-sm text-muted-foreground">
+              Instant access to your wallet funds
+            </span>
+          }
+        >
+          <div className="space-y-4">
+            {debitCardStatus?.hasCard ? (
+              // Show card details if they have one
+              <div className="p-4 bg-muted/30 rounded-lg border border-muted">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      Debit Card {debitCardStatus.card?.cardStatus === 'active' ? 'Active' : 'Requested'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {debitCardStatus.card?.cardType === 'virtual' ? 'Virtual' : 'Physical'} Card •••• {debitCardStatus.card?.cardLast4}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Expires {debitCardStatus.card?.expirationMonth}/{debitCardStatus.card?.expirationYear}
+                    </p>
+                  </div>
+                  <Badge variant={debitCardStatus.card?.cardStatus === 'active' ? 'default' : 'secondary'}>
+                    {debitCardStatus.card?.cardStatus}
+                  </Badge>
+                </div>
+              </div>
+            ) : (
+              // Show request button if they don't have one
+              <div className="text-center py-6">
+                <CreditCard className="w-12 h-12 mx-auto mb-3 text-primary" />
+                <h3 className="font-semibold mb-2">Get Instant Access to Your Funds</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
+                </p>
+                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                  <div className="flex items-start space-x-2 text-sm text-blue-800 dark:text-blue-200">
+                    <div className="space-y-1">
+                      <p><strong>Virtual Card:</strong> $0.10 • Instant delivery</p>
+                      <p><strong>Physical Card:</strong> $3.00 • 2-day shipping</p>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowDebitCardDialog(true)}
+                  data-testid="button-request-debit-card"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Request Debit Card
+                </Button>
+              </div>
+            )}
+          </div>
+        </StatCard>
+
         {/* Transaction History */}
         <StatCard
           title="Transaction History"
