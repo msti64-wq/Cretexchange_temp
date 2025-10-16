@@ -2690,38 +2690,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("✅ Payment verified - $1,500 received via Stripe");
       console.log("Setting up Stripe Connect and Treasury wallet, activating subscription...");
       
-      // Create Stripe Connected Account and Treasury wallet
+      // Create or reuse Stripe Connected Account and Treasury wallet
       let connectedAccount, treasuryAccount;
       let walletStatus: 'active' | 'pending_verification' = 'active';
       let treasuryUnavailable = false;
       
       try {
-        // Create Stripe Connect Account
-        connectedAccount = await stripeService.createConnectedAccount({
-          type: 'custom',
-          email: user.email,
-          businessType: 'individual',
-          individual: {
-            first_name: user.firstName,
-            last_name: user.lastName,
-            dob: {
-              day: 1,
-              month: 1,
-              year: 1990,
-            },
+        // Check if Connect Account already exists
+        if (owner.stripeConnectAccountId) {
+          console.log("♻️ Reusing existing Stripe Connect account:", owner.stripeConnectAccountId);
+          connectedAccount = { id: owner.stripeConnectAccountId };
+        } else {
+          // Create new Stripe Connect Account
+          connectedAccount = await stripeService.createConnectedAccount({
+            type: 'custom',
             email: user.email,
-            phone: user.phone || undefined,
-            ssn_last_4: '0000', // Test value
-            address: {
-              line1: '123 Main St',
-              city: 'San Francisco',
-              state: 'CA',
-              postal_code: '94105',
-              country: 'US',
+            businessType: 'individual',
+            individual: {
+              first_name: user.firstName,
+              last_name: user.lastName,
+              dob: {
+                day: 1,
+                month: 1,
+                year: 1990,
+              },
+              email: user.email,
+              phone: user.phone || undefined,
+              ssn_last_4: '0000', // Test value
+              address: {
+                line1: '123 Main St',
+                city: 'San Francisco',
+                state: 'CA',
+                postal_code: '94105',
+                country: 'US',
+              },
             },
-          },
-        });
-        console.log("✅ Created Stripe Connect account:", connectedAccount.id);
+          });
+          console.log("✅ Created Stripe Connect account:", connectedAccount.id);
+        }
 
         // Try to create Stripe Treasury Financial Account (wallet)
         try {
@@ -3241,12 +3247,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Check if already onboarded
+      // Check if already fully onboarded (both accounts exist)
       if (owner.stripeConnectAccountId && owner.stripeTreasuryAccountId) {
-        return res.status(400).json({ 
-          message: "Owner already has payment account",
+        return res.json({ 
+          success: true,
+          message: "Payment account already configured",
           connectAccountId: owner.stripeConnectAccountId,
-          treasuryAccountId: owner.stripeTreasuryAccountId
+          treasuryAccountId: owner.stripeTreasuryAccountId,
+          alreadyOnboarded: true
         });
       }
 
