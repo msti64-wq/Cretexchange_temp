@@ -2692,6 +2692,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create Stripe Connected Account and Treasury wallet
       let connectedAccount, treasuryAccount;
+      let walletStatus: 'active' | 'pending_verification' = 'active';
+      let treasuryUnavailable = false;
+      
       try {
         // Create Stripe Connect Account
         connectedAccount = await stripeService.createConnectedAccount({
@@ -2720,13 +2723,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         console.log("✅ Created Stripe Connect account:", connectedAccount.id);
 
-        // Create Stripe Treasury Financial Account (wallet)
-        treasuryAccount = await stripeService.createFinancialAccount(connectedAccount.id);
-        console.log("✅ Created Stripe Treasury account:", treasuryAccount.id);
+        // Try to create Stripe Treasury Financial Account (wallet)
+        try {
+          treasuryAccount = await stripeService.createFinancialAccount(connectedAccount.id);
+          console.log("✅ Created Stripe Treasury account:", treasuryAccount.id);
+        } catch (treasuryError: any) {
+          // Check if this is a Treasury access issue
+          if (treasuryError.message?.includes('treasury') || treasuryError.message?.includes('onboarded')) {
+            console.log("⚠️ Stripe Treasury not available - subscription will proceed without wallet features");
+            console.log("Treasury error:", treasuryError.message);
+            treasuryUnavailable = true;
+            walletStatus = 'pending_verification';
+          } else {
+            // Some other error - rethrow
+            throw treasuryError;
+          }
+        }
       } catch (error: any) {
         console.error("Failed to create Stripe accounts:", error);
         return res.status(500).json({ 
-          message: "Payment received but failed to create wallet account. Please contact support.",
+          message: "Payment received but failed to create account. Please contact support.",
           error: error.message 
         });
       }
@@ -2734,8 +2750,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update owner with Stripe info and subscription
       await storage.updateOwner(owner.id, { 
         stripeConnectAccountId: connectedAccount.id,
-        stripeTreasuryAccountId: treasuryAccount.id,
-        walletStatus: 'active',
+        stripeTreasuryAccountId: treasuryAccount?.id || null,
+        walletStatus: walletStatus,
         subscriptionPlan: 'annual', // One-time membership
         subscriptionStatus: 'active',
         isApproved: true, // Auto-approve after successful payment
@@ -2745,13 +2761,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("✅ Subscription activated successfully");
 
+      const responseMessage = treasuryUnavailable 
+        ? "Membership activated - payment received. Wallet features require Stripe Treasury approval."
+        : "Membership activated - payment received and wallet created";
+
       res.json({
         success: true,
         connectAccountId: connectedAccount.id,
-        treasuryAccountId: treasuryAccount.id,
-        message: "Membership activated - payment received and wallet created",
-        walletStatus: 'active',
-        paymentStatus: 'completed'
+        treasuryAccountId: treasuryAccount?.id || null,
+        message: responseMessage,
+        walletStatus: walletStatus,
+        paymentStatus: 'completed',
+        treasuryUnavailable: treasuryUnavailable
       });
     } catch (error: any) {
       console.error("Subscription error:", {
