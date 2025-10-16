@@ -3258,55 +3258,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create Stripe Connect Account
+      // Create or reuse Stripe Connect Account
       let connectedAccount;
-      try {
-        connectedAccount = await stripeService.createConnectedAccount({
-          type: 'custom',
-          email: user.email,
-          businessType: 'individual',
-          individual: {
-            first_name: user.firstName,
-            last_name: user.lastName,
-            dob: {
-              day: 1,
-              month: 1,
-              year: 1990,
-            },
+      if (owner.stripeConnectAccountId) {
+        // Already has Connect account from subscription
+        connectedAccount = { id: owner.stripeConnectAccountId };
+      } else {
+        try {
+          connectedAccount = await stripeService.createConnectedAccount({
+            type: 'custom',
             email: user.email,
-            phone: user.phone || undefined,
-            ssn_last_4: '0000',
-            address: {
-              line1: address.line1,
-              city: address.city,
-              state: address.state,
-              postal_code: address.postalCode,
-              country: 'US',
+            businessType: 'individual',
+            individual: {
+              first_name: user.firstName,
+              last_name: user.lastName,
+              dob: {
+                day: 1,
+                month: 1,
+                year: 1990,
+              },
+              email: user.email,
+              phone: user.phone || undefined,
+              ssn_last_4: '0000',
+              address: {
+                line1: address.line1,
+                city: address.city,
+                state: address.state,
+                postal_code: address.postalCode,
+                country: 'US',
+              },
             },
-          },
-        });
-      } catch (error: any) {
-        return res.status(500).json({ 
-          message: "Failed to create payment account",
-          error: error.message 
-        });
+          });
+        } catch (error: any) {
+          return res.status(500).json({ 
+            message: "Failed to create payment account",
+            error: error.message 
+          });
+        }
       }
 
-      // Create Stripe Treasury Financial Account
+      // Try to create Stripe Treasury Financial Account
       let treasuryAccount;
+      let walletStatus: 'active' | 'pending_verification' = 'active';
+      let treasuryUnavailable = false;
+      
       try {
         treasuryAccount = await stripeService.createFinancialAccount(connectedAccount.id);
       } catch (error: any) {
-        return res.status(500).json({ 
-          message: "Failed to create wallet account",
-          error: error.message 
-        });
+        // Check if this is a Treasury access issue
+        if (error.message?.includes('treasury') || error.message?.includes('onboarded')) {
+          console.log("⚠️ Stripe Treasury not available - onboarding will proceed without wallet features");
+          console.log("Treasury error:", error.message);
+          treasuryUnavailable = true;
+          walletStatus = 'pending_verification';
+        } else {
+          // Some other error - return error
+          return res.status(500).json({ 
+            message: "Failed to create wallet account",
+            error: error.message 
+          });
+        }
       }
 
       // Store Stripe IDs in database
       await storage.updateOwner(owner.id, {
         stripeConnectAccountId: connectedAccount.id,
-        stripeTreasuryAccountId: treasuryAccount.id,
+        stripeTreasuryAccountId: treasuryAccount?.id || null,
       });
 
       // Update company info
@@ -3316,16 +3333,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyName,
           businessLicense,
           taxId,
-          walletStatus: 'active',
+          walletStatus: walletStatus,
           updatedAt: new Date()
         })
         .where(eq(owners.id, owner.id));
 
+      const responseMessage = treasuryUnavailable 
+        ? "Payment account created - wallet features require Stripe Treasury approval"
+        : "Payment account created successfully";
+
       res.json({
         success: true,
-        message: "Payment account created successfully",
+        message: responseMessage,
         connectAccountId: connectedAccount.id,
-        treasuryAccountId: treasuryAccount.id,
+        treasuryAccountId: treasuryAccount?.id || null,
+        treasuryUnavailable: treasuryUnavailable
       });
     } catch (error: any) {
       console.error("Error onboarding owner:", error);
