@@ -177,8 +177,8 @@ export default function OwnerWallet() {
   });
 
   const handleFundButtonClick = () => {
-    // Check if owner needs Column onboarding first
-    if (!(walletData as any)?.hasColumnAccount) {
+    // Check if owner needs Stripe onboarding first
+    if (!(walletData as any)?.hasStripeAccount) {
       setShowOnboardingDialog(true);
       return;
     }
