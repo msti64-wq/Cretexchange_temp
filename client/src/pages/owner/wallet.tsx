@@ -92,6 +92,32 @@ export default function OwnerWallet() {
     },
   });
 
+  const simulateFundingMutation = useMutation({
+    mutationFn: async (data: { amount: string }) => {
+      const response = await apiRequest("POST", "/api/owners/wallet/simulate-funding", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Wallet funded successfully (Test Mode)",
+        description: "Simulated funding completed. This is for testing only.",
+      });
+      setShowFundDialog(false);
+      setFundAmount("");
+      setSelectedFundingSource("");
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/analytics'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to simulate funding",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateWalletSettingsMutation = useMutation({
     mutationFn: async (data: { lowBalanceThreshold: string; autoTopupEnabled: boolean; autoTopupAmount: string }) => {
       const response = await apiRequest("PUT", "/api/owners/wallet/settings", data);
@@ -186,19 +212,30 @@ export default function OwnerWallet() {
   };
 
   const handleFundWallet = () => {
-    if (!fundAmount || !selectedFundingSource) {
+    if (!fundAmount) {
       toast({
         title: "Missing information",
-        description: "Please enter an amount and select a funding source.",
+        description: "Please enter an amount.",
         variant: "destructive",
       });
       return;
     }
 
-    fundWalletMutation.mutate({
-      amount: fundAmount,
-      fundingSourceId: selectedFundingSource,
-    });
+    // Check if Treasury is available (wallet status is active and has Treasury account)
+    const hasTreasury = (walletData as any)?.stripeTreasuryAccountId;
+    
+    if (hasTreasury && selectedFundingSource) {
+      // Use real Treasury funding
+      fundWalletMutation.mutate({
+        amount: fundAmount,
+        fundingSourceId: selectedFundingSource,
+      });
+    } else {
+      // Use simulated funding for testing
+      simulateFundingMutation.mutate({
+        amount: fundAmount,
+      });
+    }
   };
 
   const handleUpdateSettings = () => {
@@ -576,6 +613,21 @@ export default function OwnerWallet() {
             <DialogTitle>Fund Wallet</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Test Mode Banner */}
+            {!(walletData as any)?.stripeTreasuryAccountId && (
+              <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-100">Test Mode</h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                      Stripe Treasury is not available in sandbox. This will simulate wallet funding for testing purposes only.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div>
               <Label htmlFor="amount">Amount</Label>
               <Input
@@ -587,38 +639,46 @@ export default function OwnerWallet() {
                 data-testid="input-fund-amount"
               />
             </div>
-            <div>
-              <Label htmlFor="fundingSource">Funding Source</Label>
-              <Select value={selectedFundingSource} onValueChange={setSelectedFundingSource}>
-                <SelectTrigger data-testid="select-funding-source">
-                  <SelectValue placeholder="Select funding source" />
-                </SelectTrigger>
-                <SelectContent>
-                  {((fundingSources as any[]) || []).map((source: any) => (
-                    <SelectItem key={source.id} value={source.id}>
-                      {source.sourceType === 'credit_card' ? (
-                        <div className="flex items-center space-x-2">
-                          <CreditCard className="w-4 h-4" />
-                          <span>{source.cardBrand || 'Card'} ****{source.cardLast4}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <Building2 className="w-4 h-4" />
-                          <span>{source.bankName} ****{source.accountNumberLast4}</span>
-                        </div>
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            
+            {(walletData as any)?.stripeTreasuryAccountId && (
+              <div>
+                <Label htmlFor="fundingSource">Funding Source</Label>
+                <Select value={selectedFundingSource} onValueChange={setSelectedFundingSource}>
+                  <SelectTrigger data-testid="select-funding-source">
+                    <SelectValue placeholder="Select funding source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {((fundingSources as any[]) || []).map((source: any) => (
+                      <SelectItem key={source.id} value={source.id}>
+                        {source.sourceType === 'credit_card' ? (
+                          <div className="flex items-center space-x-2">
+                            <CreditCard className="w-4 h-4" />
+                            <span>{source.cardBrand || 'Card'} ****{source.cardLast4}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <Building2 className="w-4 h-4" />
+                            <span>{source.bankName} ****{source.accountNumberLast4}</span>
+                          </div>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
             <div className="flex space-x-2 pt-4">
               <Button
                 onClick={handleFundWallet}
-                disabled={fundWalletMutation.isPending}
+                disabled={fundWalletMutation.isPending || simulateFundingMutation.isPending}
                 data-testid="button-confirm-fund"
               >
-                {fundWalletMutation.isPending ? "Processing..." : "Fund Wallet"}
+                {(fundWalletMutation.isPending || simulateFundingMutation.isPending) 
+                  ? "Processing..." 
+                  : (walletData as any)?.stripeTreasuryAccountId 
+                    ? "Fund Wallet" 
+                    : "Simulate Funding (Test)"}
               </Button>
               <Button
                 variant="outline"

@@ -3777,6 +3777,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/owners/wallet/simulate-funding - Simulate wallet funding for testing (development only)
+  app.post('/api/owners/wallet/simulate-funding', isAuthenticated, async (req: any, res) => {
+    try {
+      // Only allow in development/local mode - fail closed in production or deployments
+      const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === 'true';
+      if (isProduction) {
+        return res.status(404).json({ message: "Not found" }); // Return 404 to hide endpoint in production
+      }
+
+      const userId = req.user.id;
+      const { amount } = req.body;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (!amount) {
+        return res.status(400).json({ message: "Amount is required" });
+      }
+
+      const fundAmount = parseFloat(amount);
+      if (isNaN(fundAmount) || fundAmount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+
+      console.log(`🧪 SIMULATION: Funding wallet for owner ${owner.id}: $${fundAmount}`);
+
+      // Update wallet balance directly in database
+      const currentBalance = parseFloat(owner.walletBalance || '0');
+      const newBalance = (currentBalance + fundAmount).toFixed(2);
+
+      await db
+        .update(owners)
+        .set({
+          walletBalance: newBalance,
+          walletStatus: 'active',
+          updatedAt: new Date()
+        })
+        .where(eq(owners.id, owner.id));
+
+      // Create a transaction record
+      const transaction = await db
+        .insert(walletTransactions)
+        .values({
+          id: crypto.randomUUID(),
+          ownerId: owner.id,
+          amount: fundAmount.toFixed(2),
+          transactionType: 'funding',
+          status: 'completed',
+          description: `[TEST] Simulated wallet funding`,
+          externalTransactionId: `sim_${crypto.randomUUID().slice(0, 8)}`,
+          createdAt: new Date()
+        })
+        .returning();
+
+      console.log(`✅ SIMULATION: Wallet funded. New balance: $${newBalance}`);
+
+      res.json({
+        success: true,
+        message: "Wallet funded successfully (simulated)",
+        simulation: true,
+        balance: newBalance,
+        transaction: transaction[0]
+      });
+    } catch (error: any) {
+      console.error("Error simulating wallet funding:", error);
+      res.status(500).json({ message: "Failed to simulate funding: " + error.message });
+    }
+  });
+
   // POST /api/owners/wallet/simulate-settlement - Simulate ACH settlement (sandbox only)
   app.post('/api/owners/wallet/simulate-settlement', isAuthenticated, async (req: any, res) => {
     try {
