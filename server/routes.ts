@@ -2568,7 +2568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('⚠️  Driver missing Stripe Issuing cardholder, creating one...');
         
         try {
-          const cardholder = await stripeService.createIssuingCardholder({
+          const cardholder = await stripeService.createCardholder({
             connectedAccountId: driver.stripeConnectAccountId,
             name: `${user.firstName} ${user.lastName}`,
             email: user.email,
@@ -2625,7 +2625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create debit card via Stripe Issuing
       let stripeCard;
       try {
-        stripeCard = await stripeService.createIssuingCard({
+        stripeCard = await stripeService.issueCard({
           connectedAccountId: driver.stripeConnectAccountId,
           cardholderId: driver.stripeIssuingCardholderId!,
           type: requestedCardType,
