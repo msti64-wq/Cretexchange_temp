@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { DollarSign, Download, Calendar, Filter, TrendingUp } from "lucide-react";
-import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
+import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { formatCurrency } from "@/lib/utils";
 import { formatAddress } from "@shared/addressUtils";
 

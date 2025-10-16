@@ -9,7 +9,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { Users, Search, Filter, MapPin, Clock, Image as ImageIcon } from "lucide-react";
-import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
+import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { formatCurrency } from "@/lib/utils";
 
 export default function OwnerDrivers() {

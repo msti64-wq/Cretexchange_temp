@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut, User, Plus, CreditCard } from "lucide-react";
-import logoImage from "@assets/shutterstock_2364131707_1757091585450.png";
+import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 
