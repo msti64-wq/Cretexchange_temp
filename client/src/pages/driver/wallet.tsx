@@ -118,7 +118,6 @@ export default function DriverWallet() {
     };
   }>({
     queryKey: ['/api/drivers/debit-card'],
-    enabled: columnStatus?.isOnboarded === true,
   });
 
   // Withdrawal mutation
@@ -587,7 +586,6 @@ export default function DriverWallet() {
                             size="sm"
                             className="mt-2 border-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900"
                             onClick={() => setShowDebitCardDialog(true)}
-                            disabled={!columnStatus?.isOnboarded}
                             data-testid="button-request-debit-card"
                           >
                             <CreditCard className="w-4 h-4 mr-2" />
