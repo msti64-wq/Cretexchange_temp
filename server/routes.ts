@@ -889,11 +889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectAccountId = connectedAccount.id;
 
       // Step 2: Create Stripe Treasury Financial Account (wallet)
-      const treasuryAccount = await stripeService.createTreasuryFinancialAccount({
-        connectedAccountId: connectAccountId,
-        supportedCurrencies: ['usd'],
-        displayName: `${user.firstName} ${user.lastName} Wallet`,
-      });
+      const treasuryAccount = await stripeService.createFinancialAccount(connectAccountId);
 
       const treasuryAccountId = treasuryAccount.id;
 
@@ -2725,11 +2721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("✅ Created Stripe Connect account:", connectedAccount.id);
 
         // Create Stripe Treasury Financial Account (wallet)
-        treasuryAccount = await stripeService.createTreasuryFinancialAccount({
-          connectedAccountId: connectedAccount.id,
-          supportedCurrencies: ['usd'],
-          displayName: `${user.firstName} ${user.lastName} Wallet`,
-        });
+        treasuryAccount = await stripeService.createFinancialAccount(connectedAccount.id);
         console.log("✅ Created Stripe Treasury account:", treasuryAccount.id);
       } catch (error: any) {
         console.error("Failed to create Stripe accounts:", error);
@@ -3280,11 +3272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create Stripe Treasury Financial Account
       let treasuryAccount;
       try {
-        treasuryAccount = await stripeService.createTreasuryFinancialAccount({
-          connectedAccountId: connectedAccount.id,
-          supportedCurrencies: ['usd'],
-          displayName: `${companyName} Wallet`,
-        });
+        treasuryAccount = await stripeService.createFinancialAccount(connectedAccount.id);
       } catch (error: any) {
         return res.status(500).json({ 
           message: "Failed to create wallet account",
