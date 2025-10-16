@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
-import { washoutActivities, withdrawals, walletTransactions, driverWallets, owners, ownerFundingSources, debitCardRequests } from "../shared/schema";
+import { washoutActivities, withdrawals, walletTransactions, driverWallets, owners, ownerFundingSources, debitCardRequests, ownerWalletTransactions } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, signObjectURL } from "./objectStorage";
@@ -3818,17 +3818,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(owners.id, owner.id));
 
-      // Create a transaction record
+      // Create a transaction record in ownerWalletTransactions
       const transaction = await db
-        .insert(walletTransactions)
+        .insert(ownerWalletTransactions)
         .values({
           id: crypto.randomUUID(),
           ownerId: owner.id,
+          type: 'topup',
           amount: fundAmount.toFixed(2),
-          transactionType: 'funding',
-          status: 'posted',
+          balanceBefore: currentBalance.toFixed(2),
+          balanceAfter: newBalance,
           description: `[TEST] Simulated wallet funding`,
-          externalTransactionId: `sim_${crypto.randomUUID().slice(0, 8)}`,
+          stripeTransferId: `sim_${crypto.randomUUID().slice(0, 8)}`,
           createdAt: new Date()
         })
         .returning();
