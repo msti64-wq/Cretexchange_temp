@@ -122,6 +122,7 @@ export function DebitCardRequestDialog({
                 value={formData.shippingName}
                 onChange={(e) => handleInputChange("shippingName", e.target.value)}
                 required
+                autoComplete="name"
                 data-testid="input-card-name"
               />
             </div>
@@ -133,6 +134,7 @@ export function DebitCardRequestDialog({
                 value={formData.shippingStreet}
                 onChange={(e) => handleInputChange("shippingStreet", e.target.value)}
                 required
+                autoComplete="street-address"
                 data-testid="input-street"
               />
             </div>
@@ -145,6 +147,7 @@ export function DebitCardRequestDialog({
                   value={formData.shippingCity}
                   onChange={(e) => handleInputChange("shippingCity", e.target.value)}
                   required
+                  autoComplete="address-level2"
                   data-testid="input-city"
                 />
               </div>
@@ -156,6 +159,7 @@ export function DebitCardRequestDialog({
                   onChange={(e) => handleInputChange("shippingState", e.target.value)}
                   maxLength={2}
                   required
+                  autoComplete="address-level1"
                   data-testid="input-state"
                 />
               </div>
@@ -168,6 +172,7 @@ export function DebitCardRequestDialog({
                 value={formData.shippingZip}
                 onChange={(e) => handleInputChange("shippingZip", e.target.value)}
                 required
+                autoComplete="postal-code"
                 data-testid="input-zip"
               />
             </div>
