@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut } from "lucide-react";
-import logoImage from "@assets/cretexchange logo_1760644229633.png";
+import logoImage from "@assets/Crete Exchange logo_1760724722599.png";
 import { Button } from "@/components/ui/button";
 
 export function DriverHeader() {
@@ -13,8 +13,8 @@ export function DriverHeader() {
         <div className="flex items-center space-x-3 flex-1">
           <img 
             src={logoImage}
-            alt="CreteXchange Logo"
-            className="w-12 h-12 object-contain bg-white/20 rounded-full p-1 flex-shrink-0"
+            alt="CreteXchange - Streamlining Concrete Connections"
+            className="w-16 h-16 object-contain flex-shrink-0"
           />
           <div className="flex-1 min-w-0">
             <h1 className="font-semibold text-lg leading-tight" data-testid="text-driver-name">

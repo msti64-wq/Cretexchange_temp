@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Truck, Building2, Shield, ArrowRight } from "lucide-react";
 import { useState } from "react";
-import logoImage from "@assets/cretexchange logo_1760644229633.png";
+import logoImage from "@assets/Crete Exchange logo_1760724722599.png";
 
 export default function Landing() {
   const [selectedRole, setSelectedRole] = useState<'driver' | 'owner' | null>(null);
@@ -18,15 +18,9 @@ export default function Landing() {
         <div className="container mx-auto flex items-center justify-between">
           <img 
             src={logoImage}
-            alt="CreteXchange Logo"
-            className="w-16 h-16 object-contain"
+            alt="CreteXchange - Streamlining Concrete Connections"
+            className="w-32 h-32 object-contain"
           />
-          <div className="flex-1 flex justify-center">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-foreground">Crete<span className="text-[hsl(33,100%,50%)]">X</span>change</h1>
-              <p className="text-sm text-muted-foreground">Streamlining Concrete Connections</p>
-            </div>
-          </div>
           <Button 
             onClick={() => window.location.href = '/login'}
             data-testid="button-login"
