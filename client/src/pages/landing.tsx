@@ -22,7 +22,10 @@ export default function Landing() {
             className="w-16 h-16 object-contain"
           />
           <div className="flex-1 flex justify-center">
-            <h1 className="text-2xl font-bold text-foreground">CreteXchange</h1>
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-foreground">CreteXchange</h1>
+              <p className="text-sm text-muted-foreground">Streamlining Concrete Connections</p>
+            </div>
           </div>
           <Button 
             onClick={() => window.location.href = '/login'}

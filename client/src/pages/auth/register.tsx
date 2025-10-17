@@ -125,7 +125,10 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               alt="CreteXchange Logo"
               className="w-16 h-16 object-contain"
             />
-            <h1 className="text-2xl font-bold text-foreground">CreteXchange</h1>
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-foreground">CreteXchange</h1>
+              <p className="text-sm text-muted-foreground">Streamlining Concrete Connections</p>
+            </div>
           </div>
         </div>
       </header>
