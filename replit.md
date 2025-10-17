@@ -6,6 +6,12 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Brand Assets
+- **Home Page Logo**: `attached_assets/CreteXchange home page logo_1760724636083.png` - Circular logo with "X" design (dark gray and orange)
+- **Main Logo**: `attached_assets/cretexchange logo_1760644229633.png` - Original full logo
+- **Brand Colors**: Orange accent `hsl(33, 100%, 50%)`, Primary blue `hsl(210, 90%, 48%)`, Secondary teal `hsl(174, 60%, 51%)`
+- **Typography**: "X" in CreteXchange is styled in orange to match logo branding
+
 ## System Architecture
 
 ### UI/UX Decisions
