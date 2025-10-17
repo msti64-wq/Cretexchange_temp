@@ -74,7 +74,7 @@ export default function Landing() {
                 </CardHeader>
                 <CardContent className="text-center">
                   <p className="text-muted-foreground mb-6">
-                    Find washout locations, earn money, and track your activities
+                    Find concrete recycling locations, earn money, and track your activities
                   </p>
                   <Button 
                     className="w-full"
