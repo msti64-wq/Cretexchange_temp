@@ -13,12 +13,14 @@ import { Wallet, Building2, ArrowLeft, Plus, Check, AlertCircle, CreditCard, Tra
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { OwnerWalletWizard } from "@/components/OwnerWalletWizard";
 import { apiRequest } from "@/lib/queryClient";
+import StripeCardSetup from "@/components/StripeCardSetup";
 
 export default function PaymentMethods() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showWalletWizard, setShowWalletWizard] = useState(false);
+  const [showCardSetup, setShowCardSetup] = useState(false);
   const [sourceType, setSourceType] = useState<'ach' | 'credit_card'>('ach');
   const queryClient = useQueryClient();
 
@@ -31,6 +33,11 @@ export default function PaymentMethods() {
   const { data: fundingSources, isLoading: isSourcesLoading } = useQuery({
     queryKey: ['/api/owners/funding-sources'],
     refetchInterval: 30000,
+  });
+
+  // Query for owner's payment method (credit card for platform fees)
+  const { data: ownerData } = useQuery({
+    queryKey: ['/api/owners/profile'],
   });
 
   const [formData, setFormData] = useState({
@@ -263,6 +270,54 @@ export default function PaymentMethods() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Platform Fee Payment Method */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Platform Fee Payment Method</h2>
+          <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/20">
+            <CardContent className="p-4">
+              {(ownerData as any)?.stripePaymentMethodId ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <CreditCard className="w-8 h-8 text-purple-600" />
+                    <div>
+                      <div className="font-medium">
+                        {(ownerData as any)?.paymentMethod?.brand || 'Card'} ****{(ownerData as any)?.paymentMethod?.last4 || '****'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        For monthly location fees ($100/mo)
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCardSetup(true)}
+                    data-testid="button-change-card"
+                  >
+                    Change Card
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <CreditCard className="w-12 h-12 mx-auto mb-3 text-purple-600" />
+                  <h3 className="font-medium mb-2">No Payment Method Added</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Add a credit card to pay the $100 monthly location fee when adding locations
+                  </p>
+                  <Button
+                    onClick={() => setShowCardSetup(true)}
+                    className="bg-purple-600 hover:bg-purple-700"
+                    data-testid="button-add-payment-method"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Add Payment Method
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Info Card */}
         <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
@@ -597,6 +652,23 @@ export default function PaymentMethods() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Stripe Card Setup Dialog */}
+      <Dialog open={showCardSetup} onOpenChange={setShowCardSetup}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Payment Method</DialogTitle>
+          </DialogHeader>
+          <StripeCardSetup
+            onSuccess={() => {
+              setShowCardSetup(false);
+              queryClient.invalidateQueries({ queryKey: ['/api/owners/profile'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+            }}
+            onCancel={() => setShowCardSetup(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       <MobileNav role="owner" />
     </div>

@@ -1567,14 +1567,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Owner not approved" });
       }
 
-      // Check if owner has sufficient wallet balance for monthly fee
+      // Check if owner has a payment method saved for platform fees
       const monthlyFeeCents = 10000; // $100 in cents
       const monthlyFee = (monthlyFeeCents / 100).toFixed(2);
-      const currentBalance = parseFloat(owner.walletBalance || '0');
       
-      if (currentBalance < parseFloat(monthlyFee)) {
+      if (!owner.stripePaymentMethodId) {
         return res.status(400).json({ 
-          message: `Insufficient wallet balance. $${monthlyFee} required for monthly location fee, current balance: $${currentBalance.toFixed(2)}` 
+          message: `Please add a credit card for platform fees before adding locations. Go to Payment Methods to add a card.` 
+        });
+      }
+
+      if (!owner.stripeCustomerId) {
+        return res.status(400).json({ 
+          message: `Stripe customer account not found. Please contact support.` 
         });
       }
 
@@ -1594,7 +1599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const periodEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-      console.log(`💰 Processing monthly fee: $${monthlyFee} for period ${periodStart} to ${periodEnd}`);
+      console.log(`💰 Processing Stripe charge: $${monthlyFee} for period ${periodStart} to ${periodEnd}`);
 
       try {
         // 1. Create fees_ledger record
@@ -1613,41 +1618,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         console.log(`📝 Fee ledger entry created: ${feeRecord.id}`);
 
-        // 2. Update owner's wallet balance and create transaction record
-        // This method handles both balance update and transaction creation atomically
-        await storage.updateOwnerWalletBalance(
-          owner.id,
-          monthlyFee,
-          'fee_debit',
-          `Monthly location fee - ${location.name}`
-        );
-        console.log(`💰 Owner wallet debited: $${monthlyFee}`);
+        // 2. Create Stripe Payment Intent to charge the saved payment method
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: monthlyFeeCents,
+          currency: 'usd',
+          customer: owner.stripeCustomerId,
+          payment_method: owner.stripePaymentMethodId,
+          off_session: true,
+          confirm: true,
+          description: `Monthly location fee - ${location.name}`,
+          metadata: {
+            ownerId: owner.id,
+            locationId: location.id,
+            feeRecordId: feeRecord.id,
+            feeType: 'location_monthly',
+            periodStart,
+            periodEnd,
+          },
+        });
 
-        // 3. Get the wallet transaction that was just created
-        const transactions = await storage.getOwnerWalletTransactions(owner.id);
-        const walletTx = transactions[0]; // Most recent transaction
-        console.log(`💳 Wallet transaction recorded: ${walletTx.id}`);
+        console.log(`💳 Stripe Payment Intent created: ${paymentIntent.id}, status: ${paymentIntent.status}`);
 
-        // 4. Mark fee as paid in ledger (no Stripe transfer ID since Treasury isn't available)
+        if (paymentIntent.status !== 'succeeded') {
+          throw new Error(`Stripe payment failed with status: ${paymentIntent.status}`);
+        }
+
+        console.log(`✅ Stripe charge successful: $${monthlyFee}`);
+
+        // 3. Mark fee as paid in ledger with Stripe payment intent ID (no wallet debit - already charged via Stripe)
         await storage.markFeeLedgerPaid(
           feeRecord.id,
-          walletTx.id,
-          null // No Stripe transfer when Treasury is disabled
+          null, // No wallet transaction since this was charged via Stripe card
+          paymentIntent.id // Stripe Payment Intent ID
         );
-        console.log(`✅ Fee marked as paid in ledger`);
+        console.log(`✅ Fee marked as paid in ledger with Stripe ID: ${paymentIntent.id}`);
 
-        console.log(`🎉 Location created and monthly fee of $${monthlyFee} charged successfully`);
+        console.log(`🎉 Location created and $${monthlyFee} charged via Stripe successfully!`);
 
       } catch (feeError: any) {
-        console.error('❌ Error processing monthly fee:', feeError);
-        // Location was created but fee failed - log this
-        console.error(`⚠️ Location ${location.id} created but fee charge failed. Manual intervention required.`);
+        console.error('❌ Error processing Stripe charge:', feeError);
         
-        // Return location but indicate fee processing failed
-        return res.status(201).json({
-          location,
-          warning: 'Location created but monthly fee charge failed. Please contact support.',
-          feeError: feeError.message
+        // Roll back: delete the location and fee ledger entry
+        try {
+          await storage.deleteWashoutLocation(location.id, owner.id);
+          console.log(`🔄 Location ${location.id} deleted due to failed payment`);
+          
+          // Fee ledger entry will remain as 'pending' status for record-keeping
+          console.log(`📝 Fee ledger entry kept as 'pending' for audit trail`);
+        } catch (rollbackError: any) {
+          console.error('❌ Error during rollback:', rollbackError);
+        }
+        
+        return res.status(400).json({
+          message: `Failed to charge monthly fee: ${feeError.message}. Please check your payment method.`,
+          error: feeError.message
         });
       }
 
@@ -3594,7 +3618,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/owners/funding-sources - Add a new funding source
+  // POST /api/owners/create-setup-intent - Create Stripe Setup Intent for saving payment method
+  app.post('/api/owners/create-setup-intent', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      const user = await storage.getUser(userId);
+      
+      if (!owner || !user) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Create or get Stripe Customer
+      let customerId = owner.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`,
+          metadata: {
+            userId: user.id,
+            username: user.username,
+          },
+        });
+        customerId = customer.id;
+        await storage.updateOwner(owner.id, { stripeCustomerId: customerId });
+        console.log(`✅ Created Stripe Customer: ${customerId} for owner ${user.username}`);
+      }
+
+      // Create Setup Intent for future payments
+      const setupIntent = await stripe.setupIntents.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        metadata: {
+          userId: user.id,
+          ownerId: owner.id,
+        },
+      });
+
+      console.log(`✅ Created Setup Intent: ${setupIntent.id} for owner ${user.username}`);
+
+      res.json({ clientSecret: setupIntent.client_secret });
+    } catch (error: any) {
+      console.error("Error creating setup intent:", error);
+      res.status(500).json({ message: "Failed to create setup intent: " + error.message });
+    }
+  });
+
+  // POST /api/owners/save-payment-method - Save payment method after Stripe Elements confirms
+  app.post('/api/owners/save-payment-method', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const { paymentMethodId } = req.body;
+
+      if (!paymentMethodId) {
+        return res.status(400).json({ message: "Payment method ID required" });
+      }
+
+      // Retrieve payment method details from Stripe
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+
+      if (paymentMethod.type !== 'card' || !paymentMethod.card) {
+        return res.status(400).json({ message: "Invalid payment method type" });
+      }
+
+      // Set as default payment method for the customer
+      if (owner.stripeCustomerId) {
+        await stripe.customers.update(owner.stripeCustomerId, {
+          invoice_settings: { default_payment_method: paymentMethodId },
+        });
+      }
+
+      // Store payment method ID in database
+      await storage.updateOwner(owner.id, { 
+        stripePaymentMethodId: paymentMethodId 
+      });
+
+      console.log(`✅ Saved payment method ${paymentMethodId} for owner ${owner.id}`);
+
+      res.json({
+        message: "Payment method saved successfully",
+        paymentMethod: {
+          id: paymentMethodId,
+          brand: paymentMethod.card.brand,
+          last4: paymentMethod.card.last4,
+          expiryMonth: paymentMethod.card.exp_month,
+          expiryYear: paymentMethod.card.exp_year,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error saving payment method:", error);
+      res.status(500).json({ message: "Failed to save payment method: " + error.message });
+    }
+  });
+
+  // POST /api/owners/funding-sources - Add a new funding source (ACH only now)
   app.post('/api/owners/funding-sources', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -3611,48 +3734,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountHolderName,
         routingNumber,
         accountNumber,
-        cardholderName,
-        cardNumber,
-        expiryMonth,
-        expiryYear,
-        cvv
       } = req.body;
 
-      console.log(`Adding funding source for owner ${owner.id}:`, { 
-        sourceType, 
+      // Only ACH/bank accounts are handled here now
+      // Credit cards use Stripe Elements via /create-setup-intent endpoint
+      if (sourceType !== 'bank_account' && sourceType !== 'ach') {
+        return res.status(400).json({ 
+          message: "Use Stripe Elements for credit card setup via /create-setup-intent endpoint" 
+        });
+      }
+
+      console.log(`Adding ACH funding source for owner ${owner.id}:`, { 
         bankName, 
         accountHolderName, 
         routingNumber, 
         accountNumber: accountNumber ? `${accountNumber.substring(0, 4)}****` : undefined 
       });
 
-      // For bank accounts, store for future Stripe Treasury external account verification
-      // TODO: Implement Stripe Treasury external bank account verification (micro-deposits or Plaid)
-      if ((sourceType === 'bank_account' || sourceType === 'ach') && accountNumber && routingNumber) {
-        console.log('Bank account stored - Stripe Treasury verification pending...');
-        // External account verification will be implemented via Stripe Treasury flows
-      }
-
-      // Prepare funding source data
+      // Store ACH bank account for wallet funding
       const fundingSourceData: any = {
         ownerId: owner.id,
-        type: sourceType === 'bank_account' || sourceType === 'ach' ? 'ach' : sourceType,
+        type: 'ach',
         isDefault: true,
+        bankName,
+        accountHolderName,
+        routingNumber,
+        accountNumber,
+        last4: accountNumber.slice(-4),
       };
-
-      if (sourceType === 'bank_account' || sourceType === 'ach') {
-        fundingSourceData.bankName = bankName;
-        fundingSourceData.accountHolderName = accountHolderName;
-        fundingSourceData.routingNumber = routingNumber;
-        fundingSourceData.accountNumber = accountNumber;
-        fundingSourceData.last4 = accountNumber.slice(-4);
-      } else if (sourceType === 'credit_card') {
-        fundingSourceData.cardholderName = cardholderName;
-        fundingSourceData.last4 = cardNumber.slice(-4);
-        fundingSourceData.expiryMonth = expiryMonth;
-        fundingSourceData.expiryYear = expiryYear;
-        // Note: CVV should never be stored
-      }
 
       // Save to database
       const savedSource = await storage.createOwnerFundingSource(fundingSourceData);
@@ -3661,7 +3770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Funding source added successfully",
         source: {
           id: savedSource.id,
-          sourceType: savedSource.type === 'ach' ? 'bank_account' : savedSource.type,
+          sourceType: 'bank_account',
           bankName: savedSource.bankName,
           accountNumberLast4: savedSource.last4,
           isPrimary: savedSource.isDefault,
