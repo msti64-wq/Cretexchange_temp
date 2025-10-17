@@ -34,13 +34,25 @@ export default function Landing() {
       {/* Hero Section */}
       <main className="container mx-auto px-6 py-16">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
-            The Complete Concrete Washout Solution
-          </h2>
-          <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto">
-            Connect concrete truck drivers with verified washout locations. 
-            Earn money, track activities, and ensure environmental compliance.
-          </p>
+          {/* Desktop Message */}
+          <div className="hidden md:block">
+            <h2 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
+              From Washout to Reuse — The Smarter Concrete Connection
+            </h2>
+            <p className="text-xl text-muted-foreground mb-12 max-w-4xl mx-auto">
+              CreteXchange simplifies how concrete truck drivers and site owners manage material disposal and recycling. Whether you need a verified washout location to clean out your drum or a recycling site to drop off concrete rubble, CreteXchange connects you instantly. Our platform helps drivers earn money, track site activity, and promote environmental sustainability — transforming waste into opportunity while ensuring every job stays compliant and efficient.
+            </p>
+          </div>
+
+          {/* Mobile Message */}
+          <div className="block md:hidden">
+            <h2 className="text-3xl font-bold text-foreground mb-6">
+              From Washout to Reuse — The Smarter Concrete Connection
+            </h2>
+            <p className="text-lg text-muted-foreground mb-12 max-w-xl mx-auto">
+              Connecting drivers to verified washout and recycling locations — streamlining concrete cleanup, disposal, and reuse.
+            </p>
+          </div>
           
           {/* Role Selection */}
           <div className="max-w-4xl mx-auto mb-12">
