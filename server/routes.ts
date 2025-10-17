@@ -914,7 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             console.log('Creating Stripe Issuing cardholder for driver:', driver.id);
 
-            const cardholder = await stripeService.createIssuingCardholder({
+            const cardholder = await stripeService.createCardholder({
               connectedAccountId: connectAccountId,
               name: `${validatedData.firstName} ${validatedData.lastName}`,
               email: validatedData.email,

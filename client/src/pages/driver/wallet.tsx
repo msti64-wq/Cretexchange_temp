@@ -169,7 +169,8 @@ export default function DriverWallet() {
         description: "Your bank account has been successfully connected. You can now request withdrawals.",
       });
       setShowColumnOnboarding(false);
-      refetchColumnStatus();
+      // Invalidate cache to force fresh data fetch
+      queryClient.invalidateQueries({ queryKey: ['/api/column/status'] });
     },
     onError: (error: any) => {
       toast({
