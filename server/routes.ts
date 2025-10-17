@@ -889,9 +889,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectAccountId = connectedAccount.id;
 
       // Step 2: Create Stripe Treasury Financial Account (wallet)
-      const treasuryAccount = await stripeService.createFinancialAccount(connectAccountId);
-
-      const treasuryAccountId = treasuryAccount.id;
+      let treasuryAccountId: string | null = null;
+      
+      try {
+        const treasuryAccount = await stripeService.createFinancialAccount(connectAccountId);
+        treasuryAccountId = treasuryAccount.id;
+        console.log('✅ Stripe Treasury account created:', treasuryAccountId);
+      } catch (treasuryError: any) {
+        // Treasury not enabled - gracefully handle this
+        console.warn('⚠️ Stripe Treasury not available (sandbox/account limitation):', treasuryError.message);
+        console.log('ℹ️ Continuing onboarding without Treasury - user can still use platform');
+      }
 
       // Update user's Stripe data based on role
       if (user.role === 'driver') {
@@ -946,7 +954,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         entityId: connectAccountId,
         bankAccountId: treasuryAccountId,
-        message: "Successfully onboarded to payment platform",
+        message: treasuryAccountId 
+          ? "Successfully onboarded to payment platform"
+          : "Account created (Treasury unavailable in sandbox)",
       });
     } catch (error) {
       console.error("Error during onboarding:", error);
