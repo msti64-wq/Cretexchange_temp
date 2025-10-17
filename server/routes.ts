@@ -2748,13 +2748,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: membershipFee,
         currency: "usd",
+        receipt_email: user.email, // Use the current user's email for receipts
         metadata: {
           userId: userId,
+          username: user.username, // Include username for identification
           ownerId: owner.id,
           type: 'membership_fee',
           plan: 'annual'
         },
-        description: 'CreteXchange Platform Membership - One-time Fee'
+        description: `CreteXchange Platform Membership - ${user.username} (${user.email})`
       });
 
       console.log(`💳 Created Stripe payment intent for membership: ${paymentIntent.id} - $1,500`);
