@@ -582,15 +582,15 @@ export default function PaymentMethods() {
           </Card>
         )}
 
-        {/* Column Banking Info */}
+        {/* Stripe Info */}
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
               <Wallet className="w-5 h-5 text-muted-foreground" />
               <div>
-                <div className="font-medium">Powered by Column Banking</div>
+                <div className="font-medium">Powered by Stripe</div>
                 <div className="text-sm text-muted-foreground">
-                  FDIC-insured business banking with secure payment processing
+                  Secure payment processing and financial services
                 </div>
               </div>
             </div>
