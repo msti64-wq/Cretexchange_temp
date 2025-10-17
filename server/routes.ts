@@ -1613,31 +1613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         console.log(`📝 Fee ledger entry created: ${feeRecord.id}`);
 
-        // 2. Process Stripe Treasury internal transfer (owner → platform)
-        const platformTreasuryId = process.env.STRIPE_PLATFORM_TREASURY_ACCOUNT_ID;
-        if (!platformTreasuryId) {
-          throw new Error('Platform Stripe Treasury account not configured');
-        }
-
-        if (!owner.stripeTreasuryAccountId) {
-          throw new Error('Owner Stripe Treasury account not configured');
-        }
-
-        console.log(`💸 Creating Stripe Treasury transfer: Owner ${owner.id} → Platform`);
-        console.log(`   Amount: $${monthlyFee} (${monthlyFeeCents} cents)`);
-        console.log(`   From: ${owner.stripeTreasuryAccountId}`);
-        console.log(`   To: ${platformTreasuryId}`);
-
-        const stripeTransfer = await stripeService.createInternalTransfer({
-          sourceFinancialAccountId: owner.stripeTreasuryAccountId,
-          destinationFinancialAccountId: platformTreasuryId,
-          amount: monthlyFeeCents,
-          currency: 'usd',
-          description: `Monthly location fee - ${location.name} (${periodStart})`
-        });
-        console.log(`✅ Stripe Treasury transfer created: ${stripeTransfer.id}`);
-
-        // 3. Update owner's wallet balance and create transaction record
+        // 2. Update owner's wallet balance and create transaction record
         // This method handles both balance update and transaction creation atomically
         await storage.updateOwnerWalletBalance(
           owner.id,
@@ -1647,20 +1623,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         console.log(`💰 Owner wallet debited: $${monthlyFee}`);
 
-        // 4. Get the wallet transaction that was just created
+        // 3. Get the wallet transaction that was just created
         const transactions = await storage.getOwnerWalletTransactions(owner.id);
         const walletTx = transactions[0]; // Most recent transaction
         console.log(`💳 Wallet transaction recorded: ${walletTx.id}`);
 
-        // 5. Mark fee as paid in ledger
+        // 4. Mark fee as paid in ledger (no Stripe transfer ID since Treasury isn't available)
         await storage.markFeeLedgerPaid(
           feeRecord.id,
           walletTx.id,
-          stripeTransfer.id
+          null // No Stripe transfer when Treasury is disabled
         );
         console.log(`✅ Fee marked as paid in ledger`);
 
-        console.log(`🎉 Location created and monthly fee charged successfully`);
+        console.log(`🎉 Location created and monthly fee of $${monthlyFee} charged successfully`);
 
       } catch (feeError: any) {
         console.error('❌ Error processing monthly fee:', feeError);
