@@ -42,6 +42,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 export interface CreateConnectedAccountParams {
   email: string;
+  username: string; // Unique username for account identification
   type: 'custom'; // Using custom for full control
   userId?: string; // User ID for metadata tracking (prevents duplicates)
   capabilities?: string[]; // e.g., ['card_payments', 'transfers', 'treasury']
@@ -87,7 +88,7 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
     const accountParams: Stripe.AccountCreateParams = {
       type: params.type,
       country: 'US', // Required for custom accounts
-      email: params.email,
+      email: params.email, // Email for notifications
       capabilities: {
         transfers: { requested: true }, // Enable payouts
       },
@@ -95,11 +96,16 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
       business_profile: {
         url: 'https://cretexchange.com', // Platform URL
         support_email: params.email, // Support email required for custom accounts
+        name: params.username, // Use username as display name in Stripe dashboard
       },
       metadata: params.userId ? {
         user_id: params.userId, // Track user ID to prevent duplicates
+        username: params.username, // Track username for easy identification
         platform: 'cretexchange',
-      } : undefined,
+      } : {
+        username: params.username, // Track username even without userId
+        platform: 'cretexchange',
+      },
     };
 
     // Add individual information if provided

@@ -899,10 +899,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Step 2: Create new Stripe Connect Account with user ID in metadata
-      console.log('🆕 Creating new Stripe Connect account for user:', userId);
+      console.log('🆕 Creating new Stripe Connect account for user:', userId, 'username:', user.username);
       const connectedAccount = await stripeService.createConnectedAccount({
         type: 'custom',
         userId: userId, // Add user ID to metadata for deduplication
+        username: user.username, // Use username as display name in Stripe
         email: validatedData.email,
         businessType: 'individual',
         individual: {
@@ -2362,7 +2363,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             console.log(`🔧 Migrating driver ${driver.id} - creating missing Stripe Connect account...`);
             const connectAccount = await stripeService.createConnectedAccount({
-              type: 'express',
+              type: 'custom',
+              username: user.username,
               email: user.email,
               businessType: 'individual',
               individual: {
@@ -2370,9 +2372,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 lastName: user.lastName,
                 email: user.email,
                 phone: user.phone || undefined
-              },
-              capabilities: {
-                transfers: true
               }
             });
             await storage.updateDriver(driver.id, {
@@ -2418,7 +2417,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           console.log(`🔵 Creating Stripe Connect account for driver ${driver.id}...`);
           const connectAccount = await stripeService.createConnectedAccount({
-            type: 'express',
+            type: 'custom',
+            username: user.username,
             email: user.email,
             businessType: 'individual',
             individual: {
@@ -2426,9 +2426,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lastName: user.lastName,
               email: user.email,
               phone: user.phone || undefined
-            },
-            capabilities: {
-              transfers: true
             }
           });
           stripeConnectAccountId = connectAccount.id;
@@ -2569,12 +2566,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         try {
           const connectAccount = await stripeService.createConnectedAccount({
-            type: 'custom' as any, // Express account for simplified onboarding
+            type: 'custom',
+            username: user.username,
             email: user.email,
-            business_profile: {
-              name: `${user.firstName} ${user.lastName}`,
-              product_description: 'Concrete washout services',
-            },
+            businessType: 'individual',
+            individual: {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              phone: user.phone || undefined
+            }
           });
 
           await storage.updateDriver(driver.id, {
@@ -2859,6 +2860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Create new Stripe Connect Account
           connectedAccount = await stripeService.createConnectedAccount({
             type: 'custom',
+            username: user.username,
             email: user.email,
             businessType: 'individual',
             individual: {
@@ -3430,6 +3432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           connectedAccount = await stripeService.createConnectedAccount({
             type: 'custom',
+            username: user.username,
             email: user.email,
             businessType: 'individual',
             individual: {
