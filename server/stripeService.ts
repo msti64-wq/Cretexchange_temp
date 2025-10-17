@@ -43,6 +43,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 export interface CreateConnectedAccountParams {
   email: string;
   type: 'custom'; // Using custom for full control
+  userId?: string; // User ID for metadata tracking (prevents duplicates)
   capabilities?: string[]; // e.g., ['card_payments', 'transfers', 'treasury']
   businessType?: 'individual' | 'company';
   individual?: {
@@ -95,6 +96,10 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
         url: 'https://cretexchange.com', // Platform URL
         support_email: params.email, // Support email required for custom accounts
       },
+      metadata: params.userId ? {
+        user_id: params.userId, // Track user ID to prevent duplicates
+        platform: 'cretexchange',
+      } : undefined,
     };
 
     // Add individual information if provided
@@ -141,6 +146,27 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
  */
 export async function getConnectedAccount(accountId: string): Promise<Stripe.Account> {
   return await stripe.accounts.retrieve(accountId);
+}
+
+/**
+ * Find Connected Account by user ID in metadata
+ * Returns the first matching account or null if none found
+ */
+export async function findConnectedAccountByUserId(userId: string): Promise<Stripe.Account | null> {
+  try {
+    // List all accounts and filter by metadata
+    // Note: Stripe doesn't support metadata filtering in API, so we fetch and filter locally
+    const accounts = await stripe.accounts.list({ limit: 100 });
+    
+    const matchingAccount = accounts.data.find(
+      (account) => account.metadata?.user_id === userId
+    );
+    
+    return matchingAccount || null;
+  } catch (error: any) {
+    console.error('Error finding connected account by user ID:', error.message);
+    return null;
+  }
 }
 
 /**

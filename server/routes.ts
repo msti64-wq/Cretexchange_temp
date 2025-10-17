@@ -837,10 +837,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body with Zod
       const validatedData = columnOnboardingSchema.parse(req.body);
 
-      // Check for idempotency - if user already has Stripe accounts, return existing data
+      // Step 1: Check for existing Stripe Connect account (idempotency)
+      let connectAccountId: string | null = null;
+      
+      // First check database
       if (user.role === 'driver') {
         const driver = await storage.getDriver(userId);
         if (driver?.stripeConnectAccountId) {
+          console.log('✅ Driver already has Stripe Connect account (from DB):', driver.stripeConnectAccountId);
           return res.json({
             success: true,
             entityId: driver.stripeConnectAccountId,
@@ -851,6 +855,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (user.role === 'owner') {
         const owner = await storage.getOwner(userId);
         if (owner?.stripeConnectAccountId) {
+          console.log('✅ Owner already has Stripe Connect account (from DB):', owner.stripeConnectAccountId);
           return res.json({
             success: true,
             entityId: owner.stripeConnectAccountId,
@@ -859,10 +864,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
+      
+      // Second, check Stripe metadata (in case DB update failed previously)
+      console.log('🔍 Checking Stripe for existing account by user ID:', userId);
+      const existingAccount = await stripeService.findConnectedAccountByUserId(userId);
+      
+      if (existingAccount) {
+        console.log('✅ Found existing Stripe account in metadata:', existingAccount.id);
+        connectAccountId = existingAccount.id;
+        
+        // Update database with the found account ID
+        if (user.role === 'driver') {
+          const driver = await storage.getDriver(userId);
+          if (driver) {
+            await storage.updateDriver(driver.id, {
+              stripeConnectAccountId: connectAccountId,
+            });
+          }
+        } else if (user.role === 'owner') {
+          const owner = await storage.getOwner(userId);
+          if (owner) {
+            await storage.updateOwner(owner.id, {
+              stripeConnectAccountId: connectAccountId,
+            });
+          }
+        }
+        
+        return res.json({
+          success: true,
+          entityId: connectAccountId,
+          bankAccountId: null,
+          message: "Account recovered from Stripe metadata",
+        });
+      }
 
-      // Step 1: Create Stripe Connect Account
+      // Step 2: Create new Stripe Connect Account with user ID in metadata
+      console.log('🆕 Creating new Stripe Connect account for user:', userId);
       const connectedAccount = await stripeService.createConnectedAccount({
         type: 'custom',
+        userId: userId, // Add user ID to metadata for deduplication
         email: validatedData.email,
         businessType: 'individual',
         individual: {
@@ -886,7 +926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
 
-      const connectAccountId = connectedAccount.id;
+      connectAccountId = connectedAccount.id;
 
       // Step 2: Create Stripe Treasury Financial Account (wallet)
       let treasuryAccountId: string | null = null;
