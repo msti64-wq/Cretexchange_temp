@@ -123,7 +123,7 @@ export default function Landing() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-muted-foreground">
-                <li>• Find nearby washout locations</li>
+                <li>• Find nearby concrete recycling locations</li>
                 <li>• Track your daily earnings</li>
                 <li>• GPS-enabled check-ins</li>
                 <li>• Photo verification system</li>
