@@ -23,7 +23,7 @@ export default function Landing() {
           />
           <div className="flex-1 flex justify-center">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-foreground">CreteXchange</h1>
+              <h1 className="text-2xl font-bold text-foreground">Crete<span className="text-[hsl(33,100%,50%)]">X</span>change</h1>
               <p className="text-sm text-muted-foreground">Streamlining Concrete Connections</p>
             </div>
           </div>
