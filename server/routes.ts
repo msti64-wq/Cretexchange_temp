@@ -3719,10 +3719,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Store payment method ID in database
+      // Store payment method ID in owners table (for location creation checks)
       await storage.updateOwner(owner.id, { 
         stripePaymentMethodId: paymentMethodId 
       });
+
+      // Also create entry in ownerFundingSources table (for payment methods page display)
+      // First check if this payment method already exists
+      const existingSources = await storage.getOwnerFundingSources(owner.id);
+      const existingCard = existingSources.find(s => s.stripePaymentMethodId === paymentMethodId);
+      
+      if (!existingCard) {
+        // Determine if there are any other sources to decide on default
+        const shouldBeDefault = existingSources.length === 0;
+        
+        await storage.createOwnerFundingSource({
+          ownerId: owner.id,
+          type: paymentMethod.card.funding === 'debit' ? 'debit_card' : 'credit_card',
+          bankName: paymentMethod.card.brand,
+          last4: paymentMethod.card.last4,
+          stripePaymentMethodId: paymentMethodId,
+          isDefault: shouldBeDefault,
+          isActive: true,
+        });
+      }
 
       console.log(`✅ Saved payment method ${paymentMethodId} for owner ${owner.id}`);
 
