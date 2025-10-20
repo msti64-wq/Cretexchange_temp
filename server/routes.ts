@@ -5828,9 +5828,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Check if user is super admin
-      if (user.role !== 'super_admin') {
-        return res.status(403).json({ message: "Super admin access required" });
+      // Check if user is admin or super admin
+      if (user.role !== 'admin' && user.role !== 'super_admin') {
+        return res.status(403).json({ message: "Administrator access required" });
       }
 
       // Verify current password
@@ -5851,7 +5851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: newEmail
       });
 
-      console.log(`📧 Email updated for super admin: ${user.username} (${user.email} → ${newEmail})`);
+      console.log(`📧 Email updated for ${user.role}: ${user.username} (${user.email} → ${newEmail})`);
 
       res.json({ message: "Email updated successfully" });
     } catch (error) {

@@ -186,8 +186,9 @@ export default function AdminProfile() {
 
   const userData = user as any;
   const isSuperAdmin = userData?.role === 'super_admin';
+  const isAdmin = userData?.role === 'admin' || userData?.role === 'super_admin';
 
-  if (!isSuperAdmin) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background pb-20">
         <div className="p-4">
@@ -196,7 +197,7 @@ export default function AdminProfile() {
               <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
               <p className="text-muted-foreground mb-4">
-                Profile management is only available for super administrators.
+                Profile management is only available for administrators.
               </p>
               <Button onClick={() => setLocation('/admin/dashboard')} data-testid="button-back-dashboard">
                 Back to Dashboard
@@ -220,7 +221,7 @@ export default function AdminProfile() {
             </div>
             <div className="min-w-0">
               <h1 className="font-semibold text-lg truncate">Profile Settings</h1>
-              <p className="text-white/80 text-sm">Super Administrator</p>
+              <p className="text-white/80 text-sm">{isSuperAdmin ? 'Super Administrator' : 'Administrator'}</p>
             </div>
           </div>
           <Button 
@@ -247,7 +248,7 @@ export default function AdminProfile() {
             </h2>
             <Badge variant="outline" className="mb-2" data-testid="badge-user-role">
               <Crown className="w-3 h-3 mr-1" />
-              Super Administrator
+              {isSuperAdmin ? 'Super Administrator' : 'Administrator'}
             </Badge>
             <p className="text-muted-foreground text-sm" data-testid="text-user-email">
               {userData?.email}
@@ -394,9 +395,13 @@ export default function AdminProfile() {
               <div className="flex items-center space-x-2">
                 <Crown className="w-5 h-5 text-green-600" />
                 <div>
-                  <h4 className="font-medium text-green-800 dark:text-green-200">Super Administrator Access</h4>
+                  <h4 className="font-medium text-green-800 dark:text-green-200">
+                    {isSuperAdmin ? 'Super Administrator Access' : 'Administrator Access'}
+                  </h4>
                   <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                    You have full system access including user management, service accounts, and platform configuration.
+                    {isSuperAdmin 
+                      ? 'You have full system access including user management, service accounts, and platform configuration.'
+                      : 'You have administrative access to manage platform operations and users.'}
                   </p>
                 </div>
               </div>
