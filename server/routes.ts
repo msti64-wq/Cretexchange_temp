@@ -4386,7 +4386,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentLatitude: d.currentLatitude,
           currentLongitude: d.currentLongitude,
           lastLocationUpdate: d.lastLocationUpdate,
-          connectedAccountId: d.connectedAccountId,
+          stripeTreasuryAccountId: d.stripeTreasuryAccountId,
+          stripeIssuingCardholderId: d.stripeIssuingCardholderId,
+          paymentMethod: d.paymentMethod,
           createdAt: d.createdAt,
           updatedAt: d.updatedAt,
         }
