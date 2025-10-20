@@ -160,6 +160,7 @@ export const owners = pgTable("owners", {
   // Stripe Connect integration
   stripeConnectAccountId: varchar("stripe_connect_account_id"),
   stripeCustomerId: varchar("stripe_customer_id"),
+  stripePaymentMethodId: varchar("stripe_payment_method_id"), // Default payment method for platform fees
   stripePaymentIntentId: varchar("stripe_payment_intent_id"),
   // Stripe Treasury wallet integration
   stripeTreasuryAccountId: varchar("stripe_treasury_account_id"), // Stripe Financial Account ID

@@ -19,7 +19,8 @@ export default function AdminProfile() {
   const [, setLocation] = useLocation();
   const [showChangeEmail, setShowChangeEmail] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showCurrentPasswordEmail, setShowCurrentPasswordEmail] = useState(false);
+  const [showCurrentPasswordChange, setShowCurrentPasswordChange] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailData, setEmailData] = useState({
@@ -48,6 +49,7 @@ export default function AdminProfile() {
       });
       setShowChangeEmail(false);
       setEmailData({ currentPassword: '', newEmail: '' });
+      setShowCurrentPasswordEmail(false);
       refetch();
     },
     onError: (error: any) => {
@@ -71,6 +73,9 @@ export default function AdminProfile() {
       });
       setShowChangePassword(false);
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setShowCurrentPasswordChange(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
     },
     onError: (error: any) => {
       toast({
@@ -268,7 +273,13 @@ export default function AdminProfile() {
                 <Label className="text-sm font-medium text-muted-foreground">Email Address</Label>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium" data-testid="text-current-email">{userData?.email}</p>
-                  <Dialog open={showChangeEmail} onOpenChange={setShowChangeEmail}>
+                  <Dialog open={showChangeEmail} onOpenChange={(open) => {
+                  setShowChangeEmail(open);
+                  if (!open) {
+                    setEmailData({ currentPassword: '', newEmail: '' });
+                    setShowCurrentPasswordEmail(false);
+                  }
+                }}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" data-testid="button-change-email">
                         <Mail className="w-4 h-4 mr-1" />
@@ -285,7 +296,7 @@ export default function AdminProfile() {
                           <div className="relative">
                             <Input
                               id="currentPassword"
-                              type={showCurrentPassword ? "text" : "password"}
+                              type={showCurrentPasswordEmail ? "text" : "password"}
                               value={emailData.currentPassword}
                               onChange={(e) => setEmailData({...emailData, currentPassword: e.target.value})}
                               placeholder="Enter your current password"
@@ -297,10 +308,10 @@ export default function AdminProfile() {
                               variant="ghost"
                               size="sm"
                               className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                              onClick={() => setShowCurrentPasswordEmail(!showCurrentPasswordEmail)}
                               data-testid="button-toggle-password"
                             >
-                              {showCurrentPassword ? (
+                              {showCurrentPasswordEmail ? (
                                 <EyeOff className="h-4 w-4" />
                               ) : (
                                 <Eye className="h-4 w-4" />
@@ -341,6 +352,7 @@ export default function AdminProfile() {
                             onClick={() => {
                               setShowChangeEmail(false);
                               setEmailData({ currentPassword: '', newEmail: '' });
+                              setShowCurrentPasswordEmail(false);
                             }}
                             data-testid="button-cancel-email"
                           >
@@ -396,7 +408,15 @@ export default function AdminProfile() {
             </div>
 
             <div className="pt-4 border-t">
-              <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
+              <Dialog open={showChangePassword} onOpenChange={(open) => {
+                setShowChangePassword(open);
+                if (!open) {
+                  setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  setShowCurrentPasswordChange(false);
+                  setShowNewPassword(false);
+                  setShowConfirmPassword(false);
+                }
+              }}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="w-full" data-testid="button-change-password">
                     <Lock className="w-4 h-4 mr-2" />
@@ -413,7 +433,7 @@ export default function AdminProfile() {
                       <div className="relative">
                         <Input
                           id="currentPasswordForChange"
-                          type={showCurrentPassword ? "text" : "password"}
+                          type={showCurrentPasswordChange ? "text" : "password"}
                           value={passwordData.currentPassword}
                           onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
                           placeholder="Enter your current password"
@@ -425,10 +445,10 @@ export default function AdminProfile() {
                           variant="ghost"
                           size="sm"
                           className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          onClick={() => setShowCurrentPasswordChange(!showCurrentPasswordChange)}
                           data-testid="button-toggle-current-password"
                         >
-                          {showCurrentPassword ? (
+                          {showCurrentPasswordChange ? (
                             <EyeOff className="h-4 w-4" />
                           ) : (
                             <Eye className="h-4 w-4" />
@@ -514,6 +534,9 @@ export default function AdminProfile() {
                         onClick={() => {
                           setShowChangePassword(false);
                           setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                          setShowCurrentPasswordChange(false);
+                          setShowNewPassword(false);
+                          setShowConfirmPassword(false);
                         }}
                         data-testid="button-cancel-password"
                       >
