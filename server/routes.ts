@@ -2933,7 +2933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
       const periodEnd = oneYearLater.toISOString().split('T')[0]; // YYYY-MM-DD
       
-      await storage.createFeeLedger({
+      await storage.createFeeLedgerEntry({
         ownerId: owner.id,
         feeType: 'subscription_annual',
         amountCents: 150000, // $1,500 in cents
