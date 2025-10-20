@@ -2921,10 +2921,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionStatus: 'active',
         isApproved: true, // Auto-approve after successful payment
         stripeCustomerId: paymentIntent.customer as string || null,
-        stripePaymentIntentId: paymentIntentId
+        stripePaymentIntentId: paymentIntentId,
+        membershipPaymentMethod: 'stripe',
+        membershipActivatedAt: new Date()
       });
 
-      console.log("✅ Subscription activated successfully");
+      // Record the $1,500 membership payment in fees_ledger for tracking
+      const today = new Date();
+      const periodStart = today.toISOString().split('T')[0]; // YYYY-MM-DD
+      const oneYearLater = new Date(today);
+      oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+      const periodEnd = oneYearLater.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      await storage.createFeeLedger({
+        ownerId: owner.id,
+        feeType: 'subscription_annual',
+        amountCents: 150000, // $1,500 in cents
+        periodStart,
+        periodEnd,
+        status: 'paid',
+        stripeTransferId: paymentIntentId, // Store payment intent ID
+        paidAt: new Date(),
+        metadata: {
+          paymentMethod: 'stripe',
+          stripeCustomerId: paymentIntent.customer as string || null,
+          stripeConnectAccountId: connectedAccount.id
+        }
+      });
+
+      console.log("✅ Subscription activated successfully and payment recorded in fees_ledger");
 
       const responseMessage = treasuryUnavailable 
         ? "Membership activated - payment received. Wallet features require Stripe Treasury approval."
