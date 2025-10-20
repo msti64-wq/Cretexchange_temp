@@ -48,6 +48,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/", icon: BarChart3, label: "Dashboard" },
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
+          { path: "/profile", icon: Settings, label: "Profile" },
         ];
       case "super_admin":
         // Super admins see everything
@@ -59,6 +60,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/subscriptions", icon: Receipt, label: "Subscriptions" },
           { path: "/fees", icon: FileText, label: "Fees" },
           { path: "/service-accounts", icon: CreditCard, label: "Service Accounts" },
+          { path: "/profile", icon: Settings, label: "Profile" },
         ];
       default:
         return [];
