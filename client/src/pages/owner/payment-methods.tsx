@@ -383,43 +383,41 @@ export default function PaymentMethods() {
             </Button>
           </div>
 
-          {!(fundingSources as any[])?.length ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <CreditCard className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="font-medium mb-2">No Funding Sources Added</h3>
-                <p className="text-muted-foreground mb-4">
-                  Add a bank account or credit card to fund your wallet and enable automatic top-up
-                </p>
-                <Button onClick={() => setShowAddForm(true)} data-testid="button-add-first-source">
-                  Add Your First Funding Source
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            ((fundingSources as any[]) || []).map((source: any, index: number) => (
+          {(() => {
+            // Filter to only show ACH bank accounts (not credit cards)
+            const bankAccounts = ((fundingSources as any[]) || []).filter(
+              (source: any) => source.sourceType === 'ach' || source.sourceType === 'bank_account'
+            );
+            
+            if (!bankAccounts.length) {
+              return (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="font-medium mb-2">No Bank Accounts Added</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Add a bank account (ACH) to fund your Stripe wallet
+                    </p>
+                    <Button onClick={() => setShowAddForm(true)} data-testid="button-add-first-source">
+                      Add Your First Bank Account
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            }
+            
+            return bankAccounts.map((source: any, index: number) => (
               <Card key={source.id} data-testid={`card-funding-source-${index}`}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      {source.sourceType === 'credit_card' ? (
-                        <CreditCard className="w-8 h-8 text-blue-600" />
-                      ) : (
-                        <Building2 className="w-8 h-8 text-green-600" />
-                      )}
+                      <Building2 className="w-8 h-8 text-green-600" />
                       <div>
                         <div className="font-medium">
-                          {source.sourceType === 'credit_card' ? (
-                            `${source.cardBrand || 'Card'} ****${source.cardLast4}`
-                          ) : (
-                            `${source.bankName} ****${source.accountNumberLast4}`
-                          )}
+                          {source.bankName} ****{source.accountNumberLast4}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {source.sourceType === 'credit_card' ? 
-                            'Credit Card' :
-                            'Bank Account (ACH)'
-                          }
+                          Bank Account (ACH)
                           {source.isVerified && (
                             <span className="text-green-600 ml-2">• Verified</span>
                           )}
@@ -457,8 +455,8 @@ export default function PaymentMethods() {
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
+            ));
+          })()}
         </div>
 
         {/* Add Funding Source Form */}
