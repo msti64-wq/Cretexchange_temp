@@ -227,39 +227,20 @@ export default function PaymentMethods() {
               <Wallet className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-lg">Funding Sources</h1>
-              <p className="text-white/80 text-sm">Manage wallet funding methods</p>
+              <h1 className="font-semibold text-lg">Payment Methods</h1>
+              <p className="text-white/80 text-sm">Manage fees, wallet funding & payouts</p>
             </div>
           </div>
         </div>
       </header>
 
       <main className="p-4 space-y-6">
-        {/* Wallet Status Card */}
-        <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-start space-x-3">
-                <Wallet className="w-5 h-5 text-green-600 mt-0.5" />
-                <div className="text-sm">
-                  <h3 className="font-medium text-green-800 dark:text-green-200 mb-1">
-                    Column Wallet Status
-                  </h3>
-                  <p className="text-green-700 dark:text-green-300">
-                    Balance: ${(walletData as any)?.balance || '0.00'} • Status: {(walletData as any)?.status || 'Active'}
-                  </p>
-                </div>
-              </div>
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                {(walletData as any)?.status || 'Active'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Platform Fee Payment Method */}
+        {/* 1. Membership Fee Payment Method (One-Time $1,500) */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Platform Fee Payment Method</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Membership Fee Payment</h2>
+            <p className="text-sm text-muted-foreground">One-time $1,500 annual platform membership</p>
+          </div>
           <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/20">
             <CardContent className="p-4">
               {(ownerData as any)?.stripePaymentMethodId ? (
@@ -271,7 +252,7 @@ export default function PaymentMethods() {
                         {(ownerData as any)?.paymentMethod?.brand || 'Card'} ****{(ownerData as any)?.paymentMethod?.last4 || '****'}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        For monthly location fees ($100/mo)
+                        Credit card on file for membership fee
                       </div>
                     </div>
                   </div>
@@ -281,15 +262,15 @@ export default function PaymentMethods() {
                     onClick={() => setShowCardSetup(true)}
                     data-testid="button-change-card"
                   >
-                    Change Card
+                    Update Card
                   </Button>
                 </div>
               ) : (
                 <div className="text-center py-4">
                   <CreditCard className="w-12 h-12 mx-auto mb-3 text-purple-600" />
-                  <h3 className="font-medium mb-2">No Payment Method Added</h3>
+                  <h3 className="font-medium mb-2">No Card Added</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Add a credit card to pay the $100 monthly location fee when adding locations
+                    Add a credit card for the $1,500 annual membership fee
                   </p>
                   <Button
                     onClick={() => setShowCardSetup(true)}
@@ -297,7 +278,7 @@ export default function PaymentMethods() {
                     data-testid="button-add-payment-method"
                   >
                     <CreditCard className="w-4 h-4 mr-2" />
-                    Add Payment Method
+                    Add Credit Card
                   </Button>
                 </div>
               )}
@@ -305,27 +286,93 @@ export default function PaymentMethods() {
           </Card>
         </div>
 
-        {/* Info Card */}
-        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-          <CardContent className="p-4">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-              <div className="text-sm">
-                <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
-                  Wallet Funding & Auto Top-up
-                </h3>
-                <p className="text-blue-700 dark:text-blue-300">
-                  Add funding sources to manually fund your wallet or enable automatic top-up when balance is low.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Existing Funding Sources */}
+        {/* 2. Monthly Location Fees ($100/location) */}
         <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Monthly Location Fees</h2>
+            <p className="text-sm text-muted-foreground">$100 per location, charged monthly</p>
+          </div>
+          <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/20">
+            <CardContent className="p-4">
+              <div className="space-y-3">
+                <div className="flex items-start space-x-3">
+                  <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
+                  <div className="text-sm">
+                    <h3 className="font-medium text-orange-800 dark:text-orange-200 mb-1">
+                      Payment Priority
+                    </h3>
+                    <p className="text-orange-700 dark:text-orange-300">
+                      Monthly fees are automatically debited from your Stripe wallet first. If wallet balance is insufficient, your credit card on file will be charged.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-orange-200">
+                  <div className="text-sm">
+                    <div className="font-medium">Current Wallet Balance</div>
+                    <div className="text-muted-foreground">${(walletData as any)?.balance || '0.00'}</div>
+                  </div>
+                  <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                    Auto-Debit Enabled
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 3. Owner Wallet Funding (ACH Only) */}
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Stripe Wallet Funding</h2>
+            <p className="text-sm text-muted-foreground">Add bank accounts (ACH only) to fund your wallet</p>
+          </div>
+          
+          {/* Wallet Status Card */}
+          <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-start space-x-3">
+                  <Wallet className="w-5 h-5 text-green-600 mt-0.5" />
+                  <div className="text-sm">
+                    <h3 className="font-medium text-green-800 dark:text-green-200 mb-1">
+                      Stripe Wallet Status
+                    </h3>
+                    <p className="text-green-700 dark:text-green-300">
+                      Balance: ${(walletData as any)?.balance || '0.00'} • Status: {(walletData as any)?.status || 'Active'}
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  {(walletData as any)?.status || 'Active'}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Info Card */}
+          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+            <CardContent className="p-4">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div className="text-sm">
+                  <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    What is Wallet Funding Used For?
+                  </h3>
+                  <p className="text-blue-700 dark:text-blue-300 mb-2">
+                    Your Stripe wallet funds are used for:
+                  </p>
+                  <ul className="text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
+                    <li>Paying drivers for washout services (via internal transfer)</li>
+                    <li>Monthly location fees ($100/location) when balance is available</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Bank Accounts List */}
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Your Funding Sources</h2>
+            <h3 className="font-medium">Bank Accounts (ACH)</h3>
             <Button
               onClick={() => setShowAddForm(true)}
               className="bg-green-600 hover:bg-green-700"
@@ -423,7 +470,7 @@ export default function PaymentMethods() {
                 Add Bank Account (ACH)
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                Link a bank account to fund your wallet. For credit cards, use the "Platform Fee Payment Method" section above.
+                Link a bank account to fund your wallet. For credit cards, see the "Membership Fee Payment" section above.
               </p>
             </CardHeader>
             <CardContent>
@@ -535,6 +582,34 @@ export default function PaymentMethods() {
             </CardContent>
           </Card>
         )}
+
+        {/* 4. Driver Payments & Payouts Info */}
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Driver Payments & Payouts</h2>
+            <p className="text-sm text-muted-foreground">How drivers receive payment for washout services</p>
+          </div>
+          <Card className="border-teal-200 bg-teal-50 dark:bg-teal-950/20">
+            <CardContent className="p-4">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-teal-600 mt-0.5" />
+                <div className="text-sm">
+                  <h3 className="font-medium text-teal-800 dark:text-teal-200 mb-2">
+                    Payment Flow
+                  </h3>
+                  <ul className="text-teal-700 dark:text-teal-300 space-y-1 list-disc list-inside">
+                    <li>When you approve a washout, payment is transferred instantly from your Stripe wallet to the driver's Stripe wallet</li>
+                    <li>Drivers can request ACH transfer from their wallet to their bank account</li>
+                    <li>Drivers can also request a Stripe debit card linked to their wallet for instant access to funds</li>
+                  </ul>
+                  <p className="text-teal-700 dark:text-teal-300 mt-2 text-xs">
+                    Note: Driver payment settings are managed on the driver's account, not shown here.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Stripe Info */}
         <Card>
