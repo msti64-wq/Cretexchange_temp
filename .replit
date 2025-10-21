@@ -4,6 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
+packages = ["imagemagick"]
 
 [deployment]
 deploymentTarget = "gce"
@@ -82,6 +83,10 @@ localPort = 39093
 externalPort = 8080
 
 [[ports]]
+localPort = 42887
+externalPort = 9000
+
+[[ports]]
 localPort = 42961
 externalPort = 6000
 
@@ -92,10 +97,6 @@ externalPort = 4200
 [[ports]]
 localPort = 44415
 externalPort = 5173
-
-[[ports]]
-localPort = 46223
-externalPort = 9000
 
 [[ports]]
 localPort = 46445
