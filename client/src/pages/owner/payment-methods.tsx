@@ -21,7 +21,6 @@ export default function PaymentMethods() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showWalletWizard, setShowWalletWizard] = useState(false);
   const [showCardSetup, setShowCardSetup] = useState(false);
-  const [sourceType, setSourceType] = useState<'ach' | 'credit_card'>('ach');
   const queryClient = useQueryClient();
 
   // Query for wallet status and funding sources
@@ -41,17 +40,10 @@ export default function PaymentMethods() {
   });
 
   const [formData, setFormData] = useState({
-    // ACH fields
     bankName: '',
     accountHolderName: '',
     routingNumber: '',
     accountNumber: '',
-    // Credit card fields
-    cardholderName: '',
-    cardNumber: '',
-    expiryMonth: '',
-    expiryYear: '',
-    cvv: '',
   });
 
   const addFundingSourceMutation = useMutation({
@@ -66,8 +58,10 @@ export default function PaymentMethods() {
       });
       setShowAddForm(false);
       setFormData({
-        bankName: '', accountHolderName: '', routingNumber: '', accountNumber: '',
-        cardholderName: '', cardNumber: '', expiryMonth: '', expiryYear: '', cvv: '',
+        bankName: '', 
+        accountHolderName: '', 
+        routingNumber: '', 
+        accountNumber: '',
       });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/funding-sources'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
@@ -123,19 +117,11 @@ export default function PaymentMethods() {
     e.preventDefault();
     
     const data = {
-      sourceType,
-      ...(sourceType === 'ach' ? {
-        bankName: formData.bankName,
-        accountHolderName: formData.accountHolderName,
-        routingNumber: formData.routingNumber,
-        accountNumber: formData.accountNumber,
-      } : {
-        cardholderName: formData.cardholderName,
-        cardNumber: formData.cardNumber,
-        expiryMonth: formData.expiryMonth,
-        expiryYear: formData.expiryYear,
-        cvv: formData.cvv,
-      })
+      sourceType: 'ach',
+      bankName: formData.bankName,
+      accountHolderName: formData.accountHolderName,
+      routingNumber: formData.routingNumber,
+      accountNumber: formData.accountNumber,
     };
 
     addFundingSourceMutation.mutate(data);
@@ -434,37 +420,16 @@ export default function PaymentMethods() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Plus className="w-5 h-5 mr-2" />
-                Add Funding Source
+                Add Bank Account (ACH)
               </CardTitle>
+              <p className="text-sm text-muted-foreground mt-2">
+                Link a bank account to fund your wallet. For credit cards, use the "Platform Fee Payment Method" section above.
+              </p>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Source Type Selection */}
-                <div className="grid grid-cols-2 gap-4">
-                  <Button
-                    type="button"
-                    variant={sourceType === 'ach' ? 'default' : 'outline'}
-                    className="h-12"
-                    onClick={() => setSourceType('ach')}
-                    data-testid="button-ach-type"
-                  >
-                    <Building2 className="w-4 h-4 mr-2" />
-                    Bank Account (ACH)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={sourceType === 'credit_card' ? 'default' : 'outline'}
-                    className="h-12"
-                    onClick={() => setSourceType('credit_card')}
-                    data-testid="button-card-type"
-                  >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Credit Card
-                  </Button>
-                </div>
-
                 {/* ACH Form */}
-                {sourceType === 'ach' && (
+                {(
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="bankName">Bank Name</Label>
@@ -514,72 +479,6 @@ export default function PaymentMethods() {
                   </div>
                 )}
 
-                {/* Credit Card Form */}
-                {sourceType === 'credit_card' && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="cardholderName">Cardholder Name</Label>
-                      <Input
-                        id="cardholderName"
-                        value={formData.cardholderName}
-                        onChange={(e) => handleInputChange('cardholderName', e.target.value)}
-                        placeholder="John Doe"
-                        required
-                        data-testid="input-cardholder-name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="cardNumber">Card Number</Label>
-                      <Input
-                        id="cardNumber"
-                        value={formData.cardNumber}
-                        onChange={(e) => handleInputChange('cardNumber', e.target.value)}
-                        placeholder="1234 5678 9012 3456"
-                        required
-                        data-testid="input-card-number"
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="expiryMonth">Month</Label>
-                        <Input
-                          id="expiryMonth"
-                          value={formData.expiryMonth}
-                          onChange={(e) => handleInputChange('expiryMonth', e.target.value)}
-                          placeholder="MM"
-                          maxLength={2}
-                          required
-                          data-testid="input-expiry-month"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="expiryYear">Year</Label>
-                        <Input
-                          id="expiryYear"
-                          value={formData.expiryYear}
-                          onChange={(e) => handleInputChange('expiryYear', e.target.value)}
-                          placeholder="YY"
-                          maxLength={2}
-                          required
-                          data-testid="input-expiry-year"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="cvv">CVV</Label>
-                        <Input
-                          id="cvv"
-                          value={formData.cvv}
-                          onChange={(e) => handleInputChange('cvv', e.target.value)}
-                          placeholder="123"
-                          maxLength={4}
-                          required
-                          data-testid="input-cvv"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Form Actions */}
                 <div className="flex space-x-3 pt-4">
                   <Button
@@ -587,7 +486,7 @@ export default function PaymentMethods() {
                     disabled={addFundingSourceMutation.isPending}
                     data-testid="button-save-source"
                   >
-                    {addFundingSourceMutation.isPending ? "Adding..." : "Add Funding Source"}
+                    {addFundingSourceMutation.isPending ? "Adding..." : "Add Bank Account"}
                   </Button>
                   <Button
                     type="button"
