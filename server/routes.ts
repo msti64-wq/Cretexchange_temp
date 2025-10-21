@@ -2192,6 +2192,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/owners/profile - Get owner profile with payment method details
+  app.get('/api/owners/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const owner = await storage.getOwner(userId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const response: any = {
+        stripePaymentMethodId: owner.stripePaymentMethodId,
+      };
+
+      // If owner has a payment method, fetch details from Stripe
+      if (owner.stripePaymentMethodId) {
+        try {
+          const paymentMethod = await stripe.paymentMethods.retrieve(owner.stripePaymentMethodId);
+          if (paymentMethod.type === 'card' && paymentMethod.card) {
+            response.paymentMethod = {
+              brand: paymentMethod.card.brand,
+              last4: paymentMethod.card.last4,
+              expiryMonth: paymentMethod.card.exp_month,
+              expiryYear: paymentMethod.card.exp_year,
+            };
+          }
+        } catch (stripeError) {
+          console.error("Error fetching payment method from Stripe:", stripeError);
+          // Don't fail the request if Stripe lookup fails
+        }
+      }
+
+      res.json(response);
+    } catch (error: any) {
+      console.error("Error fetching owner profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile: " + error.message });
+    }
+  });
+
   app.put('/api/owners/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
