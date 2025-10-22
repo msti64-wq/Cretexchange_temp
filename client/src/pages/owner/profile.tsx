@@ -236,7 +236,7 @@ export default function OwnerProfile() {
             {!owner?.isApproved && (
               <div className="mt-4 space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Complete your one-time $1,500 membership payment to activate your account.
+                  Complete your one-time $15.00 membership payment to activate your account.
                 </p>
                 <Button 
                   onClick={() => setLocation('/subscribe')}
@@ -249,7 +249,7 @@ export default function OwnerProfile() {
             
             {owner?.isApproved && (
               <p className="text-sm text-muted-foreground mt-4">
-                $100/month per active location is automatically deducted from your Column wallet.
+                $1.00/month per active location is automatically deducted from your Column wallet.
               </p>
             )}
           </CardContent>

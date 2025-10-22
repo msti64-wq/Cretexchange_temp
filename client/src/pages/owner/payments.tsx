@@ -70,8 +70,8 @@ export default function OwnerPayments() {
   const stats = {
     totalPayments: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0),
     totalFees: filteredActivities.reduce((sum: number, activity: any) => {
-      // FLAT PLATFORM FEE: $4.00 per washout regardless of location rate
-      const platformFee = 4.00;
+      // FLAT PLATFORM FEE: $0.40 per washout regardless of location rate
+      const platformFee = 0.40;
       return sum + platformFee;
     }, 0),
     completedCount: filteredActivities.filter((a: any) => a.status === 'verified').length,
@@ -128,7 +128,7 @@ export default function OwnerPayments() {
             <div className="text-2xl font-bold text-secondary" data-testid="text-total-fees">
               {formatCurrency(stats.totalFees)}
             </div>
-            <div className="text-xs text-muted-foreground">Platform Fees ($4.00/washout)</div>
+            <div className="text-xs text-muted-foreground">Platform Fees ($0.40/washout)</div>
           </StatCard>
         </div>
 
@@ -275,7 +275,7 @@ export default function OwnerPayments() {
                         {formatCurrency(Number(activity.amount || 0))}
                       </div>
                       <div className="text-xs text-muted-foreground mb-2" data-testid={`text-platform-fee-${index}`}>
-                        Platform Fee: {formatCurrency(4.00)}
+                        Platform Fee: {formatCurrency(0.40)}
                       </div>
                       <Badge 
                         variant={
@@ -313,7 +313,7 @@ export default function OwnerPayments() {
                     </div>
                     <div className="text-sm">
                       <span className="font-semibold text-red-600" data-testid={`text-total-fees-${index}`}>
-                        {formatCurrency(4.00)}
+                        {formatCurrency(0.40)}
                       </span>
                     </div>
                   </div>

@@ -162,9 +162,9 @@ export default function AdminSubscriptions() {
   // Monthly revenue and average should always be calculated from active subscriptions only
   const activeSubscriptions = subscriptions.filter((s: Subscription) => s.status === 'active' && s.amount);
   
-  // Calculate total active locations from monthly revenue ($100 per location)
+  // Calculate total active locations from monthly revenue ($1.00 per location)
   const totalActiveLocations = activeSubscriptions
-    .reduce((sum: number, s: Subscription) => sum + Number(s.amount), 0) / 100;
+    .reduce((sum: number, s: Subscription) => sum + Number(s.amount), 0) / 1;
   
   const stats = {
     totalActive,
@@ -258,7 +258,7 @@ export default function AdminSubscriptions() {
             <div className="text-xl font-bold text-foreground" data-testid="text-active-locations">
               {stats.totalActiveLocations}
             </div>
-            <div className="text-xs text-muted-foreground">$100/month each</div>
+            <div className="text-xs text-muted-foreground">$1.00/month each</div>
           </StatCard>
 
           <StatCard title="Upcoming Billings" className="text-center">

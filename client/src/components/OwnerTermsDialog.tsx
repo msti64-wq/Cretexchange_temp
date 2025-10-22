@@ -67,7 +67,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                     <div className="space-y-2 ml-6 bg-muted/30 p-3 rounded">
                       <p><strong>1.1 Platform Membership Fee:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• <strong>One-time fee:</strong> $1,500.00 (processed via Stripe)</p>
+                        <p>• <strong>One-time fee:</strong> $15.00 (processed via Stripe)</p>
                         <p>• Required before activating any washout locations</p>
                         <p>• Non-refundable after activation</p>
                         <p>• Grants lifetime access to the platform</p>
@@ -75,7 +75,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       
                       <p className="pt-2"><strong>1.2 Monthly Location Fees:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• <strong>$100.00 per active location per month</strong></p>
+                        <p>• <strong>$1.00 per active location per month</strong></p>
                         <p>• Automatically charged on the 1st of each month via Column book transfer</p>
                         <p>• Pro-rated for partial months when locations are activated mid-month</p>
                         <p>• You must maintain sufficient wallet balance for monthly charges</p>
@@ -84,9 +84,9 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       
                       <p className="pt-2"><strong>1.3 Transaction Fees:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• CreteXchange retains a <strong>$4.00 flat fee per completed washout</strong></p>
+                        <p>• CreteXchange retains a <strong>$0.40 flat fee per completed washout</strong></p>
                         <p>• Fee is automatically deducted from washout payments via Column book transfer</p>
-                        <p>• You receive the washout rate you set minus the $4.00 platform fee</p>
+                        <p>• You receive the washout rate you set minus the $0.40 platform fee</p>
                       </div>
                     </div>
                   </div>
@@ -205,7 +205,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       <div className="ml-4 space-y-1">
                         <p>• Driver payments processed immediately when you approve washout</p>
                         <p>• Your wallet credited instantly via Column book transfer</p>
-                        <p>• Platform fee ($4.00) deducted automatically from each payment</p>
+                        <p>• Platform fee ($0.40) deducted automatically from each payment</p>
                       </div>
                     </div>
                   </div>
@@ -271,7 +271,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                 
                 <div className="border-t pt-4 bg-green-50 p-3 rounded">
                   <p className="font-semibold text-green-800 text-center">
-                    By clicking "I Agree," you confirm that you have read, understood, and accept all terms above, including the $1,500 membership fee, $100/month location fees, and $4.00 per-washout platform fee structure.
+                    By clicking "I Agree," you confirm that you have read, understood, and accept all terms above, including the $15.00 membership fee, $1.00/month location fees, and $0.40 per-washout platform fee structure.
                   </p>
                 </div>
               </div>

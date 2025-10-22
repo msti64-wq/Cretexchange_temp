@@ -3723,7 +3723,7 @@ export class DatabaseStorage implements IStorage {
         periodEndDate.setDate(periodEndDate.getDate() - 1);
         const periodEnd = periodEndDate.toISOString().split('T')[0];
 
-        // Skip subscription fees - membership is now one-time $1500 payment during signup
+        // Skip subscription fees - membership is now one-time $15.00 payment during signup
         // Only charge monthly location fees (handled below)
 
         // Create location fees for all active locations

@@ -166,7 +166,7 @@ export const owners = pgTable("owners", {
   stripeTreasuryAccountId: varchar("stripe_treasury_account_id"), // Stripe Financial Account ID
   walletBalance: decimal("wallet_balance", { precision: 10, scale: 2 }).notNull().default("0.00"),
   walletStatus: ownerWalletStatusEnum("wallet_status").default("pending_verification"),
-  lowBalanceThreshold: decimal("low_balance_threshold", { precision: 10, scale: 2 }).default("100.00"),
+  lowBalanceThreshold: decimal("low_balance_threshold", { precision: 10, scale: 2 }).default("1.00"),
   autoTopupEnabled: boolean("auto_topup_enabled").default(false),
   autoTopupAmount: decimal("auto_topup_amount", { precision: 10, scale: 2 }).default("500.00"),
   // Billing configuration for daily batch processing
@@ -203,7 +203,7 @@ export const washoutLocations = pgTable("washout_locations", {
   latitude: decimal("latitude", { precision: 9, scale: 6 }).notNull(),
   longitude: decimal("longitude", { precision: 10, scale: 6 }).notNull(),
   rate: decimal("rate", { precision: 10, scale: 2 }).notNull().default("5.00"),
-  monthlyFeeCents: integer("monthly_fee_cents").default(10000), // Monthly listing fee in cents (default $100)
+  monthlyFeeCents: integer("monthly_fee_cents").default(100), // Monthly listing fee in cents (default $1.00)
   isActive: boolean("is_active").default(true),
   isVisible: boolean("is_visible").default(true),
   description: text("description"),

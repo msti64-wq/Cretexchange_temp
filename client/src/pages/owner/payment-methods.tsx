@@ -235,11 +235,11 @@ export default function PaymentMethods() {
       </header>
 
       <main className="p-4 space-y-6">
-        {/* 1. Membership Fee Payment Method (One-Time $1,500) */}
+        {/* 1. Membership Fee Payment Method (One-Time $15.00) */}
         <div className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">Membership Fee Payment</h2>
-            <p className="text-sm text-muted-foreground">One-time $1,500 annual platform membership</p>
+            <p className="text-sm text-muted-foreground">One-time $15.00 annual platform membership</p>
           </div>
           <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/20">
             <CardContent className="p-4">
@@ -270,7 +270,7 @@ export default function PaymentMethods() {
                   <CreditCard className="w-12 h-12 mx-auto mb-3 text-purple-600" />
                   <h3 className="font-medium mb-2">No Card Added</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Add a credit card for the $1,500 annual membership fee
+                    Add a credit card for the $15.00 annual membership fee
                   </p>
                   <Button
                     onClick={() => setShowCardSetup(true)}
@@ -286,11 +286,11 @@ export default function PaymentMethods() {
           </Card>
         </div>
 
-        {/* 2. Monthly Location Fees ($100/location) */}
+        {/* 2. Monthly Location Fees ($1.00/location) */}
         <div className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">Monthly Location Fees</h2>
-            <p className="text-sm text-muted-foreground">$100 per location, charged monthly</p>
+            <p className="text-sm text-muted-foreground">$1.00 per location, charged monthly</p>
           </div>
           <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/20">
             <CardContent className="p-4">
@@ -363,7 +363,7 @@ export default function PaymentMethods() {
                   </p>
                   <ul className="text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
                     <li>Paying drivers for washout services (via internal transfer)</li>
-                    <li>Monthly location fees ($100/location) when balance is available</li>
+                    <li>Monthly location fees ($1.00/location) when balance is available</li>
                   </ul>
                 </div>
               </div>

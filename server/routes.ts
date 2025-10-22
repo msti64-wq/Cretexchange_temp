@@ -1145,11 +1145,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Payment structure: Flat $4.00 platform fee per washout
+      // Payment structure: Flat $0.40 platform fee per washout
       // - Driver receives full location rate
-      // - Owner pays location rate + $4.00 platform fee
+      // - Owner pays location rate + $0.40 platform fee
       const locationRate = parseFloat(location.rate);
-      const PLATFORM_FEE = 4.00;
+      const PLATFORM_FEE = 0.40;
       const DRIVER_PAYMENT = locationRate;
       const OWNER_CHARGE = locationRate + PLATFORM_FEE;
 
@@ -1568,7 +1568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if owner has a payment method saved for platform fees
-      const monthlyFeeCents = 10000; // $100 in cents
+      const monthlyFeeCents = 100; // $1.00 in cents
       const monthlyFee = (monthlyFeeCents / 100).toFixed(2);
       
       if (!owner.stripePaymentMethodId) {
@@ -2009,11 +2009,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify the activity
       const activity = await storage.verifyWashoutActivity(id, userId);
 
-      // FEE STRUCTURE: Flat $4.00 platform fee per washout
+      // FEE STRUCTURE: Flat $0.40 platform fee per washout
       // - Driver receives full location rate
-      // - Owner pays location rate + $4.00 platform fee
+      // - Owner pays location rate + $0.40 platform fee
       const driverAmount = Number(activityDetails.amount); // Driver gets exact location rate
-      const platformFee = 4.00; // Platform keeps $4.00 flat fee
+      const platformFee = 0.40; // Platform keeps $0.40 flat fee
       const ownerFee = driverAmount + platformFee; // Owner pays total: driver amount + platform fee
 
       // Get owner's billing settings for business date calculation
@@ -2035,7 +2035,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverId: activityDetails.driverId,
         ownerId: owner.id,
         amount: driverAmount.toString(),
-        processingFee: platformFee.toFixed(2), // Platform fee ($4.00)
+        processingFee: platformFee.toFixed(2), // Platform fee ($0.40)
         washoutServiceFee: (ownerFee - platformFee).toFixed(2), // Driver portion ($5.00)
         status: 'pending', // Will be processed by daily batch
         businessDate, // Set business date for batch grouping
@@ -2710,7 +2710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "All shipping address fields are required" });
       }
 
-      const requestedCardType = cardType || 'virtual'; // Default to virtual ($0.10), physical is $3.00
+      const requestedCardType = cardType || 'virtual'; // Default to virtual ($0.01), physical is $0.30
 
       // Create debit card via Stripe Issuing
       let stripeCard;
@@ -2774,11 +2774,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        message: `Debit card request submitted successfully (${requestedCardType === 'virtual' ? '$0.10' : '$3.00 with 2-day shipping'})`,
+        message: `Debit card request submitted successfully (${requestedCardType === 'virtual' ? '$0.01' : '$0.30 with 2-day shipping'})`,
         requestId: cardRequest.id,
         status: cardRequest.cardStatus,
         cardType: requestedCardType,
-        fee: requestedCardType === 'virtual' ? 0.10 : 3.00
+        fee: requestedCardType === 'virtual' ? 0.01 : 0.30
       });
     } catch (error) {
       console.error("Error requesting debit card:", error);
@@ -2786,7 +2786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create Stripe payment intent for $1,500 membership fee
+  // Create Stripe payment intent for $15.00 membership fee
   app.post('/api/owners/create-membership-payment', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -2805,7 +2805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "Payment processing is not configured" });
       }
 
-      const membershipFee = 150000; // $1,500 in cents
+      const membershipFee = 1500; // $15.00 in cents
       
       // Create payment intent with metadata
       const paymentIntent = await stripe.paymentIntents.create({
@@ -2822,7 +2822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: `CreteXchange Platform Membership - ${user.username} (${user.email})`
       });
 
-      console.log(`💳 Created Stripe payment intent for membership: ${paymentIntent.id} - $1,500`);
+      console.log(`💳 Created Stripe payment intent for membership: ${paymentIntent.id} - $15.00`);
 
       res.json({ 
         clientSecret: paymentIntent.client_secret,
@@ -2880,11 +2880,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      if (paymentIntent.amount !== 150000) { // $1,500 in cents
+      if (paymentIntent.amount !== 1500) { // $15.00 in cents
         return res.status(400).json({ message: "Invalid payment amount" });
       }
 
-      console.log("✅ Payment verified - $1,500 received via Stripe");
+      console.log("✅ Payment verified - $15.00 received via Stripe");
       console.log("Setting up Stripe Connect and Treasury wallet, activating subscription...");
       
       // Create or reuse Stripe Connected Account and Treasury wallet
@@ -2965,7 +2965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         membershipActivatedAt: new Date()
       });
 
-      // Record the $1,500 membership payment in fees_ledger for tracking
+      // Record the $15.00 membership payment in fees_ledger for tracking
       const today = new Date();
       const periodStart = today.toISOString().split('T')[0]; // YYYY-MM-DD
       const oneYearLater = new Date(today);
@@ -2975,7 +2975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createFeeLedgerEntry({
         ownerId: owner.id,
         feeType: 'subscription_annual',
-        amountCents: 150000, // $1,500 in cents
+        amountCents: 1500, // $15.00 in cents
         periodStart,
         periodEnd,
         status: 'paid',
@@ -4580,7 +4580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const activeLocations = locationCountMap.get(owner.id) || 0;
-        const monthlyRevenue = activeLocations * 100; // $100 per location per month
+        const monthlyRevenue = activeLocations * 1; // $1.00 per location per month
 
         return {
           id: owner.id,

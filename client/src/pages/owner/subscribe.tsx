@@ -101,7 +101,7 @@ const SubscribeForm = ({ clientSecret, paymentIntentId, onSuccess }: {
       <CardHeader>
         <CardTitle>Payment Details</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Complete your $1,500 membership payment to activate your account
+          Complete your $15.00 membership payment to activate your account
         </p>
       </CardHeader>
       <CardContent>
@@ -124,7 +124,7 @@ const SubscribeForm = ({ clientSecret, paymentIntentId, onSuccess }: {
               data-testid="button-complete-payment"
             >
               <CreditCard className="w-5 h-5 mr-2" />
-              {isProcessing ? "Processing Payment..." : "Pay $1,500 & Activate"}
+              {isProcessing ? "Processing Payment..." : "Pay $15.00 & Activate"}
             </Button>
           </form>
         </div>
@@ -218,7 +218,7 @@ export default function OwnerSubscribe() {
     {
       id: "annual",
       name: "Platform Membership",
-      price: 1500,
+      price: 15,
       period: "one-time",
       features: [
         "Unlimited washout locations",

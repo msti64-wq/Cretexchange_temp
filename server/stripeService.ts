@@ -18,7 +18,7 @@
  *    - Creates cardholder accounts linked to wallets
  *    - Issues physical/virtual debit cards
  *    - Cards pull funds from Treasury financial accounts
- *    - Pricing: $0.10 virtual, $3 physical (2-day shipping)
+ *    - Pricing: $0.01 virtual, $0.30 physical (2-day shipping)
  * 
  * Documentation:
  * - Connect: https://stripe.com/docs/connect
@@ -432,7 +432,7 @@ export async function createCardholder(params: {
 
 /**
  * Issue a Debit Card
- * Pricing: Virtual $0.10, Physical $3 (2-day shipping)
+ * Pricing: Virtual $0.01, Physical $0.30 (2-day shipping)
  */
 export async function issueCard(params: {
   connectedAccountId: string;
@@ -484,7 +484,7 @@ export async function issueCard(params: {
       type: params.cardType,
       last4: card.last4,
       cardholderId: params.cardholderId,
-      cost: params.cardType === 'virtual' ? '$0.10' : '$3.00',
+      cost: params.cardType === 'virtual' ? '$0.01' : '$0.30',
     });
 
     return card;
@@ -632,7 +632,7 @@ export async function processWashoutPayment(params: {
   driverConnectedAccountId: string;
   driverFinancialAccountId: string;
   washoutAmount: number; // in cents - amount driver receives
-  platformFee: number; // in cents - $4.00 platform fee
+  platformFee: number; // in cents - $0.40 platform fee
   description: string;
 }): Promise<{
   transfer: Stripe.Treasury.OutboundTransfer;

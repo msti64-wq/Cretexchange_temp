@@ -643,8 +643,8 @@ export default function DriverWallet() {
                 <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
                   <div className="flex items-start space-x-2 text-sm text-blue-800 dark:text-blue-200">
                     <div className="space-y-1">
-                      <p><strong>Virtual Card:</strong> $0.10 • Instant delivery</p>
-                      <p><strong>Physical Card:</strong> $3.00 • 2-day shipping</p>
+                      <p><strong>Virtual Card:</strong> $0.01 • Instant delivery</p>
+                      <p><strong>Physical Card:</strong> $0.30 • 2-day shipping</p>
                     </div>
                   </div>
                 </div>
