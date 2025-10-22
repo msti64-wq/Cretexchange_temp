@@ -37,7 +37,7 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 
 // Enums
 export const userRoleEnum = pgEnum("user_role", ["driver", "owner", "admin", "super_admin"]);
-export const paymentMethodEnum = pgEnum("payment_method", ["ach", "venmo", "zelle"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["check", "venmo", "zelle", "ach", "credit_card"]);
 export const ownerWalletStatusEnum = pgEnum("owner_wallet_status", ["active", "suspended", "pending_verification"]);
 export const paymentFrequencyEnum = pgEnum("payment_frequency", ["weekly", "biweekly", "monthly"]);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "trial", "past_due"]);
@@ -59,7 +59,7 @@ export const billingCadenceEnum = pgEnum("billing_cadence", ["daily"]);
 export const batchStatusEnum = pgEnum("batch_status", ["pending", "processing", "completed", "failed", "cancelled"]);
 export const feeTypeEnum = pgEnum("fee_type", ["location_monthly", "subscription_monthly", "subscription_annual"]);
 export const feeStatusEnum = pgEnum("fee_status", ["pending", "paid", "failed", "past_due", "waived"]);
-export const subscriptionPlanEnum = pgEnum("subscription_plan", ["none", "monthly", "annual"]);
+export const subscriptionPlanEnum = pgEnum("subscription_plan", ["none", "monthly", "annual", "one_time"]);
 export const membershipPaymentMethodEnum = pgEnum("membership_payment_method", ["stripe", "cash", "check", "bank_transfer", "waived", "other"]);
 
 // User storage table - local authentication
@@ -565,10 +565,6 @@ export const insertDriverSchema = createInsertSchema(drivers).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-  // Omit server-managed Column BaaS fields
-  columnEntityId: true,
-  columnBankAccountId: true,
-  columnAccountLast4: true,
 });
 
 export const insertDebitCardRequestSchema = createInsertSchema(debitCardRequests).omit({
@@ -579,8 +575,6 @@ export const insertDebitCardRequestSchema = createInsertSchema(debitCardRequests
   issuedAt: true,
   activatedAt: true,
   cancelledAt: true,
-  // Omit server-managed fields from issuer processor
-  lithicCardId: true,
   cardLast4: true,
   cardStatus: true,
   expirationMonth: true,
@@ -591,9 +585,6 @@ export const insertOwnerSchema = createInsertSchema(owners).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-  // Omit server-managed Column BaaS fields
-  columnAccountId: true,
-  columnEntityId: true,
   walletBalance: true,
   walletStatus: true,
 });
