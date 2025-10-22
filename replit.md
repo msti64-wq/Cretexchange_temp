@@ -7,7 +7,12 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
-- **October 22, 2025**: Synced database schema for production publishing. Fixed enum type mismatches (`payment_method` and `subscription_plan`) by adding legacy values (`check`, `credit_card`, `one_time`) from Column BaaS migration. Removed references to deprecated Column fields in insert schemas. Home screen icons optimized from 1.2MB to 22KB (192x192) and 209KB (512x512).
+- **October 22, 2025**: 
+  - Synced database schema for production publishing
+  - Fixed enum type mismatches (`payment_method` and `subscription_plan`)
+  - Home screen icons optimized from 1.2MB to 22KB (192x192) and 209KB (512x512)
+  - Implemented Stripe Treasury ACH wallet funding (replaced 501 error with working InboundTransfer API)
+  - Fixed 404 wallet funding error - owners can now fund wallets via ACH bank accounts
 
 ## Brand Assets
 - **Primary Logo (Header)**: `attached_assets/cretexchange-logo-2025.png` - Complete circular logo with "CRETEXCHANGE" text curved at top, "X" symbol in center (dark gray and orange), and "STREAMLINING CONCRETE CONNECTIONS" curved at bottom. Used in all headers, navigation, and auth pages.

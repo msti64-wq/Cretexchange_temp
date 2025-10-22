@@ -4051,12 +4051,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // TODO: Implement Stripe Treasury OutboundPayment for ACH debit
-      // This requires verified external bank account via Stripe Treasury
-      console.warn('Wallet funding via Stripe Treasury ACH not yet implemented');
-      return res.status(501).json({ 
-        message: "Wallet funding is temporarily unavailable. Feature in development." 
-      });
+      // Implement Stripe Treasury ACH funding from external bank account
+      let transferResult;
+      try {
+        // Use Stripe Treasury InboundTransfer to pull funds from external bank account
+        // The fundingSource contains the Stripe payment method ID
+        if (!fundingSource.stripePaymentMethodId) {
+          return res.status(400).json({ 
+            message: "Bank account not verified. Please re-add your funding source." 
+          });
+        }
+
+        console.log(`🏦 Initiating Stripe Treasury InboundTransfer: $${fundAmount}`);
+        console.log(`   From payment method: ${fundingSource.stripePaymentMethodId}`);
+        console.log(`   To financial account: ${owner.stripeTreasuryAccountId}`);
+
+        transferResult = await stripeService.fundFinancialAccountACH({
+          financialAccountId: owner.stripeTreasuryAccountId,
+          connectedAccountId: owner.stripeConnectAccountId,
+          paymentMethodId: fundingSource.stripePaymentMethodId,
+          amount: Math.round(fundAmount * 100), // Convert to cents
+          description: `Wallet funding - ${user?.username || owner.id}`
+        });
+
+        console.log(`✅ InboundTransfer created: ${transferResult.id}, status: ${transferResult.status}`);
+
+        // DO NOT record balance changes yet - the transfer is pending and will settle in 1-3 business days
+        // Stripe will send a webhook when the transfer succeeds/fails
+        // For now, we'll just log the initiation - actual balance updates will happen via webhook or manual sync
+        console.log(`⏳ Transfer pending - balance will update when Stripe settles the transfer`);
+        console.log(`   Note: This may take 1-3 business days to complete`);
+
+      } catch (fundingError: any) {
+        console.error('❌ Stripe Treasury funding failed:', fundingError.message);
+        return res.status(500).json({ 
+          message: "Failed to initiate wallet funding: " + fundingError.message 
+        });
+      }
 
       // Sync balance from Stripe Treasury to ensure consistency
       let updatedOwner = owner;
