@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Truck, Building2, Shield, ArrowRight } from "lucide-react";
 import { useState } from "react";
-import logoImage from "@assets/Crete Exchange logo_1760724722599.png";
+import logoImage from "@assets/cretexchange-logo-2025.png";
 
 export default function Landing() {
   const [selectedRole, setSelectedRole] = useState<'driver' | 'owner' | null>(null);

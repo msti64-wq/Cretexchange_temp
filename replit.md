@@ -10,9 +10,9 @@ Preferred communication style: Simple, everyday language.
 - **October 22, 2025**: Synced database schema for production publishing. Fixed enum type mismatches (`payment_method` and `subscription_plan`) by adding legacy values (`check`, `credit_card`, `one_time`) from Column BaaS migration. Removed references to deprecated Column fields in insert schemas. Home screen icons optimized from 1.2MB to 22KB (192x192) and 209KB (512x512).
 
 ## Brand Assets
-- **Primary Logo (Header)**: `attached_assets/Crete Exchange logo_1760724722599.png` - Complete circular logo with "CRETEXCHANGE" text curved at top, "X" symbol in center (dark gray and orange), and "STREAMLINING CONCRETE CONNECTIONS" curved at bottom
+- **Primary Logo (Header)**: `attached_assets/cretexchange-logo-2025.png` - Complete circular logo with "CRETEXCHANGE" text curved at top, "X" symbol in center (dark gray and orange), and "STREAMLINING CONCRETE CONNECTIONS" curved at bottom. Used in all headers, navigation, and auth pages.
 - **Icon Logo**: `attached_assets/CreteXchange home page logo_1760724636083.png` - Circular logo with just "X" design (dark gray and orange)
-- **Original Logo**: `attached_assets/cretexchange logo_1760644229633.png` - Original full logo (deprecated)
+- **Legacy Logos**: Previous versions archived in attached_assets folder
 - **Brand Colors**: Orange accent `hsl(33, 100%, 50%)`, Primary blue `hsl(210, 90%, 48%)`, Secondary teal `hsl(174, 60%, 51%)`
 - **Typography**: "X" in CreteXchange is styled in orange to match logo branding
 

@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft, Building2, User, Truck } from "lucide-react";
-import logoImage from "@assets/Crete Exchange logo_1760724722599.png";
+import logoImage from "@assets/cretexchange-logo-2025.png";
 import { InstallPrompt } from "@/components/InstallPrompt";
 
 export default function Register({ preselectedRole }: { preselectedRole?: 'driver' | 'owner' }) {

@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import logoImage from "@assets/Crete Exchange logo_1760724722599.png";
+import logoImage from "@assets/cretexchange-logo-2025.png";
 
 export default function ResetPassword() {
   const { toast } = useToast();
