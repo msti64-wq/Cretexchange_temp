@@ -11,7 +11,7 @@ Preferred communication style: Simple, everyday language.
 
 ## Brand Assets
 - **Primary Logo (Header)**: `attached_assets/cretexchange-logo-2025.png` - Complete circular logo with "CRETEXCHANGE" text curved at top, "X" symbol in center (dark gray and orange), and "STREAMLINING CONCRETE CONNECTIONS" curved at bottom. Used in all headers, navigation, and auth pages.
-- **Icon Logo**: `attached_assets/CreteXchange home page logo_1760724636083.png` - Circular logo with just "X" design (dark gray and orange)
+- **Icon Logo (Mobile Home Screen)**: `attached_assets/ChatGPT Image Oct 20, 2025, 01_22_46 AM_1761154981052.png` - Circular X logo with white background (dark gray and orange X design). Optimized for PWA icons at 192x192 and 512x512.
 - **Legacy Logos**: Previous versions archived in attached_assets folder
 - **Brand Colors**: Orange accent `hsl(33, 100%, 50%)`, Primary blue `hsl(210, 90%, 48%)`, Secondary teal `hsl(174, 60%, 51%)`
 - **Typography**: "X" in CreteXchange is styled in orange to match logo branding
