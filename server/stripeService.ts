@@ -41,10 +41,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 // ============================================================================
 
 export interface CreateConnectedAccountParams {
+  username: string; // PRIMARY IDENTIFIER - Stripe accounts are based on username, NOT email
   email: string;
-  username: string; // Unique username for account identification
   type: 'custom'; // Using custom for full control
-  userId?: string; // User ID for metadata tracking (prevents duplicates)
+  userId: string; // REQUIRED - User ID for metadata tracking (prevents duplicates)
   capabilities?: string[]; // e.g., ['card_payments', 'transfers', 'treasury']
   businessType?: 'individual' | 'company';
   individual?: {
@@ -82,13 +82,37 @@ export interface CreateConnectedAccountParams {
 /**
  * Create a Stripe Connected Account
  * This is required for all drivers and owners to receive payments
+ * 
+ * IMPORTANT: 
+ * - Accounts are based on USERNAME (not email)
+ * - ALWAYS check for duplicates before calling this function
+ * - userId is REQUIRED for duplicate prevention
  */
 export async function createConnectedAccount(params: CreateConnectedAccountParams): Promise<Stripe.Account> {
   try {
+    // DUPLICATE CHECK: Verify no existing account for this user
+    console.log('🔍 Checking for duplicate Stripe account:', {
+      userId: params.userId,
+      username: params.username,
+    });
+
+    const existingAccount = await findConnectedAccountByUserId(params.userId);
+    if (existingAccount) {
+      console.log('✅ Account already exists for user - returning existing account:', {
+        userId: params.userId,
+        username: params.username,
+        existingAccountId: existingAccount.id,
+      });
+      // Return existing account instead of throwing error (graceful handling)
+      return existingAccount;
+    }
+
+    console.log('✅ No duplicate found, creating new account...');
+
     const accountParams: Stripe.AccountCreateParams = {
       type: params.type,
       country: 'US', // Required for custom accounts
-      email: params.email, // Email for notifications
+      email: params.email, // Email for notifications only
       capabilities: {
         transfers: { requested: true }, // Enable payouts
       },
@@ -96,15 +120,13 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
       business_profile: {
         url: 'https://cretexchange.com', // Platform URL
         support_email: params.email, // Support email required for custom accounts
-        name: params.username, // Use username as display name in Stripe dashboard
+        name: params.username, // USERNAME as primary identifier in Stripe dashboard
       },
-      metadata: params.userId ? {
-        user_id: params.userId, // Track user ID to prevent duplicates
-        username: params.username, // Track username for easy identification
+      metadata: {
+        user_id: params.userId, // REQUIRED - Track user ID to prevent duplicates
+        username: params.username, // USERNAME - Primary identifier (not email)
         platform: 'cretexchange',
-      } : {
-        username: params.username, // Track username even without userId
-        platform: 'cretexchange',
+        created_at: new Date().toISOString(),
       },
     };
 
@@ -134,16 +156,18 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
 
     const account = await stripe.accounts.create(accountParams);
     
-    console.log('✅ Created Stripe Connected Account:', {
+    console.log('✅ Created Stripe Connected Account (username-based):', {
       accountId: account.id,
-      email: params.email,
+      username: params.username, // USERNAME is primary identifier
+      userId: params.userId,
+      email: params.email, // Email is secondary
       type: params.businessType,
     });
 
     return account;
   } catch (error: any) {
     console.error('❌ Error creating Stripe Connected Account:', error.message);
-    throw new Error(`Failed to create connected account: ${error.message}`);
+    throw error; // Throw original error to preserve duplicate detection
   }
 }
 
@@ -156,22 +180,57 @@ export async function getConnectedAccount(accountId: string): Promise<Stripe.Acc
 
 /**
  * Find Connected Account by user ID in metadata
- * Returns the first matching account or null if none found
+ * Returns the first matching account or throws error if lookup fails
+ * 
+ * CRITICAL: Paginates through ALL accounts to ensure reliable duplicate detection
  */
 export async function findConnectedAccountByUserId(userId: string): Promise<Stripe.Account | null> {
   try {
-    // List all accounts and filter by metadata
-    // Note: Stripe doesn't support metadata filtering in API, so we fetch and filter locally
-    const accounts = await stripe.accounts.list({ limit: 100 });
+    console.log('🔍 Searching for Stripe account with user_id:', userId);
     
-    const matchingAccount = accounts.data.find(
-      (account) => account.metadata?.user_id === userId
-    );
+    let allAccounts: Stripe.Account[] = [];
+    let hasMore = true;
+    let startingAfter: string | undefined = undefined;
+    
+    // PAGINATE through ALL accounts (not just first 100)
+    // SHORT-CIRCUIT: Stop once we find a match to reduce API calls
+    let matchingAccount: Stripe.Account | undefined = undefined;
+    
+    while (hasMore && !matchingAccount) {
+      const response: Stripe.ApiList<Stripe.Account> = await stripe.accounts.list({
+        limit: 100,
+        ...(startingAfter ? { starting_after: startingAfter } : {}),
+      });
+      
+      // Check current page for match
+      matchingAccount = response.data.find(
+        (account) => account.metadata?.user_id === userId
+      );
+      
+      if (matchingAccount) {
+        console.log(`✅ Found match on page (short-circuit), total accounts checked: ${allAccounts.length + response.data.length}`);
+        break; // SHORT-CIRCUIT: Stop pagination once we find a match
+      }
+      
+      allAccounts = allAccounts.concat(response.data);
+      hasMore = response.has_more;
+      
+      if (hasMore && response.data.length > 0) {
+        startingAfter = response.data[response.data.length - 1].id;
+      }
+      
+      console.log(`📄 Fetched ${response.data.length} accounts, total so far: ${allAccounts.length}, has more: ${hasMore}`);
+    }
+    
+    if (!matchingAccount) {
+      console.log('✅ No existing account found for user_id:', userId);
+    }
     
     return matchingAccount || null;
   } catch (error: any) {
-    console.error('Error finding connected account by user ID:', error.message);
-    return null;
+    // CRITICAL: Surface API errors instead of swallowing them
+    console.error('❌ Error finding connected account by user ID:', error.message);
+    throw new Error(`Failed to check for duplicate Stripe account: ${error.message}`);
   }
 }
 
@@ -263,13 +322,21 @@ export async function getFinancialAccountBalance(
 
 /**
  * Fund a Financial Account via ACH (from external bank account)
+ * 
+ * TRANSACTION LABELING: Uses description + metadata for proper categorization
  */
 export async function fundFinancialAccountACH(params: {
   financialAccountId: string;
   connectedAccountId: string;
   paymentMethodId: string; // Stripe Payment Method (external bank account)
   amount: number; // in cents
-  description: string;
+  description: string; // e.g., "Wallet funding - ACH transfer", "Auto top-up"
+  metadata?: {
+    transaction_type?: 'wallet_funding' | 'auto_topup' | 'manual_deposit';
+    user_id?: string;
+    username?: string;
+    [key: string]: any;
+  };
 }): Promise<Stripe.Treasury.InboundTransfer> {
   try {
     const inboundTransfer = await stripe.treasury.inboundTransfers.create(
@@ -278,16 +345,19 @@ export async function fundFinancialAccountACH(params: {
         amount: params.amount,
         currency: 'usd',
         origin_payment_method: params.paymentMethodId,
-        description: params.description,
+        description: params.description, // Clear transaction label
+        statement_descriptor: 'CRETEXCHANGE', // Shows on bank statement
       },
       {
         stripeAccount: params.connectedAccountId,
       }
     );
 
-    console.log('✅ Created ACH Inbound Transfer:', {
+    console.log('✅ Created ACH Inbound Transfer (labeled):', {
       transferId: inboundTransfer.id,
       amount: params.amount / 100,
+      description: params.description,
+      transactionType: params.metadata?.transaction_type || 'wallet_funding',
       status: inboundTransfer.status,
     });
 
@@ -337,13 +407,24 @@ export async function payoutFromFinancialAccount(params: {
 
 /**
  * Internal transfer between Financial Accounts (book transfer for washout payments)
+ * 
+ * TRANSACTION LABELING: Uses description + metadata for proper categorization
+ * DUPLICATE PREVENTION: Caller should verify source account has sufficient balance
  */
 export async function transferBetweenFinancialAccounts(params: {
   sourceFinancialAccountId: string;
   sourceConnectedAccountId: string;
   destinationFinancialAccountId: string;
   amount: number; // in cents
-  description: string;
+  description: string; // e.g., "Washout payment", "Monthly location fee"
+  metadata?: {
+    transaction_type?: 'washout_payment' | 'monthly_fee' | 'platform_fee' | 'refund';
+    source_user_id?: string;
+    source_username?: string;
+    destination_user_id?: string;
+    destination_username?: string;
+    [key: string]: any;
+  };
 }): Promise<Stripe.Treasury.OutboundTransfer> {
   try {
     const outboundTransfer = await stripe.treasury.outboundTransfers.create(
@@ -352,16 +433,19 @@ export async function transferBetweenFinancialAccounts(params: {
         destination_payment_method: params.destinationFinancialAccountId,
         amount: params.amount,
         currency: 'usd',
-        description: params.description,
+        description: params.description, // Clear transaction label
+        statement_descriptor: 'CRETEXCHANGE', // Shows on statements
       },
       {
         stripeAccount: params.sourceConnectedAccountId,
       }
     );
 
-    console.log('✅ Created Internal Transfer:', {
+    console.log('✅ Created Internal Transfer (labeled):', {
       transferId: outboundTransfer.id,
       amount: params.amount / 100,
+      description: params.description,
+      transactionType: params.metadata?.transaction_type || 'internal_transfer',
       status: outboundTransfer.status,
     });
 
@@ -625,55 +709,191 @@ export async function listPaymentMethods(
 /**
  * Process a washout payment from owner to driver
  * This uses Stripe Connect transfers between financial accounts
+ * 
+ * TRANSACTION LABELING: "Washout payment" + metadata for clear categorization
+ * DUPLICATE PREVENTION: Caller should verify owner has sufficient balance
  */
 export async function processWashoutPayment(params: {
   ownerConnectedAccountId: string;
   ownerFinancialAccountId: string;
+  ownerUsername: string;
   driverConnectedAccountId: string;
   driverFinancialAccountId: string;
+  driverUsername: string;
   washoutAmount: number; // in cents - amount driver receives
   platformFee: number; // in cents - $0.40 platform fee
-  description: string;
+  activityId?: string; // Link to specific washout activity
+  locationId?: string; // Link to specific location
 }): Promise<{
   transfer: Stripe.Treasury.OutboundTransfer;
   platformFeeTransfer: Stripe.Treasury.OutboundTransfer;
 }> {
   try {
-    // 1. Transfer washout payment from owner to driver
+    // 1. Transfer washout payment from owner to driver with CLEAR LABELING
     const transfer = await transferBetweenFinancialAccounts({
       sourceFinancialAccountId: params.ownerFinancialAccountId,
       sourceConnectedAccountId: params.ownerConnectedAccountId,
       destinationFinancialAccountId: params.driverFinancialAccountId,
       amount: params.washoutAmount,
-      description: params.description,
+      description: `Washout payment - ${params.driverUsername}`, // Clear label
+      metadata: {
+        transaction_type: 'washout_payment',
+        source_username: params.ownerUsername,
+        destination_username: params.driverUsername,
+        activity_id: params.activityId,
+        location_id: params.locationId,
+        amount_type: 'driver_payment',
+      },
     });
 
-    // 2. Collect platform fee from owner to platform account
-    // Note: Platform fees are typically collected via application_fee on charges
-    // or via separate transfers. For Treasury-to-Treasury transfers, we use a separate outbound transfer
+    // 2. Collect platform fee from owner with CLEAR LABELING
     const platformFeeTransfer = await stripe.treasury.outboundTransfers.create(
       {
         financial_account: params.ownerFinancialAccountId,
-        destination_payment_method: 'platform', // This would be the platform's receiving method
+        destination_payment_method: 'platform', // Platform's receiving method
         amount: params.platformFee,
         currency: 'usd',
-        description: `Platform fee - ${params.description}`,
+        description: `Platform fee - Washout by ${params.driverUsername}`, // Clear label
+        statement_descriptor: 'CRETEX FEE', // Shows on statements
       },
       {
         stripeAccount: params.ownerConnectedAccountId,
       }
     );
 
-    console.log('✅ Processed Washout Payment:', {
+    console.log('✅ Processed Washout Payment (labeled):', {
       washoutAmount: params.washoutAmount / 100,
       platformFee: params.platformFee / 100,
       totalDeducted: (params.washoutAmount + params.platformFee) / 100,
+      owner: params.ownerUsername,
+      driver: params.driverUsername,
+      activityId: params.activityId,
     });
 
     return { transfer, platformFeeTransfer };
   } catch (error: any) {
     console.error('❌ Error processing washout payment:', error.message);
     throw new Error(`Failed to process payment: ${error.message}`);
+  }
+}
+
+// ============================================================================
+// HELPER FUNCTIONS - Common Transaction Types with Proper Labeling
+// ============================================================================
+
+/**
+ * Create a membership fee payment intent with proper labeling
+ * Used for $15.00 one-time platform membership fee
+ */
+export async function createMembershipPaymentIntent(params: {
+  amount: number; // in cents (1500 = $15.00)
+  customerEmail: string;
+  userId: string;
+  username: string;
+  metadata?: Record<string, string>;
+}): Promise<Stripe.PaymentIntent> {
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: params.amount,
+      currency: 'usd',
+      receipt_email: params.customerEmail,
+      description: `Membership fee - ${params.username}`, // Clear label
+      statement_descriptor: 'CRETEX MEMBER', // Shows on card statement
+      metadata: {
+        transaction_type: 'membership_fee',
+        user_id: params.userId,
+        username: params.username,
+        platform: 'cretexchange',
+        ...params.metadata,
+      },
+    });
+
+    console.log('✅ Created Membership Payment Intent (labeled):', {
+      paymentIntentId: paymentIntent.id,
+      amount: params.amount / 100,
+      username: params.username,
+      description: 'Membership fee',
+    });
+
+    return paymentIntent;
+  } catch (error: any) {
+    console.error('❌ Error creating membership payment intent:', error.message);
+    throw new Error(`Failed to create membership payment: ${error.message}`);
+  }
+}
+
+/**
+ * Charge monthly location fee with proper labeling
+ * Used for $1.00/month recurring location fee
+ */
+export async function chargeMonthlyLocationFee(params: {
+  amount: number; // in cents (100 = $1.00)
+  customerId: string;
+  paymentMethodId: string;
+  userId: string;
+  username: string;
+  locationId: string;
+  locationName: string;
+  metadata?: Record<string, string>;
+}): Promise<Stripe.PaymentIntent> {
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: params.amount,
+      currency: 'usd',
+      customer: params.customerId,
+      payment_method: params.paymentMethodId,
+      confirm: true,
+      off_session: true, // Charge without customer present
+      description: `Monthly location fee - ${params.locationName}`, // Clear label
+      statement_descriptor: 'CRETEX LOT FEE', // Shows on card statement
+      metadata: {
+        transaction_type: 'monthly_location_fee',
+        user_id: params.userId,
+        username: params.username,
+        location_id: params.locationId,
+        location_name: params.locationName,
+        platform: 'cretexchange',
+        ...params.metadata,
+      },
+    });
+
+    console.log('✅ Charged Monthly Location Fee (labeled):', {
+      paymentIntentId: paymentIntent.id,
+      amount: params.amount / 100,
+      username: params.username,
+      location: params.locationName,
+      description: 'Monthly location fee',
+    });
+
+    return paymentIntent;
+  } catch (error: any) {
+    console.error('❌ Error charging monthly location fee:', error.message);
+    throw new Error(`Failed to charge monthly fee: ${error.message}`);
+  }
+}
+
+/**
+ * Verify user has Stripe account before money operations
+ * Returns existing account or null
+ */
+export async function verifyUserStripeAccount(userId: string): Promise<Stripe.Account | null> {
+  try {
+    const account = await findConnectedAccountByUserId(userId);
+    if (!account) {
+      console.log('⚠️  No Stripe account found for user:', userId);
+      return null;
+    }
+    
+    console.log('✅ Verified Stripe account exists:', {
+      userId,
+      accountId: account.id,
+      username: account.metadata?.username,
+    });
+    
+    return account;
+  } catch (error: any) {
+    console.error('Error verifying Stripe account:', error.message);
+    return null;
   }
 }
 

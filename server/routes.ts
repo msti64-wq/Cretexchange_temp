@@ -1618,20 +1618,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         console.log(`📝 Fee ledger entry created: ${feeRecord.id}`);
 
-        // 2. Create Stripe Payment Intent to charge the saved payment method
-        const paymentIntent = await stripe.paymentIntents.create({
+        // 2. Charge monthly fee with PROPER LABELING
+        const paymentIntent = await stripeService.chargeMonthlyLocationFee({
           amount: monthlyFeeCents,
-          currency: 'usd',
-          customer: owner.stripeCustomerId,
-          payment_method: owner.stripePaymentMethodId,
-          off_session: true,
-          confirm: true,
-          description: `Monthly location fee - ${location.name}`,
+          customerId: owner.stripeCustomerId!,
+          paymentMethodId: owner.stripePaymentMethodId!,
+          userId: userId,
+          username: user.username, // USERNAME-based identification
+          locationId: location.id,
+          locationName: location.name,
           metadata: {
-            ownerId: owner.id,
-            locationId: location.id,
             feeRecordId: feeRecord.id,
-            feeType: 'location_monthly',
             periodStart,
             periodEnd,
           },
@@ -2403,6 +2400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`🔧 Migrating driver ${driver.id} - creating missing Stripe Connect account...`);
             const connectAccount = await stripeService.createConnectedAccount({
               type: 'custom',
+              userId: userId, // REQUIRED - prevents duplicates
               username: user.username,
               email: user.email,
               businessType: 'individual',
@@ -2457,6 +2455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`🔵 Creating Stripe Connect account for driver ${driver.id}...`);
           const connectAccount = await stripeService.createConnectedAccount({
             type: 'custom',
+            userId: userId, // REQUIRED - prevents duplicates
             username: user.username,
             email: user.email,
             businessType: 'individual',
@@ -2606,6 +2605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const connectAccount = await stripeService.createConnectedAccount({
             type: 'custom',
+            userId: userId, // REQUIRED - prevents duplicates
             username: user.username,
             email: user.email,
             businessType: 'individual',
@@ -2801,28 +2801,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Membership already activated" });
       }
 
-      if (!stripe) {
-        return res.status(500).json({ message: "Payment processing is not configured" });
-      }
-
       const membershipFee = 1500; // $15.00 in cents
       
-      // Create payment intent with metadata
-      const paymentIntent = await stripe.paymentIntents.create({
+      // Create payment intent with PROPER LABELING
+      const paymentIntent = await stripeService.createMembershipPaymentIntent({
         amount: membershipFee,
-        currency: "usd",
-        receipt_email: user.email, // Use the current user's email for receipts
+        customerEmail: user.email,
+        userId: userId,
+        username: user.username, // USERNAME-based identification
         metadata: {
-          userId: userId,
-          username: user.username, // Include username for identification
           ownerId: owner.id,
-          type: 'membership_fee',
           plan: 'annual'
-        },
-        description: `CreteXchange Platform Membership - ${user.username} (${user.email})`
+        }
       });
 
-      console.log(`💳 Created Stripe payment intent for membership: ${paymentIntent.id} - $15.00`);
+      console.log(`💳 Created membership payment intent (labeled): ${paymentIntent.id} - $15.00`);
 
       res.json({ 
         clientSecret: paymentIntent.client_secret,
@@ -2901,6 +2894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Create new Stripe Connect Account
           connectedAccount = await stripeService.createConnectedAccount({
             type: 'custom',
+            userId: userId, // REQUIRED - prevents duplicates
             username: user.username,
             email: user.email,
             businessType: 'individual',
@@ -3498,6 +3492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           connectedAccount = await stripeService.createConnectedAccount({
             type: 'custom',
+            userId: userId, // REQUIRED - prevents duplicates
             username: user.username,
             email: user.email,
             businessType: 'individual',
