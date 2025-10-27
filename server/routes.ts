@@ -4442,6 +4442,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // System Settings endpoints (super admin only)
+  app.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const settings = await storage.getSystemSettings();
+      res.json(settings);
+    } catch (error: any) {
+      console.error("Error fetching system settings:", error);
+      res.status(500).json({ message: "Failed to fetch system settings: " + error.message });
+    }
+  });
+
+  app.put('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const settings = await storage.updateSystemSettings(req.body, req.user.id);
+      
+      console.log('✅ System settings updated by', user.username, ':', settings);
+      
+      res.json(settings);
+    } catch (error: any) {
+      console.error("Error updating system settings:", error);
+      res.status(500).json({ message: "Failed to update system settings: " + error.message });
+    }
+  });
+
   app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
