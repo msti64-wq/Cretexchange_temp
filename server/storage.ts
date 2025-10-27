@@ -21,6 +21,7 @@ import {
   feesLedger,
   featureFlags,
   featureFlagOverrides,
+  systemSettings,
   type User,
   type UpsertUser,
   type Driver,
@@ -62,6 +63,8 @@ import {
   type UpdateServicePaymentAccount,
   type InsertBillingBatch,
   type InsertFeeLedger,
+  type SystemSettings,
+  type UpdateSystemSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
@@ -286,6 +289,10 @@ export interface IStorage {
   getFeatureFlagOverride(flagKey: string, userId: string): Promise<any | undefined>;
   setFeatureFlagOverride(flagKey: string, userId: string, enabled: boolean): Promise<any>;
   checkFeatureFlag(flagKey: string, userId: string, userRole: string): Promise<boolean>;
+
+  // System settings operations
+  getSystemSettings(): Promise<SystemSettings>;
+  updateSystemSettings(settings: UpdateSystemSettings, updatedBy: string): Promise<SystemSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4012,6 +4019,42 @@ export class DatabaseStorage implements IStorage {
 
     // Fall back to global flag setting
     return flag.enabled;
+  }
+
+  // System settings operations
+  async getSystemSettings(): Promise<SystemSettings> {
+    const [settings] = await db.select().from(systemSettings).limit(1);
+    
+    // If no settings exist, create default settings
+    if (!settings) {
+      const [newSettings] = await db
+        .insert(systemSettings)
+        .values({
+          automaticTaxEnabled: false,
+        })
+        .returning();
+      return newSettings;
+    }
+    
+    return settings;
+  }
+
+  async updateSystemSettings(settingsUpdate: UpdateSystemSettings, updatedBy: string): Promise<SystemSettings> {
+    // Get or create settings first
+    const currentSettings = await this.getSystemSettings();
+    
+    // Update the settings
+    const [updated] = await db
+      .update(systemSettings)
+      .set({
+        ...settingsUpdate,
+        updatedAt: new Date(),
+        updatedBy,
+      })
+      .where(eq(systemSettings.id, currentSettings.id))
+      .returning();
+    
+    return updated;
   }
 }
 
