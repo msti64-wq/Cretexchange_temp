@@ -9,6 +9,14 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **October 27, 2025**:
+  - Added Stripe Automatic Tax feature flag infrastructure (super admin only)
+  - Created systemSettings table with automaticTaxEnabled field for global configuration
+  - Implemented admin settings page (/settings) with tax toggle UI and implementation guidance
+  - Added comprehensive documentation about Stripe Tax Calculation API integration requirements
+  - Settings page includes alerts about tax registration requirements and implementation status
+  - Feature is foundation-ready: toggle works, but full Tax Calculation API integration pending
+  
 - **October 24, 2025**:
   - Implemented comprehensive Stripe transaction labeling for all payment operations (membership fees, monthly location fees, washout payments, platform fees)
   - Changed Stripe account creation to use username-based identification instead of email addresses
