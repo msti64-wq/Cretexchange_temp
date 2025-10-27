@@ -874,6 +874,23 @@ export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
 export type FeatureFlagOverride = typeof featureFlagOverrides.$inferSelect;
 export type InsertFeatureFlagOverride = z.infer<typeof insertFeatureFlagOverrideSchema>;
 
+// System Settings - Global configuration that can be changed at runtime
+export const systemSettings = pgTable("system_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // Stripe Automatic Tax - enables/disables automatic tax calculation on all payments
+  automaticTaxEnabled: boolean("automatic_tax_enabled").default(false).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by").references(() => users.id), // Track who made the change
+});
+
+// System settings schemas
+export const updateSystemSettingsSchema = z.object({
+  automaticTaxEnabled: z.boolean().optional(),
+});
+
+export type SystemSettings = typeof systemSettings.$inferSelect;
+export type UpdateSystemSettings = z.infer<typeof updateSystemSettingsSchema>;
+
 // Date range validation schema
 export const dateRangeSchema = z.enum(['today', 'yesterday', '7days', '30days', '90days', 'all']).default('today');
 
