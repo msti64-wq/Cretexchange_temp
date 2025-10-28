@@ -72,7 +72,7 @@ export default function ServiceAccountsPage() {
             Access denied. This page is only available to super administrators.
           </AlertDescription>
         </Alert>
-        <MobileNav role={user?.role || "admin"} />
+        <MobileNav role={user?.role} />
       </div>
     );
   }
@@ -272,7 +272,7 @@ export default function ServiceAccountsPage() {
             <p className="text-muted-foreground">Loading service accounts...</p>
           </div>
         </div>
-        <MobileNav role={user?.role || "admin"} />
+        <MobileNav role={user?.role} />
       </div>
     );
   }
@@ -286,7 +286,7 @@ export default function ServiceAccountsPage() {
             Failed to load service accounts. Please try again later.
           </AlertDescription>
         </Alert>
-        <MobileNav role={user?.role || "admin"} />
+        <MobileNav role={user?.role} />
       </div>
     );
   }
@@ -907,7 +907,7 @@ export default function ServiceAccountsPage() {
         </DialogContent>
       </Dialog>
 
-      <MobileNav role={user?.role || "admin"} />
+      <MobileNav role={user?.role} />
     </div>
   );
 }
