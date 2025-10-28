@@ -127,7 +127,14 @@ export default function AdminFeatureFlags() {
       return;
     }
 
-    const user = (users as any[])?.find((u: any) => u.email === userEmail);
+    // Flatten users from {drivers, owners, admins} structure
+    const allUsers = [
+      ...((users as any)?.drivers?.map((d: any) => d.users) || []),
+      ...((users as any)?.owners?.map((o: any) => o.users) || []),
+      ...((users as any)?.admins || []),
+    ];
+    
+    const user = allUsers.find((u: any) => u.email === userEmail);
     if (!user) {
       toast({
         title: "User Not Found",
@@ -345,7 +352,11 @@ export default function AdminFeatureFlags() {
                                   <SelectValue placeholder="Choose a user" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {(users as any[])?.map((user: any) => (
+                                  {[
+                                    ...((users as any)?.drivers?.map((d: any) => d.users) || []),
+                                    ...((users as any)?.owners?.map((o: any) => o.users) || []),
+                                    ...((users as any)?.admins || []),
+                                  ].map((user: any) => (
                                     <SelectItem key={user.id} value={user.email}>
                                       {user.email} ({user.role})
                                     </SelectItem>
