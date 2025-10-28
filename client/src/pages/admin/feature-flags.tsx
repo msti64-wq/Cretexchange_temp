@@ -117,6 +117,29 @@ export default function AdminFeatureFlags() {
     },
   });
 
+  const seedFlagsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/feature-flags/seed', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/feature-flags'] });
+      toast({
+        title: "Feature Flags Seeded",
+        description: "All predefined feature flags have been initialized successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Seeding Failed",
+        description: error.message || "Failed to seed feature flags",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddOverride = () => {
     if (!selectedFlag || !userEmail) {
       toast({
@@ -242,9 +265,26 @@ export default function AdminFeatureFlags() {
             {flags.length === 0 ? (
               <div className="text-center py-12">
                 <Flag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No feature flags configured</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Feature flags will appear here once they're added to the system
+                <p className="text-muted-foreground mb-4">No feature flags configured</p>
+                <Button
+                  onClick={() => seedFlagsMutation.mutate()}
+                  disabled={seedFlagsMutation.isPending}
+                  data-testid="button-seed-flags"
+                >
+                  {seedFlagsMutation.isPending ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Seeding Flags...
+                    </>
+                  ) : (
+                    <>
+                      <Flag className="w-4 h-4 mr-2" />
+                      Seed Feature Flags
+                    </>
+                  )}
+                </Button>
+                <p className="text-sm text-muted-foreground mt-3">
+                  This will initialize all predefined feature flags for the platform
                 </p>
               </div>
             ) : (

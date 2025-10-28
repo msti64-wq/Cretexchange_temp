@@ -7761,6 +7761,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Seed predefined feature flags (super admin only)
+  app.post("/api/feature-flags/seed", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required' });
+      }
+
+      // Import feature flag definitions
+      const { FEATURE_FLAG_DEFINITIONS } = await import('../shared/featureFlags');
+      
+      const seededFlags = [];
+      for (const definition of FEATURE_FLAG_DEFINITIONS) {
+        try {
+          const flag = await storage.createFeatureFlag({
+            flagKey: definition.key,
+            description: definition.description,
+            enabled: definition.enabled,
+            allowedRoles: definition.allowedRoles || [],
+          });
+          seededFlags.push(flag);
+        } catch (error: any) {
+          // If flag already exists, skip it
+          if (error.message && error.message.includes('duplicate')) {
+            console.log(`⏭️  Flag ${definition.key} already exists, skipping`);
+          } else {
+            throw error;
+          }
+        }
+      }
+      
+      res.json({ 
+        message: 'Feature flags seeded successfully',
+        seededCount: seededFlags.length,
+        flags: seededFlags
+      });
+    } catch (error) {
+      console.error('❌ Error seeding feature flags:', error);
+      res.status(500).json({ message: 'Failed to seed feature flags' });
+    }
+  });
+
   // Create a new feature flag (admin only)
   app.post("/api/feature-flags", isAuthenticated, async (req: any, res) => {
     try {
