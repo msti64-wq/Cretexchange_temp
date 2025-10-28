@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag, Settings } from "lucide-react";
+import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -492,30 +492,17 @@ export default function AdminDashboard() {
             </div>
           </Button>
 
-          <Button 
-            variant="outline" 
-            className="h-20 flex-col space-y-2"
-            onClick={() => window.location.href = '/feature-flags'}
-            data-testid="button-feature-flags"
-          >
-            <Flag className="w-6 h-6 text-green-600" />
-            <div className="text-center">
-              <div className="font-medium">Feature Flags</div>
-              <div className="text-xs text-muted-foreground">Control Rollouts</div>
-            </div>
-          </Button>
-
           {user?.role === 'super_admin' && (
             <Button 
               variant="outline" 
               className="h-20 flex-col space-y-2"
-              onClick={() => window.location.href = '/settings'}
-              data-testid="button-settings"
+              onClick={() => window.location.href = '/feature-flags'}
+              data-testid="button-feature-flags"
             >
-              <Settings className="w-6 h-6 text-orange-600" />
+              <Flag className="w-6 h-6 text-green-600" />
               <div className="text-center">
-                <div className="font-medium">Settings</div>
-                <div className="text-xs text-muted-foreground">System Config</div>
+                <div className="font-medium">Feature Flags</div>
+                <div className="text-xs text-muted-foreground">Control Features</div>
               </div>
             </Button>
           )}
