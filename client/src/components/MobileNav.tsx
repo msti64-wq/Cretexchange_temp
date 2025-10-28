@@ -71,8 +71,8 @@ export function MobileNav({ role }: MobileNavProps) {
   const navItems = getNavItems();
 
   return (
-    <nav className="mobile-nav fixed bottom-0 left-0 right-0 px-4 py-2 z-50">
-      <div className="flex justify-around">
+    <nav className="mobile-nav fixed bottom-0 left-0 right-0 px-2 py-2 z-50 overflow-x-auto">
+      <div className="flex gap-1 min-w-max">
         {navItems.map((item) => {
           const isActive = location === item.path;
           const Icon = item.icon;
@@ -82,7 +82,7 @@ export function MobileNav({ role }: MobileNavProps) {
               key={item.path}
               onClick={() => setLocation(item.path)}
               className={cn(
-                "nav-item flex flex-col items-center py-2 relative",
+                "nav-item flex flex-col items-center py-2 relative px-3 min-w-[70px]",
                 isActive ? "active" : "text-muted-foreground"
               )}
               data-testid={`nav-${item.label.toLowerCase()}`}
