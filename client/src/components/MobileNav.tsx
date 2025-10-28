@@ -24,7 +24,7 @@ export function MobileNav({ role }: MobileNavProps) {
 
   const unreadCount = (unreadData as any)?.count || 0;
 
-  const getNavItems = () => {
+  const getNavItems = (): Array<{ path: string; icon: any; label: string }> => {
     switch (userRole) {
       case "driver":
         return [
