@@ -9,13 +9,14 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
-- **October 27, 2025**:
-  - Added Stripe Automatic Tax feature flag infrastructure (super admin only)
-  - Created systemSettings table with automaticTaxEnabled field for global configuration
-  - Implemented admin settings page (/settings) with tax toggle UI and implementation guidance
-  - Added comprehensive documentation about Stripe Tax Calculation API integration requirements
-  - Settings page includes alerts about tax registration requirements and implementation status
-  - Feature is foundation-ready: toggle works, but full Tax Calculation API integration pending
+- **October 28, 2025**:
+  - Consolidated all platform toggles into Feature Flags system (single management interface)
+  - Added `automatic_tax` and `rubble_service` feature flags to codebase and database
+  - Added Feature Flags page (/feature-flags) to super admin navigation - now accessible in production
+  - Removed separate Settings page - all configuration now managed via Feature Flags
+  - Fixed missing navigation links - Feature Flags page now appears in bottom nav for super admins
+  - Automatic Tax flag includes comprehensive documentation about Stripe Tax API requirements
+  - Seeded initial feature flags into development database
   
 - **October 24, 2025**:
   - Implemented comprehensive Stripe transaction labeling for all payment operations (membership fees, monthly location fees, washout payments, platform fees)
@@ -64,6 +65,7 @@ Preferred communication style: Simple, everyday language.
 -   **Wallet System**: Stripe Treasury integration for wallet management, including balance tracking, ACH transfers for funding, auto top-up, and low balance alerts.
 -   **Internal Transfers**: Instant Stripe Treasury transfers for washout payments between owner and driver wallets.
 -   **Debit Card Integration**: Stripe Issuing-powered debit cards for instant fund access. Drivers can request virtual ($0.01 - testing amount) or physical ($0.30 - testing amount) debit cards linked to their Stripe Treasury wallets.
+-   **Feature Flags**: Centralized system for managing platform features and configurations. Super admins can toggle features like automatic tax calculation and rubble service through the `/feature-flags` page. All platform settings consolidated in one location.
 
 ## External Dependencies
 
