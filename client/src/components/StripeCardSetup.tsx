@@ -114,6 +114,7 @@ function CardSetupForm({ onSuccess, onCancel }: CardSetupFormProps) {
 
 export default function StripeCardSetup({ onSuccess, onCancel }: CardSetupFormProps) {
   const [clientSecret, setClientSecret] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -128,13 +129,27 @@ export default function StripeCardSetup({ onSuccess, onCancel }: CardSetupFormPr
         }
       })
       .catch((error) => {
+        console.error('Error creating setup intent:', error);
+        const errorMessage = error.message || 'Failed to initialize card setup';
+        setError(errorMessage);
         toast({
           title: "Failed to initialize card setup",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive",
         });
       });
-  }, []);
+  }, [toast]);
+
+  if (error) {
+    return (
+      <div className="p-6 text-center space-y-4">
+        <p className="text-destructive">{error}</p>
+        <Button onClick={onCancel} variant="outline">
+          Close
+        </Button>
+      </div>
+    );
+  }
 
   if (!clientSecret) {
     return (
