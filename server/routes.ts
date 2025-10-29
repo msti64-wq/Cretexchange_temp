@@ -3705,12 +3705,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create Setup Intent for future payments
+      // Use automatic payment methods for better compatibility
       const setupIntent = await stripe.setupIntents.create({
         customer: customerId,
-        payment_method_types: ['card'],
+        automatic_payment_methods: {
+          enabled: true,
+          allow_redirects: 'never', // Prevent redirect-based payment methods
+        },
+        usage: 'off_session', // Allow charging without customer present
         metadata: {
           userId: user.id,
           ownerId: owner.id,
+          purpose: 'monthly_location_fees',
         },
       });
 

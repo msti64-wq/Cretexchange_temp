@@ -1,0 +1,75 @@
+index-IrDadnXm.js:48 🔄 Query cache cleared once
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+index-IrDadnXm.js:447 🚨 PROACTIVE: Clearing phantom activities from cache on mount
+index-IrDadnXm.js:447 ✅ Phantom activities proactively cleared
+index-IrDadnXm.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: false}
+index-IrDadnXm.js:453 ⏳ Rendering loading state
+index-IrDadnXm.js:453 🔄 StripeCardSetup: Component mounted, creating setup intent...
+index-IrDadnXm.js:447 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-IrDadnXm.js:447
+tm @ index-IrDadnXm.js:40
+oo @ index-IrDadnXm.js:40
+TA @ index-IrDadnXm.js:40
+Wa @ index-IrDadnXm.js:40
+Av @ index-IrDadnXm.js:40
+La @ index-IrDadnXm.js:38
+(anonymous) @ index-IrDadnXm.js:40
+index-IrDadnXm.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: false}
+index-IrDadnXm.js:453 ⏳ Rendering loading state
+index-IrDadnXm.js:453 ✅ Setup intent response received: 200
+index-IrDadnXm.js:453 📦 Setup intent data: {hasClientSecret: true}
+index-IrDadnXm.js:453 ✅ Client secret set, Stripe form should render
+index-IrDadnXm.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-IrDadnXm.js:453 ✅ Rendering Stripe Elements form
+shared-72b2ab47458d1bc636252bd480e3288c.js:1  GET https://api.stripe.com/v1/elements/sessions?client_secret=seti_1SNdRs7AQGKX7wbrgDr9MzCa_secret_TKI1Q2qrRGBnw7ov4ygRGZr5pDdi5jE&key=pk_test_51S1Byc8wz67eAzUy57vG67e0xL3QY0ku7Vke5jn0XiRdTX3hbGVcxGkwKoqeMwE0T7YujDhSlTByzQvWi9aQMOT900VSeY6854&_stripe_version=2025-03-31.basil&elements_init_source=stripe.elements&referrer_host=truck-wash-locator-msti64.replit.app&stripe_js_id=53d6225f-2f68-4ddb-ac6c-aff2f4e6a057&locale=en-US&expand[0]=payment_method_preference.setup_intent.payment_method&type=setup_intent 400 (Bad Request)
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+e @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+c @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+i @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+s @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+e @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+n @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+a @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+i @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+_ @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+d @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+t.requestParams @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+$h @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+ey.singleFlightCreateAndParse @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+n @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+a @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+i @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+n @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+a @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+i @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+value @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-3101d6ef1509874ea4deb77ed010da1b.js:1
+stripe.js:1 Unhandled payment Element loaderror {error: {…}}
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+payment-methods:1 Unable to download payment manifest "https://www.google.com/pay".
+payment-methods:1 Unable to download payment manifest "https://www.google.com/pay".
