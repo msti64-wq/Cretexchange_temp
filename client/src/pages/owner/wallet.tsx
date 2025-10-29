@@ -66,6 +66,14 @@ export default function OwnerWallet() {
     refetchInterval: 60000,
   });
 
+  // Query for wallet funding feature flag
+  const { data: walletFundingFlag } = useQuery({
+    queryKey: ['/api/feature-flags/wallet_funding/check'],
+    refetchInterval: 60000,
+  });
+
+  const isWalletFundingEnabled = walletFundingFlag?.enabled || false;
+
   const fundWalletMutation = useMutation({
     mutationFn: async (data: { amount: string; fundingSourceId: string }) => {
       const response = await apiRequest("POST", "/api/owners/wallet/fund", data);
@@ -350,7 +358,7 @@ export default function OwnerWallet() {
                         <span className="font-medium"> Please fund your wallet to continue service.</span>
                       )}
                     </p>
-                    {!(walletData as any)?.autoTopupEnabled && (
+                    {!(walletData as any)?.autoTopupEnabled && isWalletFundingEnabled && (
                       <Button
                         size="sm"
                         onClick={handleFundButtonClick}
@@ -386,15 +394,34 @@ export default function OwnerWallet() {
                 <Badge variant="secondary" className="bg-blue-500 text-white">
                   {(walletData as any)?.status || 'Active'}
                 </Badge>
-                <Button
-                  onClick={handleFundButtonClick}
-                  size="sm"
-                  className="bg-white text-blue-600 hover:bg-blue-50"
-                  data-testid="button-fund-wallet"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Fund
-                </Button>
+                {isWalletFundingEnabled ? (
+                  <Button
+                    onClick={handleFundButtonClick}
+                    size="sm"
+                    className="bg-white text-blue-600 hover:bg-blue-50"
+                    data-testid="button-fund-wallet"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Fund
+                  </Button>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        disabled
+                        size="sm"
+                        className="bg-gray-300 text-gray-500 cursor-not-allowed"
+                        data-testid="button-fund-wallet-disabled"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Fund
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Wallet funding requires Stripe Treasury approval</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             </CardContent>
           </Card>

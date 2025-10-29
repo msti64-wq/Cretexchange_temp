@@ -9,6 +9,14 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **October 29, 2025**:
+  - Added `wallet_funding` feature flag to control ACH wallet funding feature
+  - Wallet funding now disabled by default pending Stripe Connect + Treasury approval
+  - Backend endpoint returns 403 error with clear message when feature is disabled
+  - Frontend wallet page hides/disables Fund Wallet buttons when feature flag is off
+  - Added helpful tooltip explaining Stripe Treasury requirement when button is disabled
+  - Feature can be enabled from `/feature-flags` page once Stripe approval is received
+
 - **October 28, 2025**:
   - Consolidated all platform toggles into Feature Flags system (single management interface)
   - Added `automatic_tax` and `rubble_service` feature flags to codebase and database
@@ -65,7 +73,7 @@ Preferred communication style: Simple, everyday language.
 -   **Wallet System**: Stripe Treasury integration for wallet management, including balance tracking, ACH transfers for funding, auto top-up, and low balance alerts.
 -   **Internal Transfers**: Instant Stripe Treasury transfers for washout payments between owner and driver wallets.
 -   **Debit Card Integration**: Stripe Issuing-powered debit cards for instant fund access. Drivers can request virtual ($0.01 - testing amount) or physical ($0.30 - testing amount) debit cards linked to their Stripe Treasury wallets.
--   **Feature Flags**: Centralized system for managing platform features and configurations. Super admins can toggle features like automatic tax calculation and rubble service through the `/feature-flags` page. All platform settings consolidated in one location.
+-   **Feature Flags**: Centralized system for managing platform features and configurations. Super admins can toggle features like automatic tax calculation, rubble service, and wallet funding through the `/feature-flags` page. All platform settings consolidated in one location. Wallet funding feature flag controls ACH bank transfers via Stripe Treasury (requires approval).
 
 ## External Dependencies
 

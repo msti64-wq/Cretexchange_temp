@@ -3999,6 +3999,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/owners/wallet/fund - Fund wallet from a funding source via Column ACH
   app.post('/api/owners/wallet/fund', isAuthenticated, async (req: any, res) => {
     try {
+      // Check if wallet funding feature is enabled
+      const walletFundingFlag = await storage.getFeatureFlag('wallet_funding');
+      if (!walletFundingFlag || !walletFundingFlag.enabled) {
+        return res.status(403).json({ 
+          message: "Wallet funding is currently unavailable. This feature requires Stripe Treasury approval. Please contact support for more information.",
+          featureDisabled: true
+        });
+      }
+
       const userId = req.user.id;
       const { amount, fundingSourceId } = req.body;
       const user = await storage.getUser(userId);
