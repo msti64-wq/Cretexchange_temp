@@ -1,0 +1,82 @@
+sw.js:2 Service Worker loaded
+sw.js:6 Service Worker installing
+sw.js:12 Service Worker activating
+index-4MkxQbUp.js:48 🔄 Query cache cleared once
+index-4MkxQbUp.js:447 🚨 PROACTIVE: Clearing phantom activities from cache on mount
+index-4MkxQbUp.js:447 ✅ Phantom activities proactively cleared
+(index):38 SW registered:  ServiceWorkerRegistration
+index-4MkxQbUp.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: false}
+index-4MkxQbUp.js:453 ⏳ Rendering loading state
+index-4MkxQbUp.js:453 🔄 StripeCardSetup: Component mounted, creating setup intent...
+index-4MkxQbUp.js:447 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-4MkxQbUp.js:447
+tm @ index-4MkxQbUp.js:40
+oo @ index-4MkxQbUp.js:40
+TA @ index-4MkxQbUp.js:40
+Wa @ index-4MkxQbUp.js:40
+Av @ index-4MkxQbUp.js:40
+La @ index-4MkxQbUp.js:38
+(anonymous) @ index-4MkxQbUp.js:40
+index-4MkxQbUp.js:453 ✅ Setup intent response received: 200
+index-4MkxQbUp.js:453 📦 Setup intent data: {hasClientSecret: true}
+index-4MkxQbUp.js:453 ✅ Client secret set, Stripe form should render
+index-4MkxQbUp.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-4MkxQbUp.js:453 ✅ Rendering Stripe Elements form
+shared-72b2ab47458d1bc636252bd480e3288c.js:1  GET https://api.stripe.com/v1/elements/sessions?client_secret=seti_1SNdj17AQGKX7wbrgWGjVeHN_secret_TKIJsRZQDsQaumlsJIJoLhtgDeUHDzc&key=pk_test_51S1Byc8wz67eAzUy57vG67e0xL3QY0ku7Vke5jn0XiRdTX3hbGVcxGkwKoqeMwE0T7YujDhSlTByzQvWi9aQMOT900VSeY6854&_stripe_version=2025-03-31.basil&elements_init_source=stripe.elements&referrer_host=truck-wash-locator-msti64.replit.app&stripe_js_id=e91ef8f5-b50e-4c54-9753-f17407681d25&locale=en-US&expand[0]=payment_method_preference.setup_intent.payment_method&type=setup_intent 400 (Bad Request)
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+e @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+c @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+i @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+s @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+e @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+n @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+a @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+i @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+_ @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+d @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+t.requestParams @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+$h @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+ey.singleFlightCreateAndParse @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+(anonymous) @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+n @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+a @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+i @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+(anonymous) @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+(anonymous) @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+n @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+a @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+i @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ shared-72b2ab47458d1bc636252bd480e3288c.js:1
+(anonymous) @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+value @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+(anonymous) @ controller-with-dual-preconnect-control-aeec0d472cf95a1ceecdb99a93e21cd2.js:1
+index-4MkxQbUp.js:453 💥 Stripe Elements onLoadError: {elementType: 'payment', error: {…}}
+onLoadError @ index-4MkxQbUp.js:453
+o @ index-4MkxQbUp.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-4MkxQbUp.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-4MkxQbUp.js:453 ✅ Rendering Stripe Elements form
+index-4MkxQbUp.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-4MkxQbUp.js:453 ✅ Rendering Stripe Elements form
