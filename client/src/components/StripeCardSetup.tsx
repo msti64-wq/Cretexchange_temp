@@ -118,18 +118,25 @@ export default function StripeCardSetup({ onSuccess, onCancel }: CardSetupFormPr
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('🔄 StripeCardSetup: Component mounted, creating setup intent...');
+    
     // Create Setup Intent when component mounts
     apiRequest("POST", "/api/owners/create-setup-intent")
-      .then((res) => res.json())
+      .then((res) => {
+        console.log('✅ Setup intent response received:', res.status);
+        return res.json();
+      })
       .then((data) => {
+        console.log('📦 Setup intent data:', { hasClientSecret: !!data.clientSecret });
         if (data.clientSecret) {
           setClientSecret(data.clientSecret);
+          console.log('✅ Client secret set, Stripe form should render');
         } else {
           throw new Error('No client secret returned');
         }
       })
       .catch((error) => {
-        console.error('Error creating setup intent:', error);
+        console.error('❌ Error creating setup intent:', error);
         const errorMessage = error.message || 'Failed to initialize card setup';
         setError(errorMessage);
         toast({
@@ -140,10 +147,13 @@ export default function StripeCardSetup({ onSuccess, onCancel }: CardSetupFormPr
       });
   }, [toast]);
 
+  console.log('🎨 StripeCardSetup: Rendering with state:', { hasError: !!error, hasClientSecret: !!clientSecret });
+
   if (error) {
+    console.log('❌ Rendering error state:', error);
     return (
       <div className="p-6 text-center space-y-4">
-        <p className="text-destructive">{error}</p>
+        <p className="text-destructive font-semibold">{error}</p>
         <Button onClick={onCancel} variant="outline">
           Close
         </Button>
@@ -152,16 +162,18 @@ export default function StripeCardSetup({ onSuccess, onCancel }: CardSetupFormPr
   }
 
   if (!clientSecret) {
+    console.log('⏳ Rendering loading state');
     return (
       <div className="flex items-center justify-center p-8">
         <div className="flex items-center gap-2">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Loading...</span>
+          <span>Initializing payment form...</span>
         </div>
       </div>
     );
   }
 
+  console.log('✅ Rendering Stripe Elements form');
   return (
     <Elements 
       stripe={stripePromise} 
