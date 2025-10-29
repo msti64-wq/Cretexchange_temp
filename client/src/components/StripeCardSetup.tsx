@@ -81,7 +81,20 @@ function CardSetupForm({ onSuccess, onCancel }: CardSetupFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div data-testid="stripe-payment-element">
-        <PaymentElement />
+        <PaymentElement 
+          onLoadError={(event) => {
+            console.error('💥 Stripe Elements onLoadError:', event);
+            const errorMsg = event.error?.message || 'Failed to load payment form. Please check your internet connection and try again.';
+            toast({
+              title: "Payment Form Error",
+              description: errorMsg,
+              variant: "destructive",
+            });
+          }}
+          onReady={() => {
+            console.log('✅ Stripe PaymentElement is ready');
+          }}
+        />
       </div>
       <div className="flex gap-2 justify-end">
         <Button
@@ -187,4 +200,13 @@ export default function StripeCardSetup({ onSuccess, onCancel }: CardSetupFormPr
       <CardSetupForm onSuccess={onSuccess} onCancel={onCancel} />
     </Elements>
   );
+}
+
+// Listen for Stripe errors globally
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    if (event.message?.includes('stripe') || event.message?.includes('payment')) {
+      console.error('🚨 Global Stripe error caught:', event);
+    }
+  });
 }
