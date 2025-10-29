@@ -83,7 +83,13 @@ function CardSetupForm({ onSuccess, onCancel }: CardSetupFormProps) {
       <div data-testid="stripe-payment-element">
         <PaymentElement 
           onLoadError={(event) => {
-            console.error('💥 Stripe Elements onLoadError:', event);
+            console.error('💥 Stripe Elements onLoadError - Full event:', event);
+            console.error('💥 Error object:', event.error);
+            console.error('💥 Error type:', event.error?.type);
+            console.error('💥 Error code:', event.error?.code);
+            console.error('💥 Error message:', event.error?.message);
+            console.error('💥 Error decline_code:', event.error?.decline_code);
+            
             const errorMsg = event.error?.message || 'Failed to load payment form. Please check your internet connection and try again.';
             toast({
               title: "Payment Form Error",
