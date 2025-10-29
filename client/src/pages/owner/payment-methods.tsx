@@ -626,8 +626,18 @@ export default function PaymentMethods() {
       </main>
 
       {/* Stripe Card Setup Dialog */}
-      <Dialog open={showCardSetup} onOpenChange={setShowCardSetup}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={showCardSetup} onOpenChange={(open) => {
+        // Only allow closing via cancel button, not by clicking outside
+        if (!open) {
+          // Dialog is trying to close - ignore it
+          return;
+        }
+        setShowCardSetup(open);
+      }}>
+        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => {
+          // Prevent closing when clicking outside
+          e.preventDefault();
+        }}>
           <DialogHeader>
             <DialogTitle>Add Payment Method</DialogTitle>
           </DialogHeader>
