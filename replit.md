@@ -9,7 +9,16 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
-- **October 30, 2025**:
+- **October 30, 2025** (PM):
+  - Added dynamic platform fee management system for super admins
+  - Platform washout fee now configurable via Feature Flags page (no code changes needed)
+  - Triple-layer validation ensures fee is always positive (frontend, backend, Zod schema)
+  - Payment processing includes failsafe fallback to $0.40 if invalid fee detected
+  - Super admins can easily switch between testing ($0.40) and production ($4.00) pricing
+  - Platform Settings section added to /feature-flags page for centralized configuration
+  - Comprehensive logging and error handling for fee validation and updates
+
+- **October 30, 2025** (AM):
   - Implemented Stripe Connect Destination Charges for washout payments (credit card splitting)
   - Added `processWashoutPaymentViaCard()` function for marketplace payment processing
   - Washout payments now work via credit card WITHOUT Treasury approval
