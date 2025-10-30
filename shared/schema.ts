@@ -889,7 +889,10 @@ export const systemSettings = pgTable("system_settings", {
 // System settings schemas
 export const updateSystemSettingsSchema = z.object({
   automaticTaxEnabled: z.boolean().optional(),
-  platformWashoutFee: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(), // Decimal as string, e.g., "0.40" or "4.00"
+  platformWashoutFee: z.string()
+    .regex(/^\d+(\.\d{1,2})?$/, "Must be a valid decimal number")
+    .refine((val) => parseFloat(val) > 0, "Platform fee must be greater than zero")
+    .optional(),
 });
 
 export type SystemSettings = typeof systemSettings.$inferSelect;

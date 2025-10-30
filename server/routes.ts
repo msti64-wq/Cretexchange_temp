@@ -1157,7 +1157,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get platform fee from system settings (configurable by super admin)
       const systemSettings = await storage.getSystemSettings();
-      const platformFee = parseFloat(systemSettings.platformWashoutFee || '0.40');
+      let platformFee = parseFloat(systemSettings.platformWashoutFee || '0.40');
+      
+      // Validate platform fee (safety check)
+      if (isNaN(platformFee) || platformFee <= 0) {
+        console.error('⚠️ Invalid platform fee detected:', systemSettings.platformWashoutFee);
+        platformFee = 0.40; // Fallback to default testing value
+        console.log('✅ Using fallback platform fee:', platformFee);
+      }
       
       // Payment structure: Platform fee per washout (configurable)
       // Driver receives location rate (owner sets this per location)
@@ -4547,6 +4554,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      // Validate platform fee if being updated
+      if (req.body.platformWashoutFee !== undefined) {
+        const fee = parseFloat(req.body.platformWashoutFee);
+        if (isNaN(fee) || fee <= 0) {
+          return res.status(400).json({ 
+            message: "Platform washout fee must be a positive number greater than zero" 
+          });
+        }
       }
 
       const settings = await storage.updateSystemSettings(req.body, req.user.id);

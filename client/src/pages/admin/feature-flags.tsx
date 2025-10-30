@@ -174,10 +174,10 @@ export default function AdminFeatureFlags() {
 
   const handleUpdatePlatformFee = () => {
     const feeValue = parseFloat(platformFee);
-    if (isNaN(feeValue) || feeValue < 0) {
+    if (isNaN(feeValue) || feeValue <= 0) {
       toast({
         title: "Invalid Amount",
-        description: "Please enter a valid positive number",
+        description: "Please enter a valid positive number greater than zero",
         variant: "destructive",
       });
       return;
