@@ -122,7 +122,7 @@ export function SupportMessageDialog({ isOpen, onClose }: SupportMessageDialogPr
               <span className="font-medium text-blue-800 dark:text-blue-200">Need Immediate Help?</span>
             </div>
             <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-              For urgent issues, call: <span className="font-mono font-medium">214-949-3859</span>
+              For urgent issues, call: <span className="font-mono font-medium">(469) 269-6709</span>
             </p>
           </div>
 
