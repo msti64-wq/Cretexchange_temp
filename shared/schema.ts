@@ -184,6 +184,8 @@ export const owners = pgTable("owners", {
   membershipPaymentNotes: text("membership_payment_notes"), // Optional notes about payment
   membershipActivatedBy: varchar("membership_activated_by"), // Admin user ID who manually activated (if applicable)
   membershipActivatedAt: timestamp("membership_activated_at"), // When membership was activated
+  // Custom platform fee override (per-owner pricing)
+  customPlatformFee: decimal("custom_platform_fee", { precision: 10, scale: 2 }), // Custom washout fee for this owner (nullable - uses global if not set)
   isApproved: boolean("is_approved").default(false),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),

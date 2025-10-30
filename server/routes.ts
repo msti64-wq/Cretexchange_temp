@@ -4906,6 +4906,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update owner's custom platform fee (super admin only)
+  app.put('/api/admin/owners/:id/platform-fee', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const ownerId = req.params.id;
+      const { customPlatformFee } = req.body;
+
+      // Validate fee (can be null to clear, or must be positive)
+      if (customPlatformFee !== null && customPlatformFee !== undefined) {
+        const fee = parseFloat(customPlatformFee);
+        if (isNaN(fee) || fee <= 0) {
+          return res.status(400).json({ 
+            message: "Custom platform fee must be a positive number or null to use global fee" 
+          });
+        }
+      }
+
+      const owner = await storage.getOwner(ownerId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Update custom fee
+      await storage.updateOwnerCustomPlatformFee(ownerId, customPlatformFee);
+
+      const ownerUser = await storage.getUser(owner.userId);
+      console.log('✅ Custom platform fee updated for owner:', ownerUser?.username, 'New fee:', customPlatformFee || 'using global');
+
+      res.json({ message: "Custom platform fee updated successfully", customPlatformFee });
+    } catch (error: any) {
+      console.error("Error updating custom platform fee:", error);
+      res.status(500).json({ message: error.message || "Failed to update custom platform fee" });
+    }
+  });
+
   app.put('/api/admin/locations/:id/visibility', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);

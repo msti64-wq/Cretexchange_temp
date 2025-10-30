@@ -113,6 +113,7 @@ export interface IStorage {
   getOwnerWalletTransactions(ownerId: string, startDate?: Date, endDate?: Date): Promise<any[]>;
   approveOwner(ownerId: string): Promise<Owner>;
   activateMembership(ownerId: string, paymentMethod: string, paymentNotes: string | undefined, activatedBy: string): Promise<Owner>;
+  updateOwnerCustomPlatformFee(ownerId: string, customFee: string | null): Promise<Owner>;
   getAllOwners(): Promise<(Owner & { user: User })[]>;
 
   // Location operations
@@ -712,6 +713,18 @@ export class DatabaseStorage implements IStorage {
         membershipActivatedBy: activatedBy,
         membershipActivatedAt: new Date(),
         isApproved: true,
+        updatedAt: new Date()
+      })
+      .where(eq(owners.id, ownerId))
+      .returning();
+    return owner;
+  }
+
+  async updateOwnerCustomPlatformFee(ownerId: string, customFee: string | null): Promise<Owner> {
+    const [owner] = await db
+      .update(owners)
+      .set({ 
+        customPlatformFee: customFee,
         updatedAt: new Date()
       })
       .where(eq(owners.id, ownerId))
