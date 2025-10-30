@@ -9,6 +9,16 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **October 30, 2025** (PM - Later):
+  - Implemented per-owner custom platform fee system for tenure-based pricing
+  - Added `customPlatformFee` nullable field to owners table for individual overrides
+  - Super admins can set custom fees via Users management page based on owner loyalty
+  - Three-tier fee hierarchy: custom owner fee → global platform fee → $0.40 failsafe
+  - "Months on Platform" tenure display added to Users management page
+  - Payment processing checks owner's custom fee first before using global fee
+  - Comprehensive validation: custom fee must be positive or null (reverts to global)
+  - "Set Custom Fee" dialog allows super admins to reward long-term partners with reduced rates
+
 - **October 30, 2025** (PM):
   - Added dynamic platform fee management system for super admins
   - Platform washout fee now configurable via Feature Flags page (no code changes needed)
@@ -99,6 +109,7 @@ Preferred communication style: Simple, everyday language.
 -   **Internal Transfers**: Instant Stripe Treasury transfers for washout payments between owner and driver wallets.
 -   **Debit Card Integration**: Stripe Issuing-powered debit cards for instant fund access. Drivers can request virtual ($0.01 - testing amount) or physical ($0.30 - testing amount) debit cards linked to their Stripe Treasury wallets.
 -   **Feature Flags**: Centralized system for managing platform features and configurations. Super admins can toggle features like automatic tax calculation, rubble service, and wallet funding through the `/feature-flags` page. All platform settings consolidated in one location. Wallet funding feature flag controls ACH bank transfers via Stripe Treasury (requires approval).
+-   **Per-Owner Custom Platform Fees**: Super admins can set custom platform fees for individual owners based on tenure and loyalty. Three-tier fee hierarchy: custom owner fee → global platform fee → $0.40 failsafe. "Months on Platform" tenure tracking displayed in Users management page. Custom fees are nullable (null = use global fee).
 
 ## External Dependencies
 
