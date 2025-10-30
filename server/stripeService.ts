@@ -707,9 +707,78 @@ export async function listPaymentMethods(
 // ============================================================================
 
 /**
- * Process a washout payment from owner to driver
+ * Process a washout payment via credit card using Stripe Connect Destination Charges
+ * This charges the owner's saved payment method and splits funds to driver + platform
+ * 
+ * USE CASE: When Treasury wallet funding is disabled (pending Stripe approval)
+ * TRANSACTION LABELING: "Washout payment" + metadata for clear categorization
+ */
+export async function processWashoutPaymentViaCard(params: {
+  ownerStripeCustomerId: string; // Platform customer ID for owner
+  ownerUsername: string;
+  driverConnectedAccountId: string; // Driver's Stripe Connect account
+  driverUsername: string;
+  washoutAmount: number; // in cents - amount driver receives (e.g., 50 = $0.50)
+  platformFee: number; // in cents - platform fee (e.g., 40 = $0.40)
+  activityId?: string; // Link to specific washout activity
+  locationId?: string; // Link to specific location
+}): Promise<Stripe.PaymentIntent> {
+  try {
+    const totalAmount = params.washoutAmount + params.platformFee;
+
+    console.log('💳 Processing washout payment via credit card:', {
+      owner: params.ownerUsername,
+      driver: params.driverUsername,
+      washoutAmount: params.washoutAmount / 100,
+      platformFee: params.platformFee / 100,
+      totalCharge: totalAmount / 100,
+    });
+
+    // Create Destination Charge - charges owner's card and splits payment
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: totalAmount, // Total charged to owner (washout + platform fee)
+      currency: 'usd',
+      customer: params.ownerStripeCustomerId, // Charge owner's saved card
+      transfer_data: {
+        destination: params.driverConnectedAccountId, // Driver receives washout amount
+      },
+      application_fee_amount: params.platformFee, // Platform keeps fee
+      description: `Washout payment - Driver: ${params.driverUsername}`,
+      statement_descriptor: 'CRETEX WASHOUT', // Shows on card statement
+      metadata: {
+        transaction_type: 'washout_payment',
+        payment_method: 'credit_card',
+        owner_username: params.ownerUsername,
+        driver_username: params.driverUsername,
+        washout_amount: (params.washoutAmount / 100).toFixed(2),
+        platform_fee: (params.platformFee / 100).toFixed(2),
+        activity_id: params.activityId || '',
+        location_id: params.locationId || '',
+      },
+      confirm: true, // Auto-confirm payment
+      off_session: true, // Allow charging without user present (saved card)
+    });
+
+    console.log('✅ Processed washout payment via card:', {
+      paymentIntentId: paymentIntent.id,
+      totalCharged: totalAmount / 100,
+      driverReceives: params.washoutAmount / 100,
+      platformFee: params.platformFee / 100,
+      status: paymentIntent.status,
+    });
+
+    return paymentIntent;
+  } catch (error: any) {
+    console.error('❌ Error processing washout payment via card:', error.message);
+    throw new Error(`Failed to process card payment: ${error.message}`);
+  }
+}
+
+/**
+ * Process a washout payment from owner to driver using Stripe Treasury
  * This uses Stripe Connect transfers between financial accounts
  * 
+ * USE CASE: When Treasury wallet funding is enabled (after Stripe approval)
  * TRANSACTION LABELING: "Washout payment" + metadata for clear categorization
  * DUPLICATE PREVENTION: Caller should verify owner has sufficient balance
  */

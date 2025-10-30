@@ -1114,7 +1114,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Process payment when washout is completed - charges owner wallet, credits driver wallet
+  // Process payment when washout is completed
+  // Routes to either credit card or Treasury wallet payment based on feature flag
   app.post('/api/payments/process-washout', isAuthenticated, async (req: any, res) => {
     try {
       const { activityId } = req.body;
@@ -1145,59 +1146,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Payment structure: Flat $0.40 platform fee per washout
-      // - Driver receives full location rate
-      // - Owner pays location rate + $0.40 platform fee
-      const locationRate = parseFloat(location.rate);
-      const PLATFORM_FEE = 0.40;
-      const DRIVER_PAYMENT = locationRate;
-      const OWNER_CHARGE = locationRate + PLATFORM_FEE;
-
-      // Check owner wallet balance
-      const ownerBalance = parseFloat(owner.walletBalance);
-      if (ownerBalance < OWNER_CHARGE) {
-        return res.status(400).json({ message: "Insufficient owner wallet balance" });
-      }
-
-      // Deduct from owner wallet (this also creates a transaction record automatically)
-      await storage.updateOwnerWalletBalance(
-        owner.id, 
-        OWNER_CHARGE.toFixed(2), 
-        'debit',
-        `Washout fee for activity ${activityId}`
-      );
-
-      // Credit driver wallet
       const driver = await storage.getDriverById(activity.driverId);
       if (!driver) {
         return res.status(404).json({ message: "Driver not found" });
       }
 
-      const driverWallet = await storage.getDriverWallet(driver.id);
-      if (!driverWallet) {
-        // Create wallet if doesn't exist
-        await storage.createDriverWallet({ driverId: driver.id });
-      }
+      // Get users for usernames
+      const ownerUser = await storage.getUser(owner.userId);
+      const driverUser = await storage.getUser(driver.userId);
 
-      await storage.adjustDriverWalletBalance(driver.id, DRIVER_PAYMENT, 0);
+      // Payment structure: Flat $0.40 platform fee per washout (testing price)
+      // Production will be $4.00 platform fee
+      // Driver receives location rate (owner sets this - testing: $0.50, production: $5.00)
+      const locationRate = parseFloat(location.rate);
+      const PLATFORM_FEE = 0.40; // Testing: $0.40, Production: $4.00
+      const DRIVER_PAYMENT = locationRate; // Testing: $0.50, Production: $5.00
+      const OWNER_CHARGE = locationRate + PLATFORM_FEE;
 
-      const updatedWallet = await storage.getDriverWallet(driver.id);
-      const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
+      // Convert to cents for Stripe
+      const driverPaymentCents = Math.round(DRIVER_PAYMENT * 100);
+      const platformFeeCents = Math.round(PLATFORM_FEE * 100);
 
-      // Create driver wallet transaction
-      await storage.createWalletTransaction({
-        driverId: driver.id,
-        amount: DRIVER_PAYMENT.toString(),
-        direction: "credit",
-        balanceAfter: newBalance.toString(),
-        currency: "USD",
-        sourceType: "washout",
-        sourceId: activityId,
-        status: "posted",
-        description: `Payment for washout at ${location.name}`,
+      // Check wallet funding feature flag to determine payment method
+      const walletFundingFlag = await storage.getFeatureFlag('wallet_funding');
+      const isWalletFundingEnabled = walletFundingFlag?.enabled || false;
+
+      console.log('💰 Processing washout payment:', {
+        activityId,
+        locationRate: DRIVER_PAYMENT,
+        platformFee: PLATFORM_FEE,
+        totalCharge: OWNER_CHARGE,
+        paymentMethod: isWalletFundingEnabled ? 'treasury_wallet' : 'credit_card',
       });
 
-      // Create payment record
+      if (isWalletFundingEnabled) {
+        // ===== TREASURY WALLET PAYMENT (when approved) =====
+        
+        // Verify owner has sufficient wallet balance
+        const ownerBalance = parseFloat(owner.walletBalance);
+        if (ownerBalance < OWNER_CHARGE) {
+          return res.status(400).json({ 
+            message: "Insufficient wallet balance. Please fund your wallet to continue.",
+            requiredAmount: OWNER_CHARGE,
+            currentBalance: ownerBalance,
+          });
+        }
+
+        // Deduct from owner wallet
+        await storage.updateOwnerWalletBalance(
+          owner.id, 
+          OWNER_CHARGE.toFixed(2), 
+          'debit',
+          `Washout payment - ${driverUser?.username || driver.id}`
+        );
+
+        // Credit driver wallet
+        const driverWallet = await storage.getDriverWallet(driver.id);
+        if (!driverWallet) {
+          await storage.createDriverWallet({ driverId: driver.id });
+        }
+
+        await storage.adjustDriverWalletBalance(driver.id, DRIVER_PAYMENT, 0);
+
+        const updatedWallet = await storage.getDriverWallet(driver.id);
+        const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
+
+        // Create driver wallet transaction
+        await storage.createWalletTransaction({
+          driverId: driver.id,
+          amount: DRIVER_PAYMENT.toString(),
+          direction: "credit",
+          balanceAfter: newBalance.toString(),
+          currency: "USD",
+          sourceType: "washout",
+          sourceId: activityId,
+          status: "posted",
+          description: `Washout payment - ${location.name}`,
+        });
+
+        console.log('✅ Processed via Treasury wallet');
+
+      } else {
+        // ===== CREDIT CARD PAYMENT (default until Treasury approved) =====
+        
+        // Verify owner has saved payment method
+        if (!owner.stripeCustomerId) {
+          return res.status(400).json({ 
+            message: "Please add a credit card in Payment Methods before processing washouts.",
+            needsPaymentMethod: true,
+          });
+        }
+
+        // Verify driver has Connect account
+        if (!driver.stripeConnectAccountId) {
+          return res.status(400).json({ 
+            message: "Driver payment account not set up. Please contact support.",
+          });
+        }
+
+        // Process payment via credit card with Stripe Connect Destination Charge
+        const paymentIntent = await stripeService.processWashoutPaymentViaCard({
+          ownerStripeCustomerId: owner.stripeCustomerId,
+          ownerUsername: ownerUser?.username || owner.id,
+          driverConnectedAccountId: driver.stripeConnectAccountId,
+          driverUsername: driverUser?.username || driver.id,
+          washoutAmount: driverPaymentCents,
+          platformFee: platformFeeCents,
+          activityId,
+          locationId: location.id,
+        });
+
+        console.log('✅ Processed via credit card:', paymentIntent.id);
+      }
+
+      // Create payment record (common for both flows)
       await storage.createPayment({
         driverId: driver.id,
         ownerId: owner.id,
@@ -1213,11 +1275,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerCharge: OWNER_CHARGE,
         platformFee: PLATFORM_FEE,
         driverPayment: DRIVER_PAYMENT,
+        paymentMethod: isWalletFundingEnabled ? 'wallet' : 'credit_card',
         message: "Payment processed successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing washout payment:", error);
-      res.status(500).json({ message: "Failed to process payment" });
+      res.status(500).json({ 
+        message: error.message || "Failed to process payment",
+      });
     }
   });
 
