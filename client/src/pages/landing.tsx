@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Truck, Building2, Shield, ArrowRight } from "lucide-react";
 import { useState } from "react";
+import { Link } from "wouter";
 import logoImage from "@assets/cretexchange-logo-2025.png";
 
 export default function Landing() {
@@ -186,7 +187,12 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t bg-card/50 backdrop-blur py-8">
         <div className="container mx-auto px-6 text-center text-muted-foreground">
-          <p>&copy; 2024 CreteXchange. All rights reserved.</p>
+          <p>&copy; 2025 V8 Industries LLC. All rights reserved.</p>
+          <div className="mt-2">
+            <Link href="/privacy-policy">
+              <a className="text-sm hover:text-primary underline">Privacy Policy</a>
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
