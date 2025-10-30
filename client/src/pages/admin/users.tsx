@@ -33,6 +33,10 @@ const activateMembershipSchema = z.object({
   paymentNotes: z.string().optional(),
 });
 
+const customPlatformFeeSchema = z.object({
+  customPlatformFee: z.string().optional(),
+});
+
 export default function AdminUsers() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -41,6 +45,7 @@ export default function AdminUsers() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activationDialogOpen, setActivationDialogOpen] = useState(false);
+  const [platformFeeDialogOpen, setPlatformFeeDialogOpen] = useState(false);
   const [selectedOwner, setSelectedOwner] = useState<any>(null);
 
   const createAdminForm = useForm<z.infer<typeof createAdminSchema>>({
@@ -61,6 +66,21 @@ export default function AdminUsers() {
       paymentNotes: '',
     },
   });
+
+  const customFeeForm = useForm<z.infer<typeof customPlatformFeeSchema>>({
+    resolver: zodResolver(customPlatformFeeSchema),
+    defaultValues: {
+      customPlatformFee: '',
+    },
+  });
+
+  // Function to calculate months on platform
+  const calculateMonthsOnPlatform = (createdAt: string) => {
+    const created = new Date(createdAt);
+    const now = new Date();
+    const months = (now.getFullYear() - created.getFullYear()) * 12 + (now.getMonth() - created.getMonth());
+    return months;
+  };
 
   const { data: usersData, isLoading, error } = useQuery({
     queryKey: ['/api/admin/users'],
@@ -137,6 +157,49 @@ export default function AdminUsers() {
         ownerId: selectedOwner.id,
         paymentMethod: data.paymentMethod,
         paymentNotes: data.paymentNotes,
+      });
+    }
+  };
+
+  const customPlatformFeeMutation = useMutation({
+    mutationFn: async (data: { ownerId: string; customPlatformFee: string | null }) => {
+      return await apiRequest("PUT", `/api/admin/owners/${data.ownerId}/platform-fee`, {
+        customPlatformFee: data.customPlatformFee,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Custom Platform Fee Updated",
+        description: "The owner's platform fee has been updated successfully.",
+      });
+      setPlatformFeeDialogOpen(false);
+      setSelectedOwner(null);
+      customFeeForm.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update custom platform fee",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUpdateCustomPlatformFee = (data: z.infer<typeof customPlatformFeeSchema>) => {
+    if (selectedOwner) {
+      const feeValue = data.customPlatformFee ? parseFloat(data.customPlatformFee) : null;
+      if (data.customPlatformFee && (isNaN(feeValue as number) || (feeValue as number) <= 0)) {
+        toast({
+          title: "Invalid Amount",
+          description: "Please enter a valid positive number or leave blank to use global fee",
+          variant: "destructive",
+        });
+        return;
+      }
+      customPlatformFeeMutation.mutate({
+        ownerId: selectedOwner.id,
+        customPlatformFee: data.customPlatformFee || null,
       });
     }
   };
@@ -521,6 +584,16 @@ export default function AdminUsers() {
                             Company: {user.roleData.companyName}
                           </p>
                         )}
+                        {user.role === 'owner' && user.roleData?.createdAt && (
+                          <p className="text-sm text-muted-foreground mt-1" data-testid={`text-months-platform-${index}`}>
+                            <strong>Months on Platform:</strong> {calculateMonthsOnPlatform(user.roleData.createdAt)}
+                          </p>
+                        )}
+                        {user.role === 'owner' && (currentUser as any)?.role === 'super_admin' && (
+                          <p className="text-sm text-muted-foreground mt-1" data-testid={`text-platform-fee-${index}`}>
+                            <strong>Platform Fee:</strong> {user.roleData?.customPlatformFee ? `$${user.roleData.customPlatformFee} (custom)` : 'Using global fee'}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
@@ -581,6 +654,20 @@ export default function AdminUsers() {
                             Approve
                           </Button>
                         )
+                      )}
+                      {user.role === 'owner' && user.roleData?.isApproved && (currentUser as any)?.role === 'super_admin' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedOwner(user.roleData);
+                            customFeeForm.setValue('customPlatformFee', user.roleData?.customPlatformFee || '');
+                            setPlatformFeeDialogOpen(true);
+                          }}
+                          data-testid={`button-set-custom-fee-${index}`}
+                        >
+                          Set Custom Fee
+                        </Button>
                       )}
                       {user.role !== 'super_admin' && (
                         <Button
@@ -697,6 +784,75 @@ export default function AdminUsers() {
                   data-testid="button-submit-activation"
                 >
                   {activateMembershipMutation.isPending ? "Activating..." : "Activate Membership"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Platform Fee Dialog */}
+      <Dialog open={platformFeeDialogOpen} onOpenChange={setPlatformFeeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Set Custom Platform Fee</DialogTitle>
+          </DialogHeader>
+          
+          <div className="mb-4 text-sm text-muted-foreground">
+            {selectedOwner && (
+              <>
+                <p className="mb-1">
+                  <span className="font-medium">Company:</span> {selectedOwner.companyName}
+                </p>
+                <p className="mb-2">
+                  <span className="font-medium">Months on Platform:</span> {selectedOwner.createdAt && calculateMonthsOnPlatform(selectedOwner.createdAt)}
+                </p>
+                <p>Set a custom platform fee for this owner. Long-term partners can receive reduced rates based on their tenure and loyalty. Leave blank to use the global platform fee.</p>
+              </>
+            )}
+          </div>
+
+          <Form {...customFeeForm}>
+            <form onSubmit={customFeeForm.handleSubmit(handleUpdateCustomPlatformFee)} className="space-y-4">
+              <FormField
+                control={customFeeForm.control}
+                name="customPlatformFee"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Custom Platform Fee ($)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Leave blank to use global fee"
+                        {...field}
+                        data-testid="input-custom-platform-fee"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave blank to use global platform fee
+                    </p>
+                  </FormItem>
+                )}
+              />
+              
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPlatformFeeDialogOpen(false)}
+                  data-testid="button-cancel-custom-fee"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={customPlatformFeeMutation.isPending}
+                  data-testid="button-submit-custom-fee"
+                >
+                  {customPlatformFeeMutation.isPending ? "Updating..." : "Update Fee"}
                 </Button>
               </div>
             </form>

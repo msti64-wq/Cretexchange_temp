@@ -1155,13 +1155,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerUser = await storage.getUser(owner.userId);
       const driverUser = await storage.getUser(driver.userId);
 
-      // Get platform fee from system settings (configurable by super admin)
+      // Get platform fee - check for owner-specific override first, then use global fee
       const systemSettings = await storage.getSystemSettings();
-      let platformFee = parseFloat(systemSettings.platformWashoutFee || '0.40');
+      let platformFee: number;
+      
+      // Check if this owner has a custom platform fee
+      if (owner.customPlatformFee && parseFloat(owner.customPlatformFee) > 0) {
+        platformFee = parseFloat(owner.customPlatformFee);
+        console.log('💰 Using custom platform fee for owner:', ownerUser?.username, '- $' + platformFee);
+      } else {
+        // Use global platform fee from settings
+        platformFee = parseFloat(systemSettings.platformWashoutFee || '0.40');
+        console.log('💰 Using global platform fee: $' + platformFee);
+      }
       
       // Validate platform fee (safety check)
       if (isNaN(platformFee) || platformFee <= 0) {
-        console.error('⚠️ Invalid platform fee detected:', systemSettings.platformWashoutFee);
+        console.error('⚠️ Invalid platform fee detected:', platformFee);
         platformFee = 0.40; // Fallback to default testing value
         console.log('✅ Using fallback platform fee:', platformFee);
       }
@@ -1169,7 +1179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Payment structure: Platform fee per washout (configurable)
       // Driver receives location rate (owner sets this per location)
       const locationRate = parseFloat(location.rate);
-      const PLATFORM_FEE = platformFee; // Configurable via admin settings
+      const PLATFORM_FEE = platformFee; // Configurable via admin settings (global or per-owner)
       const DRIVER_PAYMENT = locationRate; // Set by location owner
       const OWNER_CHARGE = locationRate + PLATFORM_FEE;
 
