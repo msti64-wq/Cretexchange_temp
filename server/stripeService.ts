@@ -715,6 +715,7 @@ export async function listPaymentMethods(
  */
 export async function processWashoutPaymentViaCard(params: {
   ownerStripeCustomerId: string; // Platform customer ID for owner
+  ownerPaymentMethodId?: string; // Explicit payment method ID (recommended)
   ownerUsername: string;
   driverConnectedAccountId: string; // Driver's Stripe Connect account
   driverUsername: string;
@@ -732,10 +733,11 @@ export async function processWashoutPaymentViaCard(params: {
       washoutAmount: params.washoutAmount / 100,
       platformFee: params.platformFee / 100,
       totalCharge: totalAmount / 100,
+      explicitPaymentMethod: !!params.ownerPaymentMethodId,
     });
 
-    // Create Destination Charge - charges owner's card and splits payment
-    const paymentIntent = await stripe.paymentIntents.create({
+    // Build payment intent parameters
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: totalAmount, // Total charged to owner (washout + platform fee)
       currency: 'usd',
       customer: params.ownerStripeCustomerId, // Charge owner's saved card
@@ -757,7 +759,16 @@ export async function processWashoutPaymentViaCard(params: {
       },
       confirm: true, // Auto-confirm payment
       off_session: true, // Allow charging without user present (saved card)
-    });
+    };
+
+    // Explicitly specify payment method if provided (recommended)
+    // This is more reliable than relying on customer's default payment method
+    if (params.ownerPaymentMethodId) {
+      paymentIntentParams.payment_method = params.ownerPaymentMethodId;
+    }
+
+    // Create Destination Charge - charges owner's card and splits payment
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
     console.log('✅ Processed washout payment via card:', {
       paymentIntentId: paymentIntent.id,

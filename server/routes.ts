@@ -1247,6 +1247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Process payment via credit card with Stripe Connect Destination Charge
         const paymentIntent = await stripeService.processWashoutPaymentViaCard({
           ownerStripeCustomerId: owner.stripeCustomerId,
+          ownerPaymentMethodId: owner.stripePaymentMethodId || undefined, // Explicit payment method (more reliable)
           ownerUsername: ownerUser?.username || owner.id,
           driverConnectedAccountId: driver.stripeConnectAccountId,
           driverUsername: driverUser?.username || driver.id,
