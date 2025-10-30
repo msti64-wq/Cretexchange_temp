@@ -172,6 +172,26 @@ export default function AdminFeatureFlags() {
     },
   });
 
+  const refreshFlagsMutation = useMutation({
+    mutationFn: async () => {
+      // Force a refetch by returning the query result
+      await queryClient.refetchQueries({ queryKey: ['/api/feature-flags'] });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Flags Refreshed",
+        description: "Feature flags have been reloaded from the server.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Refresh Failed",
+        description: error.message || "Failed to refresh feature flags",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleUpdatePlatformFee = () => {
     const feeValue = parseFloat(platformFee);
     if (isNaN(feeValue) || feeValue <= 0) {
@@ -361,11 +381,12 @@ export default function AdminFeatureFlags() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/feature-flags'] })}
+                onClick={() => refreshFlagsMutation.mutate()}
+                disabled={refreshFlagsMutation.isPending}
                 data-testid="button-refresh-flags"
               >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
+                <RefreshCw className={`w-4 h-4 mr-2 ${refreshFlagsMutation.isPending ? 'animate-spin' : ''}`} />
+                {refreshFlagsMutation.isPending ? 'Refreshing...' : 'Refresh'}
               </Button>
             </div>
           </CardHeader>
