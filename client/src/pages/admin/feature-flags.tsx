@@ -36,9 +36,16 @@ export default function AdminFeatureFlags() {
   const [userEmail, setUserEmail] = useState("");
   const [overrideEnabled, setOverrideEnabled] = useState(true);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [platformFee, setPlatformFee] = useState("");
 
   const { data: users } = useQuery({
     queryKey: ['/api/admin/users'],
+    retry: false,
+  });
+
+  // Get system settings for platform fee
+  const { data: systemSettings } = useQuery({
+    queryKey: ['/api/admin/settings'],
     retry: false,
   });
 
@@ -140,6 +147,44 @@ export default function AdminFeatureFlags() {
     },
   });
 
+  const updatePlatformFeeMutation = useMutation({
+    mutationFn: async (fee: string) => {
+      return await apiRequest('/api/admin/settings', {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platformWashoutFee: fee }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
+      setPlatformFee("");
+      toast({
+        title: "Platform Fee Updated",
+        description: "The platform washout fee has been successfully updated.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update platform fee",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUpdatePlatformFee = () => {
+    const feeValue = parseFloat(platformFee);
+    if (isNaN(feeValue) || feeValue < 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid positive number",
+        variant: "destructive",
+      });
+      return;
+    }
+    updatePlatformFeeMutation.mutate(platformFee);
+  };
+
   const handleAddOverride = () => {
     if (!selectedFlag || !userEmail) {
       toast({
@@ -240,6 +285,69 @@ export default function AdminFeatureFlags() {
                   <li>User-specific overrides for beta testing</li>
                   <li>No code deployment needed for feature toggles</li>
                 </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Platform Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Platform Settings</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Configure global platform parameters
+                </p>
+              </div>
+              <Settings className="w-6 h-6 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Platform Washout Fee */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="font-semibold">Platform Washout Fee</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Fee charged per washout transaction (currently ${(systemSettings as any)?.platformWashoutFee || '0.40'})
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    💡 Testing: $0.40 (10% of production) • Production: $4.00
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Label htmlFor="platform-fee">New Fee Amount ($)</Label>
+                  <Input
+                    id="platform-fee"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder={(systemSettings as any)?.platformWashoutFee || '0.40'}
+                    value={platformFee}
+                    onChange={(e) => setPlatformFee(e.target.value)}
+                    data-testid="input-platform-fee"
+                  />
+                </div>
+                <Button
+                  onClick={handleUpdatePlatformFee}
+                  disabled={!platformFee || updatePlatformFeeMutation.isPending}
+                  data-testid="button-update-platform-fee"
+                >
+                  {updatePlatformFeeMutation.isPending ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Settings className="w-4 h-4 mr-2" />
+                      Update Fee
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </CardContent>

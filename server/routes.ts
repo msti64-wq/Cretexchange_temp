@@ -1155,12 +1155,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerUser = await storage.getUser(owner.userId);
       const driverUser = await storage.getUser(driver.userId);
 
-      // Payment structure: Flat $0.40 platform fee per washout (testing price)
-      // Production will be $4.00 platform fee
-      // Driver receives location rate (owner sets this - testing: $0.50, production: $5.00)
+      // Get platform fee from system settings (configurable by super admin)
+      const systemSettings = await storage.getSystemSettings();
+      const platformFee = parseFloat(systemSettings.platformWashoutFee || '0.40');
+      
+      // Payment structure: Platform fee per washout (configurable)
+      // Driver receives location rate (owner sets this per location)
       const locationRate = parseFloat(location.rate);
-      const PLATFORM_FEE = 0.40; // Testing: $0.40, Production: $4.00
-      const DRIVER_PAYMENT = locationRate; // Testing: $0.50, Production: $5.00
+      const PLATFORM_FEE = platformFee; // Configurable via admin settings
+      const DRIVER_PAYMENT = locationRate; // Set by location owner
       const OWNER_CHARGE = locationRate + PLATFORM_FEE;
 
       // Convert to cents for Stripe

@@ -879,6 +879,9 @@ export const systemSettings = pgTable("system_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   // Stripe Automatic Tax - enables/disables automatic tax calculation on all payments
   automaticTaxEnabled: boolean("automatic_tax_enabled").default(false).notNull(),
+  // Platform Washout Fee - fee charged per washout transaction (in dollars)
+  // Testing: $0.40 (10% of production), Production: $4.00
+  platformWashoutFee: decimal("platform_washout_fee", { precision: 10, scale: 2 }).default("0.40").notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
   updatedBy: varchar("updated_by").references(() => users.id), // Track who made the change
 });
@@ -886,6 +889,7 @@ export const systemSettings = pgTable("system_settings", {
 // System settings schemas
 export const updateSystemSettingsSchema = z.object({
   automaticTaxEnabled: z.boolean().optional(),
+  platformWashoutFee: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(), // Decimal as string, e.g., "0.40" or "4.00"
 });
 
 export type SystemSettings = typeof systemSettings.$inferSelect;
