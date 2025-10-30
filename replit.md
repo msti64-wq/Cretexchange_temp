@@ -9,6 +9,17 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **October 30, 2025**:
+  - Implemented Stripe Connect Destination Charges for washout payments (credit card splitting)
+  - Added `processWashoutPaymentViaCard()` function for marketplace payment processing
+  - Washout payments now work via credit card WITHOUT Treasury approval
+  - Payment flow: Owner's card charged → Driver receives payment via Connect → Platform keeps fee
+  - Dual payment system: Credit card (default) OR Treasury wallet (when enabled via feature flag)
+  - Automated payment splitting: $0.50 to driver, $0.40 platform fee ($0.90 total - testing prices)
+  - Production pricing ready: $5.00 driver, $4.00 platform fee (just change constants)
+  - Comprehensive validation: checks for saved payment methods and Connect accounts
+  - Fully reversible: Can switch to Treasury wallets by toggling feature flag
+
 - **October 29, 2025**:
   - Added `wallet_funding` feature flag to control ACH wallet funding feature
   - Wallet funding now disabled by default pending Stripe Connect + Treasury approval
@@ -60,7 +71,12 @@ Preferred communication style: Simple, everyday language.
 -   **Backend**: Express.js with TypeScript for RESTful APIs, session-based authentication, and file uploads.
 -   **Database**: PostgreSQL hosted on Neon, managed with Drizzle ORM for type-safe queries. The schema supports users, locations, activities, and payments with role-based access.
 -   **Authentication & Authorization**: Custom username/password authentication, role-based access control (driver, owner, admin), and secure session management.
--   **Payment Processing**: All-Stripe Infrastructure, including Stripe Connect for marketplace payments, Stripe Treasury for wallet management (ACH, payouts, internal transfers), and Stripe Issuing for debit cards (virtual and physical). A platform fee of $0.40 per washout (testing amount, 10% of production $4.00) is collected via Stripe transfers.
+-   **Payment Processing**: All-Stripe Infrastructure:
+    - **Primary Payment Method**: Stripe Connect Destination Charges for marketplace payments (credit card splitting) - works immediately without approval
+    - **Alternative Payment Method**: Stripe Treasury for wallet management (ACH, payouts, internal transfers) - requires approval, controlled via feature flag
+    - **Debit Cards**: Stripe Issuing for virtual and physical cards
+    - **Platform Fee**: $0.40 per washout (testing amount, 10% of production $4.00) collected automatically via application fees
+    - **Payment Splitting**: Owner's card charged → Driver receives payment via Connect account → Platform keeps fee in single transaction
 -   **Automated Batch Processing**: A daily batch processor handles payments, recurring fees, and subscriptions, designed for external cron services, ensuring idempotency and multi-timezone support.
 -   **File Management**: Google Cloud Storage for secure photo uploads using presigned URLs and access control.
 -   **Location Services**: GPS integration, Google Maps API for interactive maps, proximity-based discovery, and check-in systems.
