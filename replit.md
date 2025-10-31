@@ -9,6 +9,21 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **October 31, 2025**:
+  - Implemented hourly batched payment system for washout transactions to minimize Stripe fees
+  - Added `pending_washout_payments` table to queue washouts awaiting batch processing
+  - Added `washout_payment_batches` table to track batch processing history and results
+  - Washout approval now queues payments instead of immediate charging (batches run hourly or manually)
+  - Created batch processor endpoint (`/api/payments/process-batch`) for admin-triggered processing
+  - Single Stripe charge per owner per batch, with metadata showing all driver payment splits
+  - Comprehensive error handling: batch failures don't block individual payment failures
+  - Added Batch Payment Management admin interface (`/batch-payments`) for monitoring and manual triggers
+  - Real-time statistics showing queued payments, total amounts, and affected owners
+  - Batch history view displaying all processed batches with Stripe payment intent IDs
+  - Payment flow: Queue → Hourly batch → Single owner charge → Multiple driver transfers → Complete
+  - Designed for external cron triggering (e.g., hourly schedule via Replit Deployments or external service)
+  - Testing amounts: $0.50 driver payment + $0.40 platform fee per washout
+
 - **October 30, 2025** (PM - Later):
   - Implemented per-owner custom platform fee system for tenure-based pricing
   - Added `customPlatformFee` nullable field to owners table for individual overrides
