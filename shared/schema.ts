@@ -61,6 +61,7 @@ export const feeTypeEnum = pgEnum("fee_type", ["location_monthly", "subscription
 export const feeStatusEnum = pgEnum("fee_status", ["pending", "paid", "failed", "past_due", "waived"]);
 export const subscriptionPlanEnum = pgEnum("subscription_plan", ["none", "monthly", "annual", "one_time"]);
 export const membershipPaymentMethodEnum = pgEnum("membership_payment_method", ["stripe", "cash", "check", "bank_transfer", "waived", "other"]);
+export const pendingPaymentStatusEnum = pgEnum("pending_payment_status", ["queued", "processed", "failed", "cancelled"]);
 
 // User storage table - local authentication
 export const users = pgTable("users", {
@@ -265,6 +266,50 @@ export const payments = pgTable("payments", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Pending washout payments for hourly batch processing
+export const pendingWashoutPayments = pgTable("pending_washout_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
+  driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
+  ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
+  locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "cascade" }),
+  driverAmount: decimal("driver_amount", { precision: 10, scale: 2 }).notNull(),
+  platformFee: decimal("platform_fee", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  status: pendingPaymentStatusEnum("status").notNull().default("queued"),
+  batchId: varchar("batch_id").references(() => washoutPaymentBatches.id),
+  processedAt: timestamp("processed_at"),
+  failureReason: text("failure_reason"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  statusIndex: index("idx_pending_payments_status").on(table.status),
+  ownerStatusIndex: index("idx_pending_payments_owner_status").on(table.ownerId, table.status),
+}));
+
+// Washout payment batches for hourly batch processing
+export const washoutPaymentBatches = pgTable("washout_payment_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
+  batchTime: timestamp("batch_time").notNull(),
+  totalDriverPayments: decimal("total_driver_payments", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  totalPlatformFees: decimal("total_platform_fees", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  paymentCount: integer("payment_count").notNull().default(0),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  status: batchStatusEnum("status").notNull().default("pending"),
+  processingStartedAt: timestamp("processing_started_at"),
+  completedAt: timestamp("completed_at"),
+  failureReason: text("failure_reason"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  statusIndex: index("idx_washout_batches_status").on(table.status),
+  ownerTimeIndex: index("idx_washout_batches_owner_time").on(table.ownerId, table.batchTime),
+}));
 
 // Billing batches for daily batch processing
 export const billingBatches = pgTable("billing_batches", {
@@ -668,6 +713,18 @@ export const insertFeeLedgerSchema = createInsertSchema(feesLedger).omit({
   updatedAt: true,
 });
 
+export const insertPendingWashoutPaymentSchema = createInsertSchema(pendingWashoutPayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWashoutPaymentBatchSchema = createInsertSchema(washoutPaymentBatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Wallet API request validation schemas
 export const withdrawalRequestSchema = z.object({
   amount: z.number().positive().min(5, "Minimum withdrawal amount is $5"),
@@ -832,6 +889,10 @@ export type BillingBatch = typeof billingBatches.$inferSelect;
 export type InsertBillingBatch = z.infer<typeof insertBillingBatchSchema>;
 export type FeeLedger = typeof feesLedger.$inferSelect;
 export type InsertFeeLedger = z.infer<typeof insertFeeLedgerSchema>;
+export type PendingWashoutPayment = typeof pendingWashoutPayments.$inferSelect;
+export type InsertPendingWashoutPayment = z.infer<typeof insertPendingWashoutPaymentSchema>;
+export type WashoutPaymentBatch = typeof washoutPaymentBatches.$inferSelect;
+export type InsertWashoutPaymentBatch = z.infer<typeof insertWashoutPaymentBatchSchema>;
 export type ServicePaymentAccount = typeof servicePaymentAccounts.$inferSelect;
 export type InsertServicePaymentAccount = z.infer<typeof insertServicePaymentAccountSchema>;
 export type UpdateServicePaymentAccount = z.infer<typeof updateServicePaymentAccountSchema>;
