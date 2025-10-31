@@ -1,0 +1,325 @@
+index-W-0gLq88.js:48 🔄 Query cache cleared once
+index-W-0gLq88.js:447 🚨 PROACTIVE: Clearing phantom activities from cache on mount
+index-W-0gLq88.js:447 ✅ Phantom activities proactively cleared
+VM47:6 SW registered:  ServiceWorkerRegistration
+truck-wash-locator-msti64.replit.app/:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: Object
+index-W-0gLq88.js:453 ⏳ Rendering loading state
+index-W-0gLq88.js:453 🔄 StripeCardSetup: Component mounted, creating setup intent...
+index-W-0gLq88.js:447 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-W-0gLq88.js:447
+index-W-0gLq88.js:453 ✅ Setup intent response received: 200
+index-W-0gLq88.js:453 📦 Setup intent data: Object
+index-W-0gLq88.js:453 ✅ Client secret set, Stripe form should render
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: Object
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
+api.stripe.com/v1/elements/sessions?client_secret=seti_1SOLL3LqF7RVaZdvMpITYgpy_secret_TL1NhrCOn3GSy4MPL2cvO96N2GXAUT5&key=pk_test_51S1Byc8wz67eAzUy57vG67e0xL3QY0ku7Vke5jn0XiRdTX3hbGVcxGkwKoqeMwE0T7YujDhSlTByzQvWi9aQMOT900VSeY6854&_stripe_version=2025-03-31.basil&elements_init_source=stripe.elements&referrer_host=truck-wash-locator-msti64.replit.app&stripe_js_id=34f505e1-61da-4567-80da-330427357336&locale=en-US&expand[0]=payment_method_preference.setup_intent.payment_method&type=setup_intent:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/elements/sessions?client_secret=seti_1SOLL3LqF7RVaZdvMpITYgpy_secret_TL1NhrCOn3GSy4MPL2cvO96N2GXAUT5&key=pk_test_51S1Byc8wz67eAzUy57vG67e0xL3QY0ku7Vke5jn0XiRdTX3hbGVcxGkwKoqeMwE0T7YujDhSlTByzQvWi9aQMOT900VSeY6854&_stripe_version=2025-03-31.basil&elements_init_source=stripe.elements&referrer_host=truck-wash-locator-msti64.replit.app&stripe_js_id=34f505e1-61da-4567-80da-330427357336&locale=en-US&expand[0]=payment_method_preference.setup_intent.payment_method&type=setup_intent:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/elements/sessions?client_secret=seti_1SOLL3LqF7RVaZdvMpITYgpy_secret_TL1NhrCOn3GSy4MPL2cvO96N2GXAUT5&key=pk_test_51S1Byc8wz67eAzUy57vG67e0xL3QY0ku7Vke5jn0XiRdTX3hbGVcxGkwKoqeMwE0T7YujDhSlTByzQvWi9aQMOT900VSeY6854&_stripe_version=2025-03-31.basil&elements_init_source=stripe.elements&referrer_host=truck-wash-locator-msti64.replit.app&stripe_js_id=34f505e1-61da-4567-80da-330427357336&locale=en-US&expand[0]=payment_method_preference.setup_intent.payment_method&type=setup_intent:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/elements/sessions?client_secret=seti_1SOLL3LqF7RVaZdvMpITYgpy_secret_TL1NhrCOn3GSy4MPL2cvO96N2GXAUT5&key=pk_test_51S1Byc8wz67eAzUy57vG67e0xL3QY0ku7Vke5jn0XiRdTX3hbGVcxGkwKoqeMwE0T7YujDhSlTByzQvWi9aQMOT900VSeY6854&_stripe_version=2025-03-31.basil&elements_init_source=stripe.elements&referrer_host=truck-wash-locator-msti64.replit.app&stripe_js_id=34f505e1-61da-4567-80da-330427357336&locale=en-US&expand[0]=payment_method_preference.setup_intent.payment_method&type=setup_intent:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/elements/sessions?client_secret=seti_1SOLL3LqF7RVaZdvMpITYgpy_secret_TL1NhrCOn3GSy4MPL2cvO96N2GXAUT5&key=pk_test_51S1Byc8wz67eAzUy57vG67e0xL3QY0ku7Vke5jn0XiRdTX3hbGVcxGkwKoqeMwE0T7YujDhSlTByzQvWi9aQMOT900VSeY6854&_stripe_version=2025-03-31.basil&elements_init_source=stripe.elements&referrer_host=truck-wash-locator-msti64.replit.app&stripe_js_id=34f505e1-61da-4567-80da-330427357336&locale=en-US&expand[0]=payment_method_preference.setup_intent.payment_method&type=setup_intent:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/elements/sessions?client_secret=seti_1SOLL3LqF7RVaZdvMpITYgpy_secret_TL1NhrCOn3GSy4MPL2cvO96N2GXAUT5&key=pk_test_51S1Byc8wz67eAzUy57vG67e0xL3QY0ku7Vke5jn0XiRdTX3hbGVcxGkwKoqeMwE0T7YujDhSlTByzQvWi9aQMOT900VSeY6854&_stripe_version=2025-03-31.basil&elements_init_source=stripe.elements&referrer_host=truck-wash-locator-msti64.replit.app&stripe_js_id=34f505e1-61da-4567-80da-330427357336&locale=en-US&expand[0]=payment_method_preference.setup_intent.payment_method&type=setup_intent:1  Failed to load resource: the server responded with a status of 400 ()
+Unable to download payment manifest "<URL>".
+Unable to download payment manifest "<URL>".
+Unable to download payment manifest "<URL>".
+Unable to download payment manifest "<URL>".
+Unable to download payment manifest "<URL>".
+Unable to download payment manifest "<URL>".
+index-W-0gLq88.js:453 💥 Stripe Elements onLoadError - Full event: Object
+onLoadError @ index-W-0gLq88.js:453
+index-W-0gLq88.js:453 💥 Error object: Object
+onLoadError @ index-W-0gLq88.js:453
+index-W-0gLq88.js:453 💥 Error type: invalid_request_error
+onLoadError @ index-W-0gLq88.js:453
+index-W-0gLq88.js:453 💥 Error code: undefined
+onLoadError @ index-W-0gLq88.js:453
+index-W-0gLq88.js:453 💥 Error message: The client_secret provided does not match any associated SetupIntent on this account. Ensure the publishable key used belongs to the same account that created the SetupIntent.
+onLoadError @ index-W-0gLq88.js:453
+index-W-0gLq88.js:453 💥 Error decline_code: undefined
+onLoadError @ index-W-0gLq88.js:453
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: Object
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: Object
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: Object
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: false}
+index-W-0gLq88.js:453 ⏳ Rendering loading state
+index-W-0gLq88.js:453 🔄 StripeCardSetup: Component mounted, creating setup intent...
+index-W-0gLq88.js:447 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-W-0gLq88.js:447
+tm @ index-W-0gLq88.js:40
+oo @ index-W-0gLq88.js:40
+TA @ index-W-0gLq88.js:40
+Wa @ index-W-0gLq88.js:40
+Av @ index-W-0gLq88.js:40
+La @ index-W-0gLq88.js:38
+(anonymous) @ index-W-0gLq88.js:40
+index-W-0gLq88.js:453 ✅ Setup intent response received: 200
+index-W-0gLq88.js:453 📦 Setup intent data: {hasClientSecret: true}
+index-W-0gLq88.js:453 ✅ Client secret set, Stripe form should render
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
+  GET https://api.stripe.com/v1/elements/sessions?client_secret=seti_1SOLLZLqF7RVaZdvpsYlTlYm_secret_TL1OtmUAVsTeNIUFXrg4bOkkYEZfDVV&key=pk_test_51S1Byc8wz67eAzUy57vG67e0xL3QY0ku7Vke5jn0XiRdTX3hbGVcxGkwKoqeMwE0T7YujDhSlTByzQvWi9aQMOT900VSeY6854&_stripe_version=2025-03-31.basil&elements_init_source=stripe.elements&referrer_host=truck-wash-locator-msti64.replit.app&stripe_js_id=34f505e1-61da-4567-80da-330427357336&locale=en-US&expand[0]=payment_method_preference.setup_intent.payment_method&type=setup_intent 400 (Bad Request)
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+e @ shared-9893484ee4753…16f07026454428.js:1
+c @ shared-9893484ee4753…16f07026454428.js:1
+i @ shared-9893484ee4753…16f07026454428.js:1
+s @ shared-9893484ee4753…16f07026454428.js:1
+e @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+n @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+a @ shared-9893484ee4753…16f07026454428.js:1
+i @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+_ @ shared-9893484ee4753…16f07026454428.js:1
+d @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+t.requestParams @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+ny @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+ry.singleFlightCreateAndParse @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+n @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+a @ shared-9893484ee4753…16f07026454428.js:1
+i @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+n @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+a @ shared-9893484ee4753…16f07026454428.js:1
+i @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+value @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+sessions?client_secret=seti_1SOLLZLqF7RVaZdvpsYlTlYm_secret_TL1OtmUAVsTeNIUFXrg4bOkkYEZfDVV&key=pk_…:1  Failed to load resource: the server responded with a status of 400 ()
+sessions?client_secret=seti_1SOLLZLqF7RVaZdvpsYlTlYm_secret_TL1OtmUAVsTeNIUFXrg4bOkkYEZfDVV&key=pk_…:1  Failed to load resource: the server responded with a status of 400 ()
+index-W-0gLq88.js:453 💥 Stripe Elements onLoadError - Full event: {elementType: 'payment', error: {…}}
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 💥 Error object: {type: 'invalid_request_error', message: 'The client_secret provided does not match any asso…to the same account that created the SetupIntent.', param: 'client_secret', status: 400}
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 💥 Error type: invalid_request_error
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 💥 Error code: undefined
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 💥 Error message: The client_secret provided does not match any associated SetupIntent on this account. Ensure the publishable key used belongs to the same account that created the SetupIntent.
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 💥 Error decline_code: undefined
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
+payment-methods:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+payment-methods:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+payment-methods:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+payment-methods:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+payment-methods:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+payment-methods:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: false}
+index-W-0gLq88.js:453 ⏳ Rendering loading state
+index-W-0gLq88.js:453 🔄 StripeCardSetup: Component mounted, creating setup intent...
+index-W-0gLq88.js:447 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-W-0gLq88.js:447
+tm @ index-W-0gLq88.js:40
+oo @ index-W-0gLq88.js:40
+TA @ index-W-0gLq88.js:40
+Wa @ index-W-0gLq88.js:40
+Av @ index-W-0gLq88.js:40
+La @ index-W-0gLq88.js:38
+(anonymous) @ index-W-0gLq88.js:40
+index-W-0gLq88.js:453 ✅ Setup intent response received: 200
+index-W-0gLq88.js:453 📦 Setup intent data: {hasClientSecret: true}
+index-W-0gLq88.js:453 ✅ Client secret set, Stripe form should render
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
+  GET https://api.stripe.com/v1/elements/sessions?client_secret=seti_1SOLUvLqF7RVaZdvUV7txTJT_secret_TL1YYJEv13kk8NH0YXCuiONsAnqA1T3&key=pk_test_51S1Byc8wz67eAzUy57vG67e0xL3QY0ku7Vke5jn0XiRdTX3hbGVcxGkwKoqeMwE0T7YujDhSlTByzQvWi9aQMOT900VSeY6854&_stripe_version=2025-03-31.basil&elements_init_source=stripe.elements&referrer_host=truck-wash-locator-msti64.replit.app&stripe_js_id=34f505e1-61da-4567-80da-330427357336&locale=en-US&expand[0]=payment_method_preference.setup_intent.payment_method&type=setup_intent 400 (Bad Request)
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+e @ shared-9893484ee4753…16f07026454428.js:1
+c @ shared-9893484ee4753…16f07026454428.js:1
+i @ shared-9893484ee4753…16f07026454428.js:1
+s @ shared-9893484ee4753…16f07026454428.js:1
+e @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+n @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+a @ shared-9893484ee4753…16f07026454428.js:1
+i @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+_ @ shared-9893484ee4753…16f07026454428.js:1
+d @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+t.requestParams @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+ny @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+ry.singleFlightCreateAndParse @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+n @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+a @ shared-9893484ee4753…16f07026454428.js:1
+i @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+n @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+a @ shared-9893484ee4753…16f07026454428.js:1
+i @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ shared-9893484ee4753…16f07026454428.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+value @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+index-W-0gLq88.js:453 💥 Stripe Elements onLoadError - Full event: {elementType: 'payment', error: {…}}
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 💥 Error object: {type: 'invalid_request_error', message: 'The client_secret provided does not match any asso…to the same account that created the SetupIntent.', param: 'client_secret', status: 400}
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 💥 Error type: invalid_request_error
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 💥 Error code: undefined
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 💥 Error message: The client_secret provided does not match any associated SetupIntent on this account. Ensure the publishable key used belongs to the same account that created the SetupIntent.
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 💥 Error decline_code: undefined
+onLoadError @ index-W-0gLq88.js:453
+o @ index-W-0gLq88.js:448
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+i._emitEvent @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+s._emit @ stripe.js:1
+_handleMessage @ stripe.js:1
+(anonymous) @ stripe.js:1
+(anonymous) @ stripe.js:1
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
+index-W-0gLq88.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-W-0gLq88.js:453 ✅ Rendering Stripe Elements form
