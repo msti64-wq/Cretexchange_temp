@@ -3774,8 +3774,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Create or get Stripe Customer
+      // Create or get Stripe Customer with error recovery
       let customerId = owner.stripeCustomerId;
+      
+      // If we have a customer ID, verify it exists in Stripe
+      if (customerId) {
+        try {
+          await stripe.customers.retrieve(customerId);
+          console.log(`✅ Verified existing Stripe Customer: ${customerId} for owner ${user.username}`);
+        } catch (error: any) {
+          if (error.code === 'resource_missing') {
+            console.log(`⚠️  Customer ${customerId} not found in Stripe, creating new customer for ${user.username}`);
+            customerId = null; // Force creation of new customer
+          } else {
+            throw error; // Re-throw unexpected errors
+          }
+        }
+      }
+      
+      // Create new customer if needed
       if (!customerId) {
         const customer = await stripe.customers.create({
           email: user.email,
@@ -3787,7 +3804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         customerId = customer.id;
         await storage.updateOwner(owner.id, { stripeCustomerId: customerId });
-        console.log(`✅ Created Stripe Customer: ${customerId} for owner ${user.username}`);
+        console.log(`✅ Created new Stripe Customer: ${customerId} for owner ${user.username}`);
       }
 
       // Create Setup Intent for future payments

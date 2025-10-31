@@ -1,0 +1,62 @@
+index-LlIOdV9p.js:48 🔄 Query cache cleared once
+VM83 login:6 SW registered:  ServiceWorkerRegistration
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-LlIOdV9p.js:453 🎨 StripeCardSetup: Rendering with state: Object
+index-LlIOdV9p.js:453 ⏳ Rendering loading state
+index-LlIOdV9p.js:453 🔄 StripeCardSetup: Component mounted, creating setup intent...
+index-LlIOdV9p.js:447 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-LlIOdV9p.js:447
+index-LlIOdV9p.js:453 🎨 StripeCardSetup: Rendering with state: Object
+index-LlIOdV9p.js:453 ⏳ Rendering loading state
+api/owners/create-setup-intent:1  Failed to load resource: the server responded with a status of 500 ()
+index-LlIOdV9p.js:453 ❌ Error creating setup intent: Error: 500: {"message":"Failed to create setup intent: No such customer: 'cus_TKHa3nFbqq4hoO'"}
+    at GS (index-LlIOdV9p.js:48:42800)
+    at async ke (index-LlIOdV9p.js:48:43123)
+(anonymous) @ index-LlIOdV9p.js:453
+index-LlIOdV9p.js:453 🎨 StripeCardSetup: Rendering with state: Object
+index-LlIOdV9p.js:453 ❌ Rendering error state: 500: {"message":"Failed to create setup intent: No such customer: 'cus_TKHa3nFbqq4hoO'"}
+index-LlIOdV9p.js:453 🎨 StripeCardSetup: Rendering with state: Object
+index-LlIOdV9p.js:453 ❌ Rendering error state: 500: {"message":"Failed to create setup intent: No such customer: 'cus_TKHa3nFbqq4hoO'"}
+index-LlIOdV9p.js:453 🎨 StripeCardSetup: Rendering with state: Object
+index-LlIOdV9p.js:453 ❌ Rendering error state: 500: {"message":"Failed to create setup intent: No such customer: 'cus_TKHa3nFbqq4hoO'"}
+index-LlIOdV9p.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: false}
+index-LlIOdV9p.js:453 ⏳ Rendering loading state
+index-LlIOdV9p.js:453 🔄 StripeCardSetup: Component mounted, creating setup intent...
+index-LlIOdV9p.js:447 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-LlIOdV9p.js:447
+tm @ index-LlIOdV9p.js:40
+co @ index-LlIOdV9p.js:40
+AA @ index-LlIOdV9p.js:40
+Ka @ index-LlIOdV9p.js:40
+Rv @ index-LlIOdV9p.js:40
+$a @ index-LlIOdV9p.js:38
+(anonymous) @ index-LlIOdV9p.js:40
+index-LlIOdV9p.js:48  POST https://truck-wash-locator-msti64.replit.app/api/owners/create-setup-intent 500 (Internal Server Error)
+ke @ index-LlIOdV9p.js:48
+(anonymous) @ index-LlIOdV9p.js:453
+tm @ index-LlIOdV9p.js:40
+co @ index-LlIOdV9p.js:40
+AA @ index-LlIOdV9p.js:40
+Ka @ index-LlIOdV9p.js:40
+Rv @ index-LlIOdV9p.js:40
+$a @ index-LlIOdV9p.js:38
+(anonymous) @ index-LlIOdV9p.js:40
+index-LlIOdV9p.js:453 ❌ Error creating setup intent: Error: 500: {"message":"Failed to create setup intent: No such customer: 'cus_TKHa3nFbqq4hoO'"}
+    at GS (index-LlIOdV9p.js:48:42800)
+    at async ke (index-LlIOdV9p.js:48:43123)
+(anonymous) @ index-LlIOdV9p.js:453
+Promise.catch
+(anonymous) @ index-LlIOdV9p.js:453
+tm @ index-LlIOdV9p.js:40
+co @ index-LlIOdV9p.js:40
+AA @ index-LlIOdV9p.js:40
+Ka @ index-LlIOdV9p.js:40
+Rv @ index-LlIOdV9p.js:40
+$a @ index-LlIOdV9p.js:38
+(anonymous) @ index-LlIOdV9p.js:40
+index-LlIOdV9p.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: true, hasClientSecret: false}
+index-LlIOdV9p.js:453 ❌ Rendering error state: 500: {"message":"Failed to create setup intent: No such customer: 'cus_TKHa3nFbqq4hoO'"}
+index-LlIOdV9p.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: true, hasClientSecret: false}
+index-LlIOdV9p.js:453 ❌ Rendering error state: 500: {"message":"Failed to create setup intent: No such customer: 'cus_TKHa3nFbqq4hoO'"}
+index-LlIOdV9p.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: true, hasClientSecret: false}
+index-LlIOdV9p.js:453 ❌ Rendering error state: 500: {"message":"Failed to create setup intent: No such customer: 'cus_TKHa3nFbqq4hoO'"}
