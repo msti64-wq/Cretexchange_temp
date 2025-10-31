@@ -1542,6 +1542,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all pending payments (admin only)
+  app.get('/api/admin/pending-payments', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const pendingPayments = await storage.getAllPendingWashoutPayments();
+      res.json(pendingPayments);
+    } catch (error: any) {
+      console.error("Error fetching pending payments:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to fetch pending payments",
+      });
+    }
+  });
+
+  // Get payment batch history (admin only)
+  app.get('/api/admin/payment-batches', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const batches = await storage.getWashoutPaymentBatchesByStatus('completed');
+      const processing = await storage.getWashoutPaymentBatchesByStatus('processing');
+      const failed = await storage.getWashoutPaymentBatchesByStatus('failed');
+
+      // Combine and sort by batch time descending
+      const allBatches = [...batches, ...processing, ...failed].sort((a, b) => 
+        new Date(b.batchTime).getTime() - new Date(a.batchTime).getTime()
+      );
+
+      res.json(allBatches);
+    } catch (error: any) {
+      console.error("Error fetching payment batches:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to fetch payment batches",
+      });
+    }
+  });
+
   // Driver endpoints
   app.get('/api/drivers/dashboard', isAuthenticated, async (req: any, res) => {
     try {

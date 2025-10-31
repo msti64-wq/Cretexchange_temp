@@ -43,6 +43,7 @@ import AdminProfile from "@/pages/admin/profile";
 import ServiceAccountsPage from "@/pages/admin/service-accounts";
 import AdminFeatureFlags from "@/pages/admin/feature-flags";
 import AdminSettings from "@/pages/admin/settings";
+import AdminBatchPayments from "@/pages/admin/batch-payments";
 
 // Wrapper components for Register with preselected roles
 const GeneralRegister = (props: RouteComponentProps) => <Register />;
@@ -127,6 +128,7 @@ function Router() {
         <Route path="/users" component={AdminUsers} />
         <Route path="/locations" component={AdminLocations} />
         <Route path="/payments" component={AdminPayments} />
+        <Route path="/batch-payments" component={AdminBatchPayments} />
         <Route path="/subscriptions" component={AdminSubscriptions} />
         <Route path="/fees" component={AdminFees} />
         <Route path="/feature-flags" component={AdminFeatureFlags} />
