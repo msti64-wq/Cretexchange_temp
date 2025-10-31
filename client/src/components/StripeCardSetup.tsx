@@ -34,20 +34,41 @@ function CardSetupForm({ onSuccess, onCancel }: CardSetupFormProps) {
 
     try {
       // Confirm the setup with Stripe
+      console.log('🔄 Confirming setup intent...');
       const { error, setupIntent } = await stripe.confirmSetup({
         elements,
         redirect: 'if_required',
       });
 
       if (error) {
+        console.error('❌ Stripe confirmSetup error:', {
+          type: error.type,
+          code: error.code,
+          message: error.message,
+          decline_code: error.decline_code,
+          param: error.param,
+        });
+        
+        // Provide more specific error messages based on error type
+        let errorDescription = error.message;
+        if (error.type === 'card_error') {
+          errorDescription = `Card declined: ${error.message}`;
+        } else if (error.type === 'validation_error') {
+          errorDescription = `Invalid card details: ${error.message}`;
+        } else if (error.type === 'api_error') {
+          errorDescription = `Stripe API error: ${error.message}. Please try again.`;
+        }
+        
         toast({
           title: "Card setup failed",
-          description: error.message,
+          description: errorDescription,
           variant: "destructive",
         });
         setIsProcessing(false);
         return;
       }
+
+      console.log('✅ Setup intent confirmed:', setupIntent?.id);
 
       if (setupIntent && setupIntent.payment_method) {
         // Save the payment method ID to our backend
