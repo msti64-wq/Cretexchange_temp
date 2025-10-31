@@ -634,21 +634,23 @@ export default function PaymentMethods() {
         }
         setShowCardSetup(open);
       }}>
-        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => {
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" onInteractOutside={(e) => {
           // Prevent closing when clicking outside
           e.preventDefault();
         }}>
           <DialogHeader>
             <DialogTitle>Add Payment Method</DialogTitle>
           </DialogHeader>
-          <StripeCardSetup
-            onSuccess={() => {
-              setShowCardSetup(false);
-              queryClient.invalidateQueries({ queryKey: ['/api/owners/profile'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-            }}
-            onCancel={() => setShowCardSetup(false)}
-          />
+          <div className="overflow-y-auto max-h-[calc(90vh-8rem)] pb-4">
+            <StripeCardSetup
+              onSuccess={() => {
+                setShowCardSetup(false);
+                queryClient.invalidateQueries({ queryKey: ['/api/owners/profile'] });
+                queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+              }}
+              onCancel={() => setShowCardSetup(false)}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 
