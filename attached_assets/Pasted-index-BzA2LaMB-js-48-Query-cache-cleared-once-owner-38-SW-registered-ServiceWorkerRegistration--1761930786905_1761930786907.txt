@@ -1,0 +1,151 @@
+index-BzA2LaMB.js:48 🔄 Query cache cleared once
+owner:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+owner:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-BzA2LaMB.js:447 🎯 Registration successful! Setting up install prompt for: owner
+index-BzA2LaMB.js:447 🔄 Redirecting to home route to prevent 404
+index-BzA2LaMB.js:447 ⏳ Now showing install prompt on home route
+index-BzA2LaMB.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: false}
+index-BzA2LaMB.js:453 ⏳ Rendering loading state
+index-BzA2LaMB.js:453 🔄 StripeCardSetup: Component mounted, creating setup intent...
+index-BzA2LaMB.js:447 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-BzA2LaMB.js:447
+tm @ index-BzA2LaMB.js:40
+co @ index-BzA2LaMB.js:40
+AA @ index-BzA2LaMB.js:40
+Ka @ index-BzA2LaMB.js:40
+Rv @ index-BzA2LaMB.js:40
+$a @ index-BzA2LaMB.js:38
+(anonymous) @ index-BzA2LaMB.js:40
+index-BzA2LaMB.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: false}
+index-BzA2LaMB.js:453 ⏳ Rendering loading state
+index-BzA2LaMB.js:453 ✅ Setup intent response received: 200
+index-BzA2LaMB.js:453 📦 Setup intent data: {hasClientSecret: true}
+index-BzA2LaMB.js:453 ✅ Client secret set, Stripe form should render
+index-BzA2LaMB.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-BzA2LaMB.js:453 ✅ Rendering Stripe Elements form
+/payment-methods:1 Unable to download payment manifest "https://www.google.com/pay".
+/payment-methods:1 Unable to download payment manifest "https://www.google.com/pay".
+index-BzA2LaMB.js:453 ✅ Stripe PaymentElement is ready
+shared-9893484ee47530afb616f07026454428.js:1 Uncaught (in promise) FetchError: Error fetching https://r.stripe.com/b: Failed to fetch
+    at shared-9893484ee47530afb616f07026454428.js:1:227079
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+Promise.catch
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+e @ shared-9893484ee47530afb616f07026454428.js:1
+c @ shared-9893484ee47530afb616f07026454428.js:1
+value @ shared-9893484ee47530afb616f07026454428.js:1
+value @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+Promise.finally
+value @ shared-9893484ee47530afb616f07026454428.js:1
+value @ shared-9893484ee47530afb616f07026454428.js:1
+value @ shared-9893484ee47530afb616f07026454428.js:1
+value @ shared-9893484ee47530afb616f07026454428.js:1
+value @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+setTimeout
+value @ shared-9893484ee47530afb616f07026454428.js:1
+value @ shared-9893484ee47530afb616f07026454428.js:1
+value @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+value @ shared-9893484ee47530afb616f07026454428.js:1
+log @ shared-9893484ee47530afb616f07026454428.js:1
+log @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+value @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+value @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+index-BzA2LaMB.js:48  POST https://truck-wash-locator-msti64.replit.app/api/owners/save-payment-method 400 (Bad Request)
+ke @ index-BzA2LaMB.js:48
+l @ index-BzA2LaMB.js:453
+await in l
+ZE @ index-BzA2LaMB.js:37
+XE @ index-BzA2LaMB.js:37
+JE @ index-BzA2LaMB.js:37
+sv @ index-BzA2LaMB.js:37
+y1 @ index-BzA2LaMB.js:37
+(anonymous) @ index-BzA2LaMB.js:37
+dx @ index-BzA2LaMB.js:40
+BN @ index-BzA2LaMB.js:37
+th @ index-BzA2LaMB.js:37
+Op @ index-BzA2LaMB.js:37
+p4 @ index-BzA2LaMB.js:37
+index-BzA2LaMB.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-BzA2LaMB.js:453 ✅ Rendering Stripe Elements form
+shared-9893484ee47530afb616f07026454428.js:1  POST https://api.stripe.com/v1/setup_intents/seti_1SOLpcLqF7RVaZdv4Cfaario/confirm 400 (Bad Request)
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+e @ shared-9893484ee47530afb616f07026454428.js:1
+c @ shared-9893484ee47530afb616f07026454428.js:1
+i @ shared-9893484ee47530afb616f07026454428.js:1
+s @ shared-9893484ee47530afb616f07026454428.js:1
+e @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+n @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+a @ shared-9893484ee47530afb616f07026454428.js:1
+i @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+_ @ shared-9893484ee47530afb616f07026454428.js:1
+confirm @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+n @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+a @ shared-9893484ee47530afb616f07026454428.js:1
+i @ shared-9893484ee47530afb616f07026454428.js:1
+Promise.then
+a @ shared-9893484ee47530afb616f07026454428.js:1
+i @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+n @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+a @ shared-9893484ee47530afb616f07026454428.js:1
+i @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+confirm @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+n @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+a @ shared-9893484ee47530afb616f07026454428.js:1
+i @ shared-9893484ee47530afb616f07026454428.js:1
+Promise.then
+a @ shared-9893484ee47530afb616f07026454428.js:1
+i @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+Promise.then
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+n @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+a @ shared-9893484ee47530afb616f07026454428.js:1
+i @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+n @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+a @ shared-9893484ee47530afb616f07026454428.js:1
+i @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ shared-9893484ee47530afb616f07026454428.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+value @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+(anonymous) @ controller-with-preconnect-bf28d9b250e741d9eff76bd69c0d6ba6.js:1
+index-BzA2LaMB.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-BzA2LaMB.js:453 ✅ Rendering Stripe Elements form
+index-BzA2LaMB.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-BzA2LaMB.js:453 ✅ Rendering Stripe Elements form
+index-BzA2LaMB.js:453 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-BzA2LaMB.js:453 ✅ Rendering Stripe Elements form

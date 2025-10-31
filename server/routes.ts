@@ -1247,9 +1247,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('✅ Processed via Treasury wallet');
 
       } else {
-        // ===== CREDIT CARD PAYMENT (default until Treasury approved) =====
+        // ===== BATCHED PAYMENT PROCESSING (default) =====
+        // Queue payment for hourly batch processing instead of immediate charge
         
-        // Verify owner has saved payment method
+        // Verify owner has saved payment method (required for batch processing)
         if (!owner.stripeCustomerId) {
           return res.status(400).json({ 
             message: "Please add a credit card in Payment Methods before processing washouts.",
@@ -1264,20 +1265,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Process payment via credit card with Stripe Connect Destination Charge
-        const paymentIntent = await stripeService.processWashoutPaymentViaCard({
-          ownerStripeCustomerId: owner.stripeCustomerId,
-          ownerPaymentMethodId: owner.stripePaymentMethodId || undefined, // Explicit payment method (more reliable)
-          ownerUsername: ownerUser?.username || owner.id,
-          driverConnectedAccountId: driver.stripeConnectAccountId,
-          driverUsername: driverUser?.username || driver.id,
-          washoutAmount: driverPaymentCents,
-          platformFee: platformFeeCents,
+        // Queue payment for batch processing
+        await storage.createPendingWashoutPayment({
           activityId,
+          driverId: driver.id,
+          ownerId: owner.id,
           locationId: location.id,
+          driverAmount: DRIVER_PAYMENT.toFixed(2),
+          platformFee: PLATFORM_FEE.toFixed(2),
+          totalAmount: OWNER_CHARGE.toFixed(2),
+          status: 'queued',
+          metadata: {
+            ownerUsername: ownerUser?.username || owner.id,
+            driverUsername: driverUser?.username || driver.id,
+            locationName: location.name,
+          },
         });
 
-        console.log('✅ Processed via credit card:', paymentIntent.id);
+        console.log('✅ Payment queued for batch processing');
       }
 
       // Create payment record (common for both flows)
@@ -1296,8 +1301,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerCharge: OWNER_CHARGE,
         platformFee: PLATFORM_FEE,
         driverPayment: DRIVER_PAYMENT,
-        paymentMethod: isWalletFundingEnabled ? 'wallet' : 'credit_card',
-        message: "Payment processed successfully",
+        paymentMethod: isWalletFundingEnabled ? 'wallet' : 'batched',
+        message: isWalletFundingEnabled ? "Payment processed successfully" : "Payment queued for batch processing",
+        batchProcessing: !isWalletFundingEnabled,
       });
     } catch (error: any) {
       console.error("Error processing washout payment:", error);
