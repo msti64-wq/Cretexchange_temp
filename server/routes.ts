@@ -1313,6 +1313,235 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Batch processor for washout payments - processes all queued payments
+  // Designed to run hourly via cron or be manually triggered by admins
+  app.post('/api/payments/process-batch', isAuthenticated, async (req: any, res) => {
+    try {
+      // Only allow super admins to trigger batch processing
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can trigger batch processing" });
+      }
+
+      console.log('🔄 Starting batch payment processing...');
+
+      // Get all queued pending payments
+      const queuedPayments = await storage.getPendingWashoutPaymentsByStatus('queued');
+
+      if (queuedPayments.length === 0) {
+        return res.json({
+          success: true,
+          message: "No pending payments to process",
+          batchesCreated: 0,
+        });
+      }
+
+      console.log(`📊 Found ${queuedPayments.length} queued payments`);
+
+      // Group payments by owner
+      const paymentsByOwner = queuedPayments.reduce((acc, payment) => {
+        const ownerId = payment.ownerId;
+        if (!acc[ownerId]) {
+          acc[ownerId] = [];
+        }
+        acc[ownerId].push(payment);
+        return acc;
+      }, {} as Record<string, typeof queuedPayments>);
+
+      const ownerIds = Object.keys(paymentsByOwner);
+      console.log(`👥 Processing batches for ${ownerIds.length} owners`);
+
+      const results = {
+        batchesCreated: 0,
+        batchesProcessed: 0,
+        batchesFailed: 0,
+        totalPayments: queuedPayments.length,
+        errors: [] as string[],
+      };
+
+      // Process each owner's batch
+      for (const ownerId of ownerIds) {
+        const ownerPayments = paymentsByOwner[ownerId];
+        const batchTime = new Date();
+
+        try {
+          // Get owner details
+          const owner = await storage.getOwnerById(ownerId);
+          if (!owner) {
+            console.error(`❌ Owner not found: ${ownerId}`);
+            results.errors.push(`Owner not found: ${ownerId}`);
+            continue;
+          }
+
+          // Verify owner has payment method
+          if (!owner.stripeCustomerId) {
+            console.error(`❌ Owner ${ownerId} has no Stripe customer ID`);
+            results.errors.push(`Owner has no payment method set up`);
+            // Mark all payments as failed
+            for (const payment of ownerPayments) {
+              await storage.updatePendingPaymentStatus(
+                payment.id,
+                'failed',
+                undefined,
+                'Owner has no payment method'
+              );
+            }
+            continue;
+          }
+
+          // Calculate totals for this batch
+          const totalDriverPayments = ownerPayments.reduce((sum, p) => sum + parseFloat(p.driverAmount), 0);
+          const totalPlatformFees = ownerPayments.reduce((sum, p) => sum + parseFloat(p.platformFee), 0);
+          const totalOwnerCharge = ownerPayments.reduce((sum, p) => sum + parseFloat(p.totalAmount), 0);
+
+          console.log(`💰 Owner ${ownerId} batch: ${ownerPayments.length} payments, $${totalOwnerCharge.toFixed(2)} total`);
+
+          // Create batch record
+          const batch = await storage.createWashoutPaymentBatch({
+            ownerId,
+            batchTime,
+            paymentCount: ownerPayments.length,
+            totalDriverPayments: totalDriverPayments.toFixed(2),
+            totalPlatformFees: totalPlatformFees.toFixed(2),
+            totalOwnerCharge: totalOwnerCharge.toFixed(2),
+            status: 'pending',
+            metadata: {
+              paymentIds: ownerPayments.map(p => p.id),
+            },
+          });
+
+          results.batchesCreated++;
+
+          // Link all pending payments to this batch
+          for (const payment of ownerPayments) {
+            await storage.updatePendingPaymentStatus(payment.id, 'processing', batch.id);
+          }
+
+          // Update batch status to processing
+          await storage.updateWashoutPaymentBatchStatus(batch.id, 'processing');
+
+          try {
+            // Charge owner's card (single charge for all washouts)
+            const amountInCents = Math.round(totalOwnerCharge * 100);
+            const paymentIntent = await stripeService.stripe.paymentIntents.create({
+              amount: amountInCents,
+              currency: 'usd',
+              customer: owner.stripeCustomerId,
+              payment_method: owner.stripePaymentMethodId || undefined,
+              description: `Batch payment - ${ownerPayments.length} washouts (Driver payouts: $${totalDriverPayments.toFixed(2)}, Platform fees: $${totalPlatformFees.toFixed(2)})`,
+              metadata: {
+                batchId: batch.id,
+                ownerId,
+                paymentCount: ownerPayments.length.toString(),
+                totalDriverPayments: totalDriverPayments.toFixed(2),
+                totalPlatformFees: totalPlatformFees.toFixed(2),
+                type: 'washout_batch_payment',
+              },
+              confirm: true,
+              automatic_payment_methods: {
+                enabled: true,
+              },
+            });
+
+            console.log(`✅ Charged owner card: ${paymentIntent.id}`);
+
+            // Update batch with payment intent ID
+            await storage.updateWashoutPaymentBatchStatus(batch.id, 'processing', paymentIntent.id);
+
+            // Transfer funds to each driver via Stripe Connect
+            for (const payment of ownerPayments) {
+              try {
+                const driver = await storage.getDriverById(payment.driverId);
+                if (!driver || !driver.stripeConnectAccountId) {
+                  throw new Error(`Driver ${payment.driverId} has no Connect account`);
+                }
+
+                const driverAmountCents = Math.round(parseFloat(payment.driverAmount) * 100);
+
+                // Create transfer to driver's Connect account
+                const transfer = await stripeService.stripe.transfers.create({
+                  amount: driverAmountCents,
+                  currency: 'usd',
+                  destination: driver.stripeConnectAccountId,
+                  description: `Washout payment - ${payment.locationId}`,
+                  metadata: {
+                    batchId: batch.id,
+                    paymentId: payment.id,
+                    activityId: payment.activityId,
+                    driverId: payment.driverId,
+                    type: 'driver_washout_payout',
+                  },
+                });
+
+                console.log(`  ↳ Transferred $${payment.driverAmount} to driver ${payment.driverId}`);
+
+                // Mark payment as processed
+                await storage.updatePendingPaymentStatus(payment.id, 'processed', batch.id);
+
+              } catch (driverError: any) {
+                console.error(`  ❌ Failed to transfer to driver ${payment.driverId}:`, driverError.message);
+                await storage.updatePendingPaymentStatus(
+                  payment.id,
+                  'failed',
+                  batch.id,
+                  driverError.message
+                );
+              }
+            }
+
+            // Mark batch as completed
+            await storage.markWashoutPaymentBatchCompleted(batch.id);
+            results.batchesProcessed++;
+
+            console.log(`✅ Batch ${batch.id} completed successfully`);
+
+          } catch (stripeError: any) {
+            console.error(`❌ Stripe error for batch ${batch.id}:`, stripeError.message);
+
+            // Mark batch as failed
+            await storage.updateWashoutPaymentBatchStatus(
+              batch.id,
+              'failed',
+              undefined,
+              stripeError.message
+            );
+
+            // Mark all payments in this batch as failed
+            for (const payment of ownerPayments) {
+              await storage.updatePendingPaymentStatus(
+                payment.id,
+                'failed',
+                batch.id,
+                `Batch processing failed: ${stripeError.message}`
+              );
+            }
+
+            results.batchesFailed++;
+            results.errors.push(`Batch ${batch.id}: ${stripeError.message}`);
+          }
+
+        } catch (error: any) {
+          console.error(`❌ Error processing owner ${ownerId}:`, error.message);
+          results.errors.push(`Owner ${ownerId}: ${error.message}`);
+          results.batchesFailed++;
+        }
+      }
+
+      console.log('✅ Batch processing complete:', results);
+
+      res.json({
+        success: true,
+        message: `Processed ${results.batchesProcessed} batches successfully`,
+        ...results,
+      });
+
+    } catch (error: any) {
+      console.error("Error in batch payment processing:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to process batch payments",
+      });
+    }
+  });
+
   // Driver endpoints
   app.get('/api/drivers/dashboard', isAuthenticated, async (req: any, res) => {
     try {
