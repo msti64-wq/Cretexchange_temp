@@ -19,6 +19,8 @@ import {
   servicePaymentAccounts,
   billingBatches,
   feesLedger,
+  pendingWashoutPayments,
+  washoutPaymentBatches,
   featureFlags,
   featureFlagOverrides,
   systemSettings,
@@ -63,6 +65,10 @@ import {
   type UpdateServicePaymentAccount,
   type InsertBillingBatch,
   type InsertFeeLedger,
+  type PendingWashoutPayment,
+  type InsertPendingWashoutPayment,
+  type WashoutPaymentBatch,
+  type InsertWashoutPaymentBatch,
   type SystemSettings,
   type UpdateSystemSettings,
 } from "@shared/schema";
@@ -264,6 +270,22 @@ export interface IStorage {
   movePendingToAvailable(driverId: string, amount: string, sourceTransactionId: string, batchId: string): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }>;
   getOwnerBillingSettings(ownerId: string): Promise<{ billingCadence: string; billingCutoffTime: string; billingTimezone: string } | undefined>;
   updateOwnerBillingSettings(ownerId: string, settings: { billingCadence?: string; billingCutoffTime?: string; billingTimezone?: string }): Promise<Owner>;
+
+  // Pending washout payment operations (hourly batch processing)
+  createPendingWashoutPayment(payment: InsertPendingWashoutPayment): Promise<PendingWashoutPayment>;
+  getPendingWashoutPaymentsByOwner(ownerId: string): Promise<(PendingWashoutPayment & { activity: WashoutActivity; driver: Driver & { user: User }; location: WashoutLocation })[]>;
+  getPendingWashoutPaymentsByStatus(status: string): Promise<(PendingWashoutPayment & { activity: WashoutActivity; driver: Driver & { user: User }; owner: Owner & { user: User } })[]>;
+  updatePendingPaymentStatus(paymentId: string, status: string, batchId?: string, failureReason?: string): Promise<PendingWashoutPayment>;
+  getAllPendingWashoutPayments(): Promise<(PendingWashoutPayment & { activity: WashoutActivity; driver: Driver & { user: User }; owner: Owner & { user: User }; location: WashoutLocation })[]>;
+
+  // Washout payment batch operations (hourly batch processing)
+  createWashoutPaymentBatch(batch: InsertWashoutPaymentBatch): Promise<WashoutPaymentBatch>;
+  getWashoutPaymentBatch(id: string): Promise<WashoutPaymentBatch | undefined>;
+  getWashoutPaymentBatchesByOwner(ownerId: string): Promise<WashoutPaymentBatch[]>;
+  getWashoutPaymentBatchesByStatus(status: string): Promise<(WashoutPaymentBatch & { owner: Owner & { user: User } })[]>;
+  updateWashoutPaymentBatchStatus(batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string): Promise<WashoutPaymentBatch>;
+  markWashoutPaymentBatchCompleted(batchId: string): Promise<WashoutPaymentBatch>;
+  getPendingPaymentsForOwner(ownerId: string): Promise<(PendingWashoutPayment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
 
   // Monthly fee ledger operations
   createFeeLedgerEntry(fee: InsertFeeLedger): Promise<FeeLedger>;
@@ -3563,6 +3585,176 @@ export class DatabaseStorage implements IStorage {
         throw error; // Will rollback transaction
       }
     });
+  }
+
+  // ============= PENDING WASHOUT PAYMENT OPERATIONS (HOURLY BATCH PROCESSING) =============
+
+  async createPendingWashoutPayment(payment: InsertPendingWashoutPayment): Promise<PendingWashoutPayment> {
+    const [pendingPayment] = await db
+      .insert(pendingWashoutPayments)
+      .values(payment)
+      .returning();
+    return pendingPayment;
+  }
+
+  async getPendingWashoutPaymentsByOwner(ownerId: string): Promise<(PendingWashoutPayment & { activity: WashoutActivity; driver: Driver & { user: User }; location: WashoutLocation })[]> {
+    return await db
+      .select({
+        ...getTableColumns(pendingWashoutPayments),
+        activity: washoutActivities,
+        driver: drivers,
+        user: users,
+        location: washoutLocations,
+      })
+      .from(pendingWashoutPayments)
+      .leftJoin(washoutActivities, eq(pendingWashoutPayments.activityId, washoutActivities.id))
+      .leftJoin(drivers, eq(pendingWashoutPayments.driverId, drivers.id))
+      .leftJoin(users, eq(drivers.userId, users.id))
+      .leftJoin(washoutLocations, eq(pendingWashoutPayments.locationId, washoutLocations.id))
+      .where(eq(pendingWashoutPayments.ownerId, ownerId)) as any;
+  }
+
+  async getPendingWashoutPaymentsByStatus(status: string): Promise<(PendingWashoutPayment & { activity: WashoutActivity; driver: Driver & { user: User }; owner: Owner & { user: User } })[]> {
+    return await db
+      .select({
+        ...getTableColumns(pendingWashoutPayments),
+        activity: washoutActivities,
+        driver: drivers,
+        driverUser: users,
+        owner: owners,
+        ownerUser: users,
+      })
+      .from(pendingWashoutPayments)
+      .leftJoin(washoutActivities, eq(pendingWashoutPayments.activityId, washoutActivities.id))
+      .leftJoin(drivers, eq(pendingWashoutPayments.driverId, drivers.id))
+      .leftJoin(users, eq(drivers.userId, users.id))
+      .leftJoin(owners, eq(pendingWashoutPayments.ownerId, owners.id))
+      .where(eq(pendingWashoutPayments.status, status as any)) as any;
+  }
+
+  async updatePendingPaymentStatus(paymentId: string, status: string, batchId?: string, failureReason?: string): Promise<PendingWashoutPayment> {
+    const updates: any = {
+      status: status as any,
+      updatedAt: new Date(),
+    };
+    if (batchId) updates.batchId = batchId;
+    if (failureReason) updates.failureReason = failureReason;
+    if (status === 'processed') updates.processedAt = new Date();
+
+    const [updated] = await db
+      .update(pendingWashoutPayments)
+      .set(updates)
+      .where(eq(pendingWashoutPayments.id, paymentId))
+      .returning();
+    return updated;
+  }
+
+  async getAllPendingWashoutPayments(): Promise<(PendingWashoutPayment & { activity: WashoutActivity; driver: Driver & { user: User }; owner: Owner & { user: User }; location: WashoutLocation })[]> {
+    return await db
+      .select({
+        ...getTableColumns(pendingWashoutPayments),
+        activity: washoutActivities,
+        driver: drivers,
+        driverUser: users,
+        owner: owners,
+        ownerUser: users,
+        location: washoutLocations,
+      })
+      .from(pendingWashoutPayments)
+      .leftJoin(washoutActivities, eq(pendingWashoutPayments.activityId, washoutActivities.id))
+      .leftJoin(drivers, eq(pendingWashoutPayments.driverId, drivers.id))
+      .leftJoin(users, eq(drivers.userId, users.id))
+      .leftJoin(owners, eq(pendingWashoutPayments.ownerId, owners.id))
+      .leftJoin(washoutLocations, eq(pendingWashoutPayments.locationId, washoutLocations.id)) as any;
+  }
+
+  // ============= WASHOUT PAYMENT BATCH OPERATIONS (HOURLY BATCH PROCESSING) =============
+
+  async createWashoutPaymentBatch(batch: InsertWashoutPaymentBatch): Promise<WashoutPaymentBatch> {
+    const [created] = await db
+      .insert(washoutPaymentBatches)
+      .values(batch)
+      .returning();
+    return created;
+  }
+
+  async getWashoutPaymentBatch(id: string): Promise<WashoutPaymentBatch | undefined> {
+    const [batch] = await db
+      .select()
+      .from(washoutPaymentBatches)
+      .where(eq(washoutPaymentBatches.id, id));
+    return batch;
+  }
+
+  async getWashoutPaymentBatchesByOwner(ownerId: string): Promise<WashoutPaymentBatch[]> {
+    return await db
+      .select()
+      .from(washoutPaymentBatches)
+      .where(eq(washoutPaymentBatches.ownerId, ownerId))
+      .orderBy(desc(washoutPaymentBatches.batchTime));
+  }
+
+  async getWashoutPaymentBatchesByStatus(status: string): Promise<(WashoutPaymentBatch & { owner: Owner & { user: User } })[]> {
+    return await db
+      .select({
+        ...getTableColumns(washoutPaymentBatches),
+        owner: owners,
+        user: users,
+      })
+      .from(washoutPaymentBatches)
+      .leftJoin(owners, eq(washoutPaymentBatches.ownerId, owners.id))
+      .leftJoin(users, eq(owners.userId, users.id))
+      .where(eq(washoutPaymentBatches.status, status as any)) as any;
+  }
+
+  async updateWashoutPaymentBatchStatus(batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string): Promise<WashoutPaymentBatch> {
+    const updates: any = {
+      status: status as any,
+      updatedAt: new Date(),
+    };
+    if (stripePaymentIntentId) updates.stripePaymentIntentId = stripePaymentIntentId;
+    if (failureReason) updates.failureReason = failureReason;
+    if (status === 'processing') updates.processingStartedAt = new Date();
+
+    const [updated] = await db
+      .update(washoutPaymentBatches)
+      .set(updates)
+      .where(eq(washoutPaymentBatches.id, batchId))
+      .returning();
+    return updated;
+  }
+
+  async markWashoutPaymentBatchCompleted(batchId: string): Promise<WashoutPaymentBatch> {
+    const [updated] = await db
+      .update(washoutPaymentBatches)
+      .set({
+        status: 'completed',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(washoutPaymentBatches.id, batchId))
+      .returning();
+    return updated;
+  }
+
+  async getPendingPaymentsForOwner(ownerId: string): Promise<(PendingWashoutPayment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
+    return await db
+      .select({
+        ...getTableColumns(pendingWashoutPayments),
+        activity: washoutActivities,
+        driver: drivers,
+        user: users,
+      })
+      .from(pendingWashoutPayments)
+      .leftJoin(washoutActivities, eq(pendingWashoutPayments.activityId, washoutActivities.id))
+      .leftJoin(drivers, eq(pendingWashoutPayments.driverId, drivers.id))
+      .leftJoin(users, eq(drivers.userId, users.id))
+      .where(
+        and(
+          eq(pendingWashoutPayments.ownerId, ownerId),
+          eq(pendingWashoutPayments.status, 'queued')
+        )
+      ) as any;
   }
 
   // ============= FEE LEDGER OPERATIONS =============
