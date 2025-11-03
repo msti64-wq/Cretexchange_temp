@@ -65,6 +65,8 @@ export default function DriverProfile() {
   });
 
   // Stripe onboarding mutation
+  const [setupLink, setSetupLink] = useState<string | null>(null);
+  
   const onboardingMutation = useMutation({
     mutationFn: async (data: any) => {
       const requestData = {
@@ -83,11 +85,20 @@ export default function DriverProfile() {
       };
       return await apiRequest("POST", "/api/column/onboard", requestData);
     },
-    onSuccess: () => {
-      toast({
-        title: "Payment Account Connected! 🎉",
-        description: "Your payment account has been successfully set up. You can now receive payments!",
-      });
+    onSuccess: (data: any) => {
+      // Check if additional setup is required
+      if (data.requiresSetup && data.accountSetupLink) {
+        setSetupLink(data.accountSetupLink);
+        toast({
+          title: "Almost Done! 🎉",
+          description: "Your account was created successfully. One more step to activate your wallet!",
+        });
+      } else {
+        toast({
+          title: "Payment Account Connected! 🎉",
+          description: "Your payment account has been successfully set up. You can now receive payments!",
+        });
+      }
       setShowOnboardingDialog(false);
       queryClient.invalidateQueries({ queryKey: ['/api/column/status'] });
     },
@@ -452,6 +463,33 @@ export default function DriverProfile() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Setup Link Alert - Show when Treasury wallet needs activation */}
+              {setupLink && (
+                <div className="flex flex-col gap-3 p-4 bg-blue-50 dark:bg-blue-950 border-2 border-blue-300 dark:border-blue-700 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-blue-900 dark:text-blue-100">
+                        Complete Wallet Activation
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        Your payment account was created successfully! Click below to complete the final verification step and activate your wallet for receiving payments.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => window.open(setupLink, '_blank')}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    data-testid="button-complete-wallet-setup"
+                  >
+                    Complete Wallet Setup
+                  </Button>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 text-center">
+                    This will open Stripe's secure verification portal in a new tab
+                  </p>
+                </div>
+              )}
+              
               {onboardingStatus?.isOnboarded ? (
                 <>
                   <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
