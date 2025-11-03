@@ -13,6 +13,7 @@ import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, ins
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import * as stripeService from "./stripeService";
+import stripeClient from "./stripeService";
 
 // Initialize Stripe only if secret key is available
 let stripe: Stripe | null = null;
@@ -4521,11 +4522,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} from funding source ${fundingSourceId}`);
 
-      // Credit cards are not yet implemented - Column only supports ACH/Wire transfers
+      // Handle card payments for wallet funding
       if (fundingSource.type === 'credit_card' || fundingSource.type === 'card') {
-        return res.status(400).json({ 
-          message: "Credit card funding is not available yet. Please use ACH bank transfer to fund your wallet." 
-        });
+        console.log(`💳 Processing card payment for wallet funding: $${fundAmount}`);
+        
+        try {
+          if (!user.stripeCustomerId || !fundingSource.stripePaymentMethodId) {
+            return res.status(400).json({ 
+              message: "Payment information incomplete. Please re-add your payment method." 
+            });
+          }
+
+          // Use the dedicated wallet funding function with proper labeling
+          const paymentIntent = await stripeService.createWalletFundingPayment({
+            amount: Math.round(fundAmount * 100), // Convert to cents
+            customerId: user.stripeCustomerId,
+            paymentMethodId: fundingSource.stripePaymentMethodId,
+            userId: user.id,
+            username: user.username,
+            metadata: {
+              owner_id: owner.id,
+            }
+          });
+
+          // Handle different payment statuses
+          if (paymentIntent.status === 'succeeded') {
+            // Payment succeeded - update wallet balance immediately
+            const newBalance = parseFloat(owner.walletBalance || '0') + fundAmount;
+            await db
+              .update(owners)
+              .set({
+                walletBalance: newBalance.toFixed(2),
+                updatedAt: new Date()
+              })
+              .where(eq(owners.id, owner.id));
+
+            // Record transaction
+            await db.insert(walletTransactions).values({
+              id: crypto.randomUUID(),
+              userId: user.id,
+              amount: fundAmount.toFixed(2),
+              type: 'funding',
+              status: 'completed',
+              description: `Wallet funded via card`,
+              externalTransactionId: paymentIntent.id,
+              createdAt: new Date()
+            });
+
+            console.log(`✅ Card funding successful: $${fundAmount}`);
+            
+            return res.json({
+              success: true,
+              balance: newBalance.toFixed(2),
+              transactionId: paymentIntent.id,
+              message: "Wallet funded successfully via card"
+            });
+          } else if (paymentIntent.status === 'requires_action' || paymentIntent.status === 'requires_confirmation') {
+            // Card requires 3DS/SCA - return client secret for frontend confirmation
+            console.log(`🔐 Card requires 3DS/SCA verification:`, paymentIntent.id);
+            
+            return res.json({
+              success: false,
+              requiresAction: true,
+              clientSecret: paymentIntent.client_secret,
+              paymentIntentId: paymentIntent.id,
+              message: "Additional verification required"
+            });
+          } else {
+            // Payment failed or in an unexpected state
+            throw new Error(`Payment failed with status: ${paymentIntent.status}`);
+          }
+        } catch (cardError: any) {
+          console.error('❌ Card payment failed:', cardError.message);
+          return res.status(500).json({ 
+            message: "Card payment failed: " + cardError.message 
+          });
+        }
       }
 
       // Implement Stripe Treasury ACH funding from external bank account
@@ -4791,6 +4863,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error updating wallet settings:", error);
       res.status(500).json({ message: "Failed to update settings: " + error.message });
+    }
+  });
+
+  // STRIPE FINANCIAL CONNECTIONS API ENDPOINTS (Instant ACH Verification)
+  
+  // POST /api/financial-connections/create - Create bank linking session for instant ACH verification
+  app.post('/api/financial-connections/create', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!user.stripeCustomerId) {
+        return res.status(400).json({ 
+          message: "Stripe customer account required. Please set up your payment account first." 
+        });
+      }
+
+      console.log('🏦 Creating Financial Connections session for instant ACH verification');
+
+      // Get the frontend URL for return redirect
+      const returnUrl = `${req.protocol}://${req.get('host')}/wallet`;
+
+      const session = await stripeService.createFinancialConnectionsSession({
+        customerId: user.stripeCustomerId,
+        returnUrl: returnUrl,
+      });
+
+      console.log('✅ Financial Connections session created:', session.id);
+
+      res.json({
+        success: true,
+        sessionId: session.id,
+        clientSecret: session.client_secret,
+      });
+    } catch (error: any) {
+      console.error("Error creating Financial Connections session:", error);
+      res.status(500).json({ message: "Failed to create bank linking session: " + error.message });
+    }
+  });
+
+  // POST /api/financial-connections/complete - Complete bank linking and create funding source
+  app.post('/api/financial-connections/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { sessionId } = req.body;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID is required" });
+      }
+
+      console.log('🏦 Completing Financial Connections and creating payment method');
+
+      // Get payment method from the completed session
+      const paymentMethod = await stripeService.getFinancialConnectionsPaymentMethod(sessionId);
+
+      if (!paymentMethod) {
+        return res.status(400).json({ 
+          message: "No bank account was linked. Please try again." 
+        });
+      }
+
+      // Attach payment method to customer
+      if (user.stripeCustomerId) {
+        await stripeClient.paymentMethods.attach(paymentMethod.id, {
+          customer: user.stripeCustomerId,
+        });
+      }
+
+      // Create funding source record in database
+      const fundingSource = await db.insert(ownerFundingSources).values({
+        id: crypto.randomUUID(),
+        ownerId: user.role === 'owner' ? (await storage.getOwner(userId))?.id : undefined,
+        userId: userId,
+        type: 'bank_account',
+        bankName: (paymentMethod.us_bank_account as any)?.bank_name || 'Bank Account',
+        accountLast4: (paymentMethod.us_bank_account as any)?.last4 || '0000',
+        isVerified: true, // Financial Connections provides instant verification
+        stripePaymentMethodId: paymentMethod.id,
+        createdAt: new Date()
+      }).returning();
+
+      console.log('✅ Bank account linked and verified instantly:', {
+        paymentMethodId: paymentMethod.id,
+        bankName: (paymentMethod.us_bank_account as any)?.bank_name,
+        last4: (paymentMethod.us_bank_account as any)?.last4,
+      });
+
+      res.json({
+        success: true,
+        fundingSource: fundingSource[0],
+        message: "Bank account linked successfully with instant verification"
+      });
+    } catch (error: any) {
+      console.error("Error completing Financial Connections:", error);
+      res.status(500).json({ message: "Failed to complete bank linking: " + error.message });
     }
   });
 

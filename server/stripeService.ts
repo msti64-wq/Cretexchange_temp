@@ -954,6 +954,124 @@ export async function chargeMonthlyLocationFee(params: {
 }
 
 /**
+ * Create wallet funding payment intent (card payment)
+ */
+export async function createWalletFundingPayment(params: {
+  amount: number; // in cents
+  customerId: string;
+  paymentMethodId: string;
+  userId: string;
+  username: string;
+  autoConfirm?: boolean; // Optional - set to false to allow 3DS on frontend
+  metadata?: Record<string, string>;
+}): Promise<Stripe.PaymentIntent> {
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: params.amount,
+      currency: 'usd',
+      customer: params.customerId,
+      payment_method: params.paymentMethodId,
+      confirm: params.autoConfirm !== undefined ? params.autoConfirm : true,
+      off_session: false, // Customer present for wallet funding
+      description: `Wallet funding - ${params.username}`,
+      statement_descriptor: 'CRETEX WALLET',
+      metadata: {
+        transaction_type: 'wallet_funding',
+        user_id: params.userId,
+        username: params.username,
+        platform: 'cretexchange',
+        funding_method: 'card',
+        ...params.metadata,
+      },
+    });
+
+    console.log('✅ Created Wallet Funding Payment (labeled):', {
+      paymentIntentId: paymentIntent.id,
+      amount: params.amount / 100,
+      username: params.username,
+      status: paymentIntent.status,
+      description: 'Wallet funding via card',
+    });
+
+    return paymentIntent;
+  } catch (error: any) {
+    console.error('❌ Error creating wallet funding payment:', error.message);
+    throw new Error(`Failed to fund wallet: ${error.message}`);
+  }
+}
+
+/**
+ * Create Financial Connections Session for instant ACH verification
+ * This replaces micro-deposit verification with instant bank authentication (Plaid)
+ */
+export async function createFinancialConnectionsSession(params: {
+  customerId: string;
+  returnUrl: string;
+}): Promise<Stripe.FinancialConnections.Session> {
+  try {
+    const session = await stripe.financialConnections.sessions.create({
+      account_holder: {
+        type: 'customer',
+        customer: params.customerId,
+      },
+      permissions: ['payment_method', 'balances', 'ownership'], // Required for payments
+      filters: {
+        countries: ['US'], // US banks only
+      },
+      return_url: params.returnUrl,
+    });
+
+    console.log('✅ Created Financial Connections Session:', {
+      sessionId: session.id,
+      clientSecret: session.client_secret,
+    });
+
+    return session;
+  } catch (error: any) {
+    console.error('❌ Error creating Financial Connections session:', error.message);
+    throw new Error(`Failed to create bank linking session: ${error.message}`);
+  }
+}
+
+/**
+ * Retrieve payment method from Financial Connections session
+ * This gets the ACH payment method after user completes bank linking
+ */
+export async function getFinancialConnectionsPaymentMethod(
+  sessionId: string
+): Promise<Stripe.PaymentMethod | null> {
+  try {
+    const session = await stripe.financialConnections.sessions.retrieve(sessionId);
+    
+    if (!session.accounts || session.accounts.data.length === 0) {
+      console.log('⚠️  No accounts linked in session:', sessionId);
+      return null;
+    }
+
+    const account = session.accounts.data[0];
+    
+    // Create payment method from the linked account
+    const paymentMethod = await stripe.paymentMethods.create({
+      type: 'us_bank_account',
+      us_bank_account: {
+        financial_connections_account: account.id,
+      },
+    });
+
+    console.log('✅ Created payment method from Financial Connections:', {
+      paymentMethodId: paymentMethod.id,
+      accountId: account.id,
+      last4: (paymentMethod.us_bank_account as any)?.last4,
+    });
+
+    return paymentMethod;
+  } catch (error: any) {
+    console.error('❌ Error retrieving Financial Connections payment method:', error.message);
+    return null;
+  }
+}
+
+/**
  * Verify user has Stripe account before money operations
  * Returns existing account or null
  */
