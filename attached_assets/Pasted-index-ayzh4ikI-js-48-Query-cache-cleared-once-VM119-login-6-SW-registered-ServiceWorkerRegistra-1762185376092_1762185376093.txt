@@ -1,0 +1,124 @@
+index-ayzh4ikI.js:48 🔄 Query cache cleared once
+VM119 login:6 SW registered:  ServiceWorkerRegistration
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+api/login:1  Failed to load resource: the server responded with a status of 401 ()
+api/login:1  Failed to load resource: the server responded with a status of 401 ()
+api/login:1  Failed to load resource: the server responded with a status of 401 ()
+api/login:1  Failed to load resource: the server responded with a status of 401 ()
+api/column/onboard:1  Failed to load resource: the server responded with a status of 500 ()
+index-ayzh4ikI.js:48 Uncaught (in promise) Error: 500: {"message":"Failed to complete onboarding"}
+    at GS (index-ayzh4ikI.js:48:42800)
+    at async ke (index-ayzh4ikI.js:48:43123)
+    at async Object.mutationFn (index-ayzh4ikI.js:452:264834)
+index-ayzh4ikI.js:452 🔍 Profile completion check: Object
+index-ayzh4ikI.js:452 ✅ Profile complete! Showing install prompt...
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🔧 InstallPrompt component loaded
+index-ayzh4ikI.js:452 👤 User previously dismissed install prompt: true
+index-ayzh4ikI.js:452 ⏭️ Skipping install prompt - user previously dismissed
+index-ayzh4ikI.js:452 🔍 Profile completion check: Object
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🔍 Profile completion check: Object
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🔍 Profile completion check: Object
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:452 🎨 InstallPrompt render check: Object
+index-ayzh4ikI.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-ayzh4ikI.js:48  POST https://truck-wash-locator-msti64.replit.app/api/column/onboard 500 (Internal Server Error)
+ke @ index-ayzh4ikI.js:48
+mutationFn @ index-ayzh4ikI.js:452
+fn @ index-ayzh4ikI.js:48
+b @ index-ayzh4ikI.js:48
+start @ index-ayzh4ikI.js:48
+execute @ index-ayzh4ikI.js:48
+await in execute
+mutate @ index-ayzh4ikI.js:48
+onSubmit @ index-ayzh4ikI.js:452
+i @ index-ayzh4ikI.js:452
+(anonymous) @ index-ayzh4ikI.js:452
+await in (anonymous)
+XE @ index-ayzh4ikI.js:37
+e4 @ index-ayzh4ikI.js:37
+t4 @ index-ayzh4ikI.js:37
+sv @ index-ayzh4ikI.js:37
+y1 @ index-ayzh4ikI.js:37
+(anonymous) @ index-ayzh4ikI.js:37
+px @ index-ayzh4ikI.js:40
+BN @ index-ayzh4ikI.js:37
+ih @ index-ayzh4ikI.js:37
+Bp @ index-ayzh4ikI.js:37
+g4 @ index-ayzh4ikI.js:37
+index-ayzh4ikI.js:48 Uncaught (in promise) Error: 500: {"message":"Failed to complete onboarding"}
+    at GS (index-ayzh4ikI.js:48:42800)
+    at async ke (index-ayzh4ikI.js:48:43123)
+    at async Object.mutationFn (index-ayzh4ikI.js:452:264834)
+GS @ index-ayzh4ikI.js:48
+await in GS
+ke @ index-ayzh4ikI.js:48
+await in ke
+mutationFn @ index-ayzh4ikI.js:452
+fn @ index-ayzh4ikI.js:48
+b @ index-ayzh4ikI.js:48
+start @ index-ayzh4ikI.js:48
+execute @ index-ayzh4ikI.js:48
+await in execute
+mutate @ index-ayzh4ikI.js:48
+onSubmit @ index-ayzh4ikI.js:452
+i @ index-ayzh4ikI.js:452
+(anonymous) @ index-ayzh4ikI.js:452
+await in (anonymous)
+XE @ index-ayzh4ikI.js:37
+e4 @ index-ayzh4ikI.js:37
+t4 @ index-ayzh4ikI.js:37
+sv @ index-ayzh4ikI.js:37
+y1 @ index-ayzh4ikI.js:37
+(anonymous) @ index-ayzh4ikI.js:37
+px @ index-ayzh4ikI.js:40
+BN @ index-ayzh4ikI.js:37
+ih @ index-ayzh4ikI.js:37
+Bp @ index-ayzh4ikI.js:37
+g4 @ index-ayzh4ikI.js:37

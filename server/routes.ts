@@ -822,20 +822,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe onboarding endpoint (replaces Column/Lithic)
   app.post('/api/column/onboard', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('🔵 Starting onboarding for user:', req.user.id);
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user) {
+        console.log('❌ User not found:', userId);
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log('✅ User found:', { id: user.id, username: user.username, role: user.role });
+
       // Check if user is a driver or owner
       if (user.role !== 'driver' && user.role !== 'owner') {
+        console.log('❌ Invalid role:', user.role);
         return res.status(400).json({ message: "Only drivers and owners can complete onboarding" });
       }
 
       // Validate request body with Zod
+      console.log('🔵 Validating request data...');
       const validatedData = columnOnboardingSchema.parse(req.body);
+      console.log('✅ Request data validated successfully');
 
       // Step 1: Check for existing Stripe Connect account (idempotency)
       let connectAccountId: string | null = null;
@@ -867,7 +874,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Second, check Stripe metadata (in case DB update failed previously)
       console.log('🔍 Checking Stripe for existing account by user ID:', userId);
-      const existingAccount = await stripeService.findConnectedAccountByUserId(userId);
+      
+      let existingAccount;
+      try {
+        existingAccount = await stripeService.findConnectedAccountByUserId(userId);
+      } catch (stripeError: any) {
+        console.error('❌ Error checking Stripe for existing account:', stripeError.message);
+        throw new Error(`Stripe account lookup failed: ${stripeError.message}`);
+      }
       
       if (existingAccount) {
         console.log('✅ Found existing Stripe account in metadata:', existingAccount.id);
@@ -900,32 +914,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Step 2: Create new Stripe Connect Account with user ID in metadata
       console.log('🆕 Creating new Stripe Connect account for user:', userId, 'username:', user.username);
-      const connectedAccount = await stripeService.createConnectedAccount({
-        type: 'custom',
-        userId: userId, // Add user ID to metadata for deduplication
-        username: user.username, // Use username as display name in Stripe
-        email: validatedData.email,
-        businessType: 'individual',
-        individual: {
-          first_name: validatedData.firstName,
-          last_name: validatedData.lastName,
-          dob: {
-            day: parseInt(validatedData.dateOfBirth.split('-')[2]),
-            month: parseInt(validatedData.dateOfBirth.split('-')[1]),
-            year: parseInt(validatedData.dateOfBirth.split('-')[0]),
-          },
+      
+      let connectedAccount;
+      try {
+        connectedAccount = await stripeService.createConnectedAccount({
+          type: 'custom',
+          userId: userId, // Add user ID to metadata for deduplication
+          username: user.username, // Use username as display name in Stripe
           email: validatedData.email,
-          phone: user.phone || undefined,
-          ssn_last_4: validatedData.ssn.slice(-4),
-          address: {
-            line1: validatedData.address.line1,
-            city: validatedData.address.city,
-            state: validatedData.address.state,
-            postal_code: validatedData.address.postalCode,
-            country: 'US',
+          businessType: 'individual',
+          individual: {
+            first_name: validatedData.firstName,
+            last_name: validatedData.lastName,
+            dob: {
+              day: parseInt(validatedData.dateOfBirth.split('-')[2]),
+              month: parseInt(validatedData.dateOfBirth.split('-')[1]),
+              year: parseInt(validatedData.dateOfBirth.split('-')[0]),
+            },
+            email: validatedData.email,
+            phone: user.phone || undefined,
+            ssn_last_4: validatedData.ssn.slice(-4),
+            address: {
+              line1: validatedData.address.line1,
+              city: validatedData.address.city,
+              state: validatedData.address.state,
+              postal_code: validatedData.address.postalCode,
+              country: 'US',
+            },
           },
-        },
-      });
+        });
+        console.log('✅ Stripe Connect account created:', connectedAccount.id);
+      } catch (stripeError: any) {
+        console.error('❌ Error creating Stripe Connect account:', stripeError);
+        throw new Error(`Stripe account creation failed: ${stripeError.message || 'Unknown error'}`);
+      }
 
       connectAccountId = connectedAccount.id;
 
@@ -999,9 +1021,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? "Successfully onboarded to payment platform"
           : "Account created (Treasury unavailable in sandbox)",
       });
-    } catch (error) {
-      console.error("Error during onboarding:", error);
-      res.status(500).json({ message: "Failed to complete onboarding" });
+    } catch (error: any) {
+      console.error("❌ Error during onboarding:", error);
+      console.error("❌ Error details:", {
+        message: error.message,
+        type: error.type,
+        code: error.code,
+        stack: error.stack
+      });
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to complete onboarding";
+      if (error.message) {
+        errorMessage += `: ${error.message}`;
+      }
+      
+      res.status(500).json({ message: errorMessage });
     }
   });
 
