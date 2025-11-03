@@ -12,8 +12,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
-import { User, Truck, CreditCard, Save, FileText, Eye, Smartphone } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { ColumnOnboardingDialog } from "@/components/ColumnOnboardingDialog";
+import { User, Truck, CreditCard, Save, FileText, Eye, Smartphone, CheckCircle2, AlertCircle } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InstallPrompt } from "@/components/InstallPrompt";
 
 export default function DriverProfile() {
@@ -21,6 +22,7 @@ export default function DriverProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [showOnboardingDialog, setShowOnboardingDialog] = useState(false);
 
   const { data: user, isLoading, refetch } = useQuery({
     queryKey: ['/api/auth/user'],
@@ -29,6 +31,16 @@ export default function DriverProfile() {
   // Fetch driver terms status
   const { data: termsStatus } = useQuery<{hasAgreed: boolean; agreedAt: string | null}>({
     queryKey: ['/api/drivers/terms-status'],
+  });
+
+  // Fetch Stripe onboarding status
+  const { data: onboardingStatus } = useQuery<{
+    isOnboarded: boolean;
+    entityId?: string | null;
+    bankAccountId?: string | null;
+    accountLast4?: string | null;
+  }>({
+    queryKey: ['/api/column/status'],
   });
 
   const updateProfileMutation = useMutation({
@@ -47,6 +59,42 @@ export default function DriverProfile() {
       toast({
         title: "Update Failed",
         description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Stripe onboarding mutation
+  const onboardingMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const requestData = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        ssn: data.ssn,
+        dateOfBirth: data.dateOfBirth,
+        email: data.email,
+        address: {
+          line1: data.addressLine1,
+          city: data.city,
+          state: data.state,
+          postalCode: data.postalCode,
+          countryCode: "US",
+        },
+      };
+      return await apiRequest("POST", "/api/column/onboard", requestData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Payment Account Connected! 🎉",
+        description: "Your payment account has been successfully set up. You can now receive payments!",
+      });
+      setShowOnboardingDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/column/status'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Setup Failed",
+        description: error.message || "Failed to set up payment account",
         variant: "destructive",
       });
     },
@@ -392,78 +440,68 @@ export default function DriverProfile() {
             </CardContent>
           </Card>
 
-          {/* Bank Account Settings for ACH Withdrawals */}
+          {/* Payment Account Setup */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <CreditCard className="w-5 h-5 mr-2" />
-                Bank Account for Withdrawals
+                Payment Account Setup
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                All withdrawals are processed via ACH to your bank account. Funds typically arrive in 1-2 business days.
+                Complete one-time account verification to receive washout payments and withdraw funds
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="bankName">Bank Name</Label>
-                  <Input
-                    id="bankName"
-                    placeholder="e.g., Chase Bank, Wells Fargo"
-                    value={formData.bankName || ''}
-                    onChange={(e) => setFormData({...formData, bankName: e.target.value})}
-                    disabled={!isEditing}
-                    data-testid="input-bank-name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="routingNumber">Routing Number</Label>
-                  <Input
-                    id="routingNumber"
-                    placeholder="9-digit routing number"
-                    value={formData.routingNumber || ''}
-                    onChange={(e) => setFormData({...formData, routingNumber: e.target.value})}
-                    disabled={!isEditing}
-                    data-testid="input-routing-number"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="accountNumber">Account Number</Label>
-                  <Input
-                    id="accountNumber"
-                    placeholder="Your account number"
-                    value={formData.accountNumber || ''}
-                    onChange={(e) => setFormData({...formData, accountNumber: e.target.value})}
-                    disabled={!isEditing}
-                    data-testid="input-account-number"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="accountType">Account Type</Label>
-                  <Select 
-                    value={formData.accountType || 'checking'}
-                    onValueChange={(value) => setFormData({...formData, accountType: value})}
-                    disabled={!isEditing}
+              {onboardingStatus?.isOnboarded ? (
+                <>
+                  <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                    <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium text-green-900 dark:text-green-100">
+                        Payment Account Verified
+                      </p>
+                      <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                        Your account is ready to receive payments. Visit your Wallet page to manage funds and request withdrawals.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>Withdrawal Options:</strong> Request ACH transfers to your bank account (1-2 days) or use a debit card for instant access to funds. Manage these options from your Wallet page.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 p-4 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium text-orange-900 dark:text-orange-100">
+                        Setup Required
+                      </p>
+                      <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
+                        Complete account verification to receive washout payments
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => setShowOnboardingDialog(true)}
+                    className="w-full"
+                    data-testid="button-setup-payment-account"
                   >
-                    <SelectTrigger data-testid="select-account-type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="checking">Checking</SelectItem>
-                      <SelectItem value="savings">Savings</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <Label className="text-blue-800 font-medium">Instant Access Option</Label>
-                </div>
-                <p className="text-sm text-blue-700">
-                  For faster access to your funds, you can request a debit card from your Wallet page. This card provides instant access to your wallet balance at ATMs and stores.
-                </p>
-              </div>
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Set Up Payment Account
+                  </Button>
+
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <p className="text-sm text-muted-foreground">
+                      <strong>What you'll need:</strong> Social Security Number (last 4 digits), date of birth, home address, and email. This is a secure one-time setup required by our payment processor.
+                    </p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -574,6 +612,16 @@ export default function DriverProfile() {
           // Refresh terms status when accepted from profile
           window.location.reload();
         }}
+      />
+
+      {/* Stripe Connect Onboarding Dialog */}
+      <ColumnOnboardingDialog
+        open={showOnboardingDialog}
+        onOpenChange={setShowOnboardingDialog}
+        onSubmit={async (data) => {
+          await onboardingMutation.mutateAsync(data);
+        }}
+        isPending={onboardingMutation.isPending}
       />
 
       <MobileNav role="driver" />

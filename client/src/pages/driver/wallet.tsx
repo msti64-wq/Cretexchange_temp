@@ -12,7 +12,6 @@ import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
-import { ColumnOnboardingDialog } from "@/components/ColumnOnboardingDialog";
 import { DebitCardRequestDialog } from "@/components/DebitCardRequestDialog";
 import { 
   Wallet, 
@@ -28,7 +27,8 @@ import {
   Receipt,
   TrendingUp,
   Banknote,
-  Minus
+  Minus,
+  User
 } from "lucide-react";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -63,7 +63,6 @@ export default function DriverWallet() {
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
-  const [showColumnOnboarding, setShowColumnOnboarding] = useState(false);
   const [showDebitCardDialog, setShowDebitCardDialog] = useState(false);
   const pageSize = 20;
 
@@ -143,43 +142,6 @@ export default function DriverWallet() {
     },
   });
 
-  // Column onboarding mutation
-  const columnOnboardingMutation = useMutation({
-    mutationFn: async (data: any) => {
-      // Transform form data to match API schema
-      const requestData = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        ssn: data.ssn,
-        dateOfBirth: data.dateOfBirth,
-        email: data.email,
-        address: {
-          line1: data.addressLine1,
-          city: data.city,
-          state: data.state,
-          postalCode: data.postalCode,
-          countryCode: "US",
-        },
-      };
-      return await apiRequest("POST", "/api/column/onboard", requestData);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Account Connected! 🎉",
-        description: "Your bank account has been successfully connected. You can now request withdrawals.",
-      });
-      setShowColumnOnboarding(false);
-      // Invalidate cache to force fresh data fetch
-      queryClient.invalidateQueries({ queryKey: ['/api/column/status'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Connection Failed",
-        description: error.message || "Failed to connect bank account",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Track when account becomes verified to show success message
   const [previousIsOnboarded, setPreviousIsOnboarded] = useState<boolean | null>(null);
@@ -407,17 +369,20 @@ export default function DriverWallet() {
             {!columnStatus?.isOnboarded ? (
               <div className="text-center py-6">
                 <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-                <h3 className="font-semibold mb-2">Setup Required</h3>
+                <h3 className="font-semibold mb-2">Payment Account Setup Required</h3>
                 <p className="text-muted-foreground mb-4">
-                  Connect your bank account to receive payments
+                  Complete your payment account setup on your Profile page to receive washout payments
                 </p>
                 <Button
-                  onClick={() => setShowColumnOnboarding(true)}
-                  data-testid="button-create-account"
+                  onClick={() => window.location.href = '/driver/profile'}
+                  data-testid="button-go-to-profile"
                 >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Connect Bank Account
+                  <User className="w-4 h-4 mr-2" />
+                  Go to Profile & Set Up Account
                 </Button>
+                <p className="text-xs text-muted-foreground mt-3">
+                  You'll need to complete a one-time account verification to start earning
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -768,16 +733,6 @@ export default function DriverWallet() {
         onOpenChange={setShowTermsDialog}
         onAccepted={handleTermsAccepted}
         readOnly={false}
-      />
-
-      {/* Column Onboarding Dialog */}
-      <ColumnOnboardingDialog
-        open={showColumnOnboarding}
-        onOpenChange={setShowColumnOnboarding}
-        onSubmit={async (data) => {
-          await columnOnboardingMutation.mutateAsync(data);
-        }}
-        isPending={columnOnboardingMutation.isPending}
       />
 
       {/* Debit Card Request Dialog */}
