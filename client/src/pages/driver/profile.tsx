@@ -39,6 +39,7 @@ export default function DriverProfile() {
     entityId?: string | null;
     bankAccountId?: string | null;
     accountLast4?: string | null;
+    requiresSetup?: boolean;
   }>({
     queryKey: ['/api/column/status'],
   });
@@ -66,6 +67,31 @@ export default function DriverProfile() {
 
   // Stripe onboarding mutation
   const [setupLink, setSetupLink] = useState<string | null>(null);
+  
+  // Mutation to fetch fresh setup link
+  const fetchSetupLinkMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/column/generate-setup-link", {});
+    },
+    onSuccess: (data: any) => {
+      setSetupLink(data.accountSetupLink);
+    },
+    onError: (error: any) => {
+      console.error("Failed to fetch setup link:", error);
+    },
+  });
+
+  // Auto-fetch setup link when requiresSetup is true
+  useEffect(() => {
+    if (onboardingStatus?.requiresSetup && !setupLink && !fetchSetupLinkMutation.isPending) {
+      console.log('🔗 Treasury setup required, fetching account link...');
+      fetchSetupLinkMutation.mutate();
+    } else if (!onboardingStatus?.requiresSetup && setupLink) {
+      // Clear setup link if Treasury is now activated
+      console.log('✅ Treasury activated, clearing setup link');
+      setSetupLink(null);
+    }
+  }, [onboardingStatus?.requiresSetup, setupLink]);
   
   const onboardingMutation = useMutation({
     mutationFn: async (data: any) => {

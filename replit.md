@@ -9,6 +9,15 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
+- **November 3, 2025**:
+  - Implemented automatic Stripe Account Link generation for Treasury wallet activation
+  - Added two-step Connect onboarding: (1) Create account, (2) Complete Treasury verification via Stripe-provided link
+  - Backend now generates and returns `accountSetupLink` after Connect account creation
+  - Frontend displays prominent "Complete Wallet Activation" alert with button to open Stripe's verification portal
+  - Enhanced UX: Clear messaging guides users through Treasury wallet activation process
+  - Account setup link redirects back to profile page after completion
+  - This resolves the additional verification step required for Treasury wallet access
+
 - **October 31, 2025**:
   - Implemented hourly batched payment system for washout transactions to minimize Stripe fees
   - Added `pending_washout_payments` table to queue washouts awaiting batch processing

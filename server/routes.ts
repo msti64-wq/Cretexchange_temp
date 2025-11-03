@@ -807,15 +807,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Check if additional setup is required (Connect exists but Treasury doesn't)
+      const requiresSetup = isOnboarded && !bankAccountId;
+
       res.json({
         isOnboarded,
         entityId,
         bankAccountId,
         accountLast4,
+        requiresSetup, // Indicates if Treasury wallet activation is needed
       });
     } catch (error) {
       console.error("Error checking Stripe onboarding status:", error);
       res.status(500).json({ message: "Failed to check onboarding status" });
+    }
+  });
+
+  // Generate fresh Account Link for Treasury setup (on-demand)
+  app.post('/api/column/generate-setup-link', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get user's Connect account ID
+      let connectAccountId: string | null = null;
+      
+      if (user.role === 'driver') {
+        const driver = await storage.getDriver(userId);
+        connectAccountId = driver?.stripeConnectAccountId || null;
+      } else if (user.role === 'owner') {
+        const owner = await storage.getOwner(userId);
+        connectAccountId = owner?.stripeConnectAccountId || null;
+      }
+
+      if (!connectAccountId) {
+        return res.status(400).json({ message: "No payment account found. Please complete onboarding first." });
+      }
+
+      // Generate fresh Account Link
+      const accountLink = await stripe.accountLinks.create({
+        account: connectAccountId,
+        refresh_url: `${process.env.REPL_HOME || 'http://localhost:5000'}/driver/profile`,
+        return_url: `${process.env.REPL_HOME || 'http://localhost:5000'}/driver/profile`,
+        type: 'account_onboarding',
+      });
+
+      console.log('✅ Generated fresh Account Link for Treasury setup:', connectAccountId);
+
+      res.json({
+        success: true,
+        accountSetupLink: accountLink.url,
+      });
+    } catch (error: any) {
+      console.error('❌ Error generating Account Link:', error);
+      res.status(500).json({ message: `Failed to generate setup link: ${error.message}` });
     }
   });
 
