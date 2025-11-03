@@ -79,17 +79,66 @@ export default function OwnerWallet() {
       const response = await apiRequest("POST", "/api/owners/wallet/fund", data);
       return response.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "Wallet funded successfully",
-        description: "Your wallet balance has been updated.",
-      });
-      setShowFundDialog(false);
-      setFundAmount("");
-      setSelectedFundingSource("");
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/analytics'] });
+    onSuccess: async (data) => {
+      // Check if 3DS/SCA is required
+      if (data.requiresAction && data.clientSecret) {
+        toast({
+          title: "Card verification required",
+          description: "Please complete the verification step.",
+        });
+
+        // Load Stripe.js if not already loaded
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.async = true;
+        document.body.appendChild(script);
+
+        script.onload = async () => {
+          const stripe = (window as any).Stripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+          
+          try {
+            // Confirm the payment with 3DS
+            const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
+
+            if (error) {
+              toast({
+                title: "Verification failed",
+                description: error.message,
+                variant: "destructive",
+              });
+            } else if (paymentIntent?.status === 'succeeded') {
+              toast({
+                title: "Wallet funded successfully",
+                description: "Your wallet balance has been updated.",
+              });
+              setShowFundDialog(false);
+              setFundAmount("");
+              setSelectedFundingSource("");
+              queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/transactions'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/analytics'] });
+            }
+          } catch (error: any) {
+            toast({
+              title: "Payment failed",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+        };
+      } else if (data.success) {
+        // Payment succeeded without 3DS
+        toast({
+          title: "Wallet funded successfully",
+          description: "Your wallet balance has been updated.",
+        });
+        setShowFundDialog(false);
+        setFundAmount("");
+        setSelectedFundingSource("");
+        queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet/analytics'] });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -198,6 +247,71 @@ export default function OwnerWallet() {
     onError: (error: any) => {
       toast({
         title: "Failed to set up payment account",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Financial Connections mutation for instant bank linking
+  const linkBankAccountMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/financial-connections/create", {});
+      return response.json();
+    },
+    onSuccess: async (data) => {
+      const { clientSecret } = data;
+      if (!clientSecret) {
+        toast({
+          title: "Error",
+          description: "Failed to initialize bank linking",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Load Stripe Financial Connections SDK dynamically
+      const script = document.createElement('script');
+      script.src = 'https://js.stripe.com/v3/';
+      script.async = true;
+      document.body.appendChild(script);
+
+      script.onload = async () => {
+        const stripe = (window as any).Stripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+        
+        try {
+          // Launch Financial Connections modal
+          const { financialConnectionsSession } = await stripe.collectFinancialConnectionsAccounts({
+            clientSecret: clientSecret,
+          });
+
+          if (financialConnectionsSession) {
+            // Complete the linking on backend
+            const completeResponse = await apiRequest("POST", "/api/financial-connections/complete", {
+              sessionId: financialConnectionsSession.id
+            });
+            const result = await completeResponse.json();
+
+            if (result.success) {
+              toast({
+                title: "Bank account linked!",
+                description: "Your bank account has been verified and is ready to use.",
+              });
+              queryClient.invalidateQueries({ queryKey: ['/api/owners/funding-sources'] });
+            }
+          }
+        } catch (error: any) {
+          toast({
+            title: "Bank linking failed",
+            description: error.message || "Failed to link bank account",
+            variant: "destructive",
+          });
+        }
+      };
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to start bank linking",
         description: error.message,
         variant: "destructive",
       });
@@ -447,6 +561,19 @@ export default function OwnerWallet() {
                     {(fundingSources as any[])?.length || 0} connected
                   </span>
                 </div>
+                {isWalletFundingEnabled && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => linkBankAccountMutation.mutate()}
+                    disabled={linkBankAccountMutation.isPending}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    data-testid="button-link-bank"
+                  >
+                    <Building2 className="w-4 h-4 mr-2" />
+                    {linkBankAccountMutation.isPending ? 'Connecting...' : 'Link Bank Account Instantly'}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
