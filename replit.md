@@ -10,6 +10,8 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 - **November 3, 2025**:
+  - Fixed critical bug: `stripeConnectAccountId` now correctly saved to users table (was incorrectly attempting to save to drivers/owners table)
+  - Updated all endpoints to check users table for Connect account ID instead of role-specific tables
   - Fixed Stripe Connect account creation to enable both `card_payments` and `transfers` capabilities
   - This allows Connect accounts to work with Destination Charges without requiring Stripe approval
   - Implemented automatic Stripe Account Link generation for Treasury wallet activation

@@ -791,19 +791,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let bankAccountId: string | null = null;
       let accountLast4: string | null = null;
 
+      // Check user's Stripe Connect Account ID (stored on users table)
+      if (user.stripeConnectAccountId) {
+        isOnboarded = true;
+        entityId = user.stripeConnectAccountId;
+      }
+
+      // Get Treasury account ID from role-specific table
       if (user.role === 'driver') {
         const driver = await storage.getDriver(userId);
-        if (driver?.stripeConnectAccountId) {
-          isOnboarded = true;
-          entityId = driver.stripeConnectAccountId;
-          bankAccountId = driver.stripeTreasuryAccountId || null;
+        if (driver?.stripeTreasuryAccountId) {
+          bankAccountId = driver.stripeTreasuryAccountId;
         }
       } else if (user.role === 'owner') {
         const owner = await storage.getOwner(userId);
-        if (owner?.stripeConnectAccountId) {
-          isOnboarded = true;
-          entityId = owner.stripeConnectAccountId;
-          bankAccountId = owner.stripeTreasuryAccountId || null;
+        if (owner?.stripeTreasuryAccountId) {
+          bankAccountId = owner.stripeTreasuryAccountId;
         }
       }
 
@@ -833,16 +836,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Get user's Connect account ID
-      let connectAccountId: string | null = null;
-      
-      if (user.role === 'driver') {
-        const driver = await storage.getDriver(userId);
-        connectAccountId = driver?.stripeConnectAccountId || null;
-      } else if (user.role === 'owner') {
-        const owner = await storage.getOwner(userId);
-        connectAccountId = owner?.stripeConnectAccountId || null;
-      }
+      // Get user's Connect account ID (stored on users table)
+      const connectAccountId = user.stripeConnectAccountId;
 
       if (!connectAccountId) {
         return res.status(400).json({ message: "No payment account found. Please complete onboarding first." });
@@ -896,29 +891,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Step 1: Check for existing Stripe Connect account (idempotency)
       let connectAccountId: string | null = null;
       
-      // First check database
-      if (user.role === 'driver') {
-        const driver = await storage.getDriver(userId);
-        if (driver?.stripeConnectAccountId) {
-          console.log('✅ Driver already has Stripe Connect account (from DB):', driver.stripeConnectAccountId);
-          return res.json({
-            success: true,
-            entityId: driver.stripeConnectAccountId,
-            bankAccountId: driver.stripeTreasuryAccountId,
-            message: "Already onboarded",
-          });
+      // First check database (Connect account ID is on users table)
+      if (user.stripeConnectAccountId) {
+        console.log('✅ User already has Stripe Connect account (from DB):', user.stripeConnectAccountId);
+        
+        // Get Treasury account ID from role-specific table
+        let treasuryAccountId: string | null = null;
+        if (user.role === 'driver') {
+          const driver = await storage.getDriver(userId);
+          treasuryAccountId = driver?.stripeTreasuryAccountId || null;
+        } else if (user.role === 'owner') {
+          const owner = await storage.getOwner(userId);
+          treasuryAccountId = owner?.stripeTreasuryAccountId || null;
         }
-      } else if (user.role === 'owner') {
-        const owner = await storage.getOwner(userId);
-        if (owner?.stripeConnectAccountId) {
-          console.log('✅ Owner already has Stripe Connect account (from DB):', owner.stripeConnectAccountId);
-          return res.json({
-            success: true,
-            entityId: owner.stripeConnectAccountId,
-            bankAccountId: owner.stripeTreasuryAccountId,
-            message: "Already onboarded",
-          });
-        }
+        
+        return res.json({
+          success: true,
+          entityId: user.stripeConnectAccountId,
+          bankAccountId: treasuryAccountId,
+          message: "Already onboarded",
+        });
       }
       
       // Second, check Stripe metadata (in case DB update failed previously)
@@ -936,22 +928,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('✅ Found existing Stripe account in metadata:', existingAccount.id);
         connectAccountId = existingAccount.id;
         
-        // Update database with the found account ID
-        if (user.role === 'driver') {
-          const driver = await storage.getDriver(userId);
-          if (driver) {
-            await storage.updateDriver(driver.id, {
-              stripeConnectAccountId: connectAccountId,
-            });
-          }
-        } else if (user.role === 'owner') {
-          const owner = await storage.getOwner(userId);
-          if (owner) {
-            await storage.updateOwner(owner.id, {
-              stripeConnectAccountId: connectAccountId,
-            });
-          }
-        }
+        // Update database with the found account ID (on users table)
+        await storage.upsertUser({
+          ...user,
+          stripeConnectAccountId: connectAccountId,
+        });
         
         return res.json({
           success: true,
@@ -1029,12 +1010,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn('⚠️ Could not generate account setup link:', linkError.message);
       }
 
-      // Update user's Stripe data based on role
+      // Update user's Stripe Connect Account ID (stored on users table)
+      await storage.upsertUser({
+        ...user,
+        stripeConnectAccountId: connectAccountId,
+      });
+
+      // Update role-specific data
       if (user.role === 'driver') {
         const driver = await storage.getDriver(userId);
         if (driver) {
           await storage.updateDriver(driver.id, {
-            stripeConnectAccountId: connectAccountId,
             stripeTreasuryAccountId: treasuryAccountId,
           });
 
@@ -1072,7 +1058,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const owner = await storage.getOwner(userId);
         if (owner) {
           await storage.updateOwner(owner.id, {
-            stripeConnectAccountId: connectAccountId,
             stripeTreasuryAccountId: treasuryAccountId,
           });
         }

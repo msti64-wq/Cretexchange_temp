@@ -561,7 +561,7 @@ export default function DriverProfile() {
 
                   <div className="bg-muted/50 rounded-lg p-4">
                     <p className="text-sm text-muted-foreground">
-                      <strong>What you'll need:</strong> Social Security Number (last 4 digits), date of birth, home address, and email. This is a secure one-time setup required by our payment processor.
+                      <strong>What you'll need:</strong> Full Social Security Number (9 digits), date of birth, home address, and email. This is a secure one-time setup required by our payment processor.
                     </p>
                   </div>
                 </>
