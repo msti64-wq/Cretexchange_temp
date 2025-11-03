@@ -28,6 +28,10 @@ Preferred communication style: Simple, everyday language.
 -   **Monthly Billing**: Automated monthly recurring fees for locations.
 -   **Subscription Management**: A one-time platform membership fee.
 -   **Wallet System**: Stripe Treasury integration for wallet management, balance tracking, ACH transfers for funding, auto top-up, and low balance alerts. Internal transfers for instant washout payments.
+-   **Wallet Funding Methods**: 
+    -   **Instant Bank Linking via Financial Connections**: Owners can link bank accounts instantly using Stripe Financial Connections, replacing slow micro-deposit verification with instant OAuth-based verification. $0.80 per ACH transfer fee, 3-5 day settlement.
+    -   **Card Payments with 3DS/SCA**: Owners can fund wallets via credit/debit cards with full Strong Customer Authentication (3DS) support. ~2.9% + $0.30 fee, instant funding. Backend automatically handles `requires_action` status and returns clientSecret for frontend confirmation.
+    -   **Payment Method Priority**: Treasury wallet transfers are PRIMARY; credit cards are BACKUP/fallback.
 -   **Debit Card Integration**: Stripe Issuing-powered debit cards (virtual and physical) linked to Stripe Treasury wallets for drivers.
 -   **Feature Flags**: Centralized system for managing platform features and configurations (e.g., automatic tax, rubble service, wallet funding) accessible to super admins.
 -   **Per-Owner Custom Platform Fees**: Super admins can set custom platform fees for individual owners based on tenure, with a tiered fee hierarchy.
