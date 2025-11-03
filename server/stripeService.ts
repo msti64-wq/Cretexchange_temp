@@ -114,7 +114,8 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
       country: 'US', // Required for custom accounts
       email: params.email, // Email for notifications only
       capabilities: {
-        transfers: { requested: true }, // Enable payouts
+        transfers: { requested: true }, // Enable payouts and receiving transfers
+        card_payments: { requested: true }, // Required for Destination Charges (no approval needed)
       },
       business_type: params.businessType || 'individual',
       business_profile: {

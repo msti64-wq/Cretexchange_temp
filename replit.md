@@ -10,12 +10,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 - **November 3, 2025**:
+  - Fixed Stripe Connect account creation to enable both `card_payments` and `transfers` capabilities
+  - This allows Connect accounts to work with Destination Charges without requiring Stripe approval
   - Implemented automatic Stripe Account Link generation for Treasury wallet activation
   - Added two-step Connect onboarding: (1) Create account, (2) Complete Treasury verification via Stripe-provided link
   - Backend now generates and returns `accountSetupLink` after Connect account creation
   - Frontend displays prominent "Complete Wallet Activation" alert with button to open Stripe's verification portal
   - Enhanced UX: Clear messaging guides users through Treasury wallet activation process
   - Account setup link redirects back to profile page after completion
+  - Setup link persists across page reloads - auto-fetches fresh links when needed
   - This resolves the additional verification step required for Treasury wallet access
 
 - **October 31, 2025**:
