@@ -14,6 +14,8 @@ Preferred communication style: Simple, everyday language.
   - Updated all endpoints to check users table for Connect account ID instead of role-specific tables
   - Fixed Stripe Connect account creation to enable both `card_payments` and `transfers` capabilities
   - This allows Connect accounts to work with Destination Charges without requiring Stripe approval
+  - **Enabled wallet funding feature flag** - Owners can now fund Treasury wallets via ACH for driver payments
+  - Connect accounts now support 25+ payment methods: ACH, cards, SEPA, iDEAL, Klarna, Affirm, Cash App, and more
   - Implemented automatic Stripe Account Link generation for Treasury wallet activation
   - Added two-step Connect onboarding: (1) Create account, (2) Complete Treasury verification via Stripe-provided link
   - Backend now generates and returns `accountSetupLink` after Connect account creation
