@@ -953,6 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Step 2: Create Stripe Treasury Financial Account (wallet)
       let treasuryAccountId: string | null = null;
+      let accountSetupLink: string | null = null;
       
       try {
         const treasuryAccount = await stripeService.createFinancialAccount(connectAccountId);
@@ -962,6 +963,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Treasury not enabled - gracefully handle this
         console.warn('⚠️ Stripe Treasury not available (sandbox/account limitation):', treasuryError.message);
         console.log('ℹ️ Continuing onboarding without Treasury - user can still use platform');
+      }
+
+      // Step 2.5: Generate Account Link for Treasury setup (if Treasury was attempted)
+      // This link allows the connected account holder to complete additional verification
+      try {
+        const accountLink = await stripe.accountLinks.create({
+          account: connectAccountId,
+          refresh_url: `${process.env.REPL_HOME || 'http://localhost:5000'}/driver/profile`,
+          return_url: `${process.env.REPL_HOME || 'http://localhost:5000'}/driver/profile`,
+          type: 'account_onboarding',
+        });
+        accountSetupLink = accountLink.url;
+        console.log('✅ Account setup link generated for Treasury activation');
+      } catch (linkError: any) {
+        console.warn('⚠️ Could not generate account setup link:', linkError.message);
       }
 
       // Update user's Stripe data based on role
@@ -1017,6 +1033,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         entityId: connectAccountId,
         bankAccountId: treasuryAccountId,
+        accountSetupLink: accountSetupLink, // Link to complete Treasury wallet activation
+        requiresSetup: accountSetupLink !== null, // Flag to indicate if additional setup is needed
         message: treasuryAccountId 
           ? "Successfully onboarded to payment platform"
           : "Account created (Treasury unavailable in sandbox)",
