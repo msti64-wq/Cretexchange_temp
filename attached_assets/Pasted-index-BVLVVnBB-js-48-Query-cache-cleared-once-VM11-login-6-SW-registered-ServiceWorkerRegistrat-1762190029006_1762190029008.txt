@@ -1,0 +1,79 @@
+index-BVLVVnBB.js:48 🔄 Query cache cleared once
+VM11 login:6 SW registered:  ServiceWorkerRegistration
+index-BVLVVnBB.js:452 🔍 Profile completion check: Object
+index-BVLVVnBB.js:452 🔍 Profile completion check: Object
+index-BVLVVnBB.js:452 🔍 Profile completion check: Object
+index-BVLVVnBB.js:452 ✅ Profile complete! Showing install prompt...
+index-BVLVVnBB.js:452 🎨 InstallPrompt render check: Object
+index-BVLVVnBB.js:452 ❌ InstallPrompt not showing because showPrompt is false
+index-BVLVVnBB.js:452 🔧 InstallPrompt component loaded
+index-BVLVVnBB.js:452 👤 User previously dismissed install prompt: false
+index-BVLVVnBB.js:452 📱 iOS device detected: false
+index-BVLVVnBB.js:452 🏠 App already installed: false
+index-BVLVVnBB.js:452 👂 Listening for beforeinstallprompt event
+index-BVLVVnBB.js:452 🔍 Profile completion check: Object
+index-BVLVVnBB.js:452 ⏰ Fallback timer: showing manual install prompt
+index-BVLVVnBB.js:452 🎨 InstallPrompt render check: Object
+index-BVLVVnBB.js:452 ✨ InstallPrompt is rendering!
+index-BVLVVnBB.js:452 🎨 InstallPrompt render check: Object
+index-BVLVVnBB.js:452 ✨ InstallPrompt is rendering!
+index-BVLVVnBB.js:452 🎨 InstallPrompt render check: {showPrompt: true, userType: 'driver', deferredPrompt: false}
+index-BVLVVnBB.js:452 ✨ InstallPrompt is rendering!
+index-BVLVVnBB.js:48  POST https://truck-wash-locator-msti64.replit.app/api/column/onboard 500 (Internal Server Error)
+Ce @ index-BVLVVnBB.js:48
+mutationFn @ index-BVLVVnBB.js:452
+fn @ index-BVLVVnBB.js:48
+b @ index-BVLVVnBB.js:48
+start @ index-BVLVVnBB.js:48
+execute @ index-BVLVVnBB.js:48
+await in execute
+mutate @ index-BVLVVnBB.js:48
+onSubmit @ index-BVLVVnBB.js:452
+i @ index-BVLVVnBB.js:452
+(anonymous) @ index-BVLVVnBB.js:452
+await in (anonymous)
+XE @ index-BVLVVnBB.js:37
+e4 @ index-BVLVVnBB.js:37
+t4 @ index-BVLVVnBB.js:37
+sv @ index-BVLVVnBB.js:37
+y1 @ index-BVLVVnBB.js:37
+(anonymous) @ index-BVLVVnBB.js:37
+px @ index-BVLVVnBB.js:40
+BN @ index-BVLVVnBB.js:37
+oh @ index-BVLVVnBB.js:37
+Bp @ index-BVLVVnBB.js:37
+g4 @ index-BVLVVnBB.js:37
+index-BVLVVnBB.js:452 🎨 InstallPrompt render check: {showPrompt: true, userType: 'driver', deferredPrompt: false}
+index-BVLVVnBB.js:452 ✨ InstallPrompt is rendering!
+index-BVLVVnBB.js:48 Uncaught (in promise) Error: 500: {"message":"Failed to complete onboarding: Stripe account creation failed: You can only create new accounts if you've signed up for Connect, which you can learn how to do at https://stripe.com/docs/connect."}
+    at GS (index-BVLVVnBB.js:48:42800)
+    at async Ce (index-BVLVVnBB.js:48:43123)
+    at async Object.mutationFn (index-BVLVVnBB.js:452:235538)
+GS @ index-BVLVVnBB.js:48
+await in GS
+Ce @ index-BVLVVnBB.js:48
+await in Ce
+mutationFn @ index-BVLVVnBB.js:452
+fn @ index-BVLVVnBB.js:48
+b @ index-BVLVVnBB.js:48
+start @ index-BVLVVnBB.js:48
+execute @ index-BVLVVnBB.js:48
+await in execute
+mutate @ index-BVLVVnBB.js:48
+onSubmit @ index-BVLVVnBB.js:452
+i @ index-BVLVVnBB.js:452
+(anonymous) @ index-BVLVVnBB.js:452
+await in (anonymous)
+XE @ index-BVLVVnBB.js:37
+e4 @ index-BVLVVnBB.js:37
+t4 @ index-BVLVVnBB.js:37
+sv @ index-BVLVVnBB.js:37
+y1 @ index-BVLVVnBB.js:37
+(anonymous) @ index-BVLVVnBB.js:37
+px @ index-BVLVVnBB.js:40
+BN @ index-BVLVVnBB.js:37
+oh @ index-BVLVVnBB.js:37
+Bp @ index-BVLVVnBB.js:37
+g4 @ index-BVLVVnBB.js:37
+index-BVLVVnBB.js:452 🎨 InstallPrompt render check: {showPrompt: true, userType: 'driver', deferredPrompt: false}
+index-BVLVVnBB.js:452 ✨ InstallPrompt is rendering!
