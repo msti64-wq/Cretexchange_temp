@@ -122,11 +122,12 @@ Preferred communication style: Simple, everyday language.
 -   **Database**: PostgreSQL hosted on Neon, managed with Drizzle ORM for type-safe queries. The schema supports users, locations, activities, and payments with role-based access.
 -   **Authentication & Authorization**: Custom username/password authentication, role-based access control (driver, owner, admin), and secure session management.
 -   **Payment Processing**: All-Stripe Infrastructure:
-    - **Primary Payment Method**: Stripe Connect Destination Charges for marketplace payments (credit card splitting) - works immediately without approval
-    - **Alternative Payment Method**: Stripe Treasury for wallet management (ACH, payouts, internal transfers) - requires approval, controlled via feature flag
+    - **Primary Payment Method (Owners)**: Stripe Treasury wallet transfers (funded via ACH bank accounts) - lower fees, better for high-volume
+    - **Secondary Payment Method (Owners)**: Stripe Connect Destination Charges (credit card splitting) - instant, fallback option
+    - **Payment Architecture**: Treasury wallets require Connect account + Treasury activation (two-step onboarding process)
     - **Debit Cards**: Stripe Issuing for virtual and physical cards
     - **Platform Fee**: $0.40 per washout (testing amount, 10% of production $4.00) collected automatically via application fees
-    - **Payment Splitting**: Owner's card charged → Driver receives payment via Connect account → Platform keeps fee in single transaction
+    - **Payment Splitting**: Owner's wallet/card charged → Driver receives payment via Connect account → Platform keeps fee in single transaction
 -   **Automated Batch Processing**: A daily batch processor handles payments, recurring fees, and subscriptions, designed for external cron services, ensuring idempotency and multi-timezone support.
 -   **File Management**: Google Cloud Storage for secure photo uploads using presigned URLs and access control.
 -   **Location Services**: GPS integration, Google Maps API for interactive maps, proximity-based discovery, and check-in systems.

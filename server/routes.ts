@@ -4485,7 +4485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if owner has completed payment account onboarding (Connect account required, Treasury optional)
-      if (!owner.stripeConnectAccountId) {
+      if (!user?.stripeConnectAccountId) {
         return res.status(400).json({ 
           message: "Payment account not set up. Please complete onboarding first.",
           needsOnboarding: true
@@ -4545,7 +4545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         transferResult = await stripeService.fundFinancialAccountACH({
           financialAccountId: owner.stripeTreasuryAccountId,
-          connectedAccountId: owner.stripeConnectAccountId,
+          connectedAccountId: user.stripeConnectAccountId!,
           paymentMethodId: fundingSource.stripePaymentMethodId,
           amount: Math.round(fundAmount * 100), // Convert to cents
           description: `Wallet funding - ${user?.username || owner.id}`
@@ -4569,9 +4569,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sync balance from Stripe Treasury to ensure consistency
       let updatedOwner = owner;
       try {
-        if (owner.stripeTreasuryAccountId && owner.stripeConnectAccountId) {
+        if (owner.stripeTreasuryAccountId && user.stripeConnectAccountId) {
           const treasuryBalance = await stripeService.getTreasuryBalance({
-            connectedAccountId: owner.stripeConnectAccountId,
+            connectedAccountId: user.stripeConnectAccountId,
             financialAccountId: owner.stripeTreasuryAccountId,
           });
           
