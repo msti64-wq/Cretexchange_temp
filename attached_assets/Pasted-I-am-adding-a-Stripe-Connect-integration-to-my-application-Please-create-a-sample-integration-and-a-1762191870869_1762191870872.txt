@@ -1,0 +1,92 @@
+I am adding a Stripe Connect integration to my application. Please create a sample integration and add detailed code comments explaining each step. If a value needs to be filled in (like an API key), please mark it with a placeholder comment and provide a helpful error if the value is not present.
+
+The sample integration should onboard users to Connect, create products, and have a simple storefront for customers to make purchases.
+
+For any UI, please use clean, simple HTML with basic styling. If relevant, use the current style of my application.
+
+Use the latest version of the Stripe API (`2025-10-29.clover`)
+
+Please set up flows for the following:
+
+## Creating Connected Accounts
+Create a connected account where the platform is responsible for pricing and fee collection.
+
+When creating connected accounts, please use the following properties:
+
+```js
+     stripe.accounts.create({
+      controller: {
+        // Platform is responsible for pricing and fee collection
+        fees: {
+          payer: 'application' as const
+        },
+        // Platform is responsible for losses / refunds / chargebacks
+        losses: {
+          payments: 'application' as const
+        },
+        // Give them access to the express dashboard for management
+        stripe_dashboard: {
+          type: 'express' as const
+        }
+      }
+    });
+```
+Only use controller properties when creating accounts. Never pass type at the top level. **Do not use top level type: 'express' or type: 'standard' or type 'custom'**
+
+
+## Onboarding Connected Accounts
+
+Onboard the connected accounts using Stripe Account Links.
+Please make a UI where the user can click "Onboard to collect payments" and also see the current status of onboarding. You should use the accounts API directly to get the status of the account. For this demo, always get the account status from the API directly (do not store in a database).
+
+```js
+stripe.accounts.retrieve(stripeAccountId);
+```
+
+## Create Products
+Please set up a sample endpoint and user interface to create Stripe products. This should create products at the platform level using the products API (Do not create on the connected account).
+
+You will need to store (either in metadata or in a database) the mapping from product to connected account id.
+
+```js
+stripe.products.create({
+    name: name,
+    description: description,
+    default_price_data: {
+        unit_amount: priceInCents,
+        currency: currency,
+    },
+});
+```
+
+## Display Products
+
+Please create a sample UI (a storefront) that displays all products and allows customers to buy a product. This storefront should display all products and all connected accounts.
+
+## Process Charges
+
+Use a Destination Charge with an application fee to monetize the transaction.
+
+```js
+stripe.checkout.sessions.create(
+  {
+    line_items: [
+      {
+        price_data: <Price Data>
+        quantity: <Quantity>,
+      },
+    ],
+    payment_intent_data: {
+      application_fee_amount: 123,
+      transfer_data: {
+        destination: '{{CONNECTED_ACCOUNT_ID}}',
+      },
+    },
+    mode: 'payment',
+    success_url: '<Root URL>/success?session_id={CHECKOUT_SESSION_ID}',
+  }
+)
+```
+
+Use hosted checkout for simplicity.
+
