@@ -871,10 +871,12 @@ export async function createMembershipPaymentIntent(params: {
   customerEmail: string;
   userId: string;
   username: string;
+  customerId?: string;
+  paymentMethodId?: string;
   metadata?: Record<string, string>;
 }): Promise<Stripe.PaymentIntent> {
   try {
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: params.amount,
       currency: 'usd',
       receipt_email: params.customerEmail,
@@ -887,13 +889,26 @@ export async function createMembershipPaymentIntent(params: {
         platform: 'cretexchange',
         ...params.metadata,
       },
-    });
+    };
+
+    // If customer and payment method are provided, attach them and confirm automatically
+    if (params.customerId && params.paymentMethodId) {
+      paymentIntentParams.customer = params.customerId;
+      paymentIntentParams.payment_method = params.paymentMethodId;
+      paymentIntentParams.off_session = true;
+      paymentIntentParams.confirm = true;
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
     console.log('✅ Created Membership Payment Intent (labeled):', {
       paymentIntentId: paymentIntent.id,
       amount: params.amount / 100,
       username: params.username,
       description: 'Membership fee',
+      customer: params.customerId,
+      paymentMethod: params.paymentMethodId,
+      status: paymentIntent.status,
     });
 
     return paymentIntent;

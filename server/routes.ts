@@ -3252,14 +3252,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Membership already activated" });
       }
 
+      // Check if owner has a saved payment method
+      if (!owner.stripeCustomerId || !owner.stripePaymentMethodId) {
+        return res.status(400).json({ 
+          message: "No payment method on file. Please add a payment method first." 
+        });
+      }
+
       const membershipFee = 1500; // $15.00 in cents
       
-      // Create payment intent with PROPER LABELING
+      // Create payment intent with PROPER LABELING and attach saved payment method
       const paymentIntent = await stripeService.createMembershipPaymentIntent({
         amount: membershipFee,
         customerEmail: user.email,
         userId: userId,
         username: user.username, // USERNAME-based identification
+        customerId: owner.stripeCustomerId,
+        paymentMethodId: owner.stripePaymentMethodId,
         metadata: {
           ownerId: owner.id,
           plan: 'annual'
