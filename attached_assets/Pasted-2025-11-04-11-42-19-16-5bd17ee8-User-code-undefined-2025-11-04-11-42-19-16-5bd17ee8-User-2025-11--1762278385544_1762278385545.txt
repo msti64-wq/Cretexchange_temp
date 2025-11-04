@@ -1,0 +1,141 @@
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+code: undefined
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+}
+2025-11-04 11:42:19.17
+5bd17ee8
+User
+5:42:19 PM [express] POST /api/owners/create-membership-payment 500 in 629ms :: {"message":"Failed t…
+2025-11-04 11:42:47.98
+5bd17ee8
+User
+🔐 Auth check for GET /api/notifications/unread
+2025-11-04 11:42:47.98
+5bd17ee8
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:42:48.00
+5bd17ee8
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:42:48.02
+5bd17ee8
+User
+5:42:48 PM [express] GET /api/notifications/unread 304 in 43ms :: {"count":0,"notifications":[]}
+2025-11-04 11:43:08.72
+5bd17ee8
+User
+[2025-11-04T17:43:08.722Z] [DEBUG] Production server heartbeat - operational
+2025-11-04 11:43:18.12
+5bd17ee8
+User
+🔐 Auth check for GET /api/notifications/unread
+2025-11-04 11:43:18.12
+5bd17ee8
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:43:18.15
+5bd17ee8
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:43:18.19
+5bd17ee8
+User
+5:43:18 PM [express] GET /api/notifications/unread 304 in 67ms :: {"count":0,"notifications":[]}
+2025-11-04 11:43:48.29
+5bd17ee8
+User
+🔐 Auth check for GET /api/notifications/unread
+2025-11-04 11:43:48.29
+5bd17ee8
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:43:48.33
+5bd17ee8
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:43:48.36
+5bd17ee8
+User
+5:43:48 PM [express] GET /api/notifications/unread 304 in 66ms :: {"count":0,"notifications":[]}
+2025-11-04 11:44:08.72
+5bd17ee8
+User
+[2025-11-04T17:44:08.725Z] [DEBUG] Production server heartbeat - operational
+2025-11-04 11:44:18.45
+5bd17ee8
+User
+🔐 Auth check for GET /api/notifications/unread
+2025-11-04 11:44:18.45
+5bd17ee8
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:44:18.48
+5bd17ee8
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:44:18.52
+5bd17ee8
+User
+5:44:18 PM [express] GET /api/notifications/unread 304 in 66ms :: {"count":0,"notifications":[]}
+2025-11-04 11:44:48.60
+5bd17ee8
+User
+🔐 Auth check for GET /api/notifications/unread
+2025-11-04 11:44:48.60
+5bd17ee8
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:44:48.63
+5bd17ee8
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:44:48.66
+5bd17ee8
+User
+5:44:48 PM [express] GET /api/notifications/unread 304 in 64ms :: {"count":0,"notifications":[]}
+2025-11-04 11:45:08.74
+5bd17ee8
+User
+[2025-11-04T17:45:08.740Z] [DEBUG] Production server heartbeat - operational
+2025-11-04 11:45:18.74
+5bd17ee8
+User
+🔐 Auth check for GET /api/notifications/unread
+2025-11-04 11:45:18.75
+5bd17ee8
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:45:18.77
+5bd17ee8
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:45:18.79
+5bd17ee8
+User
+5:45:18 PM [express] GET /api/notifications/unread 304 in 48ms :: {"count":0,"notifications":[]}
+2025-11-04 11:45:48.88
+5bd17ee8
+User
+🔐 Auth check for GET /api/notifications/unread
+2025-11-04 11:45:48.88
+5bd17ee8
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:45:48.91
+5bd17ee8
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:45:48.93
+5bd17ee8
+User
+5:45:48 PM [express] GET /api/notifications/unread 304 in 46ms :: {"count":0,"notifications":[]}
+
+2025-11-04 11:46:08.74
+5bd17ee8
+User
+[2025-11-04T17:46:08.746Z] [DEBUG] Production server heartbeat - operational
