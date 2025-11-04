@@ -1,0 +1,145 @@
+2025-11-04 11:58:39.38
+bb8a7ec0
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:58:39.40
+bb8a7ec0
+User
+🔐 Auth check for GET /api/owners/funding-sources
+2025-11-04 11:58:39.40
+bb8a7ec0
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:58:39.41
+bb8a7ec0
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:58:39.43
+bb8a7ec0
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:58:39.45
+bb8a7ec0
+User
+5:58:39 PM [express] GET /api/owners/wallet 304 in 68ms :: {"balance":"0.00","status":"pending_verif…
+2025-11-04 11:58:39.50
+bb8a7ec0
+User
+5:58:39 PM [express] GET /api/owners/funding-sources 304 in 100ms :: [{"id":"ace2c2e0-bc71-416a-b5c0…
+2025-11-04 11:58:39.51
+bb8a7ec0
+User
+🔐 Auth check for GET /api/notifications/unread
+2025-11-04 11:58:39.51
+bb8a7ec0
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:58:39.55
+bb8a7ec0
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:58:39.58
+bb8a7ec0
+User
+5:58:39 PM [express] GET /api/notifications/unread 304 in 68ms :: {"count":0,"notifications":[]}
+2025-11-04 11:59:00.04
+bb8a7ec0
+User
+[2025-11-04T17:59:00.045Z] [DEBUG] Production server heartbeat - operational
+2025-11-04 11:59:09.54
+bb8a7ec0
+User
+🔐 Auth check for GET /api/owners/wallet
+2025-11-04 11:59:09.54
+bb8a7ec0
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:59:09.58
+bb8a7ec0
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:59:09.58
+bb8a7ec0
+User
+🔐 Auth check for GET /api/owners/funding-sources
+2025-11-04 11:59:09.58
+bb8a7ec0
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:59:09.61
+bb8a7ec0
+User
+5:59:09 PM [express] GET /api/owners/wallet 304 in 67ms :: {"balance":"0.00","status":"pending_verif…
+2025-11-04 11:59:09.66
+bb8a7ec0
+User
+🔐 Auth check for GET /api/notifications/unread
+2025-11-04 11:59:09.66
+bb8a7ec0
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:59:09.70
+bb8a7ec0
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:59:09.73
+bb8a7ec0
+User
+5:59:09 PM [express] GET /api/notifications/unread 304 in 66ms :: {"count":0,"notifications":[]}
+2025-11-04 11:59:09.79
+bb8a7ec0
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:59:09.84
+bb8a7ec0
+User
+5:59:09 PM [express] GET /api/owners/funding-sources 304 in 257ms :: [{"id":"ace2c2e0-bc71-416a-b5c0…
+2025-11-04 11:59:39.71
+bb8a7ec0
+User
+🔐 Auth check for GET /api/owners/wallet
+2025-11-04 11:59:39.71
+bb8a7ec0
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:59:39.73
+bb8a7ec0
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:59:39.75
+bb8a7ec0
+User
+5:59:39 PM [express] GET /api/owners/wallet 304 in 46ms :: {"balance":"0.00","status":"pending_verif…
+2025-11-04 11:59:39.83
+bb8a7ec0
+User
+🔐 Auth check for GET /api/notifications/unread
+2025-11-04 11:59:39.83
+bb8a7ec0
+User
+🔐 Auth headers: Bearer token present
+2025-11-04 11:59:39.85
+bb8a7ec0
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:59:39.87
+bb8a7ec0
+User
+5:59:39 PM [express] GET /api/notifications/unread 304 in 45ms :: {"count":0,"notifications":[]}
+2025-11-04 11:59:39.89
+bb8a7ec0
+User
+🔐 Auth check for GET /api/owners/funding-sources
+2025-11-04 11:59:39.89
+bb8a7ec0
+User
+🔐 Auth headers: Bearer token present
+
+2025-11-04 11:59:39.91
+bb8a7ec0
+User
+✅ Auth success: User lo1 (owner)
+2025-11-04 11:59:39.96
+bb8a7ec0
+User
+5:59:39 PM [express] GET /api/owners/funding-sources 304 in 68ms :: [{"id":"ace2c2e0-bc71-416a-b5c0-…
