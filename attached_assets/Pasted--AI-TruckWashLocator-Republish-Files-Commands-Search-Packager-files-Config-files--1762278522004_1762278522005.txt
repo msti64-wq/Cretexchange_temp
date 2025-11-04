@@ -1,0 +1,222 @@
+
+
+AI
+
+
+
+TruckWashLocator
+
+
+
+
+Republish
+
+
+Files
+
+
+
+Commands
+Search
+Packager files
+Config files
+
+
+
+/
+
+
+
+Theme
+Open a new tab to test authentication and file uploads.
+New tab
+Learn more
+
+
+
+npm run dev
+
+Ask Agent…
+10m
+ • 
+10 minutes ago
+
+
+Overview
+
+Logs
+
+Analytics
+
+Resources
+
+Domains
+
+Manage
+Search
+
+
+Errors only
+
+Date
+Time
+Deployment
+Source
+Log
+2025-11-04 10:10:05.17
+205553d3
+User
+raw: {
+2025-11-04 10:12:05.90
+205553d3
+User
+at createMembershipPaymentIntent (file:///home/runner/workspace/dist/index.js:4878:11)
+2025-11-04 10:12:05.90
+205553d3
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-04 10:12:05.90
+205553d3
+User
+at async file:///home/runner/workspace/dist/index.js:7619:29
+2025-11-04 11:26:08.35
+b406946a
+User
+❌ Error creating membership payment intent: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+2025-11-04 11:26:08.35
+b406946a
+User
+Error creating membership payment intent: Error: Failed to create membership payment: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+2025-11-04 11:26:08.35
+b406946a
+User
+at createMembershipPaymentIntent (file:///home/runner/workspace/dist/index.js:4888:11)
+2025-11-04 11:26:08.35
+b406946a
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-04 11:26:08.35
+b406946a
+User
+at async file:///home/runner/workspace/dist/index.js:7634:29
+2025-11-04 11:26:30.22
+b406946a
+User
+❌ Error creating membership payment intent: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+2025-11-04 11:26:30.22
+b406946a
+User
+Error creating membership payment intent: Error: Failed to create membership payment: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+2025-11-04 11:26:30.22
+b406946a
+User
+at createMembershipPaymentIntent (file:///home/runner/workspace/dist/index.js:4888:11)
+2025-11-04 11:26:30.22
+b406946a
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-04 11:26:30.22
+b406946a
+User
+at async file:///home/runner/workspace/dist/index.js:7634:29
+2025-11-04 11:35:37.04
+9906e0f5
+User
+❌ Error creating membership payment intent: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+2025-11-04 11:35:37.05
+9906e0f5
+User
+Error creating membership payment intent: Error: Failed to create membership payment: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+2025-11-04 11:35:37.05
+9906e0f5
+User
+at createMembershipPaymentIntent (file:///home/runner/workspace/dist/index.js:4888:11)
+2025-11-04 11:35:37.05
+9906e0f5
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-04 11:35:37.05
+9906e0f5
+User
+at async file:///home/runner/workspace/dist/index.js:7634:29
+2025-11-04 11:36:15.30
+9906e0f5
+User
+❌ Error creating membership payment intent: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+2025-11-04 11:36:15.30
+9906e0f5
+User
+Error creating membership payment intent: Error: Failed to create membership payment: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+2025-11-04 11:36:15.30
+9906e0f5
+User
+at createMembershipPaymentIntent (file:///home/runner/workspace/dist/index.js:4888:11)
+2025-11-04 11:36:15.30
+9906e0f5
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-04 11:36:15.30
+9906e0f5
+User
+at async file:///home/runner/workspace/dist/index.js:7634:29
+2025-11-04 11:36:21.45
+9906e0f5
+User
+❌ Error creating membership payment intent: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+2025-11-04 11:36:21.45
+9906e0f5
+User
+Error creating membership payment intent: Error: Failed to create membership payment: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+2025-11-04 11:36:21.45
+9906e0f5
+User
+at createMembershipPaymentIntent (file:///home/runner/workspace/dist/index.js:4888:11)
+2025-11-04 11:36:21.45
+9906e0f5
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-11-04 11:36:21.45
+9906e0f5
+User
+at async file:///home/runner/workspace/dist/index.js:7634:29
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+❌ Error creating membership payment intent: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.
+
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+❌ [MEMBERSHIP] Error creating membership payment: {
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+message: 'Failed to create membership payment: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.',
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+stack: 'Error: Failed to create membership payment: The statement_descriptor parameter is not supported for the payment_method_type `card`. To continue supporting payment_method_type `card`, please pass in `statement_descriptor_suffix` or remove the `statement_descriptor` parameter altogether. Please see https://support.stripe.com/questions/use-of-the-statement-descriptor-parameter-on-paymentintents-for-card-charges for additional details.\n' +
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+' at createMembershipPaymentIntent (file:///home/runner/workspace/dist/index.js:4888:11)\n' +
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+' at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n' +
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+' at async file:///home/runner/workspace/dist/index.js:7650:29',
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+type: undefined,
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+code: undefined
+2025-11-04 11:42:19.16
+5bd17ee8
+User
+}

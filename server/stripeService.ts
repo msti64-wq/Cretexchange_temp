@@ -881,7 +881,7 @@ export async function createMembershipPaymentIntent(params: {
       currency: 'usd',
       receipt_email: params.customerEmail,
       description: `Membership fee - ${params.username}`, // Clear label
-      statement_descriptor: 'CRETEX MEMBER', // Shows on card statement
+      statement_descriptor_suffix: 'MEMBER', // Shows on card statement (max 22 chars for suffix)
       metadata: {
         transaction_type: 'membership_fee',
         user_id: params.userId,
@@ -941,7 +941,7 @@ export async function chargeMonthlyLocationFee(params: {
       confirm: true,
       off_session: true, // Charge without customer present
       description: `Monthly location fee - ${params.locationName}`, // Clear label
-      statement_descriptor: 'CRETEX LOT FEE', // Shows on card statement
+      statement_descriptor_suffix: 'LOT FEE', // Shows on card statement (max 22 chars for suffix)
       metadata: {
         transaction_type: 'monthly_location_fee',
         user_id: params.userId,
