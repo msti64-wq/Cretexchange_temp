@@ -3410,9 +3410,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("✅ Payment verified - $15.00 received via Stripe");
       console.log("Setting up Stripe Connect and Treasury wallet, activating subscription...");
       
-      // Create or reuse Stripe Connected Account and Treasury wallet
+      // Create or reuse Stripe Connected Account (Treasury is optional)
       let connectedAccount, treasuryAccount;
-      let walletStatus: 'active' | 'pending_verification' = 'active';
+      let walletStatus: 'active' | 'pending_verification' = 'active'; // Default to active - Connect account is sufficient
       let treasuryUnavailable = false;
       
       try {
@@ -3451,24 +3451,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log("✅ Created Stripe Connect account:", connectedAccount.id);
         }
 
-        // Try to create Stripe Treasury Financial Account (wallet)
+        // Try to create Stripe Treasury Financial Account (wallet) - OPTIONAL
         try {
           treasuryAccount = await stripeService.createFinancialAccount(connectedAccount.id);
           console.log("✅ Created Stripe Treasury account:", treasuryAccount.id);
         } catch (treasuryError: any) {
-          // Check if this is a Treasury access issue
-          if (treasuryError.message?.includes('treasury') || treasuryError.message?.includes('onboarded')) {
-            console.log("⚠️ Stripe Treasury not available - subscription will proceed without wallet features");
-            console.log("Treasury error:", treasuryError.message);
-            treasuryUnavailable = true;
-            walletStatus = 'pending_verification';
-          } else {
-            // Some other error - rethrow
-            throw treasuryError;
-          }
+          // Treasury is optional - continue without it
+          console.log("ℹ️ Stripe Treasury not available - wallet will use database balance tracking");
+          console.log("Treasury error:", treasuryError.message);
+          treasuryUnavailable = true;
+          // Keep walletStatus as 'active' - Treasury isn't required for basic functionality
         }
       } catch (error: any) {
-        console.error("Failed to create Stripe accounts:", error);
+        console.error("Failed to create Stripe Connect account:", error);
         return res.status(500).json({ 
           message: "Payment received but failed to create account. Please contact support.",
           error: error.message 
@@ -3515,8 +3510,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("✅ Subscription activated successfully and payment recorded in fees_ledger");
 
       const responseMessage = treasuryUnavailable 
-        ? "Membership activated - payment received. Wallet features require Stripe Treasury approval."
-        : "Membership activated - payment received and wallet created";
+        ? "Membership activated! Your wallet is ready to use with card payments. ACH transfers will be enabled when Stripe Treasury is approved."
+        : "Membership activated! Your wallet is fully operational with card and ACH payment options.";
 
       res.json({
         success: true,
@@ -3525,7 +3520,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: responseMessage,
         walletStatus: walletStatus,
         paymentStatus: 'completed',
-        treasuryUnavailable: treasuryUnavailable
+        treasuryUnavailable: treasuryUnavailable, // Keep for backward compatibility
+        hasTreasury: !treasuryUnavailable // Add for forward compatibility
       });
     } catch (error: any) {
       console.error("Subscription error:", {
@@ -3923,10 +3919,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
+      // Default to database values (used when Treasury is unavailable)
       let balance = owner.walletBalance || '0.00';
       let status = owner.walletStatus || 'pending_verification';
 
-      // If owner has Stripe Treasury account, fetch live balance (authoritative source)
+      // If owner has Stripe Treasury account, fetch live balance and sync to database
       if (owner.stripeTreasuryAccountId && owner.stripeConnectAccountId) {
         try {
           const treasuryBalance = await stripeService.getTreasuryBalance({
@@ -4564,21 +4561,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      // Check if owner has completed payment account onboarding (Connect account required, Treasury optional)
-      if (!user?.stripeConnectAccountId) {
-        return res.status(400).json({ 
-          message: "Payment account not set up. Please complete onboarding first.",
-          needsOnboarding: true
-        });
-      }
-
-      // Check if Treasury is available for wallet funding
-      if (!owner.stripeTreasuryAccountId) {
-        return res.status(400).json({ 
-          message: "Wallet funding requires Stripe Treasury. Please activate Treasury in your Stripe dashboard to enable this feature.",
-          needsTreasury: true
-        });
-      }
+      // Note: Treasury is optional - we can fund wallets via card payments and track balance in database
+      // Treasury will be used when available for enhanced features (ACH transfers, etc.)
+      const hasTreasury = !!(owner.stripeTreasuryAccountId && owner.stripeConnectAccountId);
 
       if (!amount) {
         return res.status(400).json({ message: "Amount is required" });
@@ -4679,42 +4664,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Implement Stripe Treasury ACH funding from external bank account
+      // Implement Stripe Treasury ACH funding from external bank account (if Treasury is available)
       let transferResult;
-      try {
-        // Use Stripe Treasury InboundTransfer to pull funds from external bank account
-        // The fundingSource contains the Stripe payment method ID
-        if (!fundingSource.stripePaymentMethodId) {
-          return res.status(400).json({ 
-            message: "Bank account not verified. Please re-add your funding source." 
+      
+      if (hasTreasury && owner.stripeTreasuryAccountId && user.stripeConnectAccountId) {
+        try {
+          // Use Stripe Treasury InboundTransfer to pull funds from external bank account
+          // The fundingSource contains the Stripe payment method ID
+          if (!fundingSource.stripePaymentMethodId) {
+            return res.status(400).json({ 
+              message: "Bank account not verified. Please re-add your funding source." 
+            });
+          }
+
+          console.log(`🏦 Initiating Stripe Treasury InboundTransfer: $${fundAmount}`);
+          console.log(`   From payment method: ${fundingSource.stripePaymentMethodId}`);
+          console.log(`   To financial account: ${owner.stripeTreasuryAccountId}`);
+
+          transferResult = await stripeService.fundFinancialAccountACH({
+            financialAccountId: owner.stripeTreasuryAccountId,
+            connectedAccountId: user.stripeConnectAccountId!,
+            paymentMethodId: fundingSource.stripePaymentMethodId,
+            amount: Math.round(fundAmount * 100), // Convert to cents
+            description: `Wallet funding - ${user?.username || owner.id}`
+          });
+
+          console.log(`✅ InboundTransfer created: ${transferResult.id}, status: ${transferResult.status}`);
+          console.log(`⏳ Transfer pending - balance will update when Stripe settles the transfer (1-3 business days)`);
+
+        } catch (fundingError: any) {
+          console.error('❌ Stripe Treasury funding failed:', fundingError.message);
+          return res.status(500).json({ 
+            message: "Failed to initiate wallet funding: " + fundingError.message 
           });
         }
-
-        console.log(`🏦 Initiating Stripe Treasury InboundTransfer: $${fundAmount}`);
-        console.log(`   From payment method: ${fundingSource.stripePaymentMethodId}`);
-        console.log(`   To financial account: ${owner.stripeTreasuryAccountId}`);
-
-        transferResult = await stripeService.fundFinancialAccountACH({
-          financialAccountId: owner.stripeTreasuryAccountId,
-          connectedAccountId: user.stripeConnectAccountId!,
-          paymentMethodId: fundingSource.stripePaymentMethodId,
-          amount: Math.round(fundAmount * 100), // Convert to cents
-          description: `Wallet funding - ${user?.username || owner.id}`
-        });
-
-        console.log(`✅ InboundTransfer created: ${transferResult.id}, status: ${transferResult.status}`);
-
-        // DO NOT record balance changes yet - the transfer is pending and will settle in 1-3 business days
-        // Stripe will send a webhook when the transfer succeeds/fails
-        // For now, we'll just log the initiation - actual balance updates will happen via webhook or manual sync
-        console.log(`⏳ Transfer pending - balance will update when Stripe settles the transfer`);
-        console.log(`   Note: This may take 1-3 business days to complete`);
-
-      } catch (fundingError: any) {
-        console.error('❌ Stripe Treasury funding failed:', fundingError.message);
-        return res.status(500).json({ 
-          message: "Failed to initiate wallet funding: " + fundingError.message 
-        });
+      } else {
+        // Treasury not available - only card payments supported
+        console.log(`ℹ️ Treasury not available - ACH funding disabled. Use card payment method.`);
+        if (fundingSource.type === 'bank_account' || fundingSource.type === 'ach') {
+          return res.status(400).json({ 
+            message: "ACH transfers require Stripe Treasury approval. Please use a card payment method or contact support.",
+            needsTreasury: true
+          });
+        }
       }
 
       // Sync balance from Stripe Treasury to ensure consistency
@@ -4748,17 +4740,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check and manage low balance alerts after funding
       await checkAndManageLowBalanceAlert(updatedOwner, userId);
 
-      res.json({
-        message: "Wallet funding initiated successfully. Funds will appear in 1-3 business days.",
-        transaction: {
-          transactionId: transferResult.id,
+      // Return appropriate response based on funding method
+      if (transferResult) {
+        // Treasury ACH transfer initiated
+        res.json({
+          message: "Wallet funding initiated successfully. Funds will appear in 1-3 business days.",
+          transaction: {
+            transactionId: transferResult.id,
+            amount: fundAmount.toFixed(2),
+            status: transferResult.status || 'pending',
+            fundingSource: fundingSourceId,
+            createdAt: new Date().toISOString(),
+            estimatedCompletionDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        });
+      } else {
+        // Card payment already completed above - balance already updated
+        res.json({
+          success: true,
+          message: "Wallet funded successfully",
+          balance: updatedOwner.walletBalance,
           amount: fundAmount.toFixed(2),
-          status: transferResult.status || 'pending',
-          fundingSource: fundingSourceId,
-          createdAt: new Date().toISOString(),
-          estimatedCompletionDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      });
+          fundingSource: fundingSourceId
+        });
+      }
     } catch (error: any) {
       console.error("Error funding wallet:", error);
       res.status(500).json({ message: "Failed to fund wallet: " + error.message });
@@ -8013,6 +8018,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting service payment account:", error);
       res.status(500).json({ message: "Failed to delete service payment account" });
+    }
+  });
+
+  // Manually activate owner wallet (superadmin only) - useful when Treasury approval is pending
+  app.post('/api/superadmin/owners/:id/activate-wallet', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const ownerId = req.params.id;
+      const owner = await storage.getOwnerById(ownerId);
+      
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      console.log(`🔧 [ADMIN] Manually activating wallet for owner ${ownerId} (${owner.id})`);
+
+      // Activate wallet - set status to active even without Treasury
+      await storage.updateOwner(ownerId, {
+        walletStatus: 'active',
+        updatedAt: new Date()
+      });
+
+      console.log(`✅ [ADMIN] Wallet activated for owner ${ownerId}`);
+
+      res.json({
+        success: true,
+        message: "Wallet activated successfully",
+        ownerId: ownerId,
+        walletStatus: 'active'
+      });
+    } catch (error: any) {
+      console.error("[ADMIN] Error activating wallet:", error);
+      res.status(500).json({ message: "Failed to activate wallet: " + error.message });
     }
   });
 
