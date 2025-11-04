@@ -3263,6 +3263,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Membership already activated" });
       }
 
+      // Additional check: Query Stripe for existing successful membership payments
+      console.log('🔍 [MEMBERSHIP] Checking for duplicate payments in Stripe...');
+      if (owner.stripeCustomerId) {
+        try {
+          const existingPayments = await stripe.paymentIntents.list({
+            customer: owner.stripeCustomerId,
+            limit: 10,
+          });
+
+          const successfulMembershipPayment = existingPayments.data.find(
+            pi => pi.metadata?.transaction_type === 'membership_fee' && 
+                  pi.status === 'succeeded' &&
+                  pi.amount === 1500
+          );
+
+          if (successfulMembershipPayment) {
+            console.log('❌ [MEMBERSHIP] Duplicate payment prevented! Found existing payment:', successfulMembershipPayment.id);
+            return res.status(400).json({ 
+              message: "Membership fee already paid. Please contact support if you believe this is an error.",
+              existingPaymentId: successfulMembershipPayment.id
+            });
+          }
+        } catch (error) {
+          console.error('⚠️ [MEMBERSHIP] Error checking for duplicates:', error);
+          // Continue - don't block payment due to check failure
+        }
+      }
+
       const membershipFee = 1500; // $15.00 in cents
       const hasSavedPaymentMethod = !!(owner.stripeCustomerId && owner.stripePaymentMethodId);
       
