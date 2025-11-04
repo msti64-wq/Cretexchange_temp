@@ -3263,32 +3263,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Membership already activated" });
       }
 
-      console.log('🔍 [MEMBERSHIP] Checking payment method:', {
-        hasCustomerId: !!owner.stripeCustomerId,
-        hasPaymentMethodId: !!owner.stripePaymentMethodId,
-        customerId: owner.stripeCustomerId,
-        paymentMethodId: owner.stripePaymentMethodId
-      });
-
-      // Check if owner has a saved payment method
-      if (!owner.stripeCustomerId || !owner.stripePaymentMethodId) {
-        console.log('❌ [MEMBERSHIP] No payment method on file');
-        return res.status(400).json({ 
-          message: "No payment method on file. Please add a payment method first." 
-        });
-      }
-
       const membershipFee = 1500; // $15.00 in cents
       console.log('🔍 [MEMBERSHIP] Creating payment intent for $15.00...');
       
-      // Create payment intent with PROPER LABELING and attach saved payment method
+      // Create payment intent WITHOUT auto-confirmation
+      // Frontend will collect payment details via PaymentElement and confirm
       const paymentIntent = await stripeService.createMembershipPaymentIntent({
         amount: membershipFee,
         customerEmail: user.email,
         userId: userId,
-        username: user.username, // USERNAME-based identification
-        customerId: owner.stripeCustomerId,
-        paymentMethodId: owner.stripePaymentMethodId,
+        username: user.username,
+        // Do NOT pass customerId/paymentMethodId - let frontend handle payment collection
         metadata: {
           ownerId: owner.id,
           plan: 'annual'
