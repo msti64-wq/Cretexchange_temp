@@ -3240,26 +3240,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create Stripe payment intent for $15.00 membership fee
   app.post('/api/owners/create-membership-payment', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('🔍 [MEMBERSHIP] Starting membership payment creation for user:', req.user?.id);
+      
       const userId = req.user.id;
+      
+      console.log('🔍 [MEMBERSHIP] Fetching user from database...');
       const user = await storage.getUser(userId);
+      console.log('🔍 [MEMBERSHIP] User found:', !!user, user ? `(${user.username})` : '');
+      
+      console.log('🔍 [MEMBERSHIP] Fetching owner from database...');
       const owner = await storage.getOwner(userId);
+      console.log('🔍 [MEMBERSHIP] Owner found:', !!owner, owner ? `(id: ${owner.id})` : '');
 
       if (!user || !owner) {
+        console.log('❌ [MEMBERSHIP] User or owner not found in database');
         return res.status(404).json({ message: "User or owner not found" });
       }
 
+      console.log('🔍 [MEMBERSHIP] Wallet status:', owner.walletStatus);
       if (owner.walletStatus === 'active') {
+        console.log('❌ [MEMBERSHIP] Membership already activated');
         return res.status(400).json({ message: "Membership already activated" });
       }
 
+      console.log('🔍 [MEMBERSHIP] Checking payment method:', {
+        hasCustomerId: !!owner.stripeCustomerId,
+        hasPaymentMethodId: !!owner.stripePaymentMethodId,
+        customerId: owner.stripeCustomerId,
+        paymentMethodId: owner.stripePaymentMethodId
+      });
+
       // Check if owner has a saved payment method
       if (!owner.stripeCustomerId || !owner.stripePaymentMethodId) {
+        console.log('❌ [MEMBERSHIP] No payment method on file');
         return res.status(400).json({ 
           message: "No payment method on file. Please add a payment method first." 
         });
       }
 
       const membershipFee = 1500; // $15.00 in cents
+      console.log('🔍 [MEMBERSHIP] Creating payment intent for $15.00...');
       
       // Create payment intent with PROPER LABELING and attach saved payment method
       const paymentIntent = await stripeService.createMembershipPaymentIntent({
@@ -3275,14 +3295,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      console.log(`💳 Created membership payment intent (labeled): ${paymentIntent.id} - $15.00`);
+      console.log(`✅ [MEMBERSHIP] Created payment intent: ${paymentIntent.id} - Status: ${paymentIntent.status}`);
 
       res.json({ 
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id
       });
     } catch (error: any) {
-      console.error("Error creating membership payment intent:", error);
+      console.error("❌ [MEMBERSHIP] Error creating membership payment:", {
+        message: error.message,
+        stack: error.stack,
+        type: error.type,
+        code: error.code
+      });
       res.status(500).json({ 
         message: "Failed to create payment intent",
         error: error.message 
