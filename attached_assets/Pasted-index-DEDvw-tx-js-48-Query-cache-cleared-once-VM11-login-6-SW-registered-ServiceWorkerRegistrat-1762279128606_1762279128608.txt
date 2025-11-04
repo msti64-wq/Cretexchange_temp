@@ -1,0 +1,55 @@
+index-DEDvw-tx.js:48 🔄 Query cache cleared once
+VM11 login:6 SW registered:  ServiceWorkerRegistration
+index-DEDvw-tx.js:452 🚨 PROACTIVE: Clearing phantom activities from cache on mount
+index-DEDvw-tx.js:452 ✅ Phantom activities proactively cleared
+api.stripe.com/v1/payment_intents/pi_3SPoSSLqF7RVaZdv1AKlZ5sY/confirm:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/payment_intents/pi_3SPoSSLqF7RVaZdv1AKlZ5sY/confirm:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/payment_intents/pi_3SPoSSLqF7RVaZdv1AKlZ5sY/confirm:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/payment_intents/pi_3SPoSSLqF7RVaZdv1AKlZ5sY/confirm:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/payment_intents/pi_3SPoSSLqF7RVaZdv1AKlZ5sY/confirm:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/payment_intents/pi_3SPoSSLqF7RVaZdv1AKlZ5sY/confirm:1  Failed to load resource: the server responded with a status of 400 ()
+api.stripe.com/v1/payment_intents/pi_3SPoSSLqF7RVaZdv1AKlZ5sY/confirm:1  Failed to load resource: the server responded with a status of 400 ()
+  POST https://api.stripe.com/v1/payment_intents/pi_3SPoSSLqF7RVaZdv1AKlZ5sY/confirm 400 (Bad Request)
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+e @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+c @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+i @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+s @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+e @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+n @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+a @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+i @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+_ @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+confirm @ controller-with-dual-preconnect-treatment-7fc1f52afacf140a00fbf360463b810b.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-7fc1f52afacf140a00fbf360463b810b.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-7fc1f52afacf140a00fbf360463b810b.js:1
+n @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+a @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+i @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+Promise.then
+a @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+i @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-7fc1f52afacf140a00fbf360463b810b.js:1
+Promise.then
+confirmPaymentIntent @ controller-with-dual-preconnect-treatment-7fc1f52afacf140a00fbf360463b810b.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-7fc1f52afacf140a00fbf360463b810b.js:1
+n @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+a @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+i @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ shared-93ecaeeac0737…4a20853d8bd44c.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-7fc1f52afacf140a00fbf360463b810b.js:1
+value @ controller-with-dual-preconnect-treatment-7fc1f52afacf140a00fbf360463b810b.js:1
+(anonymous) @ controller-with-dual-preconnect-treatment-7fc1f52afacf140a00fbf360463b810b.js:1
