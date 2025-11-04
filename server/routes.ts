@@ -3264,28 +3264,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const membershipFee = 1500; // $15.00 in cents
-      console.log('🔍 [MEMBERSHIP] Creating payment intent for $15.00...');
+      const hasSavedPaymentMethod = !!(owner.stripeCustomerId && owner.stripePaymentMethodId);
       
-      // Create payment intent WITHOUT auto-confirmation
-      // Frontend will collect payment details via PaymentElement and confirm
-      const paymentIntent = await stripeService.createMembershipPaymentIntent({
-        amount: membershipFee,
-        customerEmail: user.email,
-        userId: userId,
-        username: user.username,
-        // Do NOT pass customerId/paymentMethodId - let frontend handle payment collection
-        metadata: {
-          ownerId: owner.id,
-          plan: 'annual'
-        }
+      console.log('🔍 [MEMBERSHIP] Payment method status:', {
+        hasSaved: hasSavedPaymentMethod,
+        customerId: owner.stripeCustomerId,
+        paymentMethodId: owner.stripePaymentMethodId
       });
+      
+      if (hasSavedPaymentMethod) {
+        // Use saved payment method - backend confirms automatically
+        console.log('🔍 [MEMBERSHIP] Using saved payment method - auto-confirming...');
+        const paymentIntent = await stripeService.createMembershipPaymentIntent({
+          amount: membershipFee,
+          customerEmail: user.email,
+          userId: userId,
+          username: user.username,
+          customerId: owner.stripeCustomerId,
+          paymentMethodId: owner.stripePaymentMethodId,
+          metadata: {
+            ownerId: owner.id,
+            plan: 'annual'
+          }
+        });
 
-      console.log(`✅ [MEMBERSHIP] Created payment intent: ${paymentIntent.id} - Status: ${paymentIntent.status}`);
+        console.log(`✅ [MEMBERSHIP] Payment auto-confirmed: ${paymentIntent.id} - Status: ${paymentIntent.status}`);
 
-      res.json({ 
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id
-      });
+        // Return success with payment already completed
+        res.json({ 
+          paymentIntentId: paymentIntent.id,
+          status: paymentIntent.status,
+          usedSavedPaymentMethod: true
+        });
+      } else {
+        // No saved payment method - create unconfirmed intent for frontend
+        console.log('🔍 [MEMBERSHIP] No saved payment method - creating intent for frontend...');
+        const paymentIntent = await stripeService.createMembershipPaymentIntent({
+          amount: membershipFee,
+          customerEmail: user.email,
+          userId: userId,
+          username: user.username,
+          metadata: {
+            ownerId: owner.id,
+            plan: 'annual'
+          }
+        });
+
+        console.log(`✅ [MEMBERSHIP] Created payment intent for frontend: ${paymentIntent.id}`);
+
+        res.json({ 
+          clientSecret: paymentIntent.client_secret,
+          paymentIntentId: paymentIntent.id,
+          usedSavedPaymentMethod: false
+        });
+      }
     } catch (error: any) {
       console.error("❌ [MEMBERSHIP] Error creating membership payment:", {
         message: error.message,

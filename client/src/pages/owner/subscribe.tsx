@@ -170,8 +170,19 @@ export default function OwnerSubscribe() {
       return response.json();
     },
     onSuccess: (data) => {
-      setClientSecret(data.clientSecret);
-      setPaymentIntentId(data.paymentIntentId);
+      if (data.usedSavedPaymentMethod) {
+        // Payment already completed with saved payment method
+        toast({
+          title: "Payment Successful",
+          description: "Using your saved payment method. Activating membership...",
+        });
+        // Auto-activate membership since payment is done
+        activateMembershipMutation.mutate(data.paymentIntentId);
+      } else {
+        // Need to collect payment via PaymentElement
+        setClientSecret(data.clientSecret);
+        setPaymentIntentId(data.paymentIntentId);
+      }
     },
     onError: (error: any) => {
       toast({
