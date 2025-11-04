@@ -6,6 +6,10 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Deployment Plan
+- **Custom Domain**: After testing is complete, configure custom domain redirect to `Creteapp.creteexchange.com`
+  - Steps: Publish app → Add custom domain in Replit → Update DNS CNAME record → SSL auto-provisioned
+
 ## System Architecture
 
 ### UI/UX Decisions
