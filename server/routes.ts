@@ -4,13 +4,13 @@ import Stripe from "stripe";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
-import { washoutActivities, withdrawals, walletTransactions, driverWallets, owners, ownerFundingSources, debitCardRequests, ownerWalletTransactions } from "../shared/schema";
+import { washoutActivities, withdrawals, walletTransactions, driverWallets, owners, ownerFundingSources, debitCardRequests, ownerWalletTransactions, balanceReconciliations } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, signObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, desc } from "drizzle-orm";
 import { z } from "zod";
 import * as stripeService from "./stripeService";
 import stripeClient from "./stripeService";
@@ -8696,6 +8696,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('❌ Error creating feature flag:', error);
       res.status(500).json({ message: 'Failed to create feature flag' });
+    }
+  });
+
+  // ========== BALANCE RECONCILIATION ENDPOINTS ==========
+  
+  // POST /api/admin/reconciliation/run - Run balance reconciliation (admin only)
+  app.post('/api/admin/reconciliation/run', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const { performBalanceReconciliation } = await import('./reconciliationService');
+      
+      console.log(`🔍 Manual reconciliation triggered by ${user.username}`);
+      const result = await performBalanceReconciliation(user.id);
+
+      res.json({
+        message: 'Reconciliation completed successfully',
+        result
+      });
+    } catch (error: any) {
+      console.error('❌ Error running reconciliation:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to run reconciliation',
+        error: error.message 
+      });
+    }
+  });
+
+  // GET /api/admin/reconciliation/:id - Get reconciliation report (admin only)
+  app.get('/api/admin/reconciliation/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const { getReconciliationReport } = await import('./reconciliationService');
+      const report = await getReconciliationReport(req.params.id);
+
+      res.json(report);
+    } catch (error: any) {
+      console.error('❌ Error fetching reconciliation report:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to fetch reconciliation report',
+        error: error.message 
+      });
+    }
+  });
+
+  // GET /api/admin/reconciliation/history - Get reconciliation history (admin only)
+  app.get('/api/admin/reconciliation/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const reconciliations = await db
+        .select()
+        .from(balanceReconciliations)
+        .orderBy(desc(balanceReconciliations.createdAt))
+        .limit(50);
+
+      res.json(reconciliations);
+    } catch (error: any) {
+      console.error('❌ Error fetching reconciliation history:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to fetch reconciliation history',
+        error: error.message 
+      });
+    }
+  });
+
+  // POST /api/admin/reconciliation/discrepancy/:id/resolve - Resolve a discrepancy (admin only)
+  app.post('/api/admin/reconciliation/discrepancy/:id/resolve', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const { resolutionNotes } = req.body;
+      if (!resolutionNotes) {
+        return res.status(400).json({ message: 'Resolution notes required' });
+      }
+
+      const { resolveDiscrepancy } = await import('./reconciliationService');
+      await resolveDiscrepancy(req.params.id, user.id, resolutionNotes);
+
+      res.json({ message: 'Discrepancy resolved successfully' });
+    } catch (error: any) {
+      console.error('❌ Error resolving discrepancy:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to resolve discrepancy',
+        error: error.message 
+      });
     }
   });
 

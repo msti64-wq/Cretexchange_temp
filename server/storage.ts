@@ -16,6 +16,8 @@ import {
   withdrawals,
   debitCardRequests,
   webhookEvents,
+  balanceReconciliations,
+  reconciliationDiscrepancies,
   servicePaymentAccounts,
   billingBatches,
   feesLedger,
@@ -41,6 +43,12 @@ import {
   type WalletTransaction,
   type Withdrawal,
   type DebitCardRequest,
+  type WebhookEvent,
+  type InsertWebhookEvent,
+  type BalanceReconciliation,
+  type InsertBalanceReconciliation,
+  type ReconciliationDiscrepancy,
+  type InsertReconciliationDiscrepancy,
   type ServicePaymentAccount,
   type BillingBatch,
   type FeeLedger,
@@ -2189,14 +2197,15 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // Webhook event operations for idempotency
+  // Webhook event operations for idempotency (updated to use new status enum)
   async createWebhookEvent(stripeEventId: string, eventType: string, accountId?: string): Promise<boolean> {
     try {
       await db.insert(webhookEvents).values({
         stripeEventId,
         eventType,
         accountId,
-        processed: false,
+        status: 'received',
+        payload: {}, // Default empty payload, will be updated later
       });
       return true;
     } catch (error) {
@@ -2208,18 +2217,19 @@ export class DatabaseStorage implements IStorage {
   async isWebhookEventProcessed(stripeEventId: string): Promise<boolean> {
     const [event] = await db.select().from(webhookEvents)
       .where(eq(webhookEvents.stripeEventId, stripeEventId));
-    return event?.processed || false;
+    return event?.status === 'processed' || false;
   }
 
   async markWebhookEventProcessed(stripeEventId: string): Promise<void> {
     await db.update(webhookEvents)
-      .set({ processed: true, processedAt: new Date() })
+      .set({ status: 'processed', processedAt: new Date() })
       .where(eq(webhookEvents.stripeEventId, stripeEventId));
   }
 
   async markWebhookEventFailed(stripeEventId: string, errorMessage: string): Promise<void> {
     await db.update(webhookEvents)
       .set({ 
+        status: 'failed',
         errorMessage,
         retryCount: sql`${webhookEvents.retryCount} + 1`,
       })
