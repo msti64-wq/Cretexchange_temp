@@ -8699,6 +8699,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== TEST ENDPOINT: Stripe Connect Payment Flow ==========
+  // POST /api/test/stripe-connect-payment - Test Stripe Connect Destination Charges
+  app.post('/api/test/stripe-connect-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required for testing' });
+      }
+
+      console.log('\n========== STRIPE CONNECT PAYMENT FLOW TEST ==========\n');
+
+      const { ownerUsername, driverUsername, washoutAmount, platformFee } = req.body;
+
+      if (!ownerUsername || !driverUsername) {
+        return res.status(400).json({ 
+          message: 'Missing required fields: ownerUsername, driverUsername' 
+        });
+      }
+
+      const testWashoutAmount = washoutAmount || 5.00; // $5.00 default
+      const testPlatformFee = platformFee || 0.40; // $0.40 default
+
+      // 1. Get owner and verify they have a Stripe Connect account and payment method
+      const ownerUser = await storage.getUserByUsername(ownerUsername);
+      if (!ownerUser) {
+        return res.status(404).json({ message: `Owner user '${ownerUsername}' not found` });
+      }
+
+      const owner = await storage.getOwner(ownerUser.id);
+      if (!owner) {
+        return res.status(404).json({ message: `Owner profile not found for '${ownerUsername}'` });
+      }
+
+      if (!owner.stripeConnectAccountId) {
+        return res.status(400).json({ 
+          message: `Owner '${ownerUsername}' does not have a Stripe Connect account. Please complete subscription first.` 
+        });
+      }
+
+      console.log('✅ Owner verified:', {
+        username: ownerUsername,
+        connectAccountId: owner.stripeConnectAccountId,
+        hasCustomerId: !!ownerUser.stripeCustomerId
+      });
+
+      // Get owner's payment method
+      if (!ownerUser.stripeCustomerId) {
+        return res.status(400).json({ 
+          message: `Owner '${ownerUsername}' does not have a Stripe customer ID. Please add a payment method first.` 
+        });
+      }
+
+      // Get owner's default payment method
+      const customer = await stripe.customers.retrieve(ownerUser.stripeCustomerId);
+      if (!customer.deleted && customer.invoice_settings?.default_payment_method) {
+        console.log('✅ Owner has default payment method:', customer.invoice_settings.default_payment_method);
+      } else {
+        return res.status(400).json({ 
+          message: `Owner '${ownerUsername}' does not have a payment method configured. Please add a card first.` 
+        });
+      }
+
+      // 2. Get driver and verify they have a Stripe Connect account
+      const driverUser = await storage.getUserByUsername(driverUsername);
+      if (!driverUser) {
+        return res.status(404).json({ message: `Driver user '${driverUsername}' not found` });
+      }
+
+      const driver = await storage.getDriver(driverUser.id);
+      if (!driver) {
+        return res.status(404).json({ message: `Driver profile not found for '${driverUsername}'` });
+      }
+
+      if (!driver.stripeConnectAccountId) {
+        return res.status(400).json({ 
+          message: `Driver '${driverUsername}' does not have a Stripe Connect account. Creating one now...` 
+        });
+      }
+
+      console.log('✅ Driver verified:', {
+        username: driverUsername,
+        connectAccountId: driver.stripeConnectAccountId
+      });
+
+      // 3. Process payment using Stripe Connect Destination Charges
+      console.log('\n💳 Processing Stripe Connect Destination Charge...');
+      console.log(`   Owner: ${ownerUsername} (pays: $${(testWashoutAmount + testPlatformFee).toFixed(2)})`);
+      console.log(`   Driver: ${driverUsername} (receives: $${testWashoutAmount.toFixed(2)})`);
+      console.log(`   Platform fee: $${testPlatformFee.toFixed(2)}`);
+
+      const paymentIntent = await stripeService.processWashoutPaymentViaCard({
+        ownerCustomerId: ownerUser.stripeCustomerId!,
+        ownerPaymentMethodId: customer.invoice_settings?.default_payment_method as string,
+        ownerUsername: ownerUsername,
+        driverConnectedAccountId: driver.stripeConnectAccountId,
+        driverUsername: driverUsername,
+        washoutAmount: Math.round(testWashoutAmount * 100), // Convert to cents
+        platformFee: Math.round(testPlatformFee * 100), // Convert to cents
+        activityId: 'test_' + Date.now(),
+        locationId: 'test_location'
+      });
+
+      console.log('\n✅ Payment processed successfully!');
+      console.log(`   Payment Intent ID: ${paymentIntent.id}`);
+      console.log(`   Status: ${paymentIntent.status}`);
+      console.log(`   Amount charged: $${(paymentIntent.amount / 100).toFixed(2)}`);
+
+      // 4. Return test results
+      res.json({
+        success: true,
+        message: 'Stripe Connect payment flow test completed successfully!',
+        testResults: {
+          ownerCharged: `$${(paymentIntent.amount / 100).toFixed(2)}`,
+          driverReceived: `$${testWashoutAmount.toFixed(2)}`,
+          platformFeeCollected: `$${testPlatformFee.toFixed(2)}`,
+          paymentIntentId: paymentIntent.id,
+          paymentStatus: paymentIntent.status
+        },
+        details: {
+          owner: {
+            username: ownerUsername,
+            stripeConnectAccountId: owner.stripeConnectAccountId,
+            stripeCustomerId: ownerUser.stripeCustomerId
+          },
+          driver: {
+            username: driverUsername,
+            stripeConnectAccountId: driver.stripeConnectAccountId
+          }
+        }
+      });
+
+    } catch (error: any) {
+      console.error('\n❌ Stripe Connect Payment Test Failed:', error.message);
+      console.error(error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Stripe Connect payment test failed: ' + error.message,
+        error: error.message
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
