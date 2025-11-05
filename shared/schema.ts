@@ -63,6 +63,11 @@ export const subscriptionPlanEnum = pgEnum("subscription_plan", ["none", "monthl
 export const membershipPaymentMethodEnum = pgEnum("membership_payment_method", ["stripe", "cash", "check", "bank_transfer", "waived", "other"]);
 export const pendingPaymentStatusEnum = pgEnum("pending_payment_status", ["queued", "processed", "failed", "cancelled"]);
 
+// Webhook and reconciliation enums
+export const webhookEventStatusEnum = pgEnum("webhook_event_status", ["received", "processing", "processed", "failed"]);
+export const reconciliationStatusEnum = pgEnum("reconciliation_status", ["running", "completed", "failed"]);
+export const discrepancyTypeEnum = pgEnum("discrepancy_type", ["missing_transaction", "amount_mismatch", "status_mismatch", "extra_transaction"]);
+
 // User storage table - local authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -401,16 +406,17 @@ export const ownerWalletTransactions = pgTable("owner_wallet_transactions", {
   ownerDateIndex: index("idx_owner_wallet_transactions_owner_date").on(table.ownerId, table.createdAt),
 }));
 
-// Webhook events for idempotency handling
+// Webhook events - Audit trail for all Stripe webhook events (enhanced with payload and status tracking)
 export const webhookEvents = pgTable("webhook_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  stripeEventId: varchar("stripe_event_id").notNull().unique(),
-  eventType: varchar("event_type").notNull(),
-  processed: boolean("processed").default(false),
-  accountId: varchar("account_id"),
-  retryCount: integer("retry_count").default(0),
-  errorMessage: text("error_message"),
+  stripeEventId: varchar("stripe_event_id").notNull().unique(), // Stripe's event ID for idempotency
+  eventType: varchar("event_type").notNull(), // e.g., payment_intent.succeeded
+  status: webhookEventStatusEnum("status").default("received").notNull(),
+  payload: jsonb("payload").notNull(), // Full webhook payload from Stripe
+  accountId: varchar("account_id"), // Related account if applicable
   processedAt: timestamp("processed_at"),
+  errorMessage: text("error_message"), // If processing failed
+  retryCount: integer("retry_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -897,6 +903,15 @@ export type ServicePaymentAccount = typeof servicePaymentAccounts.$inferSelect;
 export type InsertServicePaymentAccount = z.infer<typeof insertServicePaymentAccountSchema>;
 export type UpdateServicePaymentAccount = z.infer<typeof updateServicePaymentAccountSchema>;
 
+// Webhook Events
+export const insertWebhookEventSchema = createInsertSchema(webhookEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type WebhookEvent = typeof webhookEvents.$inferSelect;
+export type InsertWebhookEvent = z.infer<typeof insertWebhookEventSchema>;
+
 // Feature Flags System
 export const featureFlags = pgTable("feature_flags", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -960,6 +975,55 @@ export const updateSystemSettingsSchema = z.object({
 
 export type SystemSettings = typeof systemSettings.$inferSelect;
 export type UpdateSystemSettings = z.infer<typeof updateSystemSettingsSchema>;
+
+// Balance Reconciliations - Track reconciliation runs
+export const balanceReconciliations = pgTable("balance_reconciliations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  status: reconciliationStatusEnum("status").default("running").notNull(),
+  accountsChecked: integer("accounts_checked").default(0),
+  discrepanciesFound: integer("discrepancies_found").default(0),
+  totalAmountDiscrepancy: decimal("total_amount_discrepancy", { precision: 10, scale: 2 }).default("0"),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  errorMessage: text("error_message"),
+  triggeredBy: varchar("triggered_by").references(() => users.id), // User who triggered (null if automated)
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBalanceReconciliationSchema = createInsertSchema(balanceReconciliations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type BalanceReconciliation = typeof balanceReconciliations.$inferSelect;
+export type InsertBalanceReconciliation = z.infer<typeof insertBalanceReconciliationSchema>;
+
+// Reconciliation Discrepancies - Individual discrepancies found during reconciliation
+export const reconciliationDiscrepancies = pgTable("reconciliation_discrepancies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reconciliationId: varchar("reconciliation_id").notNull().references(() => balanceReconciliations.id, { onDelete: "cascade" }),
+  accountType: varchar("account_type").notNull(), // 'driver' or 'owner'
+  accountId: varchar("account_id").notNull(), // Driver or owner ID
+  discrepancyType: discrepancyTypeEnum("discrepancy_type").notNull(),
+  databaseBalance: decimal("database_balance", { precision: 10, scale: 2 }),
+  stripeBalance: decimal("stripe_balance", { precision: 10, scale: 2 }),
+  difference: decimal("difference", { precision: 10, scale: 2 }), // Absolute difference
+  stripeAccountId: varchar("stripe_account_id"), // Connect account ID for reference
+  description: text("description"),
+  resolved: boolean("resolved").default(false),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  resolutionNotes: text("resolution_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertReconciliationDiscrepancySchema = createInsertSchema(reconciliationDiscrepancies).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type ReconciliationDiscrepancy = typeof reconciliationDiscrepancies.$inferSelect;
+export type InsertReconciliationDiscrepancy = z.infer<typeof insertReconciliationDiscrepancySchema>;
 
 // Date range validation schema
 export const dateRangeSchema = z.enum(['today', 'yesterday', '7days', '30days', '90days', 'all']).default('today');
