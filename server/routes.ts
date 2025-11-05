@@ -3036,6 +3036,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Request a debit card (Stripe Issuing)
   app.post('/api/drivers/request-debit-card', isAuthenticated, async (req: any, res) => {
     try {
+      // Check if Stripe Issuing is enabled via feature flag
+      const issuingFlag = await storage.getFeatureFlag('issuing_enabled');
+      const isIssuingEnabled = issuingFlag?.enabled || false;
+      
+      if (!isIssuingEnabled) {
+        console.log('📋 Stripe Issuing disabled via feature flag');
+        return res.status(403).json({ 
+          message: "Debit cards are currently unavailable. Drivers receive payments directly to their bank accounts via Stripe Connect.",
+          featureDisabled: true
+        });
+      }
+      
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       
@@ -3082,7 +3094,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      if (!driver.stripeTreasuryAccountId) {
+      // Check if Treasury is enabled before creating Financial Account for driver
+      const treasuryFlag = await storage.getFeatureFlag('treasury_enabled');
+      const isTreasuryEnabled = treasuryFlag?.enabled || false;
+      
+      if (!driver.stripeTreasuryAccountId && isTreasuryEnabled) {
         console.log('⚠️  Driver missing Stripe Treasury account, attempting to create one...');
         
         try {
@@ -3101,10 +3117,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Treasury not available in sandbox - continue without it for debit card
           console.log('⚠️  Continuing without Treasury (sandbox mode) - card will still be created');
         }
+      } else if (!isTreasuryEnabled) {
+        console.log('ℹ️ Stripe Treasury disabled via feature flag - skipping Financial Account creation');
       }
 
       // Check if driver has Stripe Issuing cardholder
-      // If missing, create one automatically
+      // If missing, create one automatically (only if issuing is enabled - checked above)
+      // Note: issuing_enabled flag already checked at top of this endpoint
       if (!driver.stripeIssuingCardholderId) {
         console.log('⚠️  Driver missing Stripe Issuing cardholder, creating one...');
         
@@ -3410,6 +3429,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("✅ Payment verified - $15.00 received via Stripe");
       console.log("Setting up Stripe Connect and Treasury wallet, activating subscription...");
       
+      // Check if Treasury is enabled via feature flag
+      const treasuryFlag = await storage.getFeatureFlag('treasury_enabled');
+      const isTreasuryEnabled = treasuryFlag?.enabled || false;
+      console.log(`📋 Feature Flag: treasury_enabled = ${isTreasuryEnabled}`);
+      
       // Create or reuse Stripe Connected Account (Treasury is optional)
       let connectedAccount, treasuryAccount;
       let walletStatus: 'active' | 'pending_verification' = 'active'; // Default to active - Connect account is sufficient
@@ -3451,16 +3475,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log("✅ Created Stripe Connect account:", connectedAccount.id);
         }
 
-        // Try to create Stripe Treasury Financial Account (wallet) - OPTIONAL
-        try {
-          treasuryAccount = await stripeService.createFinancialAccount(connectedAccount.id);
-          console.log("✅ Created Stripe Treasury account:", treasuryAccount.id);
-        } catch (treasuryError: any) {
-          // Treasury is optional - continue without it
-          console.log("ℹ️ Stripe Treasury not available - wallet will use database balance tracking");
-          console.log("Treasury error:", treasuryError.message);
+        // Try to create Stripe Treasury Financial Account (wallet) - ONLY if feature flag enabled
+        if (isTreasuryEnabled) {
+          try {
+            treasuryAccount = await stripeService.createFinancialAccount(connectedAccount.id);
+            console.log("✅ Created Stripe Treasury account:", treasuryAccount.id);
+          } catch (treasuryError: any) {
+            // Treasury is optional - continue without it
+            console.log("ℹ️ Stripe Treasury not available - wallet will use database balance tracking");
+            console.log("Treasury error:", treasuryError.message);
+            treasuryUnavailable = true;
+            // Keep walletStatus as 'active' - Treasury isn't required for basic functionality
+          }
+        } else {
+          console.log("ℹ️ Stripe Treasury disabled via feature flag - wallet will use database balance tracking");
           treasuryUnavailable = true;
-          // Keep walletStatus as 'active' - Treasury isn't required for basic functionality
         }
       } catch (error: any) {
         console.error("Failed to create Stripe Connect account:", error);
@@ -4584,6 +4613,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Funding source not found" });
       }
 
+      // Check Treasury feature flag EARLY - before any funding logic
+      const treasuryFlag = await storage.getFeatureFlag('treasury_enabled');
+      const isTreasuryEnabled = treasuryFlag?.enabled || false;
+      
+      // Block ACH/bank account funding if Treasury is disabled
+      if (!isTreasuryEnabled && (fundingSource.type === 'bank_account' || fundingSource.type === 'ach')) {
+        console.log('🚫 ACH funding blocked - treasury_enabled flag is disabled');
+        return res.status(400).json({ 
+          message: "ACH transfers are currently disabled. Please use a card payment method.",
+          featureDisabled: true,
+          treasuryDisabled: true
+        });
+      }
+
       console.log(`Funding wallet for owner ${owner.id}: $${fundAmount} from funding source ${fundingSourceId}`);
 
       // Handle card payments for wallet funding
@@ -4664,10 +4707,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Implement Stripe Treasury ACH funding from external bank account (if Treasury is available)
+      // Implement Stripe Treasury ACH funding from external bank account (if Treasury is available AND enabled)
+      // Note: Treasury flag already checked above - only card payments reach this point
       let transferResult;
       
-      if (hasTreasury && owner.stripeTreasuryAccountId && user.stripeConnectAccountId) {
+      if (isTreasuryEnabled && hasTreasury && owner.stripeTreasuryAccountId && user.stripeConnectAccountId) {
         try {
           // Use Stripe Treasury InboundTransfer to pull funds from external bank account
           // The fundingSource contains the Stripe payment method ID
@@ -4699,12 +4743,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } else {
-        // Treasury not available - only card payments supported
-        console.log(`ℹ️ Treasury not available - ACH funding disabled. Use card payment method.`);
+        // Treasury not available or not enabled - only card payments supported
+        const reason = !isTreasuryEnabled ? 'feature flag disabled' : 'Stripe Treasury not available';
+        console.log(`ℹ️ ACH funding disabled (${reason}). Use card payment method.`);
         if (fundingSource.type === 'bank_account' || fundingSource.type === 'ach') {
+          const message = !isTreasuryEnabled 
+            ? "ACH transfers are currently disabled. Please use a card payment method."
+            : "ACH transfers require Stripe Treasury approval. Please use a card payment method or contact support.";
+          
           return res.status(400).json({ 
-            message: "ACH transfers require Stripe Treasury approval. Please use a card payment method or contact support.",
-            needsTreasury: true
+            message,
+            needsTreasury: true,
+            treasuryDisabled: !isTreasuryEnabled
           });
         }
       }
