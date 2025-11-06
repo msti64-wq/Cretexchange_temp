@@ -8807,6 +8807,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/admin/reconciliation/run-daily - Alias for daily cron reconciliation (admin only)
+  app.post('/api/admin/reconciliation/run-daily', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const { performBalanceReconciliation } = await import('./reconciliationService');
+      
+      console.log(`🔍 Daily reconciliation triggered by ${user.username}`);
+      const result = await performBalanceReconciliation(user.id);
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('❌ Error running reconciliation:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to run reconciliation',
+        error: error.message 
+      });
+    }
+  });
+
+  // POST /api/admin/reconciliation/test-discrepancy - Inject test discrepancy (admin only)
+  app.post('/api/admin/reconciliation/test-discrepancy', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required' });
+      }
+
+      const drivers = await storage.getAllDrivers();
+      if (drivers.length === 0) {
+        return res.status(400).json({ message: 'No drivers found in the system' });
+      }
+
+      const testDriver = drivers[0];
+      const wallet = await storage.getDriverWallet(testDriver.id);
+      
+      if (!wallet) {
+        return res.status(400).json({ message: 'Driver has no wallet' });
+      }
+
+      const oldBalance = parseFloat(wallet.availableBalance);
+      const newBalance = oldBalance + 5.00;
+
+      await storage.updateDriverWallet(testDriver.id, {
+        availableBalance: newBalance.toFixed(2)
+      });
+
+      console.log(`✅ Injected $5.00 discrepancy for driver ${testDriver.id}`);
+
+      const driverUser = await storage.getUser(testDriver.userId);
+
+      res.json({
+        message: 'Test discrepancy injected successfully',
+        driverId: testDriver.id,
+        username: driverUser?.username,
+        oldBalance: `$${oldBalance.toFixed(2)}`,
+        newBalance: `$${newBalance.toFixed(2)}`,
+        discrepancy: '$5.00'
+      });
+    } catch (error: any) {
+      console.error('❌ Error injecting discrepancy:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to inject discrepancy',
+        error: error.message 
+      });
+    }
+  });
+
+  // POST /api/admin/reconciliation/test-payment-flow - Test complete payment flow (admin only)
+  app.post('/api/admin/reconciliation/test-payment-flow', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required' });
+      }
+
+      res.json({
+        message: 'Test payment flow simulation - using test Stripe data',
+        note: 'In test mode, payments use Stripe test keys. Use POST /api/test/stripe-connect-payment for full flow testing.'
+      });
+    } catch (error: any) {
+      console.error('❌ Error in test payment flow:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to run test payment flow',
+        error: error.message 
+      });
+    }
+  });
+
   // ========== TEST ENDPOINT: Stripe Connect Payment Flow ==========
   // POST /api/test/stripe-connect-payment - Test Stripe Connect Destination Charges
   app.post('/api/test/stripe-connect-payment', isAuthenticated, async (req: any, res) => {
