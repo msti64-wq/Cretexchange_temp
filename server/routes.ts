@@ -635,11 +635,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === 'driver') {
         const driverData = await storage.getDriver(userId);
         if (driverData) {
-          // Sanitize sensitive bank account data - never send to frontend
+          // Sanitize sensitive bank account data - never send full account/routing numbers to frontend
           const { accountNumber, routingNumber, ...safeDriverData } = driverData;
           roleData = {
             ...safeDriverData,
-            // Include only masked/last4 versions of sensitive data
+            // Include only masked/last4 versions of sensitive data for display
+            // Note: bankName is intentionally included for UX (e.g., "Chase ****1234")
             hasRoutingNumber: Boolean(routingNumber),
             hasAccountNumber: Boolean(accountNumber),
             accountNumberLast4: accountNumber ? accountNumber.slice(-4) : null,
