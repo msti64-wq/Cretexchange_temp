@@ -8949,6 +8949,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== TEST ENDPOINT: Manual Reconciliation Trigger ==========
+  // POST /api/test/reconciliation/run - Manually trigger balance reconciliation (admin only)
+  app.post('/api/test/reconciliation/run', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required for reconciliation testing' });
+      }
+
+      console.log('\n========== MANUAL RECONCILIATION TEST ==========\n');
+      console.log('Triggered by:', user.email);
+
+      const { reconcileAllConnectedAccounts } = await import('./reconciliationService');
+      const results = await reconcileAllConnectedAccounts();
+
+      console.log('\n✅ Reconciliation completed!');
+      console.log(`   Accounts checked: ${results.totalAccounts}`);
+      console.log(`   Discrepancies found: ${results.discrepancies.length}`);
+      console.log(`   Balances synced: ${results.balancesSynced}`);
+
+      res.json({
+        success: true,
+        message: 'Reconciliation completed successfully!',
+        results: {
+          totalAccounts: results.totalAccounts,
+          discrepanciesFound: results.discrepancies.length,
+          balancesSynced: results.balancesSynced,
+          discrepancies: results.discrepancies.map(d => ({
+            userId: d.userId,
+            username: d.username,
+            type: d.type,
+            dbBalance: d.dbBalance,
+            stripeBalance: d.stripeBalance,
+            difference: d.difference,
+            severity: d.severity
+          }))
+        }
+      });
+
+    } catch (error: any) {
+      console.error('\n❌ Reconciliation Test Failed:', error.message);
+      console.error(error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Reconciliation test failed: ' + error.message,
+        error: error.message
+      });
+    }
+  });
+
+  // ========== TEST ENDPOINT: Inject Discrepancy for Testing ==========
+  // POST /api/test/reconciliation/inject-discrepancy - Inject a test discrepancy (admin only)
+  app.post('/api/test/reconciliation/inject-discrepancy', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required for discrepancy injection' });
+      }
+
+      const { username, amountCents } = req.body;
+      
+      if (!username || !amountCents) {
+        return res.status(400).json({ 
+          message: 'Missing required fields: username, amountCents' 
+        });
+      }
+
+      console.log('\n========== INJECT TEST DISCREPANCY ==========\n');
+      console.log(`Target user: ${username}`);
+      console.log(`Discrepancy amount: $${(amountCents / 100).toFixed(2)}`);
+
+      // Get the target user
+      const targetUser = await storage.getUserByUsername(username);
+      if (!targetUser) {
+        return res.status(404).json({ message: `User '${username}' not found` });
+      }
+
+      // Check if user is a driver or owner
+      let accountType: 'driver' | 'owner' | null = null;
+      let currentBalance = 0;
+
+      const driver = await storage.getDriver(targetUser.id);
+      if (driver && driver.stripeConnectAccountId) {
+        accountType = 'driver';
+        currentBalance = driver.stripeConnectBalance || 0;
+      } else {
+        const owner = await storage.getOwner(targetUser.id);
+        if (owner && owner.stripeConnectAccountId) {
+          accountType = 'owner';
+          currentBalance = owner.stripeConnectBalance || 0;
+        }
+      }
+
+      if (!accountType) {
+        return res.status(400).json({ 
+          message: `User '${username}' does not have a Stripe Connect account` 
+        });
+      }
+
+      // Inject discrepancy by modifying the database balance
+      const oldBalance = currentBalance;
+      const newBalance = currentBalance + amountCents;
+
+      if (accountType === 'driver') {
+        await storage.updateDriver(targetUser.id, {
+          stripeConnectBalance: newBalance
+        });
+      } else {
+        await storage.updateOwner(targetUser.id, {
+          stripeConnectBalance: newBalance
+        });
+      }
+
+      console.log(`✅ Discrepancy injected!`);
+      console.log(`   Old balance: $${(oldBalance / 100).toFixed(2)}`);
+      console.log(`   New balance: $${(newBalance / 100).toFixed(2)}`);
+      console.log(`   Difference: $${(amountCents / 100).toFixed(2)}`);
+      console.log('\n💡 Now run reconciliation to detect and fix this discrepancy!');
+
+      res.json({
+        success: true,
+        message: 'Test discrepancy injected successfully!',
+        details: {
+          username,
+          accountType,
+          oldBalance: `$${(oldBalance / 100).toFixed(2)}`,
+          newBalance: `$${(newBalance / 100).toFixed(2)}`,
+          discrepancy: `$${(amountCents / 100).toFixed(2)}`,
+          nextStep: 'Run POST /api/test/reconciliation/run to detect and fix this'
+        }
+      });
+
+    } catch (error: any) {
+      console.error('\n❌ Discrepancy Injection Failed:', error.message);
+      console.error(error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Discrepancy injection failed: ' + error.message,
+        error: error.message
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
