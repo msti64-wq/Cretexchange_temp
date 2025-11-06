@@ -7079,7 +7079,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const sig = req.headers['stripe-signature'];
       // Check for test webhook secret first, then fall back to regular webhook secret
-      const webhookSecret = process.env.STRIPE_TEST_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET;
+      // Note: Replit UI may store secrets with mixed case (e.g., Stripe_test_webhook_secret)
+      const webhookSecret = process.env.STRIPE_TEST_WEBHOOK_SECRET || 
+                           process.env.Stripe_test_webhook_secret ||
+                           process.env.STRIPE_WEBHOOK_SECRET ||
+                           process.env.Stripe_webhook_secret;
 
       // Validate webhook signature and secret
       if (!webhookSecret) {
