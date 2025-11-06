@@ -2031,10 +2031,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create Financial Connections session for driver
+      // Force HTTPS for return URL (Stripe requirement)
+      const protocol = req.get('host')?.includes('replit.dev') ? 'https' : req.protocol;
       const session = await stripeService.createFinancialConnectionsSession({
         userType: 'driver',
         connectedAccountId: user.stripeConnectAccountId,
-        returnUrl: `${req.protocol}://${req.get('host')}/driver/profile`,
+        returnUrl: `${protocol}://${req.get('host')}/driver/profile`,
       });
 
       res.json({
@@ -4636,10 +4638,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create Financial Connections session for owner
+      // Force HTTPS for return URL (Stripe requirement)
+      const protocol = req.get('host')?.includes('replit.dev') ? 'https' : req.protocol;
       const session = await stripeService.createFinancialConnectionsSession({
         userType: 'owner',
         customerId: user.stripeCustomerId,
-        returnUrl: `${req.protocol}://${req.get('host')}/owner/payment-methods`,
+        returnUrl: `${protocol}://${req.get('host')}/owner/payment-methods`,
       });
 
       res.json({
