@@ -189,8 +189,8 @@ export default function Landing() {
         <div className="container mx-auto px-6 text-center text-muted-foreground">
           <p>&copy; 2025 V8 Industries LLC. All rights reserved.</p>
           <div className="mt-2">
-            <Link href="/privacy-policy">
-              <a className="text-sm hover:text-primary underline">Privacy Policy</a>
+            <Link href="/privacy-policy" className="text-sm hover:text-primary underline">
+              Privacy Policy
             </Link>
           </div>
         </div>
