@@ -22,9 +22,14 @@ export interface ReconciliationResult {
   discrepancies: Array<{
     accountType: string;
     accountId: string;
+    userId?: string;
+    username?: string;
+    type?: string;
     databaseBalance: number;
+    dbBalance?: string;
     stripeBalance: number;
     difference: number;
+    severity?: 'critical' | 'warning' | 'minor';
   }>;
 }
 
@@ -75,32 +80,60 @@ export async function performBalanceReconciliation(triggeredBy?: string): Promis
         // Check for discrepancies (allow $0.01 tolerance for rounding)
         const difference = Math.abs(databaseBalance - stripeAvailableBalance);
         
+        // Calculate severity based on difference amount
+        let severity: 'critical' | 'warning' | 'minor' | null = null;
+        if (difference > 10) {
+          severity = 'critical';
+        } else if (difference > 1) {
+          severity = 'warning';
+        } else if (difference > 0.01) {
+          severity = 'minor';
+        }
+        
         if (difference > 0.01) {
-          console.log(`⚠️  Discrepancy found for driver ${driver.id}:`, {
+          console.log(`⚠️  ${severity?.toUpperCase()} discrepancy found for driver ${driver.id}:`, {
             database: databaseBalance,
             stripe: stripeAvailableBalance,
-            difference
+            difference,
+            severity
           });
 
-          // Record discrepancy
+          // AUTO-CORRECT: Update database balance to match Stripe (source of truth)
+          if (wallet) {
+            await db.update(driverWallets)
+              .set({
+                availableBalance: stripeAvailableBalance.toFixed(2),
+              })
+              .where(eq(driverWallets.driverId, driver.id));
+            
+            console.log(`✅ Auto-corrected driver ${driver.id} balance: $${databaseBalance.toFixed(2)} → $${stripeAvailableBalance.toFixed(2)}`);
+          }
+
+          // Record discrepancy with severity
           await db.insert(reconciliationDiscrepancies).values({
             reconciliationId: reconciliation.id,
-            accountType: 'driver',
             accountId: driver.id,
+            accountType: 'driver',
             discrepancyType: 'amount_mismatch',
             databaseBalance: databaseBalance.toFixed(2),
             stripeBalance: stripeAvailableBalance.toFixed(2),
             difference: difference.toFixed(2),
+            severity,
             stripeAccountId: user.stripeConnectAccountId,
-            description: `Driver wallet balance mismatch: DB=$${databaseBalance.toFixed(2)}, Stripe=$${stripeAvailableBalance.toFixed(2)}`,
+            description: `Driver wallet balance mismatch (${severity}): DB=$${databaseBalance.toFixed(2)}, Stripe=$${stripeAvailableBalance.toFixed(2)}, auto-corrected to match Stripe`,
           });
 
           discrepancies.push({
             accountType: 'driver',
             accountId: driver.id,
+            userId: user.id,
+            username: user.username,
+            type: 'driver',
             databaseBalance,
+            dbBalance: `$${databaseBalance.toFixed(2)}`,
             stripeBalance: stripeAvailableBalance,
             difference,
+            severity: severity!,
           });
         } else {
           console.log(`✅ Driver ${driver.id} balance matches: $${databaseBalance.toFixed(2)}`);

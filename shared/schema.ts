@@ -1008,6 +1008,7 @@ export const reconciliationDiscrepancies = pgTable("reconciliation_discrepancies
   databaseBalance: decimal("database_balance", { precision: 10, scale: 2 }),
   stripeBalance: decimal("stripe_balance", { precision: 10, scale: 2 }),
   difference: decimal("difference", { precision: 10, scale: 2 }), // Absolute difference
+  severity: varchar("severity"), // 'critical' | 'warning' | 'minor'
   stripeAccountId: varchar("stripe_account_id"), // Connect account ID for reference
   description: text("description"),
   resolved: boolean("resolved").default(false),
