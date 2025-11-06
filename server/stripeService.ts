@@ -1017,19 +1017,29 @@ export async function createWalletFundingPayment(params: {
 
 /**
  * Create Financial Connections Session for instant ACH verification
- * This replaces micro-deposit verification with instant bank authentication (Plaid)
+ * STANDARDIZED for both drivers (payouts) and owners (wallet funding)
+ * 
+ * Use Cases:
+ * - Drivers: Bank account for receiving payout transfers
+ * - Owners: Bank account for ACH wallet funding
+ * 
+ * Cost: $1.50 per successful bank link
  */
 export async function createFinancialConnectionsSession(params: {
-  customerId: string;
+  userType: 'driver' | 'owner';
+  connectedAccountId?: string; // Required for drivers (Connect account)
+  customerId?: string; // Required for owners (Customer)
   returnUrl: string;
 }): Promise<Stripe.FinancialConnections.Session> {
   try {
+    // Determine account holder type based on user type
+    const accountHolder = params.userType === 'driver' 
+      ? { type: 'account' as const, account: params.connectedAccountId! }
+      : { type: 'customer' as const, customer: params.customerId! };
+
     const session = await stripe.financialConnections.sessions.create({
-      account_holder: {
-        type: 'customer',
-        customer: params.customerId,
-      },
-      permissions: ['payment_method', 'balances', 'ownership'], // Required for payments
+      account_holder: accountHolder,
+      permissions: ['payment_method', 'balances', 'ownership'], // payment_method enables ACH
       filters: {
         countries: ['US'], // US banks only
       },
@@ -1038,7 +1048,8 @@ export async function createFinancialConnectionsSession(params: {
 
     console.log('✅ Created Financial Connections Session:', {
       sessionId: session.id,
-      clientSecret: session.client_secret,
+      userType: params.userType,
+      clientSecret: session.client_secret?.slice(0, 20) + '...',
     });
 
     return session;
@@ -1049,7 +1060,7 @@ export async function createFinancialConnectionsSession(params: {
 }
 
 /**
- * Retrieve payment method from Financial Connections session
+ * Retrieve payment method from Financial Connections session (for OWNERS - wallet funding)
  * This gets the ACH payment method after user completes bank linking
  */
 export async function getFinancialConnectionsPaymentMethod(
@@ -1077,12 +1088,73 @@ export async function getFinancialConnectionsPaymentMethod(
       paymentMethodId: paymentMethod.id,
       accountId: account.id,
       last4: (paymentMethod.us_bank_account as any)?.last4,
+      bankName: (paymentMethod.us_bank_account as any)?.bank_name,
     });
 
     return paymentMethod;
   } catch (error: any) {
     console.error('❌ Error retrieving Financial Connections payment method:', error.message);
     return null;
+  }
+}
+
+/**
+ * Create external account for driver payouts from Financial Connections (for DRIVERS)
+ * This links the verified bank account to the driver's Connect account for receiving payouts
+ */
+export async function createExternalAccountFromFinancialConnections(params: {
+  sessionId: string;
+  connectedAccountId: string;
+}): Promise<{ success: boolean; bankName?: string; last4?: string; error?: string }> {
+  try {
+    const session = await stripe.financialConnections.sessions.retrieve(params.sessionId);
+    
+    if (!session.accounts || session.accounts.data.length === 0) {
+      return { success: false, error: 'No bank account linked' };
+    }
+
+    const linkedAccount = session.accounts.data[0];
+    
+    // Get account and routing numbers from the linked account
+    const accountNumber = (linkedAccount as any).account_number;
+    const routingNumber = (linkedAccount as any).routing_number;
+    const bankName = (linkedAccount as any).bank_name || 'Bank';
+    const last4 = (linkedAccount as any).last4;
+
+    if (!accountNumber || !routingNumber) {
+      return { success: false, error: 'Missing account or routing number' };
+    }
+
+    // Create external account on the Connect account for payouts
+    const externalAccount = await stripe.accounts.createExternalAccount(
+      params.connectedAccountId,
+      {
+        external_account: {
+          object: 'bank_account',
+          country: 'US',
+          currency: 'usd',
+          account_number: accountNumber,
+          routing_number: routingNumber,
+          account_holder_type: 'individual',
+        },
+      }
+    );
+
+    console.log('✅ Created external account for driver payouts:', {
+      connectedAccountId: params.connectedAccountId,
+      bankAccountId: externalAccount.id,
+      bankName,
+      last4,
+    });
+
+    return {
+      success: true,
+      bankName,
+      last4,
+    };
+  } catch (error: any) {
+    console.error('❌ Error creating external account from Financial Connections:', error.message);
+    return { success: false, error: error.message };
   }
 }
 
