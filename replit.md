@@ -6,6 +6,11 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Pricing Structure
+-   **Production Pricing**: Driver receives **$5.00** per washout, Platform fee **$4.00**, Total **$9.00**
+-   **Testing Pricing (10% scale)**: Driver receives **$0.50** per washout, Platform fee **$0.40**, Total **$0.90**
+-   **Payment Flow**: Stripe Connect Destination Charges - money flows directly owner→driver via Stripe, platform receives only the fee (NO money transmitter obligations, NO 1099 requirements for driver payments)
+
 ## Deployment Plan
 - **Custom Domain**: After testing is complete, configure custom domain redirect to `Creteapp.creteexchange.com`
   - Steps: Publish app → Add custom domain in Replit → Update DNS CNAME record → SSL auto-provisioned
