@@ -7094,10 +7094,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Construct and verify event with raw body
       let event: Stripe.Event;
       try {
+        console.log(`🔍 [${environment}] Verifying webhook signature...`);
+        console.log(`  - Body type: ${typeof req.body}, Is Buffer: ${Buffer.isBuffer(req.body)}`);
+        console.log(`  - Secret configured: ${webhookSecret.substring(0, 10)}...`);
         event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
         eventId = event.id;
       } catch (err: any) {
         console.error(`❌ [${environment}] Webhook signature verification failed: ${err.message}`);
+        console.error(`  - Make sure the webhook secret in Replit matches the one in Stripe Dashboard`);
         return res.status(400).json({ error: 'Invalid signature' });
       }
 
