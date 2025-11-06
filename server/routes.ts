@@ -7078,11 +7078,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const sig = req.headers['stripe-signature'];
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      // Check for test webhook secret first, then fall back to regular webhook secret
+      const webhookSecret = process.env.STRIPE_TEST_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET;
 
       // Validate webhook signature and secret
       if (!webhookSecret) {
-        console.error(`❌ [${environment}] STRIPE_WEBHOOK_SECRET not configured`);
+        console.error(`❌ [${environment}] STRIPE_TEST_WEBHOOK_SECRET or STRIPE_WEBHOOK_SECRET not configured`);
         return res.status(400).json({ error: 'Webhook secret not configured' });
       }
 
