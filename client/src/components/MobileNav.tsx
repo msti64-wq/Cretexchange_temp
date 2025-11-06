@@ -1,4 +1,4 @@
-import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag } from "lucide-react";
+import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,6 +57,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/payments", icon: DollarSign, label: "Payments" },
+          { path: "/reconciliation", icon: RefreshCw, label: "Reconcile" },
           { path: "/subscriptions", icon: Receipt, label: "Subscriptions" },
           { path: "/fees", icon: FileText, label: "Fees" },
           { path: "/service-accounts", icon: CreditCard, label: "Service Accounts" },
