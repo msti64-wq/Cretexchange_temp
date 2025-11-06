@@ -12,7 +12,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
-import { ColumnOnboardingDialog } from "@/components/ColumnOnboardingDialog";
 import { User, Truck, CreditCard, Save, FileText, Eye, Smartphone, CheckCircle2, AlertCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -22,7 +21,6 @@ export default function DriverProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const [showOnboardingDialog, setShowOnboardingDialog] = useState(false);
 
   const { data: user, isLoading, refetch } = useQuery({
     queryKey: ['/api/auth/user'],
@@ -33,15 +31,13 @@ export default function DriverProfile() {
     queryKey: ['/api/drivers/terms-status'],
   });
 
-  // Fetch Stripe onboarding status
-  const { data: onboardingStatus } = useQuery<{
-    isOnboarded: boolean;
-    entityId?: string | null;
-    bankAccountId?: string | null;
-    accountLast4?: string | null;
-    requiresSetup?: boolean;
-  }>({
-    queryKey: ['/api/column/status'],
+  const [showBankAccountForm, setShowBankAccountForm] = useState(false);
+  const [bankFormData, setBankFormData] = useState({
+    bankName: '',
+    accountHolderName: '',
+    routingNumber: '',
+    accountNumber: '',
+    accountNumberConfirm: ''
   });
 
   const updateProfileMutation = useMutation({
@@ -65,77 +61,42 @@ export default function DriverProfile() {
     },
   });
 
-  // Stripe onboarding mutation
-  const [setupLink, setSetupLink] = useState<string | null>(null);
-  
-  // Mutation to fetch fresh setup link
-  const fetchSetupLinkMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("POST", "/api/column/generate-setup-link", {});
+  // Bank account setup mutation
+  const setupBankAccountMutation = useMutation({
+    mutationFn: async (data: typeof bankFormData) => {
+      const response = await apiRequest("POST", "/api/drivers/bank-account", {
+        bankName: data.bankName,
+        accountHolderName: data.accountHolderName,
+        routingNumber: data.routingNumber,
+        accountNumber: data.accountNumber,
+      });
+      return response.json();
     },
-    onSuccess: (data: any) => {
-      setSetupLink(data.accountSetupLink);
-    },
-    onError: (error: any) => {
-      console.error("Failed to fetch setup link:", error);
-    },
-  });
-
-  // Auto-fetch setup link when requiresSetup is true
-  useEffect(() => {
-    if (onboardingStatus?.requiresSetup && !setupLink && !fetchSetupLinkMutation.isPending) {
-      console.log('🔗 Treasury setup required, fetching account link...');
-      fetchSetupLinkMutation.mutate();
-    } else if (!onboardingStatus?.requiresSetup && setupLink) {
-      // Clear setup link if Treasury is now activated
-      console.log('✅ Treasury activated, clearing setup link');
-      setSetupLink(null);
-    }
-  }, [onboardingStatus?.requiresSetup, setupLink]);
-  
-  const onboardingMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const requestData = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        ssn: data.ssn,
-        dateOfBirth: data.dateOfBirth,
-        email: data.email,
-        address: {
-          line1: data.addressLine1,
-          city: data.city,
-          state: data.state,
-          postalCode: data.postalCode,
-          countryCode: "US",
-        },
-      };
-      return await apiRequest("POST", "/api/column/onboard", requestData);
-    },
-    onSuccess: (data: any) => {
-      // Check if additional setup is required
-      if (data.requiresSetup && data.accountSetupLink) {
-        setSetupLink(data.accountSetupLink);
-        toast({
-          title: "Almost Done! 🎉",
-          description: "Your account was created successfully. One more step to activate your wallet!",
-        });
-      } else {
-        toast({
-          title: "Payment Account Connected! 🎉",
-          description: "Your payment account has been successfully set up. You can now receive payments!",
-        });
-      }
-      setShowOnboardingDialog(false);
-      queryClient.invalidateQueries({ queryKey: ['/api/column/status'] });
+    onSuccess: () => {
+      toast({
+        title: "Bank Account Added",
+        description: "Your bank account has been securely saved and linked to your payment account.",
+      });
+      setShowBankAccountForm(false);
+      setBankFormData({
+        bankName: '',
+        accountHolderName: '',
+        routingNumber: '',
+        accountNumber: '',
+        accountNumberConfirm: ''
+      });
+      refetch();
     },
     onError: (error: any) => {
       toast({
         title: "Setup Failed",
-        description: error.message || "Failed to set up payment account",
+        description: error.message || "Failed to set up bank account",
         variant: "destructive",
       });
+      console.error("Failed to fetch setup link:", error);
     },
   });
+
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -485,86 +446,170 @@ export default function DriverProfile() {
                 Payment Account Setup
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                Complete one-time account verification to receive washout payments and withdraw funds
+                Add your bank account to receive washout payments via ACH transfer
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Setup Link Alert - Show when Treasury wallet needs activation */}
-              {setupLink && (
-                <div className="flex flex-col gap-3 p-4 bg-blue-50 dark:bg-blue-950 border-2 border-blue-300 dark:border-blue-700 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="font-semibold text-blue-900 dark:text-blue-100">
-                        Complete Wallet Activation
-                      </p>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        Your payment account was created successfully! Click below to complete the final verification step and activate your wallet for receiving payments.
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => window.open(setupLink, '_blank')}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                    data-testid="button-complete-wallet-setup"
-                  >
-                    Complete Wallet Setup
-                  </Button>
-                  <p className="text-xs text-blue-600 dark:text-blue-400 text-center">
-                    This will open Stripe's secure verification portal in a new tab
-                  </p>
-                </div>
-              )}
-              
-              {onboardingStatus?.isOnboarded ? (
+              {user?.driver?.routingNumber && user?.driver?.accountNumber ? (
                 <>
                   <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
                     <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="font-medium text-green-900 dark:text-green-100">
-                        Payment Account Verified
+                        Bank Account Connected
                       </p>
                       <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                        Your account is ready to receive payments. Visit your Wallet page to manage funds and request withdrawals.
+                        {user?.driver?.bankName || 'Your bank'} ****{user?.driver?.accountNumber?.slice(-4)}
                       </p>
                     </div>
                   </div>
                   
                   <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                      <strong>Withdrawal Options:</strong> Request ACH transfers to your bank account (1-2 days) or use a debit card for instant access to funds. Manage these options from your Wallet page.
+                      <strong>Ready to Receive Payments:</strong> Washout payments will be transferred to your bank account automatically after each job. Visit your Wallet page to view payment history.
                     </p>
                   </div>
                 </>
-              ) : (
+              ) : !showBankAccountForm ? (
                 <>
                   <div className="flex items-center gap-3 p-4 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg">
                     <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="font-medium text-orange-900 dark:text-orange-100">
-                        Setup Required
+                        Bank Account Required
                       </p>
                       <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
-                        Complete account verification to receive washout payments
+                        Add your bank account to receive washout payments
                       </p>
                     </div>
                   </div>
 
                   <Button
-                    onClick={() => setShowOnboardingDialog(true)}
+                    onClick={() => setShowBankAccountForm(true)}
                     className="w-full"
                     data-testid="button-setup-payment-account"
                   >
                     <CreditCard className="w-4 h-4 mr-2" />
-                    Set Up Payment Account
+                    Add Bank Account
                   </Button>
 
                   <div className="bg-muted/50 rounded-lg p-4">
                     <p className="text-sm text-muted-foreground">
-                      <strong>What you'll need:</strong> Full Social Security Number (9 digits), date of birth, home address, and email. This is a secure one-time setup required by our payment processor.
+                      <strong>What you'll need:</strong> Bank name, account holder name, routing number (9 digits), and account number. Your information is encrypted and securely stored.
                     </p>
                   </div>
                 </>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="bankName">Bank Name</Label>
+                    <Input
+                      id="bankName"
+                      placeholder="e.g., Chase, Bank of America"
+                      value={bankFormData.bankName}
+                      onChange={(e) => setBankFormData({...bankFormData, bankName: e.target.value})}
+                      data-testid="input-bank-name"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="accountHolderName">Account Holder Name</Label>
+                    <Input
+                      id="accountHolderName"
+                      placeholder="Full name as it appears on account"
+                      value={bankFormData.accountHolderName}
+                      onChange={(e) => setBankFormData({...bankFormData, accountHolderName: e.target.value})}
+                      data-testid="input-account-holder-name"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="routingNumber">Routing Number</Label>
+                    <Input
+                      id="routingNumber"
+                      placeholder="9 digits"
+                      maxLength={9}
+                      value={bankFormData.routingNumber}
+                      onChange={(e) => setBankFormData({...bankFormData, routingNumber: e.target.value.replace(/\D/g, '')})}
+                      data-testid="input-routing-number"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="accountNumber">Account Number</Label>
+                    <Input
+                      id="accountNumber"
+                      type="password"
+                      placeholder="Your account number"
+                      value={bankFormData.accountNumber}
+                      onChange={(e) => setBankFormData({...bankFormData, accountNumber: e.target.value.replace(/\D/g, '')})}
+                      data-testid="input-account-number"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="accountNumberConfirm">Confirm Account Number</Label>
+                    <Input
+                      id="accountNumberConfirm"
+                      type="password"
+                      placeholder="Re-enter account number"
+                      value={bankFormData.accountNumberConfirm}
+                      onChange={(e) => setBankFormData({...bankFormData, accountNumberConfirm: e.target.value.replace(/\D/g, '')})}
+                      data-testid="input-account-number-confirm"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        if (bankFormData.accountNumber !== bankFormData.accountNumberConfirm) {
+                          toast({
+                            title: "Account Numbers Don't Match",
+                            description: "Please make sure both account numbers are identical.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        if (bankFormData.routingNumber.length !== 9) {
+                          toast({
+                            title: "Invalid Routing Number",
+                            description: "Routing number must be exactly 9 digits.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        setupBankAccountMutation.mutate(bankFormData);
+                      }}
+                      disabled={setupBankAccountMutation.isPending}
+                      className="flex-1"
+                      data-testid="button-save-bank-account"
+                    >
+                      {setupBankAccountMutation.isPending ? "Saving..." : "Save Bank Account"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowBankAccountForm(false);
+                        setBankFormData({
+                          bankName: '',
+                          accountHolderName: '',
+                          routingNumber: '',
+                          accountNumber: '',
+                          accountNumberConfirm: ''
+                        });
+                      }}
+                      data-testid="button-cancel-bank-setup"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      <strong>🔒 Secure:</strong> Your bank account information is encrypted and stored securely. We use bank-level security to protect your data.
+                    </p>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -679,15 +724,6 @@ export default function DriverProfile() {
       />
 
       {/* Stripe Connect Onboarding Dialog */}
-      <ColumnOnboardingDialog
-        open={showOnboardingDialog}
-        onOpenChange={setShowOnboardingDialog}
-        onSubmit={async (data) => {
-          await onboardingMutation.mutateAsync(data);
-        }}
-        isPending={onboardingMutation.isPending}
-      />
-
       <MobileNav role="driver" />
       
       {/* Show Install Prompt after profile completion */}

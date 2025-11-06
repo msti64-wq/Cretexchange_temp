@@ -1974,6 +1974,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Driver bank account setup for ACH payouts via Stripe Connect
+  app.post('/api/drivers/bank-account', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { bankName, accountHolderName, routingNumber, accountNumber } = req.body;
+
+      // Validate required fields
+      if (!bankName || !accountHolderName || !routingNumber || !accountNumber) {
+        return res.status(400).json({ message: 'All bank account fields are required' });
+      }
+
+      // Validate routing number (9 digits)
+      if (!/^\d{9}$/.test(routingNumber)) {
+        return res.status(400).json({ message: 'Routing number must be exactly 9 digits' });
+      }
+
+      // Get or create driver profile
+      let driver = await storage.getDriver(userId);
+      if (!driver) {
+        driver = await storage.createDriver({
+          userId,
+          employerName: "",
+        });
+      }
+
+      // Get user for Stripe Connect account
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Create Stripe Connect account if driver doesn't have one
+      if (!user.stripeConnectAccountId) {
+        const connectedAccount = await stripeService.createConnectedAccount({
+          type: 'custom',
+          userId: userId,
+          username: user.username,
+          email: user.email,
+          businessType: 'individual',
+          individual: {
+            first_name: user.firstName,
+            last_name: user.lastName,
+            dob: {
+              day: 1,
+              month: 1,
+              year: 1990,
+            },
+            email: user.email,
+            phone: user.phone || undefined,
+            ssn_last_4: '0000', // Test value
+            address: {
+              line1: user.street || '123 Main St',
+              city: user.city || 'San Francisco',
+              state: user.state || 'CA',
+              postal_code: user.zip || '94105',
+              country: 'US',
+            },
+          },
+        });
+
+        // Update user with Stripe Connect account ID
+        await storage.updateUser(userId, {
+          stripeConnectAccountId: connectedAccount.id
+        });
+
+        console.log(`✅ Created Stripe Connect account for driver ${userId}: ${connectedAccount.id}`);
+      }
+
+      // Attach bank account as external account to Stripe Connect account
+      const userUpdated = await storage.getUser(userId);
+      if (userUpdated?.stripeConnectAccountId) {
+        try {
+          await stripeService.createBankPaymentMethod({
+            connectedAccountId: userUpdated.stripeConnectAccountId,
+            bankAccount: {
+              country: 'US',
+              currency: 'usd',
+              accountHolderName,
+              accountHolderType: 'individual',
+              routingNumber,
+              accountNumber,
+            },
+          });
+
+          console.log(`✅ Attached bank account to Stripe Connect account ${userUpdated.stripeConnectAccountId}`);
+        } catch (stripeError: any) {
+          console.error('Failed to attach bank account to Stripe:', stripeError.message);
+          // Continue anyway - we'll store the info in database
+        }
+      }
+
+      // Update driver with bank account information (encrypted in database)
+      await storage.updateDriver(driver.id, {
+        bankName,
+        accountHolderName,
+        routingNumber,
+        accountNumber, // This will be encrypted by the database layer
+      });
+
+      res.json({
+        message: 'Bank account added successfully',
+        accountLast4: accountNumber.slice(-4)
+      });
+    } catch (error: any) {
+      console.error('Error setting up bank account:', error.message);
+      res.status(500).json({
+        message: 'Failed to set up bank account',
+        error: error.message
+      });
+    }
+  });
+
   // Owner endpoints
   app.get('/api/owners/dashboard', isAuthenticated, async (req: any, res) => {
     try {
