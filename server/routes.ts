@@ -8838,36 +8838,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Super admin access required' });
       }
 
-      const drivers = await storage.getAllDrivers();
-      if (drivers.length === 0) {
-        return res.status(400).json({ message: 'No drivers found in the system' });
+      // Find users with Stripe Connect accounts (these are the ones being reconciled)
+      const driverUsers = await db
+        .select()
+        .from(users)
+        .where(and(
+          eq(users.role, 'driver'),
+          isNotNull(users.stripeConnectAccountId)
+        ))
+        .limit(1);
+
+      if (driverUsers.length === 0) {
+        return res.status(400).json({ 
+          message: 'No drivers with Stripe Connect accounts found',
+          hint: 'Drivers need Stripe Connect accounts to be reconciled. Create a test driver or use an existing driver with a complete setup.'
+        });
       }
 
-      const testDriver = drivers[0];
-      const wallet = await storage.getDriverWallet(testDriver.id);
+      const driverUser = driverUsers[0];
       
+      // Get or create driver profile
+      let driverProfile = await storage.getDriverByUserId(driverUser.id);
+      if (!driverProfile) {
+        return res.status(400).json({ 
+          message: 'Driver has no profile',
+          hint: 'Driver user found but missing driver profile. Complete driver setup first.'
+        });
+      }
+
+      // Get or create wallet
+      let wallet = await storage.getDriverWallet(driverProfile.id);
       if (!wallet) {
-        return res.status(400).json({ message: 'Driver has no wallet' });
+        return res.status(400).json({ 
+          message: 'Driver has no wallet',
+          hint: 'Driver profile found but missing wallet. Complete driver setup first.'
+        });
       }
 
       const oldBalance = parseFloat(wallet.availableBalance);
       const newBalance = oldBalance + 5.00;
 
-      await storage.updateDriverWallet(testDriver.id, {
+      await storage.updateDriverWallet(driverProfile.id, {
         availableBalance: newBalance.toFixed(2)
       });
 
-      console.log(`✅ Injected $5.00 discrepancy for driver ${testDriver.id}`);
-
-      const driverUser = await storage.getUser(testDriver.userId);
+      console.log(`✅ Injected $5.00 discrepancy for driver ${driverProfile.id} (${driverUser.username})`);
 
       res.json({
         message: 'Test discrepancy injected successfully',
-        driverId: testDriver.id,
-        username: driverUser?.username,
+        driverId: driverProfile.id,
+        username: driverUser.username,
         oldBalance: `$${oldBalance.toFixed(2)}`,
         newBalance: `$${newBalance.toFixed(2)}`,
-        discrepancy: '$5.00'
+        discrepancy: '$5.00',
+        note: 'Run reconciliation to detect and auto-correct this discrepancy'
       });
     } catch (error: any) {
       console.error('❌ Error injecting discrepancy:', error.message);
