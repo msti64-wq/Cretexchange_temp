@@ -7,10 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
-import { CreditCard, Clock, CheckCircle, XCircle, Play, RefreshCw, DollarSign, Users } from "lucide-react";
+import { CreditCard, Clock, CheckCircle, XCircle, Play, RefreshCw, DollarSign, Users, BarChart2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 interface PendingPayment {
   id: string;
@@ -54,6 +55,7 @@ interface WashoutPaymentBatch {
 export default function AdminBatchPayments() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [selectedBatch, setSelectedBatch] = useState<WashoutPaymentBatch | null>(null);
 
   // Fetch pending payments
@@ -147,24 +149,35 @@ export default function AdminBatchPayments() {
             <h1 className="text-3xl font-bold tracking-tight">Batch Payment Management</h1>
             <p className="text-muted-foreground">Manage hourly batch processing for washout payments</p>
           </div>
-          <Button
-            onClick={() => processBatchMutation.mutate()}
-            disabled={processBatchMutation.isPending || queuedPayments.length === 0}
-            size="lg"
-            data-testid="button-process-batch"
-          >
-            {processBatchMutation.isPending ? (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 mr-2" />
-                Process Batch Now
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setLocation('/reconciliation')}
+              variant="outline"
+              size="lg"
+              data-testid="button-go-to-reconciliation"
+            >
+              <BarChart2 className="w-4 h-4 mr-2" />
+              Balance Reconciliation
+            </Button>
+            <Button
+              onClick={() => processBatchMutation.mutate()}
+              disabled={processBatchMutation.isPending || queuedPayments.length === 0}
+              size="lg"
+              data-testid="button-process-batch"
+            >
+              {processBatchMutation.isPending ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Process Batch Now
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Statistics */}
