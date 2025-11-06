@@ -633,7 +633,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get role-specific data
       let roleData = null;
       if (user.role === 'driver') {
-        roleData = await storage.getDriver(userId);
+        const driverData = await storage.getDriver(userId);
+        if (driverData) {
+          // Sanitize sensitive bank account data - never send to frontend
+          const { accountNumber, routingNumber, ...safeDriverData } = driverData;
+          roleData = {
+            ...safeDriverData,
+            // Include only masked/last4 versions of sensitive data
+            hasRoutingNumber: Boolean(routingNumber),
+            hasAccountNumber: Boolean(accountNumber),
+            accountNumberLast4: accountNumber ? accountNumber.slice(-4) : null,
+          };
+        }
       } else if (user.role === 'owner') {
         roleData = await storage.getOwner(userId);
       }
