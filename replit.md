@@ -37,10 +37,15 @@ Preferred communication style: Simple, everyday language.
 -   **Monthly Billing**: Automated monthly recurring fees for locations.
 -   **Subscription Management**: A one-time platform membership fee.
 -   **Wallet System**: Stripe Treasury integration for wallet management, balance tracking, ACH transfers for funding, auto top-up, and low balance alerts. Internal transfers for instant washout payments.
+-   **Bank Account Collection**: 
+    -   **Standardized Stripe Financial Connections**: Both drivers (for payouts) and owners (for wallet funding) use the same instant bank verification system via Stripe Financial Connections OAuth flow.
+    -   **Instant Verification**: Replaces slow manual entry and micro-deposit verification with instant OAuth-based bank linking for 5,000+ US banks. Bank-level encryption and security.
+    -   **Costs**: $1.50 per bank verification (one-time), $0.10 per balance check, $0.80 per ACH transfer fee, 3-5 day settlement.
+    -   **Driver Payouts**: Financial Connections creates external accounts on Stripe Connect accounts for ACH payouts.
+    -   **Owner Wallet Funding**: Financial Connections creates payment methods on Stripe Customers for ACH wallet funding.
 -   **Wallet Funding Methods**: 
-    -   **Instant Bank Linking via Financial Connections**: Owners can link bank accounts instantly using Stripe Financial Connections, replacing slow micro-deposit verification with instant OAuth-based verification. $0.80 per ACH transfer fee, 3-5 day settlement.
     -   **Card Payments with 3DS/SCA**: Owners can fund wallets via credit/debit cards with full Strong Customer Authentication (3DS) support. ~2.9% + $0.30 fee, instant funding. Backend automatically handles `requires_action` status and returns clientSecret for frontend confirmation.
-    -   **Payment Method Priority**: Treasury wallet transfers are PRIMARY; credit cards are BACKUP/fallback.
+    -   **Payment Method Priority**: ACH via Financial Connections is PRIMARY; credit cards are BACKUP/fallback.
 -   **Debit Card Integration**: Stripe Issuing-powered debit cards (virtual and physical) linked to Stripe Treasury wallets for drivers.
 -   **Feature Flags**: Centralized system for managing platform features and configurations (e.g., automatic tax, rubble service, wallet funding) accessible to super admins.
 -   **Per-Owner Custom Platform Fees**: Super admins can set custom platform fees for individual owners based on tenure, with a tiered fee hierarchy.
