@@ -12,6 +12,7 @@ import { useLocation } from "wouter";
 import { Wallet, Building2, ArrowLeft, Plus, Check, AlertCircle, CreditCard, Trash2, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { OwnerWalletWizard } from "@/components/OwnerWalletWizard";
+import { BankAccountConnect } from "@/components/BankAccountConnect";
 import { apiRequest } from "@/lib/queryClient";
 import StripeCardSetup from "@/components/StripeCardSetup";
 
@@ -459,90 +460,44 @@ export default function PaymentMethods() {
           })()}
         </div>
 
-        {/* Add Funding Source Form */}
+        {/* Add Funding Source - Financial Connections */}
         {showAddForm && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Plus className="w-5 h-5 mr-2" />
-                Add Bank Account (ACH)
+                Connect Bank Account
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                Link a bank account to fund your wallet. For credit cards, see the "Membership Fee Payment" section above.
+                Instantly connect your bank account to fund your wallet. Secure bank-level encryption.
               </p>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* ACH Form */}
-                {(
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="bankName">Bank Name</Label>
-                      <Input
-                        id="bankName"
-                        value={formData.bankName}
-                        onChange={(e) => handleInputChange('bankName', e.target.value)}
-                        placeholder="Chase Bank"
-                        required
-                        data-testid="input-bank-name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="accountHolderName">Account Holder Name</Label>
-                      <Input
-                        id="accountHolderName"
-                        value={formData.accountHolderName}
-                        onChange={(e) => handleInputChange('accountHolderName', e.target.value)}
-                        placeholder="John Doe"
-                        required
-                        data-testid="input-account-holder-name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="routingNumber">Routing Number</Label>
-                      <Input
-                        id="routingNumber"
-                        value={formData.routingNumber}
-                        onChange={(e) => handleInputChange('routingNumber', e.target.value)}
-                        placeholder="021000021"
-                        maxLength={9}
-                        required
-                        data-testid="input-routing-number"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="accountNumber">Account Number</Label>
-                      <PasswordInput
-                        id="accountNumber"
-                        value={formData.accountNumber}
-                        onChange={(e) => handleInputChange('accountNumber', e.target.value)}
-                        placeholder="1234567890"
-                        required
-                        data-testid="input-account-number"
-                      />
-                    </div>
-                  </div>
-                )}
+            <CardContent className="space-y-4">
+              <BankAccountConnect
+                userType="owner"
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/owners/funding-sources'] });
+                  setShowAddForm(false);
+                }}
+                buttonText="Connect Bank Account"
+                className="w-full"
+              />
+              
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground">
+                  <strong>🔒 Instant & Secure:</strong> Connect your bank account securely in seconds using your online banking credentials. Bank-level encryption protects your data.
+                </p>
+              </div>
 
-                {/* Form Actions */}
-                <div className="flex space-x-3 pt-4">
-                  <Button
-                    type="submit"
-                    disabled={addFundingSourceMutation.isPending}
-                    data-testid="button-save-source"
-                  >
-                    {addFundingSourceMutation.isPending ? "Adding..." : "Add Bank Account"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowAddForm(false)}
-                    data-testid="button-cancel"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAddForm(false)}
+                className="w-full"
+                data-testid="button-cancel"
+              >
+                Cancel
+              </Button>
             </CardContent>
           </Card>
         )}
