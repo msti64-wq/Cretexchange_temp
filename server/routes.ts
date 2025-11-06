@@ -1986,7 +1986,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Driver bank account setup for ACH payouts via Stripe Connect
+  // FINANCIAL CONNECTIONS: Create session for instant bank verification (DRIVERS)
+  app.post('/api/drivers/bank-connect/session', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Ensure driver has Stripe Connect account
+      if (!user.stripeConnectAccountId) {
+        // Create Connect account if needed
+        const driver = await storage.getDriver(userId);
+        const connectedAccount = await stripeService.createConnectedAccount({
+          type: 'custom',
+          userId: userId,
+          username: user.username,
+          email: user.email,
+          businessType: 'individual',
+          individual: {
+            first_name: user.firstName,
+            lastName: user.lastName,
+            dob: { day: 1, month: 1, year: 1990 },
+            email: user.email,
+            phone: user.phone || undefined,
+            ssn_last_4: '0000',
+            address: {
+              line1: user.street || '123 Main St',
+              city: user.city || 'San Francisco',
+              state: user.state || 'CA',
+              postal_code: user.zip || '94105',
+              country: 'US',
+            },
+          },
+        });
+
+        await storage.updateUser(userId, {
+          stripeConnectAccountId: connectedAccount.id
+        });
+        
+        user.stripeConnectAccountId = connectedAccount.id;
+      }
+
+      // Create Financial Connections session for driver
+      const session = await stripeService.createFinancialConnectionsSession({
+        userType: 'driver',
+        connectedAccountId: user.stripeConnectAccountId,
+        returnUrl: `${req.protocol}://${req.get('host')}/driver/profile`,
+      });
+
+      res.json({
+        clientSecret: session.client_secret,
+        sessionId: session.id,
+      });
+    } catch (error: any) {
+      console.error('Error creating bank link session:', error);
+      res.status(500).json({
+        message: 'Failed to create bank link session',
+        error: error.message
+      });
+    }
+  });
+
+  // FINANCIAL CONNECTIONS: Complete bank linking (DRIVERS)
+  app.post('/api/drivers/bank-connect/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({ message: 'Session ID required' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || !user.stripeConnectAccountId) {
+        return res.status(404).json({ message: 'Stripe Connect account not found' });
+      }
+
+      // Create external account from Financial Connections
+      const result = await stripeService.createExternalAccountFromFinancialConnections({
+        sessionId,
+        connectedAccountId: user.stripeConnectAccountId,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error || 'Failed to link bank account' });
+      }
+
+      // Update driver record with bank info
+      const driver = await storage.getDriver(userId);
+      if (driver) {
+        await storage.updateDriver(driver.id, {
+          bankName: result.bankName || 'Bank Account',
+        });
+      }
+
+      res.json({
+        message: 'Bank account linked successfully',
+        bankName: result.bankName,
+        last4: result.last4,
+      });
+    } catch (error: any) {
+      console.error('Error completing bank link:', error);
+      res.status(500).json({
+        message: 'Failed to complete bank link',
+        error: error.message
+      });
+    }
+  });
+
+  // MANUAL ENTRY FALLBACK: Driver bank account setup for ACH payouts via Stripe Connect
   app.post('/api/drivers/bank-account', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -4499,7 +4610,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/owners/funding-sources - Add a new funding source (ACH only now)
+  // FINANCIAL CONNECTIONS: Create session for instant bank verification (OWNERS)
+  app.post('/api/owners/bank-connect/session', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Ensure owner has Stripe Customer ID
+      if (!user.stripeCustomerId) {
+        const customer = await stripeService.createCustomer({
+          userId,
+          username: user.username,
+          email: user.email,
+        });
+
+        await storage.updateUser(userId, {
+          stripeCustomerId: customer.id
+        });
+        
+        user.stripeCustomerId = customer.id;
+      }
+
+      // Create Financial Connections session for owner
+      const session = await stripeService.createFinancialConnectionsSession({
+        userType: 'owner',
+        customerId: user.stripeCustomerId,
+        returnUrl: `${req.protocol}://${req.get('host')}/owner/payment-methods`,
+      });
+
+      res.json({
+        clientSecret: session.client_secret,
+        sessionId: session.id,
+      });
+    } catch (error: any) {
+      console.error('Error creating bank link session:', error);
+      res.status(500).json({
+        message: 'Failed to create bank link session',
+        error: error.message
+      });
+    }
+  });
+
+  // FINANCIAL CONNECTIONS: Complete bank linking (OWNERS)
+  app.post('/api/owners/bank-connect/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({ message: 'Session ID required' });
+      }
+
+      const owner = await storage.getOwner(userId);
+      if (!owner) {
+        return res.status(404).json({ message: 'Owner not found' });
+      }
+
+      // Get payment method from Financial Connections
+      const paymentMethod = await stripeService.getFinancialConnectionsPaymentMethod(sessionId);
+      
+      if (!paymentMethod || !paymentMethod.us_bank_account) {
+        return res.status(400).json({ message: 'Failed to link bank account' });
+      }
+
+      const usBankAccount = paymentMethod.us_bank_account as any;
+
+      // Save funding source to database
+      const fundingSourceData = {
+        ownerId: owner.id,
+        type: 'ach' as const,
+        isDefault: true,
+        bankName: usBankAccount.bank_name || 'Bank Account',
+        accountHolderName: usBankAccount.account_holder_name || '',
+        last4: usBankAccount.last4,
+        stripePaymentMethodId: paymentMethod.id,
+      };
+
+      await storage.createOwnerFundingSource(fundingSourceData);
+
+      res.json({
+        message: 'Bank account linked successfully',
+        bankName: usBankAccount.bank_name,
+        last4: usBankAccount.last4,
+      });
+    } catch (error: any) {
+      console.error('Error completing bank link:', error);
+      res.status(500).json({
+        message: 'Failed to complete bank link',
+        error: error.message
+      });
+    }
+  });
+
+  // MANUAL ENTRY FALLBACK: Add a new funding source (ACH only now)
   app.post('/api/owners/funding-sources', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;

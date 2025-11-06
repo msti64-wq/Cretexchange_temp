@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
+import { BankAccountConnect } from "@/components/BankAccountConnect";
 import { User, Truck, CreditCard, Save, FileText, Eye, Smartphone, CheckCircle2, AlertCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -29,15 +30,6 @@ export default function DriverProfile() {
   // Fetch driver terms status
   const { data: termsStatus } = useQuery<{hasAgreed: boolean; agreedAt: string | null}>({
     queryKey: ['/api/drivers/terms-status'],
-  });
-
-  const [showBankAccountForm, setShowBankAccountForm] = useState(false);
-  const [bankFormData, setBankFormData] = useState({
-    bankName: '',
-    accountHolderName: '',
-    routingNumber: '',
-    accountNumber: '',
-    accountNumberConfirm: ''
   });
 
   const updateProfileMutation = useMutation({
@@ -60,58 +52,6 @@ export default function DriverProfile() {
       });
     },
   });
-
-  // Bank account setup mutation
-  const setupBankAccountMutation = useMutation({
-    mutationFn: async (data: typeof bankFormData) => {
-      // Validate account number confirmation
-      if (data.accountNumber !== data.accountNumberConfirm) {
-        throw new Error("Account numbers do not match");
-      }
-
-      // Validate routing number format (9 digits)
-      if (!/^\d{9}$/.test(data.routingNumber)) {
-        throw new Error("Routing number must be exactly 9 digits");
-      }
-
-      // Validate account number (4-17 digits)
-      if (!/^\d{4,17}$/.test(data.accountNumber)) {
-        throw new Error("Account number must be between 4 and 17 digits");
-      }
-
-      const response = await apiRequest("POST", "/api/drivers/bank-account", {
-        bankName: data.bankName,
-        accountHolderName: data.accountHolderName,
-        routingNumber: data.routingNumber,
-        accountNumber: data.accountNumber,
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Bank Account Added",
-        description: "Your bank account has been securely saved and linked to your payment account.",
-      });
-      setShowBankAccountForm(false);
-      setBankFormData({
-        bankName: '',
-        accountHolderName: '',
-        routingNumber: '',
-        accountNumber: '',
-        accountNumberConfirm: ''
-      });
-      refetch();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Setup Failed",
-        description: error.message || "Failed to set up bank account",
-        variant: "destructive",
-      });
-      console.error("Failed to fetch setup link:", error);
-    },
-  });
-
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -485,7 +425,7 @@ export default function DriverProfile() {
                     </p>
                   </div>
                 </>
-              ) : !showBankAccountForm ? (
+              ) : (
                 <>
                   <div className="flex items-center gap-3 p-4 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg">
                     <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
@@ -494,137 +434,24 @@ export default function DriverProfile() {
                         Bank Account Required
                       </p>
                       <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
-                        Add your bank account to receive washout payments
+                        Connect your bank account to receive washout payments
                       </p>
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => setShowBankAccountForm(true)}
+                  <BankAccountConnect
+                    userType="driver"
+                    onSuccess={() => refetch()}
+                    buttonText="Connect Bank Account"
                     className="w-full"
-                    data-testid="button-setup-payment-account"
-                  >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Add Bank Account
-                  </Button>
+                  />
 
                   <div className="bg-muted/50 rounded-lg p-4">
                     <p className="text-sm text-muted-foreground">
-                      <strong>What you'll need:</strong> Bank name, account holder name, routing number (9 digits), and account number. Your information is encrypted and securely stored.
+                      <strong>🔒 Instant & Secure:</strong> Connect your bank account securely in seconds using your online banking credentials. We use bank-level encryption and never store your banking passwords.
                     </p>
                   </div>
                 </>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="bankName">Bank Name</Label>
-                    <Input
-                      id="bankName"
-                      placeholder="e.g., Chase, Bank of America"
-                      value={bankFormData.bankName}
-                      onChange={(e) => setBankFormData({...bankFormData, bankName: e.target.value})}
-                      data-testid="input-bank-name"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="accountHolderName">Account Holder Name</Label>
-                    <Input
-                      id="accountHolderName"
-                      placeholder="Full name as it appears on account"
-                      value={bankFormData.accountHolderName}
-                      onChange={(e) => setBankFormData({...bankFormData, accountHolderName: e.target.value})}
-                      data-testid="input-account-holder-name"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="routingNumber">Routing Number</Label>
-                    <Input
-                      id="routingNumber"
-                      placeholder="9 digits"
-                      maxLength={9}
-                      value={bankFormData.routingNumber}
-                      onChange={(e) => setBankFormData({...bankFormData, routingNumber: e.target.value.replace(/\D/g, '')})}
-                      data-testid="input-routing-number"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="accountNumber">Account Number</Label>
-                    <Input
-                      id="accountNumber"
-                      type="password"
-                      placeholder="Your account number"
-                      value={bankFormData.accountNumber}
-                      onChange={(e) => setBankFormData({...bankFormData, accountNumber: e.target.value.replace(/\D/g, '')})}
-                      data-testid="input-account-number"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="accountNumberConfirm">Confirm Account Number</Label>
-                    <Input
-                      id="accountNumberConfirm"
-                      type="password"
-                      placeholder="Re-enter account number"
-                      value={bankFormData.accountNumberConfirm}
-                      onChange={(e) => setBankFormData({...bankFormData, accountNumberConfirm: e.target.value.replace(/\D/g, '')})}
-                      data-testid="input-account-number-confirm"
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        if (bankFormData.accountNumber !== bankFormData.accountNumberConfirm) {
-                          toast({
-                            title: "Account Numbers Don't Match",
-                            description: "Please make sure both account numbers are identical.",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-                        if (bankFormData.routingNumber.length !== 9) {
-                          toast({
-                            title: "Invalid Routing Number",
-                            description: "Routing number must be exactly 9 digits.",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-                        setupBankAccountMutation.mutate(bankFormData);
-                      }}
-                      disabled={setupBankAccountMutation.isPending}
-                      className="flex-1"
-                      data-testid="button-save-bank-account"
-                    >
-                      {setupBankAccountMutation.isPending ? "Saving..." : "Save Bank Account"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowBankAccountForm(false);
-                        setBankFormData({
-                          bankName: '',
-                          accountHolderName: '',
-                          routingNumber: '',
-                          accountNumber: '',
-                          accountNumberConfirm: ''
-                        });
-                      }}
-                      data-testid="button-cancel-bank-setup"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-
-                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                    <p className="text-xs text-blue-700 dark:text-blue-300">
-                      <strong>🔒 Secure:</strong> Your bank account information is encrypted and stored securely. We use bank-level security to protect your data.
-                    </p>
-                  </div>
-                </div>
               )}
             </CardContent>
           </Card>
