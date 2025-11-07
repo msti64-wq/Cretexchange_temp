@@ -15,6 +15,10 @@ import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatAddress } from "@shared/addressUtils";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { FEATURE_FLAGS } from "@shared/featureFlags";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { MapPicker } from "@/components/MapPicker";
 
 export default function OwnerLocations() {
   const { toast } = useToast();
@@ -22,6 +26,9 @@ export default function OwnerLocations() {
   const [locationToDelete, setLocationToDelete] = useState<any>(null);
   const [locationToEdit, setLocationToEdit] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Check if enhanced location creation is enabled
+  const { isEnabled: isEnhancedCreationEnabled, isLoading: isFlagLoading } = useFeatureFlag(FEATURE_FLAGS.ENHANCED_LOCATION_CREATION);
 
   const { data: locations, isLoading } = useQuery({
     queryKey: ['/api/owners/locations'],
@@ -284,84 +291,200 @@ export default function OwnerLocations() {
                     data-testid="input-location-name"
                   />
                 </div>
-                
-                <div>
-                  <Label htmlFor="street">Street Address</Label>
-                  <Input
-                    id="street"
-                    value={formData.street}
-                    onChange={(e) => setFormData({...formData, street: e.target.value})}
-                    placeholder="123 Main Street"
-                    required
-                    data-testid="input-street"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => setFormData({...formData, city: e.target.value})}
-                      placeholder="Austin"
-                      required
-                      data-testid="input-city"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
-                      value={formData.state}
-                      onChange={(e) => setFormData({...formData, state: e.target.value})}
-                      placeholder="TX"
-                      maxLength={2}
-                      required
-                      data-testid="input-state"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="zip">ZIP Code</Label>
-                  <Input
-                    id="zip"
-                    value={formData.zip}
-                    onChange={(e) => setFormData({...formData, zip: e.target.value})}
-                    placeholder="78701"
-                    maxLength={10}
-                    required
-                    data-testid="input-zip"
-                  />
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="latitude">Latitude</Label>
-                    <Input
-                      id="latitude"
-                      type="number"
-                      step="any"
-                      value={formData.latitude}
-                      onChange={(e) => setFormData({...formData, latitude: e.target.value})}
-                      required
-                      data-testid="input-latitude"
+                {/* Enhanced location creation with Google Maps */}
+                {isEnhancedCreationEnabled ? (
+                  <>
+                    <AddressAutocomplete
+                      onPlaceSelected={(place) => {
+                        setFormData({
+                          ...formData,
+                          street: place.street,
+                          city: place.city,
+                          state: place.state,
+                          zip: place.zip,
+                          latitude: place.latitude.toString(),
+                          longitude: place.longitude.toString(),
+                        });
+                      }}
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor="longitude">Longitude</Label>
-                    <Input
-                      id="longitude"
-                      type="number"
-                      step="any"
-                      value={formData.longitude}
-                      onChange={(e) => setFormData({...formData, longitude: e.target.value})}
-                      required
-                      data-testid="input-longitude"
+
+                    <MapPicker
+                      latitude={parseFloat(formData.latitude) || undefined}
+                      longitude={parseFloat(formData.longitude) || undefined}
+                      onLocationChange={(lat, lng) => {
+                        setFormData({
+                          ...formData,
+                          latitude: lat.toString(),
+                          longitude: lng.toString(),
+                        });
+                      }}
+                      height="350px"
                     />
-                  </div>
-                </div>
+
+                    {/* Show address fields (read-only or editable) */}
+                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                      <p className="text-sm font-medium">Location Details</p>
+                      <div>
+                        <Label htmlFor="street">Street Address</Label>
+                        <Input
+                          id="street"
+                          value={formData.street}
+                          onChange={(e) => setFormData({...formData, street: e.target.value})}
+                          placeholder="Auto-filled from map"
+                          required
+                          data-testid="input-street"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="city">City</Label>
+                          <Input
+                            id="city"
+                            value={formData.city}
+                            onChange={(e) => setFormData({...formData, city: e.target.value})}
+                            required
+                            data-testid="input-city"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="state">State</Label>
+                          <Input
+                            id="state"
+                            value={formData.state}
+                            onChange={(e) => setFormData({...formData, state: e.target.value})}
+                            maxLength={2}
+                            required
+                            data-testid="input-state"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="zip">ZIP Code</Label>
+                        <Input
+                          id="zip"
+                          value={formData.zip}
+                          onChange={(e) => setFormData({...formData, zip: e.target.value})}
+                          maxLength={10}
+                          required
+                          data-testid="input-zip"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="latitude">Latitude</Label>
+                          <Input
+                            id="latitude"
+                            type="number"
+                            step="any"
+                            value={formData.latitude}
+                            onChange={(e) => setFormData({...formData, latitude: e.target.value})}
+                            required
+                            data-testid="input-latitude"
+                            className="bg-background"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="longitude">Longitude</Label>
+                          <Input
+                            id="longitude"
+                            type="number"
+                            step="any"
+                            value={formData.longitude}
+                            onChange={(e) => setFormData({...formData, longitude: e.target.value})}
+                            required
+                            data-testid="input-longitude"
+                            className="bg-background"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Legacy manual entry */}
+                    <div>
+                      <Label htmlFor="street">Street Address</Label>
+                      <Input
+                        id="street"
+                        value={formData.street}
+                        onChange={(e) => setFormData({...formData, street: e.target.value})}
+                        placeholder="123 Main Street"
+                        required
+                        data-testid="input-street"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="city">City</Label>
+                        <Input
+                          id="city"
+                          value={formData.city}
+                          onChange={(e) => setFormData({...formData, city: e.target.value})}
+                          placeholder="Austin"
+                          required
+                          data-testid="input-city"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="state">State</Label>
+                        <Input
+                          id="state"
+                          value={formData.state}
+                          onChange={(e) => setFormData({...formData, state: e.target.value})}
+                          placeholder="TX"
+                          maxLength={2}
+                          required
+                          data-testid="input-state"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="zip">ZIP Code</Label>
+                      <Input
+                        id="zip"
+                        value={formData.zip}
+                        onChange={(e) => setFormData({...formData, zip: e.target.value})}
+                        placeholder="78701"
+                        maxLength={10}
+                        required
+                        data-testid="input-zip"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="latitude">Latitude</Label>
+                        <Input
+                          id="latitude"
+                          type="number"
+                          step="any"
+                          value={formData.latitude}
+                          onChange={(e) => setFormData({...formData, latitude: e.target.value})}
+                          required
+                          data-testid="input-latitude"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="longitude">Longitude</Label>
+                        <Input
+                          id="longitude"
+                          type="number"
+                          step="any"
+                          value={formData.longitude}
+                          onChange={(e) => setFormData({...formData, longitude: e.target.value})}
+                          required
+                          data-testid="input-longitude"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div>
                   <Label htmlFor="rate">Rate per Washout ($)</Label>
