@@ -26,6 +26,8 @@ import {
   featureFlags,
   featureFlagOverrides,
   systemSettings,
+  materials,
+  locationMaterialIntents,
   type User,
   type UpsertUser,
   type Driver,
@@ -79,6 +81,10 @@ import {
   type InsertWashoutPaymentBatch,
   type SystemSettings,
   type UpdateSystemSettings,
+  type Material,
+  type InsertMaterial,
+  type LocationMaterialIntent,
+  type InsertLocationMaterialIntent,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
@@ -142,6 +148,18 @@ export interface IStorage {
   deleteWashoutLocation(locationId: string, ownerId: string): Promise<boolean>;
   getAllLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]>;
 
+  // Rubble service: Material operations
+  getAllMaterials(): Promise<Material[]>;
+  getMaterialBySlug(slug: string): Promise<Material | undefined>;
+  createMaterial(material: InsertMaterial): Promise<Material>;
+
+  // Rubble service: Location material intent operations
+  getLocationMaterialIntents(locationId: string): Promise<LocationMaterialIntent[]>;
+  createLocationMaterialIntent(intent: InsertLocationMaterialIntent): Promise<LocationMaterialIntent>;
+  updateLocationMaterialIntent(intentId: string, updates: Partial<InsertLocationMaterialIntent>): Promise<LocationMaterialIntent>;
+  deleteLocationMaterialIntent(intentId: string): Promise<boolean>;
+  deleteAllLocationMaterialIntents(locationId: string): Promise<void>;
+
   // Activity operations
   createWashoutActivity(activity: InsertWashoutActivity): Promise<WashoutActivity>;
   getWashoutActivity(id: string): Promise<WashoutActivity | undefined>;
@@ -150,6 +168,7 @@ export interface IStorage {
   getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
   verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity>;
   rejectWashoutActivity(activityId: string, rejectedBy: string): Promise<WashoutActivity>;
+  updateWashoutActivityStatus(activityId: string, status: string): Promise<WashoutActivity>;
   getRecentActivitiesByDriver(driverId: string, limit?: number): Promise<(WashoutActivity & { location: WashoutLocation })[]>;
   getAllActivities(startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
 
@@ -985,6 +1004,73 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  // Rubble service: Material operations
+  async getAllMaterials(): Promise<Material[]> {
+    return await db
+      .select()
+      .from(materials)
+      .orderBy(materials.displayName);
+  }
+
+  async getMaterialBySlug(slug: string): Promise<Material | undefined> {
+    const [material] = await db
+      .select()
+      .from(materials)
+      .where(eq(materials.slug, slug));
+    return material;
+  }
+
+  async createMaterial(material: InsertMaterial): Promise<Material> {
+    const [newMaterial] = await db
+      .insert(materials)
+      .values(material)
+      .returning();
+    return newMaterial;
+  }
+
+  // Rubble service: Location material intent operations
+  async getLocationMaterialIntents(locationId: string): Promise<LocationMaterialIntent[]> {
+    return await db
+      .select()
+      .from(locationMaterialIntents)
+      .where(eq(locationMaterialIntents.locationId, locationId))
+      .orderBy(locationMaterialIntents.createdAt);
+  }
+
+  async createLocationMaterialIntent(intent: InsertLocationMaterialIntent): Promise<LocationMaterialIntent> {
+    const [newIntent] = await db
+      .insert(locationMaterialIntents)
+      .values(intent)
+      .returning();
+    return newIntent;
+  }
+
+  async updateLocationMaterialIntent(intentId: string, updates: Partial<InsertLocationMaterialIntent>): Promise<LocationMaterialIntent> {
+    const [updatedIntent] = await db
+      .update(locationMaterialIntents)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(locationMaterialIntents.id, intentId))
+      .returning();
+    return updatedIntent;
+  }
+
+  async deleteLocationMaterialIntent(intentId: string): Promise<boolean> {
+    const result = await db
+      .delete(locationMaterialIntents)
+      .where(eq(locationMaterialIntents.id, intentId))
+      .returning();
+    return result.length > 0;
+  }
+
+  async deleteAllLocationMaterialIntents(locationId: string): Promise<void> {
+    await db
+      .delete(locationMaterialIntents)
+      .where(eq(locationMaterialIntents.locationId, locationId));
+  }
+
   // Activity operations
   async createWashoutActivity(activity: InsertWashoutActivity): Promise<WashoutActivity> {
     const [newActivity] = await db.insert(washoutActivities).values(activity).returning();
@@ -1179,6 +1265,18 @@ export class DatabaseStorage implements IStorage {
         status: "rejected",
         verifiedBy: rejectedBy,
         verifiedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(washoutActivities.id, activityId))
+      .returning();
+    return activity;
+  }
+
+  async updateWashoutActivityStatus(activityId: string, status: string): Promise<WashoutActivity> {
+    const [activity] = await db
+      .update(washoutActivities)
+      .set({ 
+        status,
         updatedAt: new Date()
       })
       .where(eq(washoutActivities.id, activityId))

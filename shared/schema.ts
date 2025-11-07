@@ -68,6 +68,10 @@ export const webhookEventStatusEnum = pgEnum("webhook_event_status", ["received"
 export const reconciliationStatusEnum = pgEnum("reconciliation_status", ["running", "completed", "failed"]);
 export const discrepancyTypeEnum = pgEnum("discrepancy_type", ["missing_transaction", "amount_mismatch", "status_mismatch", "extra_transaction"]);
 
+// Rubble service enums
+export const materialUnitEnum = pgEnum("material_unit", ["per_load", "per_ton", "per_cy"]);
+export const serviceTypeEnum = pgEnum("service_type", ["washout", "rubble_dropoff"]);
+
 // User storage table - local authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -222,7 +226,7 @@ export const washoutLocations = pgTable("washout_locations", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Washout activities
+// Washout activities (unified for both washout and rubble drop-off services)
 export const washoutActivities = pgTable("washout_activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
@@ -237,6 +241,14 @@ export const washoutActivities = pgTable("washout_activities", {
   verifiedAt: timestamp("verified_at"),
   latitude: decimal("latitude", { precision: 9, scale: 6 }),
   longitude: decimal("longitude", { precision: 10, scale: 6 }),
+  // Rubble service fields
+  serviceType: serviceTypeEnum("service_type").default("washout"), // washout or rubble_dropoff
+  materialSlug: text("material_slug"), // e.g., 'dirt', 'asphalt' - null for washout
+  materialCustomLabel: text("material_custom_label"), // Custom material name - null for washout
+  qty: decimal("qty", { precision: 10, scale: 2 }), // Quantity for rubble (loads, tons, cy)
+  unit: materialUnitEnum("unit"), // per_load, per_ton, per_cy - null for washout
+  amountCentsOwnerToDriver: integer("amount_cents_owner_to_driver"), // Owner pays driver for rubble
+  feeCentsPlatform: integer("fee_cents_platform").default(0), // Platform fee (always 200 for rubble_dropoff)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -251,6 +263,36 @@ export const washoutPhotos = pgTable("washout_photos", {
   contentType: varchar("content_type").default("image/jpeg"), // e.g., "image/jpeg"
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Rubble service: Materials catalog (presets + normalization)
+export const materials = pgTable("materials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: varchar("slug").unique().notNull(), // e.g., 'dirt', 'asphalt', 'brick'
+  displayName: varchar("display_name").notNull(), // e.g., 'Dirt', 'Asphalt'
+  synonyms: text("synonyms").array(), // e.g., ['soil', 'topsoil'] for dirt
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Rubble service: Location material intents (what materials each location accepts)
+export const locationMaterialIntents = pgTable("location_material_intents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "cascade" }),
+  materialSlug: varchar("material_slug").references(() => materials.slug), // null for custom materials
+  customLabel: text("custom_label"), // For custom material entries
+  unit: materialUnitEnum("unit").notNull(), // per_load, per_ton, per_cy
+  rateCents: integer("rate_cents").notNull().default(0), // Amount owner pays driver; 0 allowed
+  rules: jsonb("rules"), // {rebar_ok: bool, trash_ok: bool, wood_ok: bool, max_piece_inches: int|null}
+  capacityDaily: integer("capacity_daily"), // Optional daily capacity limit
+  queueMax: integer("queue_max"), // Optional queue limit
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  locationActiveIndex: index("idx_lmi_location_active").on(table.locationId, table.active),
+  materialSlugIndex: index("idx_lmi_material_slug").on(table.materialSlug),
+  updatedAtIndex: index("idx_lmi_updated_at").on(table.updatedAt),
+}));
 
 // Payments
 export const payments = pgTable("payments", {
@@ -666,6 +708,19 @@ export const insertWashoutPhotoSchema = createInsertSchema(washoutPhotos).omit({
   createdAt: true,
 });
 
+// Rubble service insert schemas
+export const insertMaterialSchema = createInsertSchema(materials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLocationMaterialIntentSchema = createInsertSchema(locationMaterialIntents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertPaymentSchema = createInsertSchema(payments).omit({
   id: true,
   createdAt: true,
@@ -902,6 +957,12 @@ export type InsertWashoutPaymentBatch = z.infer<typeof insertWashoutPaymentBatch
 export type ServicePaymentAccount = typeof servicePaymentAccounts.$inferSelect;
 export type InsertServicePaymentAccount = z.infer<typeof insertServicePaymentAccountSchema>;
 export type UpdateServicePaymentAccount = z.infer<typeof updateServicePaymentAccountSchema>;
+
+// Rubble service types
+export type Material = typeof materials.$inferSelect;
+export type InsertMaterial = z.infer<typeof insertMaterialSchema>;
+export type LocationMaterialIntent = typeof locationMaterialIntents.$inferSelect;
+export type InsertLocationMaterialIntent = z.infer<typeof insertLocationMaterialIntentSchema>;
 
 // Webhook Events
 export const insertWebhookEventSchema = createInsertSchema(webhookEvents).omit({

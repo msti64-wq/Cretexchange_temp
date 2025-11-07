@@ -9548,6 +9548,459 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================
+  // Rubble Service API Endpoints
+  // ============================================
+
+  // Get all materials catalog
+  app.get('/api/rubble/materials', isAuthenticated, async (req: any, res) => {
+    try {
+      const materials = await storage.getAllMaterials();
+      res.json(materials);
+    } catch (error: any) {
+      console.error('Error fetching materials:', error);
+      res.status(500).json({ message: 'Failed to fetch materials' });
+    }
+  });
+
+  // Search for rubble drop-off locations
+  app.post('/api/rubble/search', isAuthenticated, async (req: any, res) => {
+    try {
+      const { materialSlug, materialCustomLabel, driverLat, driverLng, hasRebar, hasTrash, hasWood } = req.body;
+
+      // Validate required fields
+      if (!driverLat || !driverLng) {
+        return res.status(400).json({ message: 'Driver location is required' });
+      }
+
+      if (!materialSlug && !materialCustomLabel) {
+        return res.status(400).json({ message: 'Material is required' });
+      }
+
+      // Get all active locations with material intents
+      const allLocations = await storage.getActiveLocations();
+      
+      // For each location, get their material intents
+      const locationsWithIntents = await Promise.all(
+        allLocations.map(async (location) => {
+          const intents = await storage.getLocationMaterialIntents(location.id);
+          return {
+            ...location,
+            materialIntents: intents
+          };
+        })
+      );
+
+      // Filter locations by material matching and rules
+      const matchingLocations = locationsWithIntents.filter(location => {
+        // Must have at least one material intent
+        if (location.materialIntents.length === 0) return false;
+
+        // Check if any material intent matches the search
+        const hasMatchingMaterial = location.materialIntents.some(intent => {
+          if (materialSlug) {
+            return intent.materialSlug === materialSlug;
+          } else if (materialCustomLabel) {
+            return intent.materialCustomLabel?.toLowerCase() === materialCustomLabel.toLowerCase();
+          }
+          return false;
+        });
+
+        if (!hasMatchingMaterial) return false;
+
+        // Get the matching intent for rule checking
+        const matchingIntent = location.materialIntents.find(intent => 
+          materialSlug ? intent.materialSlug === materialSlug : 
+          intent.materialCustomLabel?.toLowerCase() === materialCustomLabel.toLowerCase()
+        );
+
+        if (!matchingIntent) return false;
+
+        // Check rules
+        if (hasRebar && !matchingIntent.acceptsRebar) return false;
+        if (hasTrash && !matchingIntent.acceptsTrash) return false;
+        if (hasWood && !matchingIntent.acceptsWood) return false;
+
+        // Check daily capacity
+        if (matchingIntent.dailyCapacity !== null) {
+          // TODO: Check actual visits for today against capacity
+          // For now, we'll include it in results
+        }
+
+        return true;
+      });
+
+      // Calculate distance and add pay rate information
+      const resultsWithDistance = matchingLocations.map(location => {
+        const matchingIntent = location.materialIntents.find(intent => 
+          materialSlug ? intent.materialSlug === materialSlug : 
+          intent.materialCustomLabel?.toLowerCase() === materialCustomLabel.toLowerCase()
+        );
+
+        // Calculate distance using Haversine formula
+        const R = 3959; // Earth radius in miles
+        const dLat = (location.latitude - driverLat) * Math.PI / 180;
+        const dLon = (location.longitude - driverLng) * Math.PI / 180;
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(driverLat * Math.PI / 180) * Math.cos(location.latitude * Math.PI / 180) *
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+
+        return {
+          locationId: location.id,
+          name: location.name,
+          address: location.address,
+          city: location.city,
+          state: location.state,
+          zip: location.zip,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          distance: Math.round(distance * 10) / 10, // Round to 1 decimal
+          payRate: matchingIntent?.driverPayCents || 0,
+          pricingUnit: matchingIntent?.pricingUnit || 'load',
+          acceptsRebar: matchingIntent?.acceptsRebar || false,
+          acceptsTrash: matchingIntent?.acceptsTrash || false,
+          acceptsWood: matchingIntent?.acceptsWood || false,
+          dailyCapacity: matchingIntent?.dailyCapacity,
+          materialSlug: matchingIntent?.materialSlug,
+          materialCustomLabel: matchingIntent?.materialCustomLabel,
+          intentId: matchingIntent?.id,
+        };
+      });
+
+      // Sort by distance (closest first), then by pay rate (highest first)
+      resultsWithDistance.sort((a, b) => {
+        if (Math.abs(a.distance - b.distance) < 0.1) {
+          // If distances are within 0.1 miles, sort by pay rate
+          return b.payRate - a.payRate;
+        }
+        return a.distance - b.distance;
+      });
+
+      res.json(resultsWithDistance);
+
+    } catch (error: any) {
+      console.error('Error searching rubble locations:', error);
+      res.status(500).json({ message: 'Failed to search locations' });
+    }
+  });
+
+  // Get location material intents (for owner editing)
+  app.get('/api/rubble/locations/:locationId/materials', isAuthenticated, async (req: any, res) => {
+    try {
+      const { locationId } = req.params;
+      
+      // Verify user owns this location or is admin
+      const location = await storage.getWashoutLocation(locationId);
+      if (!location) {
+        return res.status(404).json({ message: 'Location not found' });
+      }
+
+      const owner = await storage.getOwner(req.user.id);
+      if (!owner && req.user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Unauthorized' });
+      }
+
+      if (owner && location.ownerId !== owner.id && req.user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'You do not own this location' });
+      }
+
+      const intents = await storage.getLocationMaterialIntents(locationId);
+      res.json(intents);
+
+    } catch (error: any) {
+      console.error('Error fetching location materials:', error);
+      res.status(500).json({ message: 'Failed to fetch location materials' });
+    }
+  });
+
+  // Create or update location material intents
+  app.post('/api/rubble/locations/:locationId/materials', isAuthenticated, async (req: any, res) => {
+    try {
+      const { locationId } = req.params;
+      const { materials: materialIntents } = req.body;
+
+      // Verify user owns this location or is admin
+      const location = await storage.getWashoutLocation(locationId);
+      if (!location) {
+        return res.status(404).json({ message: 'Location not found' });
+      }
+
+      const owner = await storage.getOwner(req.user.id);
+      if (!owner && req.user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Unauthorized' });
+      }
+
+      if (owner && location.ownerId !== owner.id && req.user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'You do not own this location' });
+      }
+
+      // Delete all existing intents for this location
+      await storage.deleteAllLocationMaterialIntents(locationId);
+
+      // Create new intents
+      const createdIntents = [];
+      for (const intent of materialIntents) {
+        const newIntent = await storage.createLocationMaterialIntent({
+          locationId,
+          materialSlug: intent.materialSlug,
+          materialCustomLabel: intent.materialCustomLabel,
+          driverPayCents: intent.driverPayCents,
+          pricingUnit: intent.pricingUnit || 'load',
+          acceptsRebar: intent.acceptsRebar || false,
+          acceptsTrash: intent.acceptsTrash || false,
+          acceptsWood: intent.acceptsWood || false,
+          dailyCapacity: intent.dailyCapacity,
+        });
+        createdIntents.push(newIntent);
+      }
+
+      res.json(createdIntents);
+
+    } catch (error: any) {
+      console.error('Error saving location materials:', error);
+      res.status(500).json({ message: 'Failed to save location materials' });
+    }
+  });
+
+  // Create a rubble visit
+  app.post('/api/rubble/visits', isAuthenticated, async (req: any, res) => {
+    try {
+      const { locationId, materialSlug, materialCustomLabel, hasRebar, hasTrash, hasWood } = req.body;
+
+      // Get driver
+      const driver = await storage.getDriver(req.user.id);
+      if (!driver) {
+        return res.status(403).json({ message: 'Only drivers can create rubble visits' });
+      }
+
+      // Verify location exists
+      const location = await storage.getWashoutLocation(locationId);
+      if (!location) {
+        return res.status(404).json({ message: 'Location not found' });
+      }
+
+      // Verify location has matching material intent
+      const intents = await storage.getLocationMaterialIntents(locationId);
+      const matchingIntent = intents.find(intent => {
+        if (materialSlug) {
+          return intent.materialSlug === materialSlug;
+        } else if (materialCustomLabel) {
+          return intent.materialCustomLabel?.toLowerCase() === materialCustomLabel.toLowerCase();
+        }
+        return false;
+      });
+
+      if (!matchingIntent) {
+        return res.status(400).json({ message: 'This location does not accept this material' });
+      }
+
+      // Validate rules
+      if (hasRebar && !matchingIntent.acceptsRebar) {
+        return res.status(400).json({ message: 'This location does not accept rebar in this material' });
+      }
+      if (hasTrash && !matchingIntent.acceptsTrash) {
+        return res.status(400).json({ message: 'This location does not accept trash in this material' });
+      }
+      if (hasWood && !matchingIntent.acceptsWood) {
+        return res.status(400).json({ message: 'This location does not accept wood in this material' });
+      }
+
+      // Platform fee for rubble: $2.00 in production, $0.20 in testing (10% scale)
+      const RUBBLE_PLATFORM_FEE_CENTS = 20; // $0.20 for testing
+
+      // Create rubble visit
+      const visit = await storage.createWashoutActivity({
+        driverId: driver.id,
+        locationId,
+        status: 'pending',
+        serviceType: 'rubble',
+        materialSlug: matchingIntent.materialSlug,
+        materialCustomLabel: matchingIntent.materialCustomLabel,
+        feeCentsPlatform: RUBBLE_PLATFORM_FEE_CENTS,
+        checkInTime: new Date(),
+      });
+
+      res.json(visit);
+
+    } catch (error: any) {
+      console.error('Error creating rubble visit:', error);
+      res.status(500).json({ message: 'Failed to create rubble visit' });
+    }
+  });
+
+  // Arrive at rubble location
+  app.post('/api/rubble/visits/:visitId/arrive', isAuthenticated, async (req: any, res) => {
+    try {
+      const { visitId } = req.params;
+      const { latitude, longitude } = req.body;
+
+      // Get driver
+      const driver = await storage.getDriver(req.user.id);
+      if (!driver) {
+        return res.status(403).json({ message: 'Only drivers can arrive at locations' });
+      }
+
+      // Get visit
+      const visit = await storage.getWashoutActivity(visitId);
+      if (!visit) {
+        return res.status(404).json({ message: 'Visit not found' });
+      }
+
+      if (visit.driverId !== driver.id) {
+        return res.status(403).json({ message: 'This is not your visit' });
+      }
+
+      if (visit.serviceType !== 'rubble') {
+        return res.status(400).json({ message: 'This is not a rubble visit' });
+      }
+
+      if (visit.status !== 'pending') {
+        return res.status(400).json({ message: 'Visit is not in pending state' });
+      }
+
+      // Get location for geofence check
+      const location = await storage.getWashoutLocation(visit.locationId);
+      if (!location) {
+        return res.status(404).json({ message: 'Location not found' });
+      }
+
+      // Geofence validation (500 feet = ~0.095 miles)
+      const R = 3959; // Earth radius in miles
+      const dLat = (location.latitude - latitude) * Math.PI / 180;
+      const dLon = (location.longitude - longitude) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(latitude * Math.PI / 180) * Math.cos(location.latitude * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+
+      const MAX_DISTANCE_MILES = 0.095; // 500 feet
+      if (distance > MAX_DISTANCE_MILES) {
+        return res.status(400).json({ 
+          message: 'You are not at the location. Please get closer to check in.',
+          distance: Math.round(distance * 5280) // Convert to feet
+        });
+      }
+
+      // Update visit status to in_progress
+      const updatedVisit = await storage.updateWashoutActivityStatus(visitId, 'in_progress');
+
+      res.json(updatedVisit);
+
+    } catch (error: any) {
+      console.error('Error arriving at rubble location:', error);
+      res.status(500).json({ message: 'Failed to arrive at location' });
+    }
+  });
+
+  // Complete rubble visit with photos
+  app.post('/api/rubble/visits/:visitId/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const { visitId } = req.params;
+      const { beforePhotoUrl, afterPhotoUrl, latitude, longitude } = req.body;
+
+      // Get driver
+      const driver = await storage.getDriver(req.user.id);
+      if (!driver) {
+        return res.status(403).json({ message: 'Only drivers can complete visits' });
+      }
+
+      // Get visit
+      const visit = await storage.getWashoutActivity(visitId);
+      if (!visit) {
+        return res.status(404).json({ message: 'Visit not found' });
+      }
+
+      if (visit.driverId !== driver.id) {
+        return res.status(403).json({ message: 'This is not your visit' });
+      }
+
+      if (visit.serviceType !== 'rubble') {
+        return res.status(400).json({ message: 'This is not a rubble visit' });
+      }
+
+      if (visit.status !== 'in_progress') {
+        return res.status(400).json({ message: 'Visit is not in progress' });
+      }
+
+      // Validate required photos
+      if (!beforePhotoUrl || !afterPhotoUrl) {
+        return res.status(400).json({ message: 'Before and after photos are required' });
+      }
+
+      // Get location for geofence check
+      const location = await storage.getWashoutLocation(visit.locationId);
+      if (!location) {
+        return res.status(404).json({ message: 'Location not found' });
+      }
+
+      // Geofence validation (500 feet = ~0.095 miles)
+      const R = 3959; // Earth radius in miles
+      const dLat = (location.latitude - latitude) * Math.PI / 180;
+      const dLon = (location.longitude - longitude) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(latitude * Math.PI / 180) * Math.cos(location.latitude * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+
+      const MAX_DISTANCE_MILES = 0.095; // 500 feet
+      if (distance > MAX_DISTANCE_MILES) {
+        return res.status(400).json({ 
+          message: 'You are not at the location. Please get closer to complete the visit.',
+          distance: Math.round(distance * 5280) // Convert to feet
+        });
+      }
+
+      // Update visit status to completed
+      const updatedVisit = await storage.updateWashoutActivityStatus(visitId, 'completed');
+
+      // Create photos
+      await storage.createWashoutPhoto({
+        activityId: visitId,
+        photoUrl: beforePhotoUrl,
+        photoType: 'before',
+      });
+
+      await storage.createWashoutPhoto({
+        activityId: visitId,
+        photoUrl: afterPhotoUrl,
+        photoType: 'after',
+      });
+
+      // Get the material intent for payment calculation
+      const intents = await storage.getLocationMaterialIntents(visit.locationId);
+      const matchingIntent = intents.find(intent => 
+        visit.materialSlug ? intent.materialSlug === visit.materialSlug :
+        intent.materialCustomLabel?.toLowerCase() === visit.materialCustomLabel?.toLowerCase()
+      );
+
+      if (!matchingIntent) {
+        throw new Error('Material intent not found');
+      }
+
+      // Book the $2 platform fee (or $0.20 in testing)
+      // This will be processed by the batch payment system later
+      // For now, just mark the visit as needing payment processing
+
+      res.json({
+        visit: updatedVisit,
+        message: 'Rubble drop-off completed successfully! Payment will be processed shortly.',
+        driverPayCents: matchingIntent.driverPayCents,
+        platformFeeCents: visit.feeCentsPlatform || 20,
+      });
+
+    } catch (error: any) {
+      console.error('Error completing rubble visit:', error);
+      res.status(500).json({ message: 'Failed to complete visit' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
