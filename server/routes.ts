@@ -2246,9 +2246,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const owner = await storage.getOwner(userId);
+      const user = await storage.getUser(userId);
       
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       if (!owner.isApproved) {
