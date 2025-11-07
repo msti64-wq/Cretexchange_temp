@@ -16,6 +16,9 @@ export const FEATURE_FLAGS = {
   // Wallet Funding - requires Stripe Treasury approval
   WALLET_FUNDING: 'wallet_funding',
   
+  // Enhanced Location Creation - Google Maps integration with address autocomplete, geocoding, and interactive map picker
+  ENHANCED_LOCATION_CREATION: 'enhanced_location_creation',
+  
   // Example: Beta features
   // ADVANCED_ANALYTICS: 'advanced_analytics',
   // BULK_OPERATIONS: 'bulk_operations',
@@ -50,5 +53,11 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
     description: 'Enable wallet funding via ACH bank transfers. Requires Stripe Connect and Stripe Treasury approval. When disabled, users must use credit cards for all payments. Enable this feature after receiving Stripe Treasury access.',
     enabled: false, // Disabled by default - requires Stripe Treasury approval
     allowedRoles: [], // Available to all roles when enabled
+  },
+  {
+    key: FEATURE_FLAGS.ENHANCED_LOCATION_CREATION,
+    description: 'Enable enhanced location creation with Google Maps integration. Features: address autocomplete with instant suggestions, automatic coordinate conversion via geocoding, interactive map picker with draggable marker, and "Use Current Location" button. Requires VITE_GOOGLE_MAPS_API_KEY environment variable.',
+    enabled: false, // Disabled by default - requires Google Maps API key
+    allowedRoles: ['owner', 'super_admin'], // Location owners and admins
   },
 ];
