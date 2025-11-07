@@ -12,6 +12,8 @@ import { MapPin, Search, Navigation, Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { getCurrentLocation } from "@/lib/gps";
 import { formatAddress } from "@shared/addressUtils";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { FEATURE_FLAGS } from "@shared/featureFlags";
 
 export default function DriverLocations() {
   const [, setLocation] = useLocation();
@@ -19,6 +21,9 @@ export default function DriverLocations() {
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"distance" | "rate">("distance");
+
+  // Check if enhanced location creation (Google Maps) is enabled
+  const { enabled: isMapEnabled } = useFeatureFlag(FEATURE_FLAGS.ENHANCED_LOCATION_CREATION);
 
   const { data: locations, isLoading } = useQuery({
     queryKey: ['/api/drivers/locations'],
@@ -155,16 +160,18 @@ export default function DriverLocations() {
           </div>
         )}
 
-        {/* Map View */}
-        <Card>
-          <CardContent className="p-0">
-            <LocationMap 
-              locations={filteredAndSortedLocations}
-              userLocation={currentLocation}
-              height="200px"
-            />
-          </CardContent>
-        </Card>
+        {/* Map View - Only when enhanced location creation is enabled */}
+        {isMapEnabled && (
+          <Card>
+            <CardContent className="p-0">
+              <LocationMap 
+                locations={filteredAndSortedLocations}
+                userLocation={currentLocation}
+                height="200px"
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Location List */}
         <div className="space-y-3">
