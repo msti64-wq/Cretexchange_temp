@@ -56,7 +56,14 @@ export default function OwnerLocations() {
   });
 
   // Check if enhanced location creation is enabled
-  const { isEnabled: isEnhancedCreationEnabled, isLoading: isFlagLoading } = useFeatureFlag(FEATURE_FLAGS.ENHANCED_LOCATION_CREATION);
+  const { enabled: isEnhancedCreationEnabled, isLoading: isFlagLoading } = useFeatureFlag(FEATURE_FLAGS.ENHANCED_LOCATION_CREATION);
+  
+  // Debug logging
+  console.log('🔍 Enhanced Location Creation Feature Flag:', {
+    isEnhancedCreationEnabled,
+    isFlagLoading,
+    flagKey: FEATURE_FLAGS.ENHANCED_LOCATION_CREATION
+  });
 
   // Stable callbacks for Google Maps components to prevent re-initialization
   const handlePlaceSelected = useCallback((place: {
