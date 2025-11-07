@@ -109,8 +109,22 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
         return;
       }
 
+      // Check if Google Maps is already loaded
       if ((window as any).google && (window as any).google.maps) {
         initAutocomplete();
+        return;
+      }
+
+      // Check if script is already being loaded
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+      if (existingScript) {
+        // If script exists but Google Maps not loaded yet, wait for it
+        const handleLoad = () => {
+          if ((window as any).google && (window as any).google.maps) {
+            initAutocomplete();
+          }
+        };
+        existingScript.addEventListener('load', handleLoad, { once: true });
         return;
       }
 

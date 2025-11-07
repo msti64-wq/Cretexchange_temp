@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,8 +27,65 @@ export default function OwnerLocations() {
   const [locationToEdit, setLocationToEdit] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
+  // Form state - MUST be declared before callbacks that use setFormData
+  const [formData, setFormData] = useState({
+    name: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
+    latitude: "",
+    longitude: "",
+    rate: "5.00",
+    operatingHours: "",
+    amenities: "",
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
+    latitude: "",
+    longitude: "",
+    rate: "5.00",
+    operatingHours: "",
+    amenities: "",
+    description: "",
+  });
+
   // Check if enhanced location creation is enabled
   const { isEnabled: isEnhancedCreationEnabled, isLoading: isFlagLoading } = useFeatureFlag(FEATURE_FLAGS.ENHANCED_LOCATION_CREATION);
+
+  // Stable callbacks for Google Maps components to prevent re-initialization
+  const handlePlaceSelected = useCallback((place: {
+    formattedAddress: string;
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    latitude: number;
+    longitude: number;
+  }) => {
+    setFormData((prev) => ({
+      ...prev,
+      street: place.street,
+      city: place.city,
+      state: place.state,
+      zip: place.zip,
+      latitude: place.latitude.toString(),
+      longitude: place.longitude.toString(),
+    }));
+  }, []);
+
+  const handleLocationChange = useCallback((lat: number, lng: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      latitude: lat.toString(),
+      longitude: lng.toString(),
+    }));
+  }, []);
 
   const { data: locations, isLoading } = useQuery({
     queryKey: ['/api/owners/locations'],
@@ -127,33 +184,6 @@ export default function OwnerLocations() {
         variant: "destructive",
       });
     },
-  });
-
-  const [formData, setFormData] = useState({
-    name: "",
-    street: "",
-    city: "",
-    state: "",
-    zip: "",
-    latitude: "",
-    longitude: "",
-    rate: "5.00",
-    operatingHours: "",
-    amenities: "",
-  });
-
-  const [editFormData, setEditFormData] = useState({
-    name: "",
-    street: "",
-    city: "",
-    state: "",
-    zip: "",
-    latitude: "",
-    longitude: "",
-    rate: "5.00",
-    operatingHours: "",
-    amenities: "",
-    description: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -296,29 +326,13 @@ export default function OwnerLocations() {
                 {isEnhancedCreationEnabled ? (
                   <>
                     <AddressAutocomplete
-                      onPlaceSelected={(place) => {
-                        setFormData({
-                          ...formData,
-                          street: place.street,
-                          city: place.city,
-                          state: place.state,
-                          zip: place.zip,
-                          latitude: place.latitude.toString(),
-                          longitude: place.longitude.toString(),
-                        });
-                      }}
+                      onPlaceSelected={handlePlaceSelected}
                     />
 
                     <MapPicker
                       latitude={parseFloat(formData.latitude) || undefined}
                       longitude={parseFloat(formData.longitude) || undefined}
-                      onLocationChange={(lat, lng) => {
-                        setFormData({
-                          ...formData,
-                          latitude: lat.toString(),
-                          longitude: lng.toString(),
-                        });
-                      }}
+                      onLocationChange={handleLocationChange}
                       height="350px"
                     />
 
