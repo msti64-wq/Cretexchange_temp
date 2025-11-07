@@ -4,11 +4,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useLocation } from "wouter";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { LocationMap } from "@/components/LocationMap";
-import { MapPin, Search, Navigation, Clock } from "lucide-react";
+import { MapPin, Search, Navigation, Clock, Trash2, Package } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { getCurrentLocation } from "@/lib/gps";
 import { formatAddress } from "@shared/addressUtils";
@@ -21,9 +23,19 @@ export default function DriverLocations() {
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"distance" | "rate">("distance");
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
 
   // Check if enhanced location creation (Google Maps) is enabled
   const { enabled: isMapEnabled } = useFeatureFlag(FEATURE_FLAGS.ENHANCED_LOCATION_CREATION);
+  
+  // Check if rubble service is enabled
+  const { enabled: isRubbleServiceEnabled } = useFeatureFlag(FEATURE_FLAGS.RUBBLE_SERVICE);
+
+  // Fetch available materials for rubble service
+  const { data: materials = [] } = useQuery<any[]>({
+    queryKey: ['/api/materials'],
+    enabled: isRubbleServiceEnabled,
+  });
 
   const { data: locations, isLoading } = useQuery({
     queryKey: ['/api/drivers/locations'],
@@ -147,6 +159,69 @@ export default function DriverLocations() {
             </Button>
           </div>
         </div>
+
+        {/* Material Selection for Rubble Service */}
+        {isRubbleServiceEnabled && materials && materials.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Trash2 className="w-5 h-5 text-accent" />
+                <h3 className="font-semibold">What are you looking to drop off?</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Select the materials you need to dispose of to find accepting locations
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {materials.map((material: any) => (
+                  <div key={material.id} className="flex items-start space-x-2">
+                    <Checkbox
+                      id={`material-${material.id}`}
+                      checked={selectedMaterials.includes(material.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedMaterials([...selectedMaterials, material.id]);
+                        } else {
+                          setSelectedMaterials(selectedMaterials.filter(id => id !== material.id));
+                        }
+                      }}
+                      data-testid={`checkbox-material-${material.slug}`}
+                    />
+                    <Label
+                      htmlFor={`material-${material.id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      <div>
+                        <div className="font-medium">{material.name}</div>
+                        {material.description && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {material.description}
+                          </div>
+                        )}
+                      </div>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              {selectedMaterials.length > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {selectedMaterials.length} material{selectedMaterials.length !== 1 ? 's' : ''} selected
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedMaterials([])}
+                      data-testid="button-clear-materials"
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Location Error Message */}
         {locationError && (
