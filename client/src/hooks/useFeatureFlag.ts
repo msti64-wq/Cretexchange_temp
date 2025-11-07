@@ -30,7 +30,7 @@ interface FeatureFlag {
  */
 export function useFeatureFlag(flagKey: FeatureFlagKey) {
   const { data, isLoading, error } = useQuery<FeatureFlagCheckResponse>({
-    queryKey: ['/api/feature-flags', flagKey, 'check'],
+    queryKey: [`/api/feature-flags/${flagKey}/check`],
     enabled: !!flagKey,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     retry: 1,
