@@ -191,10 +191,10 @@ export default function DriverLocations() {
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                     >
                       <div>
-                        <div className="font-medium">{material.name}</div>
-                        {material.description && (
+                        <div className="font-medium">{material.displayName || material.display_name}</div>
+                        {material.synonyms && material.synonyms.length > 0 && (
                           <div className="text-xs text-muted-foreground mt-0.5">
-                            {material.description}
+                            Examples: {material.synonyms.join(', ')}
                           </div>
                         )}
                       </div>
