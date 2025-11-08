@@ -9552,7 +9552,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rubble Service API Endpoints
   // ============================================
 
-  // Get all materials catalog
+  // Get all materials catalog (simple endpoint for UI)
+  app.get('/api/materials', isAuthenticated, async (req: any, res) => {
+    try {
+      const materials = await storage.getAllMaterials();
+      res.json(materials);
+    } catch (error: any) {
+      console.error('Error fetching materials:', error);
+      res.status(500).json({ message: 'Failed to fetch materials' });
+    }
+  });
+
+  // Get all materials catalog (legacy endpoint)
   app.get('/api/rubble/materials', isAuthenticated, async (req: any, res) => {
     try {
       const materials = await storage.getAllMaterials();
