@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings } from "lucide-react";
+import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, Package } from "lucide-react";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -26,6 +27,7 @@ export default function OwnerLocations() {
   const [locationToDelete, setLocationToDelete] = useState<any>(null);
   const [locationToEdit, setLocationToEdit] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedMaterialsForEdit, setSelectedMaterialsForEdit] = useState<string[]>([]);
 
   // Form state - MUST be declared before callbacks that use setFormData
   const [formData, setFormData] = useState({
@@ -57,6 +59,15 @@ export default function OwnerLocations() {
 
   // Check if enhanced location creation is enabled
   const { enabled: isEnhancedCreationEnabled, isLoading: isFlagLoading } = useFeatureFlag(FEATURE_FLAGS.ENHANCED_LOCATION_CREATION);
+  
+  // Check if rubble service is enabled
+  const { enabled: isRubbleServiceEnabled } = useFeatureFlag(FEATURE_FLAGS.RUBBLE_SERVICE);
+  
+  // Fetch available materials for rubble service
+  const { data: materials = [] } = useQuery<any[]>({
+    queryKey: ['/api/materials'],
+    enabled: isRubbleServiceEnabled,
+  });
 
   // Stable callbacks for Google Maps components to prevent re-initialization
   const handlePlaceSelected = useCallback((place: {
@@ -204,7 +215,7 @@ export default function OwnerLocations() {
   };
 
 
-  const handleEditLocation = (location: any) => {
+  const handleEditLocation = async (location: any) => {
     setLocationToEdit(location);
     setEditFormData({
       name: location.name || "",
@@ -219,10 +230,24 @@ export default function OwnerLocations() {
       amenities: location.amenities?.join(", ") || "",
       description: location.description || "",
     });
+    
+    // Load existing material intents if rubble service is enabled
+    if (isRubbleServiceEnabled) {
+      try {
+        const response = await apiRequest('GET', `/api/locations/${location.id}/material-intents`);
+        const intents = await response.json();
+        const materialIds = intents.map((intent: any) => intent.materialId);
+        setSelectedMaterialsForEdit(materialIds);
+      } catch (error) {
+        console.error('Error loading material intents:', error);
+        setSelectedMaterialsForEdit([]);
+      }
+    }
+    
     setIsEditDialogOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!locationToEdit) return;
@@ -232,6 +257,7 @@ export default function OwnerLocations() {
       .map(a => a.trim())
       .filter(a => a.length > 0);
 
+    // Update location data
     updateLocationMutation.mutate({
       locationId: locationToEdit.id,
       locationData: {
@@ -242,6 +268,45 @@ export default function OwnerLocations() {
         amenities: amenitiesArray,
       }
     });
+    
+    // Save material intents if rubble service is enabled
+    if (isRubbleServiceEnabled && selectedMaterialsForEdit.length > 0) {
+      try {
+        // First, clear existing intents
+        await apiRequest('DELETE', `/api/locations/${locationToEdit.id}/material-intents`);
+        
+        // Then, create new intents for selected materials
+        const materialIntents = selectedMaterialsForEdit.map(materialId => ({
+          locationId: locationToEdit.id,
+          materialId,
+          pricePerUnit: 0, // Default price, owner can update later
+          unit: 'load',
+          acceptsRebar: true,
+          acceptsTrash: true,
+          acceptsWood: true,
+        }));
+        
+        await Promise.all(
+          materialIntents.map(intent =>
+            apiRequest('POST', `/api/locations/${locationToEdit.id}/material-intents`, intent)
+          )
+        );
+      } catch (error) {
+        console.error('Error saving material intents:', error);
+        toast({
+          title: "Warning",
+          description: "Location updated but material preferences could not be saved.",
+          variant: "destructive",
+        });
+      }
+    } else if (isRubbleServiceEnabled && selectedMaterialsForEdit.length === 0) {
+      // Clear all material intents if none are selected
+      try {
+        await apiRequest('DELETE', `/api/locations/${locationToEdit.id}/material-intents`);
+      } catch (error) {
+        console.error('Error clearing material intents:', error);
+      }
+    }
   };
 
   const handleToggleStatus = (locationId: string, currentStatus: boolean) => {
@@ -690,6 +755,48 @@ export default function OwnerLocations() {
                     data-testid="input-edit-amenities"
                   />
                 </div>
+
+                {/* Materials Wanted - Rubble Service */}
+                {isRubbleServiceEnabled && materials && materials.length > 0 && (
+                  <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-5 h-5 text-accent" />
+                      <Label className="text-base font-semibold">Materials Wanted (Optional)</Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Select construction materials you accept for rubble drop-off service
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {materials.map((material: any) => (
+                        <div key={material.id} className="flex items-start space-x-2">
+                          <Checkbox
+                            id={`edit-material-${material.id}`}
+                            checked={selectedMaterialsForEdit.includes(material.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedMaterialsForEdit([...selectedMaterialsForEdit, material.id]);
+                              } else {
+                                setSelectedMaterialsForEdit(selectedMaterialsForEdit.filter(id => id !== material.id));
+                              }
+                            }}
+                            data-testid={`checkbox-edit-material-${material.slug}`}
+                          />
+                          <Label
+                            htmlFor={`edit-material-${material.id}`}
+                            className="text-sm font-medium leading-none cursor-pointer"
+                          >
+                            {material.displayName || material.display_name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedMaterialsForEdit.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {selectedMaterialsForEdit.length} material{selectedMaterialsForEdit.length !== 1 ? 's' : ''} selected
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   <Button
