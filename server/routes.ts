@@ -2203,7 +2203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         });
 
-        await storage.updateUser(userId, {
+        await storage.updateUserStripeInfo(userId, {
           stripeConnectAccountId: connectedAccount.id
         });
         
@@ -2340,7 +2340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Update user with Stripe Connect account ID
-        await storage.updateUser(userId, {
+        await storage.updateUserStripeInfo(userId, {
           stripeConnectAccountId: connectedAccount.id
         });
 
@@ -4956,7 +4956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             // Update user record
-            await storage.updateUser(user.id, {
+            await storage.updateUserStripeInfo(user.id, {
               stripeConnectAccountId: stripeAccount.id
             });
 
@@ -4990,7 +4990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             // Update user record
-            await storage.updateUser(user.id, {
+            await storage.updateUserStripeInfo(user.id, {
               stripeCustomerId: stripeCustomer.id
             });
 
@@ -5031,7 +5031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user.email,
         });
 
-        await storage.updateUser(userId, {
+        await storage.updateUserStripeInfo(userId, {
           stripeCustomerId: customer.id
         });
         

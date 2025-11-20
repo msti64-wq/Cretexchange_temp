@@ -101,6 +101,7 @@ export interface IStorage {
   updateUserColumnInfo(userId: string, columnCustomerId: string): Promise<User>;
   updateUserPassword(userId: string, passwordHash: string): Promise<User>;
   updateUserStatus(userId: string, isActive: boolean): Promise<User | undefined>;
+  updateUserStripeInfo(userId: string, stripeData: { stripeConnectAccountId?: string; stripeCustomerId?: string }): Promise<User>;
 
   // Password reset operations
   createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
@@ -466,6 +467,18 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ 
         isActive,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserStripeInfo(userId: string, stripeData: { stripeConnectAccountId?: string; stripeCustomerId?: string }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        ...stripeData,
         updatedAt: new Date() 
       })
       .where(eq(users.id, userId))
