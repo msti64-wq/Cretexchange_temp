@@ -4617,6 +4617,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/admin/backfill-owner-payment-methods - Backfill payment methods from Stripe for existing owners
+  app.post('/api/admin/backfill-owner-payment-methods', isAuthenticated, async (req: any, res) => {
+    try {
+      // Check super admin role
+      if (req.user.role !== 'super_admin') {
+        return res.status(403).json({ message: "Unauthorized - super admin only" });
+      }
+
+      console.log('🔄 Starting owner payment method backfill...');
+      
+      // Get all owners
+      const allOwners = await storage.getAllOwners();
+      
+      const results = {
+        total: allOwners.length,
+        alreadyHadPaymentMethod: 0,
+        backfilled: 0,
+        noStripeCustomer: 0,
+        noPaymentMethodInStripe: 0,
+        errors: [] as string[],
+      };
+
+      for (const owner of allOwners) {
+        try {
+          // Skip if already has payment method
+          if (owner.stripePaymentMethodId) {
+            results.alreadyHadPaymentMethod++;
+            continue;
+          }
+
+          // Skip if no Stripe customer
+          if (!owner.stripeCustomerId) {
+            results.noStripeCustomer++;
+            continue;
+          }
+
+          // Get default payment method from Stripe
+          const customer = await stripe.customers.retrieve(owner.stripeCustomerId);
+          
+          if (customer.deleted) {
+            results.errors.push(`Owner ${owner.id}: Stripe customer deleted`);
+            continue;
+          }
+
+          const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
+          
+          if (!defaultPaymentMethodId) {
+            results.noPaymentMethodInStripe++;
+            continue;
+          }
+
+          // Update owner record with payment method
+          await storage.updateOwner(owner.id, {
+            stripePaymentMethodId: defaultPaymentMethodId as string,
+          });
+
+          console.log(`✅ Backfilled payment method for owner ${owner.id}: ${defaultPaymentMethodId}`);
+          results.backfilled++;
+
+        } catch (error: any) {
+          console.error(`❌ Error backfilling owner ${owner.id}:`, error);
+          results.errors.push(`Owner ${owner.id}: ${error.message}`);
+        }
+      }
+
+      console.log('✅ Payment method backfill complete:', results);
+      res.json(results);
+
+    } catch (error: any) {
+      console.error("Error in payment method backfill:", error);
+      res.status(500).json({ message: "Failed to backfill payment methods: " + error.message });
+    }
+  });
+
   // FINANCIAL CONNECTIONS: Create session for instant bank verification (OWNERS)
   app.post('/api/owners/bank-connect/session', isAuthenticated, async (req: any, res) => {
     try {
