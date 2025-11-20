@@ -9302,6 +9302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const flags = await storage.getAllFeatureFlags();
+      console.log(`🚩 Feature flags retrieved: ${flags.length} flags`, flags.map(f => f.flagKey));
       res.json(flags);
     } catch (error) {
       console.error('❌ Error fetching feature flags:', error);
