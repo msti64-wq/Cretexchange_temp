@@ -25,6 +25,82 @@ if (process.env.STRIPE_SECRET_KEY) {
   console.log('Development mode: Stripe functionality disabled - using mock payment processing');
 }
 
+/**
+ * Validate that an IP string is a valid IPv4 address
+ * Checks format and ensures octets are strictly numeric and in valid range (0-255)
+ * More lenient: accepts leading zeros and whitespace
+ * @returns True if valid IPv4, false otherwise
+ */
+function isValidIPv4(ip: string): boolean {
+  const trimmed = ip.trim();
+  const parts = trimmed.split('.');
+  if (parts.length !== 4) return false;
+  
+  for (const part of parts) {
+    // Ensure each octet contains only digits (no letters or special chars)
+    if (!/^\d+$/.test(part)) {
+      return false;
+    }
+    
+    const num = parseInt(part, 10);
+    // Check if number is in valid range 0-255
+    // Allow leading zeros (e.g., "192.001.001.001" is valid)
+    if (isNaN(num) || num < 0 || num > 255) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Extract and normalize IPv4 address from Express request
+ * Stripe requires valid IPv4 for TOS acceptance
+ * @returns Valid IPv4 string or null if none found
+ */
+function extractIPv4(req: any): string | null {
+  // Try x-forwarded-for header first (proxy/load balancer)
+  const forwardedFor = req.headers['x-forwarded-for'];
+  if (forwardedFor) {
+    const ips = (typeof forwardedFor === 'string' ? forwardedFor : forwardedFor[0]).split(',');
+    for (const ip of ips) {
+      const trimmed = ip.trim();
+      // Strip IPv6 prefix if present
+      const normalized = trimmed.replace(/^::ffff:/, '');
+      if (isValidIPv4(normalized)) {
+        console.log('✅ IP detected from x-forwarded-for:', normalized);
+        return normalized;
+      }
+    }
+  }
+  
+  // Try req.ip (Express property)
+  if (req.ip) {
+    // Strip IPv6 prefix if present (e.g., "::ffff:192.168.1.1" → "192.168.1.1")
+    const ip = req.ip.replace(/^::ffff:/, '').trim();
+    if (isValidIPv4(ip)) {
+      console.log('✅ IP detected from req.ip:', ip);
+      return ip;
+    }
+  }
+  
+  // Try remoteAddress
+  if (req.socket?.remoteAddress) {
+    const ip = req.socket.remoteAddress.replace(/^::ffff:/, '').trim();
+    if (isValidIPv4(ip)) {
+      console.log('✅ IP detected from remoteAddress:', ip);
+      return ip;
+    }
+  }
+  
+  // No valid IPv4 found - log for debugging
+  console.warn('⚠️ No valid IPv4 found:', {
+    'x-forwarded-for': req.headers['x-forwarded-for'],
+    'req.ip': req.ip,
+    'remoteAddress': req.socket?.remoteAddress
+  });
+  return null;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for debugging
   app.get('/api/health', async (req, res) => {
@@ -672,6 +748,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let stripeConnectAccountId = existingUser.stripeConnectAccountId;
       if (!stripeConnectAccountId) {
         try {
+          // Get real user IP for TOS acceptance compliance (Stripe requires IPv4)
+          const userIp = extractIPv4(req);
+          if (!userIp) {
+            console.error('❌ Cannot create Stripe account: No valid IPv4 address found');
+            return res.status(400).json({ 
+              message: "Unable to complete registration: IP address detection failed. Please try again or contact support." 
+            });
+          }
+          
           const stripeAccount = await stripeService.createConnectedAccount({
             userId: existingUser.id,
             username: existingUser.username,
@@ -684,13 +769,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lastName: existingUser.lastName,
               email: existingUser.email,
               phone: existingUser.phone || undefined
+            },
+            businessProfile: {
+              mcc: '7542', // MCC for Car Washes (washout services)
+              url: process.env.REPLIT_DEV_DOMAIN || 'https://creteexchange.com',
+              supportEmail: process.env.SUPPORT_EMAIL || 'support@creteexchange.com'
+            },
+            tosAcceptance: {
+              date: Math.floor(Date.now() / 1000),
+              ip: userIp // Real user IPv4 for Stripe compliance
             }
           });
           stripeConnectAccountId = stripeAccount.id;
-          console.log('✅ Created Stripe Connect account for driver:', stripeConnectAccountId);
+          console.log('✅ Created Stripe Connect account for driver:', stripeConnectAccountId, 'IP:', userIp);
         } catch (stripeError: any) {
           console.error('❌ Failed to create Stripe Connect account:', stripeError.message);
-          // Continue without Stripe account - can be created later
+          return res.status(500).json({ 
+            message: "Failed to create payment account. Please try again or contact support.",
+            error: stripeError.message
+          });
         }
       }
       
@@ -4782,7 +4879,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized - super admin only" });
       }
 
-      console.log('🔄 Starting Stripe account backfill...');
+      // Check if Stripe is initialized
+      if (!stripe) {
+        return res.status(503).json({ 
+          message: "Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable to enable payment processing.",
+          details: "This operation requires Stripe to be initialized. Contact platform administrator."
+        });
+      }
+
+      // Get manual IP override if provided (for IPv6-only networks)
+      const manualIp = req.body?.ipOverride;
+      if (manualIp && !isValidIPv4(manualIp)) {
+        return res.status(400).json({ 
+          message: "Invalid IP override provided. Must be a valid IPv4 address (e.g., 192.168.1.1)." 
+        });
+      }
+
+      console.log('🔄 Starting Stripe account backfill...', manualIp ? `(Manual IP: ${manualIp})` : '');
       
       // Get all users
       const allUsers = await db.select().from(users);
@@ -4809,6 +4922,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               continue;
             }
 
+            // Get admin IP for TOS acceptance (backfill is admin action, Stripe requires IPv4)
+            // Try manual override first, then auto-detect
+            const adminIp = manualIp || extractIPv4(req);
+            if (!adminIp) {
+              results.errors.push(`${user.username} (driver): No valid IPv4 address found. Provide ipOverride in request body for IPv6-only networks.`);
+              continue;
+            }
+            
             // Create Stripe Connect account
             const stripeAccount = await stripeService.createConnectedAccount({
               userId: user.id,
@@ -4822,6 +4943,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 lastName: user.lastName,
                 email: user.email,
                 phone: user.phone || undefined
+              },
+              businessProfile: {
+                mcc: '7542', // MCC for Car Washes (washout services)
+                url: process.env.REPLIT_DEV_DOMAIN || 'https://creteexchange.com',
+                supportEmail: process.env.SUPPORT_EMAIL || 'support@creteexchange.com'
+              },
+              tosAcceptance: {
+                date: Math.floor(Date.now() / 1000),
+                ip: adminIp // Real admin IPv4 performing backfill
               }
             });
 

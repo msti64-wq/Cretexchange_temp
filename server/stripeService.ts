@@ -77,6 +77,15 @@ export interface CreateConnectedAccountParams {
       country: string;
     };
   };
+  businessProfile?: {
+    mcc?: string;
+    url?: string;
+    supportEmail?: string;
+  };
+  tosAcceptance?: {
+    date: number;
+    ip: string;
+  };
 }
 
 /**
@@ -119,10 +128,15 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
       },
       business_type: params.businessType || 'individual',
       business_profile: {
-        url: 'https://cretexchange.com', // Platform URL
-        support_email: params.email, // Support email required for custom accounts
+        mcc: params.businessProfile?.mcc || '7542', // Default to Car Washes (washout services)
+        url: params.businessProfile?.url || 'https://cretexchange.com',
+        support_email: params.businessProfile?.supportEmail || params.email,
         name: params.username, // USERNAME as primary identifier in Stripe dashboard
       },
+      tos_acceptance: params.tosAcceptance ? {
+        date: params.tosAcceptance.date,
+        ip: params.tosAcceptance.ip,
+      } : undefined, // TOS acceptance should always be provided by caller with real IPv4
       metadata: {
         user_id: params.userId, // REQUIRED - Track user ID to prevent duplicates
         username: params.username, // USERNAME - Primary identifier (not email)

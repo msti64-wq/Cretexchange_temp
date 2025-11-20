@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { Settings, Database, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
@@ -12,6 +14,7 @@ export default function AdminSettings() {
   const { toast } = useToast();
   const [backfillResult, setBackfillResult] = useState<any>(null);
   const [stripeAccountResult, setStripeAccountResult] = useState<any>(null);
+  const [ipOverride, setIpOverride] = useState<string>("");
 
   const backfillMutation = useMutation({
     mutationFn: async () => {
@@ -37,9 +40,11 @@ export default function AdminSettings() {
   });
 
   const stripeAccountMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (ipOverride?: string) => {
       const response = await apiRequest("/api/admin/backfill-stripe-accounts", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ipOverride ? { ipOverride } : {}),
       });
       return response.json();
     },
@@ -198,9 +203,28 @@ export default function AdminSettings() {
                 </div>
               </div>
 
+              {/* Optional IP Override for IPv6-only networks */}
+              <div className="space-y-2">
+                <Label htmlFor="ip-override" className="text-sm text-muted-foreground">
+                  IP Override (Optional)
+                </Label>
+                <Input
+                  id="ip-override"
+                  type="text"
+                  placeholder="e.g., 192.168.1.1"
+                  value={ipOverride}
+                  onChange={(e) => setIpOverride(e.target.value)}
+                  className="max-w-xs"
+                  data-testid="input-ip-override"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Only needed if running from IPv6-only network. Provide a valid IPv4 address for Stripe TOS compliance.
+                </p>
+              </div>
+
               <div className="flex items-center gap-3">
                 <Button
-                  onClick={() => stripeAccountMutation.mutate()}
+                  onClick={() => stripeAccountMutation.mutate(ipOverride || undefined)}
                   disabled={stripeAccountMutation.isPending}
                   data-testid="button-create-stripe-accounts"
                 >
