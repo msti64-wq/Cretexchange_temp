@@ -1756,7 +1756,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/drivers/locations', isAuthenticated, async (req: any, res) => {
     try {
       const locations = await storage.getActiveLocations();
-      res.json(locations);
+      
+      // Enrich locations with material intents if rubble service is enabled
+      const locationsWithMaterials = await Promise.all(
+        locations.map(async (location: any) => {
+          try {
+            const materialIntents = await storage.getLocationMaterialIntents(location.id);
+            
+            // Get material details for each intent
+            const materialsWithDetails = await Promise.all(
+              materialIntents.map(async (intent: any) => {
+                const material = await storage.getMaterialBySlug(intent.materialSlug);
+                return {
+                  ...intent,
+                  material: material || null
+                };
+              })
+            );
+            
+            return {
+              ...location,
+              materialIntents: materialsWithDetails
+            };
+          } catch (error) {
+            console.error(`Error fetching materials for location ${location.id}:`, error);
+            return {
+              ...location,
+              materialIntents: []
+            };
+          }
+        })
+      );
+      
+      res.json(locationsWithMaterials);
     } catch (error) {
       console.error("Error fetching locations:", error);
       res.status(500).json({ message: "Failed to fetch locations" });

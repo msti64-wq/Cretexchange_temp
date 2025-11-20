@@ -327,6 +327,36 @@ export default function DriverLocations() {
                     </div>
                   )}
 
+                  {/* Materials Accepted - Rubble Service */}
+                  {isRubbleServiceEnabled && location.materialIntents && location.materialIntents.length > 0 && (
+                    <div className="mb-3 p-3 border rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Package className="w-4 h-4 text-accent" />
+                        <h4 className="text-sm font-semibold">Materials Accepted</h4>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {location.materialIntents
+                          .filter((intent: any) => intent.active !== false)
+                          .map((intent: any, intentIndex: number) => {
+                            const material = intent.material;
+                            const displayName = material?.displayName || material?.display_name || intent.customLabel || 'Custom Material';
+                            const rateCents = intent.rateCents || intent.rate_cents || 0;
+                            const unit = intent.unit || 'per_load';
+                            const unitDisplay = unit === 'per_load' ? 'per load' : unit === 'per_ton' ? 'per ton' : 'per cubic yard';
+                            
+                            return (
+                              <div key={intentIndex} className="flex items-center justify-between text-sm" data-testid={`material-${index}-${intentIndex}`}>
+                                <span className="text-muted-foreground">{displayName}</span>
+                                <span className="font-semibold text-green-600">
+                                  {formatCurrency(rateCents / 100)} {unitDisplay}
+                                </span>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     <Button 
                       size="sm"
