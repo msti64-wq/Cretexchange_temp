@@ -1,0 +1,702 @@
+index-B5gjifUs.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value>​flex
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+[Violation] 'setTimeout' handler took 149ms
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+index-B5gjifUs.js:493 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, termsAgreed: true, showInstallPrompt: false}
+index-B5gjifUs.js:493 ✅ Profile complete! Showing install prompt...
+index-B5gjifUs.js:487 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-B5gjifUs.js:487 ❌ InstallPrompt not showing because showPrompt is false
+index-B5gjifUs.js:487 🔧 InstallPrompt component loaded
+index-B5gjifUs.js:487 👤 User previously dismissed install prompt: true
+index-B5gjifUs.js:487 ⏭️ Skipping install prompt - user previously dismissed
+index-B5gjifUs.js:493 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, termsAgreed: true, showInstallPrompt: true}
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+Navigated to https://truck-wash-locator-msti64.replit.app/login
+index-B5gjifUs.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value>​flex
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+[Violation] 'setTimeout' handler took 90ms
+stripe.js:1 [Violation] 'setInterval' handler took 52ms
+[Violation] 'setTimeout' handler took 151ms
+[Violation] 'setTimeout' handler took 55ms
+[Violation] 'setTimeout' handler took 102ms
+index-B5gjifUs.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/login".
+ve @ index-B5gjifUs.js:48
+mutationFn @ index-B5gjifUs.js:487
+fn @ index-B5gjifUs.js:48
+b @ index-B5gjifUs.js:48
+start @ index-B5gjifUs.js:48
+execute @ index-B5gjifUs.js:48
+await in execute
+mutate @ index-B5gjifUs.js:48
+(anonymous) @ index-B5gjifUs.js:48
+u @ index-B5gjifUs.js:487
+c4 @ index-B5gjifUs.js:37
+u4 @ index-B5gjifUs.js:37
+m4 @ index-B5gjifUs.js:37
+ov @ index-B5gjifUs.js:37
+C1 @ index-B5gjifUs.js:37
+(anonymous) @ index-B5gjifUs.js:37
+jx @ index-B5gjifUs.js:40
+YN @ index-B5gjifUs.js:37
+uh @ index-B5gjifUs.js:37
+Qp @ index-B5gjifUs.js:37
+_4 @ index-B5gjifUs.js:37
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Navigated to https://truck-wash-locator-msti64.replit.app/login
+index-DBi3MLTo.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value>​flex
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-DBi3MLTo.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/login".
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:487
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+u @ index-DBi3MLTo.js:487
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+index-DBi3MLTo.js:493 Owner Photo Button Clicked: {id: 'b00cf2ff-c297-4b61-b84c-9dd0f4b1028f', driverId: '58cbee85-d8c2-4622-8fc5-1af7b582b001', locationId: 'be74d0b2-5689-414e-9129-e692fbf9fded', status: 'pending', amount: '5.00', …}
+index-DBi3MLTo.js:493 🔧 Dashboard: Setting modal state {activityId: 'b00cf2ff-c297-4b61-b84c-9dd0f4b1028f', currentModalOpen: false, currentSelectedActivity: undefined, activityData: {…}}
+index-DBi3MLTo.js:493 🔧 Dashboard: Modal state updated
+index-DBi3MLTo.js:487 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-DBi3MLTo.js:487
+cm @ index-DBi3MLTo.js:40
+fo @ index-DBi3MLTo.js:40
+qA @ index-DBi3MLTo.js:40
+Ya @ index-DBi3MLTo.js:40
+Lv @ index-DBi3MLTo.js:40
+Ua @ index-DBi3MLTo.js:38
+(anonymous) @ index-DBi3MLTo.js:40
+index-DBi3MLTo.js:48  PUT https://truck-wash-locator-msti64.replit.app/api/owners/activities/b00cf2ff-c297-4b61-b84c-9dd0f4b1028f/verify 500 (Internal Server Error)
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:493
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+index-DBi3MLTo.js:493 Approval mutation error: Error: 500: {"message":"Payment failed: Driver account not configured. Please contact support."}
+    at nC (index-DBi3MLTo.js:48:42800)
+    at async ve (index-DBi3MLTo.js:48:43123)
+    at async Object.mutationFn (index-DBi3MLTo.js:493:92415)
+mutationFn @ index-DBi3MLTo.js:493
+await in mutationFn
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+index-DBi3MLTo.js:493 Approval failed: Error: 500: {"message":"Payment failed: Driver account not configured. Please contact support."}
+    at nC (index-DBi3MLTo.js:48:42800)
+    at async ve (index-DBi3MLTo.js:48:43123)
+    at async Object.mutationFn (index-DBi3MLTo.js:493:92415)
+onError @ index-DBi3MLTo.js:493
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+index-DBi3MLTo.js:48 Fetch failed loading: PUT "https://truck-wash-locator-msti64.replit.app/api/owners/activities/b00cf2ff-c297-4b61-b84c-9dd0f4b1028f/verify".
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:493
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+Navigated to https://truck-wash-locator-msti64.replit.app/login
+index-DBi3MLTo.js:48 🔄 Query cache cleared once
+index-DBi3MLTo.js:40 [Violation] 'setTimeout' handler took 99ms
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value>​flex
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-DBi3MLTo.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/login".
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:487
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+u @ index-DBi3MLTo.js:487
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Navigated to https://truck-wash-locator-msti64.replit.app/login
+index-DBi3MLTo.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value>​flex
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-DBi3MLTo.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/login".
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:487
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+u @ index-DBi3MLTo.js:487
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+index-DBi3MLTo.js:493 Owner Photo Button Clicked: {id: 'f5f28f47-dac0-4be0-8559-9f6d7292c138', driverId: '58cbee85-d8c2-4622-8fc5-1af7b582b001', locationId: 'be74d0b2-5689-414e-9129-e692fbf9fded', status: 'pending', amount: '5.00', …}
+index-DBi3MLTo.js:493 🔧 Dashboard: Setting modal state {activityId: 'f5f28f47-dac0-4be0-8559-9f6d7292c138', currentModalOpen: false, currentSelectedActivity: undefined, activityData: {…}}
+index-DBi3MLTo.js:493 🔧 Dashboard: Modal state updated
+index-DBi3MLTo.js:487 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-DBi3MLTo.js:487
+cm @ index-DBi3MLTo.js:40
+fo @ index-DBi3MLTo.js:40
+qA @ index-DBi3MLTo.js:40
+Ya @ index-DBi3MLTo.js:40
+Lv @ index-DBi3MLTo.js:40
+Ua @ index-DBi3MLTo.js:38
+(anonymous) @ index-DBi3MLTo.js:40
+index-DBi3MLTo.js:48  PUT https://truck-wash-locator-msti64.replit.app/api/owners/activities/f5f28f47-dac0-4be0-8559-9f6d7292c138/verify 500 (Internal Server Error)
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:493
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+index-DBi3MLTo.js:493 Approval mutation error: Error: 500: {"message":"Payment processing failed: Your destination account needs to have at least one of the following capabilities enabled: transfers, crypto_transfers, legacy_payments. Please verify your payment method and try again."}
+    at nC (index-DBi3MLTo.js:48:42800)
+    at async ve (index-DBi3MLTo.js:48:43123)
+    at async Object.mutationFn (index-DBi3MLTo.js:493:92415)
+mutationFn @ index-DBi3MLTo.js:493
+await in mutationFn
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+index-DBi3MLTo.js:48 Fetch failed loading: PUT "https://truck-wash-locator-msti64.replit.app/api/owners/activities/f5f28f47-dac0-4be0-8559-9f6d7292c138/verify".
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:493
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+index-DBi3MLTo.js:493 Approval failed: Error: 500: {"message":"Payment processing failed: Your destination account needs to have at least one of the following capabilities enabled: transfers, crypto_transfers, legacy_payments. Please verify your payment method and try again."}
+    at nC (index-DBi3MLTo.js:48:42800)
+    at async ve (index-DBi3MLTo.js:48:43123)
+    at async Object.mutationFn (index-DBi3MLTo.js:493:92415)
+onError @ index-DBi3MLTo.js:493
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+[Violation] 'setTimeout' handler took 136ms
+stripe.js:1 [Violation] 'setTimeout' handler took 62ms
+Navigated to https://truck-wash-locator-msti64.replit.app/login
+index-DBi3MLTo.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value>​flex
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-DBi3MLTo.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/login".
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:487
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+u @ index-DBi3MLTo.js:487
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+index-DBi3MLTo.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/admin/backfill-owner-payment-methods".
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:525
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:525
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+index-DBi3MLTo.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/admin/backfill-stripe-accounts".
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:525
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:525
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+Navigated to https://truck-wash-locator-msti64.replit.app/login
+index-DBi3MLTo.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value>​flex
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-DBi3MLTo.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/login".
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:487
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+u @ index-DBi3MLTo.js:487
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Navigated to https://truck-wash-locator-msti64.replit.app/
+index-DBi3MLTo.js:48 🔄 Query cache cleared once
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+(index):38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+(index):1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-DBi3MLTo.js:40 [Violation] 'setTimeout' handler took 120ms
+index-DBi3MLTo.js:493 Owner Photo Button Clicked: {id: '9c5c549d-7b3c-4bb5-8a68-5f2e0f3cead1', driverId: '58cbee85-d8c2-4622-8fc5-1af7b582b001', locationId: 'be74d0b2-5689-414e-9129-e692fbf9fded', status: 'pending', amount: '5.00', …}
+index-DBi3MLTo.js:493 🔧 Dashboard: Setting modal state {activityId: '9c5c549d-7b3c-4bb5-8a68-5f2e0f3cead1', currentModalOpen: false, currentSelectedActivity: undefined, activityData: {…}}
+index-DBi3MLTo.js:493 🔧 Dashboard: Modal state updated
+index-DBi3MLTo.js:487 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-DBi3MLTo.js:487
+cm @ index-DBi3MLTo.js:40
+fo @ index-DBi3MLTo.js:40
+qA @ index-DBi3MLTo.js:40
+Ya @ index-DBi3MLTo.js:40
+Lv @ index-DBi3MLTo.js:40
+Ua @ index-DBi3MLTo.js:38
+(anonymous) @ index-DBi3MLTo.js:40
+index-DBi3MLTo.js:48  PUT https://truck-wash-locator-msti64.replit.app/api/owners/activities/9c5c549d-7b3c-4bb5-8a68-5f2e0f3cead1/verify 500 (Internal Server Error)
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:493
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+index-DBi3MLTo.js:48 Fetch failed loading: PUT "https://truck-wash-locator-msti64.replit.app/api/owners/activities/9c5c549d-7b3c-4bb5-8a68-5f2e0f3cead1/verify".
+ve @ index-DBi3MLTo.js:48
+mutationFn @ index-DBi3MLTo.js:493
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+index-DBi3MLTo.js:493 Approval mutation error: Error: 500: {"message":"Payment processing failed: Your destination account needs to have at least one of the following capabilities enabled: transfers, crypto_transfers, legacy_payments. Please verify your payment method and try again."}
+    at nC (index-DBi3MLTo.js:48:42800)
+    at async ve (index-DBi3MLTo.js:48:43123)
+    at async Object.mutationFn (index-DBi3MLTo.js:493:92415)
+mutationFn @ index-DBi3MLTo.js:493
+await in mutationFn
+fn @ index-DBi3MLTo.js:48
+b @ index-DBi3MLTo.js:48
+start @ index-DBi3MLTo.js:48
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
+index-DBi3MLTo.js:493 Approval failed: Error: 500: {"message":"Payment processing failed: Your destination account needs to have at least one of the following capabilities enabled: transfers, crypto_transfers, legacy_payments. Please verify your payment method and try again."}
+    at nC (index-DBi3MLTo.js:48:42800)
+    at async ve (index-DBi3MLTo.js:48:43123)
+    at async Object.mutationFn (index-DBi3MLTo.js:493:92415)
+onError @ index-DBi3MLTo.js:493
+execute @ index-DBi3MLTo.js:48
+await in execute
+mutate @ index-DBi3MLTo.js:48
+(anonymous) @ index-DBi3MLTo.js:48
+onClick @ index-DBi3MLTo.js:493
+c4 @ index-DBi3MLTo.js:37
+u4 @ index-DBi3MLTo.js:37
+m4 @ index-DBi3MLTo.js:37
+ov @ index-DBi3MLTo.js:37
+C1 @ index-DBi3MLTo.js:37
+(anonymous) @ index-DBi3MLTo.js:37
+jx @ index-DBi3MLTo.js:40
+YN @ index-DBi3MLTo.js:37
+uh @ index-DBi3MLTo.js:37
+Qp @ index-DBi3MLTo.js:37
+_4 @ index-DBi3MLTo.js:37
