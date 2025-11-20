@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
@@ -28,6 +29,7 @@ export default function OwnerLocations() {
   const [locationToEdit, setLocationToEdit] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedMaterialsForEdit, setSelectedMaterialsForEdit] = useState<string[]>([]);
+  const [materialPricing, setMaterialPricing] = useState<{[materialSlug: string]: {rateCents: number, unit: string}}>({});
 
   // Form state - MUST be declared before callbacks that use setFormData
   const [formData, setFormData] = useState({
@@ -236,11 +238,23 @@ export default function OwnerLocations() {
       try {
         const response = await apiRequest('GET', `/api/locations/${location.id}/material-intents`);
         const intents = await response.json();
-        const materialIds = intents.map((intent: any) => intent.materialId);
-        setSelectedMaterialsForEdit(materialIds);
+        const materialSlugs = intents.map((intent: any) => intent.materialSlug || intent.material_slug);
+        const pricing: {[key: string]: {rateCents: number, unit: string}} = {};
+        intents.forEach((intent: any) => {
+          const slug = intent.materialSlug || intent.material_slug;
+          if (slug) {
+            pricing[slug] = {
+              rateCents: intent.rateCents || intent.rate_cents || 0,
+              unit: intent.unit || 'per_load'
+            };
+          }
+        });
+        setSelectedMaterialsForEdit(materialSlugs);
+        setMaterialPricing(pricing);
       } catch (error) {
         console.error('Error loading material intents:', error);
         setSelectedMaterialsForEdit([]);
+        setMaterialPricing({});
       }
     }
     
@@ -275,16 +289,17 @@ export default function OwnerLocations() {
         // First, clear existing intents
         await apiRequest('DELETE', `/api/locations/${locationToEdit.id}/material-intents`);
         
-        // Then, create new intents for selected materials
-        const materialIntents = selectedMaterialsForEdit.map(materialId => ({
-          locationId: locationToEdit.id,
-          materialId,
-          pricePerUnit: 0, // Default price, owner can update later
-          unit: 'load',
-          acceptsRebar: true,
-          acceptsTrash: true,
-          acceptsWood: true,
-        }));
+        // Then, create new intents for selected materials with pricing
+        const materialIntents = selectedMaterialsForEdit.map(materialSlug => {
+          const pricing = materialPricing[materialSlug] || { rateCents: 0, unit: 'per_load' };
+          return {
+            locationId: locationToEdit.id,
+            materialSlug,
+            rateCents: pricing.rateCents,
+            unit: pricing.unit,
+            active: true,
+          };
+        });
         
         await Promise.all(
           materialIntents.map(intent =>
@@ -764,31 +779,88 @@ export default function OwnerLocations() {
                       <Label className="text-base font-semibold">Materials Wanted (Optional)</Label>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Select construction materials you accept for rubble drop-off service
+                      Select construction materials you accept and set your payment rate per unit
                     </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      {materials.map((material: any) => (
-                        <div key={material.id} className="flex items-start space-x-2">
-                          <Checkbox
-                            id={`edit-material-${material.id}`}
-                            checked={selectedMaterialsForEdit.includes(material.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedMaterialsForEdit([...selectedMaterialsForEdit, material.id]);
-                              } else {
-                                setSelectedMaterialsForEdit(selectedMaterialsForEdit.filter(id => id !== material.id));
-                              }
-                            }}
-                            data-testid={`checkbox-edit-material-${material.slug}`}
-                          />
-                          <Label
-                            htmlFor={`edit-material-${material.id}`}
-                            className="text-sm font-medium leading-none cursor-pointer"
-                          >
-                            {material.displayName || material.display_name}
-                          </Label>
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      {materials.map((material: any) => {
+                        const isSelected = selectedMaterialsForEdit.includes(material.slug);
+                        const pricing = materialPricing[material.slug] || { rateCents: 0, unit: 'per_load' };
+                        return (
+                          <div key={material.id} className="space-y-2">
+                            <div className="flex items-start space-x-2">
+                              <Checkbox
+                                id={`edit-material-${material.id}`}
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedMaterialsForEdit([...selectedMaterialsForEdit, material.slug]);
+                                    setMaterialPricing({
+                                      ...materialPricing,
+                                      [material.slug]: { rateCents: 0, unit: 'per_load' }
+                                    });
+                                  } else {
+                                    setSelectedMaterialsForEdit(selectedMaterialsForEdit.filter(slug => slug !== material.slug));
+                                    const newPricing = { ...materialPricing };
+                                    delete newPricing[material.slug];
+                                    setMaterialPricing(newPricing);
+                                  }
+                                }}
+                                data-testid={`checkbox-edit-material-${material.slug}`}
+                              />
+                              <Label
+                                htmlFor={`edit-material-${material.id}`}
+                                className="text-sm font-medium leading-none cursor-pointer"
+                              >
+                                {material.displayName || material.display_name}
+                              </Label>
+                            </div>
+                            {isSelected && (
+                              <div className="ml-6 grid grid-cols-2 gap-2">
+                                <div>
+                                  <Label htmlFor={`price-${material.slug}`} className="text-xs">Pay Per Unit ($)</Label>
+                                  <Input
+                                    id={`price-${material.slug}`}
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="0.00"
+                                    value={pricing.rateCents / 100}
+                                    onChange={(e) => {
+                                      const dollars = parseFloat(e.target.value) || 0;
+                                      setMaterialPricing({
+                                        ...materialPricing,
+                                        [material.slug]: { ...pricing, rateCents: Math.round(dollars * 100) }
+                                      });
+                                    }}
+                                    data-testid={`input-price-${material.slug}`}
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`unit-${material.slug}`} className="text-xs">Unit</Label>
+                                  <Select
+                                    value={pricing.unit}
+                                    onValueChange={(value) => {
+                                      setMaterialPricing({
+                                        ...materialPricing,
+                                        [material.slug]: { ...pricing, unit: value }
+                                      });
+                                    }}
+                                  >
+                                    <SelectTrigger id={`unit-${material.slug}`} data-testid={`select-unit-${material.slug}`}>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="per_load">Per Load</SelectItem>
+                                      <SelectItem value="per_ton">Per Ton</SelectItem>
+                                      <SelectItem value="per_cy">Per Cubic Yard</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                     {selectedMaterialsForEdit.length > 0 && (
                       <p className="text-xs text-muted-foreground">
