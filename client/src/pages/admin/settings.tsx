@@ -11,6 +11,7 @@ import logoImage from "@assets/cretexchange logo_1760644229633.png";
 export default function AdminSettings() {
   const { toast } = useToast();
   const [backfillResult, setBackfillResult] = useState<any>(null);
+  const [stripeAccountResult, setStripeAccountResult] = useState<any>(null);
 
   const backfillMutation = useMutation({
     mutationFn: async () => {
@@ -30,6 +31,29 @@ export default function AdminSettings() {
       toast({
         title: "Backfill Failed",
         description: error.message || "Failed to backfill payment methods",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const stripeAccountMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/admin/backfill-stripe-accounts", {
+        method: "POST",
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setStripeAccountResult(data);
+      toast({
+        title: "Stripe Account Creation Complete",
+        description: `Created ${data.driversCreated} driver accounts and ${data.ownersCreated} owner accounts.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Stripe Account Creation Failed",
+        description: error.message || "Failed to create Stripe accounts",
         variant: "destructive",
       });
     },
@@ -146,6 +170,100 @@ export default function AdminSettings() {
                         </span>
                         <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto">
                           {backfillResult.errors.map((error: string, i: number) => (
+                            <div key={i}>{error}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Stripe Account Backfill */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <h3 className="font-semibold">Create Stripe Accounts for Existing Users</h3>
+                  <p className="text-sm text-muted-foreground">
+                    This tool creates Stripe Connect accounts for drivers and Stripe Customer accounts for owners 
+                    who don't already have them. Essential for payment processing to work correctly.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    <strong>What it does:</strong> Scans all users and creates Stripe Connect accounts (for drivers) 
+                    and Stripe Customer accounts (for owners) for users missing them. This enables payment processing 
+                    for washout activities.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => stripeAccountMutation.mutate()}
+                  disabled={stripeAccountMutation.isPending}
+                  data-testid="button-create-stripe-accounts"
+                >
+                  {stripeAccountMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating Accounts...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4 mr-2" />
+                      Create Stripe Accounts
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Results Display */}
+              {stripeAccountResult && (
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    Creation Results
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Total Users:</span>
+                      <span className="ml-2 font-semibold" data-testid="text-stripe-total">
+                        {stripeAccountResult.totalUsers}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Drivers Created:</span>
+                      <span className="ml-2 font-semibold text-green-600" data-testid="text-stripe-drivers-created">
+                        {stripeAccountResult.driversCreated}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Drivers Already Had Account:</span>
+                      <span className="ml-2 font-semibold" data-testid="text-stripe-drivers-had">
+                        {stripeAccountResult.driversAlreadyHad}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Owners Created:</span>
+                      <span className="ml-2 font-semibold text-green-600" data-testid="text-stripe-owners-created">
+                        {stripeAccountResult.ownersCreated}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Owners Already Had Account:</span>
+                      <span className="ml-2 font-semibold" data-testid="text-stripe-owners-had">
+                        {stripeAccountResult.ownersAlreadyHad}
+                      </span>
+                    </div>
+                    {stripeAccountResult.errors.length > 0 && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Errors:</span>
+                        <span className="ml-2 font-semibold text-red-600">
+                          {stripeAccountResult.errors.length}
+                        </span>
+                        <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto">
+                          {stripeAccountResult.errors.map((error: string, i: number) => (
                             <div key={i}>{error}</div>
                           ))}
                         </div>

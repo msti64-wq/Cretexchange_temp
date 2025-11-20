@@ -668,9 +668,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
+      // Create Stripe Connect account for driver (marketplace seller)
+      let stripeConnectAccountId = existingUser.stripeConnectAccountId;
+      if (!stripeConnectAccountId) {
+        try {
+          const stripeAccount = await stripeService.createConnectedAccount({
+            userId: existingUser.id,
+            username: existingUser.username,
+            email: existingUser.email,
+            type: 'custom',
+            businessType: 'individual',
+            capabilities: ['card_payments', 'transfers'],
+            individual: {
+              firstName: existingUser.firstName,
+              lastName: existingUser.lastName,
+              email: existingUser.email,
+              phone: existingUser.phone || undefined
+            }
+          });
+          stripeConnectAccountId = stripeAccount.id;
+          console.log('✅ Created Stripe Connect account for driver:', stripeConnectAccountId);
+        } catch (stripeError: any) {
+          console.error('❌ Failed to create Stripe Connect account:', stripeError.message);
+          // Continue without Stripe account - can be created later
+        }
+      }
+      
       await storage.upsertUser({
         ...existingUser,
         role: 'driver',
+        stripeConnectAccountId,
         ...req.body.user,
       });
 
@@ -769,9 +796,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
+      // Create Stripe Customer for owner (marketplace buyer)
+      let stripeCustomerId = existingUser.stripeCustomerId;
+      if (!stripeCustomerId && stripe) {
+        try {
+          const stripeCustomer = await stripe.customers.create({
+            email: existingUser.email,
+            name: `${existingUser.firstName} ${existingUser.lastName}`,
+            metadata: {
+              userId: existingUser.id,
+              username: existingUser.username,
+              role: 'owner'
+            }
+          });
+          stripeCustomerId = stripeCustomer.id;
+          console.log('✅ Created Stripe Customer for owner:', stripeCustomerId);
+        } catch (stripeError: any) {
+          console.error('❌ Failed to create Stripe Customer:', stripeError.message);
+          // Continue without Stripe customer - can be created later
+        }
+      } else if (!stripe) {
+        console.log('⚠️ Stripe not initialized - skipping customer creation (development mode)');
+      }
+      
       await storage.upsertUser({
         ...existingUser,
         role: 'owner',
+        stripeCustomerId,
         ...req.body.user,
       });
 
@@ -4720,6 +4771,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error in payment method backfill:", error);
       res.status(500).json({ message: "Failed to backfill payment methods: " + error.message });
+    }
+  });
+
+  // POST /api/admin/backfill-stripe-accounts - Create Stripe accounts for existing users
+  app.post('/api/admin/backfill-stripe-accounts', isAuthenticated, async (req: any, res) => {
+    try {
+      // Check super admin role
+      if (req.user.role !== 'super_admin') {
+        return res.status(403).json({ message: "Unauthorized - super admin only" });
+      }
+
+      console.log('🔄 Starting Stripe account backfill...');
+      
+      // Get all users
+      const allUsers = await db.select().from(users);
+      
+      const results = {
+        totalUsers: allUsers.length,
+        driversProcessed: 0,
+        driversCreated: 0,
+        driversAlreadyHad: 0,
+        ownersProcessed: 0,
+        ownersCreated: 0,
+        ownersAlreadyHad: 0,
+        errors: [] as string[],
+      };
+
+      for (const user of allUsers) {
+        try {
+          if (user.role === 'driver') {
+            results.driversProcessed++;
+            
+            // Skip if already has Connect account
+            if (user.stripeConnectAccountId) {
+              results.driversAlreadyHad++;
+              continue;
+            }
+
+            // Create Stripe Connect account
+            const stripeAccount = await stripeService.createConnectedAccount({
+              userId: user.id,
+              username: user.username,
+              email: user.email,
+              type: 'custom',
+              businessType: 'individual',
+              capabilities: ['card_payments', 'transfers'],
+              individual: {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone || undefined
+              }
+            });
+
+            // Update user record
+            await storage.updateUser(user.id, {
+              stripeConnectAccountId: stripeAccount.id
+            });
+
+            console.log(`✅ Created Stripe Connect account for driver ${user.username}: ${stripeAccount.id}`);
+            results.driversCreated++;
+
+          } else if (user.role === 'owner') {
+            results.ownersProcessed++;
+            
+            // Skip if already has Customer account
+            if (user.stripeCustomerId) {
+              results.ownersAlreadyHad++;
+              continue;
+            }
+
+            // Check if Stripe is initialized
+            if (!stripe) {
+              results.errors.push(`${user.username} (owner): Stripe not initialized`);
+              continue;
+            }
+
+            // Create Stripe Customer
+            const stripeCustomer = await stripe.customers.create({
+              email: user.email,
+              name: `${user.firstName} ${user.lastName}`,
+              metadata: {
+                userId: user.id,
+                username: user.username,
+                role: 'owner'
+              }
+            });
+
+            // Update user record
+            await storage.updateUser(user.id, {
+              stripeCustomerId: stripeCustomer.id
+            });
+
+            console.log(`✅ Created Stripe Customer for owner ${user.username}: ${stripeCustomer.id}`);
+            results.ownersCreated++;
+          }
+
+        } catch (error: any) {
+          console.error(`❌ Error backfilling user ${user.username}:`, error);
+          results.errors.push(`${user.username} (${user.role}): ${error.message}`);
+        }
+      }
+
+      console.log('✅ Stripe account backfill complete:', results);
+      res.json(results);
+
+    } catch (error: any) {
+      console.error("Error in Stripe account backfill:", error);
+      res.status(500).json({ message: "Failed to backfill Stripe accounts: " + error.message });
     }
   });
 
