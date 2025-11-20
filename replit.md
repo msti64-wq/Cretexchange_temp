@@ -49,6 +49,12 @@ Preferred communication style: Simple, everyday language.
 -   **Debit Card Integration**: Stripe Issuing-powered debit cards (virtual and physical) linked to Stripe Treasury wallets for drivers.
 -   **Feature Flags**: Centralized system for managing platform features and configurations (e.g., automatic tax, rubble service, wallet funding) accessible to super admins.
 -   **Per-Owner Custom Platform Fees**: Super admins can set custom platform fees for individual owners based on tenure, with a tiered fee hierarchy.
+-   **Rubble Service - Material Pricing**: 
+    -   **Materials Catalog**: 6 materials (Asphalt, Brick, Concrete Rubble, Dirt, Fill Dirt, Washout) with synonyms for flexible matching.
+    -   **Owner Pricing Configuration**: Owners select which materials they accept and set payment rates ($/unit) for each material. Supports three unit types: per load, per ton, per cubic yard.
+    -   **Driver Discovery**: Drivers see which materials each location accepts and the payment rates on the locations list, enabling informed decisions about where to drop off materials.
+    -   **Database**: `location_material_intents` table stores pricing (rateCents, unit) per location/material with capacity limits and acceptance rules.
+-   **Admin System Settings**: Super admins can access system maintenance tools including payment method backfill utility for fixing production data issues (accessible via Settings nav link).
 
 ## External Dependencies
 
