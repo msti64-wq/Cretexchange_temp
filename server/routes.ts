@@ -9776,6 +9776,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Simplified REST endpoints for frontend compatibility
+  
+  // GET material intents for a location
+  app.get('/api/locations/:locationId/material-intents', isAuthenticated, async (req: any, res) => {
+    try {
+      const { locationId } = req.params;
+      const intents = await storage.getLocationMaterialIntents(locationId);
+      res.json(intents);
+    } catch (error: any) {
+      console.error('Error fetching material intents:', error);
+      res.status(500).json({ message: 'Failed to fetch material intents' });
+    }
+  });
+
+  // CREATE a single material intent
+  app.post('/api/locations/:locationId/material-intents', isAuthenticated, async (req: any, res) => {
+    try {
+      const { locationId } = req.params;
+      const intentData = req.body;
+
+      const newIntent = await storage.createLocationMaterialIntent({
+        locationId,
+        ...intentData,
+      });
+
+      res.json(newIntent);
+    } catch (error: any) {
+      console.error('Error creating material intent:', error);
+      res.status(500).json({ message: 'Failed to create material intent' });
+    }
+  });
+
+  // DELETE all material intents for a location
+  app.delete('/api/locations/:locationId/material-intents', isAuthenticated, async (req: any, res) => {
+    try {
+      const { locationId } = req.params;
+      await storage.deleteAllLocationMaterialIntents(locationId);
+      res.json({ message: 'Material intents cleared' });
+    } catch (error: any) {
+      console.error('Error deleting material intents:', error);
+      res.status(500).json({ message: 'Failed to delete material intents' });
+    }
+  });
+
   // Create a rubble visit
   app.post('/api/rubble/visits', isAuthenticated, async (req: any, res) => {
     try {
