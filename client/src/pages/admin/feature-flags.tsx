@@ -378,16 +378,28 @@ export default function AdminFeatureFlags() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Active Feature Flags</CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refreshFlagsMutation.mutate()}
-                disabled={refreshFlagsMutation.isPending}
-                data-testid="button-refresh-flags"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshFlagsMutation.isPending ? 'animate-spin' : ''}`} />
-                {refreshFlagsMutation.isPending ? 'Refreshing...' : 'Refresh'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => seedFlagsMutation.mutate()}
+                  disabled={seedFlagsMutation.isPending}
+                  data-testid="button-sync-flags"
+                >
+                  <Flag className={`w-4 h-4 mr-2 ${seedFlagsMutation.isPending ? 'animate-spin' : ''}`} />
+                  {seedFlagsMutation.isPending ? 'Syncing...' : 'Sync Flags'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refreshFlagsMutation.mutate()}
+                  disabled={refreshFlagsMutation.isPending}
+                  data-testid="button-refresh-flags"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${refreshFlagsMutation.isPending ? 'animate-spin' : ''}`} />
+                  {refreshFlagsMutation.isPending ? 'Refreshing...' : 'Refresh'}
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
