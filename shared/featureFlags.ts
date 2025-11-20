@@ -19,6 +19,12 @@ export const FEATURE_FLAGS = {
   // Enhanced Location Creation - Google Maps integration with address autocomplete, geocoding, and interactive map picker
   ENHANCED_LOCATION_CREATION: 'enhanced_location_creation',
   
+  // Stripe Treasury - ACH wallet funding (requires Treasury approval)
+  TREASURY_ENABLED: 'treasury_enabled',
+  
+  // Stripe Issuing - Driver debit cards (requires Issuing approval)
+  ISSUING_ENABLED: 'issuing_enabled',
+  
   // Example: Beta features
   // ADVANCED_ANALYTICS: 'advanced_analytics',
   // BULK_OPERATIONS: 'bulk_operations',
@@ -59,5 +65,17 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
     description: 'Enable enhanced location creation with Google Maps integration. Features: address autocomplete with instant suggestions, automatic coordinate conversion via geocoding, interactive map picker with draggable marker, and "Use Current Location" button. Requires VITE_GOOGLE_MAPS_API_KEY environment variable.',
     enabled: false, // Disabled by default - requires Google Maps API key
     allowedRoles: ['owner', 'super_admin'], // Location owners and admins
+  },
+  {
+    key: FEATURE_FLAGS.TREASURY_ENABLED,
+    description: 'Enable Stripe Treasury for ACH wallet funding. When disabled, owners can only fund wallets via credit/debit cards. Monthly cost: $10k-$20k. Enable after validating revenue justifies the expense.',
+    enabled: false, // Disabled by default - requires Stripe approval and significant monthly cost
+    allowedRoles: [], // Available to all roles when enabled
+  },
+  {
+    key: FEATURE_FLAGS.ISSUING_ENABLED,
+    description: 'Enable Stripe Issuing for driver debit cards. When disabled, drivers receive payments via direct Connect transfers to their bank accounts. Monthly cost: Included in Treasury pricing. Enable after validating driver demand for debit cards.',
+    enabled: false, // Disabled by default - requires Stripe approval
+    allowedRoles: [], // Available to all roles when enabled
   },
 ];
