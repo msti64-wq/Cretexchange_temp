@@ -18,7 +18,7 @@
  *    - Creates cardholder accounts linked to wallets
  *    - Issues physical/virtual debit cards
  *    - Cards pull funds from Treasury financial accounts
- *    - Pricing: $0.01 virtual, $0.30 physical (2-day shipping)
+ *    - Pricing: $0.01 virtual, $30.00 physical (2-day shipping)
  * 
  * Documentation:
  * - Connect: https://stripe.com/docs/connect
