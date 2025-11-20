@@ -2947,23 +2947,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ Created pending payment: Driver gets $${driverAmount}, Owner pays $${ownerFee.toFixed(2)} for activity ${id}, Payment ID: ${payment.id}, Business Date: ${businessDate}`);
       console.log(`💰 Fee breakdown: Owner pays $${ownerFee.toFixed(2)} (Platform $${platformFee.toFixed(2)} + Driver $${driverAmount.toFixed(2)})`);
       
-      // ========== IMMEDIATE COLUMN TRANSFERS ==========
-      // Process Column transfers immediately instead of waiting for batch
+      // ========== IMMEDIATE STRIPE CONNECT PAYMENT PROCESSING ==========
+      let paymentProcessedSuccessfully = false;
+      
       try {
-        console.log(`🔄 Processing immediate Stripe Treasury transfers for washout ${id}...`);
+        console.log(`🔄 Processing immediate Stripe Connect payment for washout ${id}...`);
         
-        // 1. Check owner has Stripe Treasury wallet with sufficient balance
-        if (!owner.stripeTreasuryAccountId || !owner.stripeConnectAccountId) {
-          console.log(`⚠️ Owner ${owner.id} does not have Stripe Treasury wallet configured - skipping transfers`);
-        } else {
-          const ownerWalletInfo = await storage.getOwnerWalletBalance(owner.id);
-          if (!ownerWalletInfo) {
-            console.log(`⚠️ Owner ${owner.id} wallet not found - skipping Column transfers`);
+        // Check if Stripe is configured
+        if (!stripe) {
+          console.log(`⚠️ Stripe not configured - payment will be processed in batch later`);
+        }
+        // Validate owner has Stripe Customer and Payment Method
+        else if (!owner.stripeCustomerId || !owner.stripePaymentMethodId) {
+          const errorMsg = `Owner missing ${!owner.stripeCustomerId ? 'Stripe Customer ID' : 'payment method'}`;
+          console.error(`❌ ${errorMsg} - cannot process payment`);
+          return res.status(400).json({ 
+            message: `Payment failed: ${errorMsg}. Please add a payment method in your profile.` 
+          });
+        }
+        // Validate driver has Stripe Connect Account
+        else if (!driver.user?.stripeConnectAccountId) {
+          console.error(`❌ Driver ${driver.id} missing Stripe Connect Account - cannot process payment`);
+          return res.status(500).json({ 
+            message: 'Payment failed: Driver account not configured. Please contact support.' 
+          });
+        }
+        // All prerequisites met - process payment
+        else {
+          // Verify payment method is card-based (required for Destination Charges)
+          const paymentMethod = await stripe.paymentMethods.retrieve(owner.stripePaymentMethodId);
+          if (paymentMethod.type !== 'card') {
+            console.error(`❌ Payment method ${paymentMethod.id} is ${paymentMethod.type}, but card required for Destination Charges`);
+            return res.status(400).json({ 
+              message: 'Payment failed: Only credit/debit cards are supported. Please update your payment method.' 
+            });
+          }
+          
+          // Process immediate Stripe Connect Destination Charge
+          console.log(`💳 Creating Stripe Destination Charge: $${ownerFee.toFixed(2)} (Driver: $${driverAmount}, Platform Fee: $${platformFee})`);
+          console.log(`   Owner Customer: ${owner.stripeCustomerId}`);
+          console.log(`   Payment Method: ${owner.stripePaymentMethodId} (${paymentMethod.card?.brand} ****${paymentMethod.card?.last4})`);
+          console.log(`   Driver Connect Account: ${driver.user.stripeConnectAccountId}`);
+          
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(ownerFee * 100), // Convert to cents
+            currency: 'usd',
+            customer: owner.stripeCustomerId,
+            payment_method: owner.stripePaymentMethodId,
+            payment_method_types: ['card'], // Only allow card payments
+            capture_method: 'automatic', // Capture immediately
+            off_session: true, // Owner not present
+            confirm: true, // Confirm immediately
+            description: `Washout payment - Activity ${id}`,
+            metadata: {
+              activityId: id,
+              ownerId: owner.id,
+              driverId: driver.id,
+              driverAmount: driverAmount.toFixed(2),
+              platformFee: platformFee.toFixed(2),
+              businessDate: businessDate,
+            },
+            transfer_data: {
+              amount: Math.round(driverAmount * 100), // Driver receives location rate
+              destination: driver.user.stripeConnectAccountId, // Driver's Connect account
+            },
+            application_fee_amount: Math.round(platformFee * 100), // Platform keeps fee
+          });
+          
+          console.log(`✅ Stripe Payment Intent created: ${paymentIntent.id}, Status: ${paymentIntent.status}`);
+          
+          // Verify payment succeeded before marking complete
+          if (paymentIntent.status === 'succeeded') {
+            // Update payment record with Stripe details
+            await storage.updatePaymentStatus(payment.id, 'completed', paymentIntent.id);
+            paymentProcessedSuccessfully = true;
+            console.log(`✅ Payment completed successfully for washout ${id}`);
           } else {
-            const ownerBalance = parseFloat(ownerWalletInfo.balance || "0");
-            if (ownerBalance < ownerFee) {
-              console.log(`⚠️ Owner ${owner.id} has insufficient wallet balance ($${ownerBalance} < $${ownerFee}) - skipping Stripe transfers`);
+            console.error(`❌ Payment Intent ${paymentIntent.id} has status: ${paymentIntent.status} (expected: succeeded)`);
+            return res.status(500).json({ 
+              message: `Payment processing failed with status: ${paymentIntent.status}. Please try again or contact support.` 
+            });
+          }
+        }
+      } catch (stripePaymentError: any) {
+        console.error(`❌ Error processing Stripe payment for washout ${id}:`, stripePaymentError);
+        console.error(`   Error details:`, stripePaymentError.message);
+        
+        // Return error to user instead of silently failing
+        return res.status(500).json({ 
+          message: `Payment processing failed: ${stripePaymentError.message}. Please verify your payment method and try again.`
+        });
+      }
+      
+      // ========== LEGACY: STRIPE TREASURY TRANSFERS (feature flag gated) ==========
+      // Only run if payment NOT already processed via Connect Destination Charge
+      if (!paymentProcessedSuccessfully) {
+        try {
+          // Check if Treasury feature is enabled
+          const treasuryEnabled = await storage.checkFeatureFlag('treasury_enabled', owner.userId, 'owner');
+          
+          if (treasuryEnabled && owner.stripeTreasuryAccountId && owner.stripeConnectAccountId) {
+            console.log(`🔄 Processing Stripe Treasury transfers for washout ${id}...`);
+            const ownerWalletInfo = await storage.getOwnerWalletBalance(owner.id);
+            if (!ownerWalletInfo) {
+              console.log(`⚠️ Owner ${owner.id} wallet not found - skipping Column transfers`);
             } else {
+              const ownerBalance = parseFloat(ownerWalletInfo.balance || "0");
+              if (ownerBalance < ownerFee) {
+                console.log(`⚠️ Owner ${owner.id} has insufficient wallet balance ($${ownerBalance} < $${ownerFee}) - skipping Stripe transfers`);
+              } else {
               // Owner has sufficient balance - proceed with Stripe Treasury transfers
               
               // 2. Debit owner's wallet ($9.00)
@@ -3032,14 +3124,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log(`✅ Platform fee transfer created: ${platformTransfer.id} for $${platformFee}`);
               }
               
-              console.log(`✅ All Stripe transfers processed successfully for washout ${id}`);
+                console.log(`✅ All Stripe Treasury transfers processed successfully for washout ${id}`);
+                paymentProcessedSuccessfully = true;
+              }
             }
           }
+        } catch (stripeTransferError) {
+          console.error(`❌ Error processing Stripe Treasury transfers for washout ${id}:`, stripeTransferError);
+          // Don't fail the entire request if Treasury transfers fail
         }
-      } catch (stripeTransferError) {
-        console.error(`❌ Error processing Stripe transfers for washout ${id}:`, stripeTransferError);
-        // Don't fail the entire request if Stripe transfers fail
-        // The payment record is still created and can be processed later
       }
 
       res.json(activity);
