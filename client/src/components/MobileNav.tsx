@@ -62,7 +62,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/fees", icon: FileText, label: "Fees" },
           { path: "/service-accounts", icon: CreditCard, label: "Service Accounts" },
           { path: "/feature-flags", icon: Flag, label: "Features" },
-          { path: "/admin/settings", icon: Wrench, label: "Settings" },
+          { path: "/settings", icon: Wrench, label: "Settings" },
           { path: "/profile", icon: Settings, label: "Profile" },
         ];
       default:
