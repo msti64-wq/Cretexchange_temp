@@ -4916,10 +4916,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (user.role === 'driver') {
             results.driversProcessed++;
             
-            // Skip if already has Connect account
+            // Skip if already has Connect account in database
             if (user.stripeConnectAccountId) {
               results.driversAlreadyHad++;
               continue;
+            }
+
+            // IDEMPOTENCY CHECK: Search Stripe for existing account by email
+            // Note: Connect accounts can't be searched by metadata, so we search by email
+            try {
+              const existingAccounts = await stripe.accounts.list({
+                limit: 100, // Fetch more accounts to search through
+              });
+              
+              // Check if account with this user's email or userId exists
+              const matchingAccount = existingAccounts.data.find(
+                acc => acc.email === user.email || acc.metadata?.userId === user.id
+              );
+              
+              if (matchingAccount) {
+                console.log(`♻️ Found existing Stripe Connect account for driver ${user.username}: ${matchingAccount.id}`);
+                
+                // Update database with found account
+                await storage.updateUserStripeInfo(user.id, {
+                  stripeConnectAccountId: matchingAccount.id
+                });
+                
+                results.driversAlreadyHad++;
+                continue;
+              }
+            } catch (searchError: any) {
+              console.error(`⚠️ Error searching for existing account for ${user.username}:`, searchError.message);
+              // Continue to create new account if search fails
             }
 
             // Get admin IP for TOS acceptance (backfill is admin action, Stripe requires IPv4)
@@ -4966,7 +4994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else if (user.role === 'owner') {
             results.ownersProcessed++;
             
-            // Skip if already has Customer account
+            // Skip if already has Customer account in database
             if (user.stripeCustomerId) {
               results.ownersAlreadyHad++;
               continue;
@@ -4976,6 +5004,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!stripe) {
               results.errors.push(`${user.username} (owner): Stripe not initialized`);
               continue;
+            }
+
+            // IDEMPOTENCY CHECK: Search Stripe for existing customer by metadata
+            try {
+              const existingCustomers = await stripe.customers.search({
+                query: `metadata['userId']:'${user.id}'`,
+                limit: 1,
+              });
+              
+              if (existingCustomers.data.length > 0) {
+                const matchingCustomer = existingCustomers.data[0];
+                console.log(`♻️ Found existing Stripe Customer for owner ${user.username}: ${matchingCustomer.id}`);
+                
+                // Update database with found customer
+                await storage.updateUserStripeInfo(user.id, {
+                  stripeCustomerId: matchingCustomer.id
+                });
+                
+                results.ownersAlreadyHad++;
+                continue;
+              }
+            } catch (searchError: any) {
+              console.error(`⚠️ Error searching for existing customer for ${user.username}:`, searchError.message);
+              // Continue to create new customer if search fails
             }
 
             // Create Stripe Customer
