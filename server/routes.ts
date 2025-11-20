@@ -2918,6 +2918,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver not found" });
       }
       
+      // Get driver's user record for Stripe Connect Account ID
+      const driverUser = await storage.getUserById(driver.userId);
+      if (!driverUser) {
+        return res.status(404).json({ message: "Driver user account not found" });
+      }
+      
       // Ensure driver has a wallet
       let driverWallet = await storage.getDriverWallet(driver.id);
       if (!driverWallet) {
@@ -2966,10 +2972,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         // Validate driver has Stripe Connect Account
-        else if (!driver.user?.stripeConnectAccountId) {
-          console.error(`❌ Driver ${driver.id} missing Stripe Connect Account - cannot process payment`);
-          return res.status(500).json({ 
-            message: 'Payment failed: Driver account not configured. Please contact support.' 
+        else if (!driverUser.stripeConnectAccountId) {
+          console.warn(`⚠️ Driver ${driver.id} (user ${driverUser.id}) missing Stripe Connect Account - cannot process payment`);
+          return res.status(400).json({ 
+            message: 'Payment failed: Driver has not completed payment setup. Please ask the driver to complete their Stripe Connect onboarding before approving this washout.' 
           });
         }
         // All prerequisites met - process payment
@@ -2987,7 +2993,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`💳 Creating Stripe Destination Charge: $${ownerFee.toFixed(2)} (Driver: $${driverAmount}, Platform Fee: $${platformFee})`);
           console.log(`   Owner Customer: ${owner.stripeCustomerId}`);
           console.log(`   Payment Method: ${owner.stripePaymentMethodId} (${paymentMethod.card?.brand} ****${paymentMethod.card?.last4})`);
-          console.log(`   Driver Connect Account: ${driver.user.stripeConnectAccountId}`);
+          console.log(`   Driver Connect Account: ${driverUser.stripeConnectAccountId}`);
           
           const paymentIntent = await stripe.paymentIntents.create({
             amount: Math.round(ownerFee * 100), // Convert to cents
@@ -3009,7 +3015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             transfer_data: {
               amount: Math.round(driverAmount * 100), // Driver receives location rate
-              destination: driver.user.stripeConnectAccountId, // Driver's Connect account
+              destination: driverUser.stripeConnectAccountId, // Driver's Connect account
             },
             application_fee_amount: Math.round(platformFee * 100), // Platform keeps fee
           });
