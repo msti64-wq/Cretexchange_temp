@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
@@ -66,6 +68,9 @@ export default function DriverWallet() {
   const [showDebitCardDialog, setShowDebitCardDialog] = useState(false);
   const pageSize = 20;
 
+  // Check if debit card feature is enabled (requires Stripe Issuing/Treasury)
+  const { enabled: issuingEnabled } = useFeatureFlag(FEATURE_FLAGS.ISSUING_ENABLED);
+
   // Fetch wallet balance
   const { data: walletBalance, isLoading: balanceLoading, refetch: refetchBalance } = useQuery<WalletBalance>({
     queryKey: ['/api/wallet/balance'],
@@ -102,7 +107,7 @@ export default function DriverWallet() {
     queryKey: ['/api/profile'],
   });
 
-  // Fetch debit card status
+  // Fetch debit card status (only if issuing is enabled)
   const { data: debitCardStatus, refetch: refetchDebitCard } = useQuery<{
     hasCard: boolean;
     card?: {
@@ -117,6 +122,7 @@ export default function DriverWallet() {
     };
   }>({
     queryKey: ['/api/drivers/debit-card'],
+    enabled: issuingEnabled, // Only fetch if feature is enabled
   });
 
   // Withdrawal mutation
@@ -518,7 +524,7 @@ export default function DriverWallet() {
                     <div className="space-y-2">
                       <p className="font-medium">ACH withdrawals to your bank account typically arrive in 1-2 business days</p>
                       
-                      {debitCardStatus?.hasCard ? (
+                      {issuingEnabled && debitCardStatus?.hasCard ? (
                         // Show card details if they have one
                         <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
                           <div className="flex items-center justify-between">
@@ -538,8 +544,8 @@ export default function DriverWallet() {
                             </Badge>
                           </div>
                         </div>
-                      ) : (
-                        // Show request button if they don't have one
+                      ) : issuingEnabled ? (
+                        // Show request button if they don't have one (only if issuing enabled)
                         <>
                           <p className="text-sm">
                             <strong>Need instant access?</strong> Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
@@ -558,7 +564,7 @@ export default function DriverWallet() {
                             Request Debit Card
                           </Button>
                         </>
-                      )}
+                      ) : null}
                     </div>
                   </AlertDescription>
                 </Alert>
@@ -567,63 +573,65 @@ export default function DriverWallet() {
           </div>
         </StatCard>
 
-        {/* Debit Card Section */}
-        <StatCard
-          title="Debit Card"
-          subtitle={
-            <span className="text-sm text-muted-foreground">
-              Instant access to your wallet funds
-            </span>
-          }
-        >
-          <div className="space-y-4">
-            {debitCardStatus?.hasCard ? (
-              // Show card details if they have one
-              <div className="p-4 bg-muted/30 rounded-lg border border-muted">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-foreground">
-                      Debit Card {debitCardStatus.card?.cardStatus === 'active' ? 'Active' : 'Requested'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {debitCardStatus.card?.cardType === 'virtual' ? 'Virtual' : 'Physical'} Card •••• {debitCardStatus.card?.cardLast4}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Expires {debitCardStatus.card?.expirationMonth}/{debitCardStatus.card?.expirationYear}
-                    </p>
+        {/* Debit Card Section - Only show if Stripe Issuing is enabled */}
+        {issuingEnabled && (
+          <StatCard
+            title="Debit Card"
+            subtitle={
+              <span className="text-sm text-muted-foreground">
+                Instant access to your wallet funds
+              </span>
+            }
+          >
+            <div className="space-y-4">
+              {debitCardStatus?.hasCard ? (
+                // Show card details if they have one
+                <div className="p-4 bg-muted/30 rounded-lg border border-muted">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        Debit Card {debitCardStatus.card?.cardStatus === 'active' ? 'Active' : 'Requested'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {debitCardStatus.card?.cardType === 'virtual' ? 'Virtual' : 'Physical'} Card •••• {debitCardStatus.card?.cardLast4}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Expires {debitCardStatus.card?.expirationMonth}/{debitCardStatus.card?.expirationYear}
+                      </p>
+                    </div>
+                    <Badge variant={debitCardStatus.card?.cardStatus === 'active' ? 'default' : 'secondary'}>
+                      {debitCardStatus.card?.cardStatus}
+                    </Badge>
                   </div>
-                  <Badge variant={debitCardStatus.card?.cardStatus === 'active' ? 'default' : 'secondary'}>
-                    {debitCardStatus.card?.cardStatus}
-                  </Badge>
                 </div>
-              </div>
-            ) : (
-              // Show request button if they don't have one
-              <div className="text-center py-6">
-                <CreditCard className="w-12 h-12 mx-auto mb-3 text-primary" />
-                <h3 className="font-semibold mb-2">Get Instant Access to Your Funds</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
-                </p>
-                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-                  <div className="flex items-start space-x-2 text-sm text-blue-800 dark:text-blue-200">
-                    <div className="space-y-1">
-                      <p><strong>Virtual Card:</strong> $0.01 • Instant delivery</p>
-                      <p><strong>Physical Card:</strong> $0.30 • 2-day shipping</p>
+              ) : (
+                // Show request button if they don't have one
+                <div className="text-center py-6">
+                  <CreditCard className="w-12 h-12 mx-auto mb-3 text-primary" />
+                  <h3 className="font-semibold mb-2">Get Instant Access to Your Funds</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
+                  </p>
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                    <div className="flex items-start space-x-2 text-sm text-blue-800 dark:text-blue-200">
+                      <div className="space-y-1">
+                        <p><strong>Virtual Card:</strong> $0.01 • Instant delivery</p>
+                        <p><strong>Physical Card:</strong> $30.00 • 2-day shipping</p>
+                      </div>
                     </div>
                   </div>
+                  <Button
+                    onClick={() => setShowDebitCardDialog(true)}
+                    data-testid="button-request-debit-card"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Request Debit Card
+                  </Button>
                 </div>
-                <Button
-                  onClick={() => setShowDebitCardDialog(true)}
-                  data-testid="button-request-debit-card"
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Request Debit Card
-                </Button>
-              </div>
-            )}
-          </div>
-        </StatCard>
+              )}
+            </div>
+          </StatCard>
+        )}
 
         {/* Transaction History */}
         <StatCard
