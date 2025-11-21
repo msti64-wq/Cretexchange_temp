@@ -120,11 +120,11 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
 
     const accountParams: Stripe.AccountCreateParams = {
       type: params.type,
-      country: 'US', // Required for custom accounts
-      email: params.email, // Email for notifications only
+      country: 'US', // Required
+      email: params.email, // Email for notifications
       capabilities: {
         transfers: { requested: true }, // Enable payouts and receiving transfers
-        card_payments: { requested: true }, // Required for Destination Charges (no approval needed)
+        card_payments: { requested: true }, // Required for Destination Charges
       },
       business_type: params.businessType || 'individual',
       business_profile: {
@@ -133,10 +133,14 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
         support_email: params.businessProfile?.supportEmail || params.email,
         name: params.username, // USERNAME as primary identifier in Stripe dashboard
       },
-      tos_acceptance: params.tosAcceptance ? {
-        date: params.tosAcceptance.date,
-        ip: params.tosAcceptance.ip,
-      } : undefined, // TOS acceptance should always be provided by caller with real IPv4
+      // TOS ACCEPTANCE: Only for Custom accounts - Express accounts MUST use Account Links
+      // Stripe will reject programmatic TOS acceptance for Express accounts
+      ...(params.type === 'custom' && params.tosAcceptance ? {
+        tos_acceptance: {
+          date: params.tosAcceptance.date,
+          ip: params.tosAcceptance.ip,
+        }
+      } : {}),
       metadata: {
         user_id: params.userId, // REQUIRED - Track user ID to prevent duplicates
         username: params.username, // USERNAME - Primary identifier (not email)
@@ -257,6 +261,60 @@ export async function updateConnectedAccount(
   params: Stripe.AccountUpdateParams
 ): Promise<Stripe.Account> {
   return await stripe.accounts.update(accountId, params);
+}
+
+/**
+ * Create Account Link for Express account onboarding
+ * This allows Express accounts to complete TOS acceptance and external account setup
+ * through Stripe's hosted onboarding UI
+ * 
+ * CRITICAL: Express accounts CANNOT accept TOS programmatically - they MUST use Account Links
+ */
+export async function createAccountLink(params: {
+  accountId: string;
+  refreshUrl: string; // URL to redirect if link expires
+  returnUrl: string; // URL to redirect after completion
+  type?: 'account_onboarding' | 'account_update';
+}): Promise<Stripe.AccountLink> {
+  try {
+    const accountLink = await stripe.accountLinks.create({
+      account: params.accountId,
+      refresh_url: params.refreshUrl,
+      return_url: params.returnUrl,
+      type: params.type || 'account_onboarding',
+    });
+    
+    console.log('✅ Created Account Link for onboarding:', {
+      accountId: params.accountId,
+      url: accountLink.url,
+      expiresAt: accountLink.expires_at,
+    });
+    
+    return accountLink;
+  } catch (error: any) {
+    console.error('❌ Error creating Account Link:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Create Login Link for Express Dashboard access
+ * Allows connected accounts to access their Express Dashboard to manage settings
+ */
+export async function createLoginLink(accountId: string): Promise<Stripe.LoginLink> {
+  try {
+    const loginLink = await stripe.accounts.createLoginLink(accountId);
+    
+    console.log('✅ Created Login Link for Express Dashboard:', {
+      accountId: accountId,
+      url: loginLink.url,
+    });
+    
+    return loginLink;
+  } catch (error: any) {
+    console.error('❌ Error creating Login Link:', error.message);
+    throw error;
+  }
 }
 
 // ============================================================================
