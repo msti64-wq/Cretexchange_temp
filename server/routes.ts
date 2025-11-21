@@ -2497,6 +2497,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/owners/stripe-onboarding - Get Stripe onboarding link for Express account (owners)
+  app.get('/api/owners/stripe-onboarding', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (user.role !== 'owner') {
+        return res.status(403).json({ message: 'Owner access required' });
+      }
+
+      // Ensure owner has Stripe Connect account
+      if (!user.stripeConnectAccountId) {
+        return res.status(400).json({ 
+          message: 'Stripe Connect account not found. Please contact support.' 
+        });
+      }
+
+      // Check account requirements
+      const account = await stripe.accounts.retrieve(user.stripeConnectAccountId);
+      
+      // If account is fully verified, return success
+      if (account.requirements?.currently_due?.length === 0) {
+        return res.json({
+          onboardingComplete: true,
+          message: 'Account onboarding is complete',
+          capabilities: account.capabilities,
+        });
+      }
+
+      // Create Account Link for onboarding
+      const protocol = req.get('host')?.includes('replit.dev') ? 'https' : req.protocol;
+      const baseUrl = `${protocol}://${req.get('host')}`;
+      
+      const accountLink = await stripeService.createAccountLink({
+        accountId: user.stripeConnectAccountId,
+        refreshUrl: `${baseUrl}/owner/profile?stripe_refresh=true`,
+        returnUrl: `${baseUrl}/owner/profile?stripe_complete=true`,
+        type: 'account_onboarding',
+      });
+
+      res.json({
+        onboardingUrl: accountLink.url,
+        expiresAt: accountLink.expires_at,
+        requirements: account.requirements,
+      });
+    } catch (error: any) {
+      console.error('Error creating Stripe onboarding link for owner:', error);
+      res.status(500).json({
+        message: 'Failed to create onboarding link',
+        error: error.message
+      });
+    }
+  });
+
+  // GET /api/owners/stripe-requirements - Check Stripe account requirements (owners)
+  app.get('/api/owners/stripe-requirements', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (user.role !== 'owner') {
+        return res.status(403).json({ message: 'Owner access required' });
+      }
+
+      if (!user.stripeConnectAccountId) {
+        return res.json({
+          hasAccount: false,
+          message: 'Stripe Connect account not created yet',
+        });
+      }
+
+      // Get account status from Stripe
+      const account = await stripe.accounts.retrieve(user.stripeConnectAccountId);
+      
+      res.json({
+        hasAccount: true,
+        accountId: account.id,
+        type: account.type,
+        capabilities: account.capabilities,
+        requirements: {
+          currently_due: account.requirements?.currently_due || [],
+          eventually_due: account.requirements?.eventually_due || [],
+          past_due: account.requirements?.past_due || [],
+          current_deadline: account.requirements?.current_deadline || null,
+        },
+        charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled,
+        details_submitted: account.details_submitted,
+      });
+    } catch (error: any) {
+      console.error('Error checking Stripe requirements for owner:', error);
+      res.status(500).json({
+        message: 'Failed to check account requirements',
+        error: error.message
+      });
+    }
+  });
+
   // Owner endpoints
   app.get('/api/owners/dashboard', isAuthenticated, async (req: any, res) => {
     try {
