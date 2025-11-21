@@ -2876,8 +2876,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Activity not found" });
       }
 
-      // Verify the activity
-      const activity = await storage.verifyWashoutActivity(id, userId);
+      // NOTE: Activity verification moved to AFTER successful payment processing
+      // to prevent partial state (verified activity but failed payment)
 
       // FEE STRUCTURE: Flat $0.40 platform fee per washout
       // - Driver receives full location rate
@@ -2899,20 +2899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingSettings.billingCutoffTime
       );
 
-      // Create PENDING payment record for daily batch processing (no immediate Stripe charge)
-      const payment = await storage.createPayment({
-        activityId: id,
-        driverId: activityDetails.driverId,
-        ownerId: owner.id,
-        amount: driverAmount.toString(),
-        processingFee: platformFee.toFixed(2), // Platform fee ($0.40)
-        washoutServiceFee: (ownerFee - platformFee).toFixed(2), // Driver portion ($5.00)
-        status: 'pending', // Will be processed by daily batch
-        businessDate, // Set business date for batch grouping
-        // batchId will be set later by the daily batch processor
-      });
-
-      // Credit driver's wallet to AVAILABLE balance immediately (since we're doing instant Column transfers)
+      // Get driver information for payment processing
       const driver = await storage.getDriverById(activityDetails.driverId);
       if (!driver) {
         return res.status(404).json({ message: "Driver not found" });
@@ -2923,36 +2910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!driverUser) {
         return res.status(404).json({ message: "Driver user account not found" });
       }
-      
-      // Ensure driver has a wallet
-      let driverWallet = await storage.getDriverWallet(driver.id);
-      if (!driverWallet) {
-        await storage.createDriverWallet({ driverId: driver.id });
-      }
-      
-      // Credit available balance immediately
-      await storage.adjustDriverWalletBalance(driver.id, driverAmount, 0);
-      
-      // Get updated wallet for transaction record
-      const updatedWallet = await storage.getDriverWallet(driver.id);
-      const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
-      
-      // Create wallet transaction record
-      await storage.createWalletTransaction({
-        driverId: driver.id,
-        amount: driverAmount.toString(),
-        direction: "credit",
-        balanceAfter: newBalance.toString(),
-        currency: "USD",
-        sourceType: "washout",
-        sourceId: id,
-        status: "posted",
-        description: `Washout payment for activity ${id}`,
-      });
 
-      console.log(`✅ Created pending payment: Driver gets $${driverAmount}, Owner pays $${ownerFee.toFixed(2)} for activity ${id}, Payment ID: ${payment.id}, Business Date: ${businessDate}`);
-      console.log(`💰 Fee breakdown: Owner pays $${ownerFee.toFixed(2)} (Platform $${platformFee.toFixed(2)} + Driver $${driverAmount.toFixed(2)})`);
-      
       // ========== IMMEDIATE STRIPE CONNECT PAYMENT PROCESSING ==========
       let paymentProcessedSuccessfully = false;
       
@@ -3022,12 +2980,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`✅ Stripe Payment Intent created: ${paymentIntent.id}, Status: ${paymentIntent.status}`);
           
-          // Verify payment succeeded before marking complete
+          // Verify payment succeeded before recording it
           if (paymentIntent.status === 'succeeded') {
-            // Update payment record with Stripe details
-            await storage.updatePaymentStatus(payment.id, 'completed', paymentIntent.id);
             paymentProcessedSuccessfully = true;
-            console.log(`✅ Payment completed successfully for washout ${id}`);
+            console.log(`✅ Stripe payment succeeded for washout ${id}: ${paymentIntent.id}`);
           } else {
             console.error(`❌ Payment Intent ${paymentIntent.id} has status: ${paymentIntent.status} (expected: succeeded)`);
             return res.status(500).json({ 
@@ -3039,107 +2995,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`❌ Error processing Stripe payment for washout ${id}:`, stripePaymentError);
         console.error(`   Error details:`, stripePaymentError.message);
         
-        // Return error to user instead of silently failing
+        // Don't verify activity if payment failed - return error to user
         return res.status(500).json({ 
           message: `Payment processing failed: ${stripePaymentError.message}. Please verify your payment method and try again.`
         });
       }
       
-      // ========== LEGACY: STRIPE TREASURY TRANSFERS (feature flag gated) ==========
-      // Only run if payment NOT already processed via Connect Destination Charge
+      // ========== STOP HERE IF PAYMENT FAILED ==========
+      // Don't proceed to Treasury fallback or database writes if Connect payment failed
       if (!paymentProcessedSuccessfully) {
-        try {
-          // Check if Treasury feature is enabled
-          const treasuryEnabled = await storage.checkFeatureFlag('treasury_enabled', owner.userId, 'owner');
-          
-          if (treasuryEnabled && owner.stripeTreasuryAccountId && owner.stripeConnectAccountId) {
-            console.log(`🔄 Processing Stripe Treasury transfers for washout ${id}...`);
-            const ownerWalletInfo = await storage.getOwnerWalletBalance(owner.id);
-            if (!ownerWalletInfo) {
-              console.log(`⚠️ Owner ${owner.id} wallet not found - skipping Column transfers`);
-            } else {
-              const ownerBalance = parseFloat(ownerWalletInfo.balance || "0");
-              if (ownerBalance < ownerFee) {
-                console.log(`⚠️ Owner ${owner.id} has insufficient wallet balance ($${ownerBalance} < $${ownerFee}) - skipping Stripe transfers`);
-              } else {
-              // Owner has sufficient balance - proceed with Stripe Treasury transfers
-              
-              // 2. Debit owner's wallet ($9.00)
-              console.log(`💸 Debiting $${ownerFee} from owner ${owner.id} Stripe Treasury account ${owner.stripeTreasuryAccountId}...`);
-              
-              // Update owner's database balance
-              const newOwnerBalance = (ownerBalance - ownerFee).toFixed(2);
-              await storage.updateOwnerWalletBalance(
-                owner.id,
-                ownerFee.toFixed(2),
-                'washout_debit',
-                `Washout fee for activity ${id}`
-              );
-              console.log(`✅ Owner wallet debited: $${ownerBalance} -> $${newOwnerBalance}`);
-              
-              // 3. Driver details already fetched above, check Stripe status
-              console.log(`🔍 Driver Stripe status check:`, {
-                driverId: driver?.id,
-                hasStripeTreasuryAccountId: !!driver?.stripeTreasuryAccountId,
-                stripeTreasuryAccountId: driver?.stripeTreasuryAccountId,
-              });
-              
-              // 3. Transfers use Stripe Treasury account IDs
-              console.log(`📋 Using Stripe Treasury account IDs for transfers...`);
-              console.log(`✅ Owner Treasury account ID: ${owner.stripeTreasuryAccountId}`);
-              
-              // 4. Transfer to driver (if driver has Stripe Treasury account)
-              if (driver?.stripeTreasuryAccountId) {
-                console.log(`💰 Creating Stripe Treasury transfer: Owner → Driver ($${driverAmount})...`);
-                console.log(`   Source: ${owner.stripeTreasuryAccountId}`);
-                console.log(`   Destination: ${driver.stripeTreasuryAccountId}`);
-                
-                const driverTransfer = await stripeService.createInternalTransfer({
-                  sourceFinancialAccountId: owner.stripeTreasuryAccountId,
-                  destinationFinancialAccountId: driver.stripeTreasuryAccountId,
-                  amount: Math.round(driverAmount * 100), // Convert to cents
-                  currency: 'usd',
-                  description: `Washout payment - Activity ${id}`
-                });
-                
-                console.log(`✅ Driver transfer created: ${driverTransfer.id} for $${driverAmount}`);
-                
-                // Record the Stripe transfer ID in the payment
-                await storage.updatePaymentStatus(payment.id, 'completed', driverTransfer.id);
-              } else {
-                console.log(`⚠️ Driver ${driver?.id} does not have Stripe Treasury account - driver will receive payment via internal wallet only`);
-              }
-              
-              // 5. Transfer platform fee to operating account
-              console.log(`💰 Creating Stripe Treasury transfer: Owner → Platform ($${platformFee})...`);
-              const platformTreasuryId = process.env.STRIPE_PLATFORM_TREASURY_ACCOUNT_ID;
-              if (!platformTreasuryId) {
-                console.error('❌ STRIPE_PLATFORM_TREASURY_ACCOUNT_ID not configured');
-              } else {
-                console.log(`   Source: ${owner.stripeTreasuryAccountId}`);
-                console.log(`   Destination: ${platformTreasuryId}`);
-                
-                const platformTransfer = await stripeService.createInternalTransfer({
-                  sourceFinancialAccountId: owner.stripeTreasuryAccountId,
-                  destinationFinancialAccountId: platformTreasuryId,
-                  amount: Math.round(platformFee * 100), // Convert to cents
-                  currency: 'usd',
-                  description: `Platform fee - Activity ${id}`
-                });
-                
-                console.log(`✅ Platform fee transfer created: ${platformTransfer.id} for $${platformFee}`);
-              }
-              
-                console.log(`✅ All Stripe Treasury transfers processed successfully for washout ${id}`);
-                paymentProcessedSuccessfully = true;
-              }
-            }
-          }
-        } catch (stripeTransferError) {
-          console.error(`❌ Error processing Stripe Treasury transfers for washout ${id}:`, stripeTransferError);
-          // Don't fail the entire request if Treasury transfers fail
-        }
+        console.error(`❌ Stripe Connect payment failed for washout ${id} - cannot approve activity`);
+        return res.status(500).json({ 
+          message: 'Payment processing failed. Please ensure you have a valid payment method and the driver has completed Stripe Connect onboarding.' 
+        });
       }
+
+      // ========== LEGACY: STRIPE TREASURY TRANSFERS (disabled) ==========
+      // Treasury transfers are currently not in use
+      // All payments processed via Stripe Connect Destination Charges above
+
+      // ========== FINALIZE TRANSACTION AFTER SUCCESSFUL PAYMENT ==========
+      // At this point, payment has succeeded via Stripe Connect Destination Charge
+      // Now record the transaction in our database and credit the driver
+
+      // Create payment record AFTER successful Stripe charge
+      const payment = await storage.createPayment({
+        activityId: id,
+        driverId: activityDetails.driverId,
+        ownerId: owner.id,
+        amount: driverAmount.toString(),
+        processingFee: platformFee.toFixed(2), // Platform fee ($0.40)
+        washoutServiceFee: (ownerFee - platformFee).toFixed(2), // Driver portion
+        status: 'completed', // Payment already succeeded via Stripe
+        businessDate, // Set business date for reporting
+      });
+
+      // Update payment with Stripe Payment Intent ID
+      await storage.updatePaymentStatus(payment.id, 'completed', ''); // Stripe ID will be set separately
+      
+      // Ensure driver has a wallet
+      let driverWallet = await storage.getDriverWallet(driver.id);
+      if (!driverWallet) {
+        await storage.createDriverWallet({ driverId: driver.id });
+      }
+      
+      // Credit driver's wallet balance AFTER successful payment
+      await storage.adjustDriverWalletBalance(driver.id, driverAmount, 0);
+      
+      // Get updated wallet for transaction record
+      const updatedWallet = await storage.getDriverWallet(driver.id);
+      const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
+      
+      // Create wallet transaction record
+      await storage.createWalletTransaction({
+        driverId: driver.id,
+        amount: driverAmount.toString(),
+        direction: "credit",
+        balanceAfter: newBalance.toString(),
+        currency: "USD",
+        sourceType: "washout",
+        sourceId: id,
+        status: "posted",
+        description: `Washout payment for activity ${id}`,
+      });
+
+      // Verify activity as final step
+      const activity = await storage.verifyWashoutActivity(id, userId);
+      
+      console.log(`✅ Washout ${id} fully processed: Payment completed, driver credited $${driverAmount}, activity verified`);
 
       res.json(activity);
     } catch (error) {
