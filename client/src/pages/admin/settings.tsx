@@ -14,7 +14,9 @@ export default function AdminSettings() {
   const { toast } = useToast();
   const [backfillResult, setBackfillResult] = useState<any>(null);
   const [stripeAccountResult, setStripeAccountResult] = useState<any>(null);
+  const [migrationResult, setMigrationResult] = useState<any>(null);
   const [ipOverride, setIpOverride] = useState<string>("");
+  const [migrationIpOverride, setMigrationIpOverride] = useState<string>("");
 
   const backfillMutation = useMutation({
     mutationFn: async () => {
@@ -59,6 +61,31 @@ export default function AdminSettings() {
       toast({
         title: "Stripe Account Creation Failed",
         description: error.message || "Failed to create Stripe accounts",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const migrationMutation = useMutation({
+    mutationFn: async (ipOverride?: string) => {
+      const response = await apiRequest("/api/admin/migrate-custom-to-express", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ipOverride ? { ipOverride } : {}),
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setMigrationResult(data);
+      toast({
+        title: "Migration Complete",
+        description: `Successfully migrated ${data.migrated} driver accounts from Custom to Express.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Migration Failed",
+        description: error.message || "Failed to migrate Stripe accounts",
         variant: "destructive",
       });
     },
@@ -288,6 +315,116 @@ export default function AdminSettings() {
                         </span>
                         <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto">
                           {stripeAccountResult.errors.map((error: string, i: number) => (
+                            <div key={i}>{error}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Custom to Express Migration */}
+            <div className="border rounded-lg p-4 space-y-3 bg-amber-50 dark:bg-amber-950/20">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <h3 className="font-semibold text-amber-900 dark:text-amber-100">
+                    Migrate Custom Accounts to Express (CRITICAL FIX)
+                  </h3>
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Why this is needed:</strong> Existing driver Stripe accounts were created as Custom accounts, 
+                    which require manual capability activation and cannot accept Terms of Service programmatically. 
+                    This causes "Terms of service acceptance" and "transfers capability not active" errors.
+                  </p>
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>What this does:</strong> Deletes old Custom accounts and creates new Express accounts for all drivers. 
+                    Express accounts auto-activate the `transfers` capability needed for destination charges, and drivers 
+                    can complete TOS acceptance through Stripe's hosted onboarding UI.
+                  </p>
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>After migration:</strong> Drivers will need to complete onboarding via their profile page 
+                    to accept TOS and provide bank account details.
+                  </p>
+                </div>
+              </div>
+
+              {/* Optional IP Override */}
+              <div className="space-y-2">
+                <Label htmlFor="migration-ip-override" className="text-sm text-amber-800 dark:text-amber-200">
+                  IP Override (Optional)
+                </Label>
+                <Input
+                  id="migration-ip-override"
+                  type="text"
+                  placeholder="e.g., 8.8.8.8"
+                  value={migrationIpOverride}
+                  onChange={(e) => setMigrationIpOverride(e.target.value)}
+                  className="max-w-xs"
+                  data-testid="input-migration-ip-override"
+                />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Required if running from IPv6-only network. Provide a valid IPv4 address.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => migrationMutation.mutate(migrationIpOverride || undefined)}
+                  disabled={migrationMutation.isPending}
+                  variant="default"
+                  className="bg-amber-600 hover:bg-amber-700"
+                  data-testid="button-migrate-to-express"
+                >
+                  {migrationMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Migrating...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4 mr-2" />
+                      Migrate to Express Accounts
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Results Display */}
+              {migrationResult && (
+                <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    Migration Results
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Total Drivers:</span>
+                      <span className="ml-2 font-semibold" data-testid="text-migration-total">
+                        {migrationResult.totalDrivers}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Processed:</span>
+                      <span className="ml-2 font-semibold" data-testid="text-migration-processed">
+                        {migrationResult.processed}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Successfully Migrated:</span>
+                      <span className="ml-2 font-semibold text-green-600" data-testid="text-migration-migrated">
+                        {migrationResult.migrated}
+                      </span>
+                    </div>
+                    {migrationResult.errors.length > 0 && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Errors:</span>
+                        <span className="ml-2 font-semibold text-red-600">
+                          {migrationResult.errors.length}
+                        </span>
+                        <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto">
+                          {migrationResult.errors.map((error: string, i: number) => (
                             <div key={i}>{error}</div>
                           ))}
                         </div>
