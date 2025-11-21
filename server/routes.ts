@@ -761,7 +761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId: existingUser.id,
             username: existingUser.username,
             email: existingUser.email,
-            type: 'custom',
+            type: 'express', // Express accounts for marketplace - auto-activate capabilities
             businessType: 'individual',
             capabilities: ['card_payments', 'transfers'],
             individual: {
@@ -1109,7 +1109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let connectedAccount;
       try {
         connectedAccount = await stripeService.createConnectedAccount({
-          type: 'custom',
+          type: 'express', // Express accounts for marketplace - auto-activate capabilities
           userId: userId, // Add user ID to metadata for deduplication
           username: user.username, // Use username as display name in Stripe
           email: validatedData.email,
@@ -2181,7 +2181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create Connect account if needed
         const driver = await storage.getDriver(userId);
         const connectedAccount = await stripeService.createConnectedAccount({
-          type: 'custom',
+          type: 'express', // Express accounts for marketplace - auto-activate capabilities
           userId: userId,
           username: user.username,
           email: user.email,
@@ -2313,7 +2313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create Stripe Connect account if driver doesn't have one
       if (!user.stripeConnectAccountId) {
         const connectedAccount = await stripeService.createConnectedAccount({
-          type: 'custom',
+          type: 'express', // Express accounts for marketplace - auto-activate capabilities
           userId: userId,
           username: user.username,
           email: user.email,
@@ -3294,7 +3294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             console.log(`🔧 Migrating driver ${driver.id} - creating missing Stripe Connect account...`);
             const connectAccount = await stripeService.createConnectedAccount({
-              type: 'custom',
+              type: 'express', // Express accounts for marketplace - auto-activate capabilities
               userId: userId, // REQUIRED - prevents duplicates
               username: user.username,
               email: user.email,
@@ -3349,7 +3349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           console.log(`🔵 Creating Stripe Connect account for driver ${driver.id}...`);
           const connectAccount = await stripeService.createConnectedAccount({
-            type: 'custom',
+            type: 'express', // Express accounts for marketplace - auto-activate capabilities
             userId: userId, // REQUIRED - prevents duplicates
             username: user.username,
             email: user.email,
@@ -3511,7 +3511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         try {
           const connectAccount = await stripeService.createConnectedAccount({
-            type: 'custom',
+            type: 'express', // Express accounts for marketplace - auto-activate capabilities
             userId: userId, // REQUIRED - prevents duplicates
             username: user.username,
             email: user.email,
@@ -3891,7 +3891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           // Create new Stripe Connect Account
           connectedAccount = await stripeService.createConnectedAccount({
-            type: 'custom',
+            type: 'express', // Express accounts for marketplace - auto-activate capabilities
             userId: userId, // REQUIRED - prevents duplicates
             username: user.username,
             email: user.email,
@@ -4491,7 +4491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         try {
           connectedAccount = await stripeService.createConnectedAccount({
-            type: 'custom',
+            type: 'express', // Express accounts for marketplace - auto-activate capabilities
             userId: userId, // REQUIRED - prevents duplicates
             username: user.username,
             email: user.email,
@@ -4893,6 +4893,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/admin/migrate-custom-to-express - Migrate existing Custom accounts to Express accounts
+  app.post('/api/admin/migrate-custom-to-express', isAuthenticated, async (req: any, res) => {
+    try {
+      // Check super admin role
+      if (req.user.role !== 'super_admin') {
+        return res.status(403).json({ message: "Unauthorized - super admin only" });
+      }
+
+      // Check if Stripe is initialized
+      if (!stripe) {
+        return res.status(503).json({ 
+          message: "Stripe is not configured.",
+          details: "This operation requires Stripe to be initialized."
+        });
+      }
+
+      console.log('🔄 Starting migration from Custom to Express accounts...');
+      
+      // Get all drivers with Stripe Connect accounts
+      const allUsers = await db.select().from(users).where(eq(users.role, 'driver'));
+      
+      const results = {
+        totalDrivers: allUsers.length,
+        processed: 0,
+        migrated: 0,
+        errors: [] as string[],
+      };
+
+      for (const user of allUsers) {
+        if (!user.stripeConnectAccountId) {
+          continue; // Skip drivers without Connect accounts
+        }
+
+        results.processed++;
+
+        try {
+          // Get the existing account from Stripe
+          const existingAccount = await stripe.accounts.retrieve(user.stripeConnectAccountId);
+          
+          // Check if it's a Custom account
+          if (existingAccount.type === 'custom') {
+            console.log(`🔄 Migrating driver ${user.username} from Custom to Express...`);
+            
+            // Delete the old Custom account
+            try {
+              await stripe.accounts.del(user.stripeConnectAccountId);
+              console.log(`✅ Deleted Custom account: ${user.stripeConnectAccountId}`);
+            } catch (deleteError: any) {
+              console.error(`⚠️ Error deleting Custom account: ${deleteError.message}`);
+              // Continue anyway - account might already be deleted
+            }
+
+            // Get IP for TOS acceptance
+            const manualIp = req.body?.ipOverride;
+            const adminIp = manualIp || extractIPv4(req);
+            if (!adminIp) {
+              results.errors.push(`${user.username}: No valid IPv4 address. Provide ipOverride.`);
+              continue;
+            }
+
+            // Create new Express account
+            const newExpressAccount = await stripeService.createConnectedAccount({
+              userId: user.id,
+              username: user.username,
+              email: user.email,
+              type: 'express',
+              businessType: 'individual',
+              capabilities: ['card_payments', 'transfers'],
+              individual: {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone || undefined
+              },
+              businessProfile: {
+                mcc: '7542',
+                url: process.env.REPLIT_DEV_DOMAIN || 'https://creteexchange.com',
+                supportEmail: process.env.SUPPORT_EMAIL || 'support@creteexchange.com'
+              },
+              tosAcceptance: {
+                date: Math.floor(Date.now() / 1000),
+                ip: adminIp
+              }
+            });
+
+            // Update user record with new Express account
+            await storage.updateUserStripeInfo(user.id, {
+              stripeConnectAccountId: newExpressAccount.id
+            });
+
+            console.log(`✅ Migrated ${user.username}: ${user.stripeConnectAccountId} → ${newExpressAccount.id}`);
+            results.migrated++;
+          } else {
+            console.log(`✅ Driver ${user.username} already has Express account - no migration needed`);
+          }
+        } catch (error: any) {
+          console.error(`❌ Error migrating user ${user.username}:`, error);
+          results.errors.push(`${user.username}: ${error.message}`);
+        }
+      }
+
+      console.log('✅ Migration complete:', results);
+      res.json(results);
+
+    } catch (error: any) {
+      console.error("Error in Custom→Express migration:", error);
+      res.status(500).json({ message: "Failed to migrate accounts: " + error.message });
+    }
+  });
+
   // POST /api/admin/backfill-stripe-accounts - Create Stripe accounts for existing users
   app.post('/api/admin/backfill-stripe-accounts', isAuthenticated, async (req: any, res) => {
     try {
@@ -4980,12 +5090,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               continue;
             }
             
-            // Create Stripe Connect account
+            // Create Stripe Connect account (Express type for marketplace)
+            // Express accounts auto-activate capabilities without manual verification
             const stripeAccount = await stripeService.createConnectedAccount({
               userId: user.id,
               username: user.username,
               email: user.email,
-              type: 'custom',
+              type: 'express', // Express accounts for marketplace - auto-activate capabilities
               businessType: 'individual',
               capabilities: ['card_payments', 'transfers'],
               individual: {

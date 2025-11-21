@@ -43,7 +43,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 export interface CreateConnectedAccountParams {
   username: string; // PRIMARY IDENTIFIER - Stripe accounts are based on username, NOT email
   email: string;
-  type: 'custom'; // Using custom for full control
+  type: 'express' | 'custom'; // Express for marketplace (auto-activates capabilities), Custom for full control
   userId: string; // REQUIRED - User ID for metadata tracking (prevents duplicates)
   capabilities?: string[]; // e.g., ['card_payments', 'transfers', 'treasury']
   businessType?: 'individual' | 'company';
