@@ -102,18 +102,30 @@ function extractIPv4(req: any): string | null {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Installation guide route
-  app.get('/installation-guide', async (req, res) => {
+  // Installation guide routes (with and without .html extension)
+  const serveInstallationGuide = async (req: any, res: any) => {
     const fs = await import('fs');
     const path = await import('path');
-    const filePath = path.join(process.cwd(), 'public', 'installation-guide.html');
     
-    if (fs.existsSync(filePath)) {
-      res.sendFile(filePath);
-    } else {
-      res.status(404).send('Installation guide not found');
+    // Try multiple possible locations
+    const locations = [
+      path.join(process.cwd(), 'public', 'installation-guide.html'),
+      path.join(process.cwd(), 'dist', 'public', 'installation-guide.html')
+    ];
+    
+    for (const filePath of locations) {
+      if (fs.existsSync(filePath)) {
+        console.log('Serving installation guide from:', filePath);
+        return res.sendFile(filePath);
+      }
     }
-  });
+    
+    console.error('Installation guide not found in any location:', locations);
+    res.status(404).send('Installation guide not found');
+  };
+  
+  app.get('/installation-guide', serveInstallationGuide);
+  app.get('/installation-guide.html', serveInstallationGuide);
 
   // Health check endpoint for debugging
   app.get('/api/health', async (req, res) => {
