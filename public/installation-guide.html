@@ -12,7 +12,7 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: #1e293b;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
@@ -23,13 +23,20 @@
             text-align: center;
             margin-bottom: 40px;
             padding-bottom: 20px;
-            border-bottom: 3px solid #2563eb;
+            border-bottom: 3px solid #f97316;
+        }
+        
+        .logo-image {
+            max-width: 200px;
+            height: auto;
+            margin: 0 auto 15px;
+            display: block;
         }
         
         .logo {
             font-size: 32px;
             font-weight: bold;
-            color: #2563eb;
+            color: #f97316;
             margin-bottom: 10px;
         }
         
@@ -47,12 +54,12 @@
         }
         
         h2 {
-            color: #2563eb;
+            color: #f97316;
             font-size: 22px;
             margin-top: 30px;
             margin-bottom: 15px;
             padding-left: 10px;
-            border-left: 4px solid #2563eb;
+            border-left: 4px solid #f97316;
         }
         
         .platform-icon {
@@ -80,18 +87,18 @@
         }
         
         .step {
-            background: #f8fafc;
+            background: #fff7ed;
             padding: 15px 20px;
             margin: 10px 0;
             border-radius: 8px;
-            border-left: 4px solid #2563eb;
+            border-left: 4px solid #f97316;
         }
         
         .step-number {
             display: inline-block;
             width: 28px;
             height: 28px;
-            background: #2563eb;
+            background: #f97316;
             color: white;
             text-align: center;
             line-height: 28px;
@@ -145,7 +152,7 @@
         
         .button-visual {
             display: inline-block;
-            background: #2563eb;
+            background: #f97316;
             color: white;
             padding: 8px 16px;
             border-radius: 6px;
@@ -206,7 +213,8 @@
 </head>
 <body>
     <div class="header">
-        <div class="logo">🚛 CreteXchange</div>
+        <img src="/assets/cretexchange-logo-2025.png" alt="CreteXchange Logo" class="logo-image" onerror="this.style.display='none'; document.querySelector('.logo').style.display='block';">
+        <div class="logo" style="display: none;">🚛 CreteXchange</div>
         <div class="subtitle">Concrete Washout Location Management Platform</div>
     </div>
 
@@ -434,7 +442,7 @@
         window.onload = function() {
             const printBtn = document.createElement('button');
             printBtn.textContent = '🖨️ Print / Save as PDF';
-            printBtn.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 12px 24px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none;';
+            printBtn.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 12px 24px; background: #f97316; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none;';
             printBtn.onclick = () => window.print();
             document.body.appendChild(printBtn);
             
