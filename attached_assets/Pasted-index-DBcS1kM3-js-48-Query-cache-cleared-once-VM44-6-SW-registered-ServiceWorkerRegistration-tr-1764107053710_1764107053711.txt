@@ -1,0 +1,72 @@
+index-DBcS1kM3.js:48 🔄 Query cache cleared once
+VM44:6 SW registered:  ServiceWorkerRegistration
+truck-wash-locator-msti64.replit.app/:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+m.stripe.network/inn…__[version]=basil:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+js.stripe.com/v3/con…ipeController4931:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+js.stripe.com/v3/m-o…__[version]=basil:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+whatsapp-express-fte.js:18 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+chatgpt-express-fte.js:18 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+injectAIMarker.js:18 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+EmbeddedPDFTouchPointCoachMark.js:18 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+content-script-utils.js:18 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+index-DBcS1kM3.js:498 🔍 Profile completion check: Object
+index-DBcS1kM3.js:498 ✅ Profile complete! Showing install prompt...
+index-DBcS1kM3.js:492 🎨 InstallPrompt render check: Object
+index-DBcS1kM3.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DBcS1kM3.js:492 🔧 InstallPrompt component loaded
+index-DBcS1kM3.js:492 👤 User previously dismissed install prompt: true
+index-DBcS1kM3.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-DBcS1kM3.js:498 🔍 Profile completion check: Object
+index-DBcS1kM3.js:498 🔍 Profile completion check: Object
+index-DBcS1kM3.js:498 ✅ Profile complete! Showing install prompt...
+index-DBcS1kM3.js:492 🎨 InstallPrompt render check: Object
+index-DBcS1kM3.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DBcS1kM3.js:492 🔧 InstallPrompt component loaded
+index-DBcS1kM3.js:492 👤 User previously dismissed install prompt: true
+index-DBcS1kM3.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-DBcS1kM3.js:498 🔍 Profile completion check: Object
+api/drivers/bank-connect/complete:1  Failed to load resource: the server responded with a status of 400 ()
+index-DBcS1kM3.js:498 Bank connection error: Error: 400: {"message":"Financial Connections flow not completed. Status: undefined. Please try again or use manual bank entry as alternative."}
+    at nC (index-DBcS1kM3.js:48:42800)
+    at async ge (index-DBcS1kM3.js:48:43123)
+    at async d (index-DBcS1kM3.js:498:33688)
+d @ index-DBcS1kM3.js:498
+index-DBcS1kM3.js:492 🎨 InstallPrompt render check: Object
+index-DBcS1kM3.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DBcS1kM3.js:492 🎨 InstallPrompt render check: Object
+index-DBcS1kM3.js:492 ❌ InstallPrompt not showing because showPrompt is false
