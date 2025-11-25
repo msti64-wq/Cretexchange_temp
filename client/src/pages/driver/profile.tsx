@@ -405,7 +405,7 @@ export default function DriverProfile() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {user?.driver?.hasAccountNumber && user?.driver?.hasRoutingNumber ? (
+              {user?.roleData?.hasAccountNumber && user?.roleData?.hasRoutingNumber ? (
                 <>
                   <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
                     <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
@@ -414,7 +414,7 @@ export default function DriverProfile() {
                         Bank Account Connected
                       </p>
                       <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                        {user?.driver?.bankName || 'Your bank'} {user?.driver?.accountNumberLast4 && `****${user?.driver?.accountNumberLast4}`}
+                        {user?.roleData?.bankName || 'Your bank'} {user?.roleData?.accountNumberLast4 && `****${user?.roleData?.accountNumberLast4}`}
                       </p>
                     </div>
                   </div>
