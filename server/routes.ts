@@ -2288,11 +2288,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: currentUser.role, // Preserve existing role
       });
 
-      // Automatically update Stripe account with complete verification info
-      if (currentUser.stripeConnectAccountId && driver) {
+      // Create or update Stripe account with complete verification info
+      let stripeAccountId = currentUser.stripeConnectAccountId;
+      
+      // If no Stripe account exists, create one
+      if (!stripeAccountId) {
+        try {
+          console.log(`📝 No Stripe account found for driver ${currentUser.username}, creating one...`);
+          const connectedAccount = await stripeService.createConnectedAccount({
+            type: 'express',
+            userId: userId,
+            username: currentUser.username,
+            email: currentUser.email || '',
+            businessType: 'individual',
+          });
+          stripeAccountId = connectedAccount.id;
+          
+          // Update user with new Stripe account ID
+          await storage.updateUserStripeInfo(userId, { stripeConnectAccountId: stripeAccountId });
+          console.log(`✅ Created Stripe account ${stripeAccountId} for driver ${currentUser.username}`);
+        } catch (createError: any) {
+          console.error('Error creating Stripe account for driver:', createError.message);
+          // Continue with profile update even if Stripe account creation fails
+        }
+      }
+      
+      // Now update the Stripe account with verification info
+      if (stripeAccountId && driver) {
         try {
           await stripeService.updateConnectedAccountWithCompleteInfo(
-            currentUser.stripeConnectAccountId,
+            stripeAccountId,
             {
               firstName: req.body.firstName || currentUser.firstName,
               lastName: req.body.lastName || currentUser.lastName,
@@ -2311,6 +2336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ip: extractIPv4(req) || '0.0.0.0'
             }
           );
+          console.log(`✅ Updated Stripe account ${stripeAccountId} with driver verification info`);
         } catch (stripeError: any) {
           console.error('Note: Could not update Stripe with verification info:', stripeError.message);
           // Don't fail the profile update if Stripe update fails
@@ -3630,11 +3656,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: currentUser.role, // Preserve existing role
       });
 
-      // Automatically update Stripe account with complete verification info
-      if (currentUser.stripeConnectAccountId && owner) {
+      // Create or update Stripe account with complete verification info
+      let stripeAccountId = currentUser.stripeConnectAccountId;
+      
+      // If no Stripe account exists, create one
+      if (!stripeAccountId) {
+        try {
+          console.log(`📝 No Stripe account found for owner ${currentUser.username}, creating one...`);
+          const connectedAccount = await stripeService.createConnectedAccount({
+            type: 'express',
+            userId: userId,
+            username: currentUser.username,
+            email: currentUser.email || '',
+            businessType: 'company',
+          });
+          stripeAccountId = connectedAccount.id;
+          
+          // Update user with new Stripe account ID
+          await storage.updateUserStripeInfo(userId, { stripeConnectAccountId: stripeAccountId });
+          console.log(`✅ Created Stripe account ${stripeAccountId} for owner ${currentUser.username}`);
+        } catch (createError: any) {
+          console.error('Error creating Stripe account for owner:', createError.message);
+          // Continue with profile update even if Stripe account creation fails
+        }
+      }
+      
+      // Now update the Stripe account with verification info
+      if (stripeAccountId && owner) {
         try {
           await stripeService.updateConnectedAccountWithCompleteInfo(
-            currentUser.stripeConnectAccountId,
+            stripeAccountId,
             {
               firstName: req.body.firstName || currentUser.firstName,
               lastName: req.body.lastName || currentUser.lastName,
@@ -3655,6 +3706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ip: extractIPv4(req) || '0.0.0.0'
             }
           );
+          console.log(`✅ Updated Stripe account ${stripeAccountId} with owner verification info`);
         } catch (stripeError: any) {
           console.error('Note: Could not update Stripe with verification info:', stripeError.message);
           // Don't fail the profile update if Stripe update fails
