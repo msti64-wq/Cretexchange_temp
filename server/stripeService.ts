@@ -310,6 +310,10 @@ export async function updateConnectedAccountWithCompleteInfo(
     companyName?: string;
     businessWebsite?: string;
     taxId?: string;
+  },
+  tosAcceptance?: {
+    timestamp: number;
+    ip: string;
   }
 ): Promise<Stripe.Account> {
   try {
@@ -370,6 +374,14 @@ export async function updateConnectedAccountWithCompleteInfo(
         name: userInfo.companyName,
         mcc: '7542', // Car wash / washout services
         support_email: userInfo.email,
+      };
+    }
+
+    // Add Stripe Terms & Conditions acceptance if provided
+    if (tosAcceptance) {
+      accountParams.tos_acceptance = {
+        date: tosAcceptance.timestamp,
+        ip: tosAcceptance.ip,
       };
     }
 

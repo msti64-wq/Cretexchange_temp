@@ -2205,6 +2205,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               dateOfBirth: req.body.dateOfBirth || driver.dateOfBirth,
               ssnLast4: req.body.ssnLast4 || driver.ssnLast4,
               businessWebsite: req.body.businessWebsite || driver.businessWebsite,
+            },
+            {
+              timestamp: Math.floor(Date.now() / 1000),
+              ip: extractIPv4(req) || '0.0.0.0'
             }
           );
         } catch (stripeError: any) {
@@ -2340,6 +2344,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               dateOfBirth: driver.dateOfBirth,
               ssnLast4: driver.ssnLast4,
               businessWebsite: driver.businessWebsite,
+            },
+            {
+              timestamp: Math.floor(Date.now() / 1000),
+              ip: extractIPv4(req) || '0.0.0.0'
             }
           );
           console.log('✅ Verification info synced to Stripe Connect account');
@@ -2482,6 +2490,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               dateOfBirth: driverUpdated.dateOfBirth,
               ssnLast4: driverUpdated.ssnLast4,
               businessWebsite: driverUpdated.businessWebsite,
+            },
+            {
+              timestamp: Math.floor(Date.now() / 1000),
+              ip: extractIPv4(req) || '0.0.0.0'
             }
           );
           console.log('✅ Verification info synced to Stripe Connect account');
@@ -3537,6 +3549,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               taxId: req.body.taxId || owner.taxId,
               dateOfBirth: req.body.dateOfBirth || owner.dateOfBirth,
               ssnLast4: req.body.ssnLast4 || owner.ssnLast4,
+            },
+            {
+              timestamp: Math.floor(Date.now() / 1000),
+              ip: extractIPv4(req) || '0.0.0.0'
             }
           );
         } catch (stripeError: any) {
@@ -5678,6 +5694,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               dateOfBirth: owner.dateOfBirth,
               ssnLast4: owner.ssnLast4,
               businessWebsite: owner.businessWebsite,
+            },
+            {
+              timestamp: Math.floor(Date.now() / 1000),
+              ip: extractIPv4(req) || '0.0.0.0'
             }
           );
           console.log('✅ Verification info synced to Stripe Connect account');
@@ -5769,6 +5789,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               dateOfBirth: owner.dateOfBirth,
               ssnLast4: owner.ssnLast4,
               businessWebsite: owner.businessWebsite,
+            },
+            {
+              timestamp: Math.floor(Date.now() / 1000),
+              ip: extractIPv4(req) || '0.0.0.0'
             }
           );
           console.log('✅ Verification info synced to Stripe Connect account');
