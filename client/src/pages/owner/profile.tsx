@@ -124,6 +124,9 @@ export default function OwnerProfile() {
     companyName: "",
     businessLicense: "",
     taxId: "",
+    dateOfBirth: "",
+    ssnLast4: "",
+    businessWebsite: "",
   });
 
   // Update form data when user data loads
@@ -142,6 +145,9 @@ export default function OwnerProfile() {
         companyName: user.roleData.companyName || "",
         businessLicense: user.roleData.businessLicense || "",
         taxId: user.roleData.taxId || "",
+        dateOfBirth: user.roleData.dateOfBirth || "",
+        ssnLast4: user.roleData.ssnLast4 || "",
+        businessWebsite: user.roleData.businessWebsite || "",
       });
     }
   }, [user]);
@@ -515,6 +521,74 @@ export default function OwnerProfile() {
                   disabled={!isEditing}
                   data-testid="input-zip"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Stripe Verification Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <CreditCard className="w-5 h-5 mr-2" />
+                Stripe Verification Information
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-2">
+                Required for Stripe Connect account verification
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  This information is securely sent to Stripe for account verification only. It's never stored or shared elsewhere.
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="dateOfBirth">Date of Birth (Required)</Label>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="input-date-of-birth"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Stripe verification requirement (YYYY-MM-DD format)
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="ssnLast4">Last 4 Digits of SSN (Required)</Label>
+                <Input
+                  id="ssnLast4"
+                  type="text"
+                  placeholder="1234"
+                  value={formData.ssnLast4}
+                  onChange={(e) => setFormData({...formData, ssnLast4: e.target.value.slice(0, 4)})}
+                  disabled={!isEditing}
+                  maxLength={4}
+                  data-testid="input-ssn-last4"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Only last 4 digits required for security
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="businessWebsite">Business Website (Required)</Label>
+                <Input
+                  id="businessWebsite"
+                  type="url"
+                  placeholder="https://example.com"
+                  value={formData.businessWebsite}
+                  onChange={(e) => setFormData({...formData, businessWebsite: e.target.value})}
+                  disabled={!isEditing}
+                  data-testid="input-business-website"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your business website for Stripe verification
+                </p>
               </div>
             </CardContent>
           </Card>
