@@ -16,6 +16,7 @@ export default function AdminSettings() {
   const [stripeAccountResult, setStripeAccountResult] = useState<any>(null);
   const [migrationResult, setMigrationResult] = useState<any>(null);
   const [capabilityResult, setCapabilityResult] = useState<any>(null);
+  const [stripeToCResult, setStripeToCResult] = useState<any>(null);
   const [ipOverride, setIpOverride] = useState<string>("");
   const [migrationIpOverride, setMigrationIpOverride] = useState<string>("");
 
@@ -110,6 +111,29 @@ export default function AdminSettings() {
       toast({
         title: "Capability Update Failed",
         description: error.message || "Failed to update driver capabilities",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const stripeToCMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/admin/update-existing-stripe-accounts", {
+        method: "POST",
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setStripeToCResult(data.summary);
+      toast({
+        title: "Stripe T&C Update Complete",
+        description: `Updated ${data.summary.updated} accounts with Stripe T&C acceptance. ${data.summary.failed > 0 ? `${data.summary.failed} failed.` : ''}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Stripe T&C Update Failed",
+        description: error.message || "Failed to update Stripe accounts",
         variant: "destructive",
       });
     },
@@ -537,6 +561,89 @@ export default function AdminSettings() {
                         </span>
                         <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto">
                           {capabilityResult.errors.map((error: any, i: number) => (
+                            <div key={i}>{error.username}: {error.error}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Stripe T&C Acceptance Update */}
+            <div className="border rounded-lg p-4 space-y-3 bg-purple-50 dark:bg-purple-950/20">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-purple-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <h3 className="font-semibold text-purple-900 dark:text-purple-100">
+                    Update Stripe T&C Acceptance for All Accounts
+                  </h3>
+                  <p className="text-sm text-purple-800 dark:text-purple-200">
+                    <strong>Why this is needed:</strong> Stripe requires explicit Terms & Conditions acceptance with timestamp and IP address 
+                    for all Connected Accounts. If you're seeing verification issues, this tool will backfill T&C acceptance for all existing 
+                    accounts that were created before this feature was implemented.
+                  </p>
+                  <p className="text-sm text-purple-800 dark:text-purple-200">
+                    <strong>What this does:</strong> Sends Stripe Terms & Conditions acceptance (with current timestamp and your IP address) 
+                    to all existing driver and owner Stripe Connect accounts. This is a one-time operation and is safe to run multiple times.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => stripeToCMutation.mutate()}
+                  disabled={stripeToCMutation.isPending}
+                  variant="default"
+                  className="bg-purple-600 hover:bg-purple-700"
+                  data-testid="button-update-stripe-toc"
+                >
+                  {stripeToCMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Updating T&C Acceptance...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4 mr-2" />
+                      Update Stripe T&C Acceptance
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Results Display */}
+              {stripeToCResult && (
+                <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    T&C Update Results
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Total Accounts:</span>
+                      <span className="ml-2 font-semibold" data-testid="text-toc-total">
+                        {stripeToCResult.total}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Successfully Updated:</span>
+                      <span className="ml-2 font-semibold text-green-600" data-testid="text-toc-updated">
+                        {stripeToCResult.updated}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Failed:</span>
+                      <span className="ml-2 font-semibold text-red-600" data-testid="text-toc-failed">
+                        {stripeToCResult.failed}
+                      </span>
+                    </div>
+                    {stripeToCResult.errors && stripeToCResult.errors.length > 0 && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Error Details:</span>
+                        <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto">
+                          {stripeToCResult.errors.map((error: any, i: number) => (
                             <div key={i}>{error.username}: {error.error}</div>
                           ))}
                         </div>
