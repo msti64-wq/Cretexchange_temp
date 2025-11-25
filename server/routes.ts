@@ -2160,6 +2160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Stripe verification fields
           dateOfBirth: req.body.dateOfBirth || driver.dateOfBirth,
           ssnLast4: req.body.ssnLast4 || driver.ssnLast4,
+          businessWebsite: req.body.businessWebsite || driver.businessWebsite,
         });
       }
 
@@ -2203,6 +2204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               zip: req.body.zip || currentUser.zip,
               dateOfBirth: req.body.dateOfBirth || driver.dateOfBirth,
               ssnLast4: req.body.ssnLast4 || driver.ssnLast4,
+              businessWebsite: req.body.businessWebsite || driver.businessWebsite,
             }
           );
         } catch (stripeError: any) {

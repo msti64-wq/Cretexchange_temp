@@ -130,6 +130,7 @@ export const drivers = pgTable("drivers", {
   // Stripe verification fields required for Connect account
   dateOfBirth: varchar("date_of_birth"), // YYYY-MM-DD format
   ssnLast4: varchar("ssn_last4"), // Last 4 digits of SSN
+  businessWebsite: varchar("business_website"), // Required by Stripe for Connect accounts
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
   createdAt: timestamp("created_at").defaultNow(),
