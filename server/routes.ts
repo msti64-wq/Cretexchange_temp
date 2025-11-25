@@ -1053,15 +1053,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Express accounts MUST use Account Links - cannot accept T&C programmatically
   app.post('/api/stripe/account-link', isAuthenticated, async (req: any, res) => {
     try {
-      // Check if Stripe is initialized
-      if (!stripe) {
-        console.error('❌ Stripe client not initialized - STRIPE_SECRET_KEY may be missing');
-        return res.status(500).json({ 
-          message: "Stripe service is not available. Please contact support.",
-          error: "Stripe not initialized"
-        });
-      }
-
       const userId = req.user.id;
       console.log(`📝 Generating Account Link for user ${userId}`);
       
@@ -1074,30 +1065,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ User found: ${user.username} (role: ${user.role})`);
 
-      // Get Stripe account ID - check database first, then search Stripe
+      // Get Stripe account ID from database
       let connectAccountId = user.stripeConnectAccountId;
+      console.log(`📊 Current database Stripe account: ${connectAccountId || 'none'}`);
 
-      // If not in database, search Stripe for existing account
+      // If not in database, try to search Stripe (with timeout to prevent hanging)
       if (!connectAccountId) {
-        console.log(`⚠️ No Stripe account ID in database for ${user.username}, searching Stripe...`);
+        console.log(`⚠️ No Stripe account ID in database for ${user.username}, attempting Stripe search...`);
         try {
-          const stripeAccount = await stripeService.findConnectedAccountByUserId(userId);
+          // Use a promise timeout to prevent hanging
+          const searchPromise = stripeService.findConnectedAccountByUserId(userId);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Stripe search timeout')), 10000)
+          );
+          
+          const stripeAccount = await Promise.race([searchPromise, timeoutPromise]) as any;
+          
           if (stripeAccount) {
             connectAccountId = stripeAccount.id;
             console.log(`✅ Found Stripe account in metadata: ${connectAccountId}`);
             
-            // Update database with found account ID
-            await storage.updateUserStripeInfo(userId, { stripeConnectAccountId: connectAccountId });
-            console.log(`✅ Updated database with Stripe account ID`);
+            // Update database with found account ID (best-effort, don't fail if this errors)
+            try {
+              await storage.updateUserStripeInfo(userId, { stripeConnectAccountId: connectAccountId });
+              console.log(`✅ Updated database with Stripe account ID`);
+            } catch (dbError: any) {
+              console.warn(`⚠️ Could not update database with Stripe account ID: ${dbError.message}`);
+            }
           }
         } catch (searchError: any) {
-          console.error(`❌ Error searching Stripe for account: ${searchError.message}`);
+          console.warn(`⚠️ Stripe search failed (continuing anyway): ${searchError.message}`);
+          // Don't fail here - continue to Account Link creation if we had no ID
         }
       }
 
       // Still no account ID - require onboarding
       if (!connectAccountId) {
-        console.error(`❌ No Stripe account for user ${userId} - requires onboarding`);
+        console.error(`❌ No Stripe account found for user ${userId} - requires onboarding`);
         return res.status(400).json({ 
           message: "No Stripe account found. Please complete onboarding first.",
           requiresOnboarding: true
@@ -1113,20 +1117,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         returnUrl = `${baseUrl}/owner/profile`;
       }
 
+      console.log(`🔗 Account Link return URL: ${returnUrl}`);
+
       // Generate Account Link for T&C acceptance
       // type='account_onboarding' includes T&C acceptance in Express Dashboard
-      const accountLink = await stripe.accountLinks.create({
-        account: connectAccountId,
-        refresh_url: returnUrl,
-        return_url: returnUrl,
-        type: 'account_onboarding',
-      });
+      let accountLink;
+      try {
+        accountLink = await stripe.accountLinks.create({
+          account: connectAccountId,
+          refresh_url: returnUrl,
+          return_url: returnUrl,
+          type: 'account_onboarding',
+        });
+        console.log(`✅ Generated Account Link successfully`);
+      } catch (stripeError: any) {
+        console.error(`❌ Stripe Account Link creation failed:`, {
+          message: stripeError.message,
+          type: stripeError.type,
+          statusCode: stripeError.statusCode,
+          accountId: connectAccountId
+        });
+        throw stripeError;
+      }
 
       console.log(`✅ Generated Account Link for T&C acceptance:`, {
         user: user.username,
         role: user.role,
         account: connectAccountId,
-        linkExpires: accountLink.expires_at
+        linkExpires: accountLink.expires_at,
+        linkUrl: accountLink.url.substring(0, 50) + '...' // Log partial URL for debugging
       });
 
       res.json({
@@ -1138,11 +1157,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: error.message,
         type: error.type,
         statusCode: error.statusCode,
-        raw: error.raw
+        stack: error.stack
       });
       res.status(500).json({ 
         message: error.message || "Failed to generate account link",
-        error: error.type || "Unknown error"
+        error: error.type || "Unknown error",
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   });

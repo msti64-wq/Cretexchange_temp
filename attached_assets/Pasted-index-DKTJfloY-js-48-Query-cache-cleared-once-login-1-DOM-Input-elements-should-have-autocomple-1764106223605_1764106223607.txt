@@ -1,0 +1,528 @@
+index-DKTJfloY.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value=​"test">​
+VM84 login:6 SW registered:  ServiceWorkerRegistration
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-DKTJfloY.js:498 🔍 Profile completion check: Object
+index-DKTJfloY.js:498 ✅ Profile complete! Showing install prompt...
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: Object
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:492 🔧 InstallPrompt component loaded
+index-DKTJfloY.js:492 👤 User previously dismissed install prompt: true
+index-DKTJfloY.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-DKTJfloY.js:498 🔍 Profile completion check: Object
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: Object
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+api/stripe/account-link:1  Failed to load resource: the server responded with a status of 500 ()
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: Object
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: Object
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:48  POST https://truck-wash-locator-msti64.replit.app/api/stripe/account-link 500 (Internal Server Error)
+me @ index-DKTJfloY.js:48
+mutationFn @ index-DKTJfloY.js:498
+fn @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+execute @ index-DKTJfloY.js:48
+await in execute
+mutate @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+onClick @ index-DKTJfloY.js:498
+uE @ index-DKTJfloY.js:37
+hE @ index-DKTJfloY.js:37
+fE @ index-DKTJfloY.js:37
+lv @ index-DKTJfloY.js:37
+k1 @ index-DKTJfloY.js:37
+(anonymous) @ index-DKTJfloY.js:37
+jx @ index-DKTJfloY.js:40
+ZN @ index-DKTJfloY.js:37
+mh @ index-DKTJfloY.js:37
+Qp @ index-DKTJfloY.js:37
+EE @ index-DKTJfloY.js:37
+index-DKTJfloY.js:48 Fetch failed loading: POST "https://truck-wash-locator-msti64.replit.app/api/stripe/account-link".
+me @ index-DKTJfloY.js:48
+mutationFn @ index-DKTJfloY.js:498
+fn @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+execute @ index-DKTJfloY.js:48
+await in execute
+mutate @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+onClick @ index-DKTJfloY.js:498
+uE @ index-DKTJfloY.js:37
+hE @ index-DKTJfloY.js:37
+fE @ index-DKTJfloY.js:37
+lv @ index-DKTJfloY.js:37
+k1 @ index-DKTJfloY.js:37
+(anonymous) @ index-DKTJfloY.js:37
+jx @ index-DKTJfloY.js:40
+ZN @ index-DKTJfloY.js:37
+mh @ index-DKTJfloY.js:37
+Qp @ index-DKTJfloY.js:37
+EE @ index-DKTJfloY.js:37
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+Navigated to https://truck-wash-locator-msti64.replit.app/profile
+index-DKTJfloY.js:48 🔄 Query cache cleared once
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+profile:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+profile:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-DKTJfloY.js:498 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, termsAgreed: true, showInstallPrompt: false}
+out-4.5.45.js:1 XHR finished loading: POST "https://m.stripe.com/6".
+(anonymous) @ out-4.5.45.js:1
+i @ out-4.5.45.js:1
+s @ out-4.5.45.js:1
+(anonymous) @ out-4.5.45.js:1
+(anonymous) @ out-4.5.45.js:1
+Promise.then
+S @ out-4.5.45.js:1
+y @ out-4.5.45.js:1
+E @ out-4.5.45.js:1
+e.onload @ inner.html:1
+script
+(anonymous) @ inner.html:1
+(anonymous) @ inner.html:1
+index-DKTJfloY.js:498 ✅ Profile complete! Showing install prompt...
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:492 🔧 InstallPrompt component loaded
+index-DKTJfloY.js:492 👤 User previously dismissed install prompt: true
+index-DKTJfloY.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-DKTJfloY.js:498 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, termsAgreed: true, showInstallPrompt: true}
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:48  POST https://truck-wash-locator-msti64.replit.app/api/stripe/account-link 500 (Internal Server Error)
+me @ index-DKTJfloY.js:48
+mutationFn @ index-DKTJfloY.js:498
+fn @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+execute @ index-DKTJfloY.js:48
+await in execute
+mutate @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+onClick @ index-DKTJfloY.js:498
+uE @ index-DKTJfloY.js:37
+hE @ index-DKTJfloY.js:37
+fE @ index-DKTJfloY.js:37
+lv @ index-DKTJfloY.js:37
+k1 @ index-DKTJfloY.js:37
+(anonymous) @ index-DKTJfloY.js:37
+jx @ index-DKTJfloY.js:40
+ZN @ index-DKTJfloY.js:37
+mh @ index-DKTJfloY.js:37
+Qp @ index-DKTJfloY.js:37
+EE @ index-DKTJfloY.js:37
+index-DKTJfloY.js:48 Fetch failed loading: POST "https://truck-wash-locator-msti64.replit.app/api/stripe/account-link".
+me @ index-DKTJfloY.js:48
+mutationFn @ index-DKTJfloY.js:498
+fn @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+execute @ index-DKTJfloY.js:48
+await in execute
+mutate @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+onClick @ index-DKTJfloY.js:498
+uE @ index-DKTJfloY.js:37
+hE @ index-DKTJfloY.js:37
+fE @ index-DKTJfloY.js:37
+lv @ index-DKTJfloY.js:37
+k1 @ index-DKTJfloY.js:37
+(anonymous) @ index-DKTJfloY.js:37
+jx @ index-DKTJfloY.js:40
+ZN @ index-DKTJfloY.js:37
+mh @ index-DKTJfloY.js:37
+Qp @ index-DKTJfloY.js:37
+EE @ index-DKTJfloY.js:37
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+out-4.5.45.js:1  POST https://m.stripe.com/6 net::ERR_NETWORK_CHANGED
+(anonymous) @ out-4.5.45.js:1
+i @ out-4.5.45.js:1
+s @ out-4.5.45.js:1
+h @ out-4.5.45.js:1
+e @ inner.html:1
+m.stripe.network/inner.html#url=https%3A%2F%2Ftruck-wash-locator-msti64.replit.app%2Fprofile&title=CreteXchange%20-%20Concrete%20Washout%20Location%20Management&referrer=https%3A%2F%2Ftruck-wash-locator-msti64.replit.app%2F&muid=4f2497cc-7f16-419d-a95f-080ba1961d9e6678ba&sid=e5f7a8b6-6359-4328-b91b-96778c0e3f57560672&version=6&preview=false&__shared_params__[version]=basil:1 Uncaught (in promise) undefined
+Promise.then
+s @ out-4.5.45.js:1
+h @ out-4.5.45.js:1
+e @ inner.html:1
+out-4.5.45.js:1 XHR failed loading: POST "https://m.stripe.com/6".
+(anonymous) @ out-4.5.45.js:1
+i @ out-4.5.45.js:1
+s @ out-4.5.45.js:1
+h @ out-4.5.45.js:1
+e @ inner.html:1
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+Navigated to https://truck-wash-locator-msti64.replit.app/profile
+index-DKTJfloY.js:48 🔄 Query cache cleared once
+index-DKTJfloY.js:448 Fetch finished loading: GET "https://truck-wash-locator-msti64.replit.app/api/auth/user".
+queryFn @ index-DKTJfloY.js:448
+i @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+Al @ index-DKTJfloY.js:48
+onSubscribe @ index-DKTJfloY.js:48
+subscribe @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+V1 @ index-DKTJfloY.js:38
+dm @ index-DKTJfloY.js:40
+xo @ index-DKTJfloY.js:40
+Ov @ index-DKTJfloY.js:40
+Va @ index-DKTJfloY.js:38
+HA @ index-DKTJfloY.js:40
+Za @ index-DKTJfloY.js:40
+jS @ index-DKTJfloY.js:40
+w @ index-DKTJfloY.js:25
+O @ index-DKTJfloY.js:25
+profile:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+profile:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-DKTJfloY.js:448 Fetch finished loading: GET "https://truck-wash-locator-msti64.replit.app/api/auth/user".
+queryFn @ index-DKTJfloY.js:448
+i @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+Al @ index-DKTJfloY.js:48
+onSubscribe @ index-DKTJfloY.js:48
+subscribe @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+V1 @ index-DKTJfloY.js:38
+dm @ index-DKTJfloY.js:40
+xo @ index-DKTJfloY.js:40
+HA @ index-DKTJfloY.js:40
+Za @ index-DKTJfloY.js:40
+Ov @ index-DKTJfloY.js:40
+Va @ index-DKTJfloY.js:38
+(anonymous) @ index-DKTJfloY.js:40
+setTimeout
+a @ index-DKTJfloY.js:48
+o @ index-DKTJfloY.js:48
+batch @ index-DKTJfloY.js:48
+Sr @ index-DKTJfloY.js:48
+setData @ index-DKTJfloY.js:48
+onSuccess @ index-DKTJfloY.js:48
+f @ index-DKTJfloY.js:48
+Promise.then
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+Al @ index-DKTJfloY.js:48
+onSubscribe @ index-DKTJfloY.js:48
+subscribe @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+V1 @ index-DKTJfloY.js:38
+dm @ index-DKTJfloY.js:40
+xo @ index-DKTJfloY.js:40
+Ov @ index-DKTJfloY.js:40
+Va @ index-DKTJfloY.js:38
+HA @ index-DKTJfloY.js:40
+Za @ index-DKTJfloY.js:40
+jS @ index-DKTJfloY.js:40
+w @ index-DKTJfloY.js:25
+O @ index-DKTJfloY.js:25
+index-DKTJfloY.js:48 Fetch finished loading: GET "https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status".
+(anonymous) @ index-DKTJfloY.js:48
+i @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+Al @ index-DKTJfloY.js:48
+onSubscribe @ index-DKTJfloY.js:48
+subscribe @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+V1 @ index-DKTJfloY.js:38
+dm @ index-DKTJfloY.js:40
+xo @ index-DKTJfloY.js:40
+HA @ index-DKTJfloY.js:40
+Za @ index-DKTJfloY.js:40
+Ov @ index-DKTJfloY.js:40
+Va @ index-DKTJfloY.js:38
+(anonymous) @ index-DKTJfloY.js:40
+setTimeout
+a @ index-DKTJfloY.js:48
+o @ index-DKTJfloY.js:48
+batch @ index-DKTJfloY.js:48
+Sr @ index-DKTJfloY.js:48
+setData @ index-DKTJfloY.js:48
+onSuccess @ index-DKTJfloY.js:48
+f @ index-DKTJfloY.js:48
+Promise.then
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+Al @ index-DKTJfloY.js:48
+onSubscribe @ index-DKTJfloY.js:48
+subscribe @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+V1 @ index-DKTJfloY.js:38
+dm @ index-DKTJfloY.js:40
+xo @ index-DKTJfloY.js:40
+Ov @ index-DKTJfloY.js:40
+Va @ index-DKTJfloY.js:38
+HA @ index-DKTJfloY.js:40
+Za @ index-DKTJfloY.js:40
+jS @ index-DKTJfloY.js:40
+w @ index-DKTJfloY.js:25
+O @ index-DKTJfloY.js:25
+index-DKTJfloY.js:498 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, termsAgreed: true, showInstallPrompt: false}
+out-4.5.45.js:1 XHR finished loading: POST "https://m.stripe.com/6".
+(anonymous) @ out-4.5.45.js:1
+i @ out-4.5.45.js:1
+s @ out-4.5.45.js:1
+(anonymous) @ out-4.5.45.js:1
+(anonymous) @ out-4.5.45.js:1
+Promise.then
+S @ out-4.5.45.js:1
+y @ out-4.5.45.js:1
+E @ out-4.5.45.js:1
+e.onload @ inner.html:1
+script
+(anonymous) @ inner.html:1
+(anonymous) @ inner.html:1
+index-DKTJfloY.js:498 ✅ Profile complete! Showing install prompt...
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:492 🔧 InstallPrompt component loaded
+index-DKTJfloY.js:492 👤 User previously dismissed install prompt: true
+index-DKTJfloY.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-DKTJfloY.js:498 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, termsAgreed: true, showInstallPrompt: true}
+Navigated to https://truck-wash-locator-msti64.replit.app/profile
+index-DKTJfloY.js:48 🔄 Query cache cleared once
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+index-DKTJfloY.js:498 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, termsAgreed: true, showInstallPrompt: false}
+profile:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+profile:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+out-4.5.45.js:1 XHR finished loading: POST "https://m.stripe.com/6".
+(anonymous) @ out-4.5.45.js:1
+i @ out-4.5.45.js:1
+s @ out-4.5.45.js:1
+(anonymous) @ out-4.5.45.js:1
+(anonymous) @ out-4.5.45.js:1
+Promise.then
+S @ out-4.5.45.js:1
+y @ out-4.5.45.js:1
+E @ out-4.5.45.js:1
+e.onload @ inner.html:1
+script
+(anonymous) @ inner.html:1
+(anonymous) @ inner.html:1
+index-DKTJfloY.js:498 ✅ Profile complete! Showing install prompt...
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:492 🔧 InstallPrompt component loaded
+index-DKTJfloY.js:492 👤 User previously dismissed install prompt: true
+index-DKTJfloY.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-DKTJfloY.js:498 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, termsAgreed: true, showInstallPrompt: true}
+out-4.5.45.js:1 XHR finished loading: POST "https://m.stripe.com/6".
+(anonymous) @ out-4.5.45.js:1
+i @ out-4.5.45.js:1
+s @ out-4.5.45.js:1
+h @ out-4.5.45.js:1
+e @ inner.html:1
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+index-DKTJfloY.js:448  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_TIMED_OUT
+queryFn @ index-DKTJfloY.js:448
+i @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+Al @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+refetch @ index-DKTJfloY.js:48
+onOnline @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+batch @ index-DKTJfloY.js:48
+onOnline @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+await in (anonymous)
+(anonymous) @ index-DKTJfloY.js:48
+setOnline @ index-DKTJfloY.js:48
+n @ index-DKTJfloY.js:48
+index-DKTJfloY.js:448 Fetch failed loading: GET "https://truck-wash-locator-msti64.replit.app/api/auth/user".
+queryFn @ index-DKTJfloY.js:448
+i @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+Al @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+refetch @ index-DKTJfloY.js:48
+onOnline @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+batch @ index-DKTJfloY.js:48
+onOnline @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+await in (anonymous)
+(anonymous) @ index-DKTJfloY.js:48
+setOnline @ index-DKTJfloY.js:48
+n @ index-DKTJfloY.js:48
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:48  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_TIMED_OUT
+(anonymous) @ index-DKTJfloY.js:48
+i @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+Al @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+refetch @ index-DKTJfloY.js:48
+onOnline @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+batch @ index-DKTJfloY.js:48
+onOnline @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+await in (anonymous)
+(anonymous) @ index-DKTJfloY.js:48
+setOnline @ index-DKTJfloY.js:48
+n @ index-DKTJfloY.js:48
+index-DKTJfloY.js:48 Fetch failed loading: GET "https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status".
+(anonymous) @ index-DKTJfloY.js:48
+i @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+Al @ index-DKTJfloY.js:48
+fetch @ index-DKTJfloY.js:48
+refetch @ index-DKTJfloY.js:48
+onOnline @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+batch @ index-DKTJfloY.js:48
+onOnline @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+await in (anonymous)
+(anonymous) @ index-DKTJfloY.js:48
+setOnline @ index-DKTJfloY.js:48
+n @ index-DKTJfloY.js:48
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:48  POST https://truck-wash-locator-msti64.replit.app/api/stripe/account-link 500 (Internal Server Error)
+me @ index-DKTJfloY.js:48
+mutationFn @ index-DKTJfloY.js:498
+fn @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+execute @ index-DKTJfloY.js:48
+await in execute
+mutate @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+onClick @ index-DKTJfloY.js:498
+uE @ index-DKTJfloY.js:37
+hE @ index-DKTJfloY.js:37
+fE @ index-DKTJfloY.js:37
+lv @ index-DKTJfloY.js:37
+k1 @ index-DKTJfloY.js:37
+(anonymous) @ index-DKTJfloY.js:37
+jx @ index-DKTJfloY.js:40
+ZN @ index-DKTJfloY.js:37
+mh @ index-DKTJfloY.js:37
+Qp @ index-DKTJfloY.js:37
+EE @ index-DKTJfloY.js:37
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-DKTJfloY.js:48 Fetch failed loading: POST "https://truck-wash-locator-msti64.replit.app/api/stripe/account-link".
+me @ index-DKTJfloY.js:48
+mutationFn @ index-DKTJfloY.js:498
+fn @ index-DKTJfloY.js:48
+b @ index-DKTJfloY.js:48
+start @ index-DKTJfloY.js:48
+execute @ index-DKTJfloY.js:48
+await in execute
+mutate @ index-DKTJfloY.js:48
+(anonymous) @ index-DKTJfloY.js:48
+onClick @ index-DKTJfloY.js:498
+uE @ index-DKTJfloY.js:37
+hE @ index-DKTJfloY.js:37
+fE @ index-DKTJfloY.js:37
+lv @ index-DKTJfloY.js:37
+k1 @ index-DKTJfloY.js:37
+(anonymous) @ index-DKTJfloY.js:37
+jx @ index-DKTJfloY.js:40
+ZN @ index-DKTJfloY.js:37
+mh @ index-DKTJfloY.js:37
+Qp @ index-DKTJfloY.js:37
+EE @ index-DKTJfloY.js:37
+index-DKTJfloY.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-DKTJfloY.js:492 ❌ InstallPrompt not showing because showPrompt is false
