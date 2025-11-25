@@ -264,6 +264,33 @@ export async function updateConnectedAccount(
 }
 
 /**
+ * Request transfers capability for existing driver accounts
+ * This is needed for drivers created before transfers capability was added
+ */
+export async function requestTransfersCapability(accountId: string): Promise<Stripe.Account> {
+  try {
+    console.log(`🔄 Requesting transfers capability for account: ${accountId}`);
+    
+    const account = await stripe.accounts.update(accountId, {
+      capabilities: {
+        transfers: { requested: true },
+        card_payments: { requested: true },
+      },
+    });
+    
+    console.log(`✅ Updated capabilities for ${accountId}:`, {
+      transfers: account.capabilities?.transfers,
+      card_payments: account.capabilities?.card_payments,
+    });
+    
+    return account;
+  } catch (error: any) {
+    console.error(`❌ Error requesting transfers capability for ${accountId}:`, error.message);
+    throw error;
+  }
+}
+
+/**
  * Create Account Link for Express account onboarding
  * This allows Express accounts to complete TOS acceptance and external account setup
  * through Stripe's hosted onboarding UI

@@ -15,6 +15,7 @@ export default function AdminSettings() {
   const [backfillResult, setBackfillResult] = useState<any>(null);
   const [stripeAccountResult, setStripeAccountResult] = useState<any>(null);
   const [migrationResult, setMigrationResult] = useState<any>(null);
+  const [capabilityResult, setCapabilityResult] = useState<any>(null);
   const [ipOverride, setIpOverride] = useState<string>("");
   const [migrationIpOverride, setMigrationIpOverride] = useState<string>("");
 
@@ -86,6 +87,29 @@ export default function AdminSettings() {
       toast({
         title: "Migration Failed",
         description: error.message || "Failed to migrate Stripe accounts",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const capabilityMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/admin/backfill-driver-capabilities", {
+        method: "POST",
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setCapabilityResult(data);
+      toast({
+        title: "Capability Update Complete",
+        description: `Updated ${data.updated} driver accounts with transfers capability.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Capability Update Failed",
+        description: error.message || "Failed to update driver capabilities",
         variant: "destructive",
       });
     },
@@ -426,6 +450,94 @@ export default function AdminSettings() {
                         <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto">
                           {migrationResult.errors.map((error: string, i: number) => (
                             <div key={i}>{error}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Driver Capability Backfill */}
+            <div className="border rounded-lg p-4 space-y-3 bg-blue-50 dark:bg-blue-950/20">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <h3 className="font-semibold text-blue-900 dark:text-blue-100">
+                    Enable Transfers Capability for Drivers
+                  </h3>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>Why this is needed:</strong> Driver accounts need the `transfers` capability enabled to receive 
+                    payments via Destination Charges. Existing accounts may not have this capability requested.
+                  </p>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>What this does:</strong> Updates all existing driver Stripe Connect accounts to request the 
+                    `transfers` and `card_payments` capabilities. Drivers will then need to complete onboarding to activate these capabilities.
+                  </p>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>After running:</strong> Ask drivers to complete their Stripe onboarding via the profile page to activate the transfers capability.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => capabilityMutation.mutate()}
+                  disabled={capabilityMutation.isPending}
+                  variant="default"
+                  className="bg-blue-600 hover:bg-blue-700"
+                  data-testid="button-update-driver-capabilities"
+                >
+                  {capabilityMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Updating Capabilities...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4 mr-2" />
+                      Update Driver Capabilities
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Results Display */}
+              {capabilityResult && (
+                <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    Capability Update Results
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Total Drivers:</span>
+                      <span className="ml-2 font-semibold" data-testid="text-capability-total">
+                        {capabilityResult.total}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Successfully Updated:</span>
+                      <span className="ml-2 font-semibold text-green-600" data-testid="text-capability-updated">
+                        {capabilityResult.updated}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Skipped (No Stripe Account):</span>
+                      <span className="ml-2 font-semibold" data-testid="text-capability-skipped">
+                        {capabilityResult.skipped}
+                      </span>
+                    </div>
+                    {capabilityResult.errors && capabilityResult.errors.length > 0 && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Errors:</span>
+                        <span className="ml-2 font-semibold text-red-600">
+                          {capabilityResult.errors.length}
+                        </span>
+                        <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto">
+                          {capabilityResult.errors.map((error: any, i: number) => (
+                            <div key={i}>{error.username}: {error.error}</div>
                           ))}
                         </div>
                       </div>

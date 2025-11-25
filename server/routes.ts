@@ -3173,8 +3173,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: 'Payment failed: Driver has not completed payment setup. Please ask the driver to complete their Stripe Connect onboarding before approving this washout.' 
           });
         }
-        // All prerequisites met - process payment
+        // Validate driver's Stripe account has active transfers capability (required for Destination Charges)
         else {
+          // Check driver's transfers capability status
+          const driverAccount = await stripe.accounts.retrieve(driverUser.stripeConnectAccountId);
+          const transfersCapability = driverAccount.capabilities?.transfers;
+          
+          if (transfersCapability !== 'active') {
+            console.warn(`⚠️ Driver ${driver.id} (account ${driverAccount.id}) transfers capability is ${transfersCapability || 'not requested'} - cannot receive payments`);
+            console.warn(`   Driver must complete Stripe onboarding to activate transfers capability`);
+            return res.status(400).json({ 
+              message: `Payment failed: Driver's payment account is not fully set up (transfers capability: ${transfersCapability || 'inactive'}). Please ask the driver to complete their Stripe Connect onboarding in their profile page before approving this washout.` 
+            });
+          }
+          
+          console.log(`✅ Driver ${driver.id} has active transfers capability - proceeding with payment`);
+        }
+        
+        // All prerequisites met - process payment
+        {
           // Verify payment method is card-based (required for Destination Charges)
           const paymentMethod = await stripe.paymentMethods.retrieve(owner.stripePaymentMethodId);
           if (paymentMethod.type !== 'card') {
@@ -6405,6 +6422,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error fetching system settings:", error);
       res.status(500).json({ message: "Failed to fetch system settings: " + error.message });
+    }
+  });
+
+  // Backfill driver accounts with transfers capability (super admin only)
+  app.post('/api/admin/backfill-driver-capabilities', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      console.log('🔄 Starting driver capability backfill...');
+      
+      // Get all drivers (not users) to access stripeConnectAccountId
+      const allDrivers = await storage.getAllDrivers();
+      
+      const results = {
+        total: allDrivers.length,
+        updated: 0,
+        skipped: 0,
+        errors: [] as any[],
+      };
+
+      for (const driverData of allDrivers) {
+        try {
+          const driverUser = driverData.user;
+          
+          if (!driverUser.stripeConnectAccountId) {
+            results.skipped++;
+            console.log(`⏭️  Skipping driver ${driverUser.id} (${driverUser.username}) - no Stripe account`);
+            continue;
+          }
+
+          // Update account to request transfers capability
+          const account = await stripeService.requestTransfersCapability(driverUser.stripeConnectAccountId);
+          results.updated++;
+          
+          console.log(`✅ Updated driver ${driverUser.id} (${driverUser.username}) - transfers: ${account.capabilities?.transfers}`);
+        } catch (error: any) {
+          const driverUser = driverData.user;
+          results.errors.push({
+            driverId: driverUser.id,
+            username: driverUser.username,
+            error: error.message,
+          });
+          console.error(`❌ Failed to update driver ${driverUser.id}:`, error.message);
+        }
+      }
+
+      console.log('✅ Driver capability backfill complete:', results);
+      res.json(results);
+    } catch (error: any) {
+      console.error("Error in driver capability backfill:", error);
+      res.status(500).json({ message: "Backfill failed: " + error.message });
     }
   });
 
