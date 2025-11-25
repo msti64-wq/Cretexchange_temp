@@ -1,0 +1,185 @@
+index-Cr-jC3A7.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value=​"test">​
+VM96 login:6 SW registered:  ServiceWorkerRegistration
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-Cr-jC3A7.js:498 🔍 Profile completion check: Object
+index-Cr-jC3A7.js:498 ✅ Profile complete! Showing install prompt...
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🔧 InstallPrompt component loaded
+index-Cr-jC3A7.js:492 👤 User previously dismissed install prompt: true
+index-Cr-jC3A7.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-Cr-jC3A7.js:498 🔍 Profile completion check: Object
+index-Cr-jC3A7.js:498 🔍 Profile completion check: Object
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+index-Cr-jC3A7.js:498 ✅ Profile complete! Showing install prompt...
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🔧 InstallPrompt component loaded
+index-Cr-jC3A7.js:492 👤 User previously dismissed install prompt: true
+index-Cr-jC3A7.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-Cr-jC3A7.js:498 🔍 Profile completion check: Object
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+api/stripe/account-link:1  Failed to load resource: the server responded with a status of 500 ()
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+shared-4f587e7007cd638e2e84a06244cc284a.js:1 Fetch finished loading: POST "https://r.stripe.com/b".
+(anonymous) @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+e @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+c @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+(anonymous) @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+setTimeout
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+(anonymous) @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+log @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+log @ controller-with-preconnect-54e70843f3fcada16bd9b7a11931c502.js:1
+ke @ controller-with-preconnect-54e70843f3fcada16bd9b7a11931c502.js:1
+(anonymous) @ controller-with-preconnect-54e70843f3fcada16bd9b7a11931c502.js:1
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  POST https://truck-wash-locator-msti64.replit.app/api/stripe/account-link 500 (Internal Server Error)
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48 Fetch failed loading: POST "https://truck-wash-locator-msti64.replit.app/api/stripe/account-link".
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  POST https://truck-wash-locator-msti64.replit.app/api/stripe/account-link 500 (Internal Server Error)
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:48 Fetch failed loading: POST "https://truck-wash-locator-msti64.replit.app/api/stripe/account-link".
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+shared-4f587e7007cd638e2e84a06244cc284a.js:1 Fetch finished loading: POST "https://r.stripe.com/b".
+(anonymous) @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+e @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+c @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+(anonymous) @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+setTimeout
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+(anonymous) @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+value @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+log @ shared-4f587e7007cd638e2e84a06244cc284a.js:1
+log @ controller-with-preconnect-54e70843f3fcada16bd9b7a11931c502.js:1
+ke @ controller-with-preconnect-54e70843f3fcada16bd9b7a11931c502.js:1
+(anonymous) @ controller-with-preconnect-54e70843f3fcada16bd9b7a11931c502.js:1
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
