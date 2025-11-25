@@ -1049,6 +1049,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate Account Link for T&C acceptance (Express accounts)
+  // Express accounts MUST use Account Links - cannot accept T&C programmatically
+  app.post('/api/stripe/account-link', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // User must have a Stripe Connect account to accept T&C
+      const connectAccountId = user.stripeConnectAccountId;
+
+      if (!connectAccountId) {
+        return res.status(400).json({ 
+          message: "No Stripe account found. Please complete onboarding first.",
+          requiresOnboarding: true
+        });
+      }
+
+      // Determine return URL based on user role
+      const baseUrl = process.env.REPL_HOME || 'http://localhost:5000';
+      let returnUrl = `${baseUrl}/driver/profile`;
+      if (user.role === 'owner') {
+        returnUrl = `${baseUrl}/owner/profile`;
+      }
+
+      // Generate Account Link for T&C acceptance
+      // type='account_onboarding' includes T&C acceptance in Express Dashboard
+      const accountLink = await stripe.accountLinks.create({
+        account: connectAccountId,
+        refresh_url: returnUrl,
+        return_url: returnUrl,
+        type: 'account_onboarding',
+      });
+
+      console.log(`✅ Generated Account Link for T&C acceptance (${user.role}):`, connectAccountId);
+
+      res.json({
+        success: true,
+        accountSetupLink: accountLink.url,
+      });
+    } catch (error: any) {
+      console.error('❌ Error generating Account Link for T&C:', error);
+      res.status(500).json({ message: `Failed to generate account link: ${error.message}` });
+    }
+  });
+
   // Stripe onboarding endpoint (replaces Column/Lithic)
   app.post('/api/column/onboard', isAuthenticated, async (req: any, res) => {
     try {

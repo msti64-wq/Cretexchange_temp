@@ -78,6 +78,27 @@ export default function DriverProfile() {
     businessWebsite: "",
   });
 
+  // Account Link mutation for T&C acceptance
+  const accountLinkMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/stripe/account-link", {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.accountSetupLink) {
+        // Redirect to Stripe Account Link for T&C acceptance
+        window.location.href = data.accountSetupLink;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate account link. Please ensure your profile is complete.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Update form data when user data loads
   useEffect(() => {
     if (user && (user as any).roleData) {
@@ -186,7 +207,7 @@ export default function DriverProfile() {
               {(user as any)?.firstName} {(user as any)?.lastName}
             </h2>
             <p className="text-muted-foreground" data-testid="text-user-role">Concrete Truck Driver</p>
-            <div className="flex justify-center gap-2 mt-4">
+            <div className="flex justify-center gap-2 mt-4 flex-wrap">
               <Button 
                 variant={isEditing ? "default" : "outline"}
                 size="sm"
@@ -194,6 +215,15 @@ export default function DriverProfile() {
                 data-testid="button-edit-profile"
               >
                 {isEditing ? "Cancel" : "Edit Profile"}
+              </Button>
+              <Button 
+                variant="secondary"
+                size="sm"
+                onClick={() => accountLinkMutation.mutate()}
+                disabled={accountLinkMutation.isPending}
+                data-testid="button-accept-terms"
+              >
+                {accountLinkMutation.isPending ? "Loading..." : "Accept Terms & Conditions"}
               </Button>
             </div>
           </CardContent>

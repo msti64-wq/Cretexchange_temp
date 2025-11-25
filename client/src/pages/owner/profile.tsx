@@ -111,6 +111,27 @@ export default function OwnerProfile() {
     },
   });
 
+  // Account Link mutation for T&C acceptance (Express accounts)
+  const accountLinkMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/stripe/account-link", {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.accountSetupLink) {
+        // Redirect to Stripe Account Link for T&C acceptance
+        window.location.href = data.accountSetupLink;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate account link. Please ensure your profile is complete.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -382,21 +403,40 @@ export default function OwnerProfile() {
                     </div>
                   </div>
                   
-                  <Button
-                    onClick={() => stripeOnboardingMutation.mutate()}
-                    disabled={stripeOnboardingMutation.isPending}
-                    className="w-full"
-                    data-testid="button-stripe-onboarding"
-                  >
-                    {stripeOnboardingMutation.isPending ? (
-                      "Loading..."
-                    ) : (
-                      <>
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Complete Stripe Verification
-                      </>
-                    )}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button
+                      onClick={() => stripeOnboardingMutation.mutate()}
+                      disabled={stripeOnboardingMutation.isPending}
+                      className="w-full"
+                      data-testid="button-stripe-onboarding"
+                    >
+                      {stripeOnboardingMutation.isPending ? (
+                        "Loading..."
+                      ) : (
+                        <>
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Complete Stripe Verification
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      onClick={() => accountLinkMutation.mutate()}
+                      disabled={accountLinkMutation.isPending}
+                      variant="secondary"
+                      className="w-full"
+                      data-testid="button-accept-terms"
+                    >
+                      {accountLinkMutation.isPending ? (
+                        "Loading..."
+                      ) : (
+                        <>
+                          <FileText className="w-4 h-4 mr-2" />
+                          Accept Terms & Conditions
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   
                   <p className="text-xs text-muted-foreground text-center">
                     You'll be redirected to Stripe's secure verification page
