@@ -1157,12 +1157,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: error.message,
         type: error.type,
         statusCode: error.statusCode,
+        code: error.code,
+        raw: error.raw,
         stack: error.stack
       });
+      // Always include detailed error info for debugging Stripe issues
       res.status(500).json({ 
         message: error.message || "Failed to generate account link",
         error: error.type || "Unknown error",
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        code: error.code,
+        stripeError: error.raw?.message || error.message,
+        details: error.message
       });
     }
   });

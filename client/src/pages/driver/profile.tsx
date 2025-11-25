@@ -82,7 +82,13 @@ export default function DriverProfile() {
   const accountLinkMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/stripe/account-link", {});
-      return response.json();
+      const data = await response.json();
+      if (!response.ok) {
+        // Include detailed error info from server
+        const errorMsg = data.stripeError || data.details || data.message || "Unknown error";
+        throw new Error(`${errorMsg} (Code: ${data.code || 'N/A'})`);
+      }
+      return data;
     },
     onSuccess: (data) => {
       if (data.accountSetupLink) {
@@ -91,6 +97,7 @@ export default function DriverProfile() {
       }
     },
     onError: (error: any) => {
+      console.error("Account Link Error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to generate account link. Please ensure your profile is complete.",
