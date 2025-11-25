@@ -1,0 +1,21 @@
+index-D2BsBxBI.js:48 🔄 Query cache cleared once
+/login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value=​"test">​
+VM82 login:6 SW registered:  ServiceWorkerRegistration
+/login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-D2BsBxBI.js:498 Rejection successful: Object
+index-D2BsBxBI.js:498 Owner Photo Button Clicked: Object
+index-D2BsBxBI.js:498 🔧 Dashboard: Setting modal state Object
+index-D2BsBxBI.js:498 🔧 Dashboard: Modal state updated
+index-D2BsBxBI.js:492 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-D2BsBxBI.js:492
+/api/owners/activities/7a01b5cd-0b64-4f20-b4ee-3e60ff50d80d/verify:1  Failed to load resource: the server responded with a status of 400 ()
+index-D2BsBxBI.js:498 Approval mutation error: Error: 400: {"message":"Payment failed: Driver's payment account is not fully set up (transfers capability: inactive). Please ask the driver to complete their Stripe Connect onboarding in their profile page before approving this washout."}
+    at nC (index-D2BsBxBI.js:48:42800)
+    at async xe (index-D2BsBxBI.js:48:43123)
+    at async Object.mutationFn (index-D2BsBxBI.js:498:92415)
+mutationFn @ index-D2BsBxBI.js:498
+index-D2BsBxBI.js:498 Approval failed: Error: 400: {"message":"Payment failed: Driver's payment account is not fully set up (transfers capability: inactive). Please ask the driver to complete their Stripe Connect onboarding in their profile page before approving this washout."}
+    at nC (index-D2BsBxBI.js:48:42800)
+    at async xe (index-D2BsBxBI.js:48:43123)
+    at async Object.mutationFn (index-D2BsBxBI.js:498:92415)
+onError @ index-D2BsBxBI.js:498
