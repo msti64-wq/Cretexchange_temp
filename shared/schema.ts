@@ -127,6 +127,9 @@ export const drivers = pgTable("drivers", {
   stripeTreasuryAccountLast4: varchar("stripe_treasury_account_last4"), // Last 4 digits for display
   // Stripe Issuing integration for debit cards
   stripeIssuingCardholderId: varchar("stripe_issuing_cardholder_id"), // Stripe Issuing cardholder ID
+  // Stripe verification fields required for Connect account
+  dateOfBirth: varchar("date_of_birth"), // YYYY-MM-DD format
+  ssnLast4: varchar("ssn_last4"), // Last 4 digits of SSN
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -167,11 +170,15 @@ export const owners = pgTable("owners", {
   companyName: varchar("company_name"),
   businessLicense: varchar("business_license"),
   taxId: varchar("tax_id"),
+  businessWebsite: varchar("business_website"),
   // Stripe Connect integration
   stripeConnectAccountId: varchar("stripe_connect_account_id"),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripePaymentMethodId: varchar("stripe_payment_method_id"), // Default payment method for platform fees
   stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  // Stripe verification fields required for Connect account
+  dateOfBirth: varchar("date_of_birth"), // YYYY-MM-DD format
+  ssnLast4: varchar("ssn_last4"), // Last 4 digits of SSN
   // Stripe Treasury wallet integration
   stripeTreasuryAccountId: varchar("stripe_treasury_account_id"), // Stripe Financial Account ID
   walletBalance: decimal("wallet_balance", { precision: 10, scale: 2 }).notNull().default("0.00"),

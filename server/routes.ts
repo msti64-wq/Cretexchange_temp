@@ -2157,6 +2157,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           routingNumber: req.body.routingNumber || driver.routingNumber,
           accountNumber: req.body.accountNumber || driver.accountNumber,
           accountHolderName: req.body.accountHolderName || driver.accountHolderName,
+          // Stripe verification fields
+          dateOfBirth: req.body.dateOfBirth || driver.dateOfBirth,
+          ssnLast4: req.body.ssnLast4 || driver.ssnLast4,
         });
       }
 
@@ -2183,6 +2186,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentFrequency: req.body.paymentFrequency,
         role: currentUser.role, // Preserve existing role
       });
+
+      // Automatically update Stripe account with complete verification info
+      if (currentUser.stripeConnectAccountId && driver) {
+        try {
+          await stripeService.updateConnectedAccountWithCompleteInfo(
+            currentUser.stripeConnectAccountId,
+            {
+              firstName: req.body.firstName || currentUser.firstName,
+              lastName: req.body.lastName || currentUser.lastName,
+              email: req.body.email || currentUser.email,
+              phone: req.body.phone || currentUser.phone,
+              street: req.body.street || currentUser.street,
+              city: req.body.city || currentUser.city,
+              state: req.body.state || currentUser.state,
+              zip: req.body.zip || currentUser.zip,
+              dateOfBirth: req.body.dateOfBirth || driver.dateOfBirth,
+              ssnLast4: req.body.ssnLast4 || driver.ssnLast4,
+            }
+          );
+        } catch (stripeError: any) {
+          console.error('Note: Could not update Stripe with verification info:', stripeError.message);
+          // Don't fail the profile update if Stripe update fails
+        }
+      }
 
       res.json({ message: "Profile updated successfully" });
     } catch (error) {
@@ -3404,6 +3431,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyName: req.body.companyName || owner.companyName,
           businessLicense: req.body.businessLicense || owner.businessLicense,
           taxId: req.body.taxId || owner.taxId,
+          businessWebsite: req.body.businessWebsite || owner.businessWebsite,
+          // Stripe verification fields
+          dateOfBirth: req.body.dateOfBirth || owner.dateOfBirth,
+          ssnLast4: req.body.ssnLast4 || owner.ssnLast4,
         });
       }
 
@@ -3429,6 +3460,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentMethod: req.body.paymentMethod,
         role: currentUser.role, // Preserve existing role
       });
+
+      // Automatically update Stripe account with complete verification info
+      if (currentUser.stripeConnectAccountId && owner) {
+        try {
+          await stripeService.updateConnectedAccountWithCompleteInfo(
+            currentUser.stripeConnectAccountId,
+            {
+              firstName: req.body.firstName || currentUser.firstName,
+              lastName: req.body.lastName || currentUser.lastName,
+              email: req.body.email || currentUser.email,
+              phone: req.body.phone || currentUser.phone,
+              street: req.body.street || currentUser.street,
+              city: req.body.city || currentUser.city,
+              state: req.body.state || currentUser.state,
+              zip: req.body.zip || currentUser.zip,
+              companyName: req.body.companyName || owner.companyName,
+              businessWebsite: req.body.businessWebsite || owner.businessWebsite,
+              taxId: req.body.taxId || owner.taxId,
+              dateOfBirth: req.body.dateOfBirth || owner.dateOfBirth,
+              ssnLast4: req.body.ssnLast4 || owner.ssnLast4,
+            }
+          );
+        } catch (stripeError: any) {
+          console.error('Note: Could not update Stripe with verification info:', stripeError.message);
+          // Don't fail the profile update if Stripe update fails
+        }
+      }
 
       res.json({ message: "Profile updated successfully" });
     } catch (error) {

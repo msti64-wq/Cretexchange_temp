@@ -291,6 +291,99 @@ export async function requestTransfersCapability(accountId: string): Promise<Str
 }
 
 /**
+ * Update Connected Account with Complete Verification Information
+ * Sends all available user/owner information to Stripe for account verification
+ */
+export async function updateConnectedAccountWithCompleteInfo(
+  accountId: string,
+  userInfo: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    dateOfBirth?: string; // YYYY-MM-DD format
+    ssnLast4?: string; // Last 4 digits
+    companyName?: string;
+    businessWebsite?: string;
+    taxId?: string;
+  }
+): Promise<Stripe.Account> {
+  try {
+    console.log(`🔄 Updating Stripe account ${accountId} with complete verification info`);
+    
+    const accountParams: Stripe.AccountUpdateParams = {
+      capabilities: {
+        transfers: { requested: true },
+        card_payments: { requested: true },
+      },
+    };
+
+    // Build individual object with all available info
+    const individual: Stripe.AccountUpdateParams.Individual = {};
+    if (userInfo.firstName) individual.first_name = userInfo.firstName;
+    if (userInfo.lastName) individual.last_name = userInfo.lastName;
+    if (userInfo.email) individual.email = userInfo.email;
+    if (userInfo.phone) individual.phone = userInfo.phone;
+    if (userInfo.dateOfBirth) {
+      const [year, month, day] = userInfo.dateOfBirth.split('-');
+      individual.dob = {
+        year: parseInt(year),
+        month: parseInt(month),
+        day: parseInt(day),
+      };
+    }
+    if (userInfo.ssnLast4) {
+      individual.ssn_last_4 = userInfo.ssnLast4;
+    }
+
+    // Build address if we have location info
+    if (userInfo.street || userInfo.city || userInfo.state || userInfo.zip) {
+      individual.address = {
+        line1: userInfo.street || 'N/A',
+        city: userInfo.city || 'N/A',
+        state: userInfo.state || 'N/A',
+        postal_code: userInfo.zip || '00000',
+        country: 'US',
+      };
+    }
+
+    if (Object.keys(individual).length > 0) {
+      accountParams.individual = individual;
+    }
+
+    // Build company object for owners
+    if (userInfo.companyName || userInfo.businessWebsite || userInfo.taxId) {
+      accountParams.company = {
+        name: userInfo.companyName,
+        tax_id: userInfo.taxId,
+      };
+    }
+
+    // Update business profile with website if provided
+    if (userInfo.businessWebsite || userInfo.companyName) {
+      accountParams.business_profile = {
+        url: userInfo.businessWebsite,
+        name: userInfo.companyName,
+        mcc: '7542', // Car wash / washout services
+        support_email: userInfo.email,
+      };
+    }
+
+    const account = await stripe.accounts.update(accountId, accountParams);
+    
+    console.log(`✅ Updated Stripe account ${accountId} with verification info`);
+    return account;
+  } catch (error: any) {
+    console.error(`❌ Error updating account ${accountId} with verification info:`, error.message);
+    throw error;
+  }
+}
+
+/**
  * Create Account Link for Express account onboarding
  * This allows Express accounts to complete TOS acceptance and external account setup
  * through Stripe's hosted onboarding UI
