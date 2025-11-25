@@ -1074,9 +1074,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ User found: ${user.username} (role: ${user.role})`);
 
-      // User must have a Stripe Connect account to accept T&C
-      const connectAccountId = user.stripeConnectAccountId;
+      // Get Stripe account ID - check database first, then search Stripe
+      let connectAccountId = user.stripeConnectAccountId;
 
+      // If not in database, search Stripe for existing account
+      if (!connectAccountId) {
+        console.log(`⚠️ No Stripe account ID in database for ${user.username}, searching Stripe...`);
+        try {
+          const stripeAccount = await stripeService.findConnectedAccountByUserId(userId);
+          if (stripeAccount) {
+            connectAccountId = stripeAccount.id;
+            console.log(`✅ Found Stripe account in metadata: ${connectAccountId}`);
+            
+            // Update database with found account ID
+            await storage.updateUserStripeInfo(userId, { stripeConnectAccountId: connectAccountId });
+            console.log(`✅ Updated database with Stripe account ID`);
+          }
+        } catch (searchError: any) {
+          console.error(`❌ Error searching Stripe for account: ${searchError.message}`);
+        }
+      }
+
+      // Still no account ID - require onboarding
       if (!connectAccountId) {
         console.error(`❌ No Stripe account for user ${userId} - requires onboarding`);
         return res.status(400).json({ 
