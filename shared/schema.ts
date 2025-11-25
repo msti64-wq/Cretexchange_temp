@@ -72,6 +72,10 @@ export const discrepancyTypeEnum = pgEnum("discrepancy_type", ["missing_transact
 export const materialUnitEnum = pgEnum("material_unit", ["per_load", "per_ton", "per_cy"]);
 export const serviceTypeEnum = pgEnum("service_type", ["washout", "rubble_dropoff"]);
 
+// Identity document enums
+export const identityDocumentTypeEnum = pgEnum("identity_document_type", ["drivers_license", "passport", "state_id"]);
+export const identityVerificationStatusEnum = pgEnum("identity_verification_status", ["pending", "verified", "rejected", "expired"]);
+
 // User storage table - local authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -131,8 +135,26 @@ export const drivers = pgTable("drivers", {
   dateOfBirth: varchar("date_of_birth"), // YYYY-MM-DD format
   ssnLast4: varchar("ssn_last4"), // Last 4 digits of SSN
   businessWebsite: varchar("business_website"), // Required by Stripe for Connect accounts
+  // Identity document for fraud prevention
+  identityDocumentId: varchar("identity_document_id").references(() => identityDocuments.id, { onDelete: "set null" }),
+  identityVerificationStatus: identityVerificationStatusEnum("identity_verification_status").default("pending"),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Identity documents for fraud prevention (Stripe requirement)
+export const identityDocuments = pgTable("identity_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  documentType: identityDocumentTypeEnum("document_type").notNull(),
+  fileUrl: varchar("file_url").notNull(), // GCS URL to uploaded document
+  verificationStatus: identityVerificationStatusEnum("verification_status").notNull().default("pending"),
+  stripeVerificationId: varchar("stripe_verification_id"), // Stripe verification session ID
+  expirationDate: varchar("expiration_date"), // YYYY-MM-DD format
+  rejectionReason: text("rejection_reason"), // If rejected or expired, reason why
+  verifiedAt: timestamp("verified_at"), // When document was verified
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -180,6 +202,9 @@ export const owners = pgTable("owners", {
   // Stripe verification fields required for Connect account
   dateOfBirth: varchar("date_of_birth"), // YYYY-MM-DD format
   ssnLast4: varchar("ssn_last4"), // Last 4 digits of SSN
+  // Identity document for fraud prevention
+  identityDocumentId: varchar("identity_document_id").references(() => identityDocuments.id, { onDelete: "set null" }),
+  identityVerificationStatus: identityVerificationStatusEnum("identity_verification_status").default("pending"),
   // Stripe Treasury wallet integration
   stripeTreasuryAccountId: varchar("stripe_treasury_account_id"), // Stripe Financial Account ID
   walletBalance: decimal("wallet_balance", { precision: 10, scale: 2 }).notNull().default("0.00"),

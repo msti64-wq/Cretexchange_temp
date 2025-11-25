@@ -28,6 +28,7 @@ import {
   systemSettings,
   materials,
   locationMaterialIntents,
+  identityDocuments,
   type User,
   type UpsertUser,
   type Driver,
@@ -85,6 +86,7 @@ import {
   type InsertMaterial,
   type LocationMaterialIntent,
   type InsertLocationMaterialIntent,
+  type IdentityDocument,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
@@ -345,6 +347,12 @@ export interface IStorage {
   // System settings operations
   getSystemSettings(): Promise<SystemSettings>;
   updateSystemSettings(settings: UpdateSystemSettings, updatedBy: string): Promise<SystemSettings>;
+
+  // Identity document operations (for Stripe fraud prevention)
+  createIdentityDocument(doc: any): Promise<any>;
+  getIdentityDocumentByUserId(userId: string): Promise<any | undefined>;
+  getIdentityDocument(docId: string): Promise<any | undefined>;
+  updateIdentityDocument(docId: string, updates: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4385,6 +4393,34 @@ export class DatabaseStorage implements IStorage {
       .where(eq(systemSettings.id, currentSettings.id))
       .returning();
     
+    return updated;
+  }
+
+  // Identity document operations (for Stripe fraud prevention)
+  async createIdentityDocument(doc: any): Promise<IdentityDocument> {
+    const [newDoc] = await db.insert(identityDocuments).values(doc).returning();
+    return newDoc;
+  }
+
+  async getIdentityDocumentByUserId(userId: string): Promise<IdentityDocument | undefined> {
+    const [doc] = await db.select().from(identityDocuments).where(eq(identityDocuments.userId, userId));
+    return doc;
+  }
+
+  async getIdentityDocument(docId: string): Promise<IdentityDocument | undefined> {
+    const [doc] = await db.select().from(identityDocuments).where(eq(identityDocuments.id, docId));
+    return doc;
+  }
+
+  async updateIdentityDocument(docId: string, updates: any): Promise<IdentityDocument> {
+    const [updated] = await db
+      .update(identityDocuments)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(identityDocuments.id, docId))
+      .returning();
     return updated;
   }
 }

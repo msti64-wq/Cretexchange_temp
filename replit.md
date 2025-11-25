@@ -7,11 +7,15 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 Preferred communication style: Simple, everyday language.
 
 ## Recent Updates (Nov 25, 2025)
+- ✅ **Identity document support for fraud prevention**: New `identity_documents` table stores government-issued ID documents for drivers and owners
+- ✅ **Stripe Identity API integration**: Added functions to create Stripe Identity verification sessions and link documents to connected accounts
+- ✅ **Document verification fields in schema**: Added `identityDocumentId` and `identityVerificationStatus` fields to drivers and owners tables  
 - ✅ **Verification fields added to schema**: Drivers and owners can now provide dateOfBirth and ssnLast4
 - ✅ **Automatic Stripe account updates**: When users update profiles, all verification info automatically forwards to their Stripe Connect account
 - ✅ **Manual bank account entry working**: Drivers can add bank accounts via manual entry form (routing number, account number, etc.)
 - ✅ **Financial Connections framework in place**: Paid infrastructure is implemented; ongoing refinement for completing connections
 - ✅ **External account creation working**: Once bank details are provided, external accounts are created on driver Connect accounts for ACH payouts
+- ✅ **T&C acceptance retroactive update**: Admin button in System Settings to backfill T&C acceptance for all existing Stripe accounts (fraud prevention compliance)
 
 ## Pricing Structure
 -   **Production Pricing**: Driver receives **$5.00** per washout, Platform fee **$4.00**, Total **$9.00**
@@ -70,6 +74,11 @@ Preferred communication style: Simple, everyday language.
     -   **Driver Discovery**: Drivers see which materials each location accepts and the payment rates on the locations list, enabling informed decisions about where to drop off materials.
     -   **Database**: `location_material_intents` table stores pricing (rateCents, unit) per location/material with capacity limits and acceptance rules.
 -   **Admin System Settings**: Super admins can access system maintenance tools including payment method backfill utility for fixing production data issues (accessible via Settings nav link).
+-   **Identity Document Requirements**: Stripe requires government-issued identity documents (driver's license, passport, state ID) for fraud prevention. System stores documents in `identity_documents` table and uses Stripe Identity API for verification:
+    -   **Document Storage**: Google Cloud Storage with secure file URLs
+    -   **Verification Status**: Tracks pending, verified, rejected, and expired states
+    -   **Stripe Integration**: `createIdentityVerificationSession()` creates Stripe verification sessions, `updateAccountWithIdentityDocument()` links verified documents to Connect accounts
+    -   **Schema Support**: Drivers and owners reference their identity documents via `identityDocumentId`
 
 ## External Dependencies
 

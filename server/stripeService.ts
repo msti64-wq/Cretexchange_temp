@@ -1452,4 +1452,70 @@ export async function verifyUserStripeAccount(userId: string): Promise<Stripe.Ac
   }
 }
 
+/**
+ * Create a Stripe Verification Session for identity document collection
+ * This is required for fraud prevention - Stripe needs government-issued ID
+ */
+export async function createIdentityVerificationSession(
+  connectedAccountId: string,
+  documentType: 'drivers_license' | 'passport' | 'state_id' = 'drivers_license'
+): Promise<{ session_id: string; url: string }> {
+  try {
+    console.log(`🔐 Creating Stripe identity verification session for ${connectedAccountId}`);
+    
+    // Note: Identity.VerificationSession is not fully typed in the Stripe SDK
+    // We'll use the raw request method
+    const session = await (stripe as any).identity.verificationSessions.create({
+      type: 'id_number',
+      metadata: {
+        connected_account: connectedAccountId,
+        document_type: documentType,
+      },
+    }) as any;
+    
+    console.log(`✅ Created verification session:`, {
+      sessionId: session.id,
+      status: session.status,
+    });
+    
+    return {
+      session_id: session.id,
+      url: session.url || '',
+    };
+  } catch (error: any) {
+    console.error(`❌ Error creating verification session for ${connectedAccountId}:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Update Connected Account with Identity Document Verification
+ * Links a verified identity document to the account for fraud prevention
+ */
+export async function updateAccountWithIdentityDocument(
+  connectedAccountId: string,
+  verificationSessionId: string,
+  documentType: string
+): Promise<Stripe.Account> {
+  try {
+    console.log(`📄 Linking identity document to account ${connectedAccountId}`);
+    
+    const account = await stripe.accounts.update(connectedAccountId, {
+      individual: {
+        verification: {
+          document: {
+            front: verificationSessionId, // Use verification session ID as reference
+          } as any,
+        } as any,
+      } as any,
+    } as any);
+    
+    console.log(`✅ Account updated with identity verification`);
+    return account;
+  } catch (error: any) {
+    console.error(`❌ Error updating account with identity document:`, error.message);
+    throw error;
+  }
+}
+
 export default stripe;
