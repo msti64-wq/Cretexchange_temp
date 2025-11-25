@@ -1301,20 +1301,54 @@ export async function createExternalAccountFromFinancialConnections(params: {
   try {
     const session = await stripe.financialConnections.sessions.retrieve(params.sessionId);
     
+    console.log('📋 Financial Connections session:', {
+      sessionId: params.sessionId,
+      status: session.status,
+      accountCount: session.accounts?.data.length || 0,
+    });
+
     if (!session.accounts || session.accounts.data.length === 0) {
       return { success: false, error: 'No bank account linked' };
     }
 
     const linkedAccount = session.accounts.data[0];
-    
-    // Get account and routing numbers from the linked account
-    const accountNumber = (linkedAccount as any).account_number;
-    const routingNumber = (linkedAccount as any).routing_number;
-    const bankName = (linkedAccount as any).bank_name || 'Bank';
-    const last4 = (linkedAccount as any).last4;
+    console.log('🏦 Linked account details:', {
+      accountId: linkedAccount.id,
+      displayName: (linkedAccount as any).display_name,
+      status: linkedAccount.status,
+    });
+
+    // Create payment method from the Financial Connections account
+    // This extracts the actual bank account details we need
+    const paymentMethod = await stripe.paymentMethods.create({
+      type: 'us_bank_account',
+      us_bank_account: {
+        financial_connections_account: linkedAccount.id,
+      },
+    });
+
+    const usBankAccount = paymentMethod.us_bank_account as any;
+    const bankName = usBankAccount?.bank_name || 'Bank Account';
+    const last4 = usBankAccount?.last4;
+    const accountNumber = usBankAccount?.account_number;
+    const routingNumber = usBankAccount?.routing_number;
+
+    console.log('💳 Payment method created:', {
+      paymentMethodId: paymentMethod.id,
+      bankName,
+      last4,
+      accountNumber: accountNumber ? `****${accountNumber.slice(-4)}` : 'N/A',
+      routingNumber: routingNumber ? `****${routingNumber.slice(-4)}` : 'N/A',
+    });
 
     if (!accountNumber || !routingNumber) {
-      return { success: false, error: 'Missing account or routing number' };
+      console.warn('⚠️  Missing account or routing number in payment method:', {
+        hasAccountNumber: !!accountNumber,
+        hasRoutingNumber: !!routingNumber,
+        bankName,
+        last4,
+      });
+      return { success: false, error: 'Bank account details incomplete - missing account or routing number' };
     }
 
     // Create external account on the Connect account for payouts
@@ -1346,6 +1380,7 @@ export async function createExternalAccountFromFinancialConnections(params: {
     };
   } catch (error: any) {
     console.error('❌ Error creating external account from Financial Connections:', error.message);
+    console.error('Full error:', error);
     return { success: false, error: error.message };
   }
 }
