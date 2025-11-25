@@ -17,6 +17,8 @@ export default function AdminSettings() {
   const [migrationResult, setMigrationResult] = useState<any>(null);
   const [capabilityResult, setCapabilityResult] = useState<any>(null);
   const [stripeToCResult, setStripeToCResult] = useState<any>(null);
+  const [expressAccountResult, setExpressAccountResult] = useState<any>(null);
+  const [testAccountId, setTestAccountId] = useState<string>("");
   const [ipOverride, setIpOverride] = useState<string>("");
   const [migrationIpOverride, setMigrationIpOverride] = useState<string>("");
 
@@ -134,6 +136,58 @@ export default function AdminSettings() {
       toast({
         title: "Stripe T&C Update Failed",
         description: error.message || "Failed to update Stripe accounts",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Test a specific account's Account Link capability
+  const testAccountLinkMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      const response = await apiRequest("/api/admin/test-account-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId }),
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setExpressAccountResult(data);
+      toast({
+        title: data.success ? "Account Link Test Passed" : "Account Link Test Failed",
+        description: data.message,
+        variant: data.success ? "default" : "destructive",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Account Link Test Failed",
+        description: error.message || "Failed to test account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Backfill all Express accounts
+  const backfillExpressAccountsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/admin/backfill-express-accounts", {
+        method: "POST",
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setExpressAccountResult(data);
+      toast({
+        title: "Express Account Backfill Complete",
+        description: `Processed ${data.totalProcessed} accounts: ${data.successful} successful, ${data.failed} failed.`,
+        variant: data.failed > 0 ? "destructive" : "default",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Express Account Backfill Failed",
+        description: error.message || "Failed to backfill Express accounts",
         variant: "destructive",
       });
     },
@@ -650,6 +704,148 @@ export default function AdminSettings() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Express Account Link Test */}
+            <div className="border rounded-lg p-4 space-y-3 bg-green-50 dark:bg-green-950/20">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <h3 className="font-semibold text-green-900 dark:text-green-100">
+                    Test & Fix Express Account Link Capability
+                  </h3>
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>Why this is needed:</strong> Express accounts created before the controller configuration was added 
+                    may not be able to generate Account Links for T&C acceptance. This tool tests and attempts to fix individual accounts.
+                  </p>
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>What this does:</strong> Tests if a specific Stripe account can generate Account Links. 
+                    If the test fails, it means the account needs to be recreated with proper controller configuration.
+                  </p>
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    <strong>LD1 Account ID:</strong> <code className="bg-green-100 dark:bg-green-900 px-1 rounded">acct_1SWiRWQ1Mt1QSorZ</code>
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="test-account-id" className="text-sm text-green-800 dark:text-green-200">
+                  Stripe Account ID to Test
+                </Label>
+                <Input
+                  id="test-account-id"
+                  type="text"
+                  placeholder="e.g., acct_1SWiRWQ1Mt1QSorZ"
+                  value={testAccountId}
+                  onChange={(e) => setTestAccountId(e.target.value)}
+                  className="max-w-md"
+                  data-testid="input-test-account-id"
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => testAccountLinkMutation.mutate(testAccountId)}
+                  disabled={testAccountLinkMutation.isPending || !testAccountId}
+                  variant="default"
+                  className="bg-green-600 hover:bg-green-700"
+                  data-testid="button-test-account-link"
+                >
+                  {testAccountLinkMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Testing Account...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4 mr-2" />
+                      Test Single Account
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  onClick={() => backfillExpressAccountsMutation.mutate()}
+                  disabled={backfillExpressAccountsMutation.isPending}
+                  variant="outline"
+                  className="border-green-600 text-green-600 hover:bg-green-50"
+                  data-testid="button-backfill-express-accounts"
+                >
+                  {backfillExpressAccountsMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Backfilling All...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4 mr-2" />
+                      Backfill All Express Accounts
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Results Display */}
+              {expressAccountResult && (
+                <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2 font-semibold">
+                    {expressAccountResult.success ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                    )}
+                    Express Account Test Results
+                  </div>
+                  
+                  {/* Single account result */}
+                  {expressAccountResult.accountId && (
+                    <div className="text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Account:</span>
+                        <span className="ml-2 font-mono">{expressAccountResult.accountId}</span>
+                      </div>
+                      <div className={expressAccountResult.success ? "text-green-600" : "text-red-600"}>
+                        {expressAccountResult.message}
+                      </div>
+                      {expressAccountResult.accountDetails && (
+                        <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
+                          <pre>{JSON.stringify(expressAccountResult.accountDetails, null, 2)}</pre>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Batch result */}
+                  {expressAccountResult.totalProcessed !== undefined && (
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Total Processed:</span>
+                        <span className="ml-2 font-semibold">{expressAccountResult.totalProcessed}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Successful:</span>
+                        <span className="ml-2 font-semibold text-green-600">{expressAccountResult.successful}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Failed:</span>
+                        <span className="ml-2 font-semibold text-red-600">{expressAccountResult.failed}</span>
+                      </div>
+                      {expressAccountResult.results && expressAccountResult.results.length > 0 && (
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Details:</span>
+                          <div className="mt-2 text-xs max-h-40 overflow-y-auto">
+                            {expressAccountResult.results.map((r: any, i: number) => (
+                              <div key={i} className={r.success ? "text-green-600" : "text-red-600"}>
+                                {r.accountId}: {r.message}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

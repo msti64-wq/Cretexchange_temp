@@ -6954,6 +6954,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test a specific Stripe account's Account Link capability (super admin only)
+  app.post('/api/admin/test-account-link', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const { accountId } = req.body;
+      if (!accountId) {
+        return res.status(400).json({ message: "accountId is required" });
+      }
+
+      console.log(`🔧 Testing Account Link for: ${accountId}`);
+      
+      const result = await stripeService.backfillExpressAccountController(accountId);
+      
+      console.log(`✅ Account Link test result:`, result);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error testing Account Link:", error);
+      res.status(500).json({ message: "Test failed: " + error.message });
+    }
+  });
+
+  // Backfill ALL Express accounts with controller configuration (super admin only)
+  app.post('/api/admin/backfill-express-accounts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      console.log('🔧 Starting Express account backfill for Account Links...');
+      
+      const result = await stripeService.backfillAllExpressAccounts();
+      
+      console.log(`✅ Express account backfill complete:`, {
+        totalProcessed: result.totalProcessed,
+        successful: result.successful,
+        failed: result.failed,
+      });
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error in Express account backfill:", error);
+      res.status(500).json({ message: "Backfill failed: " + error.message });
+    }
+  });
+
   app.put('/api/admin/settings', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);

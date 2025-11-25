@@ -126,6 +126,16 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
         transfers: { requested: true }, // Enable payouts and receiving transfers
         card_payments: { requested: true }, // Required for Destination Charges
       },
+      // CRITICAL: Controller configuration required for Express accounts to use Account Links
+      // Without this, Stripe rejects Account Link creation with "account.controller.missing"
+      ...(params.type === 'express' ? {
+        controller: {
+          fees: { payer: 'application' as const }, // Platform pays Stripe fees
+          losses: { payments: 'application' as const }, // Platform handles payment losses
+          stripe_dashboard: { type: 'express' as const }, // Express dashboard access
+          requirement_collection: 'stripe' as const, // Stripe collects requirements via Account Links
+        },
+      } : {}),
       business_type: params.businessType || 'individual',
       business_profile: {
         mcc: params.businessProfile?.mcc || '7542', // Default to Car Washes (washout services)
@@ -288,6 +298,163 @@ export async function requestTransfersCapability(accountId: string): Promise<Str
     console.error(`❌ Error requesting transfers capability for ${accountId}:`, error.message);
     throw error;
   }
+}
+
+/**
+ * Backfill existing Express accounts with controller configuration
+ * REQUIRED for Account Links to work - accounts created before this fix are missing controller config
+ * 
+ * NOTE: The controller object CANNOT be updated after account creation via accounts.update()
+ * Instead, we need to ensure the account has proper capabilities and can generate Account Links
+ */
+export async function backfillExpressAccountController(accountId: string): Promise<{
+  success: boolean;
+  accountId: string;
+  message: string;
+  accountDetails?: any;
+}> {
+  try {
+    console.log(`🔧 Checking Express account configuration: ${accountId}`);
+    
+    // First, retrieve the account to check its current state
+    const account = await stripe.accounts.retrieve(accountId);
+    
+    console.log(`📊 Account state for ${accountId}:`, {
+      type: account.type,
+      chargesEnabled: account.charges_enabled,
+      payoutsEnabled: account.payouts_enabled,
+      detailsSubmitted: account.details_submitted,
+      requirements: account.requirements?.currently_due?.length || 0,
+      controller: (account as any).controller,
+    });
+    
+    // Check if this is an Express account
+    if (account.type !== 'express') {
+      return {
+        success: false,
+        accountId,
+        message: `Account ${accountId} is not an Express account (type: ${account.type})`,
+      };
+    }
+    
+    // The controller object cannot be updated after creation, but we can:
+    // 1. Ensure capabilities are requested
+    // 2. Test if Account Link can be generated
+    
+    // Update capabilities to ensure they're properly configured
+    const updatedAccount = await stripe.accounts.update(accountId, {
+      capabilities: {
+        transfers: { requested: true },
+        card_payments: { requested: true },
+      },
+    });
+    
+    // Try to create an Account Link to verify it works
+    try {
+      const testAccountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: 'https://cretexchange.com/refresh',
+        return_url: 'https://cretexchange.com/return',
+        type: 'account_onboarding',
+      });
+      
+      console.log(`✅ Account Link test successful for ${accountId}`);
+      
+      return {
+        success: true,
+        accountId,
+        message: `Account ${accountId} can generate Account Links successfully`,
+        accountDetails: {
+          type: updatedAccount.type,
+          chargesEnabled: updatedAccount.charges_enabled,
+          payoutsEnabled: updatedAccount.payouts_enabled,
+          detailsSubmitted: updatedAccount.details_submitted,
+          accountLinkGenerated: true,
+        },
+      };
+    } catch (linkError: any) {
+      console.error(`❌ Account Link test failed for ${accountId}:`, linkError.message);
+      
+      // If Account Link fails, the account may need to be recreated
+      // Return detailed info about what's wrong
+      return {
+        success: false,
+        accountId,
+        message: `Account ${accountId} cannot generate Account Links: ${linkError.message}. This account may need to be recreated with proper controller configuration.`,
+        accountDetails: {
+          type: updatedAccount.type,
+          chargesEnabled: updatedAccount.charges_enabled,
+          payoutsEnabled: updatedAccount.payouts_enabled,
+          requirements: updatedAccount.requirements,
+          error: linkError.message,
+        },
+      };
+    }
+  } catch (error: any) {
+    console.error(`❌ Error checking Express account ${accountId}:`, error.message);
+    return {
+      success: false,
+      accountId,
+      message: `Failed to check account: ${error.message}`,
+    };
+  }
+}
+
+/**
+ * Backfill ALL Express accounts in the platform
+ * Returns summary of which accounts succeeded/failed
+ */
+export async function backfillAllExpressAccounts(): Promise<{
+  totalProcessed: number;
+  successful: number;
+  failed: number;
+  results: Array<{
+    accountId: string;
+    success: boolean;
+    message: string;
+  }>;
+}> {
+  console.log('🔧 Starting backfill of all Express accounts...');
+  
+  const results: Array<{ accountId: string; success: boolean; message: string }> = [];
+  let hasMore = true;
+  let startingAfter: string | undefined = undefined;
+  
+  while (hasMore) {
+    const response = await stripe.accounts.list({
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    
+    for (const account of response.data) {
+      // Only process Express accounts from our platform
+      if (account.type === 'express' && account.metadata?.platform === 'cretexchange') {
+        const result = await backfillExpressAccountController(account.id);
+        results.push({
+          accountId: account.id,
+          success: result.success,
+          message: result.message,
+        });
+      }
+    }
+    
+    hasMore = response.has_more;
+    if (hasMore && response.data.length > 0) {
+      startingAfter = response.data[response.data.length - 1].id;
+    }
+  }
+  
+  const successful = results.filter(r => r.success).length;
+  const failed = results.filter(r => !r.success).length;
+  
+  console.log(`✅ Backfill complete: ${successful} successful, ${failed} failed out of ${results.length} total`);
+  
+  return {
+    totalProcessed: results.length,
+    successful,
+    failed,
+    results,
+  };
 }
 
 /**
