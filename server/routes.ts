@@ -2211,21 +2211,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           username: user.username,
           email: user.email,
           businessType: 'individual',
+          capabilities: ['card_payments', 'transfers'],
           individual: {
-            first_name: user.firstName,
-            lastName: user.lastName,
-            dob: { day: 1, month: 1, year: 1990 },
+            firstName: user.firstName || 'Driver',
+            lastName: user.lastName || 'Account',
             email: user.email,
             phone: user.phone || undefined,
-            ssn_last_4: '0000',
             address: {
               line1: user.street || '123 Main St',
               city: user.city || 'San Francisco',
               state: user.state || 'CA',
-              postal_code: user.zip || '94105',
+              postalCode: user.zip || '94105',
               country: 'US',
             },
           },
+          tosAcceptance: {
+            date: Math.floor(Date.now() / 1000),
+            ip: extractIPv4(req) || '0.0.0.0'
+          }
         });
 
         await storage.updateUserStripeInfo(userId, {
