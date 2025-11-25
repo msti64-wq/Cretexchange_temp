@@ -1299,22 +1299,28 @@ export async function createExternalAccountFromFinancialConnections(params: {
   connectedAccountId: string;
 }): Promise<{ success: boolean; bankName?: string; last4?: string; error?: string }> {
   try {
+    console.log('🔍 Attempting to retrieve Financial Connections session:', params.sessionId);
+    
     const session = await stripe.financialConnections.sessions.retrieve(params.sessionId);
     
-    console.log('📋 Financial Connections session:', {
+    console.log('📋 Financial Connections session retrieved:', {
       sessionId: params.sessionId,
       status: session.status,
-      accountCount: session.accounts?.data.length || 0,
+      accounts: session.accounts ? {
+        object: session.accounts.object,
+        dataLength: session.accounts.data.length,
+        hasMore: session.accounts.has_more,
+      } : 'null',
     });
 
     // Check if session is completed - user must have finished the flow
     if (session.status !== 'completed') {
-      console.warn(`⚠️  Session not completed. Status: ${session.status}`);
+      console.warn(`⚠️  Session not completed. Status: ${session.status}. Full session:`, JSON.stringify(session, null, 2));
       return { success: false, error: `Financial Connections flow not completed. Status: ${session.status}` };
     }
 
     if (!session.accounts || session.accounts.data.length === 0) {
-      console.warn('⚠️  No accounts found in completed session');
+      console.warn('⚠️  No accounts found in completed session. Full session:', JSON.stringify(session, null, 2));
       return { success: false, error: 'No bank account linked in completed session' };
     }
 
@@ -1323,8 +1329,9 @@ export async function createExternalAccountFromFinancialConnections(params: {
       accountId: linkedAccount.id,
       displayName: (linkedAccount as any).display_name,
       status: linkedAccount.status,
-      accountNumber: (linkedAccount as any).account_number ? '****' : 'not available',
-      routingNumber: (linkedAccount as any).routing_number ? '****' : 'not available',
+      accountNumberAvailable: !!(linkedAccount as any).account_number,
+      routingNumberAvailable: !!(linkedAccount as any).routing_number,
+      rawAccount: JSON.stringify(linkedAccount),
     });
 
     // Create payment method from the Financial Connections account
