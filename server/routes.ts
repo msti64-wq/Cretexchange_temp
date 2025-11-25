@@ -2321,6 +2321,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateDriver(driver.id, {
           bankName: result.bankName || 'Bank Account',
         });
+
+        // IMPORTANT: Sync all verification info to Stripe after Financial Connections succeeds
+        // This ensures DOB, SSN, business website and other verification details are sent to Stripe
+        try {
+          console.log('📤 Syncing verification info to Stripe Connect account (Financial Connections)...');
+          await stripeService.updateConnectedAccountWithCompleteInfo(
+            user.stripeConnectAccountId,
+            {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              phone: user.phone,
+              street: user.street,
+              city: user.city,
+              state: user.state,
+              zip: user.zip,
+              dateOfBirth: driver.dateOfBirth,
+              ssnLast4: driver.ssnLast4,
+              businessWebsite: driver.businessWebsite,
+            }
+          );
+          console.log('✅ Verification info synced to Stripe Connect account');
+        } catch (stripeError: any) {
+          console.error('⚠️  Warning: Could not sync verification info to Stripe:', stripeError.message);
+          // Continue - the bank account is linked, verification info will sync on next profile update
+        }
       }
 
       res.json({
@@ -2435,6 +2461,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         routingNumber,
         accountNumber, // This will be encrypted by the database layer
       });
+
+      // IMPORTANT: Sync all verification info to Stripe when bank account is added manually
+      // This ensures DOB, SSN, business website and other verification details are sent to Stripe
+      const driverUpdated = await storage.getDriver(userId);
+      if (user.stripeConnectAccountId && driverUpdated) {
+        try {
+          console.log('📤 Syncing verification info to Stripe Connect account...');
+          await stripeService.updateConnectedAccountWithCompleteInfo(
+            user.stripeConnectAccountId,
+            {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              phone: user.phone,
+              street: user.street,
+              city: user.city,
+              state: user.state,
+              zip: user.zip,
+              dateOfBirth: driverUpdated.dateOfBirth,
+              ssnLast4: driverUpdated.ssnLast4,
+              businessWebsite: driverUpdated.businessWebsite,
+            }
+          );
+          console.log('✅ Verification info synced to Stripe Connect account');
+        } catch (stripeError: any) {
+          console.error('⚠️  Warning: Could not sync verification info to Stripe:', stripeError.message);
+          // Continue - the bank account is still created, verification info will sync on next profile update
+        }
+      }
 
       res.json({
         message: 'Bank account added successfully',
@@ -5603,6 +5658,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.createOwnerFundingSource(fundingSourceData);
 
+      // IMPORTANT: Sync all verification info to Stripe after Financial Connections succeeds (OWNERS)
+      // This ensures DOB, SSN, business website and other verification details are sent to Stripe
+      const user = await storage.getUser(userId);
+      if (user && user.stripeConnectAccountId) {
+        try {
+          console.log('📤 Syncing verification info to Stripe Connect account (Owner Financial Connections)...');
+          await stripeService.updateConnectedAccountWithCompleteInfo(
+            user.stripeConnectAccountId,
+            {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              phone: user.phone,
+              street: user.street,
+              city: user.city,
+              state: user.state,
+              zip: user.zip,
+              dateOfBirth: owner.dateOfBirth,
+              ssnLast4: owner.ssnLast4,
+              businessWebsite: owner.businessWebsite,
+            }
+          );
+          console.log('✅ Verification info synced to Stripe Connect account');
+        } catch (stripeError: any) {
+          console.error('⚠️  Warning: Could not sync verification info to Stripe:', stripeError.message);
+          // Continue - the bank account is linked, verification info will sync on next profile update
+        }
+      }
+
       res.json({
         message: 'Bank account linked successfully',
         bankName: usBankAccount.bank_name,
@@ -5665,6 +5749,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Save to database
       const savedSource = await storage.createOwnerFundingSource(fundingSourceData);
+
+      // IMPORTANT: Sync all verification info to Stripe when manual bank account is added (OWNERS)
+      // This ensures DOB, SSN, business website and other verification details are sent to Stripe
+      if (user.stripeConnectAccountId) {
+        try {
+          console.log('📤 Syncing verification info to Stripe Connect account (Owner Manual Entry)...');
+          await stripeService.updateConnectedAccountWithCompleteInfo(
+            user.stripeConnectAccountId,
+            {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              phone: user.phone,
+              street: user.street,
+              city: user.city,
+              state: user.state,
+              zip: user.zip,
+              dateOfBirth: owner.dateOfBirth,
+              ssnLast4: owner.ssnLast4,
+              businessWebsite: owner.businessWebsite,
+            }
+          );
+          console.log('✅ Verification info synced to Stripe Connect account');
+        } catch (stripeError: any) {
+          console.error('⚠️  Warning: Could not sync verification info to Stripe:', stripeError.message);
+          // Continue - the bank account is linked, verification info will sync on next profile update
+        }
+      }
 
       res.json({
         message: "Funding source added successfully",
