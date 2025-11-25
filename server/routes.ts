@@ -2239,12 +2239,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create Financial Connections session for driver
-      // Force HTTPS for return URL (Stripe requirement)
-      const protocol = req.get('host')?.includes('replit.dev') ? 'https' : req.protocol;
+      // Force HTTPS for return URL (Stripe requirement) - always use HTTPS for production
+      const host = req.get('host') || '';
+      const protocol = (host.includes('replit') || host.includes('localhost')) && req.protocol === 'http' ? 'https' : req.protocol;
       const session = await stripeService.createFinancialConnectionsSession({
         userType: 'driver',
         connectedAccountId: user.stripeConnectAccountId,
-        returnUrl: `${protocol}://${req.get('host')}/driver/profile`,
+        returnUrl: `${protocol}://${host}/driver/profile`,
       });
 
       res.json({
@@ -2453,8 +2454,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create Account Link for onboarding
-      const protocol = req.get('host')?.includes('replit.dev') ? 'https' : req.protocol;
-      const baseUrl = `${protocol}://${req.get('host')}`;
+      const host = req.get('host') || '';
+      const protocol = (host.includes('replit') || host.includes('localhost')) && req.protocol === 'http' ? 'https' : req.protocol;
+      const baseUrl = `${protocol}://${host}`;
       
       const accountLink = await stripeService.createAccountLink({
         accountId: user.stripeConnectAccountId,
@@ -2559,8 +2561,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create Account Link for onboarding
-      const protocol = req.get('host')?.includes('replit.dev') ? 'https' : req.protocol;
-      const baseUrl = `${protocol}://${req.get('host')}`;
+      const host = req.get('host') || '';
+      const protocol = (host.includes('replit') || host.includes('localhost')) && req.protocol === 'http' ? 'https' : req.protocol;
+      const baseUrl = `${protocol}://${host}`;
       
       const accountLink = await stripeService.createAccountLink({
         accountId: user.stripeConnectAccountId,
@@ -5481,12 +5484,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create Financial Connections session for owner
-      // Force HTTPS for return URL (Stripe requirement)
-      const protocol = req.get('host')?.includes('replit.dev') ? 'https' : req.protocol;
+      // Force HTTPS for return URL (Stripe requirement) - always use HTTPS for production
+      const host = req.get('host') || '';
+      const protocol = (host.includes('replit') || host.includes('localhost')) && req.protocol === 'http' ? 'https' : req.protocol;
       const session = await stripeService.createFinancialConnectionsSession({
         userType: 'owner',
         customerId: user.stripeCustomerId,
-        returnUrl: `${protocol}://${req.get('host')}/owner/payment-methods`,
+        returnUrl: `${protocol}://${host}/owner/payment-methods`,
       });
 
       res.json({
@@ -6198,8 +6202,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('🏦 Creating Financial Connections session for instant ACH verification');
 
-      // Get the frontend URL for return redirect
-      const returnUrl = `${req.protocol}://${req.get('host')}/wallet`;
+      // Get the frontend URL for return redirect - force HTTPS for production
+      const host = req.get('host') || '';
+      const protocol = (host.includes('replit') || host.includes('localhost')) && req.protocol === 'http' ? 'https' : req.protocol;
+      const returnUrl = `${protocol}://${host}/wallet`;
 
       const session = await stripeService.createFinancialConnectionsSession({
         customerId: user.stripeCustomerId,
