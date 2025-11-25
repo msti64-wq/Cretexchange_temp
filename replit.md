@@ -6,6 +6,9 @@ CreteXchange is a web application that connects concrete truck drivers with veri
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Testing Environment
+**IMPORTANT**: Testing is done in the PRODUCTION environment, NOT development. The development database is separate from production. Test accounts like LD1, LO1 exist in the production database only.
+
 ## Recent Updates (Nov 25, 2025)
 - ✅ **Identity document support for fraud prevention**: New `identity_documents` table stores government-issued ID documents for drivers and owners
 - ✅ **Stripe Identity API integration**: Added functions to create Stripe Identity verification sessions and link documents to connected accounts
