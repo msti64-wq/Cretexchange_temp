@@ -1857,12 +1857,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // RETROACTIVE STRIPE T&C UPDATE: Update all existing Stripe Connect accounts with T&C acceptance (admin only)
+  // RETROACTIVE STRIPE T&C UPDATE: Update all existing Stripe Connect accounts with T&C acceptance (super_admin only)
   // This backfills T&C acceptance for accounts created before the automatic sync was implemented
   app.post('/api/admin/update-existing-stripe-accounts', isAuthenticated, async (req: any, res) => {
     try {
-      // Admin-only endpoint
-      if (req.user.role !== 'admin') {
+      // Super admin-only endpoint
+      if (req.user.role !== 'super_admin') {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
