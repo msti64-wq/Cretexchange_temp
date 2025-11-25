@@ -1311,12 +1311,21 @@ export async function createExternalAccountFromFinancialConnections(params: {
         dataLength: session.accounts.data.length,
         hasMore: session.accounts.has_more,
       } : 'null',
+      fullSessionDebug: JSON.stringify(session, null, 2),
     });
 
     // Check if session is completed - user must have finished the flow
-    if (session.status !== 'completed') {
-      console.warn(`⚠️  Session not completed. Status: ${session.status}. Full session:`, JSON.stringify(session, null, 2));
-      return { success: false, error: `Financial Connections flow not completed. Status: ${session.status}` };
+    if (!session.status || session.status !== 'completed') {
+      console.warn(`⚠️  Session not completed. Status: ${session.status}. This usually means:`, {
+        reason1: 'User cancelled the Financial Connections flow',
+        reason2: 'User did not select a bank or complete authentication',
+        reason3: 'Session expired or was invalid',
+      });
+      console.warn('Full session for debugging:', JSON.stringify(session, null, 2));
+      return { 
+        success: false, 
+        error: `Financial Connections flow not completed. Status: ${session.status || 'undefined'}. Please try again or use manual bank entry as alternative.` 
+      };
     }
 
     if (!session.accounts || session.accounts.data.length === 0) {

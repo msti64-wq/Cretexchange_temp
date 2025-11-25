@@ -1,0 +1,145 @@
+ 🔄 Query cache cleared once
+ SW registered:  ServiceWorkerRegistration
+profile:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+ 🔍 Profile completion check: Object
+ ✅ Profile complete! Showing install prompt...
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🔧 InstallPrompt component loaded
+ 👤 User previously dismissed install prompt: true
+ ⏭️ Skipping install prompt - user previously dismissed
+ 🔍 Profile completion check: Object
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: Object
+ ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:498 🔍 Profile completion check: Object
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:498 🔍 Profile completion check: Object
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+api/drivers/bank-connect/complete:1  Failed to load resource: the server responded with a status of 400 ()
+index-C7dWhzOv.js:498 Bank connection error: Error: 400: {"message":"Financial Connections flow not completed. Status: undefined"}
+    at nC (index-C7dWhzOv.js:48:42800)
+    at async xe (index-C7dWhzOv.js:48:43123)
+    at async d (index-C7dWhzOv.js:498:33688)
+d @ index-C7dWhzOv.js:498
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-C7dWhzOv.js:492 🎨 InstallPrompt render check: Object
+index-C7dWhzOv.js:492 ❌ InstallPrompt not showing because showPrompt is false

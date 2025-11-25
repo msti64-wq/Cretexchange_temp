@@ -52,16 +52,26 @@ export function BankAccountConnect({
       }
 
       // Step 3: Collect financial account using Financial Connections
+      console.log('📱 Launching Financial Connections UI with clientSecret:', sessionData.clientSecret.slice(0, 20) + '...');
       const { financialConnectionsSession, error: fcError } = await stripe.collectFinancialConnectionsAccounts({
         clientSecret: sessionData.clientSecret,
       });
 
+      console.log('🔄 Financial Connections returned:', {
+        hasSession: !!financialConnectionsSession,
+        sessionId: financialConnectionsSession?.id,
+        hasError: !!fcError,
+        errorMessage: fcError?.message,
+      });
+
       if (fcError) {
+        console.error('❌ Financial Connections error:', fcError);
         throw new Error(fcError.message || 'Bank linking cancelled or failed');
       }
 
       if (!financialConnectionsSession) {
-        throw new Error('No session returned from Financial Connections');
+        console.error('❌ No session returned - user may have cancelled the flow');
+        throw new Error('No session returned from Financial Connections - please try again or use manual bank entry');
       }
 
       // Step 4: Complete the linking on backend
