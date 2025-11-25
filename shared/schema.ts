@@ -138,6 +138,11 @@ export const drivers = pgTable("drivers", {
   // Identity document for fraud prevention
   identityDocumentId: varchar("identity_document_id").references(() => identityDocuments.id, { onDelete: "set null" }),
   identityVerificationStatus: identityVerificationStatusEnum("identity_verification_status").default("pending"),
+  // Stripe Connect verification tracking
+  stripePayoutsEnabled: boolean("stripe_payouts_enabled").default(false),
+  stripeChargesEnabled: boolean("stripe_charges_enabled").default(false),
+  stripeRequirements: text("stripe_requirements"), // JSON array of currently_due requirements
+  stripeVerifiedAt: timestamp("stripe_verified_at"),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -205,6 +210,11 @@ export const owners = pgTable("owners", {
   // Identity document for fraud prevention
   identityDocumentId: varchar("identity_document_id").references(() => identityDocuments.id, { onDelete: "set null" }),
   identityVerificationStatus: identityVerificationStatusEnum("identity_verification_status").default("pending"),
+  // Stripe Connect verification tracking
+  stripePayoutsEnabled: boolean("stripe_payouts_enabled").default(false),
+  stripeChargesEnabled: boolean("stripe_charges_enabled").default(false),
+  stripeRequirements: text("stripe_requirements"), // JSON array of currently_due requirements
+  stripeVerifiedAt: timestamp("stripe_verified_at"),
   // Stripe Treasury wallet integration
   stripeTreasuryAccountId: varchar("stripe_treasury_account_id"), // Stripe Financial Account ID
   walletBalance: decimal("wallet_balance", { precision: 10, scale: 2 }).notNull().default("0.00"),

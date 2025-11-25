@@ -2485,32 +2485,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Ensure driver has Stripe Connect account
       if (!user.stripeConnectAccountId) {
-        // Create Connect account if needed
+        // Get driver data for verification fields
         const driver = await storage.getDriver(userId);
+        
+        // IMPORTANT: Validate required fields before creating Stripe account
+        const { checkProfileCompleteness, formatPhoneE164, parseDateOfBirth, generateBusinessUrl } = await import('./stripeUtils');
+        
+        const completeness = checkProfileCompleteness({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          street: user.street,
+          city: user.city,
+          state: user.state,
+          zip: user.zip,
+          dateOfBirth: driver?.dateOfBirth,
+          ssnLast4: driver?.ssnLast4,
+        });
+        
+        if (!completeness.isComplete) {
+          return res.status(400).json({
+            message: 'Please complete your profile before linking a bank account',
+            missingFields: completeness.missingRequired,
+            warnings: completeness.warnings,
+          });
+        }
+        
+        // Parse DOB for Stripe format
+        const dob = parseDateOfBirth(driver?.dateOfBirth);
+        if (!dob) {
+          return res.status(400).json({
+            message: 'Invalid date of birth format. Please update your profile.',
+          });
+        }
+        
+        // Create Connect account with REAL user data
         const connectedAccount = await stripeService.createConnectedAccount({
-          type: 'express', // Express accounts for marketplace - auto-activate capabilities
+          type: 'express',
           userId: userId,
           username: user.username,
           email: user.email,
           businessType: 'individual',
           capabilities: ['card_payments', 'transfers'],
           individual: {
-            firstName: user.firstName || 'Driver',
-            lastName: user.lastName || 'Account',
+            firstName: user.firstName!,
+            lastName: user.lastName!,
             email: user.email,
-            phone: user.phone || undefined,
+            phone: formatPhoneE164(user.phone),
             address: {
-              line1: user.street || '123 Main St',
-              city: user.city || 'San Francisco',
-              state: user.state || 'CA',
-              postalCode: user.zip || '94105',
+              line1: user.street!,
+              city: user.city!,
+              state: user.state!,
+              postalCode: user.zip!,
               country: 'US',
             },
+            dob,
+            ssn: driver?.ssnLast4,
           },
-          tosAcceptance: {
-            date: Math.floor(Date.now() / 1000),
-            ip: extractIPv4(req) || '0.0.0.0'
-          }
+          businessProfile: {
+            url: generateBusinessUrl(user.username, 'driver'),
+            mcc: '7542',
+          },
         });
 
         await storage.updateUserStripeInfo(userId, {
@@ -2653,30 +2689,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create Stripe Connect account if driver doesn't have one
       if (!user.stripeConnectAccountId) {
+        // IMPORTANT: Validate required fields before creating Stripe account
+        const { checkProfileCompleteness, formatPhoneE164, parseDateOfBirth, generateBusinessUrl } = await import('./stripeUtils');
+        
+        const completeness = checkProfileCompleteness({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          street: user.street,
+          city: user.city,
+          state: user.state,
+          zip: user.zip,
+          dateOfBirth: driver?.dateOfBirth,
+          ssnLast4: driver?.ssnLast4,
+        });
+        
+        if (!completeness.isComplete) {
+          return res.status(400).json({
+            message: 'Please complete your profile before adding a bank account',
+            missingFields: completeness.missingRequired,
+            warnings: completeness.warnings,
+          });
+        }
+        
+        // Parse DOB for Stripe format
+        const dob = parseDateOfBirth(driver?.dateOfBirth);
+        if (!dob) {
+          return res.status(400).json({
+            message: 'Invalid date of birth format. Please update your profile with format YYYY-MM-DD.',
+          });
+        }
+        
         const connectedAccount = await stripeService.createConnectedAccount({
-          type: 'express', // Express accounts for marketplace - auto-activate capabilities
+          type: 'express',
           userId: userId,
           username: user.username,
           email: user.email,
           businessType: 'individual',
           individual: {
-            first_name: user.firstName,
-            last_name: user.lastName,
-            dob: {
-              day: 1,
-              month: 1,
-              year: 1990,
-            },
+            firstName: user.firstName!,
+            lastName: user.lastName!,
             email: user.email,
-            phone: user.phone || undefined,
-            ssn_last_4: '0000', // Test value
+            phone: formatPhoneE164(user.phone),
             address: {
-              line1: user.street || '123 Main St',
-              city: user.city || 'San Francisco',
-              state: user.state || 'CA',
-              postal_code: user.zip || '94105',
+              line1: user.street!,
+              city: user.city!,
+              state: user.state!,
+              postalCode: user.zip!,
               country: 'US',
             },
+            dob,
+            ssn: driver?.ssnLast4,
+          },
+          businessProfile: {
+            url: generateBusinessUrl(user.username, 'driver'),
+            mcc: '7542',
           },
         });
 
@@ -4238,19 +4306,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('⚠️  Driver missing Stripe Issuing cardholder, creating one...');
         
         try {
+          // Use actual user address - don't use hardcoded defaults
+          const billingAddress = {
+            line1: user.street || '',
+            city: user.city || '',
+            state: user.state || '',
+            postal_code: user.zip || '',
+            country: 'US',
+          };
+          
+          // Validate address before creating cardholder
+          if (!billingAddress.line1 || !billingAddress.city || !billingAddress.state || !billingAddress.postal_code) {
+            return res.status(400).json({
+              message: 'Please complete your address in your profile before requesting a debit card.',
+              missingFields: ['street', 'city', 'state', 'zip'].filter(f => !user[f as keyof typeof user]),
+            });
+          }
+          
           const cardholder = await stripeService.createCardholder({
             connectedAccountId: driver.stripeConnectAccountId,
             name: `${user.firstName} ${user.lastName}`,
             email: user.email,
             phoneNumber: user.phone || undefined,
             billing: {
-              address: {
-                line1: '123 Main St', // Default address, will be updated with shipping address
-                city: 'San Francisco',
-                state: 'CA',
-                postal_code: '94105',
-                country: 'US',
-              },
+              address: billingAddress,
             },
           });
 
@@ -4555,31 +4634,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log("♻️ Reusing existing Stripe Connect account:", owner.stripeConnectAccountId);
           connectedAccount = { id: owner.stripeConnectAccountId };
         } else {
-          // Create new Stripe Connect Account
+          // IMPORTANT: Validate required fields before creating Stripe account
+          const { checkProfileCompleteness, formatPhoneE164, parseDateOfBirth, generateBusinessUrl } = await import('./stripeUtils');
+          
+          const completeness = checkProfileCompleteness({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone,
+            street: user.street,
+            city: user.city,
+            state: user.state,
+            zip: user.zip,
+            dateOfBirth: owner?.dateOfBirth,
+            ssnLast4: owner?.ssnLast4,
+          });
+          
+          if (!completeness.isComplete) {
+            return res.status(400).json({
+              message: 'Please complete your profile before activating membership',
+              missingFields: completeness.missingRequired,
+              warnings: completeness.warnings,
+            });
+          }
+          
+          // Parse DOB for Stripe format
+          const dob = parseDateOfBirth(owner?.dateOfBirth);
+          if (!dob) {
+            return res.status(400).json({
+              message: 'Invalid date of birth format. Please update your profile.',
+            });
+          }
+          
+          // Create new Stripe Connect Account with REAL user data
           connectedAccount = await stripeService.createConnectedAccount({
-            type: 'express', // Express accounts for marketplace - auto-activate capabilities
-            userId: userId, // REQUIRED - prevents duplicates
+            type: 'express',
+            userId: userId,
             username: user.username,
             email: user.email,
             businessType: 'individual',
             individual: {
-              first_name: user.firstName,
-              last_name: user.lastName,
-              dob: {
-                day: 1,
-                month: 1,
-                year: 1990,
-              },
+              firstName: user.firstName!,
+              lastName: user.lastName!,
               email: user.email,
-              phone: user.phone || undefined,
-              ssn_last_4: '0000', // Test value
+              phone: formatPhoneE164(user.phone),
               address: {
-                line1: '123 Main St',
-                city: 'San Francisco',
-                state: 'CA',
-                postal_code: '94105',
+                line1: user.street!,
+                city: user.city!,
+                state: user.state!,
+                postalCode: user.zip!,
                 country: 'US',
               },
+              dob,
+              ssn: owner?.ssnLast4,
+            },
+            businessProfile: {
+              url: generateBusinessUrl(user.username, 'owner'),
+              mcc: '7542',
             },
           });
           console.log("✅ Created Stripe Connect account:", connectedAccount.id);
@@ -5156,30 +5267,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connectedAccount = { id: owner.stripeConnectAccountId };
       } else {
         try {
+          // IMPORTANT: Validate required fields before creating Stripe account
+          const { checkProfileCompleteness, formatPhoneE164, parseDateOfBirth, generateBusinessUrl } = await import('./stripeUtils');
+          
+          const completeness = checkProfileCompleteness({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone,
+            street: address.line1,
+            city: address.city,
+            state: address.state,
+            zip: address.postalCode,
+            dateOfBirth: owner?.dateOfBirth,
+            ssnLast4: owner?.ssnLast4,
+          });
+          
+          if (!completeness.isComplete) {
+            return res.status(400).json({
+              message: 'Please complete your profile before onboarding',
+              missingFields: completeness.missingRequired,
+              warnings: completeness.warnings,
+            });
+          }
+          
+          // Parse DOB for Stripe format
+          const dob = parseDateOfBirth(owner?.dateOfBirth);
+          if (!dob) {
+            return res.status(400).json({
+              message: 'Invalid date of birth format. Please update your profile.',
+            });
+          }
+          
           connectedAccount = await stripeService.createConnectedAccount({
-            type: 'express', // Express accounts for marketplace - auto-activate capabilities
-            userId: userId, // REQUIRED - prevents duplicates
+            type: 'express',
+            userId: userId,
             username: user.username,
             email: user.email,
             businessType: 'individual',
             individual: {
-              first_name: user.firstName,
-              last_name: user.lastName,
-              dob: {
-                day: 1,
-                month: 1,
-                year: 1990,
-              },
+              firstName: user.firstName!,
+              lastName: user.lastName!,
               email: user.email,
-              phone: user.phone || undefined,
-              ssn_last_4: '0000',
+              phone: formatPhoneE164(user.phone),
               address: {
                 line1: address.line1,
                 city: address.city,
                 state: address.state,
-                postal_code: address.postalCode,
+                postalCode: address.postalCode,
                 country: 'US',
               },
+              dob,
+              ssn: owner?.ssnLast4,
+            },
+            businessProfile: {
+              url: generateBusinessUrl(user.username, 'owner'),
+              mcc: '7542',
             },
           });
         } catch (error: any) {

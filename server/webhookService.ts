@@ -1,7 +1,8 @@
 import Stripe from 'stripe';
 import { db } from './db';
-import { webhookEvents, payments, driverWallets, walletTransactions, ownerFundingSources } from '@shared/schema';
+import { webhookEvents, payments, driverWallets, walletTransactions, ownerFundingSources, users, drivers, owners } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { formatStripeRequirements } from './stripeUtils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil',
@@ -164,6 +165,14 @@ async function handleWebhookEvent(event: Stripe.Event): Promise<WebhookHandlerRe
       console.log('💰 Treasury balance changed - no action needed (tracked in Stripe)');
       return { success: true, message: 'Treasury balance event logged' };
 
+    // Connected Account Events - Critical for verification status tracking
+    case 'account.updated':
+      return await handleAccountUpdated(event.data.object as Stripe.Account);
+    
+    case 'account.external_account.created':
+      console.log('🏦 External account created for connected account');
+      return { success: true, message: 'External account event logged' };
+
     default:
       console.log(`ℹ️  Unhandled webhook event type: ${event.type}`);
       return { success: true, message: `Event type ${event.type} not handled` };
@@ -302,4 +311,140 @@ async function handleTransferFailed(transfer: Stripe.Transfer): Promise<WebhookH
   // This could happen if driver's Connect account has issues
   
   return { success: true, message: `Transfer failure logged: ${transfer.id}` };
+}
+
+// ============================================================================
+// CONNECTED ACCOUNT VERIFICATION TRACKING
+// ============================================================================
+
+async function handleAccountUpdated(account: Stripe.Account): Promise<WebhookHandlerResult> {
+  console.log(`🔄 Account updated: ${account.id}`);
+  
+  // Extract key verification info
+  const accountInfo = {
+    accountId: account.id,
+    chargesEnabled: account.charges_enabled,
+    payoutsEnabled: account.payouts_enabled,
+    detailsSubmitted: account.details_submitted,
+    currentlyDue: account.requirements?.currently_due || [],
+    eventuallyDue: account.requirements?.eventually_due || [],
+    pastDue: account.requirements?.past_due || [],
+    disabledReason: account.requirements?.disabled_reason,
+  };
+  
+  console.log('📊 Account verification status:', {
+    ...accountInfo,
+    currentlyDueCount: accountInfo.currentlyDue.length,
+    pastDueCount: accountInfo.pastDue.length,
+  });
+  
+  // Find the user by their Stripe Connect account ID
+  try {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.stripeConnectAccountId, account.id))
+      .limit(1);
+    
+    if (!user) {
+      console.log(`⚠️  No user found for account ${account.id}`);
+      return { success: true, message: 'Account updated but no matching user found' };
+    }
+    
+    console.log(`👤 Found user ${user.username} (${user.role}) for account ${account.id}`);
+    
+    // Determine if verification status changed significantly
+    const hasBlockingRequirements = accountInfo.currentlyDue.length > 0 || accountInfo.pastDue.length > 0;
+    const isFullyVerified = accountInfo.chargesEnabled && accountInfo.payoutsEnabled && !hasBlockingRequirements;
+    
+    // Log human-readable requirements
+    if (hasBlockingRequirements) {
+      const allDue = [...accountInfo.currentlyDue, ...accountInfo.pastDue];
+      const humanReadable = formatStripeRequirements(allDue);
+      console.log(`📋 Missing requirements for ${user.username}:`, humanReadable);
+    }
+    
+    // Prepare verification status data - clear requirements when resolved
+    const requirementsJson = accountInfo.currentlyDue.length > 0 
+      ? JSON.stringify(accountInfo.currentlyDue) 
+      : null; // Explicitly null when no requirements (clears stale data)
+    
+    // Update role-specific table with verification status
+    // Drivers: primarily need payouts_enabled for receiving washout payments
+    // Owners: need charges_enabled (for receiving payments) AND payouts_enabled (for paying drivers)
+    if (user.role === 'driver') {
+      const [driver] = await db
+        .select()
+        .from(drivers)
+        .where(eq(drivers.userId, user.id))
+        .limit(1);
+      
+      if (driver) {
+        // For drivers, verified = payouts_enabled and no blocking requirements
+        const driverVerified = accountInfo.payoutsEnabled && !hasBlockingRequirements;
+        
+        await db.update(drivers)
+          .set({
+            stripePayoutsEnabled: accountInfo.payoutsEnabled,
+            stripeChargesEnabled: accountInfo.chargesEnabled,
+            stripeRequirements: requirementsJson,
+            stripeVerifiedAt: driverVerified && !driver.stripeVerifiedAt ? new Date() : undefined,
+            updatedAt: new Date(),
+          })
+          .where(eq(drivers.id, driver.id));
+        
+        console.log(`✅ Updated driver ${driver.id} verification: payouts=${accountInfo.payoutsEnabled} (required for payments), requirements=${accountInfo.currentlyDue.length}`);
+        
+        // Log status change for monitoring
+        if (driverVerified && !driver.stripeVerifiedAt) {
+          console.log(`🎉 Driver ${user.username} is now VERIFIED for receiving payments!`);
+        }
+      }
+    } else if (user.role === 'owner') {
+      const [owner] = await db
+        .select()
+        .from(owners)
+        .where(eq(owners.userId, user.id))
+        .limit(1);
+      
+      if (owner) {
+        // For owners, verified = charges_enabled AND payouts_enabled (needed to pay drivers)
+        const ownerVerified = accountInfo.chargesEnabled && accountInfo.payoutsEnabled && !hasBlockingRequirements;
+        
+        await db.update(owners)
+          .set({
+            stripePayoutsEnabled: accountInfo.payoutsEnabled,
+            stripeChargesEnabled: accountInfo.chargesEnabled,
+            stripeRequirements: requirementsJson,
+            stripeVerifiedAt: ownerVerified && !owner.stripeVerifiedAt ? new Date() : undefined,
+            updatedAt: new Date(),
+          })
+          .where(eq(owners.id, owner.id));
+        
+        console.log(`✅ Updated owner ${owner.id} verification: charges=${accountInfo.chargesEnabled}, payouts=${accountInfo.payoutsEnabled}, requirements=${accountInfo.currentlyDue.length}`);
+        
+        // Log status change for monitoring
+        if (ownerVerified && !owner.stripeVerifiedAt) {
+          console.log(`🎉 Owner ${user.username} is now VERIFIED for receiving and sending payments!`);
+        }
+      }
+    }
+    
+    // Log significant status changes for monitoring
+    if (isFullyVerified) {
+      console.log(`🎉 Account ${account.id} (${user.username}) is FULLY VERIFIED!`);
+      console.log(`   - Charges: ${accountInfo.chargesEnabled ? 'ENABLED' : 'disabled'}`);
+      console.log(`   - Payouts: ${accountInfo.payoutsEnabled ? 'ENABLED' : 'disabled'}`);
+    } else if (accountInfo.disabledReason) {
+      console.log(`⚠️  Account ${account.id} has disabled reason: ${accountInfo.disabledReason}`);
+    }
+    
+    return { 
+      success: true, 
+      message: `Account ${account.id} updated - verified: ${isFullyVerified}, blocking requirements: ${hasBlockingRequirements ? accountInfo.currentlyDue.length : 0}` 
+    };
+  } catch (error: any) {
+    console.error('❌ Error handling account update:', error.message);
+    return { success: false, message: 'Error handling account update', error: error.message };
+  }
 }
