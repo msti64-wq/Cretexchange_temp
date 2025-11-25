@@ -1320,10 +1320,15 @@ export async function createExternalAccountFromFinancialConnections(params: {
 
     // Create payment method from the Financial Connections account
     // This extracts the actual bank account details we need
+    // Stripe requires billing_details with account holder name
     const paymentMethod = await stripe.paymentMethods.create({
       type: 'us_bank_account',
       us_bank_account: {
         financial_connections_account: linkedAccount.id,
+      },
+      billing_details: {
+        name: (linkedAccount as any).display_name || 'Account Holder',
+        // Add any other required billing details if available
       },
     });
 
