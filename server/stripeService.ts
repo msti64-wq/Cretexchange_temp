@@ -377,13 +377,11 @@ export async function updateConnectedAccountWithCompleteInfo(
       };
     }
 
-    // Add Stripe Terms & Conditions acceptance if provided
-    if (tosAcceptance) {
-      accountParams.tos_acceptance = {
-        date: tosAcceptance.timestamp,
-        ip: tosAcceptance.ip,
-      };
-    }
+    // NOTE: T&C acceptance is NOT done here for Express accounts
+    // Express accounts must use Account Links (createAccountLink) for T&C acceptance
+    // Stripe rejects programmatic T&C acceptance with error: 
+    // "controller[requirement_collection]=stripe" prevents programmatic acceptance
+    // tosAcceptance parameter is kept in function signature but ignored for Express accounts
 
     const account = await stripe.accounts.update(accountId, accountParams);
     
