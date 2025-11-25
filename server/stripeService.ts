@@ -1307,8 +1307,15 @@ export async function createExternalAccountFromFinancialConnections(params: {
       accountCount: session.accounts?.data.length || 0,
     });
 
+    // Check if session is completed - user must have finished the flow
+    if (session.status !== 'completed') {
+      console.warn(`⚠️  Session not completed. Status: ${session.status}`);
+      return { success: false, error: `Financial Connections flow not completed. Status: ${session.status}` };
+    }
+
     if (!session.accounts || session.accounts.data.length === 0) {
-      return { success: false, error: 'No bank account linked' };
+      console.warn('⚠️  No accounts found in completed session');
+      return { success: false, error: 'No bank account linked in completed session' };
     }
 
     const linkedAccount = session.accounts.data[0];
@@ -1316,6 +1323,8 @@ export async function createExternalAccountFromFinancialConnections(params: {
       accountId: linkedAccount.id,
       displayName: (linkedAccount as any).display_name,
       status: linkedAccount.status,
+      accountNumber: (linkedAccount as any).account_number ? '****' : 'not available',
+      routingNumber: (linkedAccount as any).routing_number ? '****' : 'not available',
     });
 
     // Create payment method from the Financial Connections account
