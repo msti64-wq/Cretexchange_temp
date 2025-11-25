@@ -1053,22 +1053,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Express accounts MUST use Account Links - cannot accept T&C programmatically
   app.post('/api/stripe/account-link', isAuthenticated, async (req: any, res) => {
     try {
+      // Check if Stripe is initialized
+      if (!stripe) {
+        console.error('❌ Stripe client not initialized - STRIPE_SECRET_KEY may be missing');
+        return res.status(500).json({ 
+          message: "Stripe service is not available. Please contact support.",
+          error: "Stripe not initialized"
+        });
+      }
+
       const userId = req.user.id;
+      console.log(`📝 Generating Account Link for user ${userId}`);
+      
       const user = await storage.getUser(userId);
       
       if (!user) {
+        console.error(`❌ User not found: ${userId}`);
         return res.status(404).json({ message: "User not found" });
       }
+
+      console.log(`✅ User found: ${user.username} (role: ${user.role})`);
 
       // User must have a Stripe Connect account to accept T&C
       const connectAccountId = user.stripeConnectAccountId;
 
       if (!connectAccountId) {
+        console.error(`❌ No Stripe account for user ${userId} - requires onboarding`);
         return res.status(400).json({ 
           message: "No Stripe account found. Please complete onboarding first.",
           requiresOnboarding: true
         });
       }
+
+      console.log(`📤 Creating Account Link for Stripe account: ${connectAccountId}`);
 
       // Determine return URL based on user role
       const baseUrl = process.env.REPL_HOME || 'http://localhost:5000';
@@ -1086,15 +1103,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'account_onboarding',
       });
 
-      console.log(`✅ Generated Account Link for T&C acceptance (${user.role}):`, connectAccountId);
+      console.log(`✅ Generated Account Link for T&C acceptance:`, {
+        user: user.username,
+        role: user.role,
+        account: connectAccountId,
+        linkExpires: accountLink.expires_at
+      });
 
       res.json({
         success: true,
         accountSetupLink: accountLink.url,
       });
     } catch (error: any) {
-      console.error('❌ Error generating Account Link for T&C:', error);
-      res.status(500).json({ message: `Failed to generate account link: ${error.message}` });
+      console.error('❌ Error generating Account Link for T&C:', {
+        message: error.message,
+        type: error.type,
+        statusCode: error.statusCode,
+        raw: error.raw
+      });
+      res.status(500).json({ 
+        message: error.message || "Failed to generate account link",
+        error: error.type || "Unknown error"
+      });
     }
   });
 
