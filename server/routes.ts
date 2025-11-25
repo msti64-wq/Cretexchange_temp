@@ -1857,6 +1857,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // RETROACTIVE STRIPE T&C UPDATE: Update all existing Stripe Connect accounts with T&C acceptance (admin only)
+  // This backfills T&C acceptance for accounts created before the automatic sync was implemented
+  app.post('/api/admin/update-existing-stripe-accounts', isAuthenticated, async (req: any, res) => {
+    try {
+      // Admin-only endpoint
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      console.log('🔄 Starting retroactive Stripe T&C update for all existing accounts...');
+
+      // Get all users with Stripe Connect accounts
+      const allUsers = await storage.getAllUsers();
+      const usersWithStripeAccounts = allUsers.filter((user: any) => user.stripeConnectAccountId);
+
+      console.log(`📊 Found ${usersWithStripeAccounts.length} users with Stripe Connect accounts`);
+
+      const results = {
+        total: usersWithStripeAccounts.length,
+        updated: 0,
+        failed: 0,
+        errors: [] as any[],
+      };
+
+      const ip = extractIPv4(req) || '0.0.0.0';
+      const timestamp = Math.floor(Date.now() / 1000);
+
+      // Process each user
+      for (const user of usersWithStripeAccounts) {
+        try {
+          console.log(`📤 Processing user ${user.id} (${user.username})...`);
+
+          // Get driver or owner data for this user
+          let userInfo: any = {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone,
+            street: user.street,
+            city: user.city,
+            state: user.state,
+            zip: user.zip,
+          };
+
+          if (user.role === 'driver') {
+            const driver = await storage.getDriver(user.id);
+            if (driver) {
+              userInfo.dateOfBirth = driver.dateOfBirth;
+              userInfo.ssnLast4 = driver.ssnLast4;
+              userInfo.businessWebsite = driver.businessWebsite;
+            }
+          } else if (user.role === 'owner') {
+            const owner = await storage.getOwner(user.id);
+            if (owner) {
+              userInfo.dateOfBirth = owner.dateOfBirth;
+              userInfo.ssnLast4 = owner.ssnLast4;
+              userInfo.businessWebsite = owner.businessWebsite;
+              userInfo.companyName = owner.companyName;
+              userInfo.taxId = owner.taxId;
+            }
+          }
+
+          // Update Stripe Connect account with T&C acceptance
+          await stripeService.updateConnectedAccountWithCompleteInfo(
+            user.stripeConnectAccountId,
+            userInfo,
+            {
+              timestamp,
+              ip
+            }
+          );
+
+          console.log(`✅ Successfully updated ${user.username}`);
+          results.updated++;
+        } catch (error: any) {
+          console.error(`❌ Failed to update ${user.username}:`, error.message);
+          results.failed++;
+          results.errors.push({
+            userId: user.id,
+            username: user.username,
+            error: error.message
+          });
+        }
+      }
+
+      console.log(`\n📊 Retroactive update complete:`, results);
+
+      res.json({
+        message: 'Retroactive Stripe T&C update completed',
+        summary: results,
+      });
+    } catch (error: any) {
+      console.error('Error during retroactive Stripe update:', error);
+      res.status(500).json({
+        message: 'Failed to update Stripe accounts',
+        error: error.message
+      });
+    }
+  });
+
   // Driver endpoints
   app.get('/api/drivers/dashboard', isAuthenticated, async (req: any, res) => {
     try {
