@@ -1,0 +1,28 @@
+sw.js:2 Service Worker loaded
+sw.js:6 Service Worker installing
+sw.js:12 Service Worker activating
+index-Cr-jC3A7.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value=​"test">​
+VM11 login:6 SW registered:  ServiceWorkerRegistration
+index-Cr-jC3A7.js:498 🔍 Profile completion check: Object
+index-Cr-jC3A7.js:498 ✅ Profile complete! Showing install prompt...
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🔧 InstallPrompt component loaded
+index-Cr-jC3A7.js:492 👤 User previously dismissed install prompt: false
+index-Cr-jC3A7.js:492 📱 iOS device detected: false
+index-Cr-jC3A7.js:492 🏠 App already installed: false
+index-Cr-jC3A7.js:492 👂 Listening for beforeinstallprompt event
+index-Cr-jC3A7.js:498 🔍 Profile completion check: Object
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+api/stripe/account-link:1  Failed to load resource: the server responded with a status of 500 ()
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 ⏰ Fallback timer: showing manual install prompt
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ✨ InstallPrompt is rendering!
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ✨ InstallPrompt is rendering!
