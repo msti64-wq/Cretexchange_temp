@@ -9,16 +9,22 @@ Preferred communication style: Simple, everyday language.
 ## Testing Environment
 **IMPORTANT**: Testing is done in the PRODUCTION environment, NOT development. The development database is separate from production. Test accounts like LD1, LO1 exist in the production database only.
 
-## Recent Updates (Nov 25, 2025)
-- ✅ **Identity document support for fraud prevention**: New `identity_documents` table stores government-issued ID documents for drivers and owners
-- ✅ **Stripe Identity API integration**: Added functions to create Stripe Identity verification sessions and link documents to connected accounts
-- ✅ **Document verification fields in schema**: Added `identityDocumentId` and `identityVerificationStatus` fields to drivers and owners tables  
-- ✅ **Verification fields added to schema**: Drivers and owners can now provide dateOfBirth and ssnLast4
-- ✅ **Automatic Stripe account updates**: When users update profiles, all verification info automatically forwards to their Stripe Connect account
-- ✅ **Manual bank account entry working**: Drivers can add bank accounts via manual entry form (routing number, account number, etc.)
-- ✅ **Financial Connections framework in place**: Paid infrastructure is implemented; ongoing refinement for completing connections
-- ✅ **External account creation working**: Once bank details are provided, external accounts are created on driver Connect accounts for ACH payouts
-- ✅ **T&C acceptance retroactive update**: Admin button in System Settings to backfill T&C acceptance for all existing Stripe accounts (fraud prevention compliance)
+## Recent Updates (Nov 26, 2025)
+- ✅ **Stripe Verification Overhaul**: Complete rewrite to eliminate hardcoded fake data and enforce real user information
+- ✅ **StripeVerificationStatus component**: Shows users their verification status with human-readable requirements and Account Links redirect
+- ✅ **Profile completeness enforcement**: All Stripe account creation paths now require DOB, SSN last 4, full address, phone before proceeding
+- ✅ **stripeUtils.ts utilities**: Phone E.164 formatting, address validation (PO Box detection), DOB parsing, per-user business URL generation
+- ✅ **Admin diagnostic tools**: New endpoints for auditing verification status across all accounts and force-syncing user data to Stripe
+- ✅ **account.updated webhook**: Tracks verification status changes, persists to database, role-specific logic (drivers need payouts, owners need charges+payouts)
+- ✅ **Profile sync status**: Profile update responses now include Stripe sync status with remaining requirements
+
+## Previous Updates (Nov 25, 2025)
+- Identity document support for fraud prevention
+- Stripe Identity API integration  
+- Verification fields (dateOfBirth, ssnLast4) in schema
+- Manual bank account entry working
+- Financial Connections framework in place
+- T&C acceptance retroactive update via admin tool
 
 ## Pricing Structure
 -   **Production Pricing**: Driver receives **$5.00** per washout, Platform fee **$4.00**, Total **$9.00**
@@ -82,6 +88,49 @@ Preferred communication style: Simple, everyday language.
     -   **Verification Status**: Tracks pending, verified, rejected, and expired states
     -   **Stripe Integration**: `createIdentityVerificationSession()` creates Stripe verification sessions, `updateAccountWithIdentityDocument()` links verified documents to Connect accounts
     -   **Schema Support**: Drivers and owners reference their identity documents via `identityDocumentId`
+
+## Stripe Verification System
+
+### Architecture
+The platform uses **Stripe Account Links** for secure identity verification instead of collecting sensitive data directly:
+- **Platform collects**: DOB, SSN last 4, phone, full address (for pre-population)
+- **Stripe collects via Account Links**: Full SSN (9-digit), ID documents, Terms of Service acceptance
+- All sensitive data flows through Stripe's PCI-compliant hosted onboarding UI
+
+### Key Files
+- `server/stripeUtils.ts` - Utility functions for phone formatting, address validation, DOB parsing, requirement translation
+- `server/stripeService.ts` - Stripe Connect account creation and management
+- `server/webhookService.ts` - Handles account.updated webhook for tracking verification status changes
+- `client/src/components/StripeVerificationStatus.tsx` - User-facing verification status display
+
+### Verification Requirements by Role
+- **Drivers**: Must have `payouts_enabled: true` to receive washout payments
+- **Owners**: Must have both `charges_enabled: true` AND `payouts_enabled: true` to receive payments and charge customers
+
+### Admin Diagnostic Endpoints
+- `GET /api/admin/stripe/account/:userId` - Full Stripe account details for a user
+- `GET /api/admin/stripe/verification-audit` - Audit all accounts for verification issues
+- `POST /api/admin/stripe/sync-verification/:userId` - Force sync user profile data to Stripe
+
+### Common Stripe Requirements (Human-readable translations in stripeUtils.ts)
+- `external_account` → "Bank account for receiving payments"
+- `individual.address.city` → "City in address"
+- `individual.dob.day` → "Date of birth"
+- `individual.ssn_last_4` → "Last 4 digits of SSN"
+- `tos_acceptance.date` → "Terms of Service acceptance"
+
+### Production Checklist
+1. All test accounts must use REAL personal information matching government IDs
+2. SSN must be 9-digit real SSN (not fake like 000-00-0000)
+3. Address must be real (no PO Boxes, must match ID)
+4. DOB must match government ID exactly
+5. Phone must be valid US number (formatted to E.164: +1XXXXXXXXXX)
+6. Business URL is auto-generated per user (creteexchange.com/driver/[username])
+
+### Test Accounts
+- `D1/D1`, `LO1/LO1` - Legacy accounts with fake data (will fail verification)
+- `LD1/LD1`, `TO1/TO1` - New test accounts with real data
+- `superadmin/admin123` - Admin access for diagnostics
 
 ## External Dependencies
 
