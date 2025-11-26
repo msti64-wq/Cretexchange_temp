@@ -2437,6 +2437,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Now update the Stripe account with verification info
+      let stripeSyncStatus = { synced: false, error: null as string | null, requirements: [] as string[] };
+      
       if (stripeAccountId && driver) {
         try {
           await stripeService.updateConnectedAccountWithCompleteInfo(
@@ -2459,14 +2461,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ip: extractIPv4(req) || '0.0.0.0'
             }
           );
+          
+          // Fetch updated requirements after sync
+          const stripeAccount = await stripe.accounts.retrieve(stripeAccountId);
+          stripeSyncStatus = {
+            synced: true,
+            error: null,
+            requirements: stripeAccount.requirements?.currently_due || [],
+          };
           console.log(`✅ Updated Stripe account ${stripeAccountId} with driver verification info`);
         } catch (stripeError: any) {
           console.error('Note: Could not update Stripe with verification info:', stripeError.message);
-          // Don't fail the profile update if Stripe update fails
+          stripeSyncStatus = {
+            synced: false,
+            error: stripeError.message,
+            requirements: [],
+          };
         }
       }
 
-      res.json({ message: "Profile updated successfully" });
+      res.json({ 
+        message: "Profile updated successfully",
+        stripeSyncStatus,
+      });
     } catch (error) {
       console.error("Error updating driver profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
@@ -2760,6 +2777,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userUpdated = await storage.getUser(userId);
       if (userUpdated?.stripeConnectAccountId) {
         try {
+          // Check if Stripe account has blocking requirements before adding external account
+          const stripeAccount = await stripe.accounts.retrieve(userUpdated.stripeConnectAccountId);
+          const currentlyDue = stripeAccount.requirements?.currently_due || [];
+          const hasBlockingRequirements = currentlyDue.length > 0 && 
+            !currentlyDue.every(req => req.includes('external_account'));
+          
+          if (hasBlockingRequirements) {
+            console.log('⚠️  Stripe account has blocking requirements, may affect external account:', {
+              accountId: userUpdated.stripeConnectAccountId,
+              currentlyDue,
+            });
+          }
+          
           await stripeService.createBankPaymentMethod({
             connectedAccountId: userUpdated.stripeConnectAccountId,
             bankAccount: {
@@ -3911,6 +3941,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Now update the Stripe account with verification info
+      let stripeSyncStatus = { synced: false, error: null as string | null, requirements: [] as string[] };
+      
       if (stripeAccountId && owner) {
         try {
           await stripeService.updateConnectedAccountWithCompleteInfo(
@@ -3935,14 +3967,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ip: extractIPv4(req) || '0.0.0.0'
             }
           );
+          
+          // Fetch updated requirements after sync
+          const stripeAccount = await stripe.accounts.retrieve(stripeAccountId);
+          stripeSyncStatus = {
+            synced: true,
+            error: null,
+            requirements: stripeAccount.requirements?.currently_due || [],
+          };
           console.log(`✅ Updated Stripe account ${stripeAccountId} with owner verification info`);
         } catch (stripeError: any) {
           console.error('Note: Could not update Stripe with verification info:', stripeError.message);
-          // Don't fail the profile update if Stripe update fails
+          stripeSyncStatus = {
+            synced: false,
+            error: stripeError.message,
+            requirements: [],
+          };
         }
       }
 
-      res.json({ message: "Profile updated successfully" });
+      res.json({ 
+        message: "Profile updated successfully",
+        stripeSyncStatus,
+      });
     } catch (error) {
       console.error("Error updating owner profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
@@ -6042,6 +6089,278 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error in Stripe account backfill:", error);
       res.status(500).json({ message: "Failed to backfill Stripe accounts: " + error.message });
+    }
+  });
+
+  // ==================== ADMIN STRIPE DIAGNOSTIC & VERIFICATION TOOLS ====================
+  
+  // GET /api/admin/stripe/account/:userId - Get full Stripe account details for debugging
+  app.get('/api/admin/stripe/account/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUser = await storage.getUser(req.user.id);
+      if (adminUser?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const { userId } = req.params;
+      const targetUser = await storage.getUser(userId);
+      
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!targetUser.stripeConnectAccountId) {
+        return res.status(404).json({ 
+          message: "User does not have a Stripe Connect account",
+          user: {
+            id: targetUser.id,
+            username: targetUser.username,
+            role: targetUser.role,
+          }
+        });
+      }
+
+      // Fetch full Stripe account details
+      const stripeAccount = await stripe.accounts.retrieve(targetUser.stripeConnectAccountId);
+      
+      // Get role-specific data
+      let roleData = null;
+      if (targetUser.role === 'driver') {
+        roleData = await storage.getDriver(userId);
+      } else if (targetUser.role === 'owner') {
+        roleData = await storage.getOwner(userId);
+      }
+
+      // Translate requirements to human-readable format
+      const { translateStripeRequirement } = await import('./stripeUtils');
+      const currentlyDue = stripeAccount.requirements?.currently_due || [];
+      const eventuallyDue = stripeAccount.requirements?.eventually_due || [];
+      const pastDue = stripeAccount.requirements?.past_due || [];
+
+      res.json({
+        user: {
+          id: targetUser.id,
+          username: targetUser.username,
+          role: targetUser.role,
+          firstName: targetUser.firstName,
+          lastName: targetUser.lastName,
+          email: targetUser.email,
+          phone: targetUser.phone,
+          address: {
+            street: targetUser.street,
+            city: targetUser.city,
+            state: targetUser.state,
+            zip: targetUser.zip,
+          },
+        },
+        roleData: roleData ? {
+          dateOfBirth: roleData.dateOfBirth,
+          ssnLast4: roleData.ssnLast4 ? '****' : null,
+          businessWebsite: roleData.businessWebsite,
+          companyName: roleData.companyName,
+        } : null,
+        stripeAccount: {
+          id: stripeAccount.id,
+          type: stripeAccount.type,
+          charges_enabled: stripeAccount.charges_enabled,
+          payouts_enabled: stripeAccount.payouts_enabled,
+          details_submitted: stripeAccount.details_submitted,
+          created: new Date(stripeAccount.created * 1000).toISOString(),
+          capabilities: stripeAccount.capabilities,
+          requirements: {
+            currently_due: currentlyDue,
+            currently_due_readable: currentlyDue.map(translateStripeRequirement),
+            eventually_due: eventuallyDue,
+            eventually_due_readable: eventuallyDue.map(translateStripeRequirement),
+            past_due: pastDue,
+            past_due_readable: pastDue.map(translateStripeRequirement),
+            disabled_reason: stripeAccount.requirements?.disabled_reason,
+          },
+          business_profile: stripeAccount.business_profile,
+          individual: stripeAccount.individual ? {
+            first_name: stripeAccount.individual.first_name,
+            last_name: stripeAccount.individual.last_name,
+            email: stripeAccount.individual.email,
+            phone: stripeAccount.individual.phone,
+            dob: stripeAccount.individual.dob,
+            ssn_last_4_provided: stripeAccount.individual.ssn_last_4_provided,
+            id_number_provided: stripeAccount.individual.id_number_provided,
+            verification: stripeAccount.individual.verification,
+            address: stripeAccount.individual.address,
+          } : null,
+          tos_acceptance: stripeAccount.tos_acceptance,
+          external_accounts: stripeAccount.external_accounts?.data?.length || 0,
+        },
+      });
+
+    } catch (error: any) {
+      console.error("Error fetching Stripe account details:", error);
+      res.status(500).json({ message: "Failed to fetch Stripe account details: " + error.message });
+    }
+  });
+
+  // GET /api/admin/stripe/verification-audit - Audit all accounts for verification issues
+  app.get('/api/admin/stripe/verification-audit', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUser = await storage.getUser(req.user.id);
+      if (adminUser?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const { translateStripeRequirement } = await import('./stripeUtils');
+      const allUsers = await storage.getAllUsers();
+      
+      const auditResults = {
+        totalUsers: 0,
+        usersWithStripeAccounts: 0,
+        accountsNeedingAction: [] as any[],
+        accountsFullyVerified: 0,
+        accountsWithBlockingRequirements: 0,
+        accountsWithExternalAccounts: 0,
+        summary: {
+          drivers: { total: 0, verified: 0, needsAction: 0 },
+          owners: { total: 0, verified: 0, needsAction: 0 },
+        },
+      };
+
+      for (const user of allUsers) {
+        if (!['driver', 'owner'].includes(user.role)) continue;
+        
+        auditResults.totalUsers++;
+        
+        if (user.role === 'driver') auditResults.summary.drivers.total++;
+        if (user.role === 'owner') auditResults.summary.owners.total++;
+        
+        if (!user.stripeConnectAccountId) continue;
+        
+        auditResults.usersWithStripeAccounts++;
+        
+        try {
+          const stripeAccount = await stripe.accounts.retrieve(user.stripeConnectAccountId);
+          const currentlyDue = stripeAccount.requirements?.currently_due || [];
+          const isFullyVerified = 
+            (user.role === 'driver' && stripeAccount.payouts_enabled) ||
+            (user.role === 'owner' && stripeAccount.charges_enabled && stripeAccount.payouts_enabled);
+          
+          if (stripeAccount.external_accounts?.data?.length) {
+            auditResults.accountsWithExternalAccounts++;
+          }
+          
+          if (isFullyVerified && currentlyDue.length === 0) {
+            auditResults.accountsFullyVerified++;
+            if (user.role === 'driver') auditResults.summary.drivers.verified++;
+            if (user.role === 'owner') auditResults.summary.owners.verified++;
+          } else {
+            auditResults.accountsWithBlockingRequirements++;
+            if (user.role === 'driver') auditResults.summary.drivers.needsAction++;
+            if (user.role === 'owner') auditResults.summary.owners.needsAction++;
+            
+            auditResults.accountsNeedingAction.push({
+              userId: user.id,
+              username: user.username,
+              role: user.role,
+              stripeAccountId: stripeAccount.id,
+              charges_enabled: stripeAccount.charges_enabled,
+              payouts_enabled: stripeAccount.payouts_enabled,
+              details_submitted: stripeAccount.details_submitted,
+              requirements: currentlyDue,
+              requirements_readable: currentlyDue.map(translateStripeRequirement),
+              hasExternalAccount: (stripeAccount.external_accounts?.data?.length || 0) > 0,
+            });
+          }
+        } catch (error: any) {
+          auditResults.accountsNeedingAction.push({
+            userId: user.id,
+            username: user.username,
+            role: user.role,
+            stripeAccountId: user.stripeConnectAccountId,
+            error: error.message,
+          });
+        }
+      }
+
+      res.json(auditResults);
+
+    } catch (error: any) {
+      console.error("Error running verification audit:", error);
+      res.status(500).json({ message: "Failed to run verification audit: " + error.message });
+    }
+  });
+
+  // POST /api/admin/stripe/sync-verification/:userId - Force sync user verification info to Stripe
+  app.post('/api/admin/stripe/sync-verification/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUser = await storage.getUser(req.user.id);
+      if (adminUser?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const { userId } = req.params;
+      const targetUser = await storage.getUser(userId);
+      
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!targetUser.stripeConnectAccountId) {
+        return res.status(404).json({ message: "User does not have a Stripe Connect account" });
+      }
+
+      // Get role-specific data
+      let roleData = null;
+      if (targetUser.role === 'driver') {
+        roleData = await storage.getDriver(userId);
+      } else if (targetUser.role === 'owner') {
+        roleData = await storage.getOwner(userId);
+      }
+
+      // Sync to Stripe
+      const { formatPhoneE164, parseDateOfBirth, generateBusinessUrl } = await import('./stripeUtils');
+      
+      try {
+        await stripeService.updateConnectedAccountWithCompleteInfo(
+          targetUser.stripeConnectAccountId,
+          {
+            firstName: targetUser.firstName,
+            lastName: targetUser.lastName,
+            email: targetUser.email,
+            phone: targetUser.phone,
+            street: targetUser.street,
+            city: targetUser.city,
+            state: targetUser.state,
+            zip: targetUser.zip,
+            dateOfBirth: roleData?.dateOfBirth,
+            ssnLast4: roleData?.ssnLast4,
+            businessWebsite: roleData?.businessWebsite || generateBusinessUrl(targetUser.username, targetUser.role),
+            companyName: roleData?.companyName,
+          },
+          {
+            timestamp: Math.floor(Date.now() / 1000),
+            ip: extractIPv4(req) || '0.0.0.0'
+          }
+        );
+
+        // Get updated account status
+        const stripeAccount = await stripe.accounts.retrieve(targetUser.stripeConnectAccountId);
+        
+        res.json({
+          message: "Verification info synced successfully",
+          accountStatus: {
+            charges_enabled: stripeAccount.charges_enabled,
+            payouts_enabled: stripeAccount.payouts_enabled,
+            requirements: stripeAccount.requirements?.currently_due || [],
+          },
+        });
+      } catch (syncError: any) {
+        res.status(400).json({
+          message: "Failed to sync verification info",
+          error: syncError.message,
+        });
+      }
+
+    } catch (error: any) {
+      console.error("Error syncing verification:", error);
+      res.status(500).json({ message: "Failed to sync verification: " + error.message });
     }
   });
 
