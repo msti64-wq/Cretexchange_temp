@@ -16,6 +16,7 @@ import { BankAccountConnect } from "@/components/BankAccountConnect";
 import { User, Truck, CreditCard, Save, FileText, Eye, Smartphone, CheckCircle2, AlertCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import StripeVerificationStatus from "@/components/StripeVerificationStatus";
 
 export default function DriverProfile() {
   const { toast } = useToast();
@@ -235,6 +236,9 @@ export default function DriverProfile() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Stripe Verification Status */}
+        <StripeVerificationStatus userRole="driver" />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Personal Information */}

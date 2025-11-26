@@ -14,6 +14,7 @@ import { Building2, CreditCard, Save, LogOut, AlertCircle, Crown, Lock, Eye, Eye
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import StripeVerificationStatus from "@/components/StripeVerificationStatus";
 
 export default function OwnerProfile() {
   const { toast } = useToast();
@@ -314,138 +315,8 @@ export default function OwnerProfile() {
           </CardContent>
         </Card>
 
-        {/* Stripe Connect Onboarding Status */}
-        {stripeRequirements && (
-          <Card className={
-            stripeRequirements.hasAccount && 
-            stripeRequirements.requirements.currently_due.length === 0 &&
-            stripeRequirements.details_submitted
-              ? "border-green-500"
-              : "border-amber-500"
-          }>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <CreditCard className="w-5 h-5 mr-2" />
-                  Stripe Account Verification
-                </div>
-                {stripeRequirements.hasAccount && 
-                 stripeRequirements.requirements.currently_due.length === 0 &&
-                 stripeRequirements.details_submitted ? (
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-amber-600" />
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!stripeRequirements.hasAccount ? (
-                <div className="text-center py-4">
-                  <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">
-                    Stripe account not found. Please contact support.
-                  </p>
-                </div>
-              ) : stripeRequirements.requirements.currently_due.length === 0 && stripeRequirements.details_submitted ? (
-                <div className="text-center py-4">
-                  <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-4" />
-                  <p className="font-semibold text-green-700 dark:text-green-400 mb-2">
-                    Account Verified ✓
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Your Stripe account is fully verified and ready to receive payments.
-                  </p>
-                  <div className="mt-4 p-3 bg-muted rounded-lg text-sm">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="text-left">
-                        <span className="text-muted-foreground">Account ID:</span>
-                      </div>
-                      <div className="text-right font-mono text-xs">
-                        {stripeRequirements.accountId.slice(0, 20)}...
-                      </div>
-                      <div className="text-left">
-                        <span className="text-muted-foreground">Type:</span>
-                      </div>
-                      <div className="text-right capitalize">
-                        {stripeRequirements.type}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="font-semibold text-amber-900 dark:text-amber-100 mb-2">
-                          Verification Required
-                        </p>
-                        <p className="text-sm text-amber-800 dark:text-amber-200 mb-3">
-                          To receive payments and manage your account, you need to complete Stripe's verification process.
-                          This includes accepting terms of service and providing bank account details.
-                        </p>
-                        {stripeRequirements.requirements.currently_due.length > 0 && (
-                          <div className="text-sm">
-                            <p className="font-medium text-amber-900 dark:text-amber-100 mb-1">
-                              Required Information:
-                            </p>
-                            <ul className="list-disc list-inside space-y-1 text-amber-800 dark:text-amber-200">
-                              {stripeRequirements.requirements.currently_due.map((req: string) => (
-                                <li key={req} className="capitalize">
-                                  {req.replace(/_/g, ' ')}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Button
-                      onClick={() => stripeOnboardingMutation.mutate()}
-                      disabled={stripeOnboardingMutation.isPending}
-                      className="w-full"
-                      data-testid="button-stripe-onboarding"
-                    >
-                      {stripeOnboardingMutation.isPending ? (
-                        "Loading..."
-                      ) : (
-                        <>
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          Complete Stripe Verification
-                        </>
-                      )}
-                    </Button>
-
-                    <Button
-                      onClick={() => accountLinkMutation.mutate()}
-                      disabled={accountLinkMutation.isPending}
-                      variant="secondary"
-                      className="w-full"
-                      data-testid="button-accept-terms"
-                    >
-                      {accountLinkMutation.isPending ? (
-                        "Loading..."
-                      ) : (
-                        <>
-                          <FileText className="w-4 h-4 mr-2" />
-                          Accept Terms & Conditions
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  
-                  <p className="text-xs text-muted-foreground text-center">
-                    You'll be redirected to Stripe's secure verification page
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        {/* Stripe Verification Status */}
+        <StripeVerificationStatus userRole="owner" />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Personal Information */}

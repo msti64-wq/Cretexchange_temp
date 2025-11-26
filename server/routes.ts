@@ -2916,20 +2916,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get account status from Stripe
       const account = await stripe.accounts.retrieve(user.stripeConnectAccountId);
       
+      // Import utility functions for human-readable translations
+      const { formatStripeRequirements } = await import('./stripeUtils');
+      
+      const currentlyDue = account.requirements?.currently_due || [];
+      const pastDue = account.requirements?.past_due || [];
+      const eventuallyDue = account.requirements?.eventually_due || [];
+      
+      // Check if full SSN is required
+      const needsFullSsn = currentlyDue.includes('individual.id_number') || pastDue.includes('individual.id_number');
+      const needsIdDocument = currentlyDue.includes('individual.verification.document') || pastDue.includes('individual.verification.document');
+      
       res.json({
         hasAccount: true,
         accountId: account.id,
         type: account.type,
         capabilities: account.capabilities,
         requirements: {
-          currently_due: account.requirements?.currently_due || [],
-          eventually_due: account.requirements?.eventually_due || [],
-          past_due: account.requirements?.past_due || [],
+          currently_due: currentlyDue,
+          currently_due_readable: formatStripeRequirements(currentlyDue),
+          eventually_due: eventuallyDue,
+          eventually_due_readable: formatStripeRequirements(eventuallyDue),
+          past_due: pastDue,
+          past_due_readable: formatStripeRequirements(pastDue),
           current_deadline: account.requirements?.current_deadline || null,
         },
         charges_enabled: account.charges_enabled,
         payouts_enabled: account.payouts_enabled,
         details_submitted: account.details_submitted,
+        // Helper flags for UI
+        isVerified: account.payouts_enabled && currentlyDue.length === 0 && pastDue.length === 0,
+        needsFullSsn,
+        needsIdDocument,
+        hasBlockingRequirements: currentlyDue.length > 0 || pastDue.length > 0,
       });
     } catch (error: any) {
       console.error('Error checking Stripe requirements:', error);
@@ -3023,20 +3042,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get account status from Stripe
       const account = await stripe.accounts.retrieve(user.stripeConnectAccountId);
       
+      // Import utility functions for human-readable translations
+      const { formatStripeRequirements } = await import('./stripeUtils');
+      
+      const currentlyDue = account.requirements?.currently_due || [];
+      const pastDue = account.requirements?.past_due || [];
+      const eventuallyDue = account.requirements?.eventually_due || [];
+      
+      // Check if full SSN is required
+      const needsFullSsn = currentlyDue.includes('individual.id_number') || pastDue.includes('individual.id_number');
+      const needsIdDocument = currentlyDue.includes('individual.verification.document') || pastDue.includes('individual.verification.document');
+      
       res.json({
         hasAccount: true,
         accountId: account.id,
         type: account.type,
         capabilities: account.capabilities,
         requirements: {
-          currently_due: account.requirements?.currently_due || [],
-          eventually_due: account.requirements?.eventually_due || [],
-          past_due: account.requirements?.past_due || [],
+          currently_due: currentlyDue,
+          currently_due_readable: formatStripeRequirements(currentlyDue),
+          eventually_due: eventuallyDue,
+          eventually_due_readable: formatStripeRequirements(eventuallyDue),
+          past_due: pastDue,
+          past_due_readable: formatStripeRequirements(pastDue),
           current_deadline: account.requirements?.current_deadline || null,
         },
         charges_enabled: account.charges_enabled,
         payouts_enabled: account.payouts_enabled,
         details_submitted: account.details_submitted,
+        // Helper flags for UI - owners need both charges and payouts enabled
+        isVerified: account.charges_enabled && account.payouts_enabled && currentlyDue.length === 0 && pastDue.length === 0,
+        needsFullSsn,
+        needsIdDocument,
+        hasBlockingRequirements: currentlyDue.length > 0 || pastDue.length > 0,
       });
     } catch (error: any) {
       console.error('Error checking Stripe requirements for owner:', error);
