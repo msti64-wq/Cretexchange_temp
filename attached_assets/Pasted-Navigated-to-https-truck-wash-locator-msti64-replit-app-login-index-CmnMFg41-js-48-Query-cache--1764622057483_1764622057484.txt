@@ -1,0 +1,705 @@
+Navigated to https://truck-wash-locator-msti64.replit.app/login
+index-CmnMFg41.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value>​flex
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+index-CmnMFg41.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/login".
+le @ index-CmnMFg41.js:48
+mutationFn @ index-CmnMFg41.js:492
+fn @ index-CmnMFg41.js:48
+b @ index-CmnMFg41.js:48
+start @ index-CmnMFg41.js:48
+execute @ index-CmnMFg41.js:48
+await in execute
+mutate @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:48
+u @ index-CmnMFg41.js:492
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+index-CmnMFg41.js:48  PUT https://truck-wash-locator-msti64.replit.app/api/owners/activities/b1294b8c-a1c0-4c3c-ba15-352a60cf4b06/verify 500 (Internal Server Error)
+le @ index-CmnMFg41.js:48
+mutationFn @ index-CmnMFg41.js:498
+fn @ index-CmnMFg41.js:48
+b @ index-CmnMFg41.js:48
+start @ index-CmnMFg41.js:48
+execute @ index-CmnMFg41.js:48
+await in execute
+mutate @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:48
+onClick @ index-CmnMFg41.js:498
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:498 Approval mutation error: Error: 500: {"message":"Payment processing failed: Your card was declined.. Please verify your payment method and try again."}
+    at aC (index-CmnMFg41.js:48:42800)
+    at async le (index-CmnMFg41.js:48:43123)
+    at async Object.mutationFn (index-CmnMFg41.js:498:99332)
+mutationFn @ index-CmnMFg41.js:498
+await in mutationFn
+fn @ index-CmnMFg41.js:48
+b @ index-CmnMFg41.js:48
+start @ index-CmnMFg41.js:48
+execute @ index-CmnMFg41.js:48
+await in execute
+mutate @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:48
+onClick @ index-CmnMFg41.js:498
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:48 Fetch failed loading: PUT "https://truck-wash-locator-msti64.replit.app/api/owners/activities/b1294b8c-a1c0-4c3c-ba15-352a60cf4b06/verify".
+le @ index-CmnMFg41.js:48
+mutationFn @ index-CmnMFg41.js:498
+fn @ index-CmnMFg41.js:48
+b @ index-CmnMFg41.js:48
+start @ index-CmnMFg41.js:48
+execute @ index-CmnMFg41.js:48
+await in execute
+mutate @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:48
+onClick @ index-CmnMFg41.js:498
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:498 Approval failed: Error: 500: {"message":"Payment processing failed: Your card was declined.. Please verify your payment method and try again."}
+    at aC (index-CmnMFg41.js:48:42800)
+    at async le (index-CmnMFg41.js:48:43123)
+    at async Object.mutationFn (index-CmnMFg41.js:498:99332)
+onError @ index-CmnMFg41.js:498
+execute @ index-CmnMFg41.js:48
+await in execute
+mutate @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:48
+onClick @ index-CmnMFg41.js:498
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:504 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: false}
+index-CmnMFg41.js:504 ⏳ Rendering loading state
+index-CmnMFg41.js:504 🔄 StripeCardSetup: Component mounted, creating setup intent...
+index-CmnMFg41.js:492 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-CmnMFg41.js:492
+um @ index-CmnMFg41.js:40
+xo @ index-CmnMFg41.js:40
+QA @ index-CmnMFg41.js:40
+Ja @ index-CmnMFg41.js:40
+$v @ index-CmnMFg41.js:40
+Wa @ index-CmnMFg41.js:38
+(anonymous) @ index-CmnMFg41.js:40
+index-CmnMFg41.js:504 ✅ Setup intent response received: 200
+index-CmnMFg41.js:504 📦 Setup intent data: {hasClientSecret: true}
+index-CmnMFg41.js:504 ✅ Client secret set, Stripe form should render
+index-CmnMFg41.js:504 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-CmnMFg41.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/owners/create-setup-intent".
+le @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:504
+um @ index-CmnMFg41.js:40
+xo @ index-CmnMFg41.js:40
+QA @ index-CmnMFg41.js:40
+Ja @ index-CmnMFg41.js:40
+$v @ index-CmnMFg41.js:40
+Wa @ index-CmnMFg41.js:38
+(anonymous) @ index-CmnMFg41.js:40
+index-CmnMFg41.js:504 ✅ Rendering Stripe Elements form
+shared-c4b52366bb810c96952dcd69f6843a74.js:1 [Violation] 'setTimeout' handler took 88ms
+index-CmnMFg41.js:504 ✅ Stripe PaymentElement is ready
+m=_b,_tp:221 XHR finished loading: GET "https://pay.google.com/gp/p/ui/pay".
+_.Sp.send @ m=_b,_tp:221
+_.Wp @ m=_b,_tp:219
+D4 @ m=uZmJdd:273
+(anonymous) @ m=uZmJdd:16
+(anonymous) @ m=_b,_tp:184
+Ea @ m=_b,_tp:183
+(anonymous) @ m=_b,_tp:184
+_.nf @ m=_b,_tp:183
+flatMap @ m=_b,_tp:184
+ZA @ m=uZmJdd:16
+_.$A @ m=uZmJdd:11
+_.Br @ m=uZmJdd:155
+Cs @ m=_b,_tp:275
+(anonymous) @ m=_b,_tp:271
+(anonymous) @ m=_b,_tp:184
+b @ m=_b,_tp:183
+(anonymous) @ m=_b,_tp:184
+e.B @ m=_b,_tp:142
+il @ m=_b,_tp:145
+el @ m=_b,_tp:145
+_.Ok.H @ m=_b,_tp:145
+ub @ m=_b,_tp:33
+Promise.then
+Ik @ m=_b,_tp:138
+Kk @ m=_b,_tp:138
+fl @ m=_b,_tp:145
+Nk @ m=_b,_tp:144
+(anonymous) @ m=_b,_tp:138
+ml @ m=_b,_tp:156
+ll @ m=_b,_tp:153
+_.qf.Ba @ m=_b,_tp:153
+Fa.Va @ m=_b,_tp:132
+c @ m=_b,_tp:216
+uk @ m=_b,_tp:133
+vk @ m=_b,_tp:132
+ib @ m=_b,_tp:170
+_.y @ m=_b,_tp:33
+(anonymous) @ m=uZmJdd:275
+(anonymous) @ m=uZmJdd:277
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+index-CmnMFg41.js:504 🔄 Confirming setup intent...
+index-CmnMFg41.js:504 ✅ Setup intent confirmed: seti_1SZdx8LqF7RVaZdvF7m3aJYK
+index-CmnMFg41.js:48  POST https://truck-wash-locator-msti64.replit.app/api/owners/save-payment-method 400 (Bad Request)
+le @ index-CmnMFg41.js:48
+l @ index-CmnMFg41.js:504
+await in l
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:48 Fetch failed loading: POST "https://truck-wash-locator-msti64.replit.app/api/owners/save-payment-method".
+le @ index-CmnMFg41.js:48
+l @ index-CmnMFg41.js:504
+await in l
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:504 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-CmnMFg41.js:504 ✅ Rendering Stripe Elements form
+index-CmnMFg41.js:504 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-CmnMFg41.js:504 ✅ Rendering Stripe Elements form
+js.stripe.com/v3/universal-link-modal-inner-a82e25aa96b4458e926802026e663e9a.html#apiKey=pk_live_51SH50yLqF7RVaZdvH7hshgWmxi7JczPzYng1c6eUEGjJTPFB4KvQjZJj9zSIxLdkvrfOzbdKMj3TuyhZTvkDlnnm00jKh2mciu&stripeJsId=9b3680c9-787b-4962-8330-c1c8c0f9c75f&stripeVersion=2025-03-31.basil&mids[guid]=ebd96a61-da4d-43e3-9b77-b74f0c5c7d40219d1b&mids[muid]=4f2497cc-7f16-419d-a95f-080ba1961d9e6678ba&mids[sid]=8e2b295c-3ea5-46d7-a729-d1737e635000178e50&locale=en&loggerMetadata[surface]=web_payment_element&openerFrameId=__privateStripeFrame2823&referrer=https%3A%2F%2Ftruck-wash-locator-msti64.replit.app%2Fpayment-methods&controllerId=__privateStripeController2821:1 Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
+Element with focus: <div.zJ8mLXll__PickerItem-inner>
+Ancestor with aria-hidden: <div.hLCSWi38__UniversalLinkModalScreen> <div class=​"hLCSWi38__UniversalLinkModalScreen" data-testid=​"stack-screen-body" aria-hidden=​"true" style=​"opacity:​ 0.886667;​ display:​ none;​">​…​</div>​
+index-CmnMFg41.js:504 🔄 Confirming setup intent...
+hsw.js:2 [Violation] 'message' handler took 233ms
+shared-c4b52366bb810c96952dcd69f6843a74.js:1  POST https://api.stripe.com/v1/setup_intents/seti_1SZdx8LqF7RVaZdvF7m3aJYK/confirm 400 (Bad Request)
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+e @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+c @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+s @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+e @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+_ @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+confirm @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+Promise.then
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+confirm @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+Promise.then
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+Promise.then
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+value @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+index-CmnMFg41.js:504 ❌ Stripe confirmSetup error: {type: 'invalid_request_error', code: 'setup_intent_unexpected_state', message: 'A processing error occurred.', decline_code: undefined, param: undefined}
+l @ index-CmnMFg41.js:504
+await in l
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:504 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-CmnMFg41.js:504 ✅ Rendering Stripe Elements form
+shared-c4b52366bb810c96952dcd69f6843a74.js:1 Fetch failed loading: POST "https://api.stripe.com/v1/setup_intents/seti_1SZdx8LqF7RVaZdvF7m3aJYK/confirm".
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+e @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+c @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+s @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+e @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+_ @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+confirm @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+Promise.then
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+confirm @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+Promise.then
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+Promise.then
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+value @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+index-CmnMFg41.js:504 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-CmnMFg41.js:504 ✅ Rendering Stripe Elements form
+js.stripe.com/v3/universal-link-modal-inner-a82e25aa96b4458e926802026e663e9a.html#apiKey=pk_live_51SH50yLqF7RVaZdvH7hshgWmxi7JczPzYng1c6eUEGjJTPFB4KvQjZJj9zSIxLdkvrfOzbdKMj3TuyhZTvkDlnnm00jKh2mciu&stripeJsId=9b3680c9-787b-4962-8330-c1c8c0f9c75f&stripeVersion=2025-03-31.basil&mids[guid]=ebd96a61-da4d-43e3-9b77-b74f0c5c7d40219d1b&mids[muid]=4f2497cc-7f16-419d-a95f-080ba1961d9e6678ba&mids[sid]=8e2b295c-3ea5-46d7-a729-d1737e635000178e50&locale=en&loggerMetadata[surface]=web_payment_element&openerFrameId=__privateStripeFrame2823&referrer=https%3A%2F%2Ftruck-wash-locator-msti64.replit.app%2Fpayment-methods&controllerId=__privateStripeController2821:1 Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
+Element with focus: <div.zJ8mLXll__PickerItem-inner>
+Ancestor with aria-hidden: <div.hLCSWi38__UniversalLinkModalScreen> <div class=​"hLCSWi38__UniversalLinkModalScreen" data-testid=​"stack-screen-body" aria-hidden=​"true" style=​"opacity:​ 1;​ display:​ block;​">​…​</div>​
+index-CmnMFg41.js:504 🔄 Confirming setup intent...
+hsw.js:2 [Violation] 'message' handler took 170ms
+shared-c4b52366bb810c96952dcd69f6843a74.js:1  POST https://api.stripe.com/v1/setup_intents/seti_1SZdx8LqF7RVaZdvF7m3aJYK/confirm 400 (Bad Request)
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+e @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+c @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+s @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+e @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+_ @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+confirm @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+Promise.then
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+confirm @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+Promise.then
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+Promise.then
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+value @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+index-CmnMFg41.js:504 ❌ Stripe confirmSetup error: {type: 'invalid_request_error', code: 'setup_intent_unexpected_state', message: 'A processing error occurred.', decline_code: undefined, param: undefined}
+l @ index-CmnMFg41.js:504
+await in l
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:504 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-CmnMFg41.js:504 ✅ Rendering Stripe Elements form
+shared-c4b52366bb810c96952dcd69f6843a74.js:1 Fetch failed loading: POST "https://api.stripe.com/v1/setup_intents/seti_1SZdx8LqF7RVaZdvF7m3aJYK/confirm".
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+e @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+c @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+s @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+e @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+_ @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+confirm @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+Promise.then
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+confirm @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+Promise.then
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+Promise.then
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+n @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+a @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+i @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ shared-c4b52366bb810c96952dcd69f6843a74.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+value @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+(anonymous) @ controller-with-preconnect-b768050be944bd92f5c39fff17ebf2b3.js:1
+index-CmnMFg41.js:504 🎨 StripeCardSetup: Rendering with state: {hasError: false, hasClientSecret: true}
+index-CmnMFg41.js:504 ✅ Rendering Stripe Elements form
