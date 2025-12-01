@@ -3760,8 +3760,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`   Payment Method: ${owner.stripePaymentMethodId} (${paymentMethod.card?.brand} ****${paymentMethod.card?.last4})`);
           console.log(`   Driver Connect Account: ${driverUser.stripeConnectAccountId}`);
           
+          // Stripe Destination Charges: Use application_fee_amount ONLY (not transfer_data.amount)
+          // Driver receives: total charge - application_fee_amount
+          // Platform receives: application_fee_amount
           const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(ownerFee * 100), // Convert to cents
+            amount: Math.round(ownerFee * 100), // Convert to cents - total charged to owner
             currency: 'usd',
             customer: owner.stripeCustomerId,
             payment_method: owner.stripePaymentMethodId,
@@ -3779,10 +3782,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               businessDate: businessDate,
             },
             transfer_data: {
-              amount: Math.round(driverAmount * 100), // Driver receives location rate
-              destination: driverUser.stripeConnectAccountId, // Driver's Connect account
+              destination: driverUser.stripeConnectAccountId, // Driver's Connect account receives the rest
             },
-            application_fee_amount: Math.round(platformFee * 100), // Platform keeps fee
+            application_fee_amount: Math.round(platformFee * 100), // Platform keeps fee, driver gets remainder
           });
           
           console.log(`✅ Stripe Payment Intent created: ${paymentIntent.id}, Status: ${paymentIntent.status}`);
