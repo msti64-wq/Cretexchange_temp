@@ -45,18 +45,38 @@ function CardSetupForm({ onSuccess, onCancel }: CardSetupFormProps) {
           type: error.type,
           code: error.code,
           message: error.message,
-          decline_code: error.decline_code,
+          decline_code: (error as any).decline_code,
           param: error.param,
         });
         
+        // Map decline codes to user-friendly messages
+        const declineMessages: Record<string, string> = {
+          'insufficient_funds': 'Card has insufficient funds. Please use a different card.',
+          'card_declined': 'Card was declined by your bank. Please contact your bank or try a different card.',
+          'do_not_honor': 'Bank declined this transaction. Please contact your bank or try a different card.',
+          'expired_card': 'Card has expired. Please use a valid card.',
+          'incorrect_cvc': 'Security code (CVV) is incorrect. Please check and try again.',
+          'incorrect_number': 'Card number is incorrect. Please check and try again.',
+          'invalid_expiry_month': 'Expiration month is invalid.',
+          'invalid_expiry_year': 'Expiration year is invalid.',
+          'generic_decline': 'Card was declined. Please contact your bank or try a different card.',
+          'fraudulent': 'Transaction flagged as potentially fraudulent. Please contact your bank.',
+          'lost_card': 'Card reported lost. Please use a different card.',
+          'stolen_card': 'Card reported stolen. Please use a different card.',
+        };
+        
         // Provide more specific error messages based on error type
-        let errorDescription = error.message;
-        if (error.type === 'card_error') {
-          errorDescription = `Card declined: ${error.message}`;
+        let errorDescription = error.message || 'Unknown error occurred';
+        const declineCode = (error as any).decline_code;
+        
+        if (declineCode && declineMessages[declineCode]) {
+          errorDescription = declineMessages[declineCode];
+        } else if (error.type === 'card_error') {
+          errorDescription = error.message || 'Card was declined. Please try a different card.';
         } else if (error.type === 'validation_error') {
           errorDescription = `Invalid card details: ${error.message}`;
         } else if (error.type === 'api_error') {
-          errorDescription = `Stripe API error: ${error.message}. Please try again.`;
+          errorDescription = 'Connection error. Please check your internet and try again.';
         }
         
         toast({

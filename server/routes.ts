@@ -3802,11 +3802,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (stripePaymentError: any) {
         console.error(`❌ Error processing Stripe payment for washout ${id}:`, stripePaymentError);
-        console.error(`   Error details:`, stripePaymentError.message);
+        console.error(`   Error type:`, stripePaymentError.type);
+        console.error(`   Error code:`, stripePaymentError.code);
+        console.error(`   Decline code:`, stripePaymentError.decline_code);
+        console.error(`   Error message:`, stripePaymentError.message);
+        
+        // Build more descriptive error message based on Stripe error details
+        let userMessage = 'Payment processing failed';
+        
+        if (stripePaymentError.decline_code) {
+          // Map common decline codes to user-friendly messages
+          const declineMessages: Record<string, string> = {
+            'insufficient_funds': 'Your card has insufficient funds. Please use a different card or add funds.',
+            'card_declined': 'Your card was declined by your bank. Please contact your bank or use a different card.',
+            'do_not_honor': 'Your bank declined this transaction. Please contact your bank or use a different card.',
+            'expired_card': 'Your card has expired. Please update your payment method.',
+            'incorrect_cvc': 'The card security code (CVV) is incorrect. Please try again.',
+            'lost_card': 'This card has been reported lost. Please use a different card.',
+            'stolen_card': 'This card has been reported stolen. Please use a different card.',
+            'fraudulent': 'This transaction was flagged as potentially fraudulent. Please contact your bank.',
+            'generic_decline': 'Your card was declined. Please contact your bank or try a different card.',
+            'processing_error': 'There was an error processing your card. Please try again.',
+          };
+          
+          userMessage = declineMessages[stripePaymentError.decline_code] || 
+            `Your card was declined (${stripePaymentError.decline_code}). Please try a different card.`;
+        } else if (stripePaymentError.code === 'card_declined') {
+          userMessage = 'Your card was declined. Please contact your bank or try a different payment method.';
+        } else {
+          userMessage = `Payment error: ${stripePaymentError.message}`;
+        }
         
         // Don't verify activity if payment failed - return error to user
-        return res.status(500).json({ 
-          message: `Payment processing failed: ${stripePaymentError.message}. Please verify your payment method and try again.`
+        return res.status(400).json({ 
+          message: userMessage
         });
       }
       
