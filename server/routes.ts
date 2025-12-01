@@ -5755,10 +5755,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Retrieve payment method details from Stripe
       const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+      console.log(`🔍 Payment method details: type=${paymentMethod.type}, id=${paymentMethod.id}`);
 
-      if (paymentMethod.type !== 'card' || !paymentMethod.card) {
-        return res.status(400).json({ message: "Invalid payment method type" });
+      // Accept card and link payment methods (Link is Stripe's saved payment method system)
+      if (paymentMethod.type !== 'card' && paymentMethod.type !== 'link') {
+        console.error(`❌ Unsupported payment method type: ${paymentMethod.type}`);
+        return res.status(400).json({ message: `Unsupported payment method type: ${paymentMethod.type}. Please use a credit or debit card.` });
       }
+      
+      // For Link payment methods, we need to handle differently
+      // Link payment methods store the underlying card info
+      const cardDetails = paymentMethod.type === 'card' ? paymentMethod.card : null;
 
       // Set as default payment method for the customer
       if (owner.stripeCustomerId) {
@@ -5781,27 +5788,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Determine if there are any other sources to decide on default
         const shouldBeDefault = existingSources.length === 0;
         
+        // Handle both card and link payment methods
+        const fundingType = cardDetails?.funding === 'debit' ? 'debit_card' : 'credit_card';
+        const brand = cardDetails?.brand || 'link';
+        const last4 = cardDetails?.last4 || 'link';
+        
         await storage.createOwnerFundingSource({
           ownerId: owner.id,
-          type: paymentMethod.card.funding === 'debit' ? 'debit_card' : 'credit_card',
-          bankName: paymentMethod.card.brand,
-          last4: paymentMethod.card.last4,
+          type: fundingType,
+          bankName: brand,
+          last4: last4,
           stripePaymentMethodId: paymentMethodId,
           isDefault: shouldBeDefault,
           isActive: true,
         });
       }
 
-      console.log(`✅ Saved payment method ${paymentMethodId} for owner ${owner.id}`);
+      console.log(`✅ Saved payment method ${paymentMethodId} (type: ${paymentMethod.type}) for owner ${owner.id}`);
 
       res.json({
         message: "Payment method saved successfully",
         paymentMethod: {
           id: paymentMethodId,
-          brand: paymentMethod.card.brand,
-          last4: paymentMethod.card.last4,
-          expiryMonth: paymentMethod.card.exp_month,
-          expiryYear: paymentMethod.card.exp_year,
+          brand: cardDetails?.brand || 'link',
+          last4: cardDetails?.last4 || '****',
+          expiryMonth: cardDetails?.exp_month || null,
+          expiryYear: cardDetails?.exp_year || null,
         },
       });
     } catch (error: any) {

@@ -105,13 +105,16 @@ function CardSetupForm({ onSuccess, onCancel }: CardSetupFormProps) {
           });
           onSuccess();
         } else {
-          throw new Error(data.message || 'Failed to save payment method');
+          // Backend save failed - user needs to close and reopen dialog to get new SetupIntent
+          console.error('❌ Backend save failed:', data.message);
+          throw new Error(data.message || 'Failed to save payment method. Please close and try again.');
         }
       }
     } catch (error: any) {
+      console.error('❌ Card setup error:', error.message);
       toast({
         title: "Failed to add card",
-        description: error.message,
+        description: error.message + ' Please close this dialog and try again.',
         variant: "destructive",
       });
     } finally {
