@@ -1,0 +1,1934 @@
+index-Cr-jC3A7.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value=​"test">​
+VM96 login:6 SW registered:  ServiceWorkerRegistration
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-Cr-jC3A7.js:498 🔍 Profile completion check: Object
+index-Cr-jC3A7.js:498 ✅ Profile complete! Showing install prompt...
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🔧 InstallPrompt component loaded
+index-Cr-jC3A7.js:492 👤 User previously dismissed install prompt: true
+index-Cr-jC3A7.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-Cr-jC3A7.js:498 🔍 Profile completion check: Object
+index-Cr-jC3A7.js:498 🔍 Profile completion check: Object
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+index-Cr-jC3A7.js:498 ✅ Profile complete! Showing install prompt...
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🔧 InstallPrompt component loaded
+index-Cr-jC3A7.js:492 👤 User previously dismissed install prompt: true
+index-Cr-jC3A7.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-Cr-jC3A7.js:498 🔍 Profile completion check: Object
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+api/stripe/account-link:1  Failed to load resource: the server responded with a status of 500 ()
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: Object
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  POST https://truck-wash-locator-msti64.replit.app/api/stripe/account-link 500 (Internal Server Error)
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48 Fetch failed loading: POST "https://truck-wash-locator-msti64.replit.app/api/stripe/account-link".
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  POST https://truck-wash-locator-msti64.replit.app/api/stripe/account-link 500 (Internal Server Error)
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:48 Fetch failed loading: POST "https://truck-wash-locator-msti64.replit.app/api/stripe/account-link".
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+Navigated to https://truck-wash-locator-msti64.replit.app/profile
+index-Cr-jC3A7.js:48 🔄 Query cache cleared once
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+index-Cr-jC3A7.js:498 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, termsAgreed: true, showInstallPrompt: false}
+profile:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+profile:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-Cr-jC3A7.js:498 ✅ Profile complete! Showing install prompt...
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🔧 InstallPrompt component loaded
+index-Cr-jC3A7.js:492 👤 User previously dismissed install prompt: true
+index-Cr-jC3A7.js:492 ⏭️ Skipping install prompt - user previously dismissed
+index-Cr-jC3A7.js:498 🔍 Profile completion check: {isProfileComplete: true, hasEssentialInfo: true, termsAgreed: true, showInstallPrompt: true}
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  POST https://truck-wash-locator-msti64.replit.app/api/stripe/account-link 500 (Internal Server Error)
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48 Fetch failed loading: POST "https://truck-wash-locator-msti64.replit.app/api/stripe/account-link".
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  POST https://truck-wash-locator-msti64.replit.app/api/stripe/account-link 500 (Internal Server Error)
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:48 Fetch failed loading: POST "https://truck-wash-locator-msti64.replit.app/api/stripe/account-link".
+le @ index-Cr-jC3A7.js:48
+mutationFn @ index-Cr-jC3A7.js:498
+fn @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+execute @ index-Cr-jC3A7.js:48
+await in execute
+mutate @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+onClick @ index-Cr-jC3A7.js:498
+uE @ index-Cr-jC3A7.js:37
+hE @ index-Cr-jC3A7.js:37
+fE @ index-Cr-jC3A7.js:37
+lv @ index-Cr-jC3A7.js:37
+k1 @ index-Cr-jC3A7.js:37
+(anonymous) @ index-Cr-jC3A7.js:37
+jx @ index-Cr-jC3A7.js:40
+ZN @ index-Cr-jC3A7.js:37
+mh @ index-Cr-jC3A7.js:37
+Qp @ index-Cr-jC3A7.js:37
+EE @ index-Cr-jC3A7.js:37
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+profile:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ index-Cr-jC3A7.js:48
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+Fetch failed loading: GET "<URL>".
+index-Cr-jC3A7.js:448  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_NAME_NOT_RESOLVED
+queryFn @ index-Cr-jC3A7.js:448
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+index-Cr-jC3A7.js:48  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_ADDRESS_UNREACHABLE
+(anonymous) @ index-Cr-jC3A7.js:48
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:448  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_ADDRESS_UNREACHABLE
+queryFn @ index-Cr-jC3A7.js:448
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+[Violation] 'online' handler took <N>ms
+[Violation] 'online' handler took <N>ms
+[Violation] 'online' handler took <N>ms
+[Violation] 'online' handler took <N>ms
+[Violation] 'online' handler took <N>ms
+[Violation] 'online' handler took <N>ms
+[Violation] 'online' handler took <N>ms
+[Violation] 'online' handler took <N>ms
+index-Cr-jC3A7.js:48  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_INTERNET_DISCONNECTED
+(anonymous) @ index-Cr-jC3A7.js:48
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:448  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_INTERNET_DISCONNECTED
+queryFn @ index-Cr-jC3A7.js:448
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_QUIC_PROTOCOL_ERROR.QUIC_PACKET_WRITE_ERROR
+(anonymous) @ index-Cr-jC3A7.js:48
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:448  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_QUIC_PROTOCOL_ERROR.QUIC_PACKET_WRITE_ERROR
+queryFn @ index-Cr-jC3A7.js:448
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_CONNECTION_CLOSED
+(anonymous) @ index-Cr-jC3A7.js:48
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:448  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_CONNECTION_CLOSED
+queryFn @ index-Cr-jC3A7.js:448
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_ADDRESS_UNREACHABLE
+(anonymous) @ index-Cr-jC3A7.js:48
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:448  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_ADDRESS_UNREACHABLE
+queryFn @ index-Cr-jC3A7.js:448
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:448  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_ADDRESS_UNREACHABLE
+queryFn @ index-Cr-jC3A7.js:448
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:48  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_ADDRESS_UNREACHABLE
+(anonymous) @ index-Cr-jC3A7.js:48
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:492 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+index-Cr-jC3A7.js:492 ❌ InstallPrompt not showing because showPrompt is false
+index-Cr-jC3A7.js:48  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ index-Cr-jC3A7.js:48
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_NETWORK_CHANGED
+queryFn @ index-Cr-jC3A7.js:448
+i @ index-Cr-jC3A7.js:48
+b @ index-Cr-jC3A7.js:48
+start @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+Al @ index-Cr-jC3A7.js:48
+fetch @ index-Cr-jC3A7.js:48
+refetch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+batch @ index-Cr-jC3A7.js:48
+onOnline @ index-Cr-jC3A7.js:48
+(anonymous) @ index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ index-Cr-jC3A7.js:48
+setOnline @ index-Cr-jC3A7.js:48
+n @ index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_NETWORK_CHANGED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_INTERNET_DISCONNECTED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_INTERNET_DISCONNECTED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_INTERNET_DISCONNECTED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_INTERNET_DISCONNECTED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_QUIC_PROTOCOL_ERROR.QUIC_PACKET_WRITE_ERROR
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_QUIC_PROTOCOL_ERROR.QUIC_PACKET_WRITE_ERROR
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_NETWORK_CHANGED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_NETWORK_CHANGED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_NETWORK_CHANGED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_NETWORK_CHANGED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_NETWORK_CHANGED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_NETWORK_CHANGED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_NETWORK_CHANGED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_NETWORK_CHANGED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_NETWORK_CHANGED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_ADDRESS_UNREACHABLE
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_ADDRESS_UNREACHABLE
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_INTERNET_DISCONNECTED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_INTERNET_DISCONNECTED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+js.stripe.com/v3/fingerprinted/js/controller-with-preconnect-54e70843f3fcada16bd9b7a11931c502.js:1 [Violation] 'message' handler took 3967ms
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_INTERNET_DISCONNECTED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_INTERNET_DISCONNECTED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_NETWORK_CHANGED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+  GET https://truck-wash-locator-msti64.replit.app/api/drivers/terms-status net::ERR_NAME_NOT_RESOLVED
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+  GET https://truck-wash-locator-msti64.replit.app/api/auth/user net::ERR_NETWORK_CHANGED
+queryFn @ assets/index-Cr-jC3A7.js:448
+i @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+Al @ assets/index-Cr-jC3A7.js:48
+fetch @ assets/index-Cr-jC3A7.js:48
+refetch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+batch @ assets/index-Cr-jC3A7.js:48
+onOnline @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+await in (anonymous)
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+setOnline @ assets/index-Cr-jC3A7.js:48
+n @ assets/index-Cr-jC3A7.js:48
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+ 🎨 InstallPrompt render check: {showPrompt: false, userType: 'driver', deferredPrompt: false}
+ ❌ InstallPrompt not showing because showPrompt is false
+Navigated to https://truck-wash-locator-msti64.replit.app/login
+ 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) input#password.flex.h-10.w-full.rounded-md.border.border-input.bg-background.px-3.py-2.pr-10.text-base.ring-offset-background.file:border-0.file:bg-transparent.file:text-sm.file:font-medium.file:text-foreground.placeholder:text-muted-foreground.focus-visible:outline-none.focus-visible:ring-2.focus-visible:ring-ring.focus-visible:ring-offset-2.disabled:cursor-not-allowed.disabled:opacity-50.md:text-sm
+ SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+  POST https://truck-wash-locator-msti64.replit.app/api/login 401 (Unauthorized)
+le @ assets/index-Cr-jC3A7.js:48
+mutationFn @ assets/index-Cr-jC3A7.js:492
+fn @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+execute @ assets/index-Cr-jC3A7.js:48
+await in execute
+mutate @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+u @ assets/index-Cr-jC3A7.js:492
+uE @ assets/index-Cr-jC3A7.js:37
+hE @ assets/index-Cr-jC3A7.js:37
+fE @ assets/index-Cr-jC3A7.js:37
+lv @ assets/index-Cr-jC3A7.js:37
+k1 @ assets/index-Cr-jC3A7.js:37
+(anonymous) @ assets/index-Cr-jC3A7.js:37
+jx @ assets/index-Cr-jC3A7.js:40
+ZN @ assets/index-Cr-jC3A7.js:37
+mh @ assets/index-Cr-jC3A7.js:37
+Qp @ assets/index-Cr-jC3A7.js:37
+EE @ assets/index-Cr-jC3A7.js:37
+Fetch failed loading: POST "<URL>".
+Fetch failed loading: POST "<URL>".
+Fetch failed loading: POST "<URL>".
+Fetch failed loading: POST "<URL>".
+Fetch failed loading: POST "<URL>".
+  POST https://truck-wash-locator-msti64.replit.app/api/login 401 (Unauthorized)
+le @ assets/index-Cr-jC3A7.js:48
+mutationFn @ assets/index-Cr-jC3A7.js:492
+fn @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+execute @ assets/index-Cr-jC3A7.js:48
+await in execute
+mutate @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+u @ assets/index-Cr-jC3A7.js:492
+uE @ assets/index-Cr-jC3A7.js:37
+hE @ assets/index-Cr-jC3A7.js:37
+fE @ assets/index-Cr-jC3A7.js:37
+lv @ assets/index-Cr-jC3A7.js:37
+k1 @ assets/index-Cr-jC3A7.js:37
+(anonymous) @ assets/index-Cr-jC3A7.js:37
+jx @ assets/index-Cr-jC3A7.js:40
+ZN @ assets/index-Cr-jC3A7.js:37
+mh @ assets/index-Cr-jC3A7.js:37
+Qp @ assets/index-Cr-jC3A7.js:37
+EE @ assets/index-Cr-jC3A7.js:37
+  POST https://truck-wash-locator-msti64.replit.app/api/login 401 (Unauthorized)
+le @ assets/index-Cr-jC3A7.js:48
+mutationFn @ assets/index-Cr-jC3A7.js:492
+fn @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+execute @ assets/index-Cr-jC3A7.js:48
+await in execute
+mutate @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+u @ assets/index-Cr-jC3A7.js:492
+uE @ assets/index-Cr-jC3A7.js:37
+hE @ assets/index-Cr-jC3A7.js:37
+fE @ assets/index-Cr-jC3A7.js:37
+lv @ assets/index-Cr-jC3A7.js:37
+k1 @ assets/index-Cr-jC3A7.js:37
+(anonymous) @ assets/index-Cr-jC3A7.js:37
+jx @ assets/index-Cr-jC3A7.js:40
+ZN @ assets/index-Cr-jC3A7.js:37
+mh @ assets/index-Cr-jC3A7.js:37
+Qp @ assets/index-Cr-jC3A7.js:37
+EE @ assets/index-Cr-jC3A7.js:37
+  POST https://truck-wash-locator-msti64.replit.app/api/login 401 (Unauthorized)
+le @ assets/index-Cr-jC3A7.js:48
+mutationFn @ assets/index-Cr-jC3A7.js:492
+fn @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+execute @ assets/index-Cr-jC3A7.js:48
+await in execute
+mutate @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+u @ assets/index-Cr-jC3A7.js:492
+uE @ assets/index-Cr-jC3A7.js:37
+hE @ assets/index-Cr-jC3A7.js:37
+fE @ assets/index-Cr-jC3A7.js:37
+lv @ assets/index-Cr-jC3A7.js:37
+k1 @ assets/index-Cr-jC3A7.js:37
+(anonymous) @ assets/index-Cr-jC3A7.js:37
+jx @ assets/index-Cr-jC3A7.js:40
+ZN @ assets/index-Cr-jC3A7.js:37
+mh @ assets/index-Cr-jC3A7.js:37
+Qp @ assets/index-Cr-jC3A7.js:37
+EE @ assets/index-Cr-jC3A7.js:37
+register:1 [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) input#password.flex.h-10.w-full.rounded-md.border.border-input.bg-background.px-3.py-2.pr-10.text-base.ring-offset-background.file:border-0.file:bg-transparent.file:text-sm.file:font-medium.file:text-foreground.placeholder:text-muted-foreground.focus-visible:outline-none.focus-visible:ring-2.focus-visible:ring-ring.focus-visible:ring-offset-2.disabled:cursor-not-allowed.disabled:opacity-50.md:text-sm
+register:1 [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) input#confirmPassword.flex.h-10.w-full.rounded-md.border.border-input.bg-background.px-3.py-2.pr-10.text-base.ring-offset-background.file:border-0.file:bg-transparent.file:text-sm.file:font-medium.file:text-foreground.placeholder:text-muted-foreground.focus-visible:outline-none.focus-visible:ring-2.focus-visible:ring-ring.focus-visible:ring-offset-2.disabled:cursor-not-allowed.disabled:opacity-50.md:text-sm
+ Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/register".
+le @ assets/index-Cr-jC3A7.js:48
+mutationFn @ assets/index-Cr-jC3A7.js:492
+fn @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+execute @ assets/index-Cr-jC3A7.js:48
+await in execute
+mutate @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+u @ assets/index-Cr-jC3A7.js:492
+uE @ assets/index-Cr-jC3A7.js:37
+hE @ assets/index-Cr-jC3A7.js:37
+fE @ assets/index-Cr-jC3A7.js:37
+lv @ assets/index-Cr-jC3A7.js:37
+k1 @ assets/index-Cr-jC3A7.js:37
+(anonymous) @ assets/index-Cr-jC3A7.js:37
+jx @ assets/index-Cr-jC3A7.js:40
+ZN @ assets/index-Cr-jC3A7.js:37
+mh @ assets/index-Cr-jC3A7.js:37
+Qp @ assets/index-Cr-jC3A7.js:37
+EE @ assets/index-Cr-jC3A7.js:37
+ 🎯 Registration successful! Setting up install prompt for: owner
+ 🔄 Redirecting to home route to prevent 404
+ ⏳ Now showing install prompt on home route
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+ 🚨 PROACTIVE: Clearing phantom activities from cache on mount
+ ✅ Phantom activities proactively cleared
+ Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/owners/create-membership-payment".
+le @ assets/index-Cr-jC3A7.js:48
+mutationFn @ assets/index-Cr-jC3A7.js:499
+fn @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+execute @ assets/index-Cr-jC3A7.js:48
+await in execute
+mutate @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:499
+uE @ assets/index-Cr-jC3A7.js:37
+hE @ assets/index-Cr-jC3A7.js:37
+fE @ assets/index-Cr-jC3A7.js:37
+lv @ assets/index-Cr-jC3A7.js:37
+k1 @ assets/index-Cr-jC3A7.js:37
+(anonymous) @ assets/index-Cr-jC3A7.js:37
+jx @ assets/index-Cr-jC3A7.js:40
+ZN @ assets/index-Cr-jC3A7.js:37
+mh @ assets/index-Cr-jC3A7.js:37
+Qp @ assets/index-Cr-jC3A7.js:37
+EE @ assets/index-Cr-jC3A7.js:37
+www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:221 XHR finished loading: GET "https://pay.google.com/gp/p/ui/pay".
+_.Sp.send @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:221
+_.Wp @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:219
+D4 @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/ck=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.e5W5hBrf4cc.L.B1.O/am=AAAAeA/d=1/exm=_b,_tp/excm=_b,_tp,payframeview/ed=1/wt=2/ujg=1/rs=AMitfrjWFXSyAUnaaGtRS6d6qI5SOqyYMw/ee=EmZ2Bf:zr1jrb;JsbNhc:Xd8iUd;K5nYTd:ZDZcre;LBgRLc:XVMNvd;Me32dd:MEeYgc;NJ1rfe:yGfSdd;NPKaK:PVlQOd;NSEoX:lazG7b;Pjplud:EEDORb;QGR0gd:Mlhmy;SNUn3:ZwDk9d;ScI3Yc:e7Hzgb;Uvc8o:VDovNc;YIZmRd:A1yn5d;a56pNe:JEfCwb;cEt90b:ws9Tlc;dIoSBb:SpsfSb;dowIGb:ebZ3mb;eBAeSb:zbML3c;iFQyKf:vfuNJf;lOO0Vd:OTA3Ae;oGtAuc:sOXFj;qafBPd:yDVVkb;qddgKe:xQtZb;wR5FRb:siKnQd;yEQyxe:p8L0ob;yxTchf:KUM7Z/dti=1/m=uZmJdd:273
+(anonymous) @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/ck=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.e5W5hBrf4cc.L.B1.O/am=AAAAeA/d=1/exm=_b,_tp/excm=_b,_tp,payframeview/ed=1/wt=2/ujg=1/rs=AMitfrjWFXSyAUnaaGtRS6d6qI5SOqyYMw/ee=EmZ2Bf:zr1jrb;JsbNhc:Xd8iUd;K5nYTd:ZDZcre;LBgRLc:XVMNvd;Me32dd:MEeYgc;NJ1rfe:yGfSdd;NPKaK:PVlQOd;NSEoX:lazG7b;Pjplud:EEDORb;QGR0gd:Mlhmy;SNUn3:ZwDk9d;ScI3Yc:e7Hzgb;Uvc8o:VDovNc;YIZmRd:A1yn5d;a56pNe:JEfCwb;cEt90b:ws9Tlc;dIoSBb:SpsfSb;dowIGb:ebZ3mb;eBAeSb:zbML3c;iFQyKf:vfuNJf;lOO0Vd:OTA3Ae;oGtAuc:sOXFj;qafBPd:yDVVkb;qddgKe:xQtZb;wR5FRb:siKnQd;yEQyxe:p8L0ob;yxTchf:KUM7Z/dti=1/m=uZmJdd:16
+(anonymous) @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:184
+Ea @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:183
+(anonymous) @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:184
+_.nf @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:183
+flatMap @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:184
+ZA @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/ck=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.e5W5hBrf4cc.L.B1.O/am=AAAAeA/d=1/exm=_b,_tp/excm=_b,_tp,payframeview/ed=1/wt=2/ujg=1/rs=AMitfrjWFXSyAUnaaGtRS6d6qI5SOqyYMw/ee=EmZ2Bf:zr1jrb;JsbNhc:Xd8iUd;K5nYTd:ZDZcre;LBgRLc:XVMNvd;Me32dd:MEeYgc;NJ1rfe:yGfSdd;NPKaK:PVlQOd;NSEoX:lazG7b;Pjplud:EEDORb;QGR0gd:Mlhmy;SNUn3:ZwDk9d;ScI3Yc:e7Hzgb;Uvc8o:VDovNc;YIZmRd:A1yn5d;a56pNe:JEfCwb;cEt90b:ws9Tlc;dIoSBb:SpsfSb;dowIGb:ebZ3mb;eBAeSb:zbML3c;iFQyKf:vfuNJf;lOO0Vd:OTA3Ae;oGtAuc:sOXFj;qafBPd:yDVVkb;qddgKe:xQtZb;wR5FRb:siKnQd;yEQyxe:p8L0ob;yxTchf:KUM7Z/dti=1/m=uZmJdd:16
+_.$A @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/ck=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.e5W5hBrf4cc.L.B1.O/am=AAAAeA/d=1/exm=_b,_tp/excm=_b,_tp,payframeview/ed=1/wt=2/ujg=1/rs=AMitfrjWFXSyAUnaaGtRS6d6qI5SOqyYMw/ee=EmZ2Bf:zr1jrb;JsbNhc:Xd8iUd;K5nYTd:ZDZcre;LBgRLc:XVMNvd;Me32dd:MEeYgc;NJ1rfe:yGfSdd;NPKaK:PVlQOd;NSEoX:lazG7b;Pjplud:EEDORb;QGR0gd:Mlhmy;SNUn3:ZwDk9d;ScI3Yc:e7Hzgb;Uvc8o:VDovNc;YIZmRd:A1yn5d;a56pNe:JEfCwb;cEt90b:ws9Tlc;dIoSBb:SpsfSb;dowIGb:ebZ3mb;eBAeSb:zbML3c;iFQyKf:vfuNJf;lOO0Vd:OTA3Ae;oGtAuc:sOXFj;qafBPd:yDVVkb;qddgKe:xQtZb;wR5FRb:siKnQd;yEQyxe:p8L0ob;yxTchf:KUM7Z/dti=1/m=uZmJdd:11
+_.Br @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/ck=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.e5W5hBrf4cc.L.B1.O/am=AAAAeA/d=1/exm=_b,_tp/excm=_b,_tp,payframeview/ed=1/wt=2/ujg=1/rs=AMitfrjWFXSyAUnaaGtRS6d6qI5SOqyYMw/ee=EmZ2Bf:zr1jrb;JsbNhc:Xd8iUd;K5nYTd:ZDZcre;LBgRLc:XVMNvd;Me32dd:MEeYgc;NJ1rfe:yGfSdd;NPKaK:PVlQOd;NSEoX:lazG7b;Pjplud:EEDORb;QGR0gd:Mlhmy;SNUn3:ZwDk9d;ScI3Yc:e7Hzgb;Uvc8o:VDovNc;YIZmRd:A1yn5d;a56pNe:JEfCwb;cEt90b:ws9Tlc;dIoSBb:SpsfSb;dowIGb:ebZ3mb;eBAeSb:zbML3c;iFQyKf:vfuNJf;lOO0Vd:OTA3Ae;oGtAuc:sOXFj;qafBPd:yDVVkb;qddgKe:xQtZb;wR5FRb:siKnQd;yEQyxe:p8L0ob;yxTchf:KUM7Z/dti=1/m=uZmJdd:155
+Cs @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:275
+(anonymous) @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:271
+(anonymous) @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:184
+b @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:183
+(anonymous) @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:184
+e.B @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:142
+il @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:145
+el @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:145
+_.Ok.H @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:145
+ub @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:33
+Promise.then
+Ik @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:138
+Kk @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:138
+fl @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:145
+Nk @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:144
+(anonymous) @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:138
+ml @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:156
+ll @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:153
+_.qf.Ba @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:153
+Fa.Va @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:132
+c @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:216
+uk @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:133
+vk @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:132
+ib @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:170
+_.y @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/am=AAAAeA/d=1/excm=_b,_tp,payframeview/ed=1/dg=0/wt=2/ujg=1/rs=AMitfrj0ceGjXkJvlWp6C-pBerJTAQitTA/dti=1/m=_b,_tp:33
+(anonymous) @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/ck=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.e5W5hBrf4cc.L.B1.O/am=AAAAeA/d=1/exm=_b,_tp/excm=_b,_tp,payframeview/ed=1/wt=2/ujg=1/rs=AMitfrjWFXSyAUnaaGtRS6d6qI5SOqyYMw/ee=EmZ2Bf:zr1jrb;JsbNhc:Xd8iUd;K5nYTd:ZDZcre;LBgRLc:XVMNvd;Me32dd:MEeYgc;NJ1rfe:yGfSdd;NPKaK:PVlQOd;NSEoX:lazG7b;Pjplud:EEDORb;QGR0gd:Mlhmy;SNUn3:ZwDk9d;ScI3Yc:e7Hzgb;Uvc8o:VDovNc;YIZmRd:A1yn5d;a56pNe:JEfCwb;cEt90b:ws9Tlc;dIoSBb:SpsfSb;dowIGb:ebZ3mb;eBAeSb:zbML3c;iFQyKf:vfuNJf;lOO0Vd:OTA3Ae;oGtAuc:sOXFj;qafBPd:yDVVkb;qddgKe:xQtZb;wR5FRb:siKnQd;yEQyxe:p8L0ob;yxTchf:KUM7Z/dti=1/m=uZmJdd:275
+(anonymous) @ www.gstatic.com/_/mss/boq-payments-consumer/_/js/k=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.en_US.Qj8bNg45XN4.2018.O/ck=boq-payments-consumer.InstantbuyFrontendBuyflowPayframeUi.e5W5hBrf4cc.L.B1.O/am=AAAAeA/d=1/exm=_b,_tp/excm=_b,_tp,payframeview/ed=1/wt=2/ujg=1/rs=AMitfrjWFXSyAUnaaGtRS6d6qI5SOqyYMw/ee=EmZ2Bf:zr1jrb;JsbNhc:Xd8iUd;K5nYTd:ZDZcre;LBgRLc:XVMNvd;Me32dd:MEeYgc;NJ1rfe:yGfSdd;NPKaK:PVlQOd;NSEoX:lazG7b;Pjplud:EEDORb;QGR0gd:Mlhmy;SNUn3:ZwDk9d;ScI3Yc:e7Hzgb;Uvc8o:VDovNc;YIZmRd:A1yn5d;a56pNe:JEfCwb;cEt90b:ws9Tlc;dIoSBb:SpsfSb;dowIGb:ebZ3mb;eBAeSb:zbML3c;iFQyKf:vfuNJf;lOO0Vd:OTA3Ae;oGtAuc:sOXFj;qafBPd:yDVVkb;qddgKe:xQtZb;wR5FRb:siKnQd;yEQyxe:p8L0ob;yxTchf:KUM7Z/dti=1/m=uZmJdd:277
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+[Violation] Added non-passive event listener to a scroll-blocking <some> event. Consider marking event handler as 'passive' to make the page more responsive. See <URL>
+  POST https://truck-wash-locator-msti64.replit.app/api/owners/subscribe 500 (Internal Server Error)
+le @ assets/index-Cr-jC3A7.js:48
+mutationFn @ assets/index-Cr-jC3A7.js:499
+fn @ assets/index-Cr-jC3A7.js:48
+b @ assets/index-Cr-jC3A7.js:48
+start @ assets/index-Cr-jC3A7.js:48
+execute @ assets/index-Cr-jC3A7.js:48
+await in execute
+mutate @ assets/index-Cr-jC3A7.js:48
+(anonymous) @ assets/index-Cr-jC3A7.js:48
+g @ assets/index-Cr-jC3A7.js:499
+u @ assets/index-Cr-jC3A7.js:499
+await in u
+uE @ assets/index-Cr-jC3A7.js:37
+hE @ assets/index-Cr-jC3A7.js:37
+fE @ assets/index-Cr-jC3A7.js:37
+lv @ assets/index-Cr-jC3A7.js:37
+k1 @ assets/index-Cr-jC3A7.js:37
+(anonymous) @ assets/index-Cr-jC3A7.js:37
+jx @ assets/index-Cr-jC3A7.js:40
+ZN @ assets/index-Cr-jC3A7.js:37
+mh @ assets/index-Cr-jC3A7.js:37
+Qp @ assets/index-Cr-jC3A7.js:37
+EE @ assets/index-Cr-jC3A7.js:37
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+[Violation] 'setTimeout' handler took <N>ms
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+truck-wash-locator-msti64.replit.app/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+Navigated to https://truck-wash-locator-msti64.replit.app/login
+index-CmnMFg41.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value=​"test">​
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-CmnMFg41.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/login".
+le @ index-CmnMFg41.js:48
+mutationFn @ index-CmnMFg41.js:492
+fn @ index-CmnMFg41.js:48
+b @ index-CmnMFg41.js:48
+start @ index-CmnMFg41.js:48
+execute @ index-CmnMFg41.js:48
+await in execute
+mutate @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:48
+u @ index-CmnMFg41.js:492
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+index-CmnMFg41.js:40 [Violation] 'setTimeout' handler took 65ms
+index-CmnMFg41.js:48  PUT https://truck-wash-locator-msti64.replit.app/api/owners/activities/b1294b8c-a1c0-4c3c-ba15-352a60cf4b06/verify 500 (Internal Server Error)
+le @ index-CmnMFg41.js:48
+mutationFn @ index-CmnMFg41.js:498
+fn @ index-CmnMFg41.js:48
+b @ index-CmnMFg41.js:48
+start @ index-CmnMFg41.js:48
+execute @ index-CmnMFg41.js:48
+await in execute
+mutate @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:48
+onClick @ index-CmnMFg41.js:498
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:498 Approval mutation error: Error: 500: {"message":"Payment processing failed: You may not provide the application_fee_amount parameter and the transfer_data[amount] parameter simultaneously. They are mutually exclusive.. Please verify your payment method and try again."}
+    at aC (index-CmnMFg41.js:48:42800)
+    at async le (index-CmnMFg41.js:48:43123)
+    at async Object.mutationFn (index-CmnMFg41.js:498:99332)
+mutationFn @ index-CmnMFg41.js:498
+await in mutationFn
+fn @ index-CmnMFg41.js:48
+b @ index-CmnMFg41.js:48
+start @ index-CmnMFg41.js:48
+execute @ index-CmnMFg41.js:48
+await in execute
+mutate @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:48
+onClick @ index-CmnMFg41.js:498
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:48 Fetch failed loading: PUT "https://truck-wash-locator-msti64.replit.app/api/owners/activities/b1294b8c-a1c0-4c3c-ba15-352a60cf4b06/verify".
+le @ index-CmnMFg41.js:48
+mutationFn @ index-CmnMFg41.js:498
+fn @ index-CmnMFg41.js:48
+b @ index-CmnMFg41.js:48
+start @ index-CmnMFg41.js:48
+execute @ index-CmnMFg41.js:48
+await in execute
+mutate @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:48
+onClick @ index-CmnMFg41.js:498
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37
+index-CmnMFg41.js:498 Approval failed: Error: 500: {"message":"Payment processing failed: You may not provide the application_fee_amount parameter and the transfer_data[amount] parameter simultaneously. They are mutually exclusive.. Please verify your payment method and try again."}
+    at aC (index-CmnMFg41.js:48:42800)
+    at async le (index-CmnMFg41.js:48:43123)
+    at async Object.mutationFn (index-CmnMFg41.js:498:99332)
+onError @ index-CmnMFg41.js:498
+execute @ index-CmnMFg41.js:48
+await in execute
+mutate @ index-CmnMFg41.js:48
+(anonymous) @ index-CmnMFg41.js:48
+onClick @ index-CmnMFg41.js:498
+h4 @ index-CmnMFg41.js:37
+p4 @ index-CmnMFg41.js:37
+x4 @ index-CmnMFg41.js:37
+cv @ index-CmnMFg41.js:37
+P1 @ index-CmnMFg41.js:37
+(anonymous) @ index-CmnMFg41.js:37
+bx @ index-CmnMFg41.js:40
+GN @ index-CmnMFg41.js:37
+hh @ index-CmnMFg41.js:37
+Yp @ index-CmnMFg41.js:37
+R4 @ index-CmnMFg41.js:37

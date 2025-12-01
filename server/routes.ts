@@ -1029,15 +1029,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No payment account found. Please complete onboarding first." });
       }
 
+      // Determine return URL based on environment
+      // Check multiple indicators for Replit deployments: .replit.app, .replit.dev, .repl.co
+      const requestHost = req.get('host');
+      const isReplitHost = requestHost && (
+        requestHost.includes('.replit.app') || 
+        requestHost.includes('.replit.dev') || 
+        requestHost.includes('.repl.co')
+      );
+      let baseUrl: string;
+      if (isReplitHost) {
+        baseUrl = `https://${requestHost}`;
+      } else if (process.env.REPLIT_DOMAINS) {
+        const primaryDomain = process.env.REPLIT_DOMAINS.split(',')[0];
+        baseUrl = `https://${primaryDomain}`;
+      } else if (process.env.REPLIT_DEV_DOMAIN) {
+        baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      } else {
+        baseUrl = 'http://localhost:5000';
+      }
+      const returnUrl = `${baseUrl}/${user.role === 'owner' ? 'owner' : 'driver'}/profile`;
+      
       // Generate fresh Account Link
       const accountLink = await stripe.accountLinks.create({
         account: connectAccountId,
-        refresh_url: `${process.env.REPL_HOME || 'http://localhost:5000'}/driver/profile`,
-        return_url: `${process.env.REPL_HOME || 'http://localhost:5000'}/driver/profile`,
+        refresh_url: returnUrl,
+        return_url: returnUrl,
         type: 'account_onboarding',
       });
 
-      console.log('✅ Generated fresh Account Link for Treasury setup:', connectAccountId);
+      console.log('✅ Generated fresh Account Link for Treasury setup:', connectAccountId, 'returnUrl:', returnUrl);
 
       res.json({
         success: true,
@@ -1110,14 +1131,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📤 Creating Account Link for Stripe account: ${connectAccountId}`);
 
-      // Determine return URL based on user role
-      const baseUrl = process.env.REPL_HOME || 'http://localhost:5000';
+      // Determine return URL based on user role and environment
+      // Check multiple indicators for Replit deployments: .replit.app, .replit.dev, .repl.co
+      let baseUrl: string;
+      const requestHost = req.get('host');
+      const requestProtocol = req.protocol || 'https';
+      const isReplitHost = requestHost && (
+        requestHost.includes('.replit.app') || 
+        requestHost.includes('.replit.dev') || 
+        requestHost.includes('.repl.co')
+      );
+      
+      if (isReplitHost) {
+        // Production (.replit.app) or dev deployment (.replit.dev) - use request host
+        baseUrl = `https://${requestHost}`;
+      } else if (process.env.REPLIT_DOMAINS) {
+        // Use REPLIT_DOMAINS if available (contains primary domain)
+        const primaryDomain = process.env.REPLIT_DOMAINS.split(',')[0];
+        baseUrl = `https://${primaryDomain}`;
+      } else if (process.env.REPLIT_DEV_DOMAIN) {
+        // Development with Replit domain
+        baseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      } else {
+        // Local development fallback
+        baseUrl = 'http://localhost:5000';
+      }
+      
       let returnUrl = `${baseUrl}/driver/profile`;
       if (user.role === 'owner') {
         returnUrl = `${baseUrl}/owner/profile`;
       }
 
-      console.log(`🔗 Account Link return URL: ${returnUrl}`);
+      console.log(`🔗 Account Link return URL: ${returnUrl} (host: ${requestHost}, isReplitHost: ${isReplitHost})`);
 
       // Generate Account Link for T&C acceptance
       // type='account_onboarding' includes T&C acceptance in Express Dashboard
@@ -1307,14 +1352,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Step 2.5: Generate Account Link for Treasury setup (if Treasury was attempted)
       // This link allows the connected account holder to complete additional verification
       try {
+        // Determine return URL based on environment
+        // Check multiple indicators for Replit deployments: .replit.app, .replit.dev, .repl.co
+        const requestHost = req.get('host');
+        const isReplitHost = requestHost && (
+          requestHost.includes('.replit.app') || 
+          requestHost.includes('.replit.dev') || 
+          requestHost.includes('.repl.co')
+        );
+        let onboardBaseUrl: string;
+        if (isReplitHost) {
+          onboardBaseUrl = `https://${requestHost}`;
+        } else if (process.env.REPLIT_DOMAINS) {
+          const primaryDomain = process.env.REPLIT_DOMAINS.split(',')[0];
+          onboardBaseUrl = `https://${primaryDomain}`;
+        } else if (process.env.REPLIT_DEV_DOMAIN) {
+          onboardBaseUrl = `https://${process.env.REPLIT_DEV_DOMAIN}`;
+        } else {
+          onboardBaseUrl = 'http://localhost:5000';
+        }
+        const onboardReturnUrl = `${onboardBaseUrl}/${user.role === 'owner' ? 'owner' : 'driver'}/profile`;
+        
         const accountLink = await stripe.accountLinks.create({
           account: connectAccountId,
-          refresh_url: `${process.env.REPL_HOME || 'http://localhost:5000'}/driver/profile`,
-          return_url: `${process.env.REPL_HOME || 'http://localhost:5000'}/driver/profile`,
+          refresh_url: onboardReturnUrl,
+          return_url: onboardReturnUrl,
           type: 'account_onboarding',
         });
         accountSetupLink = accountLink.url;
-        console.log('✅ Account setup link generated for Treasury activation');
+        console.log('✅ Account setup link generated for Treasury activation, returnUrl:', onboardReturnUrl);
       } catch (linkError: any) {
         console.warn('⚠️ Could not generate account setup link:', linkError.message);
       }
