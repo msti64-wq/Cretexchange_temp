@@ -3745,30 +3745,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // All prerequisites met - process payment
         {
-          // Verify payment method is card-based (required for Destination Charges)
+          // Verify payment method is card or link-based (Link uses card details underneath)
           const paymentMethod = await stripe.paymentMethods.retrieve(owner.stripePaymentMethodId);
-          if (paymentMethod.type !== 'card') {
-            console.error(`❌ Payment method ${paymentMethod.id} is ${paymentMethod.type}, but card required for Destination Charges`);
+          console.log(`🔍 Owner payment method: type=${paymentMethod.type}, id=${paymentMethod.id}`);
+          
+          if (paymentMethod.type !== 'card' && paymentMethod.type !== 'link') {
+            console.error(`❌ Payment method ${paymentMethod.id} is ${paymentMethod.type}, but card or link required`);
             return res.status(400).json({ 
-              message: 'Payment failed: Only credit/debit cards are supported. Please update your payment method.' 
+              message: `Payment failed: Unsupported payment method type (${paymentMethod.type}). Please add a credit/debit card.` 
             });
           }
           
           // Process immediate Stripe Connect Destination Charge
+          const cardInfo = paymentMethod.type === 'card' && paymentMethod.card 
+            ? `${paymentMethod.card.brand} ****${paymentMethod.card.last4}` 
+            : 'Stripe Link';
           console.log(`💳 Creating Stripe Destination Charge: $${ownerFee.toFixed(2)} (Driver: $${driverAmount}, Platform Fee: $${platformFee})`);
           console.log(`   Owner Customer: ${owner.stripeCustomerId}`);
-          console.log(`   Payment Method: ${owner.stripePaymentMethodId} (${paymentMethod.card?.brand} ****${paymentMethod.card?.last4})`);
+          console.log(`   Payment Method: ${owner.stripePaymentMethodId} (${cardInfo})`);
           console.log(`   Driver Connect Account: ${driverUser.stripeConnectAccountId}`);
           
           // Stripe Destination Charges: Use application_fee_amount ONLY (not transfer_data.amount)
           // Driver receives: total charge - application_fee_amount
           // Platform receives: application_fee_amount
+          // Note: Accept both card and link payment types for flexibility
           const paymentIntent = await stripe.paymentIntents.create({
             amount: Math.round(ownerFee * 100), // Convert to cents - total charged to owner
             currency: 'usd',
             customer: owner.stripeCustomerId,
             payment_method: owner.stripePaymentMethodId,
-            payment_method_types: ['card'], // Only allow card payments
+            payment_method_types: ['card', 'link'], // Allow card and Link payments
             capture_method: 'automatic', // Capture immediately
             off_session: true, // Owner not present
             confirm: true, // Confirm immediately
