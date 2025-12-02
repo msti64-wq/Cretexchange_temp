@@ -3532,6 +3532,20 @@ export class DatabaseStorage implements IStorage {
     };
 
     try {
+      // ===== AUTO-APPROVAL: Process expired pending activities (72 hours) =====
+      try {
+        console.log(`\n🤖 Starting auto-approval check for expired activities...`);
+        const autoApprovalResult = await this.autoApproveExpiredActivities(72);
+        console.log(`🤖 Auto-approval complete: ${autoApprovalResult.approved} approved, ${autoApprovalResult.failed} failed`);
+        
+        if (autoApprovalResult.errors.length > 0) {
+          results.errors.push(...autoApprovalResult.errors.map(e => `Auto-approval: ${e}`));
+        }
+      } catch (error: any) {
+        console.error('❌ Auto-approval processing error:', error);
+        results.errors.push(`Auto-approval: ${error.message}`);
+      }
+
       // If cutoffDate is provided, use it directly
       // Otherwise, we'll calculate per-owner business dates based on their cutoff times
       if (cutoffDate) {
