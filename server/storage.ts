@@ -179,6 +179,10 @@ export interface IStorage {
   updateWashoutActivityStatus(activityId: string, status: string): Promise<WashoutActivity>;
   getRecentActivitiesByDriver(driverId: string, limit?: number): Promise<(WashoutActivity & { location: WashoutLocation })[]>;
   getAllActivities(startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
+  
+  // Auto-approval operations (72-hour timeout)
+  getExpiredPendingActivities(hoursOld?: number): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
+  autoApproveExpiredActivities(hoursOld?: number): Promise<{ approved: number; failed: number; errors: string[] }>;
 
   // Photo operations - NEW clean photo system
   createWashoutPhoto(photo: InsertWashoutPhoto): Promise<WashoutPhoto>;
@@ -1384,6 +1388,121 @@ export class DatabaseStorage implements IStorage {
         user: row.users
       }
     }));
+  }
+
+  // ============= AUTO-APPROVAL OPERATIONS =============
+  
+  async getExpiredPendingActivities(hoursOld: number = 72): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setHours(cutoffDate.getHours() - hoursOld);
+    
+    console.log(`🔍 Looking for pending activities older than ${hoursOld} hours (before ${cutoffDate.toISOString()})`);
+    
+    const results = await db
+      .select()
+      .from(washoutActivities)
+      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .where(
+        and(
+          eq(washoutActivities.status, 'pending'),
+          lte(washoutActivities.createdAt, cutoffDate)
+        )
+      )
+      .orderBy(washoutActivities.createdAt);
+    
+    console.log(`📋 Found ${results.length} expired pending activities`);
+    
+    return results.map((row: any) => ({
+      ...row.washout_activities,
+      location: row.washout_locations,
+      driver: {
+        ...row.drivers,
+        user: row.users
+      }
+    }));
+  }
+
+  async autoApproveExpiredActivities(hoursOld: number = 72): Promise<{ approved: number; failed: number; errors: string[] }> {
+    const results = {
+      approved: 0,
+      failed: 0,
+      errors: [] as string[]
+    };
+
+    console.log(`\n🤖 ===== AUTO-APPROVAL: Processing activities older than ${hoursOld} hours =====`);
+    
+    // Get all expired pending activities
+    const expiredActivities = await this.getExpiredPendingActivities(hoursOld);
+    
+    if (expiredActivities.length === 0) {
+      console.log(`✅ No expired pending activities found`);
+      return results;
+    }
+
+    console.log(`📋 Found ${expiredActivities.length} activities to auto-approve`);
+
+    for (const activity of expiredActivities) {
+      try {
+        console.log(`\n🔄 Auto-approving activity ${activity.id}:`);
+        console.log(`   - Service: ${activity.serviceType || 'washout'}`);
+        console.log(`   - Driver: ${activity.driver.user.firstName} ${activity.driver.user.lastName}`);
+        console.log(`   - Location: ${activity.location.name}`);
+        console.log(`   - Created: ${activity.createdAt}`);
+        console.log(`   - Amount: $${activity.amount}`);
+
+        // Get the location's owner for payment creation
+        const location = await this.getWashoutLocation(activity.locationId);
+        if (!location) {
+          throw new Error(`Location ${activity.locationId} not found`);
+        }
+
+        const owner = await this.getOwnerById(location.ownerId);
+        if (!owner) {
+          throw new Error(`Owner for location ${activity.locationId} not found`);
+        }
+
+        // Calculate payment amounts (same logic as manual approval)
+        const driverAmount = parseFloat(activity.amount);
+        
+        // Get platform fee from owner's custom fee or system default
+        const systemSettings = await this.getSystemSettings();
+        const platformFee = owner.customPlatformFee 
+          ? parseFloat(owner.customPlatformFee)
+          : parseFloat(systemSettings?.defaultPlatformFee || "0.40");
+
+        // Calculate business date
+        const now = new Date();
+        const businessDate = now.toISOString().split('T')[0];
+
+        // Auto-verify the activity with system as verifier
+        const verifiedActivity = await this.verifyWashoutActivity(activity.id, 'system-auto-approval');
+        
+        // Create pending payment (will be processed in next batch)
+        const payment = await this.createPayment({
+          activityId: activity.id,
+          driverId: activity.driverId,
+          ownerId: owner.id,
+          amount: driverAmount.toString(),
+          processingFee: platformFee.toFixed(2),
+          washoutServiceFee: (driverAmount).toFixed(2),
+          status: 'pending',
+          businessDate,
+        });
+
+        console.log(`   ✅ Auto-approved with payment ${payment.id} (status: pending)`);
+        results.approved++;
+        
+      } catch (error: any) {
+        console.error(`   ❌ Failed to auto-approve activity ${activity.id}:`, error.message);
+        results.errors.push(`Activity ${activity.id}: ${error.message}`);
+        results.failed++;
+      }
+    }
+
+    console.log(`\n🏁 Auto-approval complete: ${results.approved} approved, ${results.failed} failed`);
+    return results;
   }
 
   // Payment operations
