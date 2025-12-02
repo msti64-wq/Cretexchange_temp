@@ -8155,6 +8155,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== ADMIN BILLING SETTINGS MANAGEMENT ENDPOINTS ==========
+  
+  // Get all owners' billing settings (for admin dashboard)
+  app.get('/api/admin/billing/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const billingSettings = await storage.getAllOwnersBillingSettings();
+      
+      res.json({
+        owners: billingSettings,
+        billingCadenceOptions: [
+          { value: 'immediate', label: 'Immediate (process each washout instantly)' },
+          { value: 'daily', label: 'Daily (batch at end of day)' },
+          { value: 'weekly', label: 'Weekly (batch at end of week)' }
+        ],
+        dayOfWeekOptions: [
+          { value: 0, label: 'Sunday' },
+          { value: 1, label: 'Monday' },
+          { value: 2, label: 'Tuesday' },
+          { value: 3, label: 'Wednesday' },
+          { value: 4, label: 'Thursday' },
+          { value: 5, label: 'Friday' },
+          { value: 6, label: 'Saturday' }
+        ],
+        timezoneOptions: [
+          'America/New_York',
+          'America/Chicago',
+          'America/Denver',
+          'America/Los_Angeles',
+          'America/Phoenix',
+          'America/Anchorage',
+          'Pacific/Honolulu'
+        ]
+      });
+    } catch (error: any) {
+      console.error("Error fetching billing settings:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch billing settings" });
+    }
+  });
+
+  // Get specific owner's billing settings
+  app.get('/api/admin/billing/settings/:ownerId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { ownerId } = req.params;
+      const billingSettings = await storage.getOwnerBillingSettings(ownerId);
+      
+      if (!billingSettings) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const owner = await storage.getOwner(ownerId);
+      const ownerUser = owner ? await storage.getUser(owner.userId) : null;
+
+      res.json({
+        ownerId,
+        companyName: owner?.companyName || ownerUser?.username || 'Unknown',
+        username: ownerUser?.username || 'Unknown',
+        ...billingSettings
+      });
+    } catch (error: any) {
+      console.error("Error fetching owner billing settings:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch billing settings" });
+    }
+  });
+
+  // Update owner's billing settings
+  app.put('/api/admin/billing/settings/:ownerId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const { ownerId } = req.params;
+      const { billingCadence, billingCutoffTime, billingTimezone, billingDayOfWeek } = req.body;
+
+      // Validate billing cadence
+      if (billingCadence && !['immediate', 'daily', 'weekly'].includes(billingCadence)) {
+        return res.status(400).json({ message: "Invalid billing cadence. Must be 'immediate', 'daily', or 'weekly'" });
+      }
+
+      // Validate day of week (0-6)
+      if (billingDayOfWeek !== undefined && (billingDayOfWeek < 0 || billingDayOfWeek > 6)) {
+        return res.status(400).json({ message: "Invalid day of week. Must be 0 (Sunday) through 6 (Saturday)" });
+      }
+
+      // Validate cutoff time format (HH:MM:SS or HH:MM)
+      if (billingCutoffTime) {
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9])?$/;
+        if (!timeRegex.test(billingCutoffTime)) {
+          return res.status(400).json({ message: "Invalid cutoff time format. Use HH:MM or HH:MM:SS (24-hour)" });
+        }
+      }
+
+      const owner = await storage.getOwner(ownerId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const settings: any = {};
+      if (billingCadence !== undefined) settings.billingCadence = billingCadence;
+      if (billingCutoffTime !== undefined) settings.billingCutoffTime = billingCutoffTime.includes(':') && billingCutoffTime.split(':').length === 2 ? billingCutoffTime + ':00' : billingCutoffTime;
+      if (billingTimezone !== undefined) settings.billingTimezone = billingTimezone;
+      if (billingDayOfWeek !== undefined) settings.billingDayOfWeek = parseInt(billingDayOfWeek);
+
+      await storage.updateOwnerBillingSettings(ownerId, settings);
+
+      const ownerUser = await storage.getUser(owner.userId);
+      console.log(`✅ Billing settings updated for owner ${ownerUser?.username}:`, settings);
+
+      res.json({ 
+        message: "Billing settings updated successfully",
+        ownerId,
+        settings 
+      });
+    } catch (error: any) {
+      console.error("Error updating billing settings:", error);
+      res.status(500).json({ message: error.message || "Failed to update billing settings" });
+    }
+  });
+
+  // Bulk update billing settings for all owners (e.g., switch all to daily for production)
+  app.post('/api/admin/billing/settings/bulk-update', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const { billingCadence, billingCutoffTime, billingTimezone, billingDayOfWeek } = req.body;
+
+      if (!billingCadence) {
+        return res.status(400).json({ message: "Billing cadence is required for bulk update" });
+      }
+
+      if (!['immediate', 'daily', 'weekly'].includes(billingCadence)) {
+        return res.status(400).json({ message: "Invalid billing cadence. Must be 'immediate', 'daily', or 'weekly'" });
+      }
+
+      // Get all owners
+      const allOwners = await storage.getAllOwners();
+      let updated = 0;
+
+      for (const owner of allOwners) {
+        const settings: any = { billingCadence };
+        if (billingCutoffTime) settings.billingCutoffTime = billingCutoffTime;
+        if (billingTimezone) settings.billingTimezone = billingTimezone;
+        if (billingDayOfWeek !== undefined) settings.billingDayOfWeek = parseInt(billingDayOfWeek);
+
+        await storage.updateOwnerBillingSettings(owner.id, settings);
+        updated++;
+      }
+
+      console.log(`✅ Bulk updated billing settings for ${updated} owners to ${billingCadence}`);
+
+      res.json({
+        message: `Successfully updated billing settings for ${updated} owners`,
+        updated,
+        newSettings: {
+          billingCadence,
+          billingCutoffTime: billingCutoffTime || 'unchanged',
+          billingTimezone: billingTimezone || 'unchanged',
+          billingDayOfWeek: billingDayOfWeek !== undefined ? billingDayOfWeek : 'unchanged'
+        }
+      });
+    } catch (error: any) {
+      console.error("Error bulk updating billing settings:", error);
+      res.status(500).json({ message: error.message || "Failed to bulk update billing settings" });
+    }
+  });
+
   // ============================================================================
   // WALLET API ENDPOINTS
   // ============================================================================
