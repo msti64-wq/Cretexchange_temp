@@ -11,13 +11,32 @@ import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { DebugPanel } from "@/components/DebugPanel";
-import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User, ImageIcon, Check, X, MessageCircle, Phone, Crown, CreditCard } from "lucide-react";
+import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User, ImageIcon, Check, X, MessageCircle, Phone, Crown, CreditCard, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { OwnerHeader } from "@/components/OwnerHeader";
 import { useToast } from "@/hooks/use-toast";
 import { formatAddress } from "@shared/addressUtils";
+
+const AUTO_APPROVAL_HOURS = 72;
+
+function getTimeUntilAutoApproval(createdAt: string | Date): { hours: number; minutes: number; isExpired: boolean; isUrgent: boolean } {
+  const created = new Date(createdAt);
+  const deadline = new Date(created.getTime() + AUTO_APPROVAL_HOURS * 60 * 60 * 1000);
+  const now = new Date();
+  const remaining = deadline.getTime() - now.getTime();
+  
+  if (remaining <= 0) {
+    return { hours: 0, minutes: 0, isExpired: true, isUrgent: true };
+  }
+  
+  const hours = Math.floor(remaining / (1000 * 60 * 60));
+  const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+  const isUrgent = hours < 24;
+  
+  return { hours, minutes, isExpired: false, isUrgent };
+}
 
 export default function OwnerDashboard() {
   const [, setLocation] = useLocation();
@@ -357,6 +376,23 @@ export default function OwnerDashboard() {
           }
         >
           <div className="space-y-3">
+            {/* 72-hour auto-approval warning */}
+            {recentActivities?.some((a: any) => a.status === 'pending') && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-800 dark:text-amber-400">
+                      Review Required Within 72 Hours
+                    </p>
+                    <p className="text-amber-700 dark:text-amber-500 text-xs mt-1">
+                      Pending washouts must be approved or rejected within 72 hours. After this period, they will be automatically approved and charged to your account.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Loading state for activities */}
             {isActivitiesLoading ? (
               <div className="text-center py-8 text-muted-foreground">
@@ -504,19 +540,35 @@ export default function OwnerDashboard() {
                   <div className="pt-2 border-t border-border/50 space-y-2 sm:space-y-0">
                     {/* Mobile layout: Stack status above buttons */}
                     <div className="flex flex-col space-y-2 sm:hidden">
-                      <Badge 
-                        variant={
-                          activity.status === 'verified' ? 'default' : 
-                          activity.status === 'rejected' ? 'destructive' : 
-                          'secondary'
-                        }
-                        className="text-xs w-fit"
-                        data-testid={`badge-activity-status-${index}`}
-                      >
-                        {activity.status === 'verified' ? 'Approved' : 
-                         activity.status === 'rejected' ? 'Rejected' : 
-                         'Pending Review'}
-                      </Badge>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge 
+                          variant={
+                            activity.status === 'verified' ? 'default' : 
+                            activity.status === 'rejected' ? 'destructive' : 
+                            'secondary'
+                          }
+                          className="text-xs w-fit"
+                          data-testid={`badge-activity-status-${index}`}
+                        >
+                          {activity.status === 'verified' ? 'Approved' : 
+                           activity.status === 'rejected' ? 'Rejected' : 
+                           'Pending Review'}
+                        </Badge>
+                        {activity.status === 'pending' && activity.createdAt && (() => {
+                          const timeLeft = getTimeUntilAutoApproval(activity.createdAt);
+                          return (
+                            <span 
+                              className={`text-xs font-medium ${timeLeft.isUrgent ? 'text-red-600 dark:text-red-500' : 'text-amber-600 dark:text-amber-500'}`}
+                              data-testid={`text-time-remaining-${index}`}
+                            >
+                              <Clock className="w-3 h-3 inline mr-1" />
+                              {timeLeft.isExpired 
+                                ? 'Auto-approving soon' 
+                                : `${timeLeft.hours}h ${timeLeft.minutes}m left`}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       
                       <div className="flex items-center gap-2 justify-end">
                         <Button
@@ -572,19 +624,34 @@ export default function OwnerDashboard() {
                     
                     {/* Desktop layout: Keep status and buttons side by side */}
                     <div className="hidden sm:flex items-center justify-between">
-                      <Badge 
-                        variant={
-                          activity.status === 'verified' ? 'default' : 
-                          activity.status === 'rejected' ? 'destructive' : 
-                          'secondary'
-                        }
-                        className="text-xs"
-                        data-testid={`badge-activity-status-${index}`}
-                      >
-                        {activity.status === 'verified' ? 'Approved' : 
-                         activity.status === 'rejected' ? 'Rejected' : 
-                         'Pending Review'}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant={
+                            activity.status === 'verified' ? 'default' : 
+                            activity.status === 'rejected' ? 'destructive' : 
+                            'secondary'
+                          }
+                          className="text-xs"
+                          data-testid={`badge-activity-status-${index}`}
+                        >
+                          {activity.status === 'verified' ? 'Approved' : 
+                           activity.status === 'rejected' ? 'Rejected' : 
+                           'Pending Review'}
+                        </Badge>
+                        {activity.status === 'pending' && activity.createdAt && (() => {
+                          const timeLeft = getTimeUntilAutoApproval(activity.createdAt);
+                          return (
+                            <span 
+                              className={`text-xs font-medium ${timeLeft.isUrgent ? 'text-red-600 dark:text-red-500' : 'text-amber-600 dark:text-amber-500'}`}
+                            >
+                              <Clock className="w-3 h-3 inline mr-1" />
+                              {timeLeft.isExpired 
+                                ? 'Auto-approving soon' 
+                                : `${timeLeft.hours}h ${timeLeft.minutes}m left`}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       
                       <div className="flex items-center gap-2">
                         <Button
