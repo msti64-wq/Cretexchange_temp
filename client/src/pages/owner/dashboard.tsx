@@ -554,8 +554,8 @@ export default function OwnerDashboard() {
                            activity.status === 'rejected' ? 'Rejected' : 
                            'Pending Review'}
                         </Badge>
-                        {activity.status === 'pending' && activity.createdAt && (() => {
-                          const timeLeft = getTimeUntilAutoApproval(activity.createdAt);
+                        {activity.status === 'pending' && activity.checkInTime && (() => {
+                          const timeLeft = getTimeUntilAutoApproval(activity.checkInTime);
                           return (
                             <span 
                               className={`text-xs font-medium ${timeLeft.isUrgent ? 'text-red-600 dark:text-red-500' : 'text-amber-600 dark:text-amber-500'}`}
@@ -638,8 +638,8 @@ export default function OwnerDashboard() {
                            activity.status === 'rejected' ? 'Rejected' : 
                            'Pending Review'}
                         </Badge>
-                        {activity.status === 'pending' && activity.createdAt && (() => {
-                          const timeLeft = getTimeUntilAutoApproval(activity.createdAt);
+                        {activity.status === 'pending' && activity.checkInTime && (() => {
+                          const timeLeft = getTimeUntilAutoApproval(activity.checkInTime);
                           return (
                             <span 
                               className={`text-xs font-medium ${timeLeft.isUrgent ? 'text-red-600 dark:text-red-500' : 'text-amber-600 dark:text-amber-500'}`}

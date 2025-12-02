@@ -9,7 +9,11 @@ Preferred communication style: Simple, everyday language.
 ## Testing Environment
 **IMPORTANT**: Testing is done in the PRODUCTION environment, NOT development. The development database is separate from production. Test accounts like LD1, LO1 exist in the production database only.
 
-## Recent Updates (Nov 26, 2025)
+## Recent Updates (Dec 2, 2025)
+- ✅ **72-Hour Auto-Approval UI**: Added warning banner and countdown timers on owner dashboard showing time remaining before pending washouts are automatically approved
+- ✅ **Owner Terms Update**: Added section 3.3 to terms and conditions explaining the 72-hour auto-approval policy
+
+## Previous Updates (Nov 26, 2025)
 - ✅ **Stripe Verification Overhaul**: Complete rewrite to eliminate hardcoded fake data and enforce real user information
 - ✅ **StripeVerificationStatus component**: Shows users their verification status with human-readable requirements and Account Links redirect
 - ✅ **Profile completeness enforcement**: All Stripe account creation paths now require DOB, SSN last 4, full address, phone before proceeding

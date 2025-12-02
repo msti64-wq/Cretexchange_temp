@@ -140,13 +140,22 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       
                       <p className="pt-2"><strong>3.2 Washout Verification:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• Review and approve/reject driver washout submissions within 24 hours</p>
+                        <p>• Review and approve/reject driver washout submissions promptly</p>
                         <p>• Verify photo evidence shows proper washout at your location</p>
                         <p>• Only approve legitimate washouts to prevent fraud</p>
                         <p>• Report suspicious activity to CreteXchange support</p>
                       </div>
                       
-                      <p className="pt-2"><strong>3.3 Location Status:</strong></p>
+                      <p className="pt-2"><strong>3.3 72-Hour Auto-Approval Policy:</strong></p>
+                      <div className="ml-4 space-y-1 bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-200 dark:border-amber-800">
+                        <p className="font-medium text-amber-800 dark:text-amber-400">• Pending washouts must be reviewed within 72 hours</p>
+                        <p>• After 72 hours, unreviewed washouts are <strong>automatically approved</strong></p>
+                        <p>• Auto-approved washouts trigger immediate payment processing</p>
+                        <p>• You will be charged the washout rate plus platform fee</p>
+                        <p>• This policy ensures drivers receive timely payment for completed work</p>
+                      </div>
+                      
+                      <p className="pt-2"><strong>3.4 Location Status:</strong></p>
                       <div className="ml-4 space-y-1">
                         <p>• Active locations are visible to drivers and incur monthly fees</p>
                         <p>• You can temporarily deactivate locations (fees pause when inactive)</p>
