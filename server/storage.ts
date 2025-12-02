@@ -151,6 +151,10 @@ export interface IStorage {
   updateLocationStatus(locationId: string, ownerId: string, isActive: boolean): Promise<WashoutLocation>;
   deleteWashoutLocation(locationId: string, ownerId: string): Promise<boolean>;
   getAllLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]>;
+  // Admin pricing operations
+  batchUpdateAllLocationRates(newRate: string): Promise<{ updated: number; locations: WashoutLocation[] }>;
+  batchUpdatePendingActivityAmounts(newAmount: string): Promise<{ updated: number; activities: WashoutActivity[] }>;
+  getPendingActivities(): Promise<WashoutActivity[]>;
 
   // Rubble service: Material operations
   getAllMaterials(): Promise<Material[]>;
@@ -1024,6 +1028,36 @@ export class DatabaseStorage implements IStorage {
         user: row.users
       }
     }));
+  }
+
+  // Admin pricing operations - batch update all locations to new rate
+  async batchUpdateAllLocationRates(newRate: string): Promise<{ updated: number; locations: WashoutLocation[] }> {
+    const updatedLocations = await db
+      .update(washoutLocations)
+      .set({ rate: newRate, updatedAt: new Date() })
+      .returning();
+    
+    return { updated: updatedLocations.length, locations: updatedLocations };
+  }
+
+  // Admin pricing operations - update pending activity amounts
+  async batchUpdatePendingActivityAmounts(newAmount: string): Promise<{ updated: number; activities: WashoutActivity[] }> {
+    const updatedActivities = await db
+      .update(washoutActivities)
+      .set({ amount: newAmount, updatedAt: new Date() })
+      .where(eq(washoutActivities.status, 'pending'))
+      .returning();
+    
+    return { updated: updatedActivities.length, activities: updatedActivities };
+  }
+
+  // Get all pending activities for admin review
+  async getPendingActivities(): Promise<WashoutActivity[]> {
+    return await db
+      .select()
+      .from(washoutActivities)
+      .where(eq(washoutActivities.status, 'pending'))
+      .orderBy(desc(washoutActivities.createdAt));
   }
 
   // Rubble service: Material operations

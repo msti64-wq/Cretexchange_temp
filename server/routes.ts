@@ -8020,6 +8020,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== ADMIN PRICING MANAGEMENT ENDPOINTS ==========
+  
+  // Update all location rates platform-wide (for switching between test/production pricing)
+  app.post('/api/admin/pricing/update-location-rates', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const { newRate } = req.body;
+      
+      if (!newRate || isNaN(parseFloat(newRate)) || parseFloat(newRate) < 0) {
+        return res.status(400).json({ message: "Valid rate required (e.g., '0.50' for testing, '5.00' for production)" });
+      }
+
+      console.log(`🔧 Admin ${user.username} updating all location rates to $${newRate}`);
+      
+      const result = await storage.batchUpdateAllLocationRates(newRate);
+      
+      console.log(`✅ Updated ${result.updated} location rates to $${newRate}`);
+      
+      res.json({
+        message: `Successfully updated ${result.updated} location rates to $${newRate}`,
+        updated: result.updated,
+        newRate
+      });
+    } catch (error: any) {
+      console.error("Error updating location rates:", error);
+      res.status(500).json({ message: error.message || "Failed to update location rates" });
+    }
+  });
+
+  // Update pending activity amounts (for fixing activities created with wrong pricing)
+  app.post('/api/admin/pricing/update-pending-activities', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const { newAmount } = req.body;
+      
+      if (!newAmount || isNaN(parseFloat(newAmount)) || parseFloat(newAmount) < 0) {
+        return res.status(400).json({ message: "Valid amount required (e.g., '0.50' for testing)" });
+      }
+
+      console.log(`🔧 Admin ${user.username} updating pending activity amounts to $${newAmount}`);
+      
+      const result = await storage.batchUpdatePendingActivityAmounts(newAmount);
+      
+      console.log(`✅ Updated ${result.updated} pending activity amounts to $${newAmount}`);
+      
+      res.json({
+        message: `Successfully updated ${result.updated} pending activities to $${newAmount}`,
+        updated: result.updated,
+        newAmount
+      });
+    } catch (error: any) {
+      console.error("Error updating pending activities:", error);
+      res.status(500).json({ message: error.message || "Failed to update pending activities" });
+    }
+  });
+
+  // Get current pricing summary for admin dashboard
+  app.get('/api/admin/pricing/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      // Get all locations and their rates
+      const locations = await storage.getAllLocations();
+      const pendingActivities = await storage.getPendingActivities();
+      
+      // Get system settings for platform fee
+      const systemSettings = await storage.getSystemSettings();
+      const platformFee = systemSettings?.platformWashoutFee || '0.40';
+
+      // Calculate rate distribution
+      const rateDistribution: Record<string, number> = {};
+      locations.forEach(loc => {
+        const rate = loc.rate || '0.00';
+        rateDistribution[rate] = (rateDistribution[rate] || 0) + 1;
+      });
+
+      // Calculate pending activity amount distribution  
+      const pendingAmountDistribution: Record<string, number> = {};
+      pendingActivities.forEach(act => {
+        const amount = act.amount || '0.00';
+        pendingAmountDistribution[amount] = (pendingAmountDistribution[amount] || 0) + 1;
+      });
+
+      res.json({
+        platformFee,
+        totalLocations: locations.length,
+        rateDistribution,
+        pendingActivities: pendingActivities.length,
+        pendingAmountDistribution,
+        testPricing: {
+          driverPayment: '0.50',
+          platformFee: '0.40',
+          totalOwnerCharge: '0.90'
+        },
+        productionPricing: {
+          driverPayment: '5.00',
+          platformFee: '0.40',
+          totalOwnerCharge: '5.40'
+        }
+      });
+    } catch (error: any) {
+      console.error("Error fetching pricing summary:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch pricing summary" });
+    }
+  });
+
   app.put('/api/admin/locations/:id/visibility', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
