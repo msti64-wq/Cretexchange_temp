@@ -303,8 +303,9 @@ export interface IStorage {
   // Daily batch processing methods
   processDailyBatches(cutoffDate?: string): Promise<{ processed: number; failed: number; errors: string[] }>;
   movePendingToAvailable(driverId: string, amount: string, sourceTransactionId: string, batchId: string): Promise<{ wallet: DriverWallet; transaction: WalletTransaction }>;
-  getOwnerBillingSettings(ownerId: string): Promise<{ billingCadence: string; billingCutoffTime: string; billingTimezone: string } | undefined>;
-  updateOwnerBillingSettings(ownerId: string, settings: { billingCadence?: string; billingCutoffTime?: string; billingTimezone?: string }): Promise<Owner>;
+  getOwnerBillingSettings(ownerId: string): Promise<{ billingCadence: string; billingCutoffTime: string; billingTimezone: string; billingDayOfWeek: number } | undefined>;
+  updateOwnerBillingSettings(ownerId: string, settings: { billingCadence?: string; billingCutoffTime?: string; billingTimezone?: string; billingDayOfWeek?: number }): Promise<Owner>;
+  getAllOwnersBillingSettings(): Promise<{ ownerId: string; companyName: string; username: string; billingCadence: string; billingCutoffTime: string; billingTimezone: string; billingDayOfWeek: number }[]>;
 
   // Pending washout payment operations (hourly batch processing)
   createPendingWashoutPayment(payment: InsertPendingWashoutPayment): Promise<PendingWashoutPayment>;
@@ -3260,12 +3261,13 @@ export class DatabaseStorage implements IStorage {
     return batchPayments;
   }
 
-  async getOwnerBillingSettings(ownerId: string): Promise<{ billingCadence: string; billingCutoffTime: string; billingTimezone: string } | undefined> {
+  async getOwnerBillingSettings(ownerId: string): Promise<{ billingCadence: string; billingCutoffTime: string; billingTimezone: string; billingDayOfWeek: number } | undefined> {
     const [owner] = await db
       .select({
         billingCadence: owners.billingCadence,
         billingCutoffTime: owners.billingCutoffTime,
         billingTimezone: owners.billingTimezone,
+        billingDayOfWeek: owners.billingDayOfWeek,
       })
       .from(owners)
       .where(eq(owners.id, ownerId));
@@ -3276,10 +3278,11 @@ export class DatabaseStorage implements IStorage {
       billingCadence: owner.billingCadence || 'daily',
       billingCutoffTime: owner.billingCutoffTime || '23:59:00',
       billingTimezone: owner.billingTimezone || 'America/Chicago',
+      billingDayOfWeek: owner.billingDayOfWeek ?? 0,
     };
   }
 
-  async updateOwnerBillingSettings(ownerId: string, settings: { billingCadence?: string; billingCutoffTime?: string; billingTimezone?: string }): Promise<Owner> {
+  async updateOwnerBillingSettings(ownerId: string, settings: { billingCadence?: string; billingCutoffTime?: string; billingTimezone?: string; billingDayOfWeek?: number }): Promise<Owner> {
     const updateData: any = {
       updatedAt: new Date(),
     };
@@ -3293,6 +3296,9 @@ export class DatabaseStorage implements IStorage {
     if (settings.billingTimezone !== undefined) {
       updateData.billingTimezone = settings.billingTimezone;
     }
+    if (settings.billingDayOfWeek !== undefined) {
+      updateData.billingDayOfWeek = settings.billingDayOfWeek;
+    }
     
     const [owner] = await db
       .update(owners)
@@ -3301,6 +3307,32 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return owner;
+  }
+
+  async getAllOwnersBillingSettings(): Promise<{ ownerId: string; companyName: string; username: string; billingCadence: string; billingCutoffTime: string; billingTimezone: string; billingDayOfWeek: number }[]> {
+    const results = await db
+      .select({
+        ownerId: owners.id,
+        companyName: owners.companyName,
+        username: users.username,
+        billingCadence: owners.billingCadence,
+        billingCutoffTime: owners.billingCutoffTime,
+        billingTimezone: owners.billingTimezone,
+        billingDayOfWeek: owners.billingDayOfWeek,
+      })
+      .from(owners)
+      .innerJoin(users, eq(owners.userId, users.id))
+      .orderBy(owners.companyName);
+    
+    return results.map(r => ({
+      ownerId: r.ownerId,
+      companyName: r.companyName || r.username,
+      username: r.username,
+      billingCadence: r.billingCadence || 'daily',
+      billingCutoffTime: r.billingCutoffTime || '23:59:00',
+      billingTimezone: r.billingTimezone || 'America/Chicago',
+      billingDayOfWeek: r.billingDayOfWeek ?? 0,
+    }));
   }
 
   // Calculate business date based on owner's timezone and cutoff time
