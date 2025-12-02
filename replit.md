@@ -132,6 +132,45 @@ The platform uses **Stripe Account Links** for secure identity verification inst
 - `LD1/LD1`, `TO1/TO1` - New test accounts with real data
 - `superadmin/admin123` - Admin access for diagnostics
 
+## Pricing Management (Admin Tools)
+
+### Problem: Location Rates at Production Pricing
+Location rates were stored at production pricing ($5.00 per washout) instead of test pricing ($0.50 per washout). This caused:
+- Washout activities to have wrong amounts
+- Payments to charge owners too much ($5.40 instead of $0.90)
+- Drivers to receive too much via Stripe Connect ($5.00 instead of $0.50)
+
+### Solution: Admin Pricing Endpoints
+**Super admin only** endpoints to fix pricing across the platform:
+
+1. **GET `/api/admin/pricing/summary`** - View current pricing distribution
+   - Shows counts of locations at each rate tier
+   - Shows pending activities with amounts
+   - Use this BEFORE making changes to understand current state
+
+2. **POST `/api/admin/pricing/update-location-rates`** - Update all location rates
+   - Body: `{ "newRate": "0.50" }` (amount in dollars)
+   - Updates ALL locations to the specified rate
+   - Returns count of updated locations
+
+3. **POST `/api/admin/pricing/update-pending-activities`** - Update pending activity amounts
+   - Body: `{ "newAmount": "0.50" }` (amount in dollars)
+   - Updates ALL pending (not yet paid) activities
+   - Returns count of updated activities
+
+### Remediation Steps (Dec 2025)
+1. Login as superadmin
+2. Call GET `/api/admin/pricing/summary` to see current state
+3. Call POST `/api/admin/pricing/update-location-rates` with `{ "newRate": "0.50" }`
+4. Call POST `/api/admin/pricing/update-pending-activities` with `{ "newAmount": "0.50" }`
+5. Verify with GET `/api/admin/pricing/summary` that all rates are now $0.50
+
+### Note on Historical Payments
+Payments already processed through Stripe CANNOT be reversed. The one payment that went through at $5.40:
+- Driver received $5.40 (should have been $0.50)
+- Platform received $0 (should have been $0.40)
+This is a test environment loss and should be documented for accounting purposes.
+
 ## External Dependencies
 
 ### Database & Hosting
