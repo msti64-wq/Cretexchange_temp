@@ -8199,6 +8199,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== AUTO-APPROVAL ADMIN ENDPOINTS ==========
+  
+  // Get expired pending activities that are candidates for auto-approval
+  app.get('/api/admin/auto-approval/pending', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const hoursOld = parseInt(req.query.hours as string) || 72;
+      const expiredActivities = await storage.getExpiredPendingActivities(hoursOld);
+      
+      res.json({
+        hoursThreshold: hoursOld,
+        count: expiredActivities.length,
+        activities: expiredActivities.map(activity => ({
+          id: activity.id,
+          serviceType: activity.serviceType || 'washout',
+          amount: activity.amount,
+          createdAt: activity.createdAt,
+          checkInTime: activity.checkInTime,
+          driverName: `${activity.driver.user.firstName} ${activity.driver.user.lastName}`,
+          driverUsername: activity.driver.user.username,
+          locationName: activity.location.name,
+          locationCity: activity.location.city,
+          hoursOld: Math.round((Date.now() - new Date(activity.createdAt!).getTime()) / (1000 * 60 * 60))
+        }))
+      });
+    } catch (error: any) {
+      console.error("Error fetching expired activities:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch expired activities" });
+    }
+  });
+
+  // Manually trigger auto-approval for expired activities
+  app.post('/api/admin/auto-approval/run', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const hoursOld = parseInt(req.body.hours) || 72;
+      console.log(`🤖 [ADMIN] Manual auto-approval triggered by ${user.username} for activities older than ${hoursOld} hours`);
+      
+      const result = await storage.autoApproveExpiredActivities(hoursOld);
+      
+      res.json({
+        message: `Auto-approval complete: ${result.approved} approved, ${result.failed} failed`,
+        hoursThreshold: hoursOld,
+        approved: result.approved,
+        failed: result.failed,
+        errors: result.errors
+      });
+    } catch (error: any) {
+      console.error("Error running auto-approval:", error);
+      res.status(500).json({ message: error.message || "Failed to run auto-approval" });
+    }
+  });
+
+  // Get auto-approval statistics
+  app.get('/api/admin/auto-approval/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      // Get counts for different hour thresholds
+      const expired72h = await storage.getExpiredPendingActivities(72);
+      const expired48h = await storage.getExpiredPendingActivities(48);
+      const expired24h = await storage.getExpiredPendingActivities(24);
+      
+      res.json({
+        autoApprovalThreshold: '72 hours',
+        pendingCounts: {
+          olderThan24h: expired24h.length,
+          olderThan48h: expired48h.length,
+          olderThan72h: expired72h.length,
+        },
+        readyForAutoApproval: expired72h.length,
+        approaching: expired48h.length - expired72h.length,
+        description: 'Activities not approved within 72 hours will be automatically approved'
+      });
+    } catch (error: any) {
+      console.error("Error fetching auto-approval stats:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch auto-approval stats" });
+    }
+  });
+
   app.put('/api/admin/locations/:id/visibility', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
