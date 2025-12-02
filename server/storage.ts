@@ -3446,13 +3446,35 @@ export class DatabaseStorage implements IStorage {
             continue;
           }
 
-          // Calculate business date for this owner
+          // Check billing cadence to determine if we should process this owner
+          const { billingCadence, billingDayOfWeek, billingTimezone } = billingSettings;
+
+          // Skip immediate cadence - payments processed in real-time via Stripe Connect
+          if (billingCadence === 'immediate') {
+            console.log(`⏭️  Skipping owner ${ownerId} - immediate cadence (processed in real-time)`);
+            continue;
+          }
+
+          // For weekly cadence, check if today is the billing day
+          if (billingCadence === 'weekly') {
+            // Get current day of week in owner's timezone (0 = Sunday, 6 = Saturday)
+            const ownerNow = new Date(new Date().toLocaleString('en-US', { timeZone: billingTimezone }));
+            const currentDayOfWeek = ownerNow.getDay();
+            
+            if (currentDayOfWeek !== billingDayOfWeek) {
+              console.log(`⏭️  Skipping owner ${ownerId} - weekly cadence, today is ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][currentDayOfWeek]}, billing day is ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][billingDayOfWeek]}`);
+              continue;
+            }
+            console.log(`📅 Owner ${ownerId} - weekly cadence, today is billing day (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][billingDayOfWeek]})`);
+          }
+
+          // Calculate business date for this owner (daily or weekly)
           const ownerBusinessDate = cutoffDate || this.calculateBusinessDate(
             billingSettings.billingTimezone,
             billingSettings.billingCutoffTime
           );
 
-          console.log(`📅 Processing owner ${ownerId} for business date ${ownerBusinessDate} (timezone: ${billingSettings.billingTimezone}, cutoff: ${billingSettings.billingCutoffTime})`);
+          console.log(`📅 Processing owner ${ownerId} for business date ${ownerBusinessDate} (cadence: ${billingCadence}, timezone: ${billingSettings.billingTimezone}, cutoff: ${billingSettings.billingCutoffTime})`);
 
           // Process this owner's batch for their specific business date
           await this.processOwnerBatch(ownerId, ownerBusinessDate, billingSettings);

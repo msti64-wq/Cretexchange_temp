@@ -3701,34 +3701,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver user account not found" });
       }
 
+      // ========== CHECK BILLING CADENCE TO DETERMINE PAYMENT PROCESSING ==========
+      const { billingCadence } = billingSettings;
+      
+      // For daily/weekly batch processing, create pending payment and skip immediate processing
+      if (billingCadence === 'daily' || billingCadence === 'weekly') {
+        console.log(`📅 Owner ${owner.id} uses ${billingCadence} billing cadence - creating pending payment for batch processing`);
+        
+        // Create pending payment record for batch processing
+        const payment = await storage.createPayment({
+          activityId: id,
+          driverId: activityDetails.driverId,
+          ownerId: owner.id,
+          amount: driverAmount.toString(),
+          processingFee: platformFee.toFixed(2),
+          washoutServiceFee: (ownerFee - platformFee).toFixed(2),
+          status: 'pending', // Will be processed by batch processor
+          businessDate,
+        });
+        
+        // Verify activity immediately (payment will be processed later in batch)
+        const activity = await storage.verifyWashoutActivity(id, userId);
+        
+        console.log(`✅ Washout ${id} approved with ${billingCadence} billing. Payment ${payment.id} pending batch processing.`);
+        
+        return res.json(activity);
+      }
+      
       // ========== IMMEDIATE STRIPE CONNECT PAYMENT PROCESSING ==========
+      // Only for owners with 'immediate' billing cadence
       let paymentProcessedSuccessfully = false;
+      let shouldFallbackToPending = false;
+      let fallbackReason = '';
       
       try {
-        console.log(`🔄 Processing immediate Stripe Connect payment for washout ${id}...`);
+        console.log(`🔄 Processing immediate Stripe Connect payment for washout ${id} (immediate cadence)...`);
         
-        // Check if Stripe is configured
+        // Check if Stripe is configured - fallback to pending if not
         if (!stripe) {
-          console.log(`⚠️ Stripe not configured - payment will be processed in batch later`);
+          console.log(`⚠️ Stripe not configured - falling back to pending payment for batch processing`);
+          shouldFallbackToPending = true;
+          fallbackReason = 'Stripe not configured';
         }
-        // Validate owner has Stripe Customer and Payment Method
-        else if (!owner.stripeCustomerId || !owner.stripePaymentMethodId) {
-          const errorMsg = `Owner missing ${!owner.stripeCustomerId ? 'Stripe Customer ID' : 'payment method'}`;
-          console.error(`❌ ${errorMsg} - cannot process payment`);
-          return res.status(400).json({ 
-            message: `Payment failed: ${errorMsg}. Please add a payment method in your profile.` 
-          });
-        }
-        // Validate driver has Stripe Connect Account
-        else if (!driverUser.stripeConnectAccountId) {
-          console.warn(`⚠️ Driver ${driver.id} (user ${driverUser.id}) missing Stripe Connect Account - cannot process payment`);
-          return res.status(400).json({ 
-            message: 'Payment failed: Driver has not completed payment setup. Please ask the driver to complete their Stripe Connect onboarding before approving this washout.' 
-          });
-        }
-        // Validate driver's Stripe account has active transfers capability (required for Destination Charges)
+        // Only proceed with Stripe validations and processing if not falling back
         else {
-          // Check driver's transfers capability status
+          // Validate owner has Stripe Customer and Payment Method
+          if (!owner.stripeCustomerId || !owner.stripePaymentMethodId) {
+            const errorMsg = `Owner missing ${!owner.stripeCustomerId ? 'Stripe Customer ID' : 'payment method'}`;
+            console.error(`❌ ${errorMsg} - cannot process payment`);
+            return res.status(400).json({ 
+              message: `Payment failed: ${errorMsg}. Please add a payment method in your profile.` 
+            });
+          }
+          // Validate driver has Stripe Connect Account
+          if (!driverUser.stripeConnectAccountId) {
+            console.warn(`⚠️ Driver ${driver.id} (user ${driverUser.id}) missing Stripe Connect Account - cannot process payment`);
+            return res.status(400).json({ 
+              message: 'Payment failed: Driver has not completed payment setup. Please ask the driver to complete their Stripe Connect onboarding before approving this washout.' 
+            });
+          }
+          
+          // Validate driver's Stripe account has active transfers capability (required for Destination Charges)
           const driverAccount = await stripe.accounts.retrieve(driverUser.stripeConnectAccountId);
           const transfersCapability = driverAccount.capabilities?.transfers;
           
@@ -3741,10 +3774,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           console.log(`✅ Driver ${driver.id} has active transfers capability - proceeding with payment`);
-        }
         
-        // All prerequisites met - process payment
-        {
+          // All prerequisites met - process payment
           // Verify payment method is card or link-based (Link uses card details underneath)
           const paymentMethod = await stripe.paymentMethods.retrieve(owner.stripePaymentMethodId);
           console.log(`🔍 Owner payment method: type=${paymentMethod.type}, id=${paymentMethod.id}`);
@@ -3800,12 +3831,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paymentProcessedSuccessfully = true;
             console.log(`✅ Stripe payment succeeded for washout ${id}: ${paymentIntent.id}`);
           } else {
-            console.error(`❌ Payment Intent ${paymentIntent.id} has status: ${paymentIntent.status} (expected: succeeded)`);
-            return res.status(500).json({ 
-              message: `Payment processing failed with status: ${paymentIntent.status}. Please try again or contact support.` 
-            });
+            // Payment not immediately successful - fallback to pending payment
+            console.warn(`⚠️ Payment Intent ${paymentIntent.id} has status: ${paymentIntent.status} (expected: succeeded), falling back to pending`);
+            shouldFallbackToPending = true;
+            fallbackReason = `Payment status: ${paymentIntent.status}`;
           }
-        }
+        } // End of else block (Stripe configured)
       } catch (stripePaymentError: any) {
         console.error(`❌ Error processing Stripe payment for washout ${id}:`, stripePaymentError);
         console.error(`   Error type:`, stripePaymentError.type);
@@ -3813,10 +3844,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`   Decline code:`, stripePaymentError.decline_code);
         console.error(`   Error message:`, stripePaymentError.message);
         
-        // Build more descriptive error message based on Stripe error details
-        let userMessage = 'Payment processing failed';
+        // Determine if this is a user-fixable error (card decline) or a system error
+        const isCardDecline = stripePaymentError.decline_code || 
+                              stripePaymentError.code === 'card_declined' ||
+                              stripePaymentError.type === 'StripeCardError';
         
-        if (stripePaymentError.decline_code) {
+        if (isCardDecline) {
+          // Card decline errors - user can fix by using a different card
           // Map common decline codes to user-friendly messages
           const declineMessages: Record<string, string> = {
             'insufficient_funds': 'Your card has insufficient funds. Please use a different card or add funds.',
@@ -3831,22 +3865,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'processing_error': 'There was an error processing your card. Please try again.',
           };
           
-          userMessage = declineMessages[stripePaymentError.decline_code] || 
-            `Your card was declined (${stripePaymentError.decline_code}). Please try a different card.`;
-        } else if (stripePaymentError.code === 'card_declined') {
-          userMessage = 'Your card was declined. Please contact your bank or try a different payment method.';
+          const userMessage = stripePaymentError.decline_code 
+            ? (declineMessages[stripePaymentError.decline_code] || 
+               `Your card was declined (${stripePaymentError.decline_code}). Please try a different card.`)
+            : 'Your card was declined. Please contact your bank or try a different payment method.';
+          
+          // Return error for card declines - user needs to fix their payment method
+          return res.status(400).json({ 
+            message: userMessage
+          });
         } else {
-          userMessage = `Payment error: ${stripePaymentError.message}`;
+          // System/API error - fallback to pending payment for batch processing
+          console.warn(`⚠️ Stripe API error, falling back to pending payment: ${stripePaymentError.message}`);
+          shouldFallbackToPending = true;
+          fallbackReason = `Stripe API error: ${stripePaymentError.message}`;
         }
-        
-        // Don't verify activity if payment failed - return error to user
-        return res.status(400).json({ 
-          message: userMessage
-        });
       }
       
-      // ========== STOP HERE IF PAYMENT FAILED ==========
-      // Don't proceed to Treasury fallback or database writes if Connect payment failed
+      // ========== FALLBACK TO PENDING PAYMENT IF NEEDED ==========
+      // When Stripe is unavailable or unconfigured for immediate cadence owners
+      if (shouldFallbackToPending) {
+        console.log(`⚠️ Falling back to pending payment for washout ${id}: ${fallbackReason}`);
+        
+        // Create pending payment record for batch processing
+        const payment = await storage.createPayment({
+          activityId: id,
+          driverId: activityDetails.driverId,
+          ownerId: owner.id,
+          amount: driverAmount.toString(),
+          processingFee: platformFee.toFixed(2),
+          washoutServiceFee: (ownerFee - platformFee).toFixed(2),
+          status: 'pending', // Will be processed by batch processor
+          businessDate,
+        });
+        
+        // Verify activity (payment will be processed later in batch)
+        const activity = await storage.verifyWashoutActivity(id, userId);
+        
+        console.log(`✅ Washout ${id} approved with pending payment ${payment.id} (fallback: ${fallbackReason})`);
+        
+        return res.json(activity);
+      }
+      
+      // ========== STOP HERE IF IMMEDIATE PAYMENT FAILED ==========
+      // Don't proceed to database writes if Connect payment failed
       if (!paymentProcessedSuccessfully) {
         console.error(`❌ Stripe Connect payment failed for washout ${id} - cannot approve activity`);
         return res.status(500).json({ 
