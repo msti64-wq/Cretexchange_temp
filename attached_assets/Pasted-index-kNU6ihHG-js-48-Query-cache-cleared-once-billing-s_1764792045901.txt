@@ -1,0 +1,253 @@
+index-kNU6ihHG.js:48 🔄 Query cache cleared once
+billing-settings:38 SW registered:  ServiceWorkerRegistration
+billing-settings:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+billing-settings:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+billing-settings:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+billing-settings:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+billing-settings:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+billing-settings:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+index-kNU6ihHG.js:48  PUT https://truck-wash-locator-msti64.replit.app/api/admin/billing/settings/27834e73-e352-4a33-9c30-41f03c4d837a 404 (Not Found)
+oe @ index-kNU6ihHG.js:48
+mutationFn @ index-kNU6ihHG.js:540
+fn @ index-kNU6ihHG.js:48
+b @ index-kNU6ihHG.js:48
+start @ index-kNU6ihHG.js:48
+execute @ index-kNU6ihHG.js:48
+await in execute
+mutate @ index-kNU6ihHG.js:48
+(anonymous) @ index-kNU6ihHG.js:48
+f @ index-kNU6ihHG.js:540
+vE @ index-kNU6ihHG.js:37
+jE @ index-kNU6ihHG.js:37
+bE @ index-kNU6ihHG.js:37
+uv @ index-kNU6ihHG.js:37
+E1 @ index-kNU6ihHG.js:37
+(anonymous) @ index-kNU6ihHG.js:37
+Nx @ index-kNU6ihHG.js:40
+e1 @ index-kNU6ihHG.js:37
+fh @ index-kNU6ihHG.js:37
+Gp @ index-kNU6ihHG.js:37
+OE @ index-kNU6ihHG.js:37
+index-kNU6ihHG.js:48 Fetch failed loading: PUT "https://truck-wash-locator-msti64.replit.app/api/admin/billing/settings/27834e73-e352-4a33-9c30-41f03c4d837a".
+oe @ index-kNU6ihHG.js:48
+mutationFn @ index-kNU6ihHG.js:540
+fn @ index-kNU6ihHG.js:48
+b @ index-kNU6ihHG.js:48
+start @ index-kNU6ihHG.js:48
+execute @ index-kNU6ihHG.js:48
+await in execute
+mutate @ index-kNU6ihHG.js:48
+(anonymous) @ index-kNU6ihHG.js:48
+f @ index-kNU6ihHG.js:540
+vE @ index-kNU6ihHG.js:37
+jE @ index-kNU6ihHG.js:37
+bE @ index-kNU6ihHG.js:37
+uv @ index-kNU6ihHG.js:37
+E1 @ index-kNU6ihHG.js:37
+(anonymous) @ index-kNU6ihHG.js:37
+Nx @ index-kNU6ihHG.js:40
+e1 @ index-kNU6ihHG.js:37
+fh @ index-kNU6ihHG.js:37
+Gp @ index-kNU6ihHG.js:37
+OE @ index-kNU6ihHG.js:37
+index-kNU6ihHG.js:48  PUT https://truck-wash-locator-msti64.replit.app/api/admin/billing/settings/27834e73-e352-4a33-9c30-41f03c4d837a 404 (Not Found)
+oe @ index-kNU6ihHG.js:48
+mutationFn @ index-kNU6ihHG.js:540
+fn @ index-kNU6ihHG.js:48
+b @ index-kNU6ihHG.js:48
+start @ index-kNU6ihHG.js:48
+execute @ index-kNU6ihHG.js:48
+await in execute
+mutate @ index-kNU6ihHG.js:48
+(anonymous) @ index-kNU6ihHG.js:48
+f @ index-kNU6ihHG.js:540
+vE @ index-kNU6ihHG.js:37
+jE @ index-kNU6ihHG.js:37
+bE @ index-kNU6ihHG.js:37
+uv @ index-kNU6ihHG.js:37
+E1 @ index-kNU6ihHG.js:37
+(anonymous) @ index-kNU6ihHG.js:37
+Nx @ index-kNU6ihHG.js:40
+e1 @ index-kNU6ihHG.js:37
+fh @ index-kNU6ihHG.js:37
+Gp @ index-kNU6ihHG.js:37
+OE @ index-kNU6ihHG.js:37
+index-kNU6ihHG.js:48 Fetch failed loading: PUT "https://truck-wash-locator-msti64.replit.app/api/admin/billing/settings/27834e73-e352-4a33-9c30-41f03c4d837a".
+oe @ index-kNU6ihHG.js:48
+mutationFn @ index-kNU6ihHG.js:540
+fn @ index-kNU6ihHG.js:48
+b @ index-kNU6ihHG.js:48
+start @ index-kNU6ihHG.js:48
+execute @ index-kNU6ihHG.js:48
+await in execute
+mutate @ index-kNU6ihHG.js:48
+(anonymous) @ index-kNU6ihHG.js:48
+f @ index-kNU6ihHG.js:540
+vE @ index-kNU6ihHG.js:37
+jE @ index-kNU6ihHG.js:37
+bE @ index-kNU6ihHG.js:37
+uv @ index-kNU6ihHG.js:37
+E1 @ index-kNU6ihHG.js:37
+(anonymous) @ index-kNU6ihHG.js:37
+Nx @ index-kNU6ihHG.js:40
+e1 @ index-kNU6ihHG.js:37
+fh @ index-kNU6ihHG.js:37
+Gp @ index-kNU6ihHG.js:37
+OE @ index-kNU6ihHG.js:37
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+Fetch finished loading: POST "<URL>".
+index-kNU6ihHG.js:48 Fetch finished loading: PUT "https://truck-wash-locator-msti64.replit.app/api/admin/billing/settings/27834e73-e352-4a33-9c30-41f03c4d837a".
+oe @ index-kNU6ihHG.js:48
+mutationFn @ index-kNU6ihHG.js:540
+fn @ index-kNU6ihHG.js:48
+b @ index-kNU6ihHG.js:48
+start @ index-kNU6ihHG.js:48
+execute @ index-kNU6ihHG.js:48
+await in execute
+mutate @ index-kNU6ihHG.js:48
+(anonymous) @ index-kNU6ihHG.js:48
+f @ index-kNU6ihHG.js:540
+vE @ index-kNU6ihHG.js:37
+jE @ index-kNU6ihHG.js:37
+bE @ index-kNU6ihHG.js:37
+uv @ index-kNU6ihHG.js:37
+E1 @ index-kNU6ihHG.js:37
+(anonymous) @ index-kNU6ihHG.js:37
+Nx @ index-kNU6ihHG.js:40
+e1 @ index-kNU6ihHG.js:37
+fh @ index-kNU6ihHG.js:37
+Gp @ index-kNU6ihHG.js:37
+OE @ index-kNU6ihHG.js:37
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+XHR finished loading: POST "<URL>".
+Navigated to https://truck-wash-locator-msti64.replit.app/login
+index-lUfyOm6i.js:48 🔄 Query cache cleared once
+login:1 [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) <input type=​"password" class=​"flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-base ring-offset-background file:​border-0 file:​bg-transparent file:​text-sm file:​font-medium file:​text-foreground placeholder:​text-muted-foreground focus-visible:​outline-none focus-visible:​ring-2 focus-visible:​ring-ring focus-visible:​ring-offset-2 disabled:​cursor-not-allowed disabled:​opacity-50 md:​text-sm" id=​"password" placeholder=​"Enter your password" required data-testid=​"input-password" value>​flex
+login:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+login:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-lUfyOm6i.js:48 Fetch finished loading: POST "https://truck-wash-locator-msti64.replit.app/api/login".
+ce @ index-lUfyOm6i.js:48
+mutationFn @ index-lUfyOm6i.js:507
+fn @ index-lUfyOm6i.js:48
+b @ index-lUfyOm6i.js:48
+start @ index-lUfyOm6i.js:48
+execute @ index-lUfyOm6i.js:48
+await in execute
+mutate @ index-lUfyOm6i.js:48
+(anonymous) @ index-lUfyOm6i.js:48
+u @ index-lUfyOm6i.js:507
+vE @ index-lUfyOm6i.js:37
+jE @ index-lUfyOm6i.js:37
+bE @ index-lUfyOm6i.js:37
+uv @ index-lUfyOm6i.js:37
+E1 @ index-lUfyOm6i.js:37
+(anonymous) @ index-lUfyOm6i.js:37
+Nx @ index-lUfyOm6i.js:40
+e1 @ index-lUfyOm6i.js:37
+fh @ index-lUfyOm6i.js:37
+Gp @ index-lUfyOm6i.js:37
+LE @ index-lUfyOm6i.js:37
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+index-lUfyOm6i.js:513 Owner Photo Button Clicked: {id: '75edef0c-7fbf-46a9-9bbd-ffa648c68972', driverId: '58cbee85-d8c2-4622-8fc5-1af7b582b001', locationId: 'be74d0b2-5689-414e-9129-e692fbf9fded', status: 'pending', amount: '0.50', …}
+index-lUfyOm6i.js:513 🔧 Dashboard: Setting modal state {activityId: '75edef0c-7fbf-46a9-9bbd-ffa648c68972', currentModalOpen: false, currentSelectedActivity: undefined, activityData: {…}}
+index-lUfyOm6i.js:513 🔧 Dashboard: Modal state updated
+index-lUfyOm6i.js:507 Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ index-lUfyOm6i.js:507
+pm @ index-lUfyOm6i.js:40
+vo @ index-lUfyOm6i.js:40
+JA @ index-lUfyOm6i.js:40
+si @ index-lUfyOm6i.js:40
+Uv @ index-lUfyOm6i.js:40
+Qa @ index-lUfyOm6i.js:38
+(anonymous) @ index-lUfyOm6i.js:40
+index-lUfyOm6i.js:513 Approval successful: {id: '75edef0c-7fbf-46a9-9bbd-ffa648c68972', driverId: '58cbee85-d8c2-4622-8fc5-1af7b582b001', locationId: 'be74d0b2-5689-414e-9129-e692fbf9fded', status: 'verified', amount: '0.50', …}
+index-lUfyOm6i.js:48 Fetch finished loading: PUT "https://truck-wash-locator-msti64.replit.app/api/owners/activities/75edef0c-7fbf-46a9-9bbd-ffa648c68972/verify".
+ce @ index-lUfyOm6i.js:48
+mutationFn @ index-lUfyOm6i.js:513
+fn @ index-lUfyOm6i.js:48
+b @ index-lUfyOm6i.js:48
+start @ index-lUfyOm6i.js:48
+execute @ index-lUfyOm6i.js:48
+await in execute
+mutate @ index-lUfyOm6i.js:48
+(anonymous) @ index-lUfyOm6i.js:48
+onClick @ index-lUfyOm6i.js:513
+vE @ index-lUfyOm6i.js:37
+jE @ index-lUfyOm6i.js:37
+bE @ index-lUfyOm6i.js:37
+uv @ index-lUfyOm6i.js:37
+E1 @ index-lUfyOm6i.js:37
+(anonymous) @ index-lUfyOm6i.js:37
+Nx @ index-lUfyOm6i.js:40
+e1 @ index-lUfyOm6i.js:37
+fh @ index-lUfyOm6i.js:37
+Gp @ index-lUfyOm6i.js:37
+LE @ index-lUfyOm6i.js:37
+wallet:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+wallet:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+wallet:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+wallet:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+wallet:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+wallet:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+wallet:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+index-lUfyOm6i.js:48 🔄 Query cache cleared once
+Navigated to https://truck-wash-locator-msti64.replit.app/wallet
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+Fetch finished loading: GET "<URL>".
+wallet:38 SW registered:  ServiceWorkerRegistration {installing: null, waiting: null, active: ServiceWorker, navigationPreload: NavigationPreloadManager, scope: 'https://truck-wash-locator-msti64.replit.app/', …}
+wallet:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
