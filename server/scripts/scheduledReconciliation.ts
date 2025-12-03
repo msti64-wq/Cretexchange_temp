@@ -92,7 +92,7 @@ async function runScheduledReconciliation(): Promise<ReconciliationJobResult> {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     try {
-      const balanceResult = await performBalanceReconciliation('scheduled-job');
+      const balanceResult = await performBalanceReconciliation(undefined);
       result.balance = {
         accountsChecked: balanceResult.accountsChecked,
         discrepanciesFound: balanceResult.discrepanciesFound,
@@ -209,13 +209,28 @@ async function runScheduledReconciliation(): Promise<ReconciliationJobResult> {
 
 // Main execution
 runScheduledReconciliation()
-  .then((result) => {
-    if (result.overallHealth === 'CRITICAL') {
+  .then(async (result) => {
+    const { db } = await import("../db");
+    try {
+      if ('$pool' in db && db.$pool) {
+        await (db.$pool as any).end();
+      }
+    } catch (e) {
+    }
+    
+    if (result.overallHealth !== 'HEALTHY') {
       process.exit(1);
     }
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(async (error) => {
     console.error('Fatal error:', error);
+    const { db } = await import("../db");
+    try {
+      if ('$pool' in db && db.$pool) {
+        await (db.$pool as any).end();
+      }
+    } catch (e) {
+    }
     process.exit(1);
   });

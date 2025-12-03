@@ -121,13 +121,28 @@ async function runScheduledBatchProcessing(): Promise<BatchProcessingResult> {
 
 // Main execution
 runScheduledBatchProcessing()
-  .then((result) => {
+  .then(async (result) => {
+    const { db } = await import("../db");
+    try {
+      if ('$pool' in db && db.$pool) {
+        await (db.$pool as any).end();
+      }
+    } catch (e) {
+    }
+    
     if (!result.success) {
       process.exit(1);
     }
     process.exit(0);
   })
-  .catch((error) => {
+  .catch(async (error) => {
     console.error('Fatal error:', error);
+    const { db } = await import("../db");
+    try {
+      if ('$pool' in db && db.$pool) {
+        await (db.$pool as any).end();
+      }
+    } catch (e) {
+    }
     process.exit(1);
   });
