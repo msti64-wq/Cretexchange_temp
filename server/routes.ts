@@ -3940,11 +3940,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updatePaymentStatus(payment.id, 'completed', ''); // Stripe ID will be set separately
       
       // Record owner wallet transaction (ledger entry for the charge)
+      // For Stripe Connect Destination Charges, owner is charged directly via their payment method
+      // balanceBefore/After are 0 since we're not maintaining an internal wallet balance
       try {
         await db.insert(ownerWalletTransactions).values({
           ownerId: owner.id,
           type: 'washout_charge',
           amount: ownerFee.toFixed(2),
+          balanceBefore: "0.00", // Not using internal wallet - direct Stripe charge
+          balanceAfter: "0.00",  // Not using internal wallet - direct Stripe charge
           description: `Washout payment - ${driverUser?.username || 'Driver'} at ${location?.name || 'Location'}`,
           paymentId: payment.id,
         });
