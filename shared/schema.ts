@@ -347,9 +347,15 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   processingFee: decimal("processing_fee", { precision: 10, scale: 2 }).notNull(),
   washoutServiceFee: decimal("washout_service_fee", { precision: 10, scale: 2 }).notNull().default("8.00"),
-  // Stripe transfer tracking
-  stripeTransferId: varchar("stripe_transfer_id"), // Stripe Transfer ID
+  // Stripe payment tracking - critical for reconciliation
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"), // Stripe PaymentIntent ID for this payment
+  stripeTransferId: varchar("stripe_transfer_id"), // Stripe Transfer ID to driver
+  stripeChargeId: varchar("stripe_charge_id"), // Stripe Charge ID (for refund tracking)
   status: varchar("status").notNull().default("pending"),
+  // Refund tracking
+  refundedAt: timestamp("refunded_at"),
+  refundAmount: decimal("refund_amount", { precision: 10, scale: 2 }),
+  refundReason: text("refund_reason"),
   // Batch tracking fields for daily billing
   batchId: varchar("batch_id").references(() => billingBatches.id),
   businessDate: varchar("business_date"), // YYYY-MM-DD format for the business day

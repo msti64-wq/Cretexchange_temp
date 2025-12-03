@@ -72,7 +72,8 @@ export async function processStripeWebhook(
       }
       
       // If event previously failed, allow retry
-      console.log(`🔄 Event ${event.id} previously failed (attempt ${existingEvent[0].retryCount + 1}), retrying...`);
+      const retryCount = existingEvent[0].retryCount ?? 0;
+      console.log(`🔄 Event ${event.id} previously failed (attempt ${retryCount + 1}), retrying...`);
     }
 
     // Save or update webhook event in database
@@ -141,42 +142,53 @@ export async function processStripeWebhook(
 }
 
 async function handleWebhookEvent(event: Stripe.Event): Promise<WebhookHandlerResult> {
-  switch (event.type) {
-    // Payment Intent Events - Used for Card Payments (Connect Destination Charges)
-    case 'payment_intent.succeeded':
-      return await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
-    
-    case 'payment_intent.payment_failed':
-      return await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
-
-    // Charge Events - Refunds and Disputes
-    case 'charge.refunded':
-      return await handleChargeRefunded(event.data.object as Stripe.Charge);
-
-    case 'charge.dispute.created':
-      return await handleDisputeCreated(event.data.object as Stripe.Dispute);
-
-    // Transfer Events - For Connect payments
-    case 'transfer.failed':
-      return await handleTransferFailed(event.data.object as Stripe.Transfer);
-
-    // Financial Account Events - For Treasury (if enabled)
-    case 'treasury.financial_account.balance_changed':
-      console.log('💰 Treasury balance changed - no action needed (tracked in Stripe)');
-      return { success: true, message: 'Treasury balance event logged' };
-
-    // Connected Account Events - Critical for verification status tracking
-    case 'account.updated':
-      return await handleAccountUpdated(event.data.object as Stripe.Account);
-    
-    case 'account.external_account.created':
-      console.log('🏦 External account created for connected account');
-      return { success: true, message: 'External account event logged' };
-
-    default:
-      console.log(`ℹ️  Unhandled webhook event type: ${event.type}`);
-      return { success: true, message: `Event type ${event.type} not handled` };
+  // Use string comparison to avoid TypeScript narrowing issues with Stripe's union types
+  const eventType: string = event.type;
+  
+  // Payment Intent Events - Used for Card Payments (Connect Destination Charges)
+  if (eventType === 'payment_intent.succeeded') {
+    return await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
   }
+  
+  if (eventType === 'payment_intent.payment_failed') {
+    return await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
+  }
+
+  // Charge Events - Refunds and Disputes
+  if (eventType === 'charge.refunded') {
+    return await handleChargeRefunded(event.data.object as Stripe.Charge);
+  }
+
+  if (eventType === 'charge.dispute.created') {
+    return await handleDisputeCreated(event.data.object as Stripe.Dispute);
+  }
+
+  // Transfer Events - For Connect payments to drivers
+  if (eventType === 'transfer.failed') {
+    return await handleTransferFailed(event.data.object as Stripe.Transfer);
+  }
+  
+  if (eventType === 'transfer.reversed') {
+    return await handleTransferReversed(event.data.object as Stripe.Transfer);
+  }
+
+  // Connected Account Events - Critical for verification status tracking
+  if (eventType === 'account.updated') {
+    return await handleAccountUpdated(event.data.object as Stripe.Account);
+  }
+  
+  if (eventType === 'account.external_account.created') {
+    console.log('🏦 External account created for connected account');
+    return { success: true, message: 'External account event logged' };
+  }
+
+  // Payout Events - Track when money leaves Stripe to bank accounts
+  if (eventType === 'payout.failed') {
+    return await handlePayoutFailed(event.data.object as Stripe.Payout);
+  }
+
+  console.log(`ℹ️  Unhandled webhook event type: ${eventType}`);
+  return { success: true, message: `Event type ${eventType} not handled` };
 }
 
 // ============================================================================
@@ -264,12 +276,19 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent): P
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge): Promise<WebhookHandlerResult> {
-  console.log(`💸 Charge refunded: ${charge.id} - Amount: $${charge.amount_refunded / 100}`);
+  const refundAmountCents = charge.amount_refunded;
+  const refundAmountDollars = refundAmountCents / 100;
+  console.log(`💸 Charge refunded: ${charge.id} - Amount: $${refundAmountDollars.toFixed(2)}`);
   
-  // Find payment by Stripe charge ID
   const paymentIntentId = charge.payment_intent as string;
   
+  if (!paymentIntentId) {
+    console.log('⚠️  No payment_intent on charge - cannot track refund');
+    return { success: true, message: 'Refund processed (no payment intent to track)' };
+  }
+  
   try {
+    // Find payment by Stripe PaymentIntent ID
     const [payment] = await db
       .select()
       .from(payments)
@@ -277,14 +296,35 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<WebhookHandl
       .limit(1);
 
     if (payment) {
-      // TODO: Implement refund logic
-      // 1. Debit driver's wallet
-      // 2. Credit owner's wallet or initiate refund
-      // 3. Update payment status
+      // Update payment record with refund details
+      const isFullRefund = refundAmountCents >= (parseFloat(payment.amount) * 100);
       
-      console.log(`⚠️  Payment ${payment.id} was refunded - manual reconciliation needed`);
-      return { success: true, message: `Refund detected for payment ${payment.id} - needs manual handling` };
+      await db
+        .update(payments)
+        .set({
+          status: isFullRefund ? 'refunded' : 'partially_refunded',
+          refundedAt: new Date(),
+          refundAmount: refundAmountDollars.toFixed(2),
+          refundReason: charge.refunds?.data?.[0]?.reason || 'Manual refund',
+          stripeChargeId: charge.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(payments.id, payment.id));
+      
+      console.log(`✅ Updated payment ${payment.id} - ${isFullRefund ? 'fully' : 'partially'} refunded: $${refundAmountDollars.toFixed(2)}`);
+      
+      // CRITICAL: If driver was already paid via transfer, the transfer needs to be reversed
+      // This is handled separately via transfer.reversed webhook
+      if (payment.stripeTransferId) {
+        console.log(`⚠️  Payment ${payment.id} has transfer ${payment.stripeTransferId} - transfer reversal may be needed`);
+      }
+      
+      return { 
+        success: true, 
+        message: `Refund recorded: ${isFullRefund ? 'full' : 'partial'} refund of $${refundAmountDollars.toFixed(2)} for payment ${payment.id}` 
+      };
     } else {
+      console.log(`⚠️  No payment record found for PaymentIntent ${paymentIntentId}`);
       return { success: true, message: 'Refund processed (no payment record found)' };
     }
   } catch (error: any) {
@@ -306,11 +346,105 @@ async function handleDisputeCreated(dispute: Stripe.Dispute): Promise<WebhookHan
 
 async function handleTransferFailed(transfer: Stripe.Transfer): Promise<WebhookHandlerResult> {
   console.log(`❌ Transfer failed: ${transfer.id}`);
+  console.log(`   Destination: ${transfer.destination}`);
+  console.log(`   Amount: $${(transfer.amount / 100).toFixed(2)}`);
   
-  // TODO: Implement transfer failure handling
-  // This could happen if driver's Connect account has issues
+  try {
+    // Find payment by transfer ID
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.stripeTransferId, transfer.id))
+      .limit(1);
+
+    if (payment) {
+      // Mark payment as failed - driver did NOT receive funds
+      await db
+        .update(payments)
+        .set({
+          status: 'transfer_failed',
+          updatedAt: new Date(),
+        })
+        .where(eq(payments.id, payment.id));
+      
+      console.log(`⚠️  Payment ${payment.id} transfer failed - driver ${payment.driverId} did NOT receive funds`);
+      
+      // Log critical issue for admin attention
+      console.error(`🚨 CRITICAL: Transfer ${transfer.id} failed for payment ${payment.id}`);
+      console.error(`   Driver ${payment.driverId} should have received $${payment.amount}`);
+      console.error(`   This requires manual intervention`);
+      
+      return { 
+        success: true, 
+        message: `Transfer failure recorded: payment ${payment.id} marked as transfer_failed` 
+      };
+    } else {
+      // Check washout payment batches as alternative
+      console.log(`⚠️  No individual payment found for transfer ${transfer.id} - may be batch transfer`);
+      return { success: true, message: `Transfer failure logged: ${transfer.id} (no payment record)` };
+    }
+  } catch (error: any) {
+    console.error('❌ Error handling transfer failure:', error.message);
+    return { success: false, message: 'Error handling transfer failure', error: error.message };
+  }
+}
+
+async function handleTransferReversed(transfer: Stripe.Transfer): Promise<WebhookHandlerResult> {
+  console.log(`🔄 Transfer reversed: ${transfer.id}`);
+  console.log(`   Amount reversed: $${(transfer.amount / 100).toFixed(2)}`);
   
-  return { success: true, message: `Transfer failure logged: ${transfer.id}` };
+  try {
+    // Find payment by transfer ID
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.stripeTransferId, transfer.id))
+      .limit(1);
+
+    if (payment) {
+      // Update payment status to reflect that transfer was reversed
+      await db
+        .update(payments)
+        .set({
+          status: 'transfer_reversed',
+          updatedAt: new Date(),
+        })
+        .where(eq(payments.id, payment.id));
+      
+      console.log(`✅ Payment ${payment.id} marked as transfer_reversed`);
+      console.log(`   Driver ${payment.driverId} funds have been clawed back`);
+      
+      return { 
+        success: true, 
+        message: `Transfer reversal recorded: payment ${payment.id}` 
+      };
+    } else {
+      return { success: true, message: `Transfer reversal logged: ${transfer.id} (no payment record)` };
+    }
+  } catch (error: any) {
+    console.error('❌ Error handling transfer reversal:', error.message);
+    return { success: false, message: 'Error handling transfer reversal', error: error.message };
+  }
+}
+
+async function handlePayoutFailed(payout: Stripe.Payout): Promise<WebhookHandlerResult> {
+  console.log(`❌ Payout failed: ${payout.id}`);
+  console.log(`   Amount: $${(payout.amount / 100).toFixed(2)}`);
+  console.log(`   Failure Code: ${payout.failure_code}`);
+  console.log(`   Failure Message: ${payout.failure_message}`);
+  
+  // Payouts fail when money cannot be sent to a bank account
+  // This typically means the bank account details are wrong
+  // For Connect accounts, we should flag the user's account
+  
+  console.error(`🚨 PAYOUT FAILED: ${payout.id}`);
+  console.error(`   This may indicate a bank account issue for a driver`);
+  console.error(`   Failure: ${payout.failure_code} - ${payout.failure_message}`);
+  
+  return { 
+    success: true, 
+    message: `Payout failure logged: ${payout.id} - ${payout.failure_code}` 
+  };
 }
 
 // ============================================================================
