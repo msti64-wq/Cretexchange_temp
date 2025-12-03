@@ -11748,6 +11748,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/admin/reconciliation/payments - Run payment reconciliation (admin only)
+  app.post('/api/admin/reconciliation/payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required' });
+      }
+
+      const { startDate, endDate, limit } = req.body;
+      
+      const { performPaymentReconciliation } = await import('./reconciliationService');
+      const result = await performPaymentReconciliation(
+        startDate ? new Date(startDate) : undefined,
+        endDate ? new Date(endDate) : undefined,
+        limit || 100
+      );
+
+      res.json({
+        message: 'Payment reconciliation completed',
+        result
+      });
+    } catch (error: any) {
+      console.error('❌ Error in payment reconciliation:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to run payment reconciliation',
+        error: error.message 
+      });
+    }
+  });
+
+  // POST /api/admin/reconciliation/batches - Run batch payment reconciliation (admin only)
+  app.post('/api/admin/reconciliation/batches', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required' });
+      }
+
+      const { startDate, endDate, limit } = req.body;
+      
+      const { performBatchReconciliation } = await import('./reconciliationService');
+      const result = await performBatchReconciliation(
+        startDate ? new Date(startDate) : undefined,
+        endDate ? new Date(endDate) : undefined,
+        limit || 50
+      );
+
+      res.json({
+        message: 'Batch reconciliation completed',
+        result
+      });
+    } catch (error: any) {
+      console.error('❌ Error in batch reconciliation:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to run batch reconciliation',
+        error: error.message 
+      });
+    }
+  });
+
+  // POST /api/admin/reconciliation/sync-payment/:paymentId - Sync single payment from Stripe (admin only)
+  app.post('/api/admin/reconciliation/sync-payment/:paymentId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required' });
+      }
+
+      const { paymentId } = req.params;
+      
+      const { syncPaymentFromStripe } = await import('./reconciliationService');
+      const result = await syncPaymentFromStripe(paymentId);
+
+      if (!result.success) {
+        return res.status(400).json({
+          message: 'Failed to sync payment',
+          error: result.error
+        });
+      }
+
+      res.json({
+        message: 'Payment synced from Stripe',
+        changes: result.changes
+      });
+    } catch (error: any) {
+      console.error('❌ Error syncing payment:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to sync payment',
+        error: error.message 
+      });
+    }
+  });
+
+  // GET /api/admin/reconciliation/full-audit - Run comprehensive audit (admin only)
+  app.get('/api/admin/reconciliation/full-audit', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required' });
+      }
+
+      const { 
+        performBalanceReconciliation, 
+        performPaymentReconciliation,
+        performBatchReconciliation 
+      } = await import('./reconciliationService');
+
+      console.log('\n========== FULL AUDIT STARTED ==========\n');
+
+      // Run all reconciliations
+      const [balanceResult, paymentResult, batchResult] = await Promise.all([
+        performBalanceReconciliation(user.username),
+        performPaymentReconciliation(undefined, undefined, 50),
+        performBatchReconciliation(undefined, undefined, 25)
+      ]);
+
+      const auditSummary = {
+        timestamp: new Date().toISOString(),
+        triggeredBy: user.username,
+        balanceReconciliation: {
+          accountsChecked: balanceResult.accountsChecked,
+          discrepanciesFound: balanceResult.discrepanciesFound,
+          totalAmountDiscrepancy: balanceResult.totalAmountDiscrepancy
+        },
+        paymentReconciliation: {
+          paymentsChecked: paymentResult.paymentsChecked,
+          discrepanciesFound: paymentResult.discrepanciesFound,
+          breakdown: {
+            missingInStripe: paymentResult.missingInStripe,
+            amountMismatches: paymentResult.amountMismatches,
+            statusMismatches: paymentResult.statusMismatches
+          }
+        },
+        batchReconciliation: {
+          batchesChecked: batchResult.batchesChecked,
+          discrepanciesFound: batchResult.discrepanciesFound
+        },
+        overallHealth: (
+          balanceResult.discrepanciesFound === 0 && 
+          paymentResult.discrepanciesFound === 0 && 
+          batchResult.discrepanciesFound === 0
+        ) ? 'HEALTHY' : 'NEEDS_ATTENTION'
+      };
+
+      console.log('\n========== FULL AUDIT COMPLETE ==========');
+      console.log('Overall Health:', auditSummary.overallHealth);
+
+      res.json({
+        message: 'Full audit completed',
+        summary: auditSummary,
+        details: {
+          balance: balanceResult,
+          payments: paymentResult,
+          batches: batchResult
+        }
+      });
+    } catch (error: any) {
+      console.error('❌ Error in full audit:', error.message);
+      res.status(500).json({ 
+        message: 'Failed to run full audit',
+        error: error.message 
+      });
+    }
+  });
+
   // ========== TEST ENDPOINT: Stripe Connect Payment Flow ==========
   // POST /api/test/stripe-connect-payment - Test Stripe Connect Destination Charges
   app.post('/api/test/stripe-connect-payment', isAuthenticated, async (req: any, res) => {
