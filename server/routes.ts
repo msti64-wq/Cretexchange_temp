@@ -3939,6 +3939,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update payment with Stripe Payment Intent ID
       await storage.updatePaymentStatus(payment.id, 'completed', ''); // Stripe ID will be set separately
       
+      // Record owner wallet transaction (ledger entry for the charge)
+      try {
+        await db.insert(ownerWalletTransactions).values({
+          ownerId: owner.id,
+          type: 'washout_charge',
+          amount: ownerFee.toFixed(2),
+          description: `Washout payment - ${driverUser?.username || 'Driver'} at ${location?.name || 'Location'}`,
+          paymentId: payment.id,
+        });
+        console.log(`✅ Owner wallet transaction recorded for washout ${id}`);
+      } catch (txnError: any) {
+        console.error(`⚠️ Failed to record owner wallet transaction: ${txnError.message}`);
+      }
+      
       // Ensure driver has a wallet
       let driverWallet = await storage.getDriverWallet(driver.id);
       if (!driverWallet) {
