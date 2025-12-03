@@ -3720,6 +3720,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           businessDate,
         });
         
+        // Record owner wallet transaction (ledger entry for pending charge)
+        try {
+          await db.insert(ownerWalletTransactions).values({
+            ownerId: owner.id,
+            type: 'washout_charge_pending',
+            amount: ownerFee.toFixed(2),
+            balanceBefore: "0.00",
+            balanceAfter: "0.00",
+            description: `Pending washout - ${driverUser?.username || 'Driver'} at ${location?.name || 'Location'} (${billingCadence} billing)`,
+            paymentId: payment.id,
+          });
+          console.log(`✅ Owner wallet transaction (pending) recorded for washout ${id}`);
+        } catch (txnError: any) {
+          console.error(`⚠️ Failed to record owner wallet transaction: ${txnError.message}`);
+        }
+        
         // Verify activity immediately (payment will be processed later in batch)
         const activity = await storage.verifyWashoutActivity(id, userId);
         
