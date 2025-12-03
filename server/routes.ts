@@ -8401,7 +8401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      const owner = await storage.getOwner(ownerId);
+      const owner = await storage.getOwnerById(ownerId);
       const ownerUser = owner ? await storage.getUser(owner.userId) : null;
 
       res.json({
@@ -8445,7 +8445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const owner = await storage.getOwner(ownerId);
+      const owner = await storage.getOwnerById(ownerId);
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
       }

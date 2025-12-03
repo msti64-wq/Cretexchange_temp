@@ -1,0 +1,96 @@
+index-kNU6ihHG.js:48 🔄 Query cache cleared once
+billing-settings:38 SW registered:  ServiceWorkerRegistration
+billing-settings:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+billing-settings:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+billing-settings:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+billing-settings:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+billing-settings:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+billing-settings:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+index-kNU6ihHG.js:48  PUT https://truck-wash-locator-msti64.replit.app/api/admin/billing/settings/27834e73-e352-4a33-9c30-41f03c4d837a 404 (Not Found)
+oe @ index-kNU6ihHG.js:48
+mutationFn @ index-kNU6ihHG.js:540
+fn @ index-kNU6ihHG.js:48
+b @ index-kNU6ihHG.js:48
+start @ index-kNU6ihHG.js:48
+execute @ index-kNU6ihHG.js:48
+await in execute
+mutate @ index-kNU6ihHG.js:48
+(anonymous) @ index-kNU6ihHG.js:48
+f @ index-kNU6ihHG.js:540
+vE @ index-kNU6ihHG.js:37
+jE @ index-kNU6ihHG.js:37
+bE @ index-kNU6ihHG.js:37
+uv @ index-kNU6ihHG.js:37
+E1 @ index-kNU6ihHG.js:37
+(anonymous) @ index-kNU6ihHG.js:37
+Nx @ index-kNU6ihHG.js:40
+e1 @ index-kNU6ihHG.js:37
+fh @ index-kNU6ihHG.js:37
+Gp @ index-kNU6ihHG.js:37
+OE @ index-kNU6ihHG.js:37
+index-kNU6ihHG.js:48 Fetch failed loading: PUT "https://truck-wash-locator-msti64.replit.app/api/admin/billing/settings/27834e73-e352-4a33-9c30-41f03c4d837a".
+oe @ index-kNU6ihHG.js:48
+mutationFn @ index-kNU6ihHG.js:540
+fn @ index-kNU6ihHG.js:48
+b @ index-kNU6ihHG.js:48
+start @ index-kNU6ihHG.js:48
+execute @ index-kNU6ihHG.js:48
+await in execute
+mutate @ index-kNU6ihHG.js:48
+(anonymous) @ index-kNU6ihHG.js:48
+f @ index-kNU6ihHG.js:540
+vE @ index-kNU6ihHG.js:37
+jE @ index-kNU6ihHG.js:37
+bE @ index-kNU6ihHG.js:37
+uv @ index-kNU6ihHG.js:37
+E1 @ index-kNU6ihHG.js:37
+(anonymous) @ index-kNU6ihHG.js:37
+Nx @ index-kNU6ihHG.js:40
+e1 @ index-kNU6ihHG.js:37
+fh @ index-kNU6ihHG.js:37
+Gp @ index-kNU6ihHG.js:37
+OE @ index-kNU6ihHG.js:37
+index-kNU6ihHG.js:48  PUT https://truck-wash-locator-msti64.replit.app/api/admin/billing/settings/27834e73-e352-4a33-9c30-41f03c4d837a 404 (Not Found)
+oe @ index-kNU6ihHG.js:48
+mutationFn @ index-kNU6ihHG.js:540
+fn @ index-kNU6ihHG.js:48
+b @ index-kNU6ihHG.js:48
+start @ index-kNU6ihHG.js:48
+execute @ index-kNU6ihHG.js:48
+await in execute
+mutate @ index-kNU6ihHG.js:48
+(anonymous) @ index-kNU6ihHG.js:48
+f @ index-kNU6ihHG.js:540
+vE @ index-kNU6ihHG.js:37
+jE @ index-kNU6ihHG.js:37
+bE @ index-kNU6ihHG.js:37
+uv @ index-kNU6ihHG.js:37
+E1 @ index-kNU6ihHG.js:37
+(anonymous) @ index-kNU6ihHG.js:37
+Nx @ index-kNU6ihHG.js:40
+e1 @ index-kNU6ihHG.js:37
+fh @ index-kNU6ihHG.js:37
+Gp @ index-kNU6ihHG.js:37
+OE @ index-kNU6ihHG.js:37
+index-kNU6ihHG.js:48 Fetch failed loading: PUT "https://truck-wash-locator-msti64.replit.app/api/admin/billing/settings/27834e73-e352-4a33-9c30-41f03c4d837a".
+oe @ index-kNU6ihHG.js:48
+mutationFn @ index-kNU6ihHG.js:540
+fn @ index-kNU6ihHG.js:48
+b @ index-kNU6ihHG.js:48
+start @ index-kNU6ihHG.js:48
+execute @ index-kNU6ihHG.js:48
+await in execute
+mutate @ index-kNU6ihHG.js:48
+(anonymous) @ index-kNU6ihHG.js:48
+f @ index-kNU6ihHG.js:540
+vE @ index-kNU6ihHG.js:37
+jE @ index-kNU6ihHG.js:37
+bE @ index-kNU6ihHG.js:37
+uv @ index-kNU6ihHG.js:37
+E1 @ index-kNU6ihHG.js:37
+(anonymous) @ index-kNU6ihHG.js:37
+Nx @ index-kNU6ihHG.js:40
+e1 @ index-kNU6ihHG.js:37
+fh @ index-kNU6ihHG.js:37
+Gp @ index-kNU6ihHG.js:37
+OE @ index-kNU6ihHG.js:37
