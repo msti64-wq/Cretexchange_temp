@@ -3722,7 +3722,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Record owner wallet transaction (ledger entry for pending charge)
         try {
-          await db.insert(ownerWalletTransactions).values({
+          console.log(`📝 Creating owner wallet transaction (pending) for washout ${id}:`, {
+            ownerId: owner.id,
+            type: 'washout_charge_pending',
+            amount: ownerFee.toFixed(2),
+            paymentId: payment.id,
+            billingCadence,
+          });
+          
+          const [insertedTxn] = await db.insert(ownerWalletTransactions).values({
             ownerId: owner.id,
             type: 'washout_charge_pending',
             amount: ownerFee.toFixed(2),
@@ -3730,10 +3738,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             balanceAfter: "0.00",
             description: `Pending washout - ${driverUser?.username || 'Driver'} at ${location?.name || 'Location'} (${billingCadence} billing)`,
             paymentId: payment.id,
-          });
-          console.log(`✅ Owner wallet transaction (pending) recorded for washout ${id}`);
+          }).returning();
+          
+          console.log(`✅ Owner wallet transaction (pending) recorded for washout ${id}, transaction ID: ${insertedTxn?.id}`);
         } catch (txnError: any) {
-          console.error(`⚠️ Failed to record owner wallet transaction: ${txnError.message}`);
+          console.error(`❌ Failed to record owner wallet transaction (pending) for washout ${id}:`, txnError);
+          console.error(`   Error message: ${txnError.message}`);
+          console.error(`   Owner ID: ${owner.id}, Payment ID: ${payment.id}`);
         }
         
         // Verify activity immediately (payment will be processed later in batch)
@@ -3959,7 +3970,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For Stripe Connect Destination Charges, owner is charged directly via their payment method
       // balanceBefore/After are 0 since we're not maintaining an internal wallet balance
       try {
-        await db.insert(ownerWalletTransactions).values({
+        console.log(`📝 Creating owner wallet transaction for washout ${id}:`, {
+          ownerId: owner.id,
+          type: 'washout_charge',
+          amount: ownerFee.toFixed(2),
+          paymentId: payment.id,
+        });
+        
+        const [insertedTxn] = await db.insert(ownerWalletTransactions).values({
           ownerId: owner.id,
           type: 'washout_charge',
           amount: ownerFee.toFixed(2),
@@ -3967,10 +3985,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           balanceAfter: "0.00",  // Not using internal wallet - direct Stripe charge
           description: `Washout payment - ${driverUser?.username || 'Driver'} at ${location?.name || 'Location'}`,
           paymentId: payment.id,
-        });
-        console.log(`✅ Owner wallet transaction recorded for washout ${id}`);
+        }).returning();
+        
+        console.log(`✅ Owner wallet transaction recorded for washout ${id}, transaction ID: ${insertedTxn?.id}`);
       } catch (txnError: any) {
-        console.error(`⚠️ Failed to record owner wallet transaction: ${txnError.message}`);
+        console.error(`❌ Failed to record owner wallet transaction for washout ${id}:`, txnError);
+        console.error(`   Error message: ${txnError.message}`);
+        console.error(`   Owner ID: ${owner.id}, Payment ID: ${payment.id}`);
       }
       
       // Ensure driver has a wallet
