@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, Package } from "lucide-react";
+import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, Package, DollarSign, Pencil, Check, X } from "lucide-react";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -29,6 +29,10 @@ export default function OwnerLocations() {
   const [locationToEdit, setLocationToEdit] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedMaterialsForEdit, setSelectedMaterialsForEdit] = useState<string[]>([]);
+  
+  // Inline rate editing state
+  const [editingRateLocationId, setEditingRateLocationId] = useState<string | null>(null);
+  const [editingRateValue, setEditingRateValue] = useState("");
   const [materialPricing, setMaterialPricing] = useState<{[materialSlug: string]: {rateCents: number, unit: string}}>({});
 
   // Form state - MUST be declared before callbacks that use setFormData
@@ -175,6 +179,52 @@ export default function OwnerLocations() {
       });
     },
   });
+
+  const updateRateMutation = useMutation({
+    mutationFn: async ({ locationId, rate }: { locationId: string; rate: number }) => {
+      const response = await apiRequest("PUT", `/api/owners/locations/${locationId}/rate`, { rate });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Rate Updated",
+        description: "Your washout rate has been updated successfully.",
+      });
+      setEditingRateLocationId(null);
+      setEditingRateValue("");
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/locations'] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to Update Rate",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStartEditRate = (location: any) => {
+    setEditingRateLocationId(location.id);
+    setEditingRateValue(location.rate?.toString() || "0.00");
+  };
+
+  const handleSaveRate = (locationId: string) => {
+    const rate = parseFloat(editingRateValue);
+    if (isNaN(rate) || rate < 0) {
+      toast({
+        title: "Invalid Rate",
+        description: "Please enter a valid rate amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateRateMutation.mutate({ locationId, rate });
+  };
+
+  const handleCancelEditRate = () => {
+    setEditingRateLocationId(null);
+    setEditingRateValue("");
+  };
 
   const deleteLocationMutation = useMutation({
     mutationFn: async (locationId: string) => {
@@ -1011,12 +1061,60 @@ export default function OwnerLocations() {
                       </div>
                       
                       <div className="text-right">
-                        <div>
-                          <div className="text-xl font-bold text-accent" data-testid={`text-location-rate-${index}`}>
-                            {formatCurrency(Number(location.rate))}
+                        {editingRateLocationId === location.id ? (
+                          <div className="flex items-center gap-2">
+                            <div className="relative">
+                              <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={editingRateValue}
+                                onChange={(e) => setEditingRateValue(e.target.value)}
+                                className="w-24 pl-7 h-9 text-right"
+                                autoFocus
+                                data-testid={`input-edit-rate-inline-${index}`}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveRate(location.id);
+                                  if (e.key === 'Escape') handleCancelEditRate();
+                                }}
+                              />
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => handleSaveRate(location.id)}
+                              disabled={updateRateMutation.isPending}
+                              data-testid={`button-save-rate-${index}`}
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={handleCancelEditRate}
+                              data-testid={`button-cancel-rate-${index}`}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
                           </div>
-                          <div className="text-xs text-muted-foreground">per washout</div>
-                        </div>
+                        ) : (
+                          <div 
+                            className="group cursor-pointer"
+                            onClick={() => handleStartEditRate(location)}
+                            data-testid={`clickable-rate-${index}`}
+                          >
+                            <div className="flex items-center gap-1 justify-end">
+                              <div className="text-xl font-bold text-accent" data-testid={`text-location-rate-${index}`}>
+                                {formatCurrency(Number(location.rate))}
+                              </div>
+                              <Pencil className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            <div className="text-xs text-muted-foreground">per washout (click to edit)</div>
+                          </div>
+                        )}
                       </div>
                     </div>
                     
