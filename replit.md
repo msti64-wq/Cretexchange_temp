@@ -54,3 +54,44 @@ Key features include a streamlined washout process with photo verification, comp
 - `charge.refunded` - Updates payment with refund details, sets status to refunded
 - `charge.dispute.created` - Tracks dispute in payment metadata
 - `account.updated` - Syncs Connect account verification status
+
+## Scheduled Jobs (Replit Scheduled Deployments)
+
+The platform uses Replit Scheduled Deployments for automated background jobs. These run independently from the main application.
+
+### Available Jobs
+
+| Job Script | Purpose | Recommended Schedule |
+|------------|---------|---------------------|
+| `server/scripts/scheduledReconciliation.ts` | Verify DB matches Stripe data | Daily at 2:00 AM UTC |
+| `server/scripts/scheduledBatchProcessing.ts` | Process pending billing batches | Daily at 6:00 AM UTC |
+
+### Setup Instructions
+
+1. **Navigate to Publishing**: From the workspace, click "Publishing" in the left dock
+2. **Select "Scheduled"**: Choose the "Scheduled" deployment type
+3. **Configure the Job**:
+   - **Schedule**: Use natural language like "Every day at 2:00 AM UTC"
+   - **Run Command**: `npx tsx server/scripts/scheduledReconciliation.ts`
+   - **Timeout**: 5-10 minutes depending on job
+4. **Add Secrets**: Ensure `DATABASE_URL` and `STRIPE_SECRET_KEY` are available
+5. **Deploy**: Click to activate the scheduled deployment
+
+### Running Jobs Manually
+
+Jobs can also be triggered manually for testing:
+
+```bash
+# Run reconciliation
+npx tsx server/scripts/scheduledReconciliation.ts
+
+# Run batch processing
+npx tsx server/scripts/scheduledBatchProcessing.ts
+```
+
+### Job Health Monitoring
+
+- Jobs exit with code 0 on success, code 1 on failure
+- Logs include detailed summaries with discrepancy counts
+- Health status: HEALTHY, NEEDS_ATTENTION, or CRITICAL
+- Critical errors should trigger admin notification
