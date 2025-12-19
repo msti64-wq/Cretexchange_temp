@@ -29,6 +29,7 @@ import {
   materials,
   locationMaterialIntents,
   identityDocuments,
+  driverLotteryEntries,
   type User,
   type UpsertUser,
   type Driver,
@@ -87,6 +88,8 @@ import {
   type LocationMaterialIntent,
   type InsertLocationMaterialIntent,
   type IdentityDocument,
+  type DriverLotteryEntry,
+  type InsertDriverLotteryEntry,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
@@ -362,6 +365,17 @@ export interface IStorage {
   getIdentityDocumentByUserId(userId: string): Promise<any | undefined>;
   getIdentityDocument(docId: string): Promise<any | undefined>;
   updateIdentityDocument(docId: string, updates: any): Promise<any>;
+
+  // Custom billing model operations (feature flag per owner)
+  updateOwnerCustomBillingModel(ownerId: string, settings: { useCustomBillingModel?: boolean; customWashoutRate?: string | null }): Promise<Owner>;
+  getOwnersWithCustomBillingModel(): Promise<(Owner & { user: User })[]>;
+
+  // Driver lottery entries operations
+  createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<any>;
+  getDriverLotteryEntries(driverId: string): Promise<any[]>;
+  getAllDriverLotteryEntries(startDate?: Date, endDate?: Date): Promise<any[]>;
+  getDriverLotteryEntryTotals(): Promise<{ driverId: string; driverName: string; totalEntries: number }[]>;
+  getDriverLotteryEntryByActivity(activityId: string): Promise<any | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4643,6 +4657,119 @@ export class DatabaseStorage implements IStorage {
       .where(eq(identityDocuments.id, docId))
       .returning();
     return updated;
+  }
+
+  // Custom billing model operations (feature flag per owner)
+  async updateOwnerCustomBillingModel(ownerId: string, settings: { useCustomBillingModel?: boolean; customWashoutRate?: string | null }): Promise<Owner> {
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+    if (settings.useCustomBillingModel !== undefined) {
+      updateData.useCustomBillingModel = settings.useCustomBillingModel;
+    }
+    if (settings.customWashoutRate !== undefined) {
+      updateData.customWashoutRate = settings.customWashoutRate;
+    }
+    const [updated] = await db
+      .update(owners)
+      .set(updateData)
+      .where(eq(owners.id, ownerId))
+      .returning();
+    return updated;
+  }
+
+  async getOwnersWithCustomBillingModel(): Promise<(Owner & { user: User })[]> {
+    const results = await db
+      .select()
+      .from(owners)
+      .innerJoin(users, eq(owners.userId, users.id))
+      .where(eq(owners.useCustomBillingModel, true));
+    return results.map(r => ({ ...r.owners, user: r.users }));
+  }
+
+  // Driver lottery entries operations
+  async createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<DriverLotteryEntry> {
+    const [newEntry] = await db
+      .insert(driverLotteryEntries)
+      .values({
+        driverId: entry.driverId,
+        activityId: entry.activityId,
+        ownerId: entry.ownerId,
+        entriesEarned: entry.entriesEarned ?? 1,
+      })
+      .returning();
+    return newEntry;
+  }
+
+  async getDriverLotteryEntries(driverId: string): Promise<DriverLotteryEntry[]> {
+    return await db
+      .select()
+      .from(driverLotteryEntries)
+      .where(eq(driverLotteryEntries.driverId, driverId))
+      .orderBy(desc(driverLotteryEntries.createdAt));
+  }
+
+  async getAllDriverLotteryEntries(startDate?: Date, endDate?: Date): Promise<any[]> {
+    const conditions = [];
+    if (startDate) {
+      conditions.push(gte(driverLotteryEntries.createdAt, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(driverLotteryEntries.createdAt, endDate));
+    }
+
+    const results = await db
+      .select({
+        entry: driverLotteryEntries,
+        driver: drivers,
+        driverUser: users,
+        owner: owners,
+        ownerUser: users,
+        activity: washoutActivities,
+      })
+      .from(driverLotteryEntries)
+      .innerJoin(drivers, eq(driverLotteryEntries.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .innerJoin(owners, eq(driverLotteryEntries.ownerId, owners.id))
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(driverLotteryEntries.createdAt));
+
+    return results.map(r => ({
+      ...r.entry,
+      driver: { ...r.driver, user: r.driverUser },
+      owner: r.owner,
+      activity: r.activity,
+    }));
+  }
+
+  async getDriverLotteryEntryTotals(): Promise<{ driverId: string; driverName: string; totalEntries: number }[]> {
+    const results = await db
+      .select({
+        driverId: driverLotteryEntries.driverId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        totalEntries: sql<number>`COALESCE(SUM(${driverLotteryEntries.entriesEarned}), 0)::integer`,
+      })
+      .from(driverLotteryEntries)
+      .innerJoin(drivers, eq(driverLotteryEntries.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .groupBy(driverLotteryEntries.driverId, users.firstName, users.lastName)
+      .orderBy(desc(sql`SUM(${driverLotteryEntries.entriesEarned})`));
+
+    return results.map(r => ({
+      driverId: r.driverId,
+      driverName: `${r.firstName} ${r.lastName}`,
+      totalEntries: r.totalEntries,
+    }));
+  }
+
+  async getDriverLotteryEntryByActivity(activityId: string): Promise<DriverLotteryEntry | undefined> {
+    const [entry] = await db
+      .select()
+      .from(driverLotteryEntries)
+      .where(eq(driverLotteryEntries.activityId, activityId));
+    return entry;
   }
 }
 
