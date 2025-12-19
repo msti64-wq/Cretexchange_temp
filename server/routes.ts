@@ -3779,10 +3779,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`   Owner ID: ${owner.id}, Payment ID: ${payment.id}`);
         }
         
+        // ========== DRIVER COMPENSATION FOR BATCH PROCESSING ==========
+        if (useCustomBillingModel) {
+          // CUSTOM BILLING MODEL: Create lottery entry immediately (payment batched separately)
+          try {
+            const lotteryEntry = await storage.createDriverLotteryEntry({
+              driverId: driver.id,
+              activityId: id,
+              ownerId: owner.id,
+              entriesEarned: 1,
+            });
+            console.log(`🎰 Lottery entry created for driver ${driver.id} (batch billing), entry ID: ${lotteryEntry.id}`);
+          } catch (lotteryError: any) {
+            console.error(`❌ Failed to create lottery entry for washout ${id}:`, lotteryError);
+          }
+        }
+        // NOTE: For standard model, driver wallet credit happens when batch payment succeeds (in batch processor)
+        
         // Verify activity immediately (payment will be processed later in batch)
         const activity = await storage.verifyWashoutActivity(id, userId);
         
-        console.log(`✅ Washout ${id} approved with ${billingCadence} billing. Payment ${payment.id} pending batch processing.`);
+        const compensationType = useCustomBillingModel ? 'lottery entry' : 'pending payment';
+        console.log(`✅ Washout ${id} approved with ${billingCadence} billing. Payment ${payment.id} pending batch processing. Driver receives: ${compensationType}`);
         
         return res.json(activity);
       }
@@ -4026,36 +4044,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`   Owner ID: ${owner.id}, Payment ID: ${payment.id}`);
       }
       
-      // Ensure driver has a wallet
-      let driverWallet = await storage.getDriverWallet(driver.id);
-      if (!driverWallet) {
-        await storage.createDriverWallet({ driverId: driver.id });
+      // ========== DRIVER COMPENSATION: CASH OR LOTTERY ENTRY ==========
+      if (useCustomBillingModel) {
+        // CUSTOM BILLING MODEL: Create lottery entry instead of cash payment
+        try {
+          const lotteryEntry = await storage.createDriverLotteryEntry({
+            driverId: driver.id,
+            activityId: id,
+            ownerId: owner.id,
+            entriesEarned: 1, // 1 entry per washout
+          });
+          console.log(`🎰 Lottery entry created for driver ${driver.id}, entry ID: ${lotteryEntry.id}`);
+        } catch (lotteryError: any) {
+          console.error(`❌ Failed to create lottery entry for washout ${id}:`, lotteryError);
+          // Don't fail the transaction - lottery entry is nice-to-have
+        }
+      } else {
+        // STANDARD MODEL: Credit driver's wallet with cash
+        // Ensure driver has a wallet
+        let driverWallet = await storage.getDriverWallet(driver.id);
+        if (!driverWallet) {
+          await storage.createDriverWallet({ driverId: driver.id });
+        }
+        
+        // Credit driver's wallet balance AFTER successful payment
+        await storage.adjustDriverWalletBalance(driver.id, driverAmount, 0);
+        
+        // Get updated wallet for transaction record
+        const updatedWallet = await storage.getDriverWallet(driver.id);
+        const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
+        
+        // Create wallet transaction record
+        await storage.createWalletTransaction({
+          driverId: driver.id,
+          amount: driverAmount.toString(),
+          direction: "credit",
+          balanceAfter: newBalance.toString(),
+          currency: "USD",
+          sourceType: "washout",
+          sourceId: id,
+          status: "posted",
+          description: `Washout payment for activity ${id}`,
+        });
       }
-      
-      // Credit driver's wallet balance AFTER successful payment
-      await storage.adjustDriverWalletBalance(driver.id, driverAmount, 0);
-      
-      // Get updated wallet for transaction record
-      const updatedWallet = await storage.getDriverWallet(driver.id);
-      const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
-      
-      // Create wallet transaction record
-      await storage.createWalletTransaction({
-        driverId: driver.id,
-        amount: driverAmount.toString(),
-        direction: "credit",
-        balanceAfter: newBalance.toString(),
-        currency: "USD",
-        sourceType: "washout",
-        sourceId: id,
-        status: "posted",
-        description: `Washout payment for activity ${id}`,
-      });
 
       // Verify activity as final step
       const activity = await storage.verifyWashoutActivity(id, userId);
       
-      console.log(`✅ Washout ${id} fully processed: Payment completed, driver credited $${driverAmount}, activity verified`);
+      const compensationType = useCustomBillingModel ? 'lottery entry' : `$${driverAmount}`;
+      console.log(`✅ Washout ${id} fully processed: Payment completed, driver received ${compensationType}, activity verified`);
 
       res.json(activity);
     } catch (error) {
