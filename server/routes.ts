@@ -8262,6 +8262,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== ADMIN LOTTERY MANAGEMENT ENDPOINTS ==========
+
+  // Get all lottery entries with driver details (admin/super admin)
+  app.get('/api/admin/lottery/entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { startDate, endDate } = req.query;
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const entries = await storage.getAllDriverLotteryEntries(start, end);
+      res.json(entries);
+    } catch (error: any) {
+      console.error("Error fetching lottery entries:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch lottery entries" });
+    }
+  });
+
+  // Get lottery entry totals per driver (admin/super admin)
+  app.get('/api/admin/lottery/totals', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const totals = await storage.getDriverLotteryEntryTotals();
+      res.json(totals);
+    } catch (error: any) {
+      console.error("Error fetching lottery totals:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch lottery totals" });
+    }
+  });
+
   // ========== ADMIN PRICING MANAGEMENT ENDPOINTS ==========
   
   // Update all location rates platform-wide (for switching between test/production pricing)
