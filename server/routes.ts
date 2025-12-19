@@ -8206,6 +8206,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update owner's custom billing model settings (super admin only)
+  app.put('/api/admin/owners/:id/custom-billing', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const ownerId = req.params.id;
+      const { useCustomBillingModel, customWashoutRate } = req.body;
+
+      // Validate rate when enabling custom billing
+      if (useCustomBillingModel && (!customWashoutRate || parseFloat(customWashoutRate) <= 0)) {
+        return res.status(400).json({ 
+          message: "Custom washout rate is required when enabling custom billing model" 
+        });
+      }
+
+      // Validate rate if provided
+      if (customWashoutRate !== null && customWashoutRate !== undefined && customWashoutRate !== '') {
+        const rate = parseFloat(customWashoutRate);
+        if (isNaN(rate) || rate <= 0) {
+          return res.status(400).json({ 
+            message: "Custom washout rate must be a positive number" 
+          });
+        }
+      }
+
+      const owner = await storage.getOwnerById(ownerId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Update custom billing settings
+      await storage.updateOwnerCustomBillingSettings(
+        ownerId, 
+        useCustomBillingModel === true,
+        customWashoutRate || null
+      );
+
+      const ownerUser = await storage.getUserById(owner.userId);
+      console.log('✅ Custom billing settings updated for owner:', ownerUser?.username, 
+        'useCustomBillingModel:', useCustomBillingModel, 
+        'customWashoutRate:', customWashoutRate || 'not set');
+
+      res.json({ 
+        message: "Custom billing settings updated successfully", 
+        useCustomBillingModel,
+        customWashoutRate 
+      });
+    } catch (error: any) {
+      console.error("Error updating custom billing settings:", error);
+      res.status(500).json({ message: error.message || "Failed to update custom billing settings" });
+    }
+  });
+
   // ========== ADMIN PRICING MANAGEMENT ENDPOINTS ==========
   
   // Update all location rates platform-wide (for switching between test/production pricing)

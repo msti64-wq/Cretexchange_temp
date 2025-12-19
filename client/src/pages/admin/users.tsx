@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +38,11 @@ const customPlatformFeeSchema = z.object({
   customPlatformFee: z.string().optional(),
 });
 
+const customBillingModelSchema = z.object({
+  useCustomBillingModel: z.boolean(),
+  customWashoutRate: z.string().optional(),
+});
+
 export default function AdminUsers() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -46,6 +52,7 @@ export default function AdminUsers() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activationDialogOpen, setActivationDialogOpen] = useState(false);
   const [platformFeeDialogOpen, setPlatformFeeDialogOpen] = useState(false);
+  const [customBillingDialogOpen, setCustomBillingDialogOpen] = useState(false);
   const [selectedOwner, setSelectedOwner] = useState<any>(null);
 
   const createAdminForm = useForm<z.infer<typeof createAdminSchema>>({
@@ -71,6 +78,14 @@ export default function AdminUsers() {
     resolver: zodResolver(customPlatformFeeSchema),
     defaultValues: {
       customPlatformFee: '',
+    },
+  });
+
+  const customBillingForm = useForm<z.infer<typeof customBillingModelSchema>>({
+    resolver: zodResolver(customBillingModelSchema),
+    defaultValues: {
+      useCustomBillingModel: false,
+      customWashoutRate: '',
     },
   });
 
@@ -200,6 +215,59 @@ export default function AdminUsers() {
       customPlatformFeeMutation.mutate({
         ownerId: selectedOwner.id,
         customPlatformFee: data.customPlatformFee || null,
+      });
+    }
+  };
+
+  const customBillingModelMutation = useMutation({
+    mutationFn: async (data: { ownerId: string; useCustomBillingModel: boolean; customWashoutRate: string | null }) => {
+      return await apiRequest("PUT", `/api/admin/owners/${data.ownerId}/custom-billing`, {
+        useCustomBillingModel: data.useCustomBillingModel,
+        customWashoutRate: data.customWashoutRate,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Custom Billing Settings Updated",
+        description: "The owner's billing model has been updated successfully.",
+      });
+      setCustomBillingDialogOpen(false);
+      setSelectedOwner(null);
+      customBillingForm.reset();
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update custom billing settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUpdateCustomBilling = (data: z.infer<typeof customBillingModelSchema>) => {
+    if (selectedOwner) {
+      if (data.useCustomBillingModel && !data.customWashoutRate) {
+        toast({
+          title: "Rate Required",
+          description: "Please enter a custom washout rate when enabling the custom billing model",
+          variant: "destructive",
+        });
+        return;
+      }
+      const rateValue = data.customWashoutRate ? parseFloat(data.customWashoutRate) : null;
+      if (data.customWashoutRate && (isNaN(rateValue as number) || (rateValue as number) <= 0)) {
+        toast({
+          title: "Invalid Rate",
+          description: "Please enter a valid positive number for the washout rate",
+          variant: "destructive",
+        });
+        return;
+      }
+      customBillingModelMutation.mutate({
+        ownerId: selectedOwner.id,
+        useCustomBillingModel: data.useCustomBillingModel,
+        customWashoutRate: data.customWashoutRate || null,
       });
     }
   };
@@ -656,18 +724,33 @@ export default function AdminUsers() {
                         )
                       )}
                       {user.role === 'owner' && user.roleData?.isApproved && (currentUser as any)?.role === 'super_admin' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedOwner(user.roleData);
-                            customFeeForm.setValue('customPlatformFee', user.roleData?.customPlatformFee || '');
-                            setPlatformFeeDialogOpen(true);
-                          }}
-                          data-testid={`button-set-custom-fee-${index}`}
-                        >
-                          Set Custom Fee
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedOwner(user.roleData);
+                              customFeeForm.setValue('customPlatformFee', user.roleData?.customPlatformFee || '');
+                              setPlatformFeeDialogOpen(true);
+                            }}
+                            data-testid={`button-set-custom-fee-${index}`}
+                          >
+                            Set Custom Fee
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={user.roleData?.useCustomBillingModel ? "default" : "outline"}
+                            onClick={() => {
+                              setSelectedOwner(user.roleData);
+                              customBillingForm.setValue('useCustomBillingModel', user.roleData?.useCustomBillingModel || false);
+                              customBillingForm.setValue('customWashoutRate', user.roleData?.customWashoutRate || '');
+                              setCustomBillingDialogOpen(true);
+                            }}
+                            data-testid={`button-custom-billing-${index}`}
+                          >
+                            {user.roleData?.useCustomBillingModel ? 'Lottery Mode' : 'Lottery Settings'}
+                          </Button>
+                        </>
                       )}
                       {user.role !== 'super_admin' && (
                         <Button
@@ -853,6 +936,93 @@ export default function AdminUsers() {
                   data-testid="button-submit-custom-fee"
                 >
                   {customPlatformFeeMutation.isPending ? "Updating..." : "Update Fee"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={customBillingDialogOpen} onOpenChange={setCustomBillingDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Custom Billing / Lottery Settings</DialogTitle>
+          </DialogHeader>
+          
+          <div className="mb-4 text-sm text-muted-foreground">
+            {selectedOwner && (
+              <>
+                <p className="mb-1">
+                  <span className="font-medium">Company:</span> {selectedOwner.companyName}
+                </p>
+                <p>Enable custom billing model for pilot program. When enabled, drivers receive lottery entries instead of cash payments.</p>
+              </>
+            )}
+          </div>
+
+          <Form {...customBillingForm}>
+            <form onSubmit={customBillingForm.handleSubmit(handleUpdateCustomBilling)} className="space-y-4">
+              <FormField
+                control={customBillingForm.control}
+                name="useCustomBillingModel"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Enable Lottery Model</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Drivers earn lottery entries instead of cash
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-use-custom-billing"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={customBillingForm.control}
+                name="customWashoutRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Custom Washout Rate ($)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g., 2.50"
+                        {...field}
+                        data-testid="input-custom-washout-rate"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Amount owner pays per washout (platform keeps full amount, driver gets lottery entry)
+                    </p>
+                  </FormItem>
+                )}
+              />
+              
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCustomBillingDialogOpen(false)}
+                  data-testid="button-cancel-custom-billing"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={customBillingModelMutation.isPending}
+                  data-testid="button-submit-custom-billing"
+                >
+                  {customBillingModelMutation.isPending ? "Updating..." : "Save Settings"}
                 </Button>
               </div>
             </form>
