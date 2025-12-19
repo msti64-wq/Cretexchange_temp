@@ -3683,12 +3683,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // NOTE: Activity verification moved to AFTER successful payment processing
       // to prevent partial state (verified activity but failed payment)
 
-      // FEE STRUCTURE: Flat $0.40 platform fee per washout
-      // - Driver receives full location rate
-      // - Owner pays location rate + $0.40 platform fee
-      const driverAmount = Number(activityDetails.amount); // Driver gets exact location rate
-      const platformFee = 0.40; // Platform keeps $0.40 flat fee
-      const ownerFee = driverAmount + platformFee; // Owner pays total: driver amount + platform fee
+      // ========== CHECK FOR CUSTOM BILLING MODEL (LOTTERY PROGRAM) ==========
+      // Custom billing model: Owner pays fixed custom rate, driver gets lottery entry (no payout)
+      const useCustomBillingModel = owner.useCustomBillingModel === true;
+      const customWashoutRate = owner.customWashoutRate ? parseFloat(owner.customWashoutRate) : null;
+
+      // FEE STRUCTURE: Depends on billing model
+      // Standard: Driver receives full location rate, Owner pays location rate + $0.40 platform fee
+      // Custom (Lottery): Owner pays customWashoutRate only, Driver gets lottery entry (no cash)
+      let driverAmount: number;
+      let platformFee: number;
+      let ownerFee: number;
+
+      if (useCustomBillingModel && customWashoutRate !== null) {
+        // CUSTOM BILLING MODEL: Owner pays flat custom rate, platform keeps it all
+        driverAmount = 0; // Driver gets lottery entry, not cash
+        platformFee = customWashoutRate; // Platform keeps entire custom rate
+        ownerFee = customWashoutRate; // Owner pays only the custom rate
+        console.log(`🎰 Custom billing model active for owner ${owner.id}: ownerFee=$${ownerFee}, driver gets lottery entry`);
+      } else {
+        // STANDARD BILLING MODEL: Driver gets paid, platform takes fee
+        driverAmount = Number(activityDetails.amount); // Driver gets exact location rate
+        platformFee = 0.40; // Platform keeps $0.40 flat fee
+        ownerFee = driverAmount + platformFee; // Owner pays total: driver amount + platform fee
+      }
 
       // Get owner's billing settings for business date calculation
       const billingSettings = await storage.getOwnerBillingSettings(owner.id);
