@@ -240,6 +240,9 @@ export const owners = pgTable("owners", {
   membershipActivatedAt: timestamp("membership_activated_at"), // When membership was activated
   // Custom platform fee override (per-owner pricing)
   customPlatformFee: decimal("custom_platform_fee", { precision: 10, scale: 2 }), // Custom washout fee for this owner (nullable - uses global if not set)
+  // Custom billing model with lottery (feature flag for pilot program)
+  useCustomBillingModel: boolean("use_custom_billing_model").default(false), // When true, uses lottery model instead of driver payouts
+  customWashoutRate: decimal("custom_washout_rate", { precision: 10, scale: 2 }), // Rate charged to owner per washout in custom model
   isApproved: boolean("is_approved").default(false),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
@@ -583,6 +586,20 @@ export const withdrawals = pgTable("withdrawals", {
   processedAt: timestamp("processed_at"),
 });
 
+// Driver lottery entries - tracks entries earned per washout for external raffle
+export const driverLotteryEntries = pgTable("driver_lottery_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
+  activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
+  ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
+  entriesEarned: integer("entries_earned").notNull().default(1), // Number of lottery tickets earned
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  driverIndex: index("idx_lottery_entries_driver").on(table.driverId),
+  ownerIndex: index("idx_lottery_entries_owner").on(table.ownerId),
+  activityIndex: uniqueIndex("uniq_lottery_entries_activity").on(table.activityId), // One entry per activity
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   driver: one(drivers, { fields: [users.id], references: [drivers.userId] }),
@@ -665,6 +682,12 @@ export const walletTransactionsRelations = relations(walletTransactions, ({ one 
 
 export const withdrawalsRelations = relations(withdrawals, ({ one }) => ({
   driver: one(drivers, { fields: [withdrawals.driverId], references: [drivers.id] }),
+}));
+
+export const driverLotteryEntriesRelations = relations(driverLotteryEntries, ({ one }) => ({
+  driver: one(drivers, { fields: [driverLotteryEntries.driverId], references: [drivers.id] }),
+  activity: one(washoutActivities, { fields: [driverLotteryEntries.activityId], references: [washoutActivities.id] }),
+  owner: one(owners, { fields: [driverLotteryEntries.ownerId], references: [owners.id] }),
 }));
 
 // Insert schemas
@@ -1136,6 +1159,15 @@ export const insertReconciliationDiscrepancySchema = createInsertSchema(reconcil
 
 export type ReconciliationDiscrepancy = typeof reconciliationDiscrepancies.$inferSelect;
 export type InsertReconciliationDiscrepancy = z.infer<typeof insertReconciliationDiscrepancySchema>;
+
+// Driver lottery entries schemas
+export const insertDriverLotteryEntrySchema = createInsertSchema(driverLotteryEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type DriverLotteryEntry = typeof driverLotteryEntries.$inferSelect;
+export type InsertDriverLotteryEntry = z.infer<typeof insertDriverLotteryEntrySchema>;
 
 // Date range validation schema
 export const dateRangeSchema = z.enum(['today', 'yesterday', '7days', '30days', '90days', 'all']).default('today');
