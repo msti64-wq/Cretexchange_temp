@@ -2192,6 +2192,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user data for profile completion checks
       const user = await storage.getUser(userId);
+
+      // Get driver lottery entry count (defensive fallback to 0 if method unavailable)
+      let lotteryEntryCount = 0;
+      try {
+        lotteryEntryCount = await storage.getDriverLotteryEntryCount(driver.id) || 0;
+      } catch (e) {
+        console.log('Lottery count unavailable:', e);
+      }
       
       // Combine user data with driver-specific data for profile completion checks
       const userWithRoleData = {
@@ -2222,6 +2230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         weeklyStats: weekStats,
         recentActivities,
         user: userWithRoleData,
+        lotteryEntryCount,
       });
     } catch (error) {
       console.error("Error fetching driver dashboard:", error);

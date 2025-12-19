@@ -8,7 +8,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
-import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon } from "lucide-react";
+import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function DriverDashboard() {
@@ -43,6 +43,7 @@ export default function DriverDashboard() {
   const dailyStats = (dashboardData as any)?.dailyStats || null;
   const weeklyStats = (dashboardData as any)?.weeklyStats || null;
   const recentActivities = (dashboardData as any)?.recentActivities || null;
+  const lotteryEntryCount = (dashboardData as any)?.lotteryEntryCount || 0;
 
   // Calculate rejected washouts and their total amount
   const rejectedWashouts = recentActivities?.filter((activity: any) => 
@@ -155,6 +156,31 @@ export default function DriverDashboard() {
             </div>
           </div>
         </StatCard>
+
+        {/* Lottery Entries Card - only show if driver has entries */}
+        {lotteryEntryCount > 0 && (
+          <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
+                    <Ticket className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Lottery Entries</h3>
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400">Earned from washouts at participating locations</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-300" data-testid="text-lottery-entries">
+                    {lotteryEntryCount}
+                  </div>
+                  <div className="text-xs text-yellow-600 dark:text-yellow-400">total entries</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Find Location Button */}
         <Button 
