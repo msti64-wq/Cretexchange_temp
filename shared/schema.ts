@@ -593,11 +593,15 @@ export const driverLotteryEntries = pgTable("driver_lottery_entries", {
   activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
   ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
   entriesEarned: integer("entries_earned").notNull().default(1), // Number of lottery tickets earned
+  lotteryMonth: integer("lottery_month").notNull(), // 1-12 for the month
+  lotteryYear: integer("lottery_year").notNull(), // Year (e.g., 2025)
+  isArchived: boolean("is_archived").default(false), // True when month is closed
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   driverIndex: index("idx_lottery_entries_driver").on(table.driverId),
   ownerIndex: index("idx_lottery_entries_owner").on(table.ownerId),
   activityIndex: uniqueIndex("uniq_lottery_entries_activity").on(table.activityId), // One entry per activity
+  monthYearIndex: index("idx_lottery_entries_month_year").on(table.lotteryMonth, table.lotteryYear),
 }));
 
 // Relations

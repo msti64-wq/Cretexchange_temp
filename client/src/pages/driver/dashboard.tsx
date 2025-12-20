@@ -157,7 +157,7 @@ export default function DriverDashboard() {
           </div>
         </StatCard>
 
-        {/* Lottery Entries Card - only show if driver has entries */}
+        {/* Lottery Entries Card - only show if driver has entries this month */}
         {lotteryEntryCount > 0 && (
           <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
             <CardContent className="p-4">
@@ -167,15 +167,17 @@ export default function DriverDashboard() {
                     <Ticket className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Lottery Entries</h3>
-                    <p className="text-sm text-yellow-600 dark:text-yellow-400">Earned from washouts at participating locations</p>
+                    <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Monthly Lottery</h3>
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                      Drawing closes end of {new Date().toLocaleDateString('en-US', { month: 'long' })}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-300" data-testid="text-lottery-entries">
                     {lotteryEntryCount}
                   </div>
-                  <div className="text-xs text-yellow-600 dark:text-yellow-400">total entries</div>
+                  <div className="text-xs text-yellow-600 dark:text-yellow-400">entries this month</div>
                 </div>
               </div>
             </CardContent>

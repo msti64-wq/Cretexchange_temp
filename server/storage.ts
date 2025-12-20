@@ -376,8 +376,10 @@ export interface IStorage {
   getDriverLotteryEntries(driverId: string): Promise<any[]>;
   getDriverLotteryEntryCount(driverId: string): Promise<number>;
   getAllDriverLotteryEntries(startDate?: Date, endDate?: Date): Promise<any[]>;
-  getDriverLotteryEntryTotals(): Promise<{ driverId: string; driverName: string; totalEntries: number }[]>;
+  getDriverLotteryEntryTotals(month?: number, year?: number): Promise<{ driverId: string; driverName: string; totalEntries: number }[]>;
   getDriverLotteryEntryByActivity(activityId: string): Promise<any | undefined>;
+  archiveLotteryMonth(month: number, year: number): Promise<number>;
+  getLotteryMonths(): Promise<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4704,6 +4706,7 @@ export class DatabaseStorage implements IStorage {
 
   // Driver lottery entries operations
   async createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<DriverLotteryEntry> {
+    const now = new Date();
     const [newEntry] = await db
       .insert(driverLotteryEntries)
       .values({
@@ -4711,6 +4714,9 @@ export class DatabaseStorage implements IStorage {
         activityId: entry.activityId,
         ownerId: entry.ownerId,
         entriesEarned: entry.entriesEarned ?? 1,
+        lotteryMonth: now.getMonth() + 1, // 1-12
+        lotteryYear: now.getFullYear(),
+        isArchived: false,
       })
       .returning();
     return newEntry;
@@ -4725,13 +4731,54 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDriverLotteryEntryCount(driverId: string): Promise<number> {
+    // Only count current month's non-archived entries
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    
     const [result] = await db
       .select({
         totalEntries: sql<number>`COALESCE(SUM(${driverLotteryEntries.entriesEarned}), 0)::integer`,
       })
       .from(driverLotteryEntries)
-      .where(eq(driverLotteryEntries.driverId, driverId));
+      .where(and(
+        eq(driverLotteryEntries.driverId, driverId),
+        eq(driverLotteryEntries.lotteryMonth, currentMonth),
+        eq(driverLotteryEntries.lotteryYear, currentYear),
+        eq(driverLotteryEntries.isArchived, false)
+      ));
     return result?.totalEntries ?? 0;
+  }
+
+  async archiveLotteryMonth(month: number, year: number): Promise<number> {
+    const result = await db
+      .update(driverLotteryEntries)
+      .set({ isArchived: true })
+      .where(and(
+        eq(driverLotteryEntries.lotteryMonth, month),
+        eq(driverLotteryEntries.lotteryYear, year),
+        eq(driverLotteryEntries.isArchived, false)
+      ));
+    return result.rowCount ?? 0;
+  }
+
+  async getLotteryMonths(): Promise<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]> {
+    const results = await db
+      .select({
+        month: driverLotteryEntries.lotteryMonth,
+        year: driverLotteryEntries.lotteryYear,
+        isArchived: driverLotteryEntries.isArchived,
+        totalEntries: sql<number>`COALESCE(SUM(${driverLotteryEntries.entriesEarned}), 0)::integer`,
+      })
+      .from(driverLotteryEntries)
+      .groupBy(driverLotteryEntries.lotteryMonth, driverLotteryEntries.lotteryYear, driverLotteryEntries.isArchived)
+      .orderBy(desc(driverLotteryEntries.lotteryYear), desc(driverLotteryEntries.lotteryMonth));
+    return results.map(r => ({
+      month: r.month,
+      year: r.year,
+      isArchived: r.isArchived ?? false,
+      totalEntries: r.totalEntries,
+    }));
   }
 
   async getAllDriverLotteryEntries(startDate?: Date, endDate?: Date): Promise<any[]> {
@@ -4768,7 +4815,13 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getDriverLotteryEntryTotals(): Promise<{ driverId: string; driverName: string; totalEntries: number }[]> {
+  async getDriverLotteryEntryTotals(month?: number, year?: number): Promise<{ driverId: string; driverName: string; totalEntries: number }[]> {
+    const conditions = [];
+    if (month !== undefined && year !== undefined) {
+      conditions.push(eq(driverLotteryEntries.lotteryMonth, month));
+      conditions.push(eq(driverLotteryEntries.lotteryYear, year));
+    }
+
     const results = await db
       .select({
         driverId: driverLotteryEntries.driverId,
@@ -4779,6 +4832,7 @@ export class DatabaseStorage implements IStorage {
       .from(driverLotteryEntries)
       .innerJoin(drivers, eq(driverLotteryEntries.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .groupBy(driverLotteryEntries.driverId, users.firstName, users.lastName)
       .orderBy(desc(sql`SUM(${driverLotteryEntries.entriesEarned})`));
 

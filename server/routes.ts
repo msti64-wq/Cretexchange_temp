@@ -8301,11 +8301,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const totals = await storage.getDriverLotteryEntryTotals();
+      const { month, year } = req.query;
+      const monthNum = month ? parseInt(month as string) : undefined;
+      const yearNum = year ? parseInt(year as string) : undefined;
+
+      const totals = await storage.getDriverLotteryEntryTotals(monthNum, yearNum);
       res.json(totals);
     } catch (error: any) {
       console.error("Error fetching lottery totals:", error);
       res.status(500).json({ message: error.message || "Failed to fetch lottery totals" });
+    }
+  });
+
+  // Get all lottery months with status (admin/super admin)
+  app.get('/api/admin/lottery/months', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const months = await storage.getLotteryMonths();
+      res.json(months);
+    } catch (error: any) {
+      console.error("Error fetching lottery months:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch lottery months" });
+    }
+  });
+
+  // Archive/close a lottery month (super admin only)
+  app.post('/api/admin/lottery/archive', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const { month, year } = req.body;
+      if (!month || !year) {
+        return res.status(400).json({ message: "Month and year are required" });
+      }
+
+      const archivedCount = await storage.archiveLotteryMonth(month, year);
+      console.log(`🎰 Lottery month ${month}/${year} archived by ${user.username}: ${archivedCount} entries`);
+      
+      res.json({ 
+        message: `Successfully archived ${archivedCount} entries for ${month}/${year}`,
+        archivedCount,
+        month,
+        year
+      });
+    } catch (error: any) {
+      console.error("Error archiving lottery month:", error);
+      res.status(500).json({ message: error.message || "Failed to archive lottery month" });
     }
   });
 
