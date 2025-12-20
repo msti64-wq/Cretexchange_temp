@@ -8370,7 +8370,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Driver ID and message are required" });
       }
 
-      const driver = await storage.getDriver(driverId);
+      if (message.length > 2000) {
+        return res.status(400).json({ message: "Message cannot exceed 2000 characters" });
+      }
+
+      if (prize && prize.length > 200) {
+        return res.status(400).json({ message: "Prize description cannot exceed 200 characters" });
+      }
+
+      const driver = await storage.getDriverById(driverId);
       if (!driver) {
         return res.status(404).json({ message: "Driver not found" });
       }
