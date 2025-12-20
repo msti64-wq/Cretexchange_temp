@@ -123,6 +123,10 @@ export default function AdminLottery() {
   const selectedMonthData = months?.find(m => m.month === selectedMonth && m.year === selectedYear);
   const isArchived = selectedMonthData?.isArchived ?? false;
 
+  const availableYears = months?.length 
+    ? [...new Set(months.map(m => m.year)), currentYear].sort((a, b) => b - a)
+    : [currentYear];
+
   const endOfMonth = new Date(selectedYear, selectedMonth, 0);
   const daysUntilClose = isCurrentMonth ? Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
@@ -178,7 +182,7 @@ export default function AdminLottery() {
                   <SelectValue placeholder="Year" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[currentYear - 1, currentYear, currentYear + 1].map(y => (
+                  {availableYears.map(y => (
                     <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                   ))}
                 </SelectContent>
