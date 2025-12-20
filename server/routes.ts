@@ -8357,6 +8357,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send lottery winner notification to a driver (admin/super admin)
+  app.post('/api/admin/lottery/notify-winner', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { driverId, message, month, year, prize } = req.body;
+      if (!driverId || !message) {
+        return res.status(400).json({ message: "Driver ID and message are required" });
+      }
+
+      const driver = await storage.getDriver(driverId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driverUser = await storage.getUser(driver.userId);
+      if (!driverUser) {
+        return res.status(404).json({ message: "Driver user not found" });
+      }
+
+      const monthName = month ? new Date(2000, month - 1, 1).toLocaleDateString('en-US', { month: 'long' }) : '';
+      const title = prize 
+        ? `Congratulations! You won ${prize} in the ${monthName} ${year || ''} lottery!`
+        : `Lottery Winner Notification`;
+
+      await storage.createNotification({
+        userId: driver.userId,
+        title,
+        message,
+        type: 'lottery_winner',
+        data: { month, year, prize, sentBy: user.username },
+      });
+
+      console.log(`🎉 Lottery winner notification sent to driver ${driverId} by ${user.username}`);
+      
+      res.json({ 
+        message: `Winner notification sent to ${driverUser.firstName} ${driverUser.lastName}`,
+        driverName: `${driverUser.firstName} ${driverUser.lastName}`,
+      });
+    } catch (error: any) {
+      console.error("Error sending lottery winner notification:", error);
+      res.status(500).json({ message: error.message || "Failed to send notification" });
+    }
+  });
+
   // ========== ADMIN PRICING MANAGEMENT ENDPOINTS ==========
   
   // Update all location rates platform-wide (for switching between test/production pricing)

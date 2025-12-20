@@ -3,6 +3,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -19,6 +22,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -29,9 +40,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Ticket, Download, Calendar, Trophy, Archive, Clock } from "lucide-react";
+import { Ticket, Download, Calendar, Trophy, Archive, Clock, Send, Gift } from "lucide-react";
 import { MobileNav } from "@/components/MobileNav";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -51,12 +61,17 @@ export default function AdminLottery() {
   
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  
+  const [notifyDialogOpen, setNotifyDialogOpen] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState<{ driverId: string; driverName: string } | null>(null);
+  const [prize, setPrize] = useState("");
+  const [winnerMessage, setWinnerMessage] = useState("");
 
   const { data: months, isLoading: monthsLoading } = useQuery<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/months'],
   });
 
-  const { data: totals, isLoading: totalsLoading, refetch: refetchTotals } = useQuery<{ driverId: string; driverName: string; totalEntries: number }[]>({
+  const { data: totals, isLoading: totalsLoading } = useQuery<{ driverId: string; driverName: string; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/totals', selectedMonth, selectedYear],
     queryFn: async () => {
       const response = await fetch(`/api/admin/lottery/totals?month=${selectedMonth}&year=${selectedYear}`, {
@@ -92,6 +107,50 @@ export default function AdminLottery() {
     },
   });
 
+  const notifyMutation = useMutation({
+    mutationFn: async (payload: { driverId: string; message: string; month: number; year: number; prize: string }) => {
+      return await apiRequest('/api/admin/lottery/notify-winner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Winner Notified!",
+        description: data.message,
+      });
+      setNotifyDialogOpen(false);
+      setSelectedDriver(null);
+      setPrize("");
+      setWinnerMessage("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Notification Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const openNotifyDialog = (driver: { driverId: string; driverName: string }) => {
+    setSelectedDriver(driver);
+    setWinnerMessage(`Congratulations ${driver.driverName}! You have been selected as a winner in our ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} lottery drawing. Please contact us to claim your prize.`);
+    setNotifyDialogOpen(true);
+  };
+
+  const handleSendNotification = () => {
+    if (!selectedDriver || !winnerMessage.trim()) return;
+    notifyMutation.mutate({
+      driverId: selectedDriver.driverId,
+      message: winnerMessage,
+      month: selectedMonth,
+      year: selectedYear,
+      prize: prize,
+    });
+  };
+
   const exportToCSV = () => {
     if (!totals?.length) return;
     const monthName = MONTH_NAMES[selectedMonth - 1];
@@ -124,7 +183,7 @@ export default function AdminLottery() {
   const isArchived = selectedMonthData?.isArchived ?? false;
 
   const availableYears = months?.length 
-    ? [...new Set(months.map(m => m.year)), currentYear].sort((a, b) => b - a)
+    ? Array.from(new Set([...months.map(m => m.year), currentYear])).sort((a, b) => b - a)
     : [currentYear];
 
   const endOfMonth = new Date(selectedYear, selectedMonth, 0);
@@ -281,6 +340,7 @@ export default function AdminLottery() {
                     <TableHead>Rank</TableHead>
                     <TableHead>Driver</TableHead>
                     <TableHead className="text-right">Entries</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -299,6 +359,17 @@ export default function AdminLottery() {
                       <TableCell className="text-right">
                         <Badge variant="outline">{t.totalEntries}</Badge>
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openNotifyDialog(t)}
+                          data-testid={`button-notify-${index}`}
+                        >
+                          <Trophy className="w-4 h-4 mr-1" />
+                          Notify Winner
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -315,6 +386,65 @@ export default function AdminLottery() {
           </CardContent>
         </Card>
       </main>
+
+      <Dialog open={notifyDialogOpen} onOpenChange={setNotifyDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-yellow-500" />
+              Notify Lottery Winner
+            </DialogTitle>
+            <DialogDescription>
+              Send a notification to {selectedDriver?.driverName} about their lottery win.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="prize">Prize (optional)</Label>
+              <Input
+                id="prize"
+                placeholder="e.g., $500 Cash, Gift Card, etc."
+                value={prize}
+                onChange={(e) => setPrize(e.target.value)}
+                data-testid="input-prize"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="message">Message to Driver</Label>
+              <Textarea
+                id="message"
+                placeholder="Compose your winner notification message..."
+                value={winnerMessage}
+                onChange={(e) => setWinnerMessage(e.target.value)}
+                rows={5}
+                data-testid="input-winner-message"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNotifyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSendNotification}
+              disabled={!winnerMessage.trim() || notifyMutation.isPending}
+              data-testid="button-send-notification"
+            >
+              {notifyMutation.isPending ? (
+                'Sending...'
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Notification
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <MobileNav role={user?.role} />
     </div>
