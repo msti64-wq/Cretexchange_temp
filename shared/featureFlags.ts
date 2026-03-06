@@ -24,10 +24,12 @@ export const FEATURE_FLAGS = {
   
   // Stripe Issuing - Driver debit cards (requires Issuing approval)
   ISSUING_ENABLED: 'issuing_enabled',
-  
-  // Example: Beta features
-  // ADVANCED_ANALYTICS: 'advanced_analytics',
-  // BULK_OPERATIONS: 'bulk_operations',
+
+  // Trial Mode: Waive credit card / payment method requirement for owners
+  WAIVE_OWNER_PAYMENT: 'waive_owner_payment',
+
+  // Trial Mode: Waive bank account / Stripe Connect setup requirement for drivers
+  WAIVE_DRIVER_PAYMENT: 'waive_driver_payment',
 } as const;
 
 export type FeatureFlagKey = typeof FEATURE_FLAGS[keyof typeof FEATURE_FLAGS];
@@ -77,5 +79,17 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
     description: 'Enable Stripe Issuing for driver debit cards. When disabled, drivers receive payments via direct Connect transfers to their bank accounts. Monthly cost: Included in Treasury pricing. Enable after validating driver demand for debit cards.',
     enabled: false, // Disabled by default - requires Stripe approval
     allowedRoles: [], // Available to all roles when enabled
+  },
+  {
+    key: FEATURE_FLAGS.WAIVE_OWNER_PAYMENT,
+    description: 'TRIAL MODE: Waive the credit card / payment method requirement for location owners. Owners can create and manage listings without entering a payment method. Disable this before enabling monthly listing fees and billing.',
+    enabled: false, // Disabled by default — enable only during trial period
+    allowedRoles: [], // All roles can read this flag; it is a global platform setting controlled by super admin
+  },
+  {
+    key: FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT,
+    description: 'TRIAL MODE: Waive the bank account / Stripe Connect setup requirement for drivers. Drivers can use the platform without connecting a bank account. Disable this before enabling driver payouts.',
+    enabled: false, // Disabled by default — enable only during trial period
+    allowedRoles: [], // All roles can read this flag; it is a global platform setting controlled by super admin
   },
 ];

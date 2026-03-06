@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
-import { Settings, Database, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { Settings, Database, AlertCircle, CheckCircle2, Loader2, FlaskConical } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
+import { FEATURE_FLAGS } from "@shared/featureFlags";
 
 export default function AdminSettings() {
   const { toast } = useToast();
@@ -21,6 +23,34 @@ export default function AdminSettings() {
   const [testAccountId, setTestAccountId] = useState<string>("");
   const [ipOverride, setIpOverride] = useState<string>("");
   const [migrationIpOverride, setMigrationIpOverride] = useState<string>("");
+
+  // Trial mode: fetch current state of the two waive flags from the admin flags list
+  const { data: allFlags } = useQuery<any[]>({
+    queryKey: ['/api/feature-flags'],
+  });
+
+  const waiveOwnerFlag = allFlags?.find((f: any) => f.flagKey === FEATURE_FLAGS.WAIVE_OWNER_PAYMENT);
+  const waiveDriverFlag = allFlags?.find((f: any) => f.flagKey === FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT);
+  const waiveOwnerEnabled = waiveOwnerFlag?.enabled ?? false;
+  const waiveDriverEnabled = waiveDriverFlag?.enabled ?? false;
+  const trialModeActive = waiveOwnerEnabled || waiveDriverEnabled;
+
+  const toggleFlagMutation = useMutation({
+    mutationFn: async (flagKey: string) => {
+      const response = await apiRequest(`/api/feature-flags/${flagKey}/toggle`, { method: "PUT" });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/feature-flags'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Toggle Failed",
+        description: error.message || "Failed to update setting",
+        variant: "destructive",
+      });
+    },
+  });
 
   const backfillMutation = useMutation({
     mutationFn: async () => {
@@ -207,6 +237,82 @@ export default function AdminSettings() {
 
       {/* Main Content */}
       <div className="container mx-auto p-4 space-y-6 max-w-4xl">
+
+        {/* Trial Mode Settings */}
+        <Card className={trialModeActive ? "border-amber-400 dark:border-amber-600" : ""}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FlaskConical className="w-5 h-5 text-amber-500" />
+              Trial Mode Settings
+            </CardTitle>
+            <CardDescription>
+              Waive payment setup requirements for the live trial period. Disable both toggles before enabling billing and payouts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Active warning banner */}
+            {trialModeActive && (
+              <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-amber-800 dark:text-amber-200">Trial Mode is Active</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
+                    Payment requirements are currently waived. Remember to disable these before enabling billing and payouts for production.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Waive Owner Payment */}
+            <div className="flex items-start justify-between gap-4 border rounded-lg p-4">
+              <div className="flex-1 space-y-1">
+                <Label className="text-base font-semibold">Waive Owner Payment Requirement</Label>
+                <p className="text-sm text-muted-foreground">
+                  Allows location owners to create and manage listings without entering a credit card. Enable during trial to onboard owners before billing goes live.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Status: {waiveOwnerEnabled
+                    ? <span className="font-medium text-amber-600">Waived (billing disabled)</span>
+                    : <span className="font-medium text-green-600">Normal (billing required)</span>
+                  }
+                </p>
+              </div>
+              <Switch
+                checked={waiveOwnerEnabled}
+                onCheckedChange={() => toggleFlagMutation.mutate(FEATURE_FLAGS.WAIVE_OWNER_PAYMENT)}
+                disabled={toggleFlagMutation.isPending}
+                aria-label="Toggle owner payment waiver"
+              />
+            </div>
+
+            {/* Waive Driver Payment */}
+            <div className="flex items-start justify-between gap-4 border rounded-lg p-4">
+              <div className="flex-1 space-y-1">
+                <Label className="text-base font-semibold">Waive Driver Bank Account Requirement</Label>
+                <p className="text-sm text-muted-foreground">
+                  Allows drivers to use the platform without connecting a bank account. Enable during trial to onboard drivers before payout processing goes live.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Status: {waiveDriverEnabled
+                    ? <span className="font-medium text-amber-600">Waived (payouts disabled)</span>
+                    : <span className="font-medium text-green-600">Normal (bank account required)</span>
+                  }
+                </p>
+              </div>
+              <Switch
+                checked={waiveDriverEnabled}
+                onCheckedChange={() => toggleFlagMutation.mutate(FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT)}
+                disabled={toggleFlagMutation.isPending}
+                aria-label="Toggle driver payment waiver"
+              />
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Note: If these flags don't appear yet, go to Feature Flags and click "Seed Predefined Flags" to initialize them first.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* System Maintenance Section */}
         <Card>
           <CardHeader>

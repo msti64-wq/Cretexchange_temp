@@ -112,6 +112,8 @@ export default function OwnerLocations() {
     queryKey: ['/api/payments/subscription-status'],
   });
 
+  const { enabled: waiveOwnerPayment } = useFeatureFlag(FEATURE_FLAGS.WAIVE_OWNER_PAYMENT);
+
   const addLocationMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("POST", "/api/owners/locations", data);
@@ -418,16 +420,15 @@ export default function OwnerLocations() {
                 size="sm" 
                 data-testid="button-add-location" 
                 className="bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
-                disabled={(subscriptionData as any)?.status !== 'active'}
-                title={(subscriptionData as any)?.status === 'past_due' 
+                disabled={!waiveOwnerPayment && (subscriptionData as any)?.status !== 'active'}
+                title={!waiveOwnerPayment && (subscriptionData as any)?.status === 'past_due' 
                   ? "Feature restricted during grace period - payment required"
-                  : (subscriptionData as any)?.status !== 'active' 
+                  : !waiveOwnerPayment && (subscriptionData as any)?.status !== 'active' 
                   ? `Active subscription required (Current: ${(subscriptionData as any)?.status || 'none'}) - Try refreshing page` 
                   : ""}
                 onClick={() => {
-                  console.log('Subscription status:', subscriptionData);
-                  if ((subscriptionData as any)?.status !== 'active') {
-                    // Force refresh subscription data
+                  console.log('Subscription status:', subscriptionData, 'Trial waive:', waiveOwnerPayment);
+                  if (!waiveOwnerPayment && (subscriptionData as any)?.status !== 'active') {
                     queryClient.invalidateQueries({ queryKey: ['/api/payments/subscription-status'] });
                   }
                 }}
@@ -946,8 +947,25 @@ export default function OwnerLocations() {
       </header>
 
       <main className="p-4 space-y-4">
+        {/* Trial Mode Banner */}
+        {waiveOwnerPayment && (
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-xs font-bold">T</span>
+              </div>
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-200">Trial Mode Active</p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
+                  Billing is currently waived. You can add and manage locations without a payment method during this trial period.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Subscription Required Notice */}
-        {subscriptionData && (subscriptionData as any).status !== 'active' && (
+        {!waiveOwnerPayment && subscriptionData && (subscriptionData as any).status !== 'active' && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">

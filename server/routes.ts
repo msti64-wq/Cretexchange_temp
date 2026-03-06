@@ -11758,7 +11758,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
-      const flag = await storage.updateFeatureFlag(flagKey, enabled);
+      // Auto-create the flag if it doesn't exist yet (upsert behavior)
+      let existingFlag = await storage.getFeatureFlag(flagKey);
+      if (!existingFlag) {
+        const { FEATURE_FLAG_DEFINITIONS } = await import('../shared/featureFlags');
+        const definition = FEATURE_FLAG_DEFINITIONS.find(d => d.key === flagKey);
+        existingFlag = await storage.createFeatureFlag({
+          flagKey,
+          enabled: false,
+          description: definition?.description || flagKey,
+          allowedRoles: definition?.allowedRoles || [],
+        });
+      }
+
+      // Toggle: if enabled is explicitly provided use it, otherwise flip the current value
+      const newEnabled = typeof enabled === 'boolean' ? enabled : !existingFlag.enabled;
+      const flag = await storage.updateFeatureFlag(flagKey, newEnabled);
       res.json(flag);
     } catch (error) {
       console.error('❌ Error toggling feature flag:', error);

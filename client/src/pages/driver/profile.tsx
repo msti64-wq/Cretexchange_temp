@@ -17,6 +17,8 @@ import { User, Truck, CreditCard, Save, FileText, Eye, Smartphone, CheckCircle2,
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import StripeVerificationStatus from "@/components/StripeVerificationStatus";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { FEATURE_FLAGS } from "@shared/featureFlags";
 
 export default function DriverProfile() {
   const { toast } = useToast();
@@ -32,6 +34,8 @@ export default function DriverProfile() {
   const { data: termsStatus } = useQuery<{hasAgreed: boolean; agreedAt: string | null}>({
     queryKey: ['/api/drivers/terms-status'],
   });
+
+  const { enabled: waiveDriverPayment } = useFeatureFlag(FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -500,6 +504,21 @@ export default function DriverProfile() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Trial mode notice */}
+              {waiveDriverPayment && (
+                <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-lg">
+                  <div className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">T</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-amber-800 dark:text-amber-200">Trial Mode Active</p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
+                      Bank account setup is optional during the trial. You can connect it now or set it up later before payouts go live.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {user?.roleData?.hasAccountNumber && user?.roleData?.hasRoutingNumber ? (
                 <>
                   <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
@@ -519,6 +538,27 @@ export default function DriverProfile() {
                       <strong>Ready to Receive Payments:</strong> Washout payments will be transferred to your bank account automatically after each job. Visit your Wallet page to view payment history.
                     </p>
                   </div>
+                </>
+              ) : waiveDriverPayment ? (
+                <>
+                  <div className="flex items-center gap-3 p-4 bg-muted/50 border rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">
+                        Bank Account Not Connected
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Optional during trial — connect anytime to be ready when payouts go live
+                      </p>
+                    </div>
+                  </div>
+
+                  <BankAccountConnect
+                    userType="driver"
+                    onSuccess={() => refetch()}
+                    buttonText="Connect Bank Account (Optional)"
+                    className="w-full"
+                  />
                 </>
               ) : (
                 <>
