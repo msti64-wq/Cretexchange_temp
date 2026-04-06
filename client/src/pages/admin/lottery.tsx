@@ -41,7 +41,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Ticket, Download, Calendar, Trophy, Archive, Clock, Send, Gift } from "lucide-react";
+import { Ticket, Download, Calendar, Trophy, Archive, Clock, Send, Gift, ChevronDown, ChevronUp, Building2, List } from "lucide-react";
 import { MobileNav } from "@/components/MobileNav";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -66,6 +66,7 @@ export default function AdminLottery() {
   const [selectedDriver, setSelectedDriver] = useState<{ driverId: string; driverName: string; payoutPreference: string | null; payoutPreferenceNote: string | null } | null>(null);
   const [prize, setPrize] = useState("");
   const [winnerMessage, setWinnerMessage] = useState("");
+  const [showIndividualEntries, setShowIndividualEntries] = useState(false);
 
   const { data: months, isLoading: monthsLoading } = useQuery<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/months'],
@@ -80,6 +81,20 @@ export default function AdminLottery() {
       if (!response.ok) throw new Error('Failed to fetch totals');
       return response.json();
     },
+  });
+
+  const { data: individualEntries, isLoading: entriesLoading } = useQuery<any[]>({
+    queryKey: ['/api/admin/lottery/entries', selectedMonth, selectedYear],
+    queryFn: async () => {
+      const start = new Date(selectedYear, selectedMonth - 1, 1).toISOString();
+      const end = new Date(selectedYear, selectedMonth, 0, 23, 59, 59).toISOString();
+      const response = await fetch(`/api/admin/lottery/entries?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch entries');
+      return response.json();
+    },
+    enabled: showIndividualEntries,
   });
 
   const archiveMutation = useMutation({
@@ -396,6 +411,82 @@ export default function AdminLottery() {
             )}
           </CardContent>
         </Card>
+
+        {/* Individual Entry Ledger */}
+        {totals && totals.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <List className="w-4 h-4" />
+                  Individual Entries
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowIndividualEntries(!showIndividualEntries)}
+                  className="text-xs"
+                >
+                  {showIndividualEntries ? (
+                    <><ChevronUp className="w-4 h-4 mr-1" /> Hide</>
+                  ) : (
+                    <><ChevronDown className="w-4 h-4 mr-1" /> Show all entries</>
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+
+            {showIndividualEntries && (
+              <CardContent className="pt-0">
+                {entriesLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-10 bg-muted rounded animate-pulse" />
+                    ))}
+                  </div>
+                ) : individualEntries && individualEntries.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Driver</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Entries</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {individualEntries.map((entry: any) => (
+                        <TableRow key={entry.id}>
+                          <TableCell className="font-medium">
+                            {entry.driver?.user?.username || entry.driver?.user?.firstName || "Driver"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            <div className="flex items-center gap-1">
+                              <Building2 className="w-3 h-3" />
+                              {entry.activity?.locationId
+                                ? entry.owner?.companyName || "Location"
+                                : entry.owner?.companyName || "Location"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {entry.activity?.checkInTime
+                              ? new Date(entry.activity.checkInTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                              : new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant="outline">+{entry.entriesEarned}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">No individual entries found for this period</p>
+                )}
+              </CardContent>
+            )}
+          </Card>
+        )}
       </main>
 
       <Dialog open={notifyDialogOpen} onOpenChange={setNotifyDialogOpen}>

@@ -8,7 +8,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
-import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket } from "lucide-react";
+import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function DriverDashboard() {
@@ -16,6 +16,11 @@ export default function DriverDashboard() {
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
+  const [showLotteryEntries, setShowLotteryEntries] = useState(false);
+
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
 
   const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: ['/api/drivers/dashboard'],
@@ -25,6 +30,16 @@ export default function DriverDashboard() {
   const { data: paymentHistory } = useQuery({
     queryKey: ['/api/payments/driver-history'],
     refetchInterval: 60000, // Refresh every minute
+  });
+
+  const { data: lotteryEntries, isLoading: lotteryEntriesLoading } = useQuery<any[]>({
+    queryKey: ['/api/drivers/lottery-entries', currentMonth, currentYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/drivers/lottery-entries?month=${currentMonth}&year=${currentYear}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch entries');
+      return res.json();
+    },
+    enabled: showLotteryEntries,
   });
 
   if (isLoading) {
@@ -160,7 +175,7 @@ export default function DriverDashboard() {
         {/* Lottery Entries Card - only show if driver has entries this month */}
         {lotteryEntryCount > 0 && (
           <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
-            <CardContent className="p-4">
+            <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
@@ -180,6 +195,58 @@ export default function DriverDashboard() {
                   <div className="text-xs text-yellow-600 dark:text-yellow-400">entries this month</div>
                 </div>
               </div>
+
+              {/* Toggle to see individual entries */}
+              <button
+                onClick={() => setShowLotteryEntries(!showLotteryEntries)}
+                className="flex items-center gap-1 text-xs font-medium text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 transition-colors w-full"
+              >
+                {showLotteryEntries ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {showLotteryEntries ? "Hide" : "View"} my entries
+              </button>
+
+              {showLotteryEntries && (
+                <div className="border-t border-yellow-200 dark:border-yellow-700 pt-3 space-y-2">
+                  {lotteryEntriesLoading ? (
+                    <div className="space-y-2">
+                      {[1, 2].map(i => (
+                        <div key={i} className="h-10 bg-yellow-100 dark:bg-yellow-800/30 rounded animate-pulse" />
+                      ))}
+                    </div>
+                  ) : lotteryEntries && lotteryEntries.length > 0 ? (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {lotteryEntries.map((entry: any) => (
+                        <div
+                          key={entry.id}
+                          className="flex items-center justify-between bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Building2 className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 truncate">
+                                {entry.locationName || entry.ownerCompany || "Location"}
+                              </p>
+                              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                                {entry.activityDate
+                                  ? new Date(entry.activityDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                  : new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Ticket className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
+                            <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">
+                              +{entry.entriesEarned}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400 text-center py-2">No entries found</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

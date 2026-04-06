@@ -374,6 +374,7 @@ export interface IStorage {
   // Driver lottery entries operations
   createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<any>;
   getDriverLotteryEntries(driverId: string): Promise<any[]>;
+  getDriverLotteryEntriesWithDetails(driverId: string, month?: number, year?: number): Promise<any[]>;
   getDriverLotteryEntryCount(driverId: string): Promise<number>;
   getAllDriverLotteryEntries(startDate?: Date, endDate?: Date): Promise<any[]>;
   getDriverLotteryEntryTotals(month?: number, year?: number): Promise<{ driverId: string; driverName: string; totalEntries: number; payoutPreference: string | null; payoutPreferenceNote: string | null }[]>;
@@ -4728,6 +4729,34 @@ export class DatabaseStorage implements IStorage {
       .from(driverLotteryEntries)
       .where(eq(driverLotteryEntries.driverId, driverId))
       .orderBy(desc(driverLotteryEntries.createdAt));
+  }
+
+  async getDriverLotteryEntriesWithDetails(driverId: string, month?: number, year?: number): Promise<any[]> {
+    const conditions: any[] = [eq(driverLotteryEntries.driverId, driverId)];
+    if (month) conditions.push(eq(driverLotteryEntries.lotteryMonth, month));
+    if (year) conditions.push(eq(driverLotteryEntries.lotteryYear, year));
+
+    const results = await db
+      .select({
+        id: driverLotteryEntries.id,
+        entriesEarned: driverLotteryEntries.entriesEarned,
+        lotteryMonth: driverLotteryEntries.lotteryMonth,
+        lotteryYear: driverLotteryEntries.lotteryYear,
+        isArchived: driverLotteryEntries.isArchived,
+        createdAt: driverLotteryEntries.createdAt,
+        ownerCompany: owners.companyName,
+        locationName: washoutLocations.name,
+        locationAddress: washoutLocations.address,
+        activityDate: washoutActivities.checkInTime,
+      })
+      .from(driverLotteryEntries)
+      .innerJoin(owners, eq(driverLotteryEntries.ownerId, owners.id))
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
+      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .where(and(...conditions))
+      .orderBy(desc(driverLotteryEntries.createdAt));
+
+    return results;
   }
 
   async getDriverLotteryEntryCount(driverId: string): Promise<number> {

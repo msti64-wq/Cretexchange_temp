@@ -8274,6 +8274,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== DRIVER LOTTERY ENTRIES ENDPOINTS ==========
+
+  // Get this driver's individual lottery entries (with location/owner details)
+  app.get('/api/drivers/lottery-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+      const driver = await storage.getDriver(user.id);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+      const { month, year } = req.query;
+      const monthNum = month ? parseInt(month as string) : undefined;
+      const yearNum = year ? parseInt(year as string) : undefined;
+      const entries = await storage.getDriverLotteryEntriesWithDetails(driver.id, monthNum, yearNum);
+      res.json(entries);
+    } catch (error: any) {
+      console.error("Error fetching driver lottery entries:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch lottery entries" });
+    }
+  });
+
   // ========== ADMIN LOTTERY MANAGEMENT ENDPOINTS ==========
 
   // Get all lottery entries with driver details (admin/super admin)
