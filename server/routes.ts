@@ -8181,6 +8181,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET all owners (for admin location creation owner picker)
+  app.get('/api/admin/owners', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const owners = await storage.getAllOwners();
+      res.json(owners);
+    } catch (error) {
+      console.error("Error fetching owners:", error);
+      res.status(500).json({ message: "Failed to fetch owners" });
+    }
+  });
+
+  // POST create a location on behalf of an owner (admin override — skips CC/Stripe checks)
+  app.post('/api/admin/locations', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUser = await storage.getUser(req.user.id);
+      if (adminUser?.role !== 'admin' && adminUser?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { ownerId, ...rest } = req.body;
+      if (!ownerId) {
+        return res.status(400).json({ message: "ownerId is required" });
+      }
+
+      const owner = await storage.getOwnerById(ownerId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found" });
+      }
+
+      // Validate core location fields (lat/lng optional — will be geocoded)
+      const locationData = insertWashoutLocationSchema.parse({
+        ...rest,
+        ownerId: owner.id,
+      });
+
+      // Auto-geocode lat/lng from address
+      if (!locationData.latitude || !locationData.longitude) {
+        try {
+          const geo = await geocodeAddress(rest.street, rest.city, rest.state, rest.zip);
+          locationData.latitude = geo.latitude;
+          locationData.longitude = geo.longitude;
+        } catch (geoError: any) {
+          return res.status(400).json({ message: geoError.message });
+        }
+      }
+
+      const location = await storage.createWashoutLocation(locationData as any);
+      console.log(`📍 Admin created location: ${location.id} - ${location.name} for owner ${owner.id}`);
+
+      res.status(201).json({ location, message: 'Location created by admin on behalf of owner.' });
+    } catch (error: any) {
+      console.error("Error creating location (admin):", error);
+      res.status(500).json({ message: error.message || "Failed to create location" });
+    }
+  });
+
   app.put('/api/admin/owners/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);

@@ -1,19 +1,38 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building, Search, Filter, Eye, EyeOff, MapPin } from "lucide-react";
+import { Building, Search, Filter, Eye, EyeOff, MapPin, Plus, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { formatAddress } from "@shared/addressUtils";
 import { useAuth } from "@/hooks/useAuth";
+
+const addLocationSchema = z.object({
+  ownerId: z.string().min(1, "Please select an owner"),
+  name: z.string().min(1, "Location name is required"),
+  street: z.string().min(1, "Street address is required"),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(2, "State is required").max(2, "Use 2-letter state code"),
+  zip: z.string().min(5, "ZIP code is required"),
+  rate: z.string().min(1, "Rate is required"),
+  description: z.string().optional(),
+});
+
+type AddLocationForm = z.infer<typeof addLocationSchema>;
 
 export default function AdminLocations() {
   const { toast } = useToast();
@@ -21,13 +40,19 @@ export default function AdminLocations() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterOwnerStatus, setFilterOwnerStatus] = useState("all");
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
   const { data: locations, isLoading, error } = useQuery({
     queryKey: ['/api/admin/locations'],
     retry: false,
   });
 
-  // Handle unauthorized error
+  const { data: owners } = useQuery({
+    queryKey: ['/api/admin/owners'],
+    enabled: showAddDialog,
+    retry: false,
+  });
+
   useEffect(() => {
     if (error && isUnauthorizedError(error as Error)) {
       toast({
@@ -38,9 +63,22 @@ export default function AdminLocations() {
       setTimeout(() => {
         window.location.href = "/api/login";
       }, 500);
-      return;
     }
   }, [error, toast]);
+
+  const form = useForm<AddLocationForm>({
+    resolver: zodResolver(addLocationSchema),
+    defaultValues: {
+      ownerId: "",
+      name: "",
+      street: "",
+      city: "",
+      state: "",
+      zip: "",
+      rate: "0.50",
+      description: "",
+    },
+  });
 
   const toggleVisibilityMutation = useMutation({
     mutationFn: async ({ locationId, isVisible }: { locationId: string; isVisible: boolean }) => {
@@ -58,6 +96,29 @@ export default function AdminLocations() {
       toast({
         title: "Update Failed",
         description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addLocationMutation = useMutation({
+    mutationFn: async (data: AddLocationForm) => {
+      const response = await apiRequest("POST", "/api/admin/locations", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Location Created",
+        description: "The location has been created successfully on behalf of the owner.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/locations'] });
+      setShowAddDialog(false);
+      form.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Create Location",
+        description: error.message || "Something went wrong.",
         variant: "destructive",
       });
     },
@@ -82,7 +143,7 @@ export default function AdminLocations() {
 
   const filteredLocations = locations?.filter((location: any) => {
     const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       location.name?.toLowerCase().includes(searchLower) ||
       location.street?.toLowerCase().includes(searchLower) ||
       location.city?.toLowerCase().includes(searchLower) ||
@@ -91,11 +152,11 @@ export default function AdminLocations() {
       location.owner?.user?.firstName?.toLowerCase().includes(searchLower) ||
       location.owner?.user?.lastName?.toLowerCase().includes(searchLower) ||
       location.owner?.companyName?.toLowerCase().includes(searchLower);
-    
-    const matchesStatus = filterStatus === "all" || 
+
+    const matchesStatus = filterStatus === "all" ||
       (filterStatus === "visible" && location.isVisible && location.isActive) ||
       (filterStatus === "hidden" && (!location.isVisible || !location.isActive));
-    
+
     const matchesOwnerStatus = filterOwnerStatus === "all" ||
       (filterOwnerStatus === "approved" && location.owner?.isApproved) ||
       (filterOwnerStatus === "pending" && !location.owner?.isApproved);
@@ -107,7 +168,7 @@ export default function AdminLocations() {
     totalLocations: locations?.length || 0,
     visibleLocations: locations?.filter((l: any) => l.isVisible && l.isActive).length || 0,
     hiddenLocations: locations?.filter((l: any) => !l.isVisible || !l.isActive).length || 0,
-    avgRate: locations?.length ? 
+    avgRate: locations?.length ?
       locations.reduce((sum: number, l: any) => sum + Number(l.rate), 0) / locations.length : 0,
   };
 
@@ -125,6 +186,15 @@ export default function AdminLocations() {
               <p className="text-white/80 text-sm">Monitor washout sites</p>
             </div>
           </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowAddDialog(true)}
+            className="flex items-center gap-1"
+          >
+            <Plus className="w-4 h-4" />
+            Add Location
+          </Button>
         </div>
       </header>
 
@@ -170,7 +240,7 @@ export default function AdminLocations() {
                 <Filter className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Filters</span>
               </div>
-              
+
               <div className="relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -239,7 +309,7 @@ export default function AdminLocations() {
                         <h3 className="font-semibold text-lg" data-testid={`text-location-name-${index}`}>
                           {location.name}
                         </h3>
-                        <Badge 
+                        <Badge
                           variant={location.isVisible && location.isActive ? "default" : "secondary"}
                           data-testid={`badge-location-visibility-${index}`}
                         >
@@ -256,7 +326,7 @@ export default function AdminLocations() {
                           )}
                         </Badge>
                       </div>
-                      
+
                       <p className="text-sm text-muted-foreground mb-2" data-testid={`text-location-address-${index}`}>
                         <MapPin className="w-4 h-4 inline mr-1" />
                         {formatAddress({
@@ -266,13 +336,13 @@ export default function AdminLocations() {
                           zip: location.zip
                         })}
                       </p>
-                      
+
                       <div className="text-sm text-muted-foreground">
                         Owner: <span className="font-medium" data-testid={`text-owner-name-${index}`}>
                           {location.owner?.user?.firstName} {location.owner?.user?.lastName}
                           {location.owner?.companyName && ` (${location.owner.companyName})`}
                         </span>
-                        <Badge 
+                        <Badge
                           variant={location.owner?.isApproved ? "default" : "secondary"}
                           className="ml-2 text-xs"
                           data-testid={`badge-owner-status-${index}`}
@@ -280,26 +350,26 @@ export default function AdminLocations() {
                           {location.owner?.isApproved ? 'Approved' : 'Pending'}
                         </Badge>
                       </div>
-                      
+
                       {location.description && (
                         <p className="text-sm text-muted-foreground mt-2" data-testid={`text-location-description-${index}`}>
                           {location.description}
                         </p>
                       )}
                     </div>
-                    
+
                     <div className="text-right">
                       <div className="text-xl font-bold text-accent mb-1" data-testid={`text-location-rate-${index}`}>
                         {formatCurrency(Number(location.rate))}
                       </div>
                       <div className="text-xs text-muted-foreground mb-3">per washout</div>
-                      
+
                       <Button
                         size="sm"
                         variant={location.isVisible ? "outline" : "default"}
-                        onClick={() => toggleVisibilityMutation.mutate({ 
-                          locationId: location.id, 
-                          isVisible: !location.isVisible 
+                        onClick={() => toggleVisibilityMutation.mutate({
+                          locationId: location.id,
+                          isVisible: !location.isVisible
                         })}
                         disabled={toggleVisibilityMutation.isPending}
                         data-testid={`button-toggle-visibility-${index}`}
@@ -344,6 +414,167 @@ export default function AdminLocations() {
           )}
         </div>
       </main>
+
+      {/* Add Location Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) form.reset(); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Location on Behalf of Owner</DialogTitle>
+            <DialogDescription>
+              Admin override — no CC or Stripe checks. The address will be geocoded automatically.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit((data) => addLocationMutation.mutate(data))} className="space-y-4">
+
+              <FormField
+                control={form.control}
+                name="ownerId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Owner</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an owner..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {(owners as any[])?.map((owner: any) => (
+                          <SelectItem key={owner.id} value={owner.id}>
+                            {owner.user?.firstName} {owner.user?.lastName}
+                            {owner.companyName ? ` — ${owner.companyName}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Riverside Washout Facility" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="street"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Street Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123 Main St" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City</FormLabel>
+                      <FormControl>
+                        <Input placeholder="City" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State</FormLabel>
+                      <FormControl>
+                        <Input placeholder="CA" maxLength={2} className="uppercase" {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="zip"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ZIP Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="12345" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="rate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rate ($/washout)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" min="0" placeholder="0.50" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (optional)</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Any additional details about this location..." rows={3} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" onClick={() => { setShowAddDialog(false); form.reset(); }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={addLocationMutation.isPending}>
+                  {addLocationMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Location"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <MobileNav role={user?.role} />
     </div>
