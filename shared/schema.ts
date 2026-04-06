@@ -806,8 +806,9 @@ export const insertWashoutLocationSchema = createInsertSchema(washoutLocations).
   createdAt: true,
   updatedAt: true,
 }).extend({
-  latitude: z.number().transform(val => val.toString()),
-  longitude: z.number().transform(val => val.toString()),
+  // lat/lng are auto-geocoded server-side from the address; optional in the request body
+  latitude: z.union([z.number(), z.string()]).transform(val => val.toString()).optional(),
+  longitude: z.union([z.number(), z.string()]).transform(val => val.toString()).optional(),
   rate: z.number().transform(val => val.toString()),
 });
 

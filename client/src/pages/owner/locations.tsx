@@ -20,7 +20,6 @@ import { formatAddress } from "@shared/addressUtils";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
-import { MapPicker } from "@/components/MapPicker";
 
 export default function OwnerLocations() {
   const { toast } = useToast();
@@ -42,8 +41,6 @@ export default function OwnerLocations() {
     city: "",
     state: "",
     zip: "",
-    latitude: "",
-    longitude: "",
     rate: "5.00",
     operatingHours: "",
     amenities: "",
@@ -55,8 +52,6 @@ export default function OwnerLocations() {
     city: "",
     state: "",
     zip: "",
-    latitude: "",
-    longitude: "",
     rate: "5.00",
     operatingHours: "",
     amenities: "",
@@ -82,8 +77,8 @@ export default function OwnerLocations() {
     city: string;
     state: string;
     zip: string;
-    latitude: number;
-    longitude: number;
+    latitude?: number;
+    longitude?: number;
   }) => {
     setFormData((prev) => ({
       ...prev,
@@ -91,16 +86,6 @@ export default function OwnerLocations() {
       city: place.city,
       state: place.state,
       zip: place.zip,
-      latitude: place.latitude.toString(),
-      longitude: place.longitude.toString(),
-    }));
-  }, []);
-
-  const handleLocationChange = useCallback((lat: number, lng: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      latitude: lat.toString(),
-      longitude: lng.toString(),
     }));
   }, []);
 
@@ -261,8 +246,6 @@ export default function OwnerLocations() {
 
     addLocationMutation.mutate({
       ...formData,
-      latitude: parseFloat(formData.latitude),
-      longitude: parseFloat(formData.longitude),
       rate: parseFloat(formData.rate),
       amenities: amenitiesArray,
     });
@@ -277,8 +260,6 @@ export default function OwnerLocations() {
       city: location.city || "",
       state: location.state || "",
       zip: location.zip || "",
-      latitude: location.latitude?.toString() || "",
-      longitude: location.longitude?.toString() || "",
       rate: location.rate?.toString() || "5.00",
       operatingHours: location.operatingHours || "",
       amenities: location.amenities?.join(", ") || "",
@@ -328,8 +309,6 @@ export default function OwnerLocations() {
       locationId: locationToEdit.id,
       locationData: {
         ...editFormData,
-        latitude: parseFloat(editFormData.latitude),
-        longitude: parseFloat(editFormData.longitude),
         rate: parseFloat(editFormData.rate),
         amenities: amenitiesArray,
       }
@@ -460,14 +439,7 @@ export default function OwnerLocations() {
                       onPlaceSelected={handlePlaceSelected}
                     />
 
-                    <MapPicker
-                      latitude={parseFloat(formData.latitude) || undefined}
-                      longitude={parseFloat(formData.longitude) || undefined}
-                      onLocationChange={handleLocationChange}
-                      height="350px"
-                    />
-
-                    {/* Show address fields (read-only or editable) */}
+                    {/* Address fields auto-filled by autocomplete, coords geocoded server-side */}
                     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
                       <p className="text-sm font-medium">Location Details</p>
                       <div>
@@ -476,7 +448,7 @@ export default function OwnerLocations() {
                           id="street"
                           value={formData.street}
                           onChange={(e) => setFormData({...formData, street: e.target.value})}
-                          placeholder="Auto-filled from map"
+                          placeholder="Auto-filled from search above"
                           required
                           data-testid="input-street"
                         />
@@ -516,35 +488,6 @@ export default function OwnerLocations() {
                           required
                           data-testid="input-zip"
                         />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="latitude">Latitude</Label>
-                          <Input
-                            id="latitude"
-                            type="number"
-                            step="any"
-                            value={formData.latitude}
-                            onChange={(e) => setFormData({...formData, latitude: e.target.value})}
-                            required
-                            data-testid="input-latitude"
-                            className="bg-background"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="longitude">Longitude</Label>
-                          <Input
-                            id="longitude"
-                            type="number"
-                            step="any"
-                            value={formData.longitude}
-                            onChange={(e) => setFormData({...formData, longitude: e.target.value})}
-                            required
-                            data-testid="input-longitude"
-                            className="bg-background"
-                          />
-                        </div>
                       </div>
                     </div>
                   </>
@@ -602,32 +545,6 @@ export default function OwnerLocations() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="latitude">Latitude</Label>
-                        <Input
-                          id="latitude"
-                          type="number"
-                          step="any"
-                          value={formData.latitude}
-                          onChange={(e) => setFormData({...formData, latitude: e.target.value})}
-                          required
-                          data-testid="input-latitude"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="longitude">Longitude</Label>
-                        <Input
-                          id="longitude"
-                          type="number"
-                          step="any"
-                          value={formData.longitude}
-                          onChange={(e) => setFormData({...formData, longitude: e.target.value})}
-                          required
-                          data-testid="input-longitude"
-                        />
-                      </div>
-                    </div>
                   </>
                 )}
 
@@ -746,33 +663,6 @@ export default function OwnerLocations() {
                     required
                     data-testid="input-edit-zip"
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="edit-latitude">Latitude</Label>
-                    <Input
-                      id="edit-latitude"
-                      type="number"
-                      step="any"
-                      value={editFormData.latitude}
-                      onChange={(e) => setEditFormData({...editFormData, latitude: e.target.value})}
-                      required
-                      data-testid="input-edit-latitude"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-longitude">Longitude</Label>
-                    <Input
-                      id="edit-longitude"
-                      type="number"
-                      step="any"
-                      value={editFormData.longitude}
-                      onChange={(e) => setEditFormData({...editFormData, longitude: e.target.value})}
-                      required
-                      data-testid="input-edit-longitude"
-                    />
-                  </div>
                 </div>
 
                 <div>

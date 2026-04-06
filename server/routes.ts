@@ -14,6 +14,7 @@ import { eq, sql, desc } from "drizzle-orm";
 import { z } from "zod";
 import * as stripeService from "./stripeService";
 import stripeClient from "./stripeService";
+import { geocodeAddress } from "./geocoding";
 
 // Initialize Stripe only if secret key is available
 let stripe: Stripe | null = null;
@@ -3273,14 +3274,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Validate location data
+      // Validate location data (lat/lng are optional — will be geocoded below)
       const locationData = insertWashoutLocationSchema.parse({
         ...req.body,
         ownerId: owner.id,
       });
 
+      // Auto-geocode lat/lng from the address if not already provided
+      if (!locationData.latitude || !locationData.longitude) {
+        try {
+          console.log(`🗺️ Geocoding address: ${req.body.street}, ${req.body.city}, ${req.body.state} ${req.body.zip}`);
+          const geo = await geocodeAddress(req.body.street, req.body.city, req.body.state, req.body.zip);
+          locationData.latitude = geo.latitude;
+          locationData.longitude = geo.longitude;
+          console.log(`✅ Geocoded: lat=${geo.latitude}, lng=${geo.longitude}`);
+        } catch (geoError: any) {
+          return res.status(400).json({ message: geoError.message });
+        }
+      }
+
       // Create the location
-      const location = await storage.createWashoutLocation(locationData);
+      const location = await storage.createWashoutLocation(locationData as any);
       console.log(`📍 Location created: ${location.id} - ${location.name}`);
 
       // If trial mode is active, skip the monthly location fee
@@ -3465,8 +3479,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate request body using Zod schema
       const validatedData = updateLocationSchema.parse(req.body);
-      
-      const location = await storage.updateLocation(id, owner.id, validatedData);
+
+      // Re-geocode if any address field changed and no lat/lng provided
+      const addressChanged = req.body.street || req.body.city || req.body.state || req.body.zip;
+      if (addressChanged && (!validatedData.latitude || !validatedData.longitude)) {
+        const street = req.body.street || existingLocation.street;
+        const city = req.body.city || existingLocation.city;
+        const state = req.body.state || existingLocation.state;
+        const zip = req.body.zip || existingLocation.zip;
+        try {
+          console.log(`🗺️ Re-geocoding address for location ${id}: ${street}, ${city}, ${state} ${zip}`);
+          const geo = await geocodeAddress(street, city, state, zip);
+          validatedData.latitude = geo.latitude;
+          validatedData.longitude = geo.longitude;
+          console.log(`✅ Re-geocoded: lat=${geo.latitude}, lng=${geo.longitude}`);
+        } catch (geoError: any) {
+          return res.status(400).json({ message: geoError.message });
+        }
+      }
+
+      const location = await storage.updateLocation(id, owner.id, validatedData as any);
       res.json(location);
     } catch (error) {
       if (error instanceof z.ZodError) {
