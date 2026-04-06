@@ -448,6 +448,7 @@ export default function AdminLottery() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Ticket #</TableHead>
                         <TableHead>Driver</TableHead>
                         <TableHead>Location</TableHead>
                         <TableHead>Date</TableHead>
@@ -457,15 +458,22 @@ export default function AdminLottery() {
                     <TableBody>
                       {individualEntries.map((entry: any) => (
                         <TableRow key={entry.id}>
+                          <TableCell>
+                            {entry.ticketNumber ? (
+                              <span className="font-mono text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded">
+                                {entry.ticketNumber}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">
                             {entry.driver?.user?.username || entry.driver?.user?.firstName || "Driver"}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
                             <div className="flex items-center gap-1">
                               <Building2 className="w-3 h-3" />
-                              {entry.activity?.locationId
-                                ? entry.owner?.companyName || "Location"
-                                : entry.owner?.companyName || "Location"}
+                              {entry.owner?.companyName || "Location"}
                             </div>
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">

@@ -218,26 +218,33 @@ export default function DriverDashboard() {
                       {lotteryEntries.map((entry: any) => (
                         <div
                           key={entry.id}
-                          className="flex items-center justify-between bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2"
+                          className="bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2 space-y-1"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Building2 className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-                            <div className="min-w-0">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Building2 className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
                               <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 truncate">
                                 {entry.locationName || entry.ownerCompany || "Location"}
                               </p>
-                              <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                                {entry.activityDate
-                                  ? new Date(entry.activityDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                                  : new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Ticket className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
+                              <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">
+                                +{entry.entriesEarned}
+                              </span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <Ticket className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
-                            <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">
-                              +{entry.entriesEarned}
-                            </span>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                              {entry.activityDate
+                                ? new Date(entry.activityDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                : new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                            {entry.ticketNumber && (
+                              <span className="text-xs font-mono font-semibold text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/40 px-2 py-0.5 rounded">
+                                🎟 {entry.ticketNumber}
+                              </span>
+                            )}
                           </div>
                         </div>
                       ))}

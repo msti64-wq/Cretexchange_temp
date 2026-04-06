@@ -595,6 +595,7 @@ export const driverLotteryEntries = pgTable("driver_lottery_entries", {
   driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
   activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
   ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
+  ticketNumber: varchar("ticket_number").unique(), // Human-readable ticket number e.g. CX-202604-0001
   entriesEarned: integer("entries_earned").notNull().default(1), // Number of lottery tickets earned
   lotteryMonth: integer("lottery_month").notNull(), // 1-12 for the month
   lotteryYear: integer("lottery_year").notNull(), // Year (e.g., 2025)

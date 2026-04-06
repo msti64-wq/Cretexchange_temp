@@ -4708,15 +4708,32 @@ export class DatabaseStorage implements IStorage {
   // Driver lottery entries operations
   async createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<DriverLotteryEntry> {
     const now = new Date();
+    const month = now.getMonth() + 1; // 1-12
+    const year = now.getFullYear();
+
+    // Count all entries for this month/year (including archived) to generate a sequential ticket number
+    const [countResult] = await db
+      .select({ count: sql<number>`COUNT(*)::integer` })
+      .from(driverLotteryEntries)
+      .where(and(
+        eq(driverLotteryEntries.lotteryMonth, month),
+        eq(driverLotteryEntries.lotteryYear, year),
+      ));
+    const sequence = (countResult?.count ?? 0) + 1;
+    const paddedSeq = String(sequence).padStart(4, '0');
+    const paddedMonth = String(month).padStart(2, '0');
+    const ticketNumber = `CX-${year}${paddedMonth}-${paddedSeq}`;
+
     const [newEntry] = await db
       .insert(driverLotteryEntries)
       .values({
         driverId: entry.driverId,
         activityId: entry.activityId,
         ownerId: entry.ownerId,
+        ticketNumber,
         entriesEarned: entry.entriesEarned ?? 1,
-        lotteryMonth: now.getMonth() + 1, // 1-12
-        lotteryYear: now.getFullYear(),
+        lotteryMonth: month,
+        lotteryYear: year,
         isArchived: false,
       })
       .returning();
@@ -4739,6 +4756,7 @@ export class DatabaseStorage implements IStorage {
     const results = await db
       .select({
         id: driverLotteryEntries.id,
+        ticketNumber: driverLotteryEntries.ticketNumber,
         entriesEarned: driverLotteryEntries.entriesEarned,
         lotteryMonth: driverLotteryEntries.lotteryMonth,
         lotteryYear: driverLotteryEntries.lotteryYear,
