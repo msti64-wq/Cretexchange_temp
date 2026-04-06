@@ -236,11 +236,24 @@ export default function PaymentMethods() {
       </header>
 
       <main className="p-4 space-y-6">
-        {/* 1. Membership Fee Payment Method (One-Time $15.00) */}
+        {/* Trial mode banner */}
+        <div className="bg-green-50 dark:bg-green-950/30 border border-green-300 dark:border-green-700 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm">
+              <p className="font-semibold text-green-800 dark:text-green-200">Trial Period Active — No Signup or Monthly Fees</p>
+              <p className="text-green-700 dark:text-green-300 mt-1">
+                You are only charged <strong>$4.00 per completed washout</strong>, billed weekly to your card on file. No signup fee. No monthly location fee.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 1. Credit Card for Weekly Washout Billing */}
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold">Membership Fee Payment</h2>
-            <p className="text-sm text-muted-foreground">One-time $15.00 annual platform membership</p>
+            <h2 className="text-lg font-semibold">Credit Card for Washout Billing</h2>
+            <p className="text-sm text-muted-foreground">Required — charged $4.00 per washout, billed weekly</p>
           </div>
           <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/20">
             <CardContent className="p-4">
@@ -253,7 +266,7 @@ export default function PaymentMethods() {
                         {(ownerData as any)?.paymentMethod?.brand || 'Card'} ****{(ownerData as any)?.paymentMethod?.last4 || '****'}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Credit card on file for membership fee
+                        Active — charged weekly for completed washouts
                       </div>
                     </div>
                   </div>
@@ -269,9 +282,9 @@ export default function PaymentMethods() {
               ) : (
                 <div className="text-center py-4">
                   <CreditCard className="w-12 h-12 mx-auto mb-3 text-purple-600" />
-                  <h3 className="font-medium mb-2">No Card Added</h3>
+                  <h3 className="font-medium mb-2">No Card on File</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Add a credit card for the $15.00 annual membership fee
+                    A credit card is required to add locations and receive washout requests. You will be charged $4.00 per completed washout, billed weekly.
                   </p>
                   <Button
                     onClick={() => setShowCardSetup(true)}
@@ -285,36 +298,16 @@ export default function PaymentMethods() {
               )}
             </CardContent>
           </Card>
-        </div>
 
-        {/* 2. Monthly Location Fees ($1.00/location) */}
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold">Monthly Location Fees</h2>
-            <p className="text-sm text-muted-foreground">$1.00 per location, charged monthly</p>
-          </div>
-          <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/20">
+          {/* Weekly billing info */}
+          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
             <CardContent className="p-4">
-              <div className="space-y-3">
-                <div className="flex items-start space-x-3">
-                  <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
-                  <div className="text-sm">
-                    <h3 className="font-medium text-orange-800 dark:text-orange-200 mb-1">
-                      Payment Priority
-                    </h3>
-                    <p className="text-orange-700 dark:text-orange-300">
-                      Monthly fees are automatically debited from your Stripe wallet first. If wallet balance is insufficient, your credit card on file will be charged.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-orange-200">
-                  <div className="text-sm">
-                    <div className="font-medium">Current Wallet Balance</div>
-                    <div className="text-muted-foreground">${(walletData as any)?.balance || '0.00'}</div>
-                  </div>
-                  <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                    Auto-Debit Enabled
-                  </Badge>
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                  <p className="font-medium">How weekly billing works</p>
+                  <p>Each Sunday, all washouts completed during the past week are totaled and a single charge is made to your card on file.</p>
+                  <p>Example: 10 washouts in a week = <strong>$40.00</strong> charged on Sunday.</p>
                 </div>
               </div>
             </CardContent>

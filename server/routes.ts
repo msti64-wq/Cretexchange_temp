@@ -3256,13 +3256,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Owner not approved" });
       }
 
-      // Check if owner has a payment method saved for platform fees
-      const monthlyFeeCents = 100; // $1.00 in cents
-      const monthlyFee = (monthlyFeeCents / 100).toFixed(2);
-      
+      // Check WAIVE_OWNER_PAYMENT flag — determines if signup/monthly fees are waived (trial mode)
+      const waiveOwnerPaymentFlag = await storage.getFeatureFlag('waive_owner_payment');
+      const waiveMonthlyFees = waiveOwnerPaymentFlag?.enabled ?? false;
+
+      // CC is always required — owners need it for the weekly $4/washout billing
       if (!owner.stripePaymentMethodId) {
         return res.status(400).json({ 
-          message: `Please add a credit card for platform fees before adding locations. Go to Payment Methods to add a card.` 
+          message: `Please add a credit card before adding locations. It is required for weekly washout billing ($4.00 per washout). Go to Payment Methods to add a card.` 
         });
       }
 
@@ -3281,6 +3282,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create the location
       const location = await storage.createWashoutLocation(locationData);
       console.log(`📍 Location created: ${location.id} - ${location.name}`);
+
+      // If trial mode is active, skip the monthly location fee
+      if (waiveMonthlyFees) {
+        console.log(`⚡ Trial mode: monthly location fee waived for ${location.name}`);
+        return res.status(201).json({
+          location,
+          feeCharged: false,
+          trialMode: true,
+          message: 'Location created. No signup or monthly fee during trial — you will be billed $4.00 per completed washout, charged to your card weekly.'
+        });
+      }
+
+      // Production mode: charge monthly location fee
+      const monthlyFeeCents = 100; // $1.00 in cents
+      const monthlyFee = (monthlyFeeCents / 100).toFixed(2);
 
       // Calculate billing period (current month)
       const now = new Date();
@@ -3313,7 +3329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerId: owner.stripeCustomerId!,
           paymentMethodId: owner.stripePaymentMethodId!,
           userId: userId,
-          username: user.username, // USERNAME-based identification
+          username: user.username,
           locationId: location.id,
           locationName: location.name,
           metadata: {
@@ -3331,11 +3347,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`✅ Stripe charge successful: $${monthlyFee}`);
 
-        // 3. Mark fee as paid in ledger with Stripe payment intent ID (no wallet debit - already charged via Stripe)
+        // 3. Mark fee as paid in ledger with Stripe payment intent ID
         await storage.markFeeLedgerPaid(
           feeRecord.id,
-          null, // No wallet transaction since this was charged via Stripe card
-          paymentIntent.id // Stripe Payment Intent ID
+          null,
+          paymentIntent.id
         );
         console.log(`✅ Fee marked as paid in ledger with Stripe ID: ${paymentIntent.id}`);
 
@@ -3344,13 +3360,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (feeError: any) {
         console.error('❌ Error processing Stripe charge:', feeError);
         
-        // Roll back: delete the location and fee ledger entry
+        // Roll back: delete the location
         try {
           await storage.deleteWashoutLocation(location.id, owner.id);
           console.log(`🔄 Location ${location.id} deleted due to failed payment`);
-          
-          // Fee ledger entry will remain as 'pending' status for record-keeping
-          console.log(`📝 Fee ledger entry kept as 'pending' for audit trail`);
         } catch (rollbackError: any) {
           console.error('❌ Error during rollback:', rollbackError);
         }

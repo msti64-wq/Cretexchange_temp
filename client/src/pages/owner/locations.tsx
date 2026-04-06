@@ -949,15 +949,15 @@ export default function OwnerLocations() {
       <main className="p-4 space-y-4">
         {/* Trial Mode Banner */}
         {waiveOwnerPayment && (
-          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-lg p-4">
+          <div className="bg-green-50 dark:bg-green-950/30 border border-green-300 dark:border-green-700 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <div className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-white text-xs font-bold">T</span>
+              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-xs font-bold">✓</span>
               </div>
               <div>
-                <p className="font-medium text-amber-800 dark:text-amber-200">Trial Mode Active</p>
-                <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
-                  Billing is currently waived. You can add and manage locations without a payment method during this trial period.
+                <p className="font-medium text-green-800 dark:text-green-200">Trial Period — No Signup or Monthly Fees</p>
+                <p className="text-sm text-green-700 dark:text-green-300 mt-0.5">
+                  No signup fee. No monthly location fee. You are only charged <strong>$4.00 per completed washout</strong>, billed weekly to your card on file.
                 </p>
               </div>
             </div>

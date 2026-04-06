@@ -82,8 +82,8 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
   },
   {
     key: FEATURE_FLAGS.WAIVE_OWNER_PAYMENT,
-    description: 'TRIAL MODE: Waive the credit card / payment method requirement for location owners. Owners can create and manage listings without entering a payment method. Disable this before enabling monthly listing fees and billing.',
-    enabled: false, // Disabled by default — enable only during trial period
+    description: 'TRIAL MODE: Waive the signup fee and monthly location fees for owners. Credit card is still required for weekly $4/washout billing. Enable this during the trial period to skip signup/monthly charges without disabling washout billing.',
+    enabled: true, // Enabled during trial — owners pay $4/washout weekly but no signup or monthly location fees
     allowedRoles: [], // All roles can read this flag; it is a global platform setting controlled by super admin
   },
   {

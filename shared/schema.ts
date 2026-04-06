@@ -226,7 +226,7 @@ export const owners = pgTable("owners", {
   autoTopupEnabled: boolean("auto_topup_enabled").default(false),
   autoTopupAmount: decimal("auto_topup_amount", { precision: 10, scale: 2 }).default("500.00"),
   // Billing configuration for batch processing
-  billingCadence: billingCadenceEnum("billing_cadence").default("daily"), // immediate = process right away, daily = end of day, weekly = end of week
+  billingCadence: billingCadenceEnum("billing_cadence").default("weekly"), // immediate = process right away, daily = end of day, weekly = end of week
   billingCutoffTime: varchar("billing_cutoff_time").default("23:59:00"), // Time of day for billing cutoff (HH:MM:SS)
   billingTimezone: varchar("billing_timezone").default("America/Chicago"), // Owner's timezone for billing cutoff
   billingDayOfWeek: integer("billing_day_of_week").default(0), // Day of week for weekly billing (0=Sunday, 6=Saturday)
@@ -1136,8 +1136,7 @@ export const systemSettings = pgTable("system_settings", {
   // Stripe Automatic Tax - enables/disables automatic tax calculation on all payments
   automaticTaxEnabled: boolean("automatic_tax_enabled").default(false).notNull(),
   // Platform Washout Fee - fee charged per washout transaction (in dollars)
-  // Testing: $0.40 (10% of production), Production: $4.00
-  platformWashoutFee: decimal("platform_washout_fee", { precision: 10, scale: 2 }).default("0.40").notNull(),
+  platformWashoutFee: decimal("platform_washout_fee", { precision: 10, scale: 2 }).default("4.00").notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
   updatedBy: varchar("updated_by").references(() => users.id), // Track who made the change
 });
