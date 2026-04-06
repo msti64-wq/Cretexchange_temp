@@ -2473,6 +2473,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dateOfBirth: req.body.dateOfBirth || driver.dateOfBirth,
           ssnLast4: req.body.ssnLast4 || driver.ssnLast4,
           businessWebsite: req.body.businessWebsite || driver.businessWebsite,
+          // Lottery prize payout preference
+          payoutPreference: req.body.payoutPreference || driver.payoutPreference,
+          payoutPreferenceNote: req.body.payoutPreferenceNote !== undefined ? req.body.payoutPreferenceNote : driver.payoutPreferenceNote,
         });
       }
 

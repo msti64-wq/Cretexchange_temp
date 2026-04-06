@@ -63,7 +63,7 @@ export default function AdminLottery() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   
   const [notifyDialogOpen, setNotifyDialogOpen] = useState(false);
-  const [selectedDriver, setSelectedDriver] = useState<{ driverId: string; driverName: string } | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<{ driverId: string; driverName: string; payoutPreference: string | null; payoutPreferenceNote: string | null } | null>(null);
   const [prize, setPrize] = useState("");
   const [winnerMessage, setWinnerMessage] = useState("");
 
@@ -71,7 +71,7 @@ export default function AdminLottery() {
     queryKey: ['/api/admin/lottery/months'],
   });
 
-  const { data: totals, isLoading: totalsLoading } = useQuery<{ driverId: string; driverName: string; totalEntries: number }[]>({
+  const { data: totals, isLoading: totalsLoading } = useQuery<{ driverId: string; driverName: string; totalEntries: number; payoutPreference: string | null; payoutPreferenceNote: string | null }[]>({
     queryKey: ['/api/admin/lottery/totals', selectedMonth, selectedYear],
     queryFn: async () => {
       const response = await fetch(`/api/admin/lottery/totals?month=${selectedMonth}&year=${selectedYear}`, {
@@ -134,10 +134,16 @@ export default function AdminLottery() {
     },
   });
 
-  const openNotifyDialog = (driver: { driverId: string; driverName: string }) => {
+  const openNotifyDialog = (driver: { driverId: string; driverName: string; payoutPreference: string | null; payoutPreferenceNote: string | null }) => {
     setSelectedDriver(driver);
     setWinnerMessage(`Congratulations ${driver.driverName}! You have been selected as a winner in our ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} lottery drawing. Please contact us to claim your prize.`);
     setNotifyDialogOpen(true);
+  };
+
+  const getPayoutPreferenceLabel = (pref: string | null) => {
+    if (pref === "gift_card") return "🎁 Gift Card";
+    if (pref === "other_prize") return "🎉 Surprise / Other Prize";
+    return "🏦 Bank Transfer";
   };
 
   const handleSendNotification = () => {
@@ -360,15 +366,20 @@ export default function AdminLottery() {
                         <Badge variant="outline">{t.totalEntries}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openNotifyDialog(t)}
-                          data-testid={`button-notify-${index}`}
-                        >
-                          <Trophy className="w-4 h-4 mr-1" />
-                          Notify Winner
-                        </Button>
+                        <div className="flex items-center gap-2 justify-end">
+                          <span className="text-xs text-muted-foreground hidden sm:inline">
+                            {getPayoutPreferenceLabel(t.payoutPreference)}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openNotifyDialog(t)}
+                            data-testid={`button-notify-${index}`}
+                          >
+                            <Trophy className="w-4 h-4 mr-1" />
+                            Notify Winner
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -400,8 +411,26 @@ export default function AdminLottery() {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
+            {/* Driver's payout preference */}
+            {selectedDriver && (
+              <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 rounded-lg">
+                <Gift className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    Driver's Prize Preference
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    {getPayoutPreferenceLabel(selectedDriver.payoutPreference)}
+                    {selectedDriver.payoutPreferenceNote && (
+                      <span className="block text-xs mt-0.5 italic">"{selectedDriver.payoutPreferenceNote}"</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="prize">Prize (optional)</Label>
+              <Label htmlFor="prize">Prize Description (optional)</Label>
               <Input
                 id="prize"
                 placeholder="e.g., $500 Cash, Gift Card, etc."

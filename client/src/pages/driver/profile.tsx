@@ -13,7 +13,7 @@ import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
 import { BankAccountConnect } from "@/components/BankAccountConnect";
-import { User, Truck, CreditCard, Save, FileText, Eye, Smartphone, CheckCircle2, AlertCircle } from "lucide-react";
+import { User, Truck, CreditCard, Save, FileText, Eye, Smartphone, CheckCircle2, AlertCircle, Gift } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import StripeVerificationStatus from "@/components/StripeVerificationStatus";
@@ -81,6 +81,8 @@ export default function DriverProfile() {
     dateOfBirth: "",
     ssnLast4: "",
     businessWebsite: "",
+    payoutPreference: "bank_transfer",
+    payoutPreferenceNote: "",
   });
 
   // Account Link mutation for T&C acceptance
@@ -138,6 +140,8 @@ export default function DriverProfile() {
         dateOfBirth: userData.roleData.dateOfBirth || "",
         ssnLast4: userData.roleData.ssnLast4 || "",
         businessWebsite: userData.roleData.businessWebsite || "",
+        payoutPreference: userData.roleData.payoutPreference || "bank_transfer",
+        payoutPreferenceNote: userData.roleData.payoutPreferenceNote || "",
       });
     }
   }, [user]);
@@ -489,6 +493,72 @@ export default function DriverProfile() {
                   Enter your current truck number or unit identifier
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Lottery Prize Preference */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Gift className="w-5 h-5 mr-2" />
+                Lottery Prize Preference
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-2">
+                If you win a monthly drawing, how would you like to receive your prize?
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Prize Type</Label>
+                <Select
+                  value={formData.payoutPreference}
+                  onValueChange={(val) => setFormData({ ...formData, payoutPreference: val, payoutPreferenceNote: val !== "other_prize" ? "" : formData.payoutPreferenceNote })}
+                  disabled={!isEditing}
+                >
+                  <SelectTrigger data-testid="select-payout-preference">
+                    <SelectValue placeholder="Select your preference" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bank_transfer">
+                      🏦 Bank Transfer — Send winnings to my connected bank account
+                    </SelectItem>
+                    <SelectItem value="gift_card">
+                      🎁 Gift Card — Send a gift card (Amazon, Visa, etc.)
+                    </SelectItem>
+                    <SelectItem value="other_prize">
+                      🎉 Surprise Me — Other prize or experience
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formData.payoutPreference === "other_prize" && (
+                <div className="space-y-2">
+                  <Label htmlFor="payoutPreferenceNote">Tell us more (optional)</Label>
+                  <Input
+                    id="payoutPreferenceNote"
+                    placeholder="e.g., merchandise, restaurant gift card, tool store credit..."
+                    value={formData.payoutPreferenceNote}
+                    onChange={(e) => setFormData({ ...formData, payoutPreferenceNote: e.target.value })}
+                    disabled={!isEditing}
+                    data-testid="input-payout-preference-note"
+                  />
+                </div>
+              )}
+
+              {!isEditing && (
+                <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                  <Gift className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    Current preference: <span className="font-medium text-foreground">
+                      {formData.payoutPreference === "bank_transfer" ? "Bank Transfer" :
+                       formData.payoutPreference === "gift_card" ? "Gift Card" :
+                       "Surprise Me / Other Prize"}
+                    </span>
+                    {formData.payoutPreferenceNote && ` — ${formData.payoutPreferenceNote}`}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

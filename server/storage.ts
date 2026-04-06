@@ -376,7 +376,7 @@ export interface IStorage {
   getDriverLotteryEntries(driverId: string): Promise<any[]>;
   getDriverLotteryEntryCount(driverId: string): Promise<number>;
   getAllDriverLotteryEntries(startDate?: Date, endDate?: Date): Promise<any[]>;
-  getDriverLotteryEntryTotals(month?: number, year?: number): Promise<{ driverId: string; driverName: string; totalEntries: number }[]>;
+  getDriverLotteryEntryTotals(month?: number, year?: number): Promise<{ driverId: string; driverName: string; totalEntries: number; payoutPreference: string | null; payoutPreferenceNote: string | null }[]>;
   getDriverLotteryEntryByActivity(activityId: string): Promise<any | undefined>;
   archiveLotteryMonth(month: number, year: number): Promise<number>;
   getLotteryMonths(): Promise<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>;
@@ -4815,7 +4815,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getDriverLotteryEntryTotals(month?: number, year?: number): Promise<{ driverId: string; driverName: string; totalEntries: number }[]> {
+  async getDriverLotteryEntryTotals(month?: number, year?: number): Promise<{ driverId: string; driverName: string; totalEntries: number; payoutPreference: string | null; payoutPreferenceNote: string | null }[]> {
     const conditions = [];
     if (month !== undefined && year !== undefined) {
       conditions.push(eq(driverLotteryEntries.lotteryMonth, month));
@@ -4828,18 +4828,22 @@ export class DatabaseStorage implements IStorage {
         firstName: users.firstName,
         lastName: users.lastName,
         totalEntries: sql<number>`COALESCE(SUM(${driverLotteryEntries.entriesEarned}), 0)::integer`,
+        payoutPreference: drivers.payoutPreference,
+        payoutPreferenceNote: drivers.payoutPreferenceNote,
       })
       .from(driverLotteryEntries)
       .innerJoin(drivers, eq(driverLotteryEntries.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .groupBy(driverLotteryEntries.driverId, users.firstName, users.lastName)
+      .groupBy(driverLotteryEntries.driverId, users.firstName, users.lastName, drivers.payoutPreference, drivers.payoutPreferenceNote)
       .orderBy(desc(sql`SUM(${driverLotteryEntries.entriesEarned})`));
 
     return results.map(r => ({
       driverId: r.driverId,
       driverName: `${r.firstName} ${r.lastName}`,
       totalEntries: r.totalEntries,
+      payoutPreference: r.payoutPreference,
+      payoutPreferenceNote: r.payoutPreferenceNote,
     }));
   }
 

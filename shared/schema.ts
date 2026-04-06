@@ -145,6 +145,9 @@ export const drivers = pgTable("drivers", {
   stripeVerifiedAt: timestamp("stripe_verified_at"),
   hasAgreedToTerms: boolean("has_agreed_to_terms").default(false),
   termsAgreedAt: timestamp("terms_agreed_at"),
+  // Lottery prize payout preference
+  payoutPreference: varchar("payout_preference").default("bank_transfer"), // 'bank_transfer' | 'gift_card' | 'other_prize'
+  payoutPreferenceNote: varchar("payout_preference_note"), // Optional detail for 'other_prize'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
