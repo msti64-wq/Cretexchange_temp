@@ -41,7 +41,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Ticket, Download, Calendar, Trophy, Archive, Clock, Send, Gift, ChevronDown, ChevronUp, Building2, List } from "lucide-react";
+import { Ticket, Download, Calendar, Trophy, Archive, Clock, Send, Gift, ChevronDown, ChevronUp, Building2, List, Zap, Medal } from "lucide-react";
 import { MobileNav } from "@/components/MobileNav";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -67,6 +67,11 @@ export default function AdminLottery() {
   const [prize, setPrize] = useState("");
   const [winnerMessage, setWinnerMessage] = useState("");
   const [showIndividualEntries, setShowIndividualEntries] = useState(false);
+  const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
+  const [firstPrize, setFirstPrize] = useState("");
+  const [secondPrize, setSecondPrize] = useState("");
+  const [thirdPrize, setThirdPrize] = useState("");
+  const [drawingResult, setDrawingResult] = useState<any | null>(null);
 
   const { data: months, isLoading: monthsLoading } = useQuery<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/months'],
@@ -95,6 +100,39 @@ export default function AdminLottery() {
       return response.json();
     },
     enabled: showIndividualEntries,
+  });
+
+  const { data: existingDrawing, isLoading: drawingLoading } = useQuery<any>({
+    queryKey: ['/api/admin/lottery/drawings', selectedMonth, selectedYear],
+    queryFn: async () => {
+      const response = await fetch('/api/admin/lottery/drawings', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch drawings');
+      const all: any[] = await response.json();
+      return all.find(d => d.lotteryMonth === selectedMonth && d.lotteryYear === selectedYear) || null;
+    },
+  });
+
+  const executeMutation = useMutation({
+    mutationFn: async (payload: { month: number; year: number; firstPrize: string; secondPrize: string; thirdPrize: string }) => {
+      const response = await apiRequest('/api/admin/lottery/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      return response;
+    },
+    onSuccess: (data: any) => {
+      setDrawingResult(data);
+      setExecuteDialogOpen(false);
+      setFirstPrize(""); setSecondPrize(""); setThirdPrize("");
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/drawings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/months'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/totals'] });
+      toast({ title: "🎉 Drawing Complete!", description: data.message });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Drawing Failed", description: error.message, variant: "destructive" });
+    },
   });
 
   const archiveMutation = useMutation({
@@ -286,35 +324,57 @@ export default function AdminLottery() {
                 </Badge>
               )}
               
-              {user?.role === 'super_admin' && !isArchived && !isCurrentMonth && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" data-testid="button-close-month">
-                      <Archive className="w-4 h-4 mr-2" />
-                      Close Month
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Close {MONTH_NAMES[selectedMonth - 1]} {selectedYear} Drawing?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will archive all {totalEntriesCount} entries for this month. 
-                        Driver counters will show zero for this month and entries cannot be modified.
-                        This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={() => archiveMutation.mutate({ month: selectedMonth, year: selectedYear })}
-                        disabled={archiveMutation.isPending}
-                      >
-                        {archiveMutation.isPending ? 'Closing...' : 'Close Drawing'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
+              <div className="flex gap-2 flex-wrap justify-end">
+                {/* Execute Drawing button */}
+                {!isCurrentMonth && !existingDrawing && !drawingLoading && totalEntriesCount > 0 && (
+                  <Button
+                    size="sm"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                    onClick={() => setExecuteDialogOpen(true)}
+                    data-testid="button-execute-drawing"
+                  >
+                    <Zap className="w-4 h-4 mr-2" />
+                    Execute Drawing
+                  </Button>
+                )}
+
+                {existingDrawing && (
+                  <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300">
+                    <Trophy className="w-3 h-3 mr-1" />
+                    Drawing Complete
+                  </Badge>
+                )}
+
+                {user?.role === 'super_admin' && !isArchived && !isCurrentMonth && !existingDrawing && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" data-testid="button-close-month">
+                        <Archive className="w-4 h-4 mr-2" />
+                        Archive Only
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Close {MONTH_NAMES[selectedMonth - 1]} {selectedYear} Drawing?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will archive all {totalEntriesCount} entries for this month. 
+                          Driver counters will show zero for this month and entries cannot be modified.
+                          This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => archiveMutation.mutate({ month: selectedMonth, year: selectedYear })}
+                          disabled={archiveMutation.isPending}
+                        >
+                          {archiveMutation.isPending ? 'Closing...' : 'Close Drawing'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -337,6 +397,40 @@ export default function AdminLottery() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Drawing Results Card */}
+        {existingDrawing && (
+          <Card className="border-yellow-300 dark:border-yellow-700 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                <Medal className="w-5 h-5 text-yellow-600" />
+                {MONTH_NAMES[existingDrawing.lotteryMonth - 1]} {existingDrawing.lotteryYear} — Drawing Results
+              </CardTitle>
+              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                Drawn on {new Date(existingDrawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[
+                { place: '🥇 1st', name: existingDrawing.firstPlaceDriverName, ticket: existingDrawing.firstPlaceTicketNumber, pref: existingDrawing.firstPlacePayoutPreference, prize: existingDrawing.firstPrize, delivered: existingDrawing.firstPlaceDelivered },
+                { place: '🥈 2nd', name: existingDrawing.secondPlaceDriverName, ticket: existingDrawing.secondPlaceTicketNumber, pref: existingDrawing.secondPlacePayoutPreference, prize: existingDrawing.secondPrize, delivered: existingDrawing.secondPlaceDelivered },
+                { place: '🥉 3rd', name: existingDrawing.thirdPlaceDriverName, ticket: existingDrawing.thirdPlaceTicketNumber, pref: existingDrawing.thirdPlacePayoutPreference, prize: existingDrawing.thirdPrize, delivered: existingDrawing.thirdPlaceDelivered },
+              ].filter(w => w.name).map((winner) => (
+                <div key={winner.place} className="flex items-center justify-between bg-white/60 dark:bg-black/20 rounded-lg px-3 py-2">
+                  <div>
+                    <p className="font-semibold text-sm text-yellow-900 dark:text-yellow-100">{winner.place} — {winner.name}</p>
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300 font-mono">{winner.ticket}</p>
+                    {winner.prize && <p className="text-xs text-yellow-600 dark:text-yellow-400">Prize: {winner.prize}</p>}
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">{getPayoutPreferenceLabel(winner.pref)}</p>
+                  </div>
+                  <Badge variant={winner.delivered ? "secondary" : "outline"} className={winner.delivered ? "text-green-700 bg-green-100" : "text-yellow-700 border-yellow-400"}>
+                    {winner.delivered ? "✓ Delivered" : "Pending"}
+                  </Badge>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -496,6 +590,52 @@ export default function AdminLottery() {
           </Card>
         )}
       </main>
+
+      {/* Execute Drawing Dialog */}
+      <Dialog open={executeDialogOpen} onOpenChange={setExecuteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-yellow-500" />
+              Execute {MONTH_NAMES[selectedMonth - 1]} {selectedYear} Drawing
+            </DialogTitle>
+            <DialogDescription>
+              This will randomly select 1st, 2nd, and 3rd place winners weighted by their number of entries, send them automatic win notifications, and archive the month. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 text-sm text-amber-800 dark:text-amber-200">
+              <strong>{totalEntriesCount}</strong> entries from <strong>{uniqueDrivers}</strong> drivers will be entered into the drawing.
+            </div>
+            <div className="space-y-2">
+              <Label>🥇 1st Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input placeholder="e.g., $500 Cash, $250 Gift Card" value={firstPrize} onChange={e => setFirstPrize(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>🥈 2nd Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input placeholder="e.g., $200 Gift Card" value={secondPrize} onChange={e => setSecondPrize(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>🥉 3rd Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input placeholder="e.g., $100 Gift Card" value={thirdPrize} onChange={e => setThirdPrize(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExecuteDialogOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              onClick={() => executeMutation.mutate({ month: selectedMonth, year: selectedYear, firstPrize, secondPrize, thirdPrize })}
+              disabled={executeMutation.isPending}
+            >
+              {executeMutation.isPending ? (
+                <><Clock className="w-4 h-4 mr-2 animate-spin" />Drawing...</>
+              ) : (
+                <><Zap className="w-4 h-4 mr-2" />Execute Drawing</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={notifyDialogOpen} onOpenChange={setNotifyDialogOpen}>
         <DialogContent className="sm:max-w-md">

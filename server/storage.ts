@@ -90,6 +90,7 @@ import {
   type IdentityDocument,
   type DriverLotteryEntry,
   type InsertDriverLotteryEntry,
+  lotteryDrawings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
@@ -370,6 +371,13 @@ export interface IStorage {
   // Custom billing model operations (feature flag per owner)
   updateOwnerCustomBillingModel(ownerId: string, settings: { useCustomBillingModel?: boolean; customWashoutRate?: string | null }): Promise<Owner>;
   getOwnersWithCustomBillingModel(): Promise<(Owner & { user: User })[]>;
+
+  // Lottery drawings operations
+  createLotteryDrawing(data: any): Promise<any>;
+  getLotteryDrawings(): Promise<any[]>;
+  getLotteryDrawingByMonthYear(month: number, year: number): Promise<any | undefined>;
+  getPendingLotteryDrawings(): Promise<any[]>;
+  markLotteryPrizeDelivered(drawingId: string, place: 'first' | 'second' | 'third'): Promise<any>;
 
   // Driver lottery entries operations
   createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<any>;
@@ -4703,6 +4711,48 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(owners.userId, users.id))
       .where(eq(owners.useCustomBillingModel, true));
     return results.map(r => ({ ...r.owners, user: r.users }));
+  }
+
+  // Lottery drawings operations
+  async createLotteryDrawing(data: any): Promise<any> {
+    const [drawing] = await db.insert(lotteryDrawings).values(data).returning();
+    return drawing;
+  }
+
+  async getLotteryDrawings(): Promise<any[]> {
+    return await db.select().from(lotteryDrawings).orderBy(desc(lotteryDrawings.drawingDate));
+  }
+
+  async getLotteryDrawingByMonthYear(month: number, year: number): Promise<any | undefined> {
+    const [drawing] = await db
+      .select()
+      .from(lotteryDrawings)
+      .where(and(eq(lotteryDrawings.lotteryMonth, month), eq(lotteryDrawings.lotteryYear, year)));
+    return drawing;
+  }
+
+  async getPendingLotteryDrawings(): Promise<any[]> {
+    return await db
+      .select()
+      .from(lotteryDrawings)
+      .where(
+        or(
+          eq(lotteryDrawings.firstPlaceDelivered, false),
+          eq(lotteryDrawings.secondPlaceDelivered, false),
+          eq(lotteryDrawings.thirdPlaceDelivered, false),
+        )
+      )
+      .orderBy(desc(lotteryDrawings.drawingDate));
+  }
+
+  async markLotteryPrizeDelivered(drawingId: string, place: 'first' | 'second' | 'third'): Promise<any> {
+    const now = new Date();
+    const updates: any = {};
+    if (place === 'first') { updates.firstPlaceDelivered = true; updates.firstPlaceDeliveredAt = now; }
+    if (place === 'second') { updates.secondPlaceDelivered = true; updates.secondPlaceDeliveredAt = now; }
+    if (place === 'third') { updates.thirdPlaceDelivered = true; updates.thirdPlaceDeliveredAt = now; }
+    const [updated] = await db.update(lotteryDrawings).set(updates).where(eq(lotteryDrawings.id, drawingId)).returning();
+    return updated;
   }
 
   // Driver lottery entries operations

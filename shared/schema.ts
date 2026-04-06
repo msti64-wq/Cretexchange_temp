@@ -608,6 +608,42 @@ export const driverLotteryEntries = pgTable("driver_lottery_entries", {
   monthYearIndex: index("idx_lottery_entries_month_year").on(table.lotteryMonth, table.lotteryYear),
 }));
 
+// Lottery drawings - records results of completed monthly drawings
+export const lotteryDrawings = pgTable("lottery_drawings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lotteryMonth: integer("lottery_month").notNull(),
+  lotteryYear: integer("lottery_year").notNull(),
+  drawingDate: timestamp("drawing_date").defaultNow(),
+  executedBy: varchar("executed_by").references(() => users.id),
+  // 1st place
+  firstPlaceDriverId: varchar("first_place_driver_id").references(() => drivers.id),
+  firstPlaceDriverName: varchar("first_place_driver_name"),
+  firstPlaceTicketNumber: varchar("first_place_ticket_number"),
+  firstPlacePayoutPreference: varchar("first_place_payout_preference"),
+  firstPrize: varchar("first_prize"),
+  firstPlaceDelivered: boolean("first_place_delivered").default(false),
+  firstPlaceDeliveredAt: timestamp("first_place_delivered_at"),
+  // 2nd place
+  secondPlaceDriverId: varchar("second_place_driver_id").references(() => drivers.id),
+  secondPlaceDriverName: varchar("second_place_driver_name"),
+  secondPlaceTicketNumber: varchar("second_place_ticket_number"),
+  secondPlacePayoutPreference: varchar("second_place_payout_preference"),
+  secondPrize: varchar("second_prize"),
+  secondPlaceDelivered: boolean("second_place_delivered").default(false),
+  secondPlaceDeliveredAt: timestamp("second_place_delivered_at"),
+  // 3rd place
+  thirdPlaceDriverId: varchar("third_place_driver_id").references(() => drivers.id),
+  thirdPlaceDriverName: varchar("third_place_driver_name"),
+  thirdPlaceTicketNumber: varchar("third_place_ticket_number"),
+  thirdPlacePayoutPreference: varchar("third_place_payout_preference"),
+  thirdPrize: varchar("third_prize"),
+  thirdPlaceDelivered: boolean("third_place_delivered").default(false),
+  thirdPlaceDeliveredAt: timestamp("third_place_delivered_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  monthYearUnique: uniqueIndex("uniq_lottery_drawings_month_year").on(table.lotteryMonth, table.lotteryYear),
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   driver: one(drivers, { fields: [users.id], references: [drivers.userId] }),

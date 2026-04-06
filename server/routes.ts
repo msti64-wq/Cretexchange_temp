@@ -8440,6 +8440,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== LOTTERY DRAWINGS ENDPOINTS ==========
+
+  // Execute a lottery drawing for a given month/year (admin/super_admin)
+  app.post('/api/admin/lottery/execute', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { month, year, firstPrize, secondPrize, thirdPrize } = req.body;
+      if (!month || !year) {
+        return res.status(400).json({ message: "Month and year are required" });
+      }
+
+      // Check if drawing already exists for this month/year
+      const existing = await storage.getLotteryDrawingByMonthYear(month, year);
+      if (existing) {
+        return res.status(409).json({ message: `A drawing for ${month}/${year} has already been executed` });
+      }
+
+      // Get all non-archived entries for this month/year
+      const allEntries = await storage.getDriverLotteryEntryTotals(month, year);
+      if (!allEntries || allEntries.length === 0) {
+        return res.status(400).json({ message: "No entries found for this period" });
+      }
+
+      // Get individual entries to pick winning ticket numbers
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59);
+      const individualEntries = await storage.getAllDriverLotteryEntries(startDate, endDate);
+
+      // Build weighted pool (one slot per entry earned)
+      const pool: { driverId: string; driverName: string; ticketNumber: string | null; payoutPreference: string | null }[] = [];
+      for (const t of allEntries) {
+        const driverIndividualEntries = individualEntries.filter((e: any) => e.driverId === t.driverId);
+        for (let i = 0; i < t.totalEntries; i++) {
+          const entryForSlot = driverIndividualEntries[i % driverIndividualEntries.length];
+          pool.push({
+            driverId: t.driverId,
+            driverName: t.driverName,
+            ticketNumber: entryForSlot?.ticketNumber || null,
+            payoutPreference: t.payoutPreference,
+          });
+        }
+      }
+
+      // Shuffle pool using Fisher-Yates
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+
+      // Pick 3 unique winners
+      const winners: typeof pool = [];
+      const pickedDriverIds = new Set<string>();
+      for (const slot of pool) {
+        if (!pickedDriverIds.has(slot.driverId)) {
+          winners.push(slot);
+          pickedDriverIds.add(slot.driverId);
+          if (winners.length === 3) break;
+        }
+      }
+
+      if (winners.length < 1) {
+        return res.status(400).json({ message: "Not enough unique drivers to hold a drawing" });
+      }
+
+      const [first, second, third] = winners;
+      const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+
+      // Create the drawing record
+      const drawing = await storage.createLotteryDrawing({
+        lotteryMonth: month,
+        lotteryYear: year,
+        executedBy: user.id,
+        firstPlaceDriverId: first?.driverId || null,
+        firstPlaceDriverName: first?.driverName || null,
+        firstPlaceTicketNumber: first?.ticketNumber || null,
+        firstPlacePayoutPreference: first?.payoutPreference || null,
+        firstPrize: firstPrize || null,
+        secondPlaceDriverId: second?.driverId || null,
+        secondPlaceDriverName: second?.driverName || null,
+        secondPlaceTicketNumber: second?.ticketNumber || null,
+        secondPlacePayoutPreference: second?.payoutPreference || null,
+        secondPrize: secondPrize || null,
+        thirdPlaceDriverId: third?.driverId || null,
+        thirdPlaceDriverName: third?.driverName || null,
+        thirdPlaceTicketNumber: third?.ticketNumber || null,
+        thirdPlacePayoutPreference: third?.payoutPreference || null,
+        thirdPrize: thirdPrize || null,
+      });
+
+      // Send notifications to winners
+      const placeLabels = ['🥇 1st Place', '🥈 2nd Place', '🥉 3rd Place'];
+      const prizes = [firstPrize, secondPrize, thirdPrize];
+      for (let i = 0; i < winners.length; i++) {
+        const winner = winners[i];
+        const driver = await storage.getDriverById(winner.driverId);
+        if (driver) {
+          const prizeText = prizes[i] ? ` Prize: ${prizes[i]}` : '';
+          await storage.createNotification({
+            userId: driver.userId,
+            title: `🎉 You Won ${placeLabels[i]} in the ${monthName} ${year} Lottery!`,
+            message: `Congratulations! Your ticket ${winner.ticketNumber || ''} was selected as a ${monthName} ${year} lottery winner.${prizeText} We will be in touch soon to arrange your prize delivery. Thank you for being part of CreteXchange!`,
+            type: 'lottery_winner',
+            data: { month, year, place: i + 1, ticketNumber: winner.ticketNumber, prize: prizes[i] },
+          });
+        }
+      }
+
+      // Archive the month entries
+      await storage.archiveLotteryMonth(month, year);
+
+      console.log(`🎰 Lottery drawing executed for ${monthName} ${year} by ${user.username}. Winners: ${winners.map(w => w.driverName).join(', ')}`);
+
+      res.json({
+        message: `Drawing complete! ${winners.length} winner${winners.length !== 1 ? 's' : ''} selected and notified.`,
+        drawing,
+        winners: winners.map((w, i) => ({ place: i + 1, ...w })),
+      });
+    } catch (error: any) {
+      console.error("Error executing lottery drawing:", error);
+      res.status(500).json({ message: error.message || "Failed to execute drawing" });
+    }
+  });
+
+  // Get all past lottery drawings (admin/super_admin)
+  app.get('/api/admin/lottery/drawings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const drawings = await storage.getLotteryDrawings();
+      res.json(drawings);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch drawings" });
+    }
+  });
+
+  // Get drawings with undelivered prizes (admin/super_admin)
+  app.get('/api/admin/lottery/drawings/pending', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const drawings = await storage.getPendingLotteryDrawings();
+      res.json(drawings);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch pending drawings" });
+    }
+  });
+
+  // Mark a specific prize as delivered (admin/super_admin)
+  app.put('/api/admin/lottery/drawings/:id/mark-delivered', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const { id } = req.params;
+      const { place } = req.body;
+      if (!['first', 'second', 'third'].includes(place)) {
+        return res.status(400).json({ message: "Place must be 'first', 'second', or 'third'" });
+      }
+      const updated = await storage.markLotteryPrizeDelivered(id, place);
+      res.json({ message: "Prize marked as delivered", drawing: updated });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to mark prize as delivered" });
+    }
+  });
+
   // ========== ADMIN PRICING MANAGEMENT ENDPOINTS ==========
   
   // Update all location rates platform-wide (for switching between test/production pricing)

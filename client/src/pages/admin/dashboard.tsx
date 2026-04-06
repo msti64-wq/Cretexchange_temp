@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag } from "lucide-react";
+import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag, Trophy, Gift, PackageCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -43,6 +43,25 @@ export default function AdminDashboard() {
     },
     onError: () => {
       toast({ title: "Failed to update message status", variant: "destructive" });
+    },
+  });
+
+  const { data: pendingDrawings } = useQuery<any[]>({
+    queryKey: ['/api/admin/lottery/drawings/pending'],
+    refetchInterval: 60000,
+  });
+
+  const markDeliveredMutation = useMutation({
+    mutationFn: async ({ drawingId, place }: { drawingId: string; place: string }) => {
+      const response = await apiRequest("PUT", `/api/admin/lottery/drawings/${drawingId}/mark-delivered`, { place });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/drawings/pending'] });
+      toast({ title: "Prize marked as delivered!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update delivery status", variant: "destructive" });
     },
   });
 
@@ -463,6 +482,61 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Pending Prize Deliveries */}
+        {pendingDrawings && pendingDrawings.length > 0 && (
+          <Card className="border-yellow-300 dark:border-yellow-700">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Gift className="w-4 h-4 text-yellow-600" />
+                Pending Prize Deliveries
+                <Badge className="ml-auto bg-yellow-100 text-yellow-700 border-yellow-300">
+                  Reminder
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pendingDrawings.map((drawing: any) => {
+                const monthName = new Date(drawing.lotteryYear, drawing.lotteryMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                const winners = [
+                  { place: '🥇 1st', key: 'first', name: drawing.firstPlaceDriverName, ticket: drawing.firstPlaceTicketNumber, pref: drawing.firstPlacePayoutPreference, prize: drawing.firstPrize, delivered: drawing.firstPlaceDelivered },
+                  { place: '🥈 2nd', key: 'second', name: drawing.secondPlaceDriverName, ticket: drawing.secondPlaceTicketNumber, pref: drawing.secondPlacePayoutPreference, prize: drawing.secondPrize, delivered: drawing.secondPlaceDelivered },
+                  { place: '🥉 3rd', key: 'third', name: drawing.thirdPlaceDriverName, ticket: drawing.thirdPlaceTicketNumber, pref: drawing.thirdPlacePayoutPreference, prize: drawing.thirdPrize, delivered: drawing.thirdPlaceDelivered },
+                ].filter(w => w.name && !w.delivered);
+
+                return (
+                  <div key={drawing.id}>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">{monthName} Drawing</p>
+                    <div className="space-y-2">
+                      {winners.map((winner) => (
+                        <div key={winner.key} className="flex items-center justify-between bg-yellow-50 dark:bg-yellow-900/20 rounded-lg px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{winner.place} — {winner.name}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{winner.ticket}</p>
+                            {winner.prize && <p className="text-xs text-muted-foreground">Prize: {winner.prize}</p>}
+                            <p className="text-xs text-muted-foreground">
+                              {winner.pref === 'gift_card' ? '🎁 Gift Card' : winner.pref === 'other_prize' ? '🎉 Surprise Prize' : '🏦 Bank Transfer'}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-shrink-0 text-green-700 border-green-400 hover:bg-green-50"
+                            onClick={() => markDeliveredMutation.mutate({ drawingId: drawing.id, place: winner.key })}
+                            disabled={markDeliveredMutation.isPending}
+                          >
+                            <PackageCheck className="w-4 h-4 mr-1" />
+                            Delivered
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
