@@ -257,7 +257,7 @@ export default function SuperAdminLotteryDashboard() {
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground">Super admin access required</p>
-            <Button className="mt-4" onClick={() => setLocation('/dashboard')}>
+            <Button className="mt-4" onClick={() => setLocation('/')}>
               Return to Dashboard
             </Button>
           </CardContent>
@@ -274,7 +274,7 @@ export default function SuperAdminLotteryDashboard() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setLocation('/admin/dashboard')}
+              onClick={() => setLocation('/')}
               className="text-white hover:bg-white/20"
               data-testid="button-back"
             >
