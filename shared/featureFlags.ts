@@ -30,6 +30,9 @@ export const FEATURE_FLAGS = {
 
   // Trial Mode: Waive bank account / Stripe Connect setup requirement for drivers
   WAIVE_DRIVER_PAYMENT: 'waive_driver_payment',
+
+  // Lottery Program: Enable lottery ticket earning for drivers on washout completion
+  LOTTERY_ENABLED: 'lottery_enabled',
 } as const;
 
 export type FeatureFlagKey = typeof FEATURE_FLAGS[keyof typeof FEATURE_FLAGS];
@@ -91,5 +94,11 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
     description: 'TRIAL MODE: Waive the bank account / Stripe Connect setup requirement for drivers. Drivers can use the platform without connecting a bank account. Disable this before enabling driver payouts.',
     enabled: false, // Disabled by default — enable only during trial period
     allowedRoles: [], // All roles can read this flag; it is a global platform setting controlled by super admin
+  },
+  {
+    key: FEATURE_FLAGS.LOTTERY_ENABLED,
+    description: 'Lottery Program: Allow drivers to earn lottery ticket entries on washout completion. When disabled, no entries are created and the lottery ticket card is hidden from the driver dashboard.',
+    enabled: false, // Disabled during trial — enable when lottery program launches
+    allowedRoles: [],
   },
 ];

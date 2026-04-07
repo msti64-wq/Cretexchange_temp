@@ -1636,9 +1636,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const systemSettings = await storage.getSystemSettings();
       let platformFee: number;
       
-      // Check if this owner has a custom platform fee
-      if (owner.customPlatformFee && parseFloat(owner.customPlatformFee) > 0) {
-        platformFee = parseFloat(owner.customPlatformFee);
+      // Check if this owner has a custom platform fee (allow $0.00 as a valid override)
+      const customFeeValue = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined
+        ? parseFloat(owner.customPlatformFee)
+        : NaN;
+      if (!isNaN(customFeeValue) && customFeeValue >= 0) {
+        platformFee = customFeeValue;
         console.log('💰 Using custom platform fee for owner:', ownerUser?.username, '- $' + platformFee);
       } else {
         // Use global platform fee from settings
@@ -1646,8 +1649,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('💰 Using global platform fee: $' + platformFee);
       }
       
-      // Validate platform fee (safety check)
-      if (isNaN(platformFee) || platformFee <= 0) {
+      // Validate platform fee (safety check — $0.00 is explicitly allowed)
+      if (isNaN(platformFee) || platformFee < 0) {
         console.error('⚠️ Invalid platform fee detected:', platformFee);
         platformFee = 0.40; // Fallback to default testing value
         console.log('✅ Using fallback platform fee:', platformFee);
@@ -2194,10 +2197,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user data for profile completion checks
       const user = await storage.getUser(userId);
 
-      // Get driver lottery entry count (defensive fallback to 0 if method unavailable)
+      // Get driver lottery entry count — only if lottery program is enabled
       let lotteryEntryCount = 0;
       try {
-        lotteryEntryCount = await storage.getDriverLotteryEntryCount(driver.id) || 0;
+        const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
+        const lotteryEnabled = lotteryFlag?.enabled ?? false;
+        if (lotteryEnabled) {
+          lotteryEntryCount = await storage.getDriverLotteryEntryCount(driver.id) || 0;
+        }
       } catch (e) {
         console.log('Lottery count unavailable:', e);
       }
@@ -3838,15 +3845,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // ========== DRIVER COMPENSATION FOR BATCH PROCESSING ==========
         if (useCustomBillingModel) {
-          // CUSTOM BILLING MODEL: Create lottery entry immediately (payment batched separately)
+          // CUSTOM BILLING MODEL: Create lottery entry only if lottery program is enabled
           try {
-            const lotteryEntry = await storage.createDriverLotteryEntry({
-              driverId: driver.id,
-              activityId: id,
-              ownerId: owner.id,
-              entriesEarned: 1,
-            });
-            console.log(`🎰 Lottery entry created for driver ${driver.id} (batch billing), entry ID: ${lotteryEntry.id}`);
+            const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
+            const lotteryEnabled = lotteryFlag?.enabled ?? false;
+            if (lotteryEnabled) {
+              const lotteryEntry = await storage.createDriverLotteryEntry({
+                driverId: driver.id,
+                activityId: id,
+                ownerId: owner.id,
+                entriesEarned: 1,
+              });
+              console.log(`🎰 Lottery entry created for driver ${driver.id} (batch billing), entry ID: ${lotteryEntry.id}`);
+            } else {
+              console.log(`🎰 Lottery program disabled — no entry created for driver ${driver.id} on washout ${id}`);
+            }
           } catch (lotteryError: any) {
             console.error(`❌ Failed to create lottery entry for washout ${id}:`, lotteryError);
           }
