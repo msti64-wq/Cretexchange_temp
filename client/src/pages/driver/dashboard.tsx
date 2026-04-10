@@ -59,6 +59,7 @@ export default function DriverDashboard() {
   const weeklyStats = (dashboardData as any)?.weeklyStats || null;
   const recentActivities = (dashboardData as any)?.recentActivities || null;
   const lotteryEntryCount = (dashboardData as any)?.lotteryEntryCount || 0;
+  const lotteryActive = (dashboardData as any)?.lotteryActive ?? false;
 
   // Calculate rejected washouts and their total amount
   const rejectedWashouts = recentActivities?.filter((activity: any) => 
@@ -172,91 +173,103 @@ export default function DriverDashboard() {
           </div>
         </StatCard>
 
-        {/* Lottery Entries Card - only show if driver has entries this month */}
-        {lotteryEntryCount > 0 && (
-          <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
-                    <Ticket className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Monthly Lottery</h3>
-                    <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                      Drawing closes end of {new Date().toLocaleDateString('en-US', { month: 'long' })}
-                    </p>
-                  </div>
+        {/* Lottery Entries Card - always visible */}
+        <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${lotteryActive ? 'bg-yellow-500' : 'bg-yellow-300 dark:bg-yellow-700'}`}>
+                  <Ticket className="w-6 h-6 text-white" />
                 </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-300" data-testid="text-lottery-entries">
-                    {lotteryEntryCount}
-                  </div>
-                  <div className="text-xs text-yellow-600 dark:text-yellow-400">entries this month</div>
+                <div>
+                  <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Monthly Lottery</h3>
+                  <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                    {lotteryActive
+                      ? `Drawing closes end of ${new Date().toLocaleDateString('en-US', { month: 'long' })}`
+                      : 'Coming soon — stay tuned!'}
+                  </p>
                 </div>
               </div>
-
-              {/* Toggle to see individual entries */}
-              <button
-                onClick={() => setShowLotteryEntries(!showLotteryEntries)}
-                className="flex items-center gap-1 text-xs font-medium text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 transition-colors w-full"
-              >
-                {showLotteryEntries ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                {showLotteryEntries ? "Hide" : "View"} my entries
-              </button>
-
-              {showLotteryEntries && (
-                <div className="border-t border-yellow-200 dark:border-yellow-700 pt-3 space-y-2">
-                  {lotteryEntriesLoading ? (
-                    <div className="space-y-2">
-                      {[1, 2].map(i => (
-                        <div key={i} className="h-10 bg-yellow-100 dark:bg-yellow-800/30 rounded animate-pulse" />
-                      ))}
-                    </div>
-                  ) : lotteryEntries && lotteryEntries.length > 0 ? (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {lotteryEntries.map((entry: any) => (
-                        <div
-                          key={entry.id}
-                          className="bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2 space-y-1"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Building2 className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-                              <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 truncate">
-                                {entry.locationName || entry.ownerCompany || "Location"}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <Ticket className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
-                              <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">
-                                +{entry.entriesEarned}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                              {entry.activityDate
-                                ? new Date(entry.activityDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                                : new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </p>
-                            {entry.ticketNumber && (
-                              <span className="text-xs font-mono font-semibold text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/40 px-2 py-0.5 rounded">
-                                🎟 {entry.ticketNumber}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-yellow-600 dark:text-yellow-400 text-center py-2">No entries found</p>
-                  )}
+              <div className="text-right">
+                <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-300" data-testid="text-lottery-entries">
+                  {lotteryActive ? lotteryEntryCount : '—'}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                <div className="text-xs text-yellow-600 dark:text-yellow-400">
+                  {lotteryActive ? 'entries this month' : 'not active yet'}
+                </div>
+              </div>
+            </div>
+
+            {/* Toggle to see individual entries — only when active and has entries */}
+            {lotteryActive && lotteryEntryCount > 0 && (
+              <>
+                <button
+                  onClick={() => setShowLotteryEntries(!showLotteryEntries)}
+                  className="flex items-center gap-1 text-xs font-medium text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 transition-colors w-full"
+                >
+                  {showLotteryEntries ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  {showLotteryEntries ? "Hide" : "View"} my entries
+                </button>
+
+                {showLotteryEntries && (
+                  <div className="border-t border-yellow-200 dark:border-yellow-700 pt-3 space-y-2">
+                    {lotteryEntriesLoading ? (
+                      <div className="space-y-2">
+                        {[1, 2].map(i => (
+                          <div key={i} className="h-10 bg-yellow-100 dark:bg-yellow-800/30 rounded animate-pulse" />
+                        ))}
+                      </div>
+                    ) : lotteryEntries && lotteryEntries.length > 0 ? (
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {lotteryEntries.map((entry: any) => (
+                          <div
+                            key={entry.id}
+                            className="bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2 space-y-1"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Building2 className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+                                <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 truncate">
+                                  {entry.locationName || entry.ownerCompany || "Location"}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <Ticket className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
+                                <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">
+                                  +{entry.entriesEarned}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                                {entry.activityDate
+                                  ? new Date(entry.activityDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                  : new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </p>
+                              {entry.ticketNumber && (
+                                <span className="text-xs font-mono font-semibold text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/40 px-2 py-0.5 rounded">
+                                  🎟 {entry.ticketNumber}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400 text-center py-2">No entries found</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {lotteryActive && lotteryEntryCount === 0 && (
+              <p className="text-xs text-yellow-600 dark:text-yellow-400 text-center py-1">
+                Complete washouts at participating locations to earn entries.
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Find Location Button */}
         <Button 
