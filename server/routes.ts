@@ -8671,6 +8671,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Send broadcast notification to all non-winning drivers
+      const winnerDriverIds = new Set(winners.map(w => w.driverId));
+      const nextMonthDate = new Date(year, month, 1); // month is 0-indexed in Date constructor, so this gives next month
+      const nextMonthName = nextMonthDate.toLocaleDateString('en-US', { month: 'long' });
+      const nextMonthYear = nextMonthDate.getFullYear();
+
+      try {
+        const allDrivers = await storage.getAllDrivers();
+        const broadcastDrivers = allDrivers.filter(d => !winnerDriverIds.has(d.id));
+        for (const driver of broadcastDrivers) {
+          await storage.createNotification({
+            userId: driver.userId,
+            title: `🎰 ${monthName} ${year} Lottery Drawing Complete!`,
+            message: `The ${monthName} ${year} lottery drawing has concluded and winners have been notified. A new drawing is now underway for ${nextMonthName} ${nextMonthYear} — every washout you complete earns you another entry. Good luck!`,
+            type: 'lottery_drawing_complete',
+            data: { month, year, nextMonth: nextMonthDate.getMonth() + 1, nextYear: nextMonthYear },
+          });
+        }
+        console.log(`📢 Broadcast notification sent to ${broadcastDrivers.length} non-winning drivers`);
+      } catch (broadcastError: any) {
+        console.error('❌ Failed to send broadcast notifications:', broadcastError.message);
+        // Non-fatal — drawing still succeeded
+      }
+
       // Archive the month entries
       await storage.archiveLotteryMonth(month, year);
 
