@@ -8661,11 +8661,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const winner = winners[i];
         const driver = await storage.getDriverById(winner.driverId);
         if (driver) {
-          const prizeText = prizes[i] ? ` Prize: ${prizes[i]}` : '';
+          const prizeText = prizes[i] ? ` Your prize: ${prizes[i]}.` : '';
           await storage.createNotification({
             userId: driver.userId,
             title: `🎉 You Won ${placeLabels[i]} in the ${monthName} ${year} Lottery!`,
-            message: `Congratulations! Your ticket ${winner.ticketNumber || ''} was selected as a ${monthName} ${year} lottery winner.${prizeText} We will be in touch soon to arrange your prize delivery. Thank you for being part of CreteXchange!`,
+            message: `Congratulations! Your ticket ${winner.ticketNumber || ''} was selected as the ${placeLabels[i]} winner of the ${monthName} ${year} lottery.${prizeText} We will be in touch soon to arrange your prize delivery. Thank you for being part of CreteXchange!`,
             type: 'lottery_winner',
             data: { month, year, place: i + 1, ticketNumber: winner.ticketNumber, prize: prizes[i] },
           });
