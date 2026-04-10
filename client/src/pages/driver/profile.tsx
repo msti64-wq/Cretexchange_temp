@@ -509,7 +509,7 @@ export default function DriverProfile() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Prize Type</Label>
+                <Label>Prize Delivery Method</Label>
                 <Select
                   value={formData.payoutPreference}
                   onValueChange={(val) => setFormData({ ...formData, payoutPreference: val, payoutPreferenceNote: val !== "other_prize" ? "" : formData.payoutPreferenceNote })}
@@ -519,11 +519,8 @@ export default function DriverProfile() {
                     <SelectValue placeholder="Select your preference" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="bank_transfer">
-                      🏦 Bank Transfer — Send winnings to my connected bank account
-                    </SelectItem>
                     <SelectItem value="gift_card">
-                      🎁 Gift Card — Send a gift card (Amazon, Visa, etc.)
+                      💳 Prepaid Debit Card — Mailed to your address on file
                     </SelectItem>
                     <SelectItem value="other_prize">
                       🎉 Surprise Me — Other prize or experience
@@ -551,9 +548,10 @@ export default function DriverProfile() {
                   <Gift className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <p className="text-sm text-muted-foreground">
                     Current preference: <span className="font-medium text-foreground">
-                      {formData.payoutPreference === "bank_transfer" ? "Bank Transfer" :
-                       formData.payoutPreference === "gift_card" ? "Gift Card" :
-                       "Surprise Me / Other Prize"}
+                      {formData.payoutPreference === "bank_transfer" ? "Direct Deposit (not currently available)" :
+                       formData.payoutPreference === "gift_card" ? "Prepaid Debit Card" :
+                       formData.payoutPreference === "other_prize" ? "Surprise Me / Other Prize" :
+                       "Not set"}
                     </span>
                     {formData.payoutPreferenceNote && ` — ${formData.payoutPreferenceNote}`}
                   </p>
