@@ -68,6 +68,7 @@ export default function AdminLottery() {
   const [winnerMessage, setWinnerMessage] = useState("");
   const [showIndividualEntries, setShowIndividualEntries] = useState(false);
   const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
+  const [numberOfWinners, setNumberOfWinners] = useState(3);
   const [firstPrize, setFirstPrize] = useState("");
   const [secondPrize, setSecondPrize] = useState("");
   const [thirdPrize, setThirdPrize] = useState("");
@@ -113,7 +114,7 @@ export default function AdminLottery() {
   });
 
   const executeMutation = useMutation({
-    mutationFn: async (payload: { month: number; year: number; firstPrize: string; secondPrize: string; thirdPrize: string }) => {
+    mutationFn: async (payload: { month: number; year: number; numberOfWinners: number; firstPrize: string; secondPrize: string; thirdPrize: string }) => {
       const response = await apiRequest('/api/admin/lottery/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -592,7 +593,7 @@ export default function AdminLottery() {
       </main>
 
       {/* Execute Drawing Dialog */}
-      <Dialog open={executeDialogOpen} onOpenChange={setExecuteDialogOpen}>
+      <Dialog open={executeDialogOpen} onOpenChange={(open) => { setExecuteDialogOpen(open); if (!open) { setNumberOfWinners(3); setFirstPrize(""); setSecondPrize(""); setThirdPrize(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -600,31 +601,57 @@ export default function AdminLottery() {
               Execute {MONTH_NAMES[selectedMonth - 1]} {selectedYear} Drawing
             </DialogTitle>
             <DialogDescription>
-              This will randomly select 1st, 2nd, and 3rd place winners weighted by their number of entries, send them automatic win notifications, and archive the month. This cannot be undone.
+              Winners are selected randomly, weighted by number of entries. They will receive automatic win notifications and the month will be archived. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 text-sm text-amber-800 dark:text-amber-200">
               <strong>{totalEntriesCount}</strong> entries from <strong>{uniqueDrivers}</strong> drivers will be entered into the drawing.
             </div>
+
+            {/* Number of winners selector */}
+            <div className="space-y-2">
+              <Label>Number of Winners</Label>
+              <div className="flex gap-2">
+                {[1, 2, 3].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setNumberOfWinners(n)}
+                    className={`flex-1 py-2 rounded-md border text-sm font-semibold transition-colors ${
+                      numberOfWinners === n
+                        ? 'bg-yellow-500 text-white border-yellow-500'
+                        : 'border-border text-muted-foreground hover:border-yellow-400 hover:text-foreground'
+                    }`}
+                  >
+                    {n === 1 ? '1 Winner' : `${n} Winners`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label>🥇 1st Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
-              <Input placeholder="e.g., $500 Cash, $250 Gift Card" value={firstPrize} onChange={e => setFirstPrize(e.target.value)} />
+              <Input placeholder="e.g., $500 Prepaid Debit Card" value={firstPrize} onChange={e => setFirstPrize(e.target.value)} />
             </div>
-            <div className="space-y-2">
-              <Label>🥈 2nd Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
-              <Input placeholder="e.g., $200 Gift Card" value={secondPrize} onChange={e => setSecondPrize(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>🥉 3rd Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
-              <Input placeholder="e.g., $100 Gift Card" value={thirdPrize} onChange={e => setThirdPrize(e.target.value)} />
-            </div>
+            {numberOfWinners >= 2 && (
+              <div className="space-y-2">
+                <Label>🥈 2nd Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input placeholder="e.g., $200 Prepaid Debit Card" value={secondPrize} onChange={e => setSecondPrize(e.target.value)} />
+              </div>
+            )}
+            {numberOfWinners >= 3 && (
+              <div className="space-y-2">
+                <Label>🥉 3rd Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input placeholder="e.g., $100 Prepaid Debit Card" value={thirdPrize} onChange={e => setThirdPrize(e.target.value)} />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setExecuteDialogOpen(false)}>Cancel</Button>
             <Button
               className="bg-yellow-500 hover:bg-yellow-600 text-white"
-              onClick={() => executeMutation.mutate({ month: selectedMonth, year: selectedYear, firstPrize, secondPrize, thirdPrize })}
+              onClick={() => executeMutation.mutate({ month: selectedMonth, year: selectedYear, numberOfWinners, firstPrize, secondPrize, thirdPrize })}
               disabled={executeMutation.isPending}
             >
               {executeMutation.isPending ? (

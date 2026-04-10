@@ -8570,10 +8570,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const { month, year, firstPrize, secondPrize, thirdPrize } = req.body;
+      const { month, year, firstPrize, secondPrize, thirdPrize, numberOfWinners: rawWinners } = req.body;
       if (!month || !year) {
         return res.status(400).json({ message: "Month and year are required" });
       }
+      const numberOfWinners = Math.min(3, Math.max(1, parseInt(rawWinners) || 3));
 
       // Check if drawing already exists for this month/year
       const existing = await storage.getLotteryDrawingByMonthYear(month, year);
@@ -8613,14 +8614,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         [pool[i], pool[j]] = [pool[j], pool[i]];
       }
 
-      // Pick 3 unique winners
+      // Pick up to numberOfWinners unique winners
       const winners: typeof pool = [];
       const pickedDriverIds = new Set<string>();
       for (const slot of pool) {
         if (!pickedDriverIds.has(slot.driverId)) {
           winners.push(slot);
           pickedDriverIds.add(slot.driverId);
-          if (winners.length === 3) break;
+          if (winners.length === numberOfWinners) break;
         }
       }
 
