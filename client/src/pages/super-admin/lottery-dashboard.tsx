@@ -44,7 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Ticket, Download, Calendar, Trophy, RotateCcw, 
   ArrowLeft, Clock, Users, TrendingUp, Filter,
-  FileText, Send
+  FileText, Send, Medal, CheckCircle2, Package
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -85,6 +85,10 @@ export default function SuperAdminLotteryDashboard() {
 
   const { data: months } = useQuery<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/months'],
+  });
+
+  const { data: allDrawings } = useQuery<any[]>({
+    queryKey: ['/api/admin/lottery/drawings'],
   });
 
   const { data: totals, isLoading: totalsLoading, refetch: refetchTotals } = useQuery<{ driverId: string; driverName: string; totalEntries: number }[]>({
@@ -193,6 +197,17 @@ export default function SuperAdminLotteryDashboard() {
 
   const totalEntriesCount = filteredTotals.reduce((sum, t) => sum + t.totalEntries, 0);
   const uniqueDrivers = filteredTotals.length;
+
+  // Drawing for the currently selected month/year
+  const selectedDrawing = allDrawings?.find(
+    d => d.lotteryMonth === selectedMonth && d.lotteryYear === selectedYear
+  ) ?? null;
+
+  const PAYOUT_LABEL: Record<string, string> = {
+    gift_card: 'Prepaid Debit Card',
+    bank_transfer: 'Direct Deposit',
+    other_prize: 'Surprise / Other',
+  };
 
   const availableYears = months?.length 
     ? Array.from(new Set([...months.map(m => m.year), currentYear])).sort((a, b) => b - a)
@@ -509,6 +524,112 @@ export default function SuperAdminLotteryDashboard() {
                   {viewMode === 'current' && resetDate 
                     ? 'No entries since the last reset'
                     : `No entries for ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Winners & Notifications — shows completed drawing for selected month */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Medal className="w-5 h-5 text-yellow-500" />
+              Winners &amp; Notifications — {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+            </CardTitle>
+            <CardDescription>
+              {selectedDrawing
+                ? `Drawing executed on ${new Date(selectedDrawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} by ${selectedDrawing.executedByName || 'admin'}`
+                : 'No drawing has been executed for this period yet.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!selectedDrawing ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Execute a drawing to see winners and their notifications here.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[
+                  {
+                    place: '1st',
+                    emoji: '🥇',
+                    name: selectedDrawing.firstPlaceDriverName,
+                    ticket: selectedDrawing.firstPlaceTicketNumber,
+                    prize: selectedDrawing.firstPrize,
+                    payout: selectedDrawing.firstPlacePayoutPreference,
+                    delivered: selectedDrawing.firstPlaceDelivered,
+                    deliveredAt: selectedDrawing.firstPlaceDeliveredAt,
+                  },
+                  {
+                    place: '2nd',
+                    emoji: '🥈',
+                    name: selectedDrawing.secondPlaceDriverName,
+                    ticket: selectedDrawing.secondPlaceTicketNumber,
+                    prize: selectedDrawing.secondPrize,
+                    payout: selectedDrawing.secondPlacePayoutPreference,
+                    delivered: selectedDrawing.secondPlaceDelivered,
+                    deliveredAt: selectedDrawing.secondPlaceDeliveredAt,
+                  },
+                  {
+                    place: '3rd',
+                    emoji: '🥉',
+                    name: selectedDrawing.thirdPlaceDriverName,
+                    ticket: selectedDrawing.thirdPlaceTicketNumber,
+                    prize: selectedDrawing.thirdPrize,
+                    payout: selectedDrawing.thirdPlacePayoutPreference,
+                    delivered: selectedDrawing.thirdPlaceDelivered,
+                    deliveredAt: selectedDrawing.thirdPlaceDeliveredAt,
+                  },
+                ].filter(w => w.name).map((winner) => (
+                  <div
+                    key={winner.place}
+                    className="flex items-start justify-between p-4 rounded-lg border bg-muted/30"
+                  >
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-lg">{winner.emoji}</span>
+                        <span className="font-semibold text-base">{winner.place} Place — {winner.name}</span>
+                        {winner.ticket && (
+                          <span className="text-xs font-mono bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 px-2 py-0.5 rounded">
+                            🎟 {winner.ticket}
+                          </span>
+                        )}
+                      </div>
+                      {winner.prize && (
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <Trophy className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>Prize: <span className="font-medium text-foreground">{winner.prize}</span></span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Package className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>
+                          Delivery preference:{' '}
+                          <span className="font-medium text-foreground">
+                            {PAYOUT_LABEL[winner.payout] || winner.payout || 'Not set'}
+                          </span>
+                        </span>
+                      </div>
+                      {winner.delivered && winner.deliveredAt && (
+                        <div className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Delivered on {new Date(winner.deliveredAt).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </div>
+                    <Badge
+                      variant={winner.delivered ? 'default' : 'secondary'}
+                      className={`ml-4 flex-shrink-0 ${winner.delivered ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                    >
+                      {winner.delivered ? '✓ Delivered' : 'Pending'}
+                    </Badge>
+                  </div>
+                ))}
+
+                <p className="text-xs text-muted-foreground pt-2 border-t">
+                  Winner notifications are sent automatically when a drawing is executed. Use the "Notify Winner" button on the leaderboard to send additional messages to any driver.
                 </p>
               </div>
             )}
