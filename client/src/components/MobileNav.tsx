@@ -15,10 +15,10 @@ export function MobileNav({ role }: MobileNavProps) {
   // Use the role prop if provided, otherwise get from auth context
   const userRole = role || (user as any)?.role;
 
-  // Fetch unread notifications count for owners
+  // Fetch unread notifications count for drivers and owners
   const { data: unreadData } = useQuery({
     queryKey: ['/api/notifications/unread'],
-    enabled: userRole === 'owner',
+    enabled: userRole === 'owner' || userRole === 'driver',
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -32,6 +32,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/locations", icon: Map, label: "Locations" },
           { path: "/activity", icon: List, label: "Activity" },
           { path: "/wallet", icon: Wallet, label: "Wallet" },
+          { path: "/notifications", icon: Bell, label: "Messages" },
           { path: "/profile", icon: User, label: "Profile" },
         ];
       case "owner":
@@ -93,7 +94,7 @@ export function MobileNav({ role }: MobileNavProps) {
             >
               <div className="relative">
                 <Icon className="w-5 h-5 mb-1" />
-                {item.label === 'Alerts' && unreadCount > 0 && (
+                {(item.label === 'Alerts' || item.label === 'Messages') && unreadCount > 0 && (
                   <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-4 min-w-4 flex items-center justify-center px-1" data-testid="badge-unread-count">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>

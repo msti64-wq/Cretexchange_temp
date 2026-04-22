@@ -20,6 +20,7 @@ import DriverActivity from "@/pages/driver/activity";
 import DriverProfile from "@/pages/driver/profile";
 import DriverCheckIn from "@/pages/driver/check-in";
 import DriverWallet from "@/pages/driver/wallet";
+import DriverNotifications from "@/pages/driver/notifications";
 
 // Owner pages
 import OwnerDashboard from "@/pages/owner/dashboard";
@@ -100,6 +101,7 @@ function Router() {
         <Route path="/locations" component={DriverLocations} />
         <Route path="/activity" component={DriverActivity} />
         <Route path="/wallet" component={DriverWallet} />
+        <Route path="/notifications" component={DriverNotifications} />
         <Route path="/profile" component={DriverProfile} />
         <Route path="/check-in/:locationId?" component={DriverCheckIn} />
         <Route component={NotFound} />

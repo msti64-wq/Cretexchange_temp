@@ -7660,6 +7660,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PUT /api/notifications/read-all - Mark all notifications as read
+  app.put('/api/notifications/read-all', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
   // PUT /api/notifications/:id/read - Mark notification as read
   app.put('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
     try {
