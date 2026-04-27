@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CreteXchange - Owner Brochure</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f4f8;
+    width: 900px;
+  }
+  .page {
+    width: 900px;
+    background: #ffffff;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 50%, #2563eb 100%);
+    padding: 48px 56px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 280px; height: 280px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; left: 200px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .logo-mark {
+    width: 48px; height: 48px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .logo-text {
+    font-size: 26px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+  .logo-text span { color: #93c5fd; }
+  .header-tagline {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.65);
+    margin-bottom: 18px;
+  }
+  .header h1 {
+    font-size: 38px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1.15;
+    max-width: 600px;
+    margin-bottom: 16px;
+    letter-spacing: -0.5px;
+  }
+  .header h1 span {
+    color: #fbbf24;
+  }
+  .header-sub {
+    font-size: 17px;
+    color: rgba(255,255,255,0.85);
+    max-width: 560px;
+    line-height: 1.6;
+  }
+
+  /* INTRO OFFER BANNER */
+  .offer-banner {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    padding: 18px 56px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .offer-banner .star { font-size: 24px; }
+  .offer-banner-text {
+    font-size: 15px;
+    font-weight: 700;
+    color: #78350f;
+    letter-spacing: 0.2px;
+  }
+  .offer-banner-text span {
+    font-size: 16px;
+    color: #451a03;
+  }
+
+  /* SECTION */
+  .section {
+    padding: 44px 56px;
+  }
+  .section + .section {
+    border-top: 1px solid #e5e7eb;
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #2563eb;
+    margin-bottom: 10px;
+  }
+  .section h2 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.3px;
+    margin-bottom: 28px;
+    line-height: 1.2;
+  }
+
+  /* BENEFITS GRID */
+  .benefits-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .benefit-card {
+    background: #f8faff;
+    border: 1.5px solid #e0e7ff;
+    border-radius: 14px;
+    padding: 22px 24px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .benefit-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 21px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.25);
+  }
+  .benefit-text h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 5px;
+  }
+  .benefit-text p {
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.55;
+  }
+
+  /* HOW IT WORKS */
+  .steps {
+    display: flex;
+    gap: 0;
+    position: relative;
+  }
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    right: 30px;
+    height: 2px;
+    background: linear-gradient(to right, #2563eb, #7c3aed);
+    z-index: 0;
+  }
+  .step {
+    flex: 1;
+    text-align: center;
+    padding: 0 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .step-number {
+    width: 60px; height: 60px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 900;
+    color: #fff;
+    margin: 0 auto 16px;
+    border: 4px solid #fff;
+    box-shadow: 0 4px 16px rgba(37,99,235,0.3);
+  }
+  .step h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 6px;
+  }
+  .step p {
+    font-size: 12.5px;
+    color: #6b7280;
+    line-height: 1.5;
+  }
+
+  /* PRICING */
+  .pricing-section {
+    background: #f8faff;
+    padding: 44px 56px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 8px;
+  }
+  .pricing-card {
+    border-radius: 16px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .pricing-card.standard {
+    background: #fff;
+    border: 2px solid #e5e7eb;
+  }
+  .pricing-card.offer {
+    background: linear-gradient(135deg, #1e40af, #2563eb);
+    border: none;
+    box-shadow: 0 8px 32px rgba(37,99,235,0.35);
+  }
+  .pricing-card.offer::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+  .pricing-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+  .standard .pricing-badge {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+  .offer .pricing-badge {
+    background: rgba(251,191,36,0.25);
+    color: #fbbf24;
+    border: 1px solid rgba(251,191,36,0.4);
+  }
+  .pricing-card h3 {
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 20px;
+  }
+  .standard h3 { color: #374151; }
+  .offer h3 { color: #fff; }
+  .pricing-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid;
+    font-size: 14px;
+  }
+  .standard .pricing-row {
+    border-color: #f3f4f6;
+    color: #374151;
+  }
+  .offer .pricing-row {
+    border-color: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.9);
+  }
+  .pricing-row:last-child { border-bottom: none; }
+  .pricing-row .label { font-weight: 500; }
+  .pricing-row .amount { font-weight: 700; }
+  .standard .pricing-row .amount { color: #111827; }
+  .offer .pricing-row .amount { color: #fff; }
+  .offer .pricing-row .amount.free {
+    color: #4ade80;
+    font-size: 15px;
+  }
+  .offer .pricing-row .amount.highlight {
+    color: #fbbf24;
+    font-size: 15px;
+  }
+  .pricing-note {
+    margin-top: 12px;
+    font-size: 12px;
+    font-style: italic;
+    color: rgba(255,255,255,0.65);
+  }
+  .standard .pricing-note { color: #9ca3af; }
+
+  /* TESTIMONIAL / EARNINGS ESTIMATE */
+  .earnings-section {
+    padding: 44px 56px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .earnings-row {
+    display: flex;
+    gap: 20px;
+    margin-top: 8px;
+  }
+  .earnings-card {
+    flex: 1;
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 24px;
+    text-align: center;
+    position: relative;
+  }
+  .earnings-card .volume {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .earnings-card .amount {
+    font-size: 34px;
+    font-weight: 900;
+    color: #2563eb;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .earnings-card .period {
+    font-size: 12px;
+    color: #9ca3af;
+  }
+  .earnings-card .breakdown {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #f3f4f6;
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.6;
+  }
+  .earnings-note {
+    margin-top: 18px;
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.6;
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 14px 18px;
+  }
+  .earnings-note strong { color: #374151; }
+
+  /* CTA FOOTER */
+  .cta-footer {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    padding: 44px 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+  }
+  .cta-footer .left h2 {
+    font-size: 26px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1.2;
+    margin-bottom: 10px;
+    letter-spacing: -0.3px;
+  }
+  .cta-footer .left p {
+    font-size: 14px;
+    color: rgba(255,255,255,0.65);
+    max-width: 420px;
+    line-height: 1.6;
+  }
+  .cta-box {
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-radius: 16px;
+    padding: 24px 32px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(37,99,235,0.4);
+    min-width: 220px;
+  }
+  .cta-box .cta-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .cta-box .cta-url {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.3px;
+    margin-bottom: 10px;
+  }
+  .cta-box .cta-sub {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.5;
+  }
+  .cta-box .qr-placeholder {
+    width: 80px; height: 80px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    margin: 12px auto 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .disclaimer {
+    padding: 14px 56px;
+    background: #f9fafb;
+    font-size: 10.5px;
+    color: #9ca3af;
+    line-height: 1.5;
+    text-align: center;
+    border-top: 1px solid #e5e7eb;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-logo">
+      <div class="logo-mark">🏗️</div>
+      <div class="logo-text">Crete<span>Xchange</span></div>
+    </div>
+    <div class="header-tagline">For Washout Location Owners</div>
+    <h1>Turn Your Property Into a <span>Revenue-Generating</span> Washout Location</h1>
+    <p class="header-sub">Join the marketplace connecting concrete truck drivers with verified washout sites — and earn money every time a drum is cleaned at your location.</p>
+  </div>
+
+  <!-- OFFER BANNER -->
+  <div class="offer-banner">
+    <div class="star">⭐</div>
+    <div class="offer-banner-text">
+      <span>Limited Introductory Offer — First Full Year Free:</span> No membership fee. No monthly location fee. Just $5.00 per washout to the platform.
+    </div>
+  </div>
+
+  <!-- BENEFITS -->
+  <div class="section">
+    <div class="section-label">Why Join CreteXchange</div>
+    <h2>Everything You Need to Run a Successful Washout Business</h2>
+    <div class="benefits-grid">
+      <div class="benefit-card">
+        <div class="benefit-icon">💰</div>
+        <div class="benefit-text">
+          <h3>Passive Revenue From Your Property</h3>
+          <p>Every washout at your location earns you money. Set your rate, accept the materials you want, and let the platform bring drivers to your door.</p>
+        </div>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">🚛</div>
+        <div class="benefit-text">
+          <h3>Instant Access to a Driver Network</h3>
+          <p>CreteXchange connects you with verified concrete truck drivers actively searching for washout locations near their job sites — no advertising needed.</p>
+        </div>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">💳</div>
+        <div class="benefit-text">
+          <h3>Automated, Guaranteed Payments</h3>
+          <p>Payments are processed automatically through the platform. No invoicing, no chasing drivers, no cash handling — funds go straight to your account.</p>
+        </div>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">📊</div>
+        <div class="benefit-text">
+          <h3>Real-Time Management Dashboard</h3>
+          <p>Track every washout, review activity history, monitor earnings, and manage your locations — all from one easy-to-use app on your phone or desktop.</p>
+        </div>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">📸</div>
+        <div class="benefit-text">
+          <h3>Photo Verification & Digital Records</h3>
+          <p>Every washout is documented with photo verification, giving you a clear audit trail for compliance and peace of mind on every job.</p>
+        </div>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon">⚙️</div>
+        <div class="benefit-text">
+          <h3>Full Control Over Your Location</h3>
+          <p>Set your own availability, choose which materials you accept, and configure your rates. You decide how and when your location is used.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="section">
+    <div class="section-label">Getting Started</div>
+    <h2>Up and Running in Three Simple Steps</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Create Your Account</h3>
+        <p>Sign up as a location owner, complete your profile, and connect your bank account for direct payouts.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>List Your Location</h3>
+        <p>Add your washout site, set your rates and hours, upload photos, and choose which concrete materials you accept.</p>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>Start Earning</h3>
+        <p>Drivers find your location, check in, complete washouts, and payments are processed automatically. You get paid.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRICING -->
+  <div class="pricing-section">
+    <div class="section-label">Transparent Pricing</div>
+    <h2>Simple, Predictable Costs</h2>
+    <div class="pricing-grid">
+      <!-- Standard Pricing -->
+      <div class="pricing-card standard">
+        <div class="pricing-badge">Standard Pricing</div>
+        <h3>Regular Plan</h3>
+        <div class="pricing-row">
+          <span class="label">Platform Membership</span>
+          <span class="amount">Annual fee</span>
+        </div>
+        <div class="pricing-row">
+          <span class="label">Monthly Location Fee</span>
+          <span class="amount">Per active location</span>
+        </div>
+        <div class="pricing-row">
+          <span class="label">Per-Washout Platform Fee</span>
+          <span class="amount">$5.00 / washout</span>
+        </div>
+        <div class="pricing-row">
+          <span class="label">Payment Processing</span>
+          <span class="amount">Included</span>
+        </div>
+        <div class="pricing-note">Standard fees apply after the introductory year ends.</div>
+      </div>
+
+      <!-- Intro Offer -->
+      <div class="pricing-card offer">
+        <div class="pricing-badge">⭐ Introductory Offer — Year 1</div>
+        <h3>First-Year Special</h3>
+        <div class="pricing-row">
+          <span class="label">Platform Membership</span>
+          <span class="amount free">FREE ✓</span>
+        </div>
+        <div class="pricing-row">
+          <span class="label">Monthly Location Fee</span>
+          <span class="amount free">FREE ✓</span>
+        </div>
+        <div class="pricing-row">
+          <span class="label">Per-Washout Platform Fee</span>
+          <span class="amount highlight">$5.00 / washout</span>
+        </div>
+        <div class="pricing-row">
+          <span class="label">Payment Processing</span>
+          <span class="amount">Included</span>
+        </div>
+        <div class="pricing-note">You only pay $5.00 per completed washout for your entire first year. No other charges.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EARNINGS ESTIMATE -->
+  <div class="earnings-section">
+    <div class="section-label">Earning Potential</div>
+    <h2>What Could Your Location Earn?</h2>
+    <div class="earnings-row">
+      <div class="earnings-card">
+        <div class="volume">Low Volume</div>
+        <div class="amount">$400+</div>
+        <div class="period">per month</div>
+        <div class="breakdown">~2 washouts/day × $65 avg rate<br>20 working days = 40 washouts/mo</div>
+      </div>
+      <div class="earnings-card">
+        <div class="volume">Moderate Volume</div>
+        <div class="amount">$1,000+</div>
+        <div class="period">per month</div>
+        <div class="breakdown">~5 washouts/day × $65 avg rate<br>20 working days = 100 washouts/mo</div>
+      </div>
+      <div class="earnings-card">
+        <div class="volume">High Volume</div>
+        <div class="amount">$2,500+</div>
+        <div class="period">per month</div>
+        <div class="breakdown">~12 washouts/day × $65 avg rate<br>20 working days = 240 washouts/mo</div>
+      </div>
+    </div>
+    <div class="earnings-note">
+      <strong>Note:</strong> Estimates assume a $65 per-washout rate set by the owner. During Year 1, the only cost to you is the $5.00 platform fee per washout — meaning you keep the remaining $60 per washout. Actual volume depends on your location, local construction activity, and hours of availability. Rates are owner-configured.
+    </div>
+  </div>
+
+  <!-- CTA FOOTER -->
+  <div class="cta-footer">
+    <div class="left">
+      <h2>Ready to Start Earning From Your Property?</h2>
+      <p>Join CreteXchange today and take advantage of our first-year introductory offer. No membership fee. No monthly charge. Just $5.00 per washout while you build your business on the platform.</p>
+    </div>
+    <div class="cta-box">
+      <div class="cta-label">Get Started At</div>
+      <div class="cta-url">CreteXchange.com</div>
+      <div class="cta-sub">Sign up as an Owner<br>and list your first location free</div>
+      <div class="qr-placeholder">QR CODE</div>
+    </div>
+  </div>
+
+  <!-- DISCLAIMER -->
+  <div class="disclaimer">
+    Earnings estimates are illustrative only and are not a guarantee of income. Platform fees and standard pricing are subject to change following the introductory period. CreteXchange is not responsible for washout rates set by individual location owners. &copy; 2025 CreteXchange. All rights reserved.
+  </div>
+
+</div>
+</body>
+</html>
