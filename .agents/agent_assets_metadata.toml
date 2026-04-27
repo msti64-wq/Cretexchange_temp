@@ -18,3 +18,9 @@ id = "pmD9g9Kx9ei5WKKgzMpzO"
 uri = "file://exports/cretexchange driver-business-card.zip"
 type = "unspecified"
 title = "cretexchange driver-business-card"
+
+[[outputs]]
+id = "hnX55fAn9RNAdhoqqlUS2"
+uri = "file://exports/cretexchange-owner-brochure.pdf"
+type = "pdf"
+title = "CreteXchange Owner Brochure (PDF)"
