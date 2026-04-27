@@ -6,15 +6,13 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   @page { size: 8.5in 11in; margin: 0; }
-  html { height: 11in; overflow: hidden; }
-  html body { height: 11in; overflow: hidden; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; width: 900px; }
-  .page { width: 900px; background: #ffffff; transform: scale(0.735); transform-origin: top left; }
+  .page { width: 900px; background: #ffffff; }
 
   /* HEADER */
   .header {
     background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 50%, #2563eb 100%);
-    padding: 16px 44px 14px;
+    padding: 7px 44px 6px;
     position: relative;
     overflow: hidden;
   }
@@ -37,104 +35,104 @@
   .header-logo {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+    gap: 8px;
+    margin-bottom: 5px;
   }
   .logo-mark {
-    width: 36px; height: 36px;
+    width: 28px; height: 28px;
     background: rgba(255,255,255,0.2);
     border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 14px;
     border: 2px solid rgba(255,255,255,0.3);
   }
-  .logo-text { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  .logo-text { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
   .logo-text span.x { color: #f97316; }
   .logo-text span.rest { color: #fff; }
   .header-tagline {
     font-size: 9px; font-weight: 600; letter-spacing: 3px;
-    text-transform: uppercase; color: rgba(255,255,255,0.65); margin-bottom: 8px;
+    text-transform: uppercase; color: rgba(255,255,255,0.65); margin-bottom: 4px;
   }
   .header h1 {
-    font-size: 26px; font-weight: 900; color: #fff;
-    line-height: 1.15; max-width: 560px; margin-bottom: 8px; letter-spacing: -0.5px;
+    font-size: 19px; font-weight: 900; color: #fff;
+    line-height: 1.15; max-width: 560px; margin-bottom: 3px; letter-spacing: -0.5px;
   }
   .header h1 span { color: #fbbf24; }
-  .header-sub { font-size: 13px; color: rgba(255,255,255,0.85); max-width: 520px; line-height: 1.4; }
+  .header-sub { font-size: 10.5px; color: rgba(255,255,255,0.85); max-width: 520px; line-height: 1.35; }
 
   /* OFFER BANNER */
   .offer-banner {
     background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    padding: 10px 44px;
+    padding: 6px 44px;
     display: flex; align-items: center; gap: 10px;
   }
-  .offer-banner .star { font-size: 16px; }
-  .offer-banner-text { font-size: 12px; font-weight: 700; color: #78350f; }
-  .offer-banner-text span { font-size: 13px; color: #451a03; }
+  .offer-banner .star { font-size: 13px; }
+  .offer-banner-text { font-size: 11px; font-weight: 700; color: #78350f; }
+  .offer-banner-text span { font-size: 12px; color: #451a03; }
 
   /* SECTION */
-  .section { padding: 12px 44px; }
+  .section { padding: 6px 44px; }
   .section + .section { border-top: 1px solid #e5e7eb; }
   .section-label {
     font-size: 9px; font-weight: 700; letter-spacing: 3px;
-    text-transform: uppercase; color: #2563eb; margin-bottom: 6px;
+    text-transform: uppercase; color: #2563eb; margin-bottom: 3px;
   }
   .section h2 {
     font-size: 17px; font-weight: 800; color: #111827;
-    letter-spacing: -0.3px; margin-bottom: 8px; line-height: 1.2;
+    letter-spacing: -0.3px; margin-bottom: 3px; line-height: 1.2;
   }
 
   /* BENEFITS GRID */
-  .benefits-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .benefits-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
   .benefit-card {
     background: #f8faff;
     border: 1.5px solid #e0e7ff;
     border-radius: 10px;
-    padding: 11px 14px;
-    display: flex; gap: 11px; align-items: flex-start;
+    padding: 8px 11px;
+    display: flex; gap: 9px; align-items: flex-start;
   }
   .benefit-icon {
-    width: 34px; height: 34px;
+    width: 28px; height: 28px;
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     box-shadow: 0 3px 8px rgba(37,99,235,0.25);
   }
-  .benefit-icon svg { width: 18px; height: 18px; }
-  .benefit-text h3 { font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 3px; }
-  .benefit-text p { font-size: 10.5px; color: #6b7280; line-height: 1.4; }
+  .benefit-icon svg { width: 15px; height: 15px; }
+  .benefit-text h3 { font-size: 11px; font-weight: 700; color: #111827; margin-bottom: 2px; }
+  .benefit-text p { font-size: 9.5px; color: #6b7280; line-height: 1.35; }
 
   /* HOW IT WORKS */
   .steps { display: flex; gap: 0; position: relative; }
   .steps::before {
     content: '';
     position: absolute;
-    top: 20px; left: 30px; right: 30px;
+    top: 17px; left: 30px; right: 30px;
     height: 2px;
     background: linear-gradient(to right, #2563eb, #7c3aed);
     z-index: 0;
   }
   .step { flex: 1; text-align: center; padding: 0 12px; position: relative; z-index: 1; }
   .step-number {
-    width: 42px; height: 42px;
+    width: 34px; height: 34px;
     background: linear-gradient(135deg, #2563eb, #7c3aed);
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: 900; color: #fff;
-    margin: 0 auto 10px;
+    font-size: 13px; font-weight: 900; color: #fff;
+    margin: 0 auto 8px;
     border: 3px solid #fff;
     box-shadow: 0 3px 10px rgba(37,99,235,0.3);
   }
-  .step h3 { font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 4px; }
-  .step p { font-size: 10.5px; color: #6b7280; line-height: 1.4; }
+  .step h3 { font-size: 11px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+  .step p { font-size: 9.5px; color: #6b7280; line-height: 1.35; }
 
   /* PRICING */
-  .pricing-section { background: #f8faff; padding: 12px 44px; border-top: 1px solid #e5e7eb; }
-  .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
-  .pricing-card { border-radius: 12px; padding: 12px; position: relative; overflow: hidden; }
+  .pricing-section { background: #f8faff; padding: 6px 44px; border-top: 1px solid #e5e7eb; }
+  .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 3px; }
+  .pricing-card { border-radius: 10px; padding: 8px; position: relative; overflow: hidden; }
   .pricing-card.standard { background: #fff; border: 2px solid #e5e7eb; }
   .pricing-card.offer {
     background: linear-gradient(135deg, #1e40af, #2563eb);
@@ -151,18 +149,18 @@
   }
   .pricing-badge {
     display: inline-block;
-    font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
-    text-transform: uppercase; padding: 3px 9px;
-    border-radius: 20px; margin-bottom: 10px;
+    font-size: 8.5px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; padding: 2px 7px;
+    border-radius: 20px; margin-bottom: 4px;
   }
   .standard .pricing-badge { background: #f3f4f6; color: #6b7280; }
   .offer .pricing-badge { background: rgba(251,191,36,0.25); color: #fbbf24; border: 1px solid rgba(251,191,36,0.4); }
-  .pricing-card h3 { font-size: 14px; font-weight: 800; margin-bottom: 12px; }
+  .pricing-card h3 { font-size: 12px; font-weight: 800; margin-bottom: 5px; }
   .standard h3 { color: #374151; }
   .offer h3 { color: #fff; }
   .pricing-row {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 5px 0; border-bottom: 1px solid; font-size: 11px;
+    padding: 2px 0; border-bottom: 1px solid; font-size: 10px;
   }
   .standard .pricing-row { border-color: #f3f4f6; color: #374151; }
   .offer .pricing-row { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); }
@@ -177,8 +175,8 @@
   .standard .pricing-note { color: #9ca3af; }
 
   /* EARNINGS */
-  .earnings-section { padding: 12px 44px; border-top: 1px solid #e5e7eb; }
-  .earnings-row { display: flex; gap: 8px; margin-top: 4px; }
+  .earnings-section { padding: 6px 44px; border-top: 1px solid #e5e7eb; }
+  .earnings-row { display: flex; gap: 6px; margin-top: 3px; }
   .earnings-card {
     flex: 1; background: #fff;
     border: 1.5px solid #e5e7eb;
@@ -188,31 +186,31 @@
     font-size: 10px; font-weight: 600; color: #6b7280;
     margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px;
   }
-  .earnings-card .amount { font-size: 20px; font-weight: 900; color: #2563eb; letter-spacing: -1px; line-height: 1; margin-bottom: 2px; }
+  .earnings-card .amount { font-size: 18px; font-weight: 900; color: #2563eb; letter-spacing: -1px; line-height: 1; margin-bottom: 2px; }
   .earnings-card .period { font-size: 10px; color: #9ca3af; }
-  .earnings-card .breakdown { margin-top: 6px; padding-top: 6px; border-top: 1px solid #f3f4f6; font-size: 9.5px; color: #6b7280; line-height: 1.4; }
-  .earnings-note { margin-top: 8px; font-size: 9.5px; color: #6b7280; line-height: 1.4; background: #f9fafb; border-radius: 8px; padding: 8px 12px; }
+  .earnings-card .breakdown { display: none; }
+  .earnings-note { margin-top: 5px; font-size: 9px; color: #6b7280; line-height: 1.35; background: #f9fafb; border-radius: 6px; padding: 5px 10px; }
   .earnings-note strong { color: #374151; }
 
   /* CTA FOOTER */
   .cta-footer {
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    padding: 14px 44px;
+    padding: 8px 44px;
     display: flex; align-items: center; justify-content: space-between; gap: 24px;
   }
-  .cta-footer .left h2 { font-size: 18px; font-weight: 900; color: #fff; line-height: 1.2; margin-bottom: 6px; letter-spacing: -0.3px; }
-  .cta-footer .left p { font-size: 11.5px; color: rgba(255,255,255,0.65); max-width: 400px; line-height: 1.5; }
+  .cta-footer .left h2 { font-size: 14px; font-weight: 900; color: #fff; line-height: 1.15; margin-bottom: 3px; letter-spacing: -0.3px; }
+  .cta-footer .left p { font-size: 9.5px; color: rgba(255,255,255,0.65); max-width: 400px; line-height: 1.4; }
   .cta-box {
     flex-shrink: 0;
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    border-radius: 12px; padding: 16px 24px; text-align: center;
-    box-shadow: 0 6px 20px rgba(37,99,235,0.4); min-width: 190px;
+    border-radius: 10px; padding: 8px 16px; text-align: center;
+    box-shadow: 0 6px 20px rgba(37,99,235,0.4); min-width: 155px;
   }
   .cta-box .cta-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 4px; font-weight: 600; }
-  .cta-box .cta-url { font-size: 14px; font-weight: 800; color: #fff; letter-spacing: -0.3px; margin-bottom: 6px; }
+  .cta-box .cta-url { font-size: 12px; font-weight: 800; color: #fff; letter-spacing: -0.3px; margin-bottom: 4px; }
   .cta-box .cta-sub { font-size: 10px; color: rgba(255,255,255,0.7); line-height: 1.4; }
 
-  .disclaimer { padding: 8px 44px; background: #f9fafb; font-size: 9px; color: #9ca3af; line-height: 1.5; text-align: center; border-top: 1px solid #e5e7eb; }
+  .disclaimer { padding: 4px 44px; background: #f9fafb; font-size: 9px; color: #9ca3af; line-height: 1.5; text-align: center; border-top: 1px solid #e5e7eb; }
 </style>
 </head>
 <body>
@@ -335,7 +333,7 @@
           <span class="label">Payment Processing</span>
           <span class="amount">Included</span>
         </div>
-        <div class="pricing-note">Standard fees apply after the introductory year ends.</div>
+        
       </div>
 
       <!-- Intro Offer -->
@@ -402,7 +400,7 @@
       <div class="cta-label">Get Started At</div>
       <div class="cta-url">v8laboratories.com/cretexchange</div>
       <div class="cta-sub">Sign up as an Owner<br>and list your first location free</div>
-      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQMAAACXljzdAAAABlBMVEUlY+v///5aU/BqAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABiElEQVRYhe2XS87DIAyEHWXBMkfgKLlZHjfLUXKELLNAuDM27f/oAXClIrVC/rIYwB6MyHeIzIpxy4qZJNXigRKD4DfcWUcGdBsvCwQhCO1QrRc+kLV4IBKB6mvWO1N1NCJSpkPSCfGfQTwPNibnnet7hvQkVj8g01HTuXDL/1RWT/Ia04ESl/F6N6BuhCJ36py0St7wQYH4GESQexVmyGky74F4O+3QxJZ0rqMe5pZqWy5hCFXDLaulAzy97XV/goqhk4908myGk3QLQiB3SZaj73nQn7CENh66HTP9+qk6LsEm49hXrGewhcxYyxKEYDJAttDJtdItn3nQnbTttGFlxItwLzEInGYFVD0G950R96FEIVTNPhHWaHvbTjs0EYZPUXckq/r8ehX0JT4yclS93xG+D2KQ2XW2PlG9h/U86E+EPazw6ht42lB9/+5uu5L2YkEPq1Y/tgb5DGLzdPK/pJYHUQi6HDoSr28EqsQg4q8p9x34Jh98SxDS6uenF9N/lRWRfMcDGcApuPVCdBsAAAAASUVORK5CYII=" width="80" height="80" style="border-radius:10px;margin:12px auto 0;display:block;" />
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQMAAACXljzdAAAABlBMVEUlY+v///5aU/BqAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABiElEQVRYhe2XS87DIAyEHWXBMkfgKLlZHjfLUXKELLNAuDM27f/oAXClIrVC/rIYwB6MyHeIzIpxy4qZJNXigRKD4DfcWUcGdBsvCwQhCO1QrRc+kLV4IBKB6mvWO1N1NCJSpkPSCfGfQTwPNibnnet7hvQkVj8g01HTuXDL/1RWT/Ia04ESl/F6N6BuhCJ36py0St7wQYH4GESQexVmyGky74F4O+3QxJZ0rqMe5pZqWy5hCFXDLaulAzy97XV/goqhk4908myGk3QLQiB3SZaj73nQn7CENh66HTP9+qk6LsEm49hXrGewhcxYyxKEYDJAttDJtdItn3nQnbTttGFlxItwLzEInGYFVD0G950R96FEIVTNPhHWaHvbTjs0EYZPUXckq/r8ehX0JT4yclS93xG+D2KQ2XW2PlG9h/U86E+EPazw6ht42lB9/+5uu5L2YkEPq1Y/tgb5DGLzdPK/pJYHUQi6HDoSr28EqsQg4q8p9x34Jh98SxDS6uenF9N/lRWRfMcDGcApuPVCdBsAAAAASUVORK5CYII=" width="40" height="40" style="border-radius:10px;margin:12px auto 0;display:block;" />
     </div>
   </div>
 
