@@ -36,3 +36,9 @@ id = "HozUCyg4ahD8JZY0Y2jF9"
 uri = "file://exports/cretexchange owner-brochure 1page.zip"
 type = "unspecified"
 title = "Owner Brochure — Single Page (HTML)"
+
+[[outputs]]
+id = "6ZL485srehmkfDjy8GCbR"
+uri = "file://exports/cretexchange-driver-business-card.pdf"
+type = "pdf"
+title = "CreteXchange Driver Business Card — Print Ready (3.5×2\" · 2 pages)"

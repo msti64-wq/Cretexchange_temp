@@ -93,3 +93,7 @@ externalPort = 8080
 [[ports]]
 localPort = 19232
 externalPort = 8081
+
+[[ports]]
+localPort = 19233
+externalPort = 9000
