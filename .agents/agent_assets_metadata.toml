@@ -6,3 +6,9 @@ id = "6eKPSgTKoqFwbcMgf4KUk"
 uri = "file://exports/owner-brochure.zip"
 type = "unspecified"
 title = "CreteXchange Owner Brochure"
+
+[[outputs]]
+id = "L8PmZFEEUKj-CK61uTKbx"
+uri = "file://exports/cretexchange owner-brochure.zip"
+type = "unspecified"
+title = "cretexchange owner-brochure"
