@@ -11,7 +11,7 @@ title = "CreteXchange Owner Brochure"
 id = "L8PmZFEEUKj-CK61uTKbx"
 uri = "file://exports/cretexchange owner-brochure.zip"
 type = "unspecified"
-title = "cretexchange owner-brochure"
+title = "Owner Brochure — Full (HTML)"
 
 [[outputs]]
 id = "pmD9g9Kx9ei5WKKgzMpzO"
@@ -23,16 +23,16 @@ title = "cretexchange driver-business-card"
 id = "hnX55fAn9RNAdhoqqlUS2"
 uri = "file://exports/cretexchange-owner-brochure.pdf"
 type = "pdf"
-title = "CreteXchange Owner Brochure (PDF)"
+title = "Owner Brochure — Full (PDF)"
 
 [[outputs]]
 id = "gis9xfBp-yUBDSMvhDMEY"
 uri = "file://exports/cretexchange-owner-brochure-1page.pdf"
 type = "pdf"
-title = "CreteXchange Owner Brochure — Single Page (PDF)"
+title = "Owner Brochure — Single Page (PDF)"
 
 [[outputs]]
 id = "HozUCyg4ahD8JZY0Y2jF9"
 uri = "file://exports/cretexchange owner-brochure 1page.zip"
 type = "unspecified"
-title = "CreteXchange Owner Brochure — Single Page (HTML zip)"
+title = "Owner Brochure — Single Page (HTML)"
