@@ -5,163 +5,177 @@
   <title>CreteXchange — Owner Flyer</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body {
+    html, body {
       font-family: Arial, Helvetica, sans-serif;
       background: #fff;
       width: 8.5in;
-      min-height: 11in;
+      height: 11in;
       margin: 0 auto;
       color: #1a1a2e;
+      display: flex;
+      flex-direction: column;
     }
 
     /* HEADER */
     .header {
       background: linear-gradient(135deg, #1a3580 0%, #2647cc 55%, #1a3580 100%);
-      padding: 22px 36px 20px;
+      padding: 28px 40px 26px;
       color: #fff;
       position: relative;
       overflow: hidden;
+      flex-shrink: 0;
     }
     .header::before {
-      content:''; position:absolute; top:-40px; right:-40px;
-      width:180px; height:180px; background:rgba(255,255,255,0.06); border-radius:50%;
+      content:''; position:absolute; top:-50px; right:-50px;
+      width:220px; height:220px; background:rgba(255,255,255,0.06); border-radius:50%;
     }
     .header::after {
-      content:''; position:absolute; bottom:-60px; left:20px;
-      width:150px; height:150px; background:rgba(255,255,255,0.04); border-radius:50%;
+      content:''; position:absolute; bottom:-70px; left:20px;
+      width:180px; height:180px; background:rgba(255,255,255,0.04); border-radius:50%;
     }
-    .header-inner { display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; }
+    .header-inner { display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; gap:30px; }
     .header-left { flex:1; }
-    .logo-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-    .logo-img { width:44px; height:44px; }
-    .brand-name { font-size:22px; font-weight:800; color:#fff; letter-spacing:-0.5px; }
+    .logo-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+    .logo-img { width:50px; height:50px; }
+    .brand-name { font-size:26px; font-weight:800; color:#fff; letter-spacing:-0.5px; }
     .brand-name .x { color:#f97316; }
-    .header-tagline { font-size:9px; font-weight:700; letter-spacing:2px; color:rgba(255,255,255,0.65); text-transform:uppercase; margin-bottom:6px; }
-    .header-h1 { font-size:22px; font-weight:800; line-height:1.2; color:#fff; margin-bottom:6px; }
+    .header-tagline { font-size:10px; font-weight:700; letter-spacing:2.5px; color:rgba(255,255,255,0.65); text-transform:uppercase; margin-bottom:8px; }
+    .header-h1 { font-size:26px; font-weight:800; line-height:1.2; color:#fff; margin-bottom:8px; }
     .header-h1 span { color:#f97316; }
-    .header-sub { font-size:10px; color:rgba(255,255,255,0.8); line-height:1.5; max-width:420px; }
-    .header-right { text-align:center; padding-left:24px; flex-shrink:0; }
+    .header-sub { font-size:11px; color:rgba(255,255,255,0.82); line-height:1.6; max-width:460px; }
+    .header-right { text-align:center; flex-shrink:0; }
     .offer-box {
       background: rgba(249,115,22,0.15);
-      border: 1.5px solid rgba(249,115,22,0.7);
-      border-radius: 10px;
-      padding: 12px 16px;
-      width: 200px;
+      border: 2px solid rgba(249,115,22,0.7);
+      border-radius: 12px;
+      padding: 16px 20px;
+      width: 210px;
     }
-    .offer-star { font-size:18px; margin-bottom:3px; }
-    .offer-title { font-size:10px; font-weight:800; color:#f97316; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
-    .offer-lines { font-size:9.5px; color:#fff; line-height:1.6; }
+    .offer-star { font-size:22px; margin-bottom:5px; }
+    .offer-title { font-size:11px; font-weight:800; color:#f97316; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+    .offer-lines { font-size:10.5px; color:#fff; line-height:1.8; }
     .offer-lines strong { color:#f97316; }
 
     /* BENEFITS */
     .benefits {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 0;
+      flex: 1;
       border-bottom: 1px solid #e8e8e8;
     }
     .benefit {
-      padding: 16px 18px;
+      padding: 22px 22px;
       border-right: 1px solid #e8e8e8;
       display: flex;
-      gap: 10px;
+      gap: 13px;
       align-items: flex-start;
     }
-    .benefit:last-child { border-right: none; }
-    .benefit-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
-    .benefit h3 { font-size:10.5px; font-weight:700; color:#1a3580; margin-bottom:3px; }
-    .benefit p { font-size:9px; color:#555; line-height:1.5; }
+    .benefit:nth-child(3) { border-right: none; }
+    .benefit:nth-child(4), .benefit:nth-child(5) { border-top: 1px solid #e8e8e8; }
+    .benefit:nth-child(6) { border-right: none; border-top: 1px solid #e8e8e8; }
+    .benefit-icon { font-size:24px; flex-shrink:0; margin-top:2px; }
+    .benefit h3 { font-size:12px; font-weight:700; color:#1a3580; margin-bottom:5px; }
+    .benefit p { font-size:10px; color:#555; line-height:1.6; }
 
     /* HOW IT WORKS */
     .how-section {
       background: #f7f9ff;
-      padding: 16px 36px;
-      border-bottom: 1px solid #e8e8e8;
+      padding: 22px 40px;
+      border-bottom: 1px solid #e0e8ff;
+      flex-shrink: 0;
     }
-    .section-label { font-size:9px; font-weight:700; color:#f97316; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
-    .section-h2 { font-size:14px; font-weight:800; color:#1a3580; margin-bottom:12px; }
+    .section-label { font-size:10px; font-weight:700; color:#f97316; letter-spacing:2px; text-transform:uppercase; margin-bottom:5px; }
+    .section-h2 { font-size:16px; font-weight:800; color:#1a3580; margin-bottom:14px; }
     .steps { display:flex; gap:0; }
     .step {
-      flex:1; display:flex; gap:10px; align-items:flex-start;
-      padding-right:20px; position:relative;
+      flex:1; display:flex; gap:13px; align-items:flex-start;
+      padding-right:24px; position:relative;
     }
     .step:not(:last-child)::after {
-      content:'→'; position:absolute; right:4px; top:10px;
-      font-size:14px; color:#ddd;
+      content:'→'; position:absolute; right:6px; top:10px;
+      font-size:16px; color:#ccd5f0;
     }
     .step-num {
-      width:28px; height:28px; border-radius:50%;
+      width:32px; height:32px; border-radius:50%;
       background:#1a3580; color:#fff;
-      font-size:13px; font-weight:800;
+      font-size:15px; font-weight:800;
       display:flex; align-items:center; justify-content:center;
       flex-shrink:0;
     }
-    .step h3 { font-size:10.5px; font-weight:700; color:#1a3580; margin-bottom:2px; }
-    .step p { font-size:9px; color:#555; line-height:1.5; }
+    .step h3 { font-size:12px; font-weight:700; color:#1a3580; margin-bottom:4px; }
+    .step p { font-size:10px; color:#555; line-height:1.6; }
 
-    /* PRICING + EARNINGS — 2 col */
+    /* PRICING + EARNINGS */
     .mid-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0;
+      flex: 1;
       border-bottom: 1px solid #e8e8e8;
     }
     .pricing-col {
-      padding: 16px 20px 16px 36px;
+      padding: 22px 24px 22px 40px;
       border-right: 1px solid #e8e8e8;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
-    .earnings-col { padding: 16px 36px 16px 20px; }
-    .price-rows { margin-top:10px; }
+    .earnings-col {
+      padding: 22px 40px 22px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .price-rows { margin-top:12px; }
     .price-row {
       display:flex; justify-content:space-between; align-items:center;
-      padding: 5px 0; border-bottom: 1px solid #f0f0f0;
-      font-size:9.5px;
+      padding: 8px 0; border-bottom: 1px solid #f0f0f0;
+      font-size:11px;
     }
     .price-row:last-child { border-bottom: none; }
     .price-label { color:#444; }
     .price-val { font-weight:700; color:#1a3580; }
     .price-val.free { color:#16a34a; }
     .price-val.orange { color:#f97316; }
-    .earnings-grid { display:flex; gap:8px; margin-top:10px; }
+    .earnings-grid { display:flex; gap:10px; margin-top:12px; }
     .earn-card {
-      flex:1; background:#f7f9ff; border-radius:8px;
-      padding: 8px 10px; text-align:center;
+      flex:1; background:#f7f9ff; border-radius:10px;
+      padding: 12px; text-align:center;
       border:1px solid #e0e8ff;
     }
-    .earn-vol { font-size:8px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px; }
-    .earn-amt { font-size:16px; font-weight:800; color:#1a3580; }
-    .earn-period { font-size:8px; color:#999; margin-bottom:4px; }
-    .earn-break { font-size:7.5px; color:#777; line-height:1.4; }
-    .earn-note { font-size:8px; color:#888; font-style:italic; margin-top:8px; line-height:1.5; }
+    .earn-vol { font-size:9px; font-weight:700; color:#888; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px; }
+    .earn-amt { font-size:20px; font-weight:800; color:#1a3580; }
+    .earn-period { font-size:9px; color:#999; margin-bottom:5px; }
+    .earn-break { font-size:8.5px; color:#777; line-height:1.5; }
+    .earn-note { font-size:9px; color:#888; font-style:italic; margin-top:10px; line-height:1.5; }
 
     /* CTA FOOTER */
     .cta {
       background: linear-gradient(135deg, #1a3580, #2647cc);
-      padding: 18px 36px;
+      padding: 28px 40px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       color: #fff;
-      gap: 24px;
+      gap: 30px;
+      flex-shrink: 0;
     }
     .cta-left { flex:1; }
-    .cta h2 { font-size:14px; font-weight:800; margin-bottom:4px; }
-    .cta p { font-size:9.5px; color:rgba(255,255,255,0.8); line-height:1.5; }
-    .cta-right { text-align:right; flex-shrink:0; }
-    .cta-contact { font-size:9.5px; color:rgba(255,255,255,0.9); line-height:2; }
-    .cta-contact strong { color:#f97316; }
+    .cta h2 { font-size:17px; font-weight:800; margin-bottom:6px; }
+    .cta p { font-size:10.5px; color:rgba(255,255,255,0.82); line-height:1.6; }
     .cta-btn {
-      display:inline-block; margin-top:8px;
+      display:inline-block; margin-top:12px;
       background:#f97316; color:#fff;
-      padding:7px 18px; border-radius:20px;
-      font-size:9px; font-weight:800;
+      padding:9px 22px; border-radius:24px;
+      font-size:10px; font-weight:800;
       text-transform:uppercase; letter-spacing:1px;
       text-decoration:none;
     }
+    .cta-right { text-align:right; flex-shrink:0; }
+    .cta-contact { font-size:11px; color:rgba(255,255,255,0.9); line-height:2.2; }
+    .cta-contact strong { color:#f97316; display:block; font-size:12px; margin-bottom:2px; }
 
     @media print {
-      body { width:8.5in; }
-      .header::before, .header::after { display:none; }
+      html, body { width:8.5in; height:11in; }
     }
   </style>
   </head>
@@ -187,14 +201,14 @@
             First Full Year <strong>FREE</strong><br>
             No membership fee<br>
             No monthly location fee<br>
-            Just <strong>$5.00/washout</strong>
+            Just <strong>$5.00 / washout</strong>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- BENEFITS (3 columns) -->
+  <!-- BENEFITS -->
   <div class="benefits">
     <div class="benefit">
       <div class="benefit-icon">💰</div>
@@ -214,7 +228,7 @@
       <div class="benefit-icon">💳</div>
       <div>
         <h3>Automated Payments</h3>
-        <p>Payments process automatically. No invoicing, no cash — funds go straight to your bank account.</p>
+        <p>Payments process automatically. No invoicing, no cash handling — funds go straight to your bank account.</p>
       </div>
     </div>
     <div class="benefit">
@@ -228,14 +242,14 @@
       <div class="benefit-icon">📸</div>
       <div>
         <h3>Photo Verification</h3>
-        <p>Every washout is documented with photos — a clear audit trail for compliance and peace of mind.</p>
+        <p>Every washout is documented with photos — a clear audit trail for compliance and peace of mind on every job.</p>
       </div>
     </div>
     <div class="benefit">
       <div class="benefit-icon">⚙️</div>
       <div>
         <h3>Full Location Control</h3>
-        <p>Set your availability, choose accepted materials, and configure rates. You decide how your site is used.</p>
+        <p>Set availability, choose accepted materials, and configure your rates. You decide how your site is used.</p>
       </div>
     </div>
   </div>
@@ -256,14 +270,14 @@
         <div class="step-num">2</div>
         <div>
           <h3>List Your Location</h3>
-          <p>Add your site, set your rates and hours, upload photos, and choose which concrete materials you accept.</p>
+          <p>Add your site, set rates and hours, upload photos, and choose which concrete materials you accept.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div>
           <h3>Start Earning</h3>
-          <p>Drivers find you, check in, complete washouts, and payments are processed automatically. You get paid.</p>
+          <p>Drivers find your location, check in, complete washouts, and payments process automatically. You get paid.</p>
         </div>
       </div>
     </div>
@@ -316,7 +330,7 @@
           <div class="earn-break">~12 washouts/day<br>× $65 avg rate</div>
         </div>
       </div>
-      <div class="earn-note">Estimates based on $65/washout owner rate. You keep $60 after the $5 platform fee.</div>
+      <div class="earn-note">Estimates based on a $65/washout owner rate. You keep $60 after the $5 platform fee. Actual volume depends on location and local construction activity.</div>
     </div>
   </div>
 
@@ -329,7 +343,7 @@
     </div>
     <div class="cta-right">
       <div class="cta-contact">
-        <strong>Contact Us</strong><br>
+        <strong>Contact Us</strong>
         📞 (650) 265-1193<br>
         🌐 v8laboratories.com/cretexchange<br>
         ✉️ info@v8industries.com
