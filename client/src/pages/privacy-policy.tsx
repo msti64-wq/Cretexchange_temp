@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import logoPath from "@assets/cretexchange-logo-2025.png";
+import logoPath from "@assets/cretexchange-logo-transparent.png";
 
 export default function PrivacyPolicy() {
   return (

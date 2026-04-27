@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut } from "lucide-react";
-import logoImage from "@assets/cretexchange-logo-2025.png";
+import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 import { Button } from "@/components/ui/button";
 
 export function DriverHeader() {

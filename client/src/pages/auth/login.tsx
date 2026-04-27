@@ -10,7 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import logoImage from "@assets/cretexchange-logo-2025.png";
+import logoImage from "@assets/cretexchange-logo-transparent.png";
 
 export default function Login() {
   const { toast } = useToast();

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Truck, Building2, Shield, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
-import logoImage from "@assets/cretexchange-logo-2025.png";
+import logoImage from "@assets/cretexchange-logo-transparent.png";
 
 export default function Landing() {
   const [selectedRole, setSelectedRole] = useState<'driver' | 'owner' | null>(null);
