@@ -11,19 +11,19 @@ title = "CreteXchange Owner Brochure"
 id = "L8PmZFEEUKj-CK61uTKbx"
 uri = "file://exports/cretexchange owner-brochure.zip"
 type = "unspecified"
-title = "CreteXchange Owner Brochure — 8.5×11\" Single Page (HTML)"
+title = "Owner Brochure — Updated with App QR Code (HTML)"
 
 [[outputs]]
 id = "pmD9g9Kx9ei5WKKgzMpzO"
 uri = "file://exports/cretexchange driver-business-card.zip"
 type = "unspecified"
-title = "cretexchange driver-business-card"
+title = "Driver Business Card — Updated with App QR Code (HTML)"
 
 [[outputs]]
 id = "hnX55fAn9RNAdhoqqlUS2"
 uri = "file://exports/cretexchange-owner-brochure.pdf"
 type = "pdf"
-title = "CreteXchange Owner Brochure — 8.5×11\" Single Page (PDF)"
+title = "Owner Brochure — Updated with App QR Code (PDF)"
 
 [[outputs]]
 id = "gis9xfBp-yUBDSMvhDMEY"
@@ -41,4 +41,10 @@ title = "Owner Brochure — Single Page (HTML)"
 id = "6ZL485srehmkfDjy8GCbR"
 uri = "file://exports/cretexchange-driver-business-card.pdf"
 type = "pdf"
-title = "CreteXchange Driver Business Card — Print Ready (3.5×2\" · 2 pages)"
+title = "Driver Business Card — Updated with App QR Code (PDF)"
+
+[[outputs]]
+id = "ZaTJ5RGN3RGsptfhsb_6u"
+uri = "file://exports/cretexchange-app-qr.png"
+type = "image"
+title = "CreteXchange App QR Code (PNG — truck-wash-locator-msti64.replit.app)"
