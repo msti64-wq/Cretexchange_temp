@@ -11,7 +11,7 @@ title = "CreteXchange Owner Brochure"
 id = "L8PmZFEEUKj-CK61uTKbx"
 uri = "file://exports/cretexchange owner-brochure.zip"
 type = "unspecified"
-title = "Owner Brochure — Updated with App QR Code (HTML)"
+title = "Owner Brochure — Fixed HTML"
 
 [[outputs]]
 id = "pmD9g9Kx9ei5WKKgzMpzO"
@@ -23,7 +23,7 @@ title = "Driver Business Card — Updated with App QR Code (HTML)"
 id = "hnX55fAn9RNAdhoqqlUS2"
 uri = "file://exports/cretexchange-owner-brochure.pdf"
 type = "pdf"
-title = "Owner Brochure — Updated with App QR Code (PDF)"
+title = "Owner Brochure — Fixed (no blue boxes when printing)"
 
 [[outputs]]
 id = "gis9xfBp-yUBDSMvhDMEY"
