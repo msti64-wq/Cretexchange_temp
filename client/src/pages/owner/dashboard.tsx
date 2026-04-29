@@ -747,7 +747,7 @@ export default function OwnerDashboard() {
               <p className="text-sm text-muted-foreground">Contact our support team for assistance</p>
               <div className="flex items-center space-x-2 text-sm">
                 <Phone className="w-4 h-4 text-blue-600" />
-                <span className="font-medium text-blue-600" data-testid="text-support-phone">214-949-3859</span>
+                <span className="font-medium text-blue-600" data-testid="text-support-phone">(469) 269-6709</span>
               </div>
             </div>
             <Button 

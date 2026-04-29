@@ -23,7 +23,7 @@ title = "Driver Business Card — Updated with App QR Code (HTML)"
 id = "hnX55fAn9RNAdhoqqlUS2"
 uri = "file://exports/cretexchange-owner-brochure.pdf"
 type = "pdf"
-title = "Owner Brochure — Fixed (no blue boxes when printing)"
+title = "Owner Brochure — Updated Phone (469) 269-6709"
 
 [[outputs]]
 id = "gis9xfBp-yUBDSMvhDMEY"
@@ -41,7 +41,7 @@ title = "Owner Brochure — Single Page (HTML)"
 id = "6ZL485srehmkfDjy8GCbR"
 uri = "file://exports/cretexchange-driver-business-card.pdf"
 type = "pdf"
-title = "Driver Business Card — Updated with App QR Code (PDF)"
+title = "Driver Business Card — Updated Phone (469) 269-6709"
 
 [[outputs]]
 id = "ZaTJ5RGN3RGsptfhsb_6u"
