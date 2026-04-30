@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { MapPin, Loader2 } from "lucide-react";
 
 interface AddressAutocompleteProps {
@@ -20,31 +19,36 @@ interface AddressAutocompleteProps {
 export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: AddressAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const initializedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const initAutocomplete = () => {
-      if (!inputRef.current) return;
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-      // Check if Google Maps API is loaded
-      if (!(window as any).google || !(window as any).google.maps) {
-        setError("Google Maps not loaded");
-        return;
-      }
+    if (!apiKey || apiKey === 'YOUR_API_KEY') {
+      setError("Google Maps API key not configured");
+      return;
+    }
+
+    const initAutocomplete = () => {
+      if (!inputRef.current || initializedRef.current) return;
+
+      const g = (window as any).google;
+      if (!g?.maps?.places?.Autocomplete) return;
 
       try {
-        // Initialize autocomplete
+        initializedRef.current = true;
         autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
           types: ['address'],
           componentRestrictions: { country: 'us' },
           fields: ['address_components', 'formatted_address', 'geometry', 'name'],
         });
 
-        // Listen for place selection
         autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current?.getPlace();
-          
+
           if (!place || !place.geometry || !place.address_components) {
             setError("Please select a valid address from the suggestions");
             return;
@@ -53,7 +57,6 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
           setIsLoading(true);
           setError(null);
 
-          // Parse address components
           let street = '';
           let city = '';
           let state = '';
@@ -61,7 +64,6 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
 
           place.address_components.forEach((component) => {
             const types = component.types;
-            
             if (types.includes('street_number')) {
               street = component.long_name + ' ';
             } else if (types.includes('route')) {
@@ -75,11 +77,9 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
             }
           });
 
-          // Get coordinates
           const latitude = place.geometry.location.lat();
           const longitude = place.geometry.location.lng();
 
-          // Call parent callback
           onPlaceSelected({
             formattedAddress: place.formatted_address || '',
             street: street.trim(),
@@ -93,52 +93,57 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
           setIsLoading(false);
         });
 
-        setError(null);
+        // Stop polling once initialized
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
       } catch (err) {
         console.error('Error initializing autocomplete:', err);
         setError("Failed to initialize address search");
+        initializedRef.current = false;
       }
     };
 
-    // Load Google Maps script if not already loaded
-    const loadGoogleMaps = () => {
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      
-      if (!apiKey || apiKey === 'YOUR_API_KEY') {
-        setError("Google Maps API key not configured");
-        return;
-      }
-
-      // Check if Google Maps is already loaded
-      if ((window as any).google && (window as any).google.maps) {
-        initAutocomplete();
-        return;
-      }
-
-      // Check if script is already being loaded
+    // Load the Maps script if it isn't already in the DOM
+    const ensureScriptLoaded = () => {
       const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (existingScript) {
-        // If script exists but Google Maps not loaded yet, wait for it
-        const handleLoad = () => {
-          if ((window as any).google && (window as any).google.maps) {
-            initAutocomplete();
-          }
-        };
-        existingScript.addEventListener('load', handleLoad, { once: true });
-        return;
+      if (!existingScript) {
+        const script = document.createElement("script");
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+        script.async = true;
+        script.defer = true;
+        script.onerror = () => setError("Failed to load Google Maps");
+        document.head.appendChild(script);
       }
-
-      // Load script
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => initAutocomplete();
-      script.onerror = () => setError("Failed to load Google Maps");
-      document.head.appendChild(script);
     };
 
-    loadGoogleMaps();
+    ensureScriptLoaded();
+
+    // Poll until google.maps.places is ready — handles all race conditions:
+    // script already loaded, script loading in progress, or script not yet added.
+    pollRef.current = setInterval(() => {
+      const g = (window as any).google;
+      if (g?.maps?.places?.Autocomplete) {
+        initAutocomplete();
+      }
+    }, 150);
+
+    // Give up after 15 seconds
+    const timeout = setTimeout(() => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      if (!initializedRef.current) {
+        setError("Google Maps took too long to load. Please enter address manually below.");
+      }
+    }, 15000);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      clearTimeout(timeout);
+    };
   }, [onPlaceSelected]);
 
   if (error) {
@@ -146,11 +151,10 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
       <div className="space-y-2">
         <Label>Address Search (Manual Entry Required)</Label>
         <div className="p-3 rounded-md bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 text-sm text-yellow-800 dark:text-yellow-200">
-          {error === "Google Maps API key not configured" ? (
-            <p>Address autocomplete unavailable. Please enter address manually below.</p>
-          ) : (
-            <p>{error}</p>
-          )}
+          <p>{error === "Google Maps API key not configured"
+            ? "Address autocomplete unavailable. Please enter address manually below."
+            : error}
+          </p>
         </div>
       </div>
     );
