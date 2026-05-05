@@ -54,3 +54,9 @@ id = "E9lfL3B9nv6kEXO7sj7Zf"
 uri = "file://exports/cretexchange-driver-business-card-es.pdf"
 type = "pdf"
 title = "Tarjeta de Conductor — Español (2 páginas: Frente + Reverso)"
+
+[[outputs]]
+id = "Yme-GW7eXtSjWZ313_e3e"
+uri = "file://my-project.zip"
+type = "unspecified"
+title = "CreteXchange — Full Project Backup"
