@@ -259,7 +259,7 @@ if (!columnApiKey) {
 const columnBaseURL = 'https://api.column.com';
 
 console.log('🔧 Column Service Configuration:', {
-  apiKeyPrefix: columnApiKey?.substring(0, 10) + '...',
+  apiKeyConfigured: !!columnApiKey,
   baseURL: columnBaseURL,
   environment: process.env.NODE_ENV,
   note: 'Using production endpoint - sandbox not accessible from Replit'

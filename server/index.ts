@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { installConsoleRedaction } from "../shared/logRedaction";
 import { setupVite, serveStatic, log } from "./vite";
+
+installConsoleRedaction();
 
 const app = express();
 
@@ -8,7 +10,6 @@ const app = express();
 console.log('Environment check:', {
   environment: process.env.REPLIT_DEPLOYMENT ? 'production' : 'development',
   hasDatabaseUrl: !!process.env.DATABASE_URL,
-  databaseUrlPreview: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'undefined'
 });
 
 // Raw body parsing specifically for Stripe webhooks (must come before JSON parsing)
@@ -21,21 +22,11 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
 
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
@@ -51,6 +42,7 @@ app.use((req, res, next) => {
 // Enhanced startup function with comprehensive error handling
 async function startApplication() {
   try {
+    const { registerRoutes } = await import("./routes");
     const server = await registerRoutes(app);
 
     // Enhanced error handling middleware

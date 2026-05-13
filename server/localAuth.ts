@@ -40,6 +40,10 @@ export async function setupAuth(app: Express) {
           return done(null, false, { message: "User not found" });
         }
 
+        if (user.isActive === false) {
+          return done(null, false, { message: "Account is inactive" });
+        }
+
         const isValidPassword = await bcrypt.compare(password, user.passwordHash);
         if (!isValidPassword) {
           return done(null, false, { message: "Invalid password" });
@@ -86,7 +90,7 @@ export async function setupAuth(app: Express) {
           console.error("Login error:", err);
           return res.status(500).json({ message: "Failed to log in" });
         }
-        console.log("User logged in successfully:", user.id, "Session:", req.sessionID);
+        console.log(`User logged in successfully: role=${user.role}`);
         return res.json({ message: "Login successful", user });
       });
     })(req, res, next);
@@ -97,10 +101,10 @@ export async function setupAuth(app: Express) {
     try {
       const { username, email, password, firstName, lastName, role } = req.body;
 
-      // Validate role field
-      if (!role || !['driver', 'owner', 'admin', 'super_admin'].includes(role)) {
+      // Public self-registration is limited to normal user roles.
+      if (!role || !['driver', 'owner'].includes(role)) {
         return res.status(400).json({ 
-          message: `Invalid role: '${role}'. Must be one of: driver, owner, admin, super_admin` 
+          message: `Invalid role: '${role}'. Must be one of: driver, owner` 
         });
       }
 
@@ -158,9 +162,13 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
-  console.log('Auth check - Session ID:', req.sessionID, 'isAuthenticated:', req.isAuthenticated(), 'user:', req.user, 'cookies:', req.headers.cookie);
-  if (req.isAuthenticated()) {
+  console.log('Auth check', {
+    method: req.method,
+    path: req.path,
+    isAuthenticated: req.isAuthenticated(),
+  });
+  if (req.isAuthenticated() && (req.user as any)?.isActive !== false) {
     return next();
   }
-  res.status(401).json({ message: "Unauthorized" });
+  res.status(401).json({ message: (req.user as any)?.isActive === false ? "Account is inactive" : "Unauthorized" });
 };

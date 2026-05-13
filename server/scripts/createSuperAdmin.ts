@@ -1,16 +1,27 @@
 import bcrypt from "bcryptjs";
 import { storage } from "../storage";
 
+function getRequiredEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} is required`);
+  }
+  return value;
+}
+
 async function createSuperAdmin() {
   try {
     console.log("Creating super admin account...");
 
-    // Super admin credentials
-    const username = "superadmin";
-    const email = "admin@cretexchange.com";
-    const password = "Admin123!"; // Change this after first login
-    const firstName = "Super";
-    const lastName = "Admin";
+    const username = getRequiredEnv("SUPER_ADMIN_USERNAME");
+    const email = getRequiredEnv("SUPER_ADMIN_EMAIL");
+    const password = getRequiredEnv("SUPER_ADMIN_PASSWORD");
+    const firstName = process.env.SUPER_ADMIN_FIRST_NAME?.trim() || "Super";
+    const lastName = process.env.SUPER_ADMIN_LAST_NAME?.trim() || "Admin";
+
+    if (password.length < 12) {
+      throw new Error("SUPER_ADMIN_PASSWORD must be at least 12 characters");
+    }
 
     // Check if super admin already exists
     const existingUser = await storage.getUserByUsername(username);
@@ -44,10 +55,6 @@ async function createSuperAdmin() {
     console.log(`Username: ${superAdmin.username}`);
     console.log(`Email: ${superAdmin.email}`);
     console.log(`Role: ${superAdmin.role}`);
-    console.log(`\nLogin credentials:`);
-    console.log(`Username: ${username}`);
-    console.log(`Password: ${password}`);
-    console.log(`\n⚠️  IMPORTANT: Change the password after first login!`);
 
     process.exit(0);
   } catch (error) {

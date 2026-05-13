@@ -10,7 +10,6 @@ import Login from "@/pages/auth/login";
 import Register from "@/pages/auth/register";
 import ResetPassword from "@/pages/auth/reset-password";
 import OldRegister from "@/pages/register";
-import Setup from "@/pages/setup";
 import PrivacyPolicy from "@/pages/privacy-policy";
 
 // Driver pages
@@ -76,7 +75,6 @@ function Router() {
         <Route path="/register/driver" component={DriverRegister} />
         <Route path="/register/owner" component={OwnerRegister} />
         <Route path="/reset-password" component={ResetPassword} />
-        <Route path="/setup" component={Setup} />
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route component={NotFound} />
       </Switch>

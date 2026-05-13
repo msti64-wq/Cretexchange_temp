@@ -1,5 +1,9 @@
 import { createRoot } from "react-dom/client";
-import App from "./App";
+import { installConsoleRedaction } from "../../shared/logRedaction";
 import "./index.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
+installConsoleRedaction();
+
+void import("./App").then(({ default: App }) => {
+  createRoot(document.getElementById("root")!).render(<App />);
+});

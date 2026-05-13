@@ -48,3 +48,12 @@ Thumbs.db
 *.local
 dist-ssr
 coverage
+exports/
+
+# Sensitive or generated artifacts
+cookies.txt
+admin_cookies.txt
+o1_cookies.txt
+o1_new_cookies.txt
+to_cookies.txt
+my-project.zip

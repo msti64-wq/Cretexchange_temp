@@ -68,27 +68,6 @@ export default function Register() {
     },
   });
 
-  const adminRegistrationMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/auth/register/admin", data);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Admin Registration Successful",
-        description: "Your admin profile has been created successfully.",
-      });
-      setLocation('/');
-    },
-    onError: (error) => {
-      toast({
-        title: "Registration Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   // Redirect if not authenticated
   if (!isAuthenticated) {
     return (
@@ -149,7 +128,7 @@ export default function Register() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="driver" className="flex items-center" data-testid="tab-driver">
                   <Truck className="w-4 h-4 mr-1" />
                   Driver
@@ -157,10 +136,6 @@ export default function Register() {
                 <TabsTrigger value="owner" className="flex items-center" data-testid="tab-owner">
                   <Building2 className="w-4 h-4 mr-1" />
                   Owner
-                </TabsTrigger>
-                <TabsTrigger value="admin" className="flex items-center" data-testid="tab-admin">
-                  <Shield className="w-4 h-4 mr-1" />
-                  Admin
                 </TabsTrigger>
               </TabsList>
 
@@ -198,22 +173,6 @@ export default function Register() {
                 />
               </TabsContent>
 
-              <TabsContent value="admin" className="mt-6">
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Shield className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">System Administrator</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Manage the platform, approve owners, monitor system activity, and handle administrative tasks.
-                  </p>
-                </div>
-                <RegistrationForm
-                  type="admin"
-                  onSubmit={(data) => adminRegistrationMutation.mutate(data)}
-                  isLoading={adminRegistrationMutation.isPending}
-                />
-              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>

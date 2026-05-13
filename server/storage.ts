@@ -347,7 +347,6 @@ export interface IStorage {
 
   // Debug operations
   getUserCount(): Promise<number>;
-  getTestUsers(): Promise<string[]>;
 
   // Feature flag operations
   getFeatureFlag(flagKey: string): Promise<any | undefined>;
@@ -1967,20 +1966,6 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
-  }
-
-  async getTestUsers(): Promise<string[]> {
-    const testUsers = await db
-      .select({ username: users.username })
-      .from(users)
-      .where(or(
-        eq(users.username, 'deploytest'),
-        eq(users.username, 'prodtest'),
-        eq(users.username, 'D1'),
-        eq(users.username, 'O1'),
-        eq(users.username, 'admin')
-      ));
-    return testUsers.map(u => u.username);
   }
 
   // Owner funding sources operations

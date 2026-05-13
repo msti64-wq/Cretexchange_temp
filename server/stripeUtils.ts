@@ -30,7 +30,7 @@ export function formatPhoneE164(phone: string | undefined | null): string | unde
   }
   
   // Invalid format - return undefined
-  console.warn(`⚠️ Invalid phone format: ${phone} (${digits.length} digits)`);
+  console.warn(`⚠️ Invalid phone format (${digits.length} digits)`);
   return undefined;
 }
 
@@ -104,7 +104,7 @@ export function parseDateOfBirth(dateStr: string | undefined | null): { day: num
   
   const parts = dateStr.split('-');
   if (parts.length !== 3) {
-    console.warn(`⚠️ Invalid DOB format: ${dateStr}`);
+    console.warn(`⚠️ Invalid DOB format`);
     return undefined;
   }
   
@@ -114,7 +114,7 @@ export function parseDateOfBirth(dateStr: string | undefined | null): { day: num
   
   // Basic validation
   if (isNaN(year) || isNaN(month) || isNaN(day)) {
-    console.warn(`⚠️ Invalid DOB values: ${dateStr}`);
+    console.warn(`⚠️ Invalid DOB values`);
     return undefined;
   }
   
@@ -122,7 +122,7 @@ export function parseDateOfBirth(dateStr: string | undefined | null): { day: num
   const now = new Date();
   const age = now.getFullYear() - year;
   if (age < 13 || age > 120) {
-    console.warn(`⚠️ Invalid age from DOB: ${age} years`);
+    console.warn(`⚠️ Invalid age from DOB`);
     return undefined;
   }
   

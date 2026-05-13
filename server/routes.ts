@@ -7,6 +7,7 @@ import { storage } from "./storage";
 import { washoutActivities, withdrawals, walletTransactions, driverWallets, owners, ownerFundingSources, debitCardRequests, ownerWalletTransactions, balanceReconciliations, users } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
+import { getJwtSecret } from "./jwtSecret";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, signObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema } from "@shared/schema";
@@ -15,6 +16,8 @@ import { z } from "zod";
 import * as stripeService from "./stripeService";
 import stripeClient from "./stripeService";
 import { geocodeAddress } from "./geocoding";
+
+const JWT_SECRET = getJwtSecret();
 
 // Initialize Stripe only if secret key is available
 let stripe: Stripe | null = null;
@@ -188,14 +191,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const userCount = await storage.getUserCount();
-      const testUsers = await storage.getTestUsers();
       
       res.json({
         environment,
         hasDatabaseUrl,
         databaseUrlPreview,
         userCount,
-        testUsers,
         requestedBy: {
           id: user.id,
           email: user.email,
@@ -514,226 +515,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Create test data with pending payments - SECURED FOR ADMIN ONLY
-  app.post("/api/debug/create-test-data", isAuthenticated, async (req: any, res) => {
-    try {
-      // Get the authenticated user
-      const user = await storage.getUser(req.user.id);
-      
-      // Restrict to admin and super_admin roles only
-      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
-        return res.status(403).json({ 
-          error: 'Admin access required',
-          message: 'This endpoint is restricted to administrators only'
-        });
-      }
-
-      const env = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
-      console.log(`🔧 CREATING TEST DATA FOR ${env.toUpperCase()} ENVIRONMENT...`);
-      console.log('Test data creation requested by admin:', {
-        adminId: user.id,
-        adminEmail: user.email,
-        environment: env
-      });
-      
-      // Get O1 user and ensure owner record exists
-      const o1User = await storage.getUserByUsername('O1');
-      if (!o1User) {
-        return res.status(404).json({ error: 'O1 user not found' });
-      }
-
-      // Check if O1 owner record exists, create if not
-      let o1Owner = await storage.getOwner(o1User.id);
-      if (!o1Owner) {
-        console.log('Creating O1 owner record...');
-        o1Owner = await storage.createOwner({
-          userId: o1User.id,
-          companyName: 'O1 Washout Services',
-          businessLicense: 'BL123456',
-          taxId: '12-3456789',
-          subscriptionStatus: 'active'
-        });
-      }
-
-      // Get D1 user and ensure driver record exists
-      const d1User = await storage.getUserByUsername('D1');
-      if (!d1User) {
-        return res.status(404).json({ error: 'D1 user not found' });
-      }
-
-      let d1Driver = await storage.getDriver(d1User.id);
-      if (!d1Driver) {
-        console.log('Creating D1 driver record...');
-        d1Driver = await storage.createDriver({
-          userId: d1User.id,
-          licenseNumber: 'DL123456',
-          employerName: 'ABC Trucking',
-          employerPhone: '2149493859'
-        });
-      }
-
-      // Get or create a washout location for O1
-      let location = await storage.getLocationsByOwner(o1Owner.id);
-      if (!location || location.length === 0) {
-        console.log('Creating washout location for O1...');
-        location = [await storage.createWashoutLocation({
-          ownerId: o1Owner.id,
-          name: 'O1 Premium Washout Station',
-          address: '870 N Preston Rd, Celina, TX 75009',
-          latitude: '33.2273',
-          longitude: '-96.7764',
-          rate: '25.00'
-        })];
-      }
-
-      // Create test washout activities with pending payments
-      const activities = [];
-      const payments = [];
-      
-      for (let i = 0; i < 3; i++) {
-        const activity = await storage.createWashoutActivity({
-          driverId: d1Driver.id,
-          locationId: location[0].id,
-          checkInTime: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000), // 1, 2, 3 days ago
-          checkOutTime: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000 + 30 * 60 * 1000), // 30 min later
-          photoUrls: [`test-photo-${i + 1}.jpg`],
-          notes: `Test washout activity ${i + 1}`,
-          status: 'verified',
-          amount: '25.00'
-        });
-        activities.push(activity);
-
-        // Get owner's billing settings for business date calculation
-        const billingSettings = await storage.getOwnerBillingSettings(o1Owner.id);
-        const businessDate = billingSettings 
-          ? await storage.calculateBusinessDateForOwner(
-              o1Owner.id,
-              billingSettings.billingTimezone,
-              billingSettings.billingCutoffTime
-            )
-          : new Date().toISOString().split('T')[0]; // fallback to today
-        
-        // Create corresponding payment with 'pending' status
-        const payment = await storage.createPayment({
-          activityId: activity.id,
-          driverId: d1Driver.id,
-          ownerId: o1Owner.id,
-          amount: '25.00',
-          processingFee: '2.50',
-          status: 'pending',
-          businessDate // Critical: Set business date for batch processing
-        });
-        payments.push(payment);
-      }
-      
-      console.log(`✅ TEST DATA CREATED: ${activities.length} activities, ${payments.length} pending payments`);
-
-      res.json({
-        success: true,
-        environment: env,
-        message: `Test data created with ${payments.length} pending payments!`,
-        activities: activities.length,
-        payments: payments.length,
-        totalPending: payments.reduce((sum, p) => sum + Number(p.amount), 0)
-      });
-
-    } catch (error) {
-      console.error('❌ Error creating test data:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ 
-        success: false, 
-        error: errorMessage 
-      });
-    }
-  });
-
-  // Universal database population - SECURED FOR ADMIN ONLY
-  app.get("/api/setup-users", isAuthenticated, async (req: any, res) => {
-    try {
-      // Get the authenticated user
-      const user = await storage.getUser(req.user.id);
-      
-      // Restrict to admin and super_admin roles only
-      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
-        return res.status(403).json({ 
-          error: 'Admin access required',
-          message: 'This endpoint is restricted to administrators only'
-        });
-      }
-
-      const env = process.env.REPLIT_DEPLOYMENT ? 'production' : 'development';
-      console.log(`🔧 SETTING UP USERS FOR ${env.toUpperCase()} ENVIRONMENT...`);
-      console.log('User setup requested by admin:', {
-        adminId: user.id,
-        adminEmail: user.email,
-        environment: env
-      });
-      
-      // Use storage interface for reliable database operations
-      const testUsers = [
-        { username: 'D1', password: 'D1', firstName: 'D1', lastName: 'Driver', role: 'driver' as const, 
-          email: 'D1@email.com', phone: '2149493859', address: '11445 Mansfield Dr, Frisco, Texas 75035' },
-        { username: 'O1', password: 'O1', firstName: 'O1', lastName: 'Owner', role: 'owner' as const,
-          email: 'O1@email.com', phone: '9723321192', address: '870 N Preston Rd, Celina, TX 75009' },
-        { username: 'admin', password: 'admin123', firstName: 'Super', lastName: 'Admin', role: 'super_admin' as const,
-          email: 'admin@cretexchange.com' },
-        { username: 'testdriver', password: 'test123', firstName: 'Test', lastName: 'Driver', role: 'driver' as const,
-          email: 'test@example.com', phone: '555-123-4567', address: '123 Main St' },
-        { username: 'prodtest', password: 'test123', firstName: 'Prod', lastName: 'Test', role: 'driver' as const,
-          email: 'prodtest@example.com' },
-        { username: 'deploytest', password: 'test123', firstName: 'Deploy', lastName: 'Test', role: 'driver' as const,
-          email: 'deploy@test.com' }
-      ];
-
-      let createdCount = 0;
-      let existingCount = 0;
-
-      for (const userData of testUsers) {
-        try {
-          const existing = await storage.getUserByUsername(userData.username);
-          if (existing) {
-            existingCount++;
-            console.log(`User ${userData.username} already exists`);
-          } else {
-            const { password, ...userDataWithoutPassword } = userData;
-            const passwordHash = await bcrypt.hash(password, 10);
-            await storage.createUser({
-              ...userDataWithoutPassword,
-              passwordHash
-            });
-            createdCount++;
-            console.log(`✅ Created user: ${userData.username}`);
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          console.log(`⚠️ Issue with user ${userData.username}:`, errorMessage);
-        }
-      }
-
-      const totalUsers = await storage.getUserCount();
-      
-      console.log(`✅ USER SETUP COMPLETE FOR ${env.toUpperCase()}: ${createdCount} created, ${existingCount} existing, ${totalUsers} total`);
-
-      res.json({
-        success: true,
-        environment: env,
-        message: `Users ready in ${env}!`,
-        created: createdCount,
-        existing: existingCount,
-        total: totalUsers,
-        testLogin: 'Try: deploytest / test123'
-      });
-
-    } catch (error) {
-      console.error('❌ Error setting up users:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      res.status(500).json({ 
-        success: false, 
-        error: errorMessage 
-      });
-    }
-  });
-
   // Auth middleware
   await setupAuth(app);
 
@@ -900,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate token for immediate login
       const token = jwt.sign(
         { userId: newUser.id, username: newUser.username },
-        process.env.JWT_SECRET || 'development-secret',
+        JWT_SECRET,
         { expiresIn: '30d' }
       );
 
@@ -10612,9 +10393,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Construct and verify event with raw body
       let event: Stripe.Event;
       try {
-        console.log(`🔍 [${environment}] Verifying webhook signature...`);
-        console.log(`  - Body type: ${typeof req.body}, Is Buffer: ${Buffer.isBuffer(req.body)}`);
-        console.log(`  - Secret configured: ${webhookSecret.substring(0, 10)}...`);
+      console.log(`🔍 [${environment}] Verifying webhook signature...`);
+      console.log(`  - Body type: ${typeof req.body}, Is Buffer: ${Buffer.isBuffer(req.body)}`);
+      console.log(`  - Secret configured: ${webhookSecret ? 'yes' : 'no'}`);
         event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
         eventId = event.id;
       } catch (err: any) {

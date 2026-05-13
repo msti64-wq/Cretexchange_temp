@@ -1415,11 +1415,11 @@ export async function createFinancialConnectionsSession(params: {
       return_url: params.returnUrl,
     });
 
-    console.log('✅ Created Financial Connections Session:', {
-      sessionId: session.id,
-      userType: params.userType,
-      clientSecret: session.client_secret?.slice(0, 20) + '...',
-    });
+  console.log('✅ Created Financial Connections Session:', {
+    sessionId: session.id,
+    userType: params.userType,
+    clientSecretConfigured: !!session.client_secret,
+  });
 
     return session;
   } catch (error: any) {

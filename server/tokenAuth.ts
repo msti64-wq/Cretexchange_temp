@@ -2,31 +2,33 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
+import { getJwtSecret } from "./jwtSecret";
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET || "your-jwt-secret-key-change-in-production";
+const JWT_SECRET = getJwtSecret();
 
 export async function setupAuth(app: Express) {
   // Login route
   app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      
-      console.log(`Login attempt: username=${username}, environment=${process.env.REPLIT_DEPLOYMENT ? 'production' : 'development'}`);
 
       // Check if user exists (case-insensitive username lookup)
       const user = await storage.getUserByUsernameInsensitive(username);
       if (!user) {
-        console.log(`User not found: ${username}`);
+        console.log("Login attempt failed: user not found");
         return res.status(401).json({ message: "Invalid username or password" });
       }
-
-      console.log(`User found: ${username}, id=${user.id}`);
 
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       if (!isValidPassword) {
-        console.log(`Password verification failed for user: ${username}`);
+        console.log("Login attempt failed: invalid password");
         return res.status(401).json({ message: "Invalid username or password" });
+      }
+
+      if (user.isActive === false) {
+        console.log("Login blocked for inactive user");
+        return res.status(403).json({ message: "Account is inactive" });
       }
 
       // Create JWT token
@@ -39,7 +41,7 @@ export async function setupAuth(app: Express) {
       // Remove password hash from user object
       const { passwordHash, ...userWithoutPassword } = user;
 
-      console.log("User logged in successfully:", user.id);
+      console.log(`User logged in successfully: role=${user.role}`);
       res.json({ 
         message: "Login successful", 
         user: userWithoutPassword,
@@ -56,10 +58,10 @@ export async function setupAuth(app: Express) {
     try {
       const { username, email, password, firstName, lastName, phone, street, city, state, zip, role } = req.body;
 
-      // Validate role field
-      if (!role || !['driver', 'owner', 'admin', 'super_admin'].includes(role)) {
+      // Public self-registration is limited to normal user roles.
+      if (!role || !['driver', 'owner'].includes(role)) {
         return res.status(400).json({ 
-          message: `Invalid role: '${role}'. Must be one of: driver, owner, admin, super_admin` 
+          message: `Invalid role: '${role}'. Must be one of: driver, owner` 
         });
       }
 
@@ -120,7 +122,7 @@ export async function setupAuth(app: Express) {
       // Remove password hash from response
       const { passwordHash: _, ...userWithoutPassword } = newUser;
 
-      console.log("User registered successfully:", newUser.id);
+      console.log(`User registered successfully: role=${newUser.role}`);
       res.json({ 
         message: "Registration successful", 
         user: userWithoutPassword,
@@ -167,11 +169,6 @@ export async function setupAuth(app: Express) {
         expiresAt
       });
 
-      // In a real app, you'd send an email here
-      // For now, just log the reset token for development
-      console.log(`Password reset token for ${user.email}: ${resetToken}`);
-      console.log(`Reset URL would be: /reset-password?token=${resetToken}`);
-      
       res.json({ 
         message: "If an account exists with this email, password reset instructions have been sent.",
         // In development, include the token for testing
@@ -221,7 +218,7 @@ export async function setupAuth(app: Express) {
       // Delete the reset token
       await storage.deletePasswordResetToken(resetToken.id);
 
-      console.log(`Password reset successfully for user: ${user.username} (${user.email})`);
+      console.log("Password reset successfully");
       res.json({ message: "Password has been reset successfully" });
     } catch (error) {
       console.error("Reset password error:", error);
@@ -233,8 +230,7 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
   try {
     console.log(`🔐 Auth check for ${req.method} ${req.path}`);
-    console.log(`🔐 Auth headers:`, req.headers.authorization ? 'Bearer token present' : 'No auth header');
-    
+
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log(`❌ Auth failed: Missing or invalid auth header`);
@@ -247,11 +243,16 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
     // Get user from database
     const user = await storage.getUserById(decoded.userId);
     if (!user) {
-      console.log(`❌ Auth failed: User not found for ID ${decoded.userId}`);
+      console.log(`❌ Auth failed: User not found`);
       return res.status(401).json({ message: "User not found" });
     }
 
-    console.log(`✅ Auth success: User ${user.username} (${user.role})`);
+    if (user.isActive === false) {
+      console.log(`❌ Auth failed: Inactive user`);
+      return res.status(403).json({ message: "Account is inactive" });
+    }
+
+    console.log(`✅ Auth success: role=${user.role}`);
 
     // Remove password hash and attach user to request
     const { passwordHash, ...userWithoutPassword } = user;

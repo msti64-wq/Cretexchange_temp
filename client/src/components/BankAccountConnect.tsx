@@ -52,7 +52,7 @@ export function BankAccountConnect({
       }
 
       // Step 3: Collect financial account using Financial Connections
-      console.log('📱 Launching Financial Connections UI with clientSecret:', sessionData.clientSecret.slice(0, 20) + '...');
+      console.log('📱 Launching Financial Connections UI');
       const { financialConnectionsSession, error: fcError } = await stripe.collectFinancialConnectionsAccounts({
         clientSecret: sessionData.clientSecret,
       });
