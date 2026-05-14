@@ -11,6 +11,7 @@ import { getJwtSecret } from "./jwtSecret";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, signObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema } from "@shared/schema";
+import type { Driver, FeeLedger, FeatureFlag, LocationMaterialIntent, Notification, Owner, OwnerFundingSource, Payment, PendingWashoutPayment, User, WalletTransaction, WashoutActivity, WashoutLocation, WashoutPhoto, Withdrawal } from "@shared/schema";
 import { eq, sql, desc, and, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import * as stripeService from "./stripeService";
@@ -18,6 +19,22 @@ import stripeClient from "./stripeService";
 import { geocodeAddress } from "./geocoding";
 
 const JWT_SECRET = getJwtSecret();
+
+type QueuedPendingWashoutPayment = PendingWashoutPayment & {
+  activity: WashoutActivity;
+  driver: Driver & { user: User };
+  owner: Owner & { user: User };
+};
+
+type OwnerWithUser = Owner & { user: User };
+type DriverWithUser = Driver & { user: User };
+type ExpiredPendingActivity = WashoutActivity & { location: WashoutLocation; driver: DriverWithUser };
+type AdminWithdrawal = Withdrawal & { driver: DriverWithUser };
+type BatchPayment = Payment & { activity: WashoutActivity; driver: DriverWithUser };
+type RubbleLocationWithIntents = WashoutLocation & {
+  owner: OwnerWithUser;
+  materialIntents: LocationMaterialIntent[];
+};
 
 // Initialize Stripe only if secret key is available
 const stripe: Stripe = process.env.STRIPE_SECRET_KEY
@@ -317,7 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activities = await storage.getActivitiesByOwner(owner.id, startDate, endDate);
       
       // Calculate statistics
-      const stats = activities.reduce((acc, activity) => {
+      const stats = (activities as Array<{ status: string }>).reduce((acc: { total: number; byStatus: Record<string, number> }, activity) => {
         acc.total++;
         acc.byStatus[activity.status] = (acc.byStatus[activity.status] || 0) + 1;
         return acc;
@@ -1582,7 +1599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('🔄 Starting batch payment processing...');
 
       // Get all queued pending payments
-      const queuedPayments = await storage.getPendingWashoutPaymentsByStatus('queued');
+      const queuedPayments = await storage.getPendingWashoutPaymentsByStatus('queued') as QueuedPendingWashoutPayment[];
 
       if (queuedPayments.length === 0) {
         return res.json({
@@ -1595,14 +1612,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 Found ${queuedPayments.length} queued payments`);
 
       // Group payments by owner
-      const paymentsByOwner = queuedPayments.reduce((acc, payment) => {
+      const paymentsByOwner = queuedPayments.reduce<Record<string, QueuedPendingWashoutPayment[]>>((acc, payment) => {
         const ownerId = payment.ownerId;
         if (!acc[ownerId]) {
           acc[ownerId] = [];
         }
         acc[ownerId].push(payment);
         return acc;
-      }, {} as Record<string, typeof queuedPayments>);
+      }, {});
 
       const ownerIds = Object.keys(paymentsByOwner);
       console.log(`👥 Processing batches for ${ownerIds.length} owners`);
@@ -1957,7 +1974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
       
-      const todayActivities = await storage.getActivitiesByDriver(driver.id, today, tomorrow);
+      const todayActivities = await storage.getActivitiesByDriver(driver.id, today, tomorrow) as Array<WashoutActivity & { washout_activities?: { amount?: string | number | null } }>;
       
       // Get 7-day stats
       const weekStats = await storage.getDriverStats(driver.id, 7);
@@ -1965,7 +1982,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get recent activities
       const recentActivities = await storage.getRecentActivitiesByDriver(driver.id, 5);
 
-      const dailyEarnings = todayActivities.reduce((sum, activity: any) => {
+      const dailyEarnings = todayActivities.reduce((sum, activity) => {
         // Handle both possible data structures from Drizzle joins
         const amount = Number(activity.washout_activities?.amount || activity.amount || 0);
         return sum + amount;
@@ -3484,12 +3501,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         calculatedEnd: end.toISOString()
       });
 
-      const activities = await storage.getActivitiesByOwner(owner.id, start, end);
+      const activities = await storage.getActivitiesByOwner(owner.id, start, end) as WashoutActivity[];
       
       console.log('📊 Activities query result:', {
         ownerId: owner.id,
         totalActivities: activities.length,
-        statusBreakdown: activities.reduce((acc, activity) => {
+        statusBreakdown: activities.reduce<Record<string, number>>((acc, activity) => {
           acc[activity.status] = (acc[activity.status] || 0) + 1;
           return acc;
         }, {} as Record<string, number>),
@@ -3522,6 +3539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!activityDetails) {
         return res.status(404).json({ message: "Activity not found" });
       }
+      const activityLocation = await storage.getWashoutLocation(activityDetails.locationId) as WashoutLocation | undefined;
 
       // NOTE: Activity verification moved to AFTER successful payment processing
       // to prevent partial state (verified activity but failed payment)
@@ -3611,7 +3629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             amount: ownerFee.toFixed(2),
             balanceBefore: "0.00",
             balanceAfter: "0.00",
-            description: `Pending washout - ${driverUser?.username || 'Driver'} at ${location?.name || 'Location'} (${billingCadence} billing)`,
+            description: `Pending washout - ${driverUser?.username || 'Driver'} at ${activityLocation?.name || 'Location'} (${billingCadence} billing)`,
             paymentId: payment.id,
           }).returning();
           
@@ -3882,7 +3900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: ownerFee.toFixed(2),
           balanceBefore: "0.00", // Not using internal wallet - direct Stripe charge
           balanceAfter: "0.00",  // Not using internal wallet - direct Stripe charge
-          description: `Washout payment - ${driverUser?.username || 'Driver'} at ${location?.name || 'Location'}`,
+          description: `Washout payment - ${driverUser?.username || 'Driver'} at ${activityLocation?.name || 'Location'}`,
           paymentId: payment.id,
         }).returning();
         
@@ -5181,17 +5199,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch payment methods from database
-      const paymentMethods = await storage.getOwnerPaymentMethods(owner.id);
+      const paymentMethods = await storage.getOwnerPaymentMethods(owner.id) as OwnerFundingSource[];
       
       // Format for frontend
-      const formattedMethods = paymentMethods.map(method => ({
+      const formattedMethods = paymentMethods.map((method) => ({
         id: method.id,
         type: method.type,
         last4: method.last4,
         ...(method.type === 'card' ? {
           expiryMonth: method.expiryMonth,
           expiryYear: method.expiryYear,
-          cardholderName: method.accountHolderName || method.bankName
+          cardholderName: method.cardholderName || method.accountHolderName || method.bankName
         } : {
           bankName: method.bankName,
           accountHolderName: method.accountHolderName
@@ -5317,8 +5335,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         try {
           // Get default funding source
-          const fundingSources = await storage.getOwnerFundingSources(owner.id);
-          const defaultSource = fundingSources.find(fs => fs.isDefault && fs.isActive);
+          const fundingSources = await storage.getOwnerFundingSources(owner.id) as OwnerFundingSource[];
+          const defaultSource = fundingSources.find((fs) => fs.isDefault && fs.isActive);
           
           if (!defaultSource) {
             console.warn(`No default funding source found for auto top-up (owner ${owner.id})`);
@@ -5361,7 +5379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Create low balance notification if auto top-up is disabled
         const existingNotifications = await storage.getNotificationsByUser(userId);
-        const hasLowBalanceAlert = existingNotifications.some(n => n.type === 'low_balance' && !n.isRead);
+        const hasLowBalanceAlert = (existingNotifications as Notification[]).some((n) => n.type === 'low_balance' && !n.isRead);
         
         if (!hasLowBalanceAlert) {
           await storage.createNotification({
@@ -5683,10 +5701,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get funding sources from database
-      const fundingSources = await storage.getOwnerFundingSources(owner.id);
+      const fundingSources = await storage.getOwnerFundingSources(owner.id) as OwnerFundingSource[];
       
       // Format for frontend
-      const formattedSources = fundingSources.map(source => ({
+      const formattedSources = fundingSources.map((source) => ({
         id: source.id,
         sourceType: (source.type === 'ach' || source.type === 'bank_account') ? 'bank_account' : 'credit_card',
         bankName: source.bankName || undefined,
@@ -5822,8 +5840,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Also create entry in ownerFundingSources table (for payment methods page display)
       // First check if this payment method already exists
-      const existingSources = await storage.getOwnerFundingSources(owner.id);
-      const existingCard = existingSources.find(s => s.stripePaymentMethodId === paymentMethodId);
+      const existingSources = await storage.getOwnerFundingSources(owner.id) as OwnerFundingSource[];
+      const existingCard = existingSources.find((s) => s.stripePaymentMethodId === paymentMethodId);
       
       if (!existingCard) {
         // Determine if there are any other sources to decide on default
@@ -6958,7 +6976,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Handle different payment statuses
           if (paymentIntent.status === 'succeeded') {
             // Payment succeeded - update wallet balance immediately
-            const newBalance = parseFloat(owner.walletBalance || '0') + fundAmount;
+            const previousBalance = parseFloat(owner.walletBalance || '0');
+            const newBalance = previousBalance + fundAmount;
             await db
               .update(owners)
               .set({
@@ -6968,15 +6987,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .where(eq(owners.id, owner.id));
 
             // Record transaction
-            await db.insert(walletTransactions).values({
-              id: crypto.randomUUID(),
-              userId: user.id,
-              amount: fundAmount.toFixed(2),
+            await db.insert(ownerWalletTransactions).values({
+              ownerId: owner.id,
               type: 'funding',
-              status: 'completed',
-              description: `Wallet funded via card`,
-              externalTransactionId: paymentIntent.id,
-              createdAt: new Date()
+              amount: fundAmount.toFixed(2),
+              balanceBefore: previousBalance.toFixed(2),
+              balanceAfter: newBalance.toFixed(2),
+              description: `Wallet funded via card (${paymentIntent.id})`,
             });
 
             console.log(`✅ Card funding successful: $${fundAmount}`);
@@ -7703,12 +7720,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const driversData = await storage.getAllDrivers();
-      const ownersData = await storage.getAllOwners();
+      const driversData = await storage.getAllDrivers() as DriverWithUser[];
+      const ownersData = await storage.getAllOwners() as OwnerWithUser[];
       const admins = await storage.getAllAdmins();
 
       // Transform data to match frontend expectations
-      const drivers = driversData.map(d => ({
+      const drivers = driversData.map((d) => ({
         users: d.user,
         drivers: {
           id: d.id,
@@ -7733,7 +7750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }));
 
-      const owners = ownersData.map(o => ({
+      const owners = ownersData.map((o) => ({
         users: o.user,
         owners: {
           id: o.id,
@@ -7797,24 +7814,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get all owners with subscription information
-      const owners = await storage.getAllOwners();
+      const owners = await storage.getAllOwners() as OwnerWithUser[];
       
       // Get all user details in parallel for efficiency
-      const ownerUserPromises = owners.map(owner => storage.getUser(owner.userId));
+      const ownerUserPromises = owners.map((owner) => storage.getUser(owner.userId) as Promise<User | undefined>);
       const ownerUsers = await Promise.all(ownerUserPromises);
 
       // Filter out owners without valid user records
       const validOwnerData = owners
         .map((owner, index) => ({ owner, user: ownerUsers[index] }))
-        .filter(({ user }) => user !== null);
+        .filter((entry): entry is { owner: OwnerWithUser; user: User } => entry.user != null);
 
       // Get location counts for each owner to calculate monthly revenue
-      const locationCountsPromises = validOwnerData.map(({ owner }) => 
-        storage.getLocationsByOwner(owner.id).then(locations => ({
+      const locationCountsPromises = validOwnerData.map(async ({ owner }) => {
+        const locations = await storage.getLocationsByOwner(owner.id) as WashoutLocation[];
+        return {
           ownerId: owner.id,
-          activeLocationCount: locations.filter(loc => loc.isActive).length
-        }))
-      );
+          activeLocationCount: locations.filter((loc) => loc.isActive).length
+        };
+      });
       const locationCounts = await Promise.all(locationCountsPromises);
       const locationCountMap = new Map(locationCounts.map(lc => [lc.ownerId, lc.activeLocationCount]));
 
@@ -7862,7 +7880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Get active subscriptions (approved owners with active wallets)
-      const activeSubscriptions = subscriptionsData.filter(subscription => 
+      const activeSubscriptions = subscriptionsData.filter((subscription) => 
         subscription.status === 'active'
       );
 
@@ -8465,8 +8483,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const nextMonthYear = nextMonthDate.getFullYear();
 
       try {
-        const allDrivers = await storage.getAllDrivers();
-        const broadcastDrivers = allDrivers.filter(d => !winnerDriverIds.has(d.id));
+        const allDrivers = await storage.getAllDrivers() as DriverWithUser[];
+        const broadcastDrivers = allDrivers.filter((d) => !winnerDriverIds.has(d.id));
         for (const driver of broadcastDrivers) {
           await storage.createNotification({
             userId: driver.userId,
@@ -8618,8 +8636,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get all locations and their rates
-      const locations = await storage.getAllLocations();
-      const pendingActivities = await storage.getPendingActivities();
+      const locations = await storage.getAllLocations() as Array<WashoutLocation & { owner: OwnerWithUser }>;
+      const pendingActivities = await storage.getPendingActivities() as WashoutActivity[];
       
       // Get system settings for platform fee
       const systemSettings = await storage.getSystemSettings();
@@ -8627,14 +8645,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Calculate rate distribution
       const rateDistribution: Record<string, number> = {};
-      locations.forEach(loc => {
+      locations.forEach((loc) => {
         const rate = loc.rate || '0.00';
         rateDistribution[rate] = (rateDistribution[rate] || 0) + 1;
       });
 
       // Calculate pending activity amount distribution  
       const pendingAmountDistribution: Record<string, number> = {};
-      pendingActivities.forEach(act => {
+      pendingActivities.forEach((act) => {
         const amount = act.amount || '0.00';
         pendingAmountDistribution[amount] = (pendingAmountDistribution[amount] || 0) + 1;
       });
@@ -8673,12 +8691,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const hoursOld = parseInt(req.query.hours as string) || 72;
-      const expiredActivities = await storage.getExpiredPendingActivities(hoursOld);
+      const expiredActivities = await storage.getExpiredPendingActivities(hoursOld) as ExpiredPendingActivity[];
       
       res.json({
         hoursThreshold: hoursOld,
         count: expiredActivities.length,
-        activities: expiredActivities.map(activity => ({
+        activities: expiredActivities.map((activity) => ({
           id: activity.id,
           serviceType: activity.serviceType || 'washout',
           amount: activity.amount,
@@ -9057,12 +9075,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driver.id,
         queryParams.startDate,
         queryParams.endDate
-      );
+      ) as WalletTransaction[];
 
       // Filter by type if specified
       let filteredTransactions = allTransactions;
       if (queryParams.type) {
-        filteredTransactions = allTransactions.filter(t => t.direction === queryParams.type);
+        filteredTransactions = allTransactions.filter((t) => t.direction === queryParams.type);
       }
 
       // Calculate pagination
@@ -9072,7 +9090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasMore = offset + queryParams.limit < total;
 
       // Format transactions for response
-      const formattedTransactions = transactions.map(transaction => ({
+      const formattedTransactions = transactions.map((transaction) => ({
         id: transaction.id,
         amount: parseFloat(transaction.amount),
         direction: transaction.direction,
@@ -9152,8 +9170,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Idempotency protection: Check for existing pending withdrawals
-      const existingPendingWithdrawals = await storage.getWithdrawalsByDriver(driver.id);
-      const pendingWithdrawals = existingPendingWithdrawals.filter(w => 
+      const existingPendingWithdrawals = await storage.getWithdrawalsByDriver(driver.id) as Withdrawal[];
+      const pendingWithdrawals = existingPendingWithdrawals.filter((w) => 
         w.status === 'requested' || w.status === 'processing'
       );
       
@@ -9172,7 +9190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Rate limiting: Check for recent successful withdrawal attempts (last 5 minutes)
       // Exclude failed withdrawals from rate limiting to allow retry
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-      const recentWithdrawals = existingPendingWithdrawals.filter(w => 
+      const recentWithdrawals = existingPendingWithdrawals.filter((w) => 
         w.createdAt && 
         new Date(w.createdAt) > fiveMinutesAgo &&
         w.status !== 'failed' // Exclude failed withdrawals
@@ -9285,16 +9303,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const start = startDate ? new Date(startDate as string) : undefined;
       const end = endDate ? new Date(endDate as string) : undefined;
 
-      const withdrawals = await storage.getAllWithdrawals(start, end);
+      const withdrawals = await storage.getAllWithdrawals(start, end) as AdminWithdrawal[];
       
       // Filter by status if provided
       let filteredWithdrawals = withdrawals;
       if (status) {
-        filteredWithdrawals = withdrawals.filter(w => w.status === status);
+        filteredWithdrawals = withdrawals.filter((w) => w.status === status);
       }
 
       // Format response
-      const formattedWithdrawals = filteredWithdrawals.map(withdrawal => ({
+      const formattedWithdrawals = filteredWithdrawals.map((withdrawal) => ({
         id: withdrawal.id,
         driver: {
           id: withdrawal.driver.id,
@@ -9317,11 +9335,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         withdrawals: formattedWithdrawals,
         total: filteredWithdrawals.length,
         summary: {
-          requested: filteredWithdrawals.filter(w => w.status === 'requested').length,
-          processing: filteredWithdrawals.filter(w => w.status === 'processing').length,
-          paid: filteredWithdrawals.filter(w => w.status === 'paid').length,
-          failed: filteredWithdrawals.filter(w => w.status === 'failed').length,
-          canceled: filteredWithdrawals.filter(w => w.status === 'canceled').length
+          requested: filteredWithdrawals.filter((w) => w.status === 'requested').length,
+          processing: filteredWithdrawals.filter((w) => w.status === 'processing').length,
+          paid: filteredWithdrawals.filter((w) => w.status === 'paid').length,
+          failed: filteredWithdrawals.filter((w) => w.status === 'failed').length,
+          canceled: filteredWithdrawals.filter((w) => w.status === 'canceled').length
         }
       });
     } catch (error) {
@@ -10905,9 +10923,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Super admin access required" });
       }
 
-      const pendingFees = await storage.getFeeLedgerEntriesByStatus('pending');
-      const paidFees = await storage.getFeeLedgerEntriesByStatus('paid');
-      const failedFees = await storage.getFeeLedgerEntriesByStatus('failed');
+      const pendingFees = await storage.getFeeLedgerEntriesByStatus('pending') as FeeLedger[];
+      const paidFees = await storage.getFeeLedgerEntriesByStatus('paid') as FeeLedger[];
+      const failedFees = await storage.getFeeLedgerEntriesByStatus('failed') as FeeLedger[];
 
       const summary = {
         pending: {
@@ -11062,7 +11080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerTime = new Date().toLocaleString('en-US', { timeZone: timezone });
       const businessDate = new Date(ownerTime).toISOString().split('T')[0];
 
-      const pendingPayments = await storage.getPendingPaymentsForBatch(owner.id, businessDate);
+      const pendingPayments = await storage.getPendingPaymentsForBatch(owner.id, businessDate) as BatchPayment[];
       
       const summary = {
         businessDate,
@@ -11071,7 +11089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pendingPayments: pendingPayments.length,
         totalAmount: pendingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0).toFixed(2),
         totalFees: pendingPayments.reduce((sum, p) => sum + parseFloat(p.processingFee), 0).toFixed(2),
-        payments: pendingPayments.map(p => ({
+        payments: pendingPayments.map((p) => ({
           id: p.id,
           amount: p.amount,
           processingFee: p.processingFee,
@@ -11471,7 +11489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get photos for this activity
-      const photos = await storage.getPhotosByActivity(activityId);
+      const photos = await storage.getPhotosByActivity(activityId) as WashoutPhoto[];
       
       // Generate signed URLs for each photo
       const signedUrls = await Promise.all(
@@ -11852,8 +11870,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
-      const flags = await storage.getAllFeatureFlags();
-      console.log(`🚩 Feature flags retrieved: ${flags.length} flags`, flags.map(f => f.flagKey));
+      const flags = await storage.getAllFeatureFlags() as FeatureFlag[];
+      console.log(`🚩 Feature flags retrieved: ${flags.length} flags`, flags.map((f) => f.flagKey));
       res.json(flags);
     } catch (error) {
       console.error('❌ Error fetching feature flags:', error);
@@ -12717,12 +12735,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get all active locations with material intents
-      const allLocations = await storage.getActiveLocations();
+      const allLocations = await storage.getActiveLocations() as Array<WashoutLocation & { owner: OwnerWithUser }>;
       
       // For each location, get their material intents
       const locationsWithIntents = await Promise.all(
-        allLocations.map(async (location) => {
-          const intents = await storage.getLocationMaterialIntents(location.id);
+        allLocations.map(async (location): Promise<RubbleLocationWithIntents> => {
+          const intents = await storage.getLocationMaterialIntents(location.id) as LocationMaterialIntent[];
           return {
             ...location,
             materialIntents: intents
@@ -12731,12 +12749,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Filter locations by material matching and rules
-      const matchingLocations = locationsWithIntents.filter(location => {
+      const matchingLocations = locationsWithIntents.filter((location) => {
         // Must have at least one material intent
         if (location.materialIntents.length === 0) return false;
 
         // Check if any material intent matches the search
-        const hasMatchingMaterial = location.materialIntents.some(intent => {
+        const hasMatchingMaterial = location.materialIntents.some((intent) => {
           if (materialSlug) {
             return intent.materialSlug === materialSlug;
           } else if (materialCustomLabel) {
@@ -12748,7 +12766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!hasMatchingMaterial) return false;
 
         // Get the matching intent for rule checking
-        const matchingIntent = location.materialIntents.find(intent => 
+        const matchingIntent = location.materialIntents.find((intent) => 
           materialSlug ? intent.materialSlug === materialSlug : 
           intent.materialCustomLabel?.toLowerCase() === materialCustomLabel.toLowerCase()
         );
@@ -12770,19 +12788,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Calculate distance and add pay rate information
-      const resultsWithDistance = matchingLocations.map(location => {
-        const matchingIntent = location.materialIntents.find(intent => 
+      const resultsWithDistance = matchingLocations.map((location) => {
+        const matchingIntent = location.materialIntents.find((intent) => 
           materialSlug ? intent.materialSlug === materialSlug : 
           intent.materialCustomLabel?.toLowerCase() === materialCustomLabel.toLowerCase()
         );
 
         // Calculate distance using Haversine formula
         const R = 3959; // Earth radius in miles
-        const dLat = (location.latitude - driverLat) * Math.PI / 180;
-        const dLon = (location.longitude - driverLng) * Math.PI / 180;
+        const locationLat = parseFloat(location.latitude);
+        const locationLng = parseFloat(location.longitude);
+        const driverLatitude = Number(driverLat);
+        const driverLongitude = Number(driverLng);
+        const dLat = (locationLat - driverLatitude) * Math.PI / 180;
+        const dLon = (locationLng - driverLongitude) * Math.PI / 180;
         const a = 
           Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(driverLat * Math.PI / 180) * Math.cos(location.latitude * Math.PI / 180) *
+          Math.cos(driverLatitude * Math.PI / 180) * Math.cos(locationLat * Math.PI / 180) *
           Math.sin(dLon/2) * Math.sin(dLon/2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         const distance = R * c;
@@ -12967,8 +12989,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify location has matching material intent
-      const intents = await storage.getLocationMaterialIntents(locationId);
-      const matchingIntent = intents.find(intent => {
+      const intents = await storage.getLocationMaterialIntents(locationId) as LocationMaterialIntent[];
+      const matchingIntent = intents.find((intent) => {
         if (materialSlug) {
           return intent.materialSlug === materialSlug;
         } else if (materialCustomLabel) {
@@ -13156,8 +13178,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Get the material intent for payment calculation
-      const intents = await storage.getLocationMaterialIntents(visit.locationId);
-      const matchingIntent = intents.find(intent => 
+      const intents = await storage.getLocationMaterialIntents(visit.locationId) as LocationMaterialIntent[];
+      const matchingIntent = intents.find((intent) => 
         visit.materialSlug ? intent.materialSlug === visit.materialSlug :
         intent.materialCustomLabel?.toLowerCase() === visit.materialCustomLabel?.toLowerCase()
       );

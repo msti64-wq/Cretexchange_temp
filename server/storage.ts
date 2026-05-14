@@ -95,6 +95,8 @@ import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
 import { formatAddress } from "@shared/addressUtils";
 
+type IdentityDocument = typeof identityDocuments.$inferSelect;
+
 export interface IStorage {
   // User operations - local authentication
   getUser(id: string): Promise<User | undefined>;
@@ -760,6 +762,54 @@ export class DatabaseStorage implements IStorage {
     return updatedOwner;
   }
 
+  async updateOwnerSubscription(
+    ownerId: string,
+    subscriptionStatus: string,
+    pastDueDate?: Date | null,
+    subscriptionEndsAt?: Date | null,
+    gracePeriodStartDate?: Date | null,
+    lastReminderSent?: Date | null
+  ): Promise<Owner> {
+    const updateData: Partial<Owner> = {
+      subscriptionStatus: subscriptionStatus as Owner["subscriptionStatus"],
+      updatedAt: new Date(),
+    };
+
+    if (subscriptionEndsAt !== undefined) {
+      updateData.subscriptionEndsAt = subscriptionEndsAt;
+    }
+
+    if (subscriptionStatus === "past_due") {
+      const now = new Date();
+      updateData.pastDueDate = pastDueDate ?? now;
+      updateData.gracePeriodStartDate = gracePeriodStartDate ?? now;
+      if (lastReminderSent !== undefined) {
+        updateData.lastReminderSent = lastReminderSent;
+      }
+    } else if (subscriptionStatus === "active") {
+      updateData.pastDueDate = pastDueDate ?? null;
+      updateData.gracePeriodStartDate = gracePeriodStartDate ?? null;
+      updateData.lastReminderSent = lastReminderSent ?? null;
+    } else {
+      if (pastDueDate !== undefined) {
+        updateData.pastDueDate = pastDueDate;
+      }
+      if (gracePeriodStartDate !== undefined) {
+        updateData.gracePeriodStartDate = gracePeriodStartDate;
+      }
+      if (lastReminderSent !== undefined) {
+        updateData.lastReminderSent = lastReminderSent;
+      }
+    }
+
+    const [owner] = await db
+      .update(owners)
+      .set(updateData)
+      .where(eq(owners.id, ownerId))
+      .returning();
+    return owner;
+  }
+
   async updateOwnerColumnInfo(ownerId: string, columnData: { columnEntityId?: string; columnAccountId?: string }): Promise<Owner> {
     const [updatedOwner] = await db
       .update(owners)
@@ -999,7 +1049,16 @@ export class DatabaseStorage implements IStorage {
 
   // Location operations
   async createWashoutLocation(location: InsertWashoutLocation): Promise<WashoutLocation> {
-    const [newLocation] = await db.insert(washoutLocations).values(location).returning();
+    if (location.latitude === undefined || location.longitude === undefined) {
+      throw new Error("Latitude and longitude are required to create a washout location");
+    }
+
+    const locationValues: typeof washoutLocations.$inferInsert = {
+      ...location,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    };
+    const [newLocation] = await db.insert(washoutLocations).values(locationValues).returning();
     return newLocation;
   }
 
@@ -1418,7 +1477,7 @@ export class DatabaseStorage implements IStorage {
     const [activity] = await db
       .update(washoutActivities)
       .set({ 
-        status,
+        status: status as WashoutActivity["status"],
         updatedAt: new Date()
       })
       .where(eq(washoutActivities.id, activityId))
@@ -2730,47 +2789,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOwnerByStripeCustomerId(customerId: string): Promise<(Owner & { user: User }) | undefined> {
-    const result = await db
+    const [result] = await db
       .select({
-        id: owners.id,
-        userId: owners.userId,
-        companyName: owners.companyName,
-        businessLicense: owners.businessLicense,
-        taxId: owners.taxId,
-        // Column BaaS wallet fields (replacing subscription fields)
-        columnAccountId: owners.columnAccountId,
-        columnEntityId: owners.columnEntityId,
-        walletBalance: owners.walletBalance,
-        walletStatus: owners.walletStatus,
-        isApproved: owners.isApproved,
-        hasAgreedToTerms: owners.hasAgreedToTerms,
-        termsAgreedAt: owners.termsAgreedAt,
-        createdAt: owners.createdAt,
-        updatedAt: owners.updatedAt,
-        user: {
-          id: users.id,
-          username: users.username,
-          email: users.email,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          phone: users.phone,
-          street: users.street,
-          city: users.city,
-          state: users.state,
-          zip: users.zip,
-          role: users.role,
-          columnCustomerId: users.columnCustomerId,
-          // Removed stripeSubscriptionId - using Column BaaS now
-          isActive: users.isActive,
-          createdAt: users.createdAt,
-          updatedAt: users.updatedAt,
-        }
+        owner: getTableColumns(owners),
+        user: getTableColumns(users),
       })
       .from(owners)
       .innerJoin(users, eq(owners.userId, users.id))
       .where(eq(users.stripeCustomerId, customerId));
     
-    return result[0];
+    return result ? { ...result.owner, user: result.user } : undefined;
   }
 
   // Billing batch operations for daily batch processing
@@ -2825,62 +2853,9 @@ export class DatabaseStorage implements IStorage {
   async getBillingBatchesByStatus(status: string): Promise<(BillingBatch & { owner: Owner & { user: User } })[]> {
     const batches = await db
       .select({
-        id: billingBatches.id,
-        ownerId: billingBatches.ownerId,
-        businessDate: billingBatches.businessDate,
-        cutoffTime: billingBatches.cutoffTime,
-        timezone: billingBatches.timezone,
-        totalAmount: billingBatches.totalAmount,
-        totalFees: billingBatches.totalFees,
-        paymentCount: billingBatches.paymentCount,
-        stripePaymentIntentId: billingBatches.stripePaymentIntentId,
-        status: billingBatches.status,
-        processingStartedAt: billingBatches.processingStartedAt,
-        completedAt: billingBatches.completedAt,
-        failureReason: billingBatches.failureReason,
-        retryCount: billingBatches.retryCount,
-        metadata: billingBatches.metadata,
-        createdAt: billingBatches.createdAt,
-        updatedAt: billingBatches.updatedAt,
-        owner: {
-          id: owners.id,
-          userId: owners.userId,
-          companyName: owners.companyName,
-          businessLicense: owners.businessLicense,
-          taxId: owners.taxId,
-          walletStatus: owners.walletStatus,
-          // Removed subscriptionPlan - using Column wallet model
-          // Removed subscriptionEndsAt - using Column wallet model
-          pastDueDate: owners.pastDueDate,
-          gracePeriodStartDate: owners.gracePeriodStartDate,
-          lastReminderSent: owners.lastReminderSent,
-          billingCadence: owners.billingCadence,
-          billingCutoffTime: owners.billingCutoffTime,
-          billingTimezone: owners.billingTimezone,
-          isApproved: owners.isApproved,
-          hasAgreedToTerms: owners.hasAgreedToTerms,
-          termsAgreedAt: owners.termsAgreedAt,
-          createdAt: owners.createdAt,
-          updatedAt: owners.updatedAt,
-          user: {
-            id: users.id,
-            username: users.username,
-            email: users.email,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            phone: users.phone,
-            street: users.street,
-            city: users.city,
-            state: users.state,
-            zip: users.zip,
-            role: users.role,
-            columnCustomerId: users.columnCustomerId,
-            // Removed stripeSubscriptionId - using Column BaaS now
-            isActive: users.isActive,
-            createdAt: users.createdAt,
-            updatedAt: users.updatedAt,
-          }
-        }
+        batch: getTableColumns(billingBatches),
+        owner: getTableColumns(owners),
+        user: getTableColumns(users),
       })
       .from(billingBatches)
       .innerJoin(owners, eq(billingBatches.ownerId, owners.id))
@@ -2888,7 +2863,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(billingBatches.status, status as any))
       .orderBy(desc(billingBatches.createdAt));
 
-    return batches;
+    return batches.map(({ batch, owner, user }) => ({
+      ...batch,
+      owner: { ...owner, user },
+    }));
   }
 
   async updateBillingBatchStatus(batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string): Promise<BillingBatch> {
@@ -2993,24 +2971,15 @@ export class DatabaseStorage implements IStorage {
     // Get owner's user information
     const ownerResult = await db
       .select({
-        owner: {
-          id: owners.id,
-          userId: owners.userId,
-          companyName: owners.companyName,
-          walletStatus: owners.walletStatus,
-        },
-        user: {
-          id: users.id,
-          columnCustomerId: users.columnCustomerId,
-          firstName: users.firstName,
-          lastName: users.lastName,
-        }
+        owner: getTableColumns(owners),
+        user: getTableColumns(users),
       })
       .from(owners)
       .innerJoin(users, eq(owners.userId, users.id))
       .where(eq(owners.id, ownerId));
     
-    if (ownerResult.length === 0 || !ownerResult[0].user.stripeCustomerId) {
+    const stripeCustomerId = ownerResult[0]?.user.stripeCustomerId;
+    if (!stripeCustomerId) {
       throw new Error(`No Stripe customer ID found for owner ${ownerId}`);
     }
     
@@ -3027,7 +2996,7 @@ export class DatabaseStorage implements IStorage {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: 'usd',
-      customer: owner.user.stripeCustomerId,
+      customer: stripeCustomerId,
       description: `Daily batch payment - ${paymentCount} washouts (Driver payouts: $${totalAmount.toFixed(2)}, Fees: $${totalFees.toFixed(2)})`,
       metadata: {
         batchId,
@@ -3085,62 +3054,9 @@ export class DatabaseStorage implements IStorage {
 
     const batches = await db
       .select({
-        id: billingBatches.id,
-        ownerId: billingBatches.ownerId,
-        businessDate: billingBatches.businessDate,
-        cutoffTime: billingBatches.cutoffTime,
-        timezone: billingBatches.timezone,
-        totalAmount: billingBatches.totalAmount,
-        totalFees: billingBatches.totalFees,
-        paymentCount: billingBatches.paymentCount,
-        stripePaymentIntentId: billingBatches.stripePaymentIntentId,
-        status: billingBatches.status,
-        processingStartedAt: billingBatches.processingStartedAt,
-        completedAt: billingBatches.completedAt,
-        failureReason: billingBatches.failureReason,
-        retryCount: billingBatches.retryCount,
-        metadata: billingBatches.metadata,
-        createdAt: billingBatches.createdAt,
-        updatedAt: billingBatches.updatedAt,
-        owner: {
-          id: owners.id,
-          userId: owners.userId,
-          companyName: owners.companyName,
-          businessLicense: owners.businessLicense,
-          taxId: owners.taxId,
-          walletStatus: owners.walletStatus,
-          // Removed subscriptionPlan - using Column wallet model
-          // Removed subscriptionEndsAt - using Column wallet model
-          pastDueDate: owners.pastDueDate,
-          gracePeriodStartDate: owners.gracePeriodStartDate,
-          lastReminderSent: owners.lastReminderSent,
-          billingCadence: owners.billingCadence,
-          billingCutoffTime: owners.billingCutoffTime,
-          billingTimezone: owners.billingTimezone,
-          isApproved: owners.isApproved,
-          hasAgreedToTerms: owners.hasAgreedToTerms,
-          termsAgreedAt: owners.termsAgreedAt,
-          createdAt: owners.createdAt,
-          updatedAt: owners.updatedAt,
-          user: {
-            id: users.id,
-            username: users.username,
-            email: users.email,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            phone: users.phone,
-            street: users.street,
-            city: users.city,
-            state: users.state,
-            zip: users.zip,
-            role: users.role,
-            columnCustomerId: users.columnCustomerId,
-            // Removed stripeSubscriptionId - using Column BaaS now
-            isActive: users.isActive,
-            createdAt: users.createdAt,
-            updatedAt: users.updatedAt,
-          }
-        }
+        batch: getTableColumns(billingBatches),
+        owner: getTableColumns(owners),
+        user: getTableColumns(users),
       })
       .from(billingBatches)
       .innerJoin(owners, eq(billingBatches.ownerId, owners.id))
@@ -3150,7 +3066,10 @@ export class DatabaseStorage implements IStorage {
       .limit(filters.limit || 50)
       .offset(filters.offset || 0);
 
-    return batches;
+    return batches.map(({ batch, owner, user }) => ({
+      ...batch,
+      owner: { ...owner, user },
+    }));
   }
 
   // Retry a failed billing batch
@@ -3244,6 +3163,7 @@ export class DatabaseStorage implements IStorage {
       // Get owner details
       const owner = await this.getOwnerById(ownerId);
       if (!owner) continue;
+      const ownerUser = await this.getUser(owner.userId);
 
       // Calculate totals
       const batchTotal = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
@@ -3251,7 +3171,7 @@ export class DatabaseStorage implements IStorage {
 
       ownerBatches.push({
         ownerId,
-        ownerName: owner.companyName || `${owner.user.firstName} ${owner.user.lastName}`,
+        ownerName: owner.companyName || (ownerUser ? `${ownerUser.firstName} ${ownerUser.lastName}` : ownerId),
         timezone: billingSettings.billingTimezone,
         cutoffTime: billingSettings.billingCutoffTime,
         paymentCount: pendingPayments.length,
@@ -3285,76 +3205,10 @@ export class DatabaseStorage implements IStorage {
   async getPendingPaymentsForBatch(ownerId: string, businessDate: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
     const pendingPayments = await db
       .select({
-        id: payments.id,
-        driverId: payments.driverId,
-        ownerId: payments.ownerId,
-        activityId: payments.activityId,
-        amount: payments.amount,
-        processingFee: payments.processingFee,
-        washoutServiceFee: payments.washoutServiceFee,
-        stripePaymentIntentId: payments.stripePaymentIntentId,
-        status: payments.status,
-        batchId: payments.batchId,
-        businessDate: payments.businessDate,
-        paidAt: payments.paidAt,
-        createdAt: payments.createdAt,
-        updatedAt: payments.updatedAt,
-        activity: {
-          id: washoutActivities.id,
-          driverId: washoutActivities.driverId,
-          locationId: washoutActivities.locationId,
-          status: washoutActivities.status,
-          amount: washoutActivities.amount,
-          checkInTime: washoutActivities.checkInTime,
-          checkOutTime: washoutActivities.checkOutTime,
-          photoUrls: washoutActivities.photoUrls,
-          notes: washoutActivities.notes,
-          verifiedBy: washoutActivities.verifiedBy,
-          verifiedAt: washoutActivities.verifiedAt,
-          latitude: washoutActivities.latitude,
-          longitude: washoutActivities.longitude,
-          createdAt: washoutActivities.createdAt,
-          updatedAt: washoutActivities.updatedAt,
-        },
-        driver: {
-          id: drivers.id,
-          userId: drivers.userId,
-          employerName: drivers.employerName,
-          employerStreet: drivers.employerStreet,
-          employerCity: drivers.employerCity,
-          employerState: drivers.employerState,
-          employerZip: drivers.employerZip,
-          employerPhone: drivers.employerPhone,
-          licenseNumber: drivers.licenseNumber,
-          truckNumber: drivers.truckNumber,
-          isGpsEnabled: drivers.isGpsEnabled,
-          currentLatitude: drivers.currentLatitude,
-          currentLongitude: drivers.currentLongitude,
-          lastLocationUpdate: drivers.lastLocationUpdate,
-          // Removed connectedAccountId - no longer using Stripe Connect
-          hasAgreedToTerms: drivers.hasAgreedToTerms,
-          termsAgreedAt: drivers.termsAgreedAt,
-          createdAt: drivers.createdAt,
-          updatedAt: drivers.updatedAt,
-          user: {
-            id: users.id,
-            username: users.username,
-            email: users.email,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            phone: users.phone,
-            street: users.street,
-            city: users.city,
-            state: users.state,
-            zip: users.zip,
-            role: users.role,
-            columnCustomerId: users.columnCustomerId,
-            // Removed stripeSubscriptionId - using Column BaaS now
-            isActive: users.isActive,
-            createdAt: users.createdAt,
-            updatedAt: users.updatedAt,
-          }
-        }
+        payment: getTableColumns(payments),
+        activity: getTableColumns(washoutActivities),
+        driver: getTableColumns(drivers),
+        user: getTableColumns(users),
       })
       .from(payments)
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
@@ -3370,7 +3224,11 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(payments.createdAt);
 
-    return pendingPayments;
+    return pendingPayments.map(({ payment, activity, driver, user }) => ({
+      ...payment,
+      activity,
+      driver: { ...driver, user },
+    }));
   }
 
   async assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void> {
@@ -3392,69 +3250,10 @@ export class DatabaseStorage implements IStorage {
   async getPaymentsByBatchId(batchId: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
     const batchPayments = await db
       .select({
-        id: payments.id,
-        driverId: payments.driverId,
-        ownerId: payments.ownerId,
-        activityId: payments.activityId,
-        amount: payments.amount,
-        processingFee: payments.processingFee,
-        washoutServiceFee: payments.washoutServiceFee,
-        stripePaymentIntentId: payments.stripePaymentIntentId,
-        status: payments.status,
-        batchId: payments.batchId,
-        businessDate: payments.businessDate,
-        paidAt: payments.paidAt,
-        createdAt: payments.createdAt,
-        updatedAt: payments.updatedAt,
-        activity: {
-          id: washoutActivities.id,
-          driverId: washoutActivities.driverId,
-          locationId: washoutActivities.locationId,
-          status: washoutActivities.status,
-          amount: washoutActivities.amount,
-          checkInTime: washoutActivities.checkInTime,
-          checkOutTime: washoutActivities.checkOutTime,
-          photoUrls: washoutActivities.photoUrls,
-          notes: washoutActivities.notes,
-          verifiedBy: washoutActivities.verifiedBy,
-          verifiedAt: washoutActivities.verifiedAt,
-          latitude: washoutActivities.latitude,
-          longitude: washoutActivities.longitude,
-          createdAt: washoutActivities.createdAt,
-          updatedAt: washoutActivities.updatedAt,
-        },
-        driver: {
-          id: drivers.id,
-          userId: drivers.userId,
-          employerName: drivers.employerName,
-          employerStreet: drivers.employerStreet,
-          employerCity: drivers.employerCity,
-          employerState: drivers.employerState,
-          employerZip: drivers.employerZip,
-          employerPhone: drivers.employerPhone,
-          licenseNumber: drivers.licenseNumber,
-          truckNumber: drivers.truckNumber,
-          isGpsEnabled: drivers.isGpsEnabled,
-          currentLatitude: drivers.currentLatitude,
-          currentLongitude: drivers.currentLongitude,
-          lastLocationUpdate: drivers.lastLocationUpdate,
-          // Removed connectedAccountId - no longer using Stripe Connect
-          hasAgreedToTerms: drivers.hasAgreedToTerms,
-          termsAgreedAt: drivers.termsAgreedAt,
-          createdAt: drivers.createdAt,
-          updatedAt: drivers.updatedAt,
-          user: {
-            id: users.id,
-            username: users.username,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            email: users.email,
-            phone: users.phone,
-            role: users.role,
-            createdAt: users.createdAt,
-            updatedAt: users.updatedAt,
-          },
-        },
+        payment: getTableColumns(payments),
+        activity: getTableColumns(washoutActivities),
+        driver: getTableColumns(drivers),
+        user: getTableColumns(users),
       })
       .from(payments)
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
@@ -3463,7 +3262,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(payments.batchId, batchId))
       .orderBy(payments.createdAt);
 
-    return batchPayments;
+    return batchPayments.map(({ payment, activity, driver, user }) => ({
+      ...payment,
+      activity,
+      driver: { ...driver, user },
+    }));
   }
 
   async getOwnerBillingSettings(ownerId: string): Promise<{ billingCadence: string; billingCutoffTime: string; billingTimezone: string; billingDayOfWeek: number } | undefined> {
@@ -4545,6 +4348,7 @@ export class DatabaseStorage implements IStorage {
                 senderBankAccountId: owner.columnAccountId,
                 receiverBankAccountId: platformAccount.columnBankAccountId,
                 amount: feeCents,
+                currencyCode: 'USD',
                 description: `${fee.feeType} fee - period ${fee.periodStart} to ${fee.periodEnd}`,
               });
 
