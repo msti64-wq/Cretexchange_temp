@@ -63,7 +63,8 @@ DATABASE_URL=<provided by Replit/Neon>
 NODE_ENV=production
 PORT=5000
 
-# Session Secret
+# Auth Secrets
+JWT_SECRET=<generate secure random string, at least 32 characters>
 SESSION_SECRET=<generate secure random string>
 ```
 
@@ -103,6 +104,7 @@ LITHIC_PRODUCT_ID=<product ID for physical cards>
 STRIPE_SECRET_KEY=<your Stripe secret key>
 VITE_STRIPE_PUBLIC_KEY=<your Stripe publishable key>
 STRIPE_WEBHOOK_SECRET=<your Stripe webhook signing secret>
+STRIPE_PLATFORM_FINANCIAL_ACCOUNT_ID=<your Stripe platform financial account ID>
 ```
 
 #### Cloud Services
@@ -111,6 +113,9 @@ STRIPE_WEBHOOK_SECRET=<your Stripe webhook signing secret>
 ```bash
 GOOGLE_CLOUD_PROJECT_ID=<your GCP project ID>
 GOOGLE_CLOUD_BUCKET_NAME=<your GCS bucket name>
+DEFAULT_OBJECT_STORAGE_BUCKET_ID=<your object storage bucket name>
+PRIVATE_OBJECT_DIR=/<bucket-name>/private
+PUBLIC_OBJECT_SEARCH_PATHS=/<bucket-name>/public,/<bucket-name>/uploads
 # Service account credentials (JSON) via Replit Secrets
 ```
 
@@ -217,6 +222,7 @@ LITHIC_PRODUCT_ID=<product ID for physical cards>
 STRIPE_SECRET_KEY=sk_live_...  # or sk_test_... for testing
 VITE_STRIPE_PUBLIC_KEY=pk_live_...  # or pk_test_... for testing
 STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PLATFORM_FINANCIAL_ACCOUNT_ID=fa_...
 ```
 
 ---
@@ -238,6 +244,9 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 GOOGLE_CLOUD_PROJECT_ID=<project-id>
 GOOGLE_CLOUD_BUCKET_NAME=<bucket-name>
 GOOGLE_APPLICATION_CREDENTIALS=<service-account-json>
+DEFAULT_OBJECT_STORAGE_BUCKET_ID=<bucket-name>
+PRIVATE_OBJECT_DIR=/<bucket-name>/private
+PUBLIC_OBJECT_SEARCH_PATHS=/<bucket-name>/public,/<bucket-name>/uploads
 ```
 
 #### Google Maps API (Location Services)
@@ -290,6 +299,17 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
   - Core user flows tested end-to-end
   - Payment flows verified (test mode)
   - Error handling tested
+
+### Deployment Secrets Checklist
+
+- [ ] `DATABASE_URL` points at the production PostgreSQL database.
+- [ ] `JWT_SECRET` and `SESSION_SECRET` are separate high-entropy values; `JWT_SECRET` is at least 32 characters.
+- [ ] Stripe has `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLIC_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PLATFORM_FINANCIAL_ACCOUNT_ID` configured for the same Stripe mode.
+- [ ] Object storage has `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS`, and `DEFAULT_OBJECT_STORAGE_BUCKET_ID` configured for the deployment bucket.
+- [ ] Google services have `GOOGLE_CLOUD_PROJECT_ID`, `GOOGLE_CLOUD_BUCKET_NAME`, and `VITE_GOOGLE_MAPS_API_KEY` configured; browser-exposed keys are domain restricted.
+- [ ] Column production wallet secrets are configured if wallet and transfer flows are enabled.
+- [ ] Lithic production secrets are configured if card issuing is enabled.
+- [ ] No placeholder, test-only, or local development values remain in deployment secrets.
 
 ### Lithic Production Setup
 
@@ -627,6 +647,8 @@ Complete list of all environment variables:
 NODE_ENV=production
 PORT=5000
 DATABASE_URL=<auto-provided>
+BASE_URL=<production-app-url>
+JWT_SECRET=<secure-random-string-at-least-32-characters>
 SESSION_SECRET=<secure-random-string>
 
 # Column BaaS
@@ -651,11 +673,15 @@ LITHIC_PRODUCT_ID=<product-id>
 STRIPE_SECRET_KEY=<stripe-secret-key>
 VITE_STRIPE_PUBLIC_KEY=<stripe-public-key>
 STRIPE_WEBHOOK_SECRET=<webhook-secret>
+STRIPE_PLATFORM_FINANCIAL_ACCOUNT_ID=<stripe-platform-financial-account-id>
 
-# Google Cloud
+# Object Storage and Google Cloud
 GOOGLE_CLOUD_PROJECT_ID=<gcp-project-id>
 GOOGLE_CLOUD_BUCKET_NAME=<bucket-name>
 GOOGLE_APPLICATION_CREDENTIALS=<service-account-json>
+DEFAULT_OBJECT_STORAGE_BUCKET_ID=<bucket-name>
+PRIVATE_OBJECT_DIR=/<bucket-name>/private
+PUBLIC_OBJECT_SEARCH_PATHS=/<bucket-name>/public,/<bucket-name>/uploads
 VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
 ```
 
