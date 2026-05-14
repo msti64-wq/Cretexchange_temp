@@ -270,7 +270,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
 ### Pre-Deployment
 
 - [ ] **Database Migrations**
-  - Run `npm run db:push` to sync schema
+  - Run `npm run db:migrate` to sync schema
   - Verify all tables created successfully
   - Test database connectivity
 
@@ -395,7 +395,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
    export DATABASE_URL="<your-production-database-url>"
    
    # Run migrations
-   npm run db:push
+   npm run db:migrate
    
    # Confirm schema creation
    # You should see: "✓ Everything is up to date"
@@ -409,7 +409,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
    # 3. Copy the production DATABASE_URL value
    
    # Then run:
-   DATABASE_URL="<production-url>" npm run db:push
+   DATABASE_URL="<production-url>" npm run db:migrate
    ```
    
    **Important Notes**:
@@ -529,7 +529,7 @@ This is expected behavior. Follow this workaround:
    ```bash
    # In Replit Shell:
    export DATABASE_URL="<production-database-url>"
-   npm run db:push
+   npm run db:migrate
    ```
 
 3. **Verify schema creation**:
@@ -541,7 +541,7 @@ This is expected behavior. Follow this workaround:
    - Switch to Production database
    - Run migrations using Drizzle Studio UI
 
-**Prevention**: Always run `npm run db:push` immediately after first deployment to any new environment.
+**Prevention**: Always run `npm run db:migrate` immediately after first deployment to any new environment.
 
 #### 1. Lithic Card Creation Fails
 
