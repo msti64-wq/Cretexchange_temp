@@ -43,31 +43,31 @@ export default function OwnerWallet() {
   const queryClient = useQueryClient();
 
   // Query for wallet data
-  const { data: walletData, isLoading: isWalletLoading } = useQuery({
+  const { data: walletData, isLoading: isWalletLoading } = useQuery<any>({
     queryKey: ['/api/owners/wallet'],
     refetchInterval: 30000,
   });
 
   // Query for funding sources
-  const { data: fundingSources, isLoading: isSourcesLoading } = useQuery({
+  const { data: fundingSources, isLoading: isSourcesLoading } = useQuery<any>({
     queryKey: ['/api/owners/funding-sources'],
     refetchInterval: 30000,
   });
 
   // Query for transaction history
-  const { data: transactions, isLoading: isTransactionsLoading } = useQuery({
+  const { data: transactions, isLoading: isTransactionsLoading } = useQuery<any>({
     queryKey: ['/api/owners/wallet/transactions', dateRange],
     refetchInterval: 30000,
   });
 
   // Query for wallet analytics
-  const { data: analytics, isLoading: isAnalyticsLoading } = useQuery({
+  const { data: analytics, isLoading: isAnalyticsLoading } = useQuery<any>({
     queryKey: ['/api/owners/wallet/analytics', dateRange],
     refetchInterval: 60000,
   });
 
   // Query for wallet funding feature flag
-  const { data: walletFundingFlag } = useQuery({
+  const { data: walletFundingFlag } = useQuery<any>({
     queryKey: ['/api/feature-flags/wallet_funding/check'],
     refetchInterval: 60000,
   });

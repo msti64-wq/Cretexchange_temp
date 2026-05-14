@@ -116,7 +116,7 @@ export default function StripeVerificationStatus({ userRole }: StripeVerificatio
     ...(requirements.requirements?.currently_due_readable || []),
     ...(requirements.requirements?.past_due_readable || []),
   ];
-  const uniqueRequirements = [...new Set(allRequirements)];
+  const uniqueRequirements = Array.from(new Set(allRequirements));
 
   const isPastDue = (requirements.requirements?.past_due?.length || 0) > 0;
 

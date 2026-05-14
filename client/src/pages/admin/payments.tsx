@@ -29,7 +29,7 @@ export default function AdminPayments() {
     ].filter(Boolean).join('&')
   }`;
 
-  const { data: payments, isLoading, error } = useQuery({
+  const { data: payments, isLoading, error } = useQuery<any[]>({
     queryKey: [paymentsUrl],
     retry: false,
   });

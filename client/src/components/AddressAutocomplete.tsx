@@ -62,7 +62,7 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
           let state = '';
           let zip = '';
 
-          place.address_components.forEach((component) => {
+          place.address_components.forEach((component: google.maps.places.GeocoderAddressComponent) => {
             const types = component.types;
             if (types.includes('street_number')) {
               street = component.long_name + ' ';

@@ -201,6 +201,15 @@ export async function performBalanceReconciliation(triggeredBy?: string): Promis
   }
 }
 
+export async function reconcileAllConnectedAccounts() {
+  const result = await performBalanceReconciliation();
+  return {
+    totalAccounts: result.accountsChecked,
+    discrepancies: result.discrepancies,
+    balancesSynced: Math.max(result.accountsChecked - result.discrepanciesFound, 0),
+  };
+}
+
 export async function getReconciliationReport(reconciliationId: string) {
   const [reconciliation] = await db
     .select()

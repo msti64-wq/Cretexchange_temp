@@ -87,13 +87,13 @@ import {
   type InsertMaterial,
   type LocationMaterialIntent,
   type InsertLocationMaterialIntent,
-  type IdentityDocument,
   type DriverLotteryEntry,
   type InsertDriverLotteryEntry,
   lotteryDrawings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
+import { formatAddress } from "@shared/addressUtils";
 
 export interface IStorage {
   // User operations - local authentication
@@ -118,13 +118,15 @@ export interface IStorage {
   // Driver operations
   createDriver(driver: InsertDriver): Promise<Driver>;
   getDriver(userId: string): Promise<Driver | undefined>;
+  getDriverByUserId(userId: string): Promise<Driver | undefined>;
   getDriverById(id: string): Promise<Driver | undefined>;
-  // Removed: getDriverByConnectedAccountId - no longer using Stripe Connect
+  getDriverByConnectedAccountId(connectedAccountId: string): Promise<Driver | undefined>;
   updateDriver(driverId: string, driverData: Partial<InsertDriver>): Promise<Driver>;
   updateDriverColumnInfo(driverId: string, columnData: { columnEntityId?: string; columnBankAccountId?: string; columnAccountLast4?: string }): Promise<Driver>;
   updateDriverLithicInfo(driverId: string, lithicData: { lithicAccountHolderToken?: string; lithicFinancialAccountToken?: string }): Promise<Driver>;
   updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: "ach" | "venmo" | "zelle"; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver>;
   updateDriverLocation(driverId: string, latitude: number, longitude: number): Promise<void>;
+  updateDriverWallet(driverId: string, availableBalance?: string, pendingBalance?: string): Promise<DriverWallet>;
   getAllDrivers(): Promise<(Driver & { user: User })[]>;
   getAllAdmins(): Promise<User[]>;
   createAdminUser(adminData: { username: string; email: string; passwordHash: string; firstName: string; lastName: string }): Promise<User>;
@@ -135,6 +137,7 @@ export interface IStorage {
   getOwnerById(id: string): Promise<Owner | undefined>;
   updateOwner(ownerId: string, ownerData: Partial<InsertOwner>): Promise<Owner>;
   updateOwnerColumnInfo(ownerId: string, columnData: { columnEntityId?: string; columnAccountId?: string }): Promise<Owner>;
+  updateOwnerSubscription(ownerId: string, subscriptionStatus: string, pastDueDate?: Date | null, subscriptionEndsAt?: Date | null, gracePeriodStartDate?: Date | null, lastReminderSent?: Date | null): Promise<Owner>;
   // Owner wallet operations (replacing subscription model)
   getOwnerWalletBalance(ownerId: string): Promise<{ balance: string; status: string } | undefined>;
   updateOwnerWalletBalance(ownerId: string, amount: string, type: string, description?: string): Promise<void>;
@@ -235,8 +238,11 @@ export interface IStorage {
   // Owner funding sources operations (replacing payment methods)
   createOwnerFundingSource(fundingSource: InsertOwnerFundingSource): Promise<OwnerFundingSource>;
   getOwnerFundingSources(ownerId: string): Promise<OwnerFundingSource[]>;
+  getOwnerPaymentMethods(ownerId: string): Promise<OwnerFundingSource[]>;
+  createOwnerPaymentMethod(fundingSource: InsertOwnerFundingSource): Promise<OwnerFundingSource>;
   getOwnerFundingSourceById(id: string): Promise<OwnerFundingSource | undefined>;
   deleteOwnerFundingSource(id: string): Promise<void>;
+  deleteOwnerPaymentMethod(id: string): Promise<void>;
   setDefaultFundingSource(ownerId: string, fundingSourceId: string): Promise<void>;
 
   // Wallet operations
@@ -565,12 +571,25 @@ export class DatabaseStorage implements IStorage {
     return driver;
   }
 
+  async getDriverByUserId(userId: string): Promise<Driver | undefined> {
+    return await this.getDriver(userId);
+  }
+
   async getDriverById(id: string): Promise<Driver | undefined> {
     const [driver] = await db.select().from(drivers).where(eq(drivers.id, id));
     return driver;
   }
 
-  // Removed: getDriverByConnectedAccountId - no longer using Stripe Connect
+  async getDriverByConnectedAccountId(connectedAccountId: string): Promise<Driver | undefined> {
+    const [driver] = await db
+      .select()
+      .from(drivers)
+      .where(or(
+        eq(drivers.connectedAccountId, connectedAccountId),
+        eq(drivers.stripeConnectAccountId, connectedAccountId)
+      ));
+    return driver;
+  }
 
   async updateDriver(driverId: string, driverData: Partial<InsertDriver>): Promise<Driver> {
     const [updatedDriver] = await db
@@ -632,6 +651,28 @@ export class DatabaseStorage implements IStorage {
       .where(eq(drivers.id, driverId));
   }
 
+  async updateDriverWallet(driverId: string, availableBalance?: string, pendingBalance?: string): Promise<DriverWallet> {
+    const [existing] = await db.select().from(driverWallets).where(eq(driverWallets.driverId, driverId));
+    const [updated] = await db
+      .insert(driverWallets)
+      .values({
+        driverId,
+        availableBalance: availableBalance ?? existing?.availableBalance ?? "0.00",
+        pendingBalance: pendingBalance ?? existing?.pendingBalance ?? "0.00",
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: driverWallets.driverId,
+        set: {
+          availableBalance: availableBalance ?? existing?.availableBalance ?? "0.00",
+          pendingBalance: pendingBalance ?? existing?.pendingBalance ?? "0.00",
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return updated;
+  }
+
   async getAllDrivers(): Promise<(Driver & { user: User })[]> {
     const result = await db
       .select({
@@ -688,7 +729,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(drivers)
       .innerJoin(users, eq(drivers.userId, users.id));
-    return result;
+    return result as any;
   }
 
   // Owner operations
@@ -707,7 +748,7 @@ export class DatabaseStorage implements IStorage {
     return owner;
   }
 
-  async updateOwner(ownerId: string, ownerData: Partial<InsertOwner>): Promise<Owner> {
+  async updateOwner(ownerId: string, ownerData: Partial<Owner>): Promise<Owner> {
     const [updatedOwner] = await db
       .update(owners)
       .set({
@@ -740,7 +781,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(owners)
       .where(eq(owners.id, ownerId));
-    return owner;
+    return owner ? { balance: owner.balance, status: owner.status || 'pending_verification' } : undefined;
   }
 
   async updateOwnerWalletBalance(ownerId: string, amount: string, type: string, description?: string): Promise<void> {
@@ -781,7 +822,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOwnerWalletTransactions(ownerId: string, startDate?: Date, endDate?: Date): Promise<any[]> {
-    let query = db
+    let query: any = db
       .select()
       .from(ownerWalletTransactions)
       .where(eq(ownerWalletTransactions.ownerId, ownerId))
@@ -912,7 +953,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(owners)
       .innerJoin(users, eq(owners.userId, users.id));
-    return result;
+    return result as any;
   }
 
   async getAllAdmins(): Promise<User[]> {
@@ -941,7 +982,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(users)
       .where(or(eq(users.role, 'admin'), eq(users.role, 'super_admin')))
-      .orderBy(desc(users.createdAt));
+      .orderBy(desc(users.createdAt)) as any;
   }
 
   async createAdminUser(adminData: { username: string; email: string; passwordHash: string; firstName: string; lastName: string }): Promise<User> {
@@ -1510,7 +1551,7 @@ export class DatabaseStorage implements IStorage {
         const systemSettings = await this.getSystemSettings();
         const platformFee = owner.customPlatformFee 
           ? parseFloat(owner.customPlatformFee)
-          : parseFloat(systemSettings?.defaultPlatformFee || "0.40");
+          : parseFloat(systemSettings?.platformWashoutFee || "0.40");
 
         // Calculate business date
         const now = new Date();
@@ -1965,7 +2006,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users);
+    return await db.select().from(users) as any;
   }
 
   // Owner funding sources operations
@@ -1993,6 +2034,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(ownerFundingSources.isDefault), desc(ownerFundingSources.createdAt));
   }
 
+  async getOwnerPaymentMethods(ownerId: string): Promise<OwnerFundingSource[]> {
+    return await this.getOwnerFundingSources(ownerId);
+  }
+
+  async createOwnerPaymentMethod(fundingSource: InsertOwnerFundingSource): Promise<OwnerFundingSource> {
+    return await this.createOwnerFundingSource(fundingSource);
+  }
+
   async getOwnerFundingSourceById(id: string): Promise<OwnerFundingSource | undefined> {
     const [fundingSource] = await db
       .select()
@@ -2006,6 +2055,10 @@ export class DatabaseStorage implements IStorage {
       .update(ownerFundingSources)
       .set({ isActive: false })
       .where(eq(ownerFundingSources.id, id));
+  }
+
+  async deleteOwnerPaymentMethod(id: string): Promise<void> {
+    await this.deleteOwnerFundingSource(id);
   }
 
   async setDefaultFundingSource(ownerId: string, fundingSourceId: string): Promise<void> {
@@ -4203,7 +4256,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(owners, eq(feesLedger.ownerId, owners.id))
       .innerJoin(users, eq(owners.userId, users.id))
       .leftJoin(washoutLocations, eq(feesLedger.locationId, washoutLocations.id))
-      .where(eq(feesLedger.status, status))
+      .where(eq(feesLedger.status, status as any))
       .orderBy(desc(feesLedger.createdAt));
 
     return results.map(r => ({
@@ -4276,12 +4329,18 @@ export class DatabaseStorage implements IStorage {
       })
       .from(owners)
       .where(eq(owners.id, ownerId));
-    return owner;
+    if (!owner) return undefined;
+    return {
+      subscriptionPlan: owner.subscriptionPlan || "none",
+      subscriptionFeeCents: owner.subscriptionFeeCents ?? 0,
+      feeAnchorDay: owner.feeAnchorDay ?? 1,
+      lastFeeBillingDate: owner.lastFeeBillingDate,
+    };
   }
 
   async updateOwnerSubscriptionSettings(
     ownerId: string, 
-    settings: { subscriptionPlan?: string; subscriptionFeeCents?: number; feeAnchorDay?: number }
+    settings: { subscriptionPlan?: "none" | "monthly" | "annual" | "one_time"; subscriptionFeeCents?: number; feeAnchorDay?: number }
   ): Promise<Owner> {
     const [updated] = await db
       .update(owners)
@@ -4292,6 +4351,21 @@ export class DatabaseStorage implements IStorage {
       .where(eq(owners.id, ownerId))
       .returning();
     return updated;
+  }
+
+  async getOwnerSubscription(
+    ownerId: string
+  ): Promise<{ subscriptionStatus: string; pastDueDate: Date | null; gracePeriodStartDate: Date | null; lastReminderSent: Date | null } | undefined> {
+    const [owner] = await db
+      .select({
+        subscriptionStatus: owners.subscriptionStatus,
+        pastDueDate: owners.pastDueDate,
+        gracePeriodStartDate: owners.gracePeriodStartDate,
+        lastReminderSent: owners.lastReminderSent,
+      })
+      .from(owners)
+      .where(eq(owners.id, ownerId));
+    return owner as any;
   }
 
   async generateMonthlyFeesForDate(billingDate: string): Promise<{ created: number; owners: string[] }> {
@@ -4340,7 +4414,7 @@ export class DatabaseStorage implements IStorage {
               status: 'pending',
               metadata: {
                 locationName: location.name,
-                locationAddress: location.address,
+                locationAddress: formatAddress(location),
                 generatedAt: new Date().toISOString(),
               },
             });
@@ -4468,8 +4542,8 @@ export class DatabaseStorage implements IStorage {
 
               // Create Column book transfer (owner → platform)
               const columnTransfer = await columnService.createBookTransfer({
-                sender_bank_account_id: owner.columnAccountId,
-                receiver_bank_account_id: platformAccount.columnBankAccountId,
+                senderBankAccountId: owner.columnAccountId,
+                receiverBankAccountId: platformAccount.columnBankAccountId,
                 amount: feeCents,
                 description: `${fee.feeType} fee - period ${fee.periodStart} to ${fee.periodEnd}`,
               });
@@ -4807,7 +4881,10 @@ export class DatabaseStorage implements IStorage {
         createdAt: driverLotteryEntries.createdAt,
         ownerCompany: owners.companyName,
         locationName: washoutLocations.name,
-        locationAddress: washoutLocations.address,
+        locationStreet: washoutLocations.street,
+        locationCity: washoutLocations.city,
+        locationState: washoutLocations.state,
+        locationZip: washoutLocations.zip,
         activityDate: washoutActivities.checkInTime,
       })
       .from(driverLotteryEntries)
@@ -4817,7 +4894,15 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(driverLotteryEntries.createdAt));
 
-    return results;
+    return results.map((result) => ({
+      ...result,
+      locationAddress: formatAddress({
+        street: result.locationStreet,
+        city: result.locationCity,
+        state: result.locationState,
+        zip: result.locationZip,
+      }),
+    }));
   }
 
   async getDriverLotteryEntryCount(driverId: string): Promise<number> {
@@ -4946,4 +5031,4 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage: any = new DatabaseStorage();

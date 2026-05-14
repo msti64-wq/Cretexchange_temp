@@ -26,7 +26,7 @@ export default function DriverProfile() {
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
-  const { data: user, isLoading, refetch } = useQuery({
+  const { data: user, isLoading, refetch } = useQuery<any>({
     queryKey: ['/api/auth/user'],
   });
 

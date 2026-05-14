@@ -71,13 +71,13 @@ export default function OwnerDashboard() {
   }, [queryClient]);
 
   // Separate query for dashboard stats (stable, independent of dateRange)
-  const { data: dashboardData, isLoading: isDashboardLoading } = useQuery({
+  const { data: dashboardData, isLoading: isDashboardLoading } = useQuery<any>({
     queryKey: ['/api/owners/dashboard'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Separate query for activities with date range filtering
-  const { data: activitiesData, isLoading: isActivitiesLoading, isFetching: isActivitiesFetching, error: activitiesError, status: activitiesStatus } = useQuery({
+  const { data: activitiesData, isLoading: isActivitiesLoading, isFetching: isActivitiesFetching, error: activitiesError, status: activitiesStatus } = useQuery<any>({
     queryKey: [`/api/owners/activities?dateRange=${dateRange}`],
     refetchInterval: 30000, // Refresh every 30 seconds
     staleTime: 0, // Force fresh data
@@ -89,7 +89,7 @@ export default function OwnerDashboard() {
   const isDashboardAuthError = activitiesError && activitiesError.toString().includes('Invalid token');
 
 
-  const { data: subscriptionData } = useQuery({
+  const { data: subscriptionData } = useQuery<any>({
     queryKey: ['/api/payments/subscription-status'],
     refetchInterval: 300000, // Refresh every 5 minutes
   });

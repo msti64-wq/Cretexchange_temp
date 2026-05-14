@@ -21,7 +21,7 @@ interface WashoutFormProps {
     zip: string;
     rate: string;
   };
-  currentLocation?: { lat: number; lng: number };
+  currentLocation?: { lat: number; lng: number } | null;
   onSuccess?: () => void;
 }
 

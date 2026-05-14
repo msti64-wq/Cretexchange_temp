@@ -25,7 +25,7 @@ export default function OwnerPayments() {
     return `/api/owners/activities${params.toString() ? '?' + params.toString() : '?dateRange=all'}`;
   };
 
-  const { data: activitiesData, isLoading } = useQuery({
+  const { data: activitiesData, isLoading } = useQuery<any>({
     queryKey: [buildActivitiesUrl()],
   });
 

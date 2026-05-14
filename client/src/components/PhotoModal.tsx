@@ -11,6 +11,13 @@ interface PhotoModalProps {
   isOpen: boolean;
   onClose: () => void;
   activity: any;
+  canApprove?: boolean;
+}
+
+interface PhotoItem {
+  id: string;
+  url: string;
+  uploadedAt?: string | null;
 }
 
 export function PhotoModal({ 
@@ -38,7 +45,7 @@ export function PhotoModal({
   
   if (!activity) return null;
   
-  const photos = photosData?.photos || [];
+  const photos: PhotoItem[] = photosData?.photos || [];
   const status = activity.status;
   const amount = activity.amount || 0;
   const driverName = `${activity.driver?.user?.firstName || ''} ${activity.driver?.user?.lastName || ''}`.trim();
@@ -199,7 +206,7 @@ export function PhotoModal({
             {/* Photo Thumbnails for multiple photos */}
             {photos.length > 1 && (
               <div className="flex justify-center space-x-2 mt-4 overflow-x-auto">
-                {photos.map((photo, index) => (
+                {photos.map((photo: PhotoItem, index: number) => (
                   <button
                     key={photo.id}
                     onClick={() => setCurrentPhotoIndex(index)}

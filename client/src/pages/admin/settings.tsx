@@ -982,7 +982,7 @@ export default function AdminSettings() {
       </div>
 
       {/* Mobile Navigation */}
-      <MobileNav userRole="super_admin" />
+      <MobileNav role="super_admin" />
     </div>
   );
 }

@@ -22,12 +22,12 @@ export default function AdminDashboard() {
   const [messageSearchTerm, setMessageSearchTerm] = useState("");
   const [showResolvedMessages, setShowResolvedMessages] = useState(false);
 
-  const { data: dashboardData, isLoading, error } = useQuery({
+  const { data: dashboardData, isLoading, error } = useQuery<any>({
     queryKey: ['/api/admin/dashboard'],
     retry: false,
   });
 
-  const { data: messages, isLoading: messagesLoading } = useQuery({
+  const { data: messages, isLoading: messagesLoading } = useQuery<any>({
     queryKey: ['/api/admin/messages'],
     retry: false,
   });

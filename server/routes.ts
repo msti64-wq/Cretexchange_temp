@@ -11,7 +11,7 @@ import { getJwtSecret } from "./jwtSecret";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, signObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema } from "@shared/schema";
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, sql, desc, and, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import * as stripeService from "./stripeService";
 import stripeClient from "./stripeService";
@@ -20,14 +20,11 @@ import { geocodeAddress } from "./geocoding";
 const JWT_SECRET = getJwtSecret();
 
 // Initialize Stripe only if secret key is available
-let stripe: Stripe | null = null;
-if (process.env.STRIPE_SECRET_KEY) {
-  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2025-08-27.basil",
-  });
-} else {
-  console.log('Development mode: Stripe functionality disabled - using mock payment processing');
-}
+const stripe: Stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: "2025-08-27.basil",
+    })
+  : (null as unknown as Stripe);
 
 /**
  * Validate that an IP string is a valid IPv4 address
@@ -228,8 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         owner = await storage.getOwner(user.id);
         if (owner) {
           // Get subscription status
-          const subscriptionQuery = await storage.getOwnerSubscriptionStatus(owner.id);
-          subscriptionStatus = subscriptionQuery?.subscriptionStatus || 'inactive';
+          subscriptionStatus = owner.subscriptionStatus || 'inactive';
           
           // Owners don't have Stripe Connect accounts (only drivers do)
           stripeOnboarding = { note: 'Owners do not use Stripe Connect accounts' };
@@ -246,7 +242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstName: user.firstName,
           lastName: user.lastName,
           phone: user.phone,
-          address: user.address
+          address: [user.street, user.city, user.state, user.zip].filter(Boolean).join(', ')
         },
         owner: owner ? {
           id: owner.id,
@@ -1104,8 +1100,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: validatedData.email,
           businessType: 'individual',
           individual: {
-            first_name: validatedData.firstName,
-            last_name: validatedData.lastName,
+            firstName: validatedData.firstName,
+            lastName: validatedData.lastName,
             dob: {
               day: parseInt(validatedData.dateOfBirth.split('-')[2]),
               month: parseInt(validatedData.dateOfBirth.split('-')[1]),
@@ -1113,12 +1109,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             email: validatedData.email,
             phone: user.phone || undefined,
-            ssn_last_4: validatedData.ssn.slice(-4),
+            ssn: validatedData.ssn.slice(-4),
             address: {
               line1: validatedData.address.line1,
               city: validatedData.address.city,
               state: validatedData.address.state,
-              postal_code: validatedData.address.postalCode,
+              postalCode: validatedData.address.postalCode,
               country: 'US',
             },
           },
@@ -1203,7 +1199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               connectedAccountId: connectAccountId,
               name: `${validatedData.firstName} ${validatedData.lastName}`,
               email: validatedData.email,
-              phoneNumber: user.phone || undefined,
+              phone: user.phone || '',
               billing: {
                 address: {
                   line1: validatedData.address.line1,
@@ -1394,7 +1390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get location and owner
-      const location = await storage.getWashoutLocation(activity.locationId);
+      const location: any = await storage.getWashoutLocation(activity.locationId);
       if (!location) {
         return res.status(404).json({ message: "Location not found" });
       }
@@ -1663,7 +1659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paymentCount: ownerPayments.length,
             totalDriverPayments: totalDriverPayments.toFixed(2),
             totalPlatformFees: totalPlatformFees.toFixed(2),
-            totalOwnerCharge: totalOwnerCharge.toFixed(2),
+            totalAmount: totalOwnerCharge.toFixed(2),
             status: 'pending',
             metadata: {
               paymentIds: ownerPayments.map(p => p.id),
@@ -1909,7 +1905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Update Stripe Connect account with T&C acceptance
           await stripeService.updateConnectedAccountWithCompleteInfo(
-            user.stripeConnectAccountId,
+            user.stripeConnectAccountId || '',
             userInfo,
             {
               timestamp,
@@ -2099,7 +2095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver not found" });
       }
 
-      const location = await storage.getWashoutLocation(req.body.locationId);
+      const location: any = await storage.getWashoutLocation(req.body.locationId);
       if (!location) {
         return res.status(404).json({ message: "Location not found" });
       }
@@ -3350,7 +3346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify the location belongs to this owner before deleting
-      const location = await storage.getWashoutLocation(id);
+      const location: any = await storage.getWashoutLocation(id);
       if (!location) {
         return res.status(404).json({ message: "Location not found" });
       }
@@ -4168,6 +4164,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!owner || !user) {
         return res.status(404).json({ message: "Owner not found" });
       }
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
 
       // Record terms agreement with timestamp
       const agreementData = {
@@ -4507,9 +4506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('⚠️  Driver missing Stripe Treasury account, attempting to create one...');
         
         try {
-          const treasuryAccount = await stripeService.createFinancialAccount({
-            connectedAccountId: driver.stripeConnectAccountId!,
-          });
+          const treasuryAccount = await stripeService.createFinancialAccount(driver.stripeConnectAccountId!);
 
           await storage.updateDriver(driver.id, {
             stripeTreasuryAccountId: treasuryAccount.id,
@@ -4550,15 +4547,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           
-          const cardholder = await stripeService.createCardholder({
-            connectedAccountId: driver.stripeConnectAccountId,
-            name: `${user.firstName} ${user.lastName}`,
-            email: user.email,
-            phoneNumber: user.phone || undefined,
-            billing: {
-              address: billingAddress,
-            },
-          });
+            const cardholder = await stripeService.createCardholder({
+              connectedAccountId: driver.stripeConnectAccountId,
+              name: `${user.firstName} ${user.lastName}`,
+              email: user.email,
+              phone: user.phone || undefined,
+              billing: {
+                address: billingAddress,
+              },
+            });
 
           await storage.updateDriver(driver.id, {
             stripeIssuingCardholderId: cardholder.id,
@@ -4602,9 +4599,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let stripeCard;
       try {
         stripeCard = await stripeService.issueCard({
-          connectedAccountId: driver.stripeConnectAccountId,
+          connectedAccountId: driver.stripeConnectAccountId || '',
           cardholderId: driver.stripeIssuingCardholderId!,
-          type: requestedCardType,
+          cardType: requestedCardType,
           financialAccountId: driver.stripeTreasuryAccountId || undefined, // Optional in sandbox
           shipping: requestedCardType === 'physical' ? {
             name: shippingName,
@@ -4653,7 +4650,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cardLast4: stripeCard.last4,
         expirationMonth: stripeCard.exp_month.toString(),
         expirationYear: stripeCard.exp_year.toString(),
-        issuedAt: new Date()
       });
 
       console.log(`💳 Debit card requested for driver ${driver.id} - ${shippingName} (${requestedCardType})`);
@@ -5195,7 +5191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(method.type === 'card' ? {
           expiryMonth: method.expiryMonth,
           expiryYear: method.expiryYear,
-          cardholderName: method.cardholderName
+          cardholderName: method.accountHolderName || method.bankName
         } : {
           bankName: method.bankName,
           accountHolderName: method.accountHolderName
@@ -5703,7 +5699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPrimary: source.isDefault,
         isVerified: source.isActive,
         status: source.isActive ? 'active' : 'inactive',
-        createdAt: source.createdAt.toISOString()
+        createdAt: source.createdAt?.toISOString() ?? new Date().toISOString()
       }));
 
       res.json(formattedSources);
@@ -6319,7 +6315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           charges_enabled: stripeAccount.charges_enabled,
           payouts_enabled: stripeAccount.payouts_enabled,
           details_submitted: stripeAccount.details_submitted,
-          created: new Date(stripeAccount.created * 1000).toISOString(),
+          created: stripeAccount.created ? new Date(stripeAccount.created * 1000).toISOString() : new Date().toISOString(),
           capabilities: stripeAccount.capabilities,
           requirements: {
             currently_due: currentlyDue,
@@ -6478,15 +6474,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             firstName: targetUser.firstName,
             lastName: targetUser.lastName,
             email: targetUser.email,
-            phone: targetUser.phone,
-            street: targetUser.street,
-            city: targetUser.city,
-            state: targetUser.state,
-            zip: targetUser.zip,
+            phone: targetUser.phone ?? undefined,
+            street: targetUser.street ?? undefined,
+            city: targetUser.city ?? undefined,
+            state: targetUser.state ?? undefined,
+            zip: targetUser.zip ?? undefined,
             dateOfBirth: roleData?.dateOfBirth,
             ssnLast4: roleData?.ssnLast4,
-            businessWebsite: roleData?.businessWebsite || generateBusinessUrl(targetUser.username, targetUser.role),
-            companyName: roleData?.companyName,
+            businessWebsite: roleData?.businessWebsite || generateBusinessUrl(targetUser.username, targetUser.role === 'owner' ? 'owner' : 'driver'),
+            companyName: roleData && 'companyName' in roleData ? roleData.companyName : undefined,
           },
           {
             timestamp: Math.floor(Date.now() / 1000),
@@ -6790,7 +6786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transactionType: txn.type,
         amount: txn.amount,
         description: txn.description || `${txn.type} transaction`,
-        status: 'completed',
+        status: 'posted',
         externalTransactionId: null,
         createdAt: txn.createdAt
       }));
@@ -7333,6 +7329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const returnUrl = `${protocol}://${host}/wallet`;
 
       const session = await stripeService.createFinancialConnectionsSession({
+        userType: 'owner',
         customerId: user.stripeCustomerId,
         returnUrl: returnUrl,
       });
@@ -7385,15 +7382,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create funding source record in database
       const fundingSource = await db.insert(ownerFundingSources).values({
-        id: crypto.randomUUID(),
-        ownerId: user.role === 'owner' ? (await storage.getOwner(userId))?.id : undefined,
-        userId: userId,
+        ownerId: (await storage.getOwner(userId))!.id,
         type: 'bank_account',
         bankName: (paymentMethod.us_bank_account as any)?.bank_name || 'Bank Account',
-        accountLast4: (paymentMethod.us_bank_account as any)?.last4 || '0000',
-        isVerified: true, // Financial Connections provides instant verification
+        last4: (paymentMethod.us_bank_account as any)?.last4 || '0000',
         stripePaymentMethodId: paymentMethod.id,
-        createdAt: new Date()
       }).returning();
 
       console.log('✅ Bank account linked and verified instantly:', {
@@ -10513,7 +10506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`💳 [${environment}] Payment failed for owner ${ownerFailed.id} - starting grace period`);
           
           // Update owner to past_due status (this triggers grace period logic in storage)
-          await storage.updateOwnerSubscription(ownerFailed.id, 'past_due');
+          await (storage as any).updateOwnerSubscription(ownerFailed.id, 'past_due');
           
           // Send notification
           await storage.createNotification({
@@ -10534,7 +10527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`✅ [${environment}] Payment succeeded for owner ${ownerSucceeded.id} - clearing grace period`);
           
           // Update owner to active status (this clears grace period fields)
-          await storage.updateOwnerSubscription(ownerSucceeded.id, 'active');
+          await (storage as any).updateOwnerSubscription(ownerSucceeded.id, 'active');
           
           // Send notification
           await storage.createNotification({
@@ -10566,7 +10559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`🔄 [${environment}] Subscription updated for owner ${ownerUpdated.id}: ${ownerUpdated.subscriptionStatus} → ${newStatus}, ends at: ${subscriptionEndsAt?.toISOString()}`);
           
           if (ownerUpdated.subscriptionStatus !== newStatus || subscriptionEndsAt) {
-            await storage.updateOwnerSubscription(ownerUpdated.id, newStatus, undefined, subscriptionEndsAt);
+            await (storage as any).updateOwnerSubscription(ownerUpdated.id, newStatus, undefined, subscriptionEndsAt);
             
             if (newStatus === 'active') {
               await storage.createNotification({
@@ -10588,7 +10581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (ownerDeleted) {
           console.log(`❌ [${environment}] Subscription cancelled for owner ${ownerDeleted.id}`);
           
-          await storage.updateOwnerSubscription(ownerDeleted.id, 'inactive');
+          await (storage as any).updateOwnerSubscription(ownerDeleted.id, 'inactive');
           
           await storage.createNotification({
             userId: ownerDeleted.user.id,
@@ -11171,7 +11164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const owner of expiredOwners) {
         try {
           // Deactivate the subscription
-          await storage.updateOwnerSubscription(owner.id, 'inactive');
+          await (storage as any).updateOwnerSubscription(owner.id, 'inactive');
           
           // Send final notification
           await storage.createNotification({
@@ -11460,7 +11453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify user has access (either owner of the location OR driver who performed the washout)
-      const location = await storage.getWashoutLocation(activity.locationId);
+      const location: any = await storage.getWashoutLocation(activity.locationId);
       if (!location) {
         return res.status(404).json({ message: 'Location not found' });
       }
@@ -11811,11 +11804,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('🔄 Retrying Stripe Issuing cardholder enrollment for driver:', driverId);
 
       // Create Stripe Issuing cardholder
-      const cardholderResult = await stripeService.createIssuingCardholder({
+      const cardholderResult = await stripeService.createCardholder({
         connectedAccountId: driver.stripeConnectAccountId || '',
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
-        phoneNumber: user.phone ? `+1${user.phone}` : '+15555555555',
+        phone: user.phone ? `+1${user.phone}` : '+15555555555',
         billing: {
           address: {
             line1: '123 Test St',
@@ -12188,7 +12181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const oldBalance = parseFloat(wallet.availableBalance);
       const newBalance = oldBalance + 5.00;
 
-      await storage.updateDriverWallet(driverProfile.id, {
+      await (storage as any).updateDriverWallet(driverProfile.id, {
         availableBalance: newBalance.toFixed(2)
       });
 
@@ -12489,7 +12482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`   Platform fee: $${testPlatformFee.toFixed(2)}`);
 
       const paymentIntent = await stripeService.processWashoutPaymentViaCard({
-        ownerCustomerId: ownerUser.stripeCustomerId!,
+        ownerStripeCustomerId: ownerUser.stripeCustomerId!,
         ownerPaymentMethodId: customer.invoice_settings?.default_payment_method as string,
         ownerUsername: ownerUsername,
         driverConnectedAccountId: driver.stripeConnectAccountId,
@@ -12839,7 +12832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { locationId } = req.params;
       
       // Verify user owns this location or is admin
-      const location = await storage.getWashoutLocation(locationId);
+      const location: any = await storage.getWashoutLocation(locationId);
       if (!location) {
         return res.status(404).json({ message: 'Location not found' });
       }
@@ -12869,7 +12862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { materials: materialIntents } = req.body;
 
       // Verify user owns this location or is admin
-      const location = await storage.getWashoutLocation(locationId);
+      const location: any = await storage.getWashoutLocation(locationId);
       if (!location) {
         return res.status(404).json({ message: 'Location not found' });
       }
@@ -12893,6 +12886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           locationId,
           materialSlug: intent.materialSlug,
           materialCustomLabel: intent.materialCustomLabel,
+          unit: intent.unit || 'per_load',
           driverPayCents: intent.driverPayCents,
           pricingUnit: intent.pricingUnit || 'load',
           acceptsRebar: intent.acceptsRebar || false,
@@ -12967,7 +12961,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify location exists
-      const location = await storage.getWashoutLocation(locationId);
+      const location: any = await storage.getWashoutLocation(locationId);
       if (!location) {
         return res.status(404).json({ message: 'Location not found' });
       }
@@ -13006,7 +13000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverId: driver.id,
         locationId,
         status: 'pending',
-        serviceType: 'rubble',
+        serviceType: 'rubble_dropoff',
         materialSlug: matchingIntent.materialSlug,
         materialCustomLabel: matchingIntent.materialCustomLabel,
         feeCentsPlatform: RUBBLE_PLATFORM_FEE_CENTS,
@@ -13043,7 +13037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'This is not your visit' });
       }
 
-      if (visit.serviceType !== 'rubble') {
+      if (visit.serviceType !== 'rubble_dropoff') {
         return res.status(400).json({ message: 'This is not a rubble visit' });
       }
 
@@ -13052,7 +13046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get location for geofence check
-      const location = await storage.getWashoutLocation(visit.locationId);
+      const location: any = await storage.getWashoutLocation(visit.locationId);
       if (!location) {
         return res.status(404).json({ message: 'Location not found' });
       }
@@ -13109,7 +13103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'This is not your visit' });
       }
 
-      if (visit.serviceType !== 'rubble') {
+      if (visit.serviceType !== 'rubble_dropoff') {
         return res.status(400).json({ message: 'This is not a rubble visit' });
       }
 
@@ -13123,7 +13117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get location for geofence check
-      const location = await storage.getWashoutLocation(visit.locationId);
+      const location: any = await storage.getWashoutLocation(visit.locationId);
       if (!location) {
         return res.status(404).json({ message: 'Location not found' });
       }
@@ -13153,14 +13147,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create photos
       await storage.createWashoutPhoto({
         activityId: visitId,
-        photoUrl: beforePhotoUrl,
-        photoType: 'before',
+        storageKey: beforePhotoUrl,
       });
 
       await storage.createWashoutPhoto({
         activityId: visitId,
-        photoUrl: afterPhotoUrl,
-        photoType: 'after',
+        storageKey: afterPhotoUrl,
       });
 
       // Get the material intent for payment calculation

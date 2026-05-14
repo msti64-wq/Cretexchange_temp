@@ -33,12 +33,12 @@ export default function DriverActivity() {
     ].filter(Boolean).join('&')
   }`;
 
-  const { data: activities, isLoading } = useQuery({
+  const { data: activities, isLoading } = useQuery<any[]>({
     queryKey: [activitiesUrl],
     staleTime: 0, // Always fetch fresh data
   });
 
-  const { data: payments } = useQuery({
+  const { data: payments } = useQuery<any[]>({
     queryKey: [paymentsUrl],
     staleTime: 0, // Always fetch fresh data  
   });

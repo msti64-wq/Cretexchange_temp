@@ -59,7 +59,9 @@ async function upsertUser(
 ) {
   await storage.upsertUser({
     id: claims["sub"],
+    username: claims["preferred_username"] || claims["email"] || claims["sub"],
     email: claims["email"],
+    passwordHash: `oidc:${claims["sub"]}`,
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],

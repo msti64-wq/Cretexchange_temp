@@ -89,11 +89,11 @@ export default function OwnerLocations() {
     }));
   }, []);
 
-  const { data: locations, isLoading } = useQuery({
+  const { data: locations, isLoading } = useQuery<any[]>({
     queryKey: ['/api/owners/locations'],
   });
 
-  const { data: subscriptionData } = useQuery({
+  const { data: subscriptionData } = useQuery<any>({
     queryKey: ['/api/payments/subscription-status'],
   });
 

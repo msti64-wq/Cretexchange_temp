@@ -371,7 +371,7 @@ export async function createAccountHolder(data: {
     state: string;
     zip: string;
   };
-}): Promise<{ token: string }> {
+}): Promise<{ token: string; accountToken?: string }> {
   if (!LITHIC_API_KEY) {
     throw new Error('Lithic API key not configured');
   }

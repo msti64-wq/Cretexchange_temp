@@ -32,7 +32,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-08-27.basil',
 });
 
@@ -421,7 +421,7 @@ export async function backfillAllExpressAccounts(): Promise<{
   let startingAfter: string | undefined = undefined;
   
   while (hasMore) {
-    const response = await stripe.accounts.list({
+    const response: any = await stripe.accounts.list({
       limit: 100,
       ...(startingAfter ? { starting_after: startingAfter } : {}),
     });
@@ -464,19 +464,19 @@ export async function backfillAllExpressAccounts(): Promise<{
 export async function updateConnectedAccountWithCompleteInfo(
   accountId: string,
   userInfo: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-    phone?: string;
-    street?: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-    dateOfBirth?: string; // YYYY-MM-DD format
-    ssnLast4?: string; // Last 4 digits
-    companyName?: string;
-    businessWebsite?: string;
-    taxId?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    street?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
+    dateOfBirth?: string | null; // YYYY-MM-DD format
+    ssnLast4?: string | null; // Last 4 digits
+    companyName?: string | null;
+    businessWebsite?: string | null;
+    taxId?: string | null;
   },
   tosAcceptance?: {
     timestamp: number;
@@ -529,18 +529,18 @@ export async function updateConnectedAccountWithCompleteInfo(
     // Build company object for owners
     if (userInfo.companyName || userInfo.businessWebsite || userInfo.taxId) {
       accountParams.company = {
-        name: userInfo.companyName,
-        tax_id: userInfo.taxId,
+        name: userInfo.companyName ?? undefined,
+        tax_id: userInfo.taxId ?? undefined,
       };
     }
 
     // Update business profile with website if provided
     if (userInfo.businessWebsite || userInfo.companyName) {
       accountParams.business_profile = {
-        url: userInfo.businessWebsite,
-        name: userInfo.companyName,
+        url: userInfo.businessWebsite ?? undefined,
+        name: userInfo.companyName ?? undefined,
         mcc: '7542', // Car wash / washout services
-        support_email: userInfo.email,
+        support_email: userInfo.email ?? undefined,
       };
     }
 
@@ -690,6 +690,14 @@ export async function getFinancialAccountBalance(
   return account.balance.cash.usd / 100; // Convert cents to dollars
 }
 
+export async function getTreasuryBalance(params: {
+  connectedAccountId: string;
+  financialAccountId: string;
+}): Promise<{ balance: number }> {
+  const balance = await getFinancialAccountBalance(params.financialAccountId, params.connectedAccountId);
+  return { balance: Math.round(balance * 100) };
+}
+
 /**
  * Fund a Financial Account via ACH (from external bank account)
  * 
@@ -775,6 +783,54 @@ export async function payoutFromFinancialAccount(params: {
   }
 }
 
+export async function createACHTransfer(params: {
+  connectedAccountId: string;
+  financialAccountId: string;
+  amount: number;
+  currency: string;
+  externalBankAccount: {
+    accountNumber: string;
+    routingNumber: string;
+    accountHolderName: string;
+  };
+  description: string;
+}): Promise<{ id: string; transferId: string }> {
+  const paymentMethod = await createBankAccountPaymentMethod({
+    connectedAccountId: params.connectedAccountId,
+    bankAccount: {
+      accountNumber: params.externalBankAccount.accountNumber,
+      routingNumber: params.externalBankAccount.routingNumber,
+      accountHolderName: params.externalBankAccount.accountHolderName,
+      accountHolderType: 'individual',
+    },
+  });
+
+  const transfer = await payoutFromFinancialAccount({
+    financialAccountId: params.financialAccountId,
+    connectedAccountId: params.connectedAccountId,
+    paymentMethodId: paymentMethod.id,
+    amount: params.amount,
+    description: params.description,
+  });
+
+  return { id: transfer.id, transferId: transfer.id };
+}
+
+export async function createCustomer(params: {
+  userId: string;
+  username: string;
+  email: string;
+}): Promise<Stripe.Customer> {
+  return await stripe.customers.create({
+    email: params.email,
+    name: params.username,
+    metadata: {
+      userId: params.userId,
+      username: params.username,
+    },
+  });
+}
+
 /**
  * Internal transfer between Financial Accounts (book transfer for washout payments)
  * 
@@ -838,7 +894,7 @@ export async function createCardholder(params: {
   connectedAccountId: string;
   name: string;
   email: string;
-  phone: string;
+  phone?: string | undefined;
   billing: {
     address: {
       line1: string;
@@ -861,7 +917,7 @@ export async function createCardholder(params: {
       {
         name: params.name,
         email: params.email,
-        phone_number: params.phone,
+        phone_number: params.phone || "",
         billing: params.billing,
         type: 'individual',
         individual: params.individual,
@@ -884,6 +940,30 @@ export async function createCardholder(params: {
   }
 }
 
+export async function createIssuingCardholder(params: {
+  connectedAccountId: string;
+  name: string;
+  email: string;
+  phoneNumber?: string;
+  billing: {
+    address: {
+      line1: string;
+      city: string;
+      state: string;
+      postal_code: string;
+      country: string;
+    };
+  };
+}): Promise<Stripe.Issuing.Cardholder> {
+  return await createCardholder({
+    connectedAccountId: params.connectedAccountId,
+    name: params.name,
+    email: params.email,
+    phone: params.phoneNumber,
+    billing: params.billing,
+  });
+}
+
 /**
  * Issue a Debit Card
  * Pricing: Virtual $0.01, Physical $0.30 (2-day shipping)
@@ -891,7 +971,7 @@ export async function createCardholder(params: {
 export async function issueCard(params: {
   connectedAccountId: string;
   cardholderId: string;
-  financialAccountId: string;
+  financialAccountId?: string;
   cardType: 'virtual' | 'physical';
   shipping?: {
     name: string;
@@ -911,7 +991,7 @@ export async function issueCard(params: {
       cardholder: params.cardholderId,
       currency: 'usd',
       type: params.cardType,
-      financial_account: params.financialAccountId,
+      financial_account: params.financialAccountId || undefined,
       status: 'active',
       spending_controls: params.spendingControls,
     };
@@ -1024,6 +1104,8 @@ export async function createBankAccountPaymentMethod(params: {
     routingNumber: string;
     accountHolderName: string;
     accountHolderType: 'individual' | 'company';
+    country?: string;
+    currency?: string;
   };
 }): Promise<Stripe.PaymentMethod> {
   try {
@@ -1031,8 +1113,8 @@ export async function createBankAccountPaymentMethod(params: {
     const token = await stripe.tokens.create(
       {
         bank_account: {
-          country: 'US',
-          currency: 'usd',
+          country: params.bankAccount.country || 'US',
+          currency: params.bankAccount.currency || 'usd',
           account_holder_name: params.bankAccount.accountHolderName,
           account_holder_type: params.bankAccount.accountHolderType,
           routing_number: params.bankAccount.routingNumber,
@@ -1059,6 +1141,20 @@ export async function createBankAccountPaymentMethod(params: {
     console.error('❌ Error creating bank account payment method:', error.message);
     throw new Error(`Failed to create payment method: ${error.message}`);
   }
+}
+
+export async function createBankPaymentMethod(params: {
+  connectedAccountId: string;
+  bankAccount: {
+    accountNumber: string;
+    routingNumber: string;
+    accountHolderName: string;
+    accountHolderType: 'individual' | 'company';
+    country?: string;
+    currency?: string;
+  };
+}): Promise<Stripe.PaymentMethod> {
+  return await createBankAccountPaymentMethod(params);
 }
 
 /**
@@ -1396,8 +1492,8 @@ export async function createWalletFundingPayment(params: {
  */
 export async function createFinancialConnectionsSession(params: {
   userType: 'driver' | 'owner';
-  connectedAccountId?: string; // Required for drivers (Connect account)
-  customerId?: string; // Required for owners (Customer)
+  connectedAccountId?: string | null; // Required for drivers (Connect account)
+  customerId?: string | null; // Required for owners (Customer)
   returnUrl: string;
 }): Promise<Stripe.FinancialConnections.Session> {
   try {
@@ -1478,7 +1574,7 @@ export async function createExternalAccountFromFinancialConnections(params: {
   try {
     console.log('🔍 Attempting to retrieve Financial Connections session:', params.sessionId);
     
-    const session = await stripe.financialConnections.sessions.retrieve(params.sessionId);
+    const session: any = await stripe.financialConnections.sessions.retrieve(params.sessionId);
     
     console.log('📋 Financial Connections session retrieved:', {
       sessionId: params.sessionId,

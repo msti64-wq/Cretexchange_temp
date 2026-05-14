@@ -31,12 +31,12 @@ export default function OwnerProfile() {
     confirmPassword: ''
   });
 
-  const { data: user, isLoading, refetch } = useQuery({
+  const { data: user, isLoading, refetch } = useQuery<any>({
     queryKey: ['/api/auth/user'],
   });
 
   // Fetch Stripe requirements
-  const { data: stripeRequirements, refetch: refetchStripeRequirements } = useQuery({
+  const { data: stripeRequirements, refetch: refetchStripeRequirements } = useQuery<any>({
     queryKey: ['/api/owners/stripe-requirements'],
     enabled: !!user,
   });

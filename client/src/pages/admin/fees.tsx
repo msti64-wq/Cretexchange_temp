@@ -114,7 +114,8 @@ export default function AdminFees() {
 
   const generateFeesMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('/api/admin/fees/generate', 'POST', {});
+      const response = await apiRequest('/api/admin/fees/generate', 'POST', {});
+      return response.json();
     },
     onSuccess: (data) => {
       toast({
@@ -135,7 +136,8 @@ export default function AdminFees() {
 
   const retryFeeMutation = useMutation({
     mutationFn: async (feeId: string) => {
-      return apiRequest(`/api/admin/fees/${feeId}/retry`, 'POST', {});
+      const response = await apiRequest(`/api/admin/fees/${feeId}/retry`, 'POST', {});
+      return response.json();
     },
     onSuccess: (data) => {
       toast({

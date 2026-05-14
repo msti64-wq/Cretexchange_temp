@@ -42,12 +42,12 @@ export default function AdminLocations() {
   const [filterOwnerStatus, setFilterOwnerStatus] = useState("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
 
-  const { data: locations, isLoading, error } = useQuery({
+  const { data: locations, isLoading, error } = useQuery<any[]>({
     queryKey: ['/api/admin/locations'],
     retry: false,
   });
 
-  const { data: owners } = useQuery({
+  const { data: owners } = useQuery<any[]>({
     queryKey: ['/api/admin/owners'],
     enabled: showAddDialog,
     retry: false,
