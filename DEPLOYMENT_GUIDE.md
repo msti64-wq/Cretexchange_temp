@@ -62,6 +62,9 @@ DATABASE_URL=<provided by Replit/Neon>
 # Node Environment
 NODE_ENV=production
 PORT=5000
+# Local testing uses 127.0.0.1. Cloud/container deployments may need 0.0.0.0.
+HOST=127.0.0.1
+# HOST=0.0.0.0
 
 # Auth Secrets
 JWT_SECRET=<generate secure random string, at least 32 characters>
@@ -376,6 +379,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
    - Go to Replit Secrets
    - Add all production environment variables
    - Verify `NODE_ENV=production`
+   - Set `HOST=0.0.0.0` if the deployment platform requires binding to all interfaces
 
 3. **Deploy Application**
    - Click "Deploy" button in Replit workspace
@@ -646,6 +650,9 @@ Complete list of all environment variables:
 # Core
 NODE_ENV=production
 PORT=5000
+# Local testing: HOST=127.0.0.1
+# Cloud/container deployment if needed: HOST=0.0.0.0
+HOST=127.0.0.1
 DATABASE_URL=<auto-provided>
 BASE_URL=<production-app-url>
 JWT_SECRET=<secure-random-string-at-least-32-characters>
