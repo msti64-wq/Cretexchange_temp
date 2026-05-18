@@ -62,7 +62,7 @@ export function ColumnOnboardingDialog({ open, onOpenChange, onSubmit, isPending
           </DialogTitle>
           <DialogDescription>
             To receive payments, we need to verify your identity and set up your bank account.
-            All information is securely encrypted and processed through Column.
+            All information is securely encrypted and processed through CreteXchange payment providers.
           </DialogDescription>
         </DialogHeader>
 

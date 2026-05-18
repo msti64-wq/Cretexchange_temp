@@ -61,7 +61,7 @@ export function OwnerColumnOnboardingDialog({
           </DialogTitle>
           <DialogDescription>
             To process payments and manage your wallet, we need to verify your business
-            information and set up your payment account through Column.
+            information and set up your payment account.
           </DialogDescription>
         </DialogHeader>
 

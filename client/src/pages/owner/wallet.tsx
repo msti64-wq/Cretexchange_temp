@@ -428,7 +428,7 @@ export default function OwnerWallet() {
             </div>
             <div>
               <h1 className="font-semibold text-lg">Wallet Dashboard</h1>
-              <p className="text-white/80 text-sm">Column Banking</p>
+              <p className="text-white/80 text-sm">Payment Account</p>
             </div>
           </div>
           <Tooltip>
@@ -907,7 +907,7 @@ export default function OwnerWallet() {
         </DialogContent>
       </Dialog>
 
-      {/* Column Onboarding Dialog */}
+      {/* Payment account onboarding dialog */}
       <OwnerColumnOnboardingDialog
         open={showOnboardingDialog}
         onOpenChange={setShowOnboardingDialog}

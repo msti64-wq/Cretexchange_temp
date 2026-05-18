@@ -168,7 +168,7 @@ export default function PaymentMethods() {
               </div>
               <div>
                 <h1 className="font-semibold text-lg">Wallet Setup Required</h1>
-                <p className="text-white/80 text-sm">Configure your Column wallet</p>
+                <p className="text-white/80 text-sm">Configure your wallet</p>
               </div>
             </div>
           </div>
@@ -178,9 +178,9 @@ export default function PaymentMethods() {
           <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
             <CardContent className="p-6 text-center">
               <Wallet className="w-16 h-16 mx-auto mb-4 text-blue-600" />
-              <h3 className="text-lg font-semibold mb-2">Column Wallet Setup Required</h3>
+              <h3 className="text-lg font-semibold mb-2">Wallet Setup Required</h3>
               <p className="text-muted-foreground mb-4">
-                Before you can manage funding sources, you need to set up your Column business wallet.
+                Before you can manage funding sources, you need to set up your business wallet.
                 This enables secure payment processing and automatic driver payouts.
               </p>
               <Button 
@@ -189,7 +189,7 @@ export default function PaymentMethods() {
                 data-testid="button-setup-wallet"
               >
                 <Wallet className="w-4 h-4 mr-2" />
-                Set Up Column Wallet
+                Set Up Wallet
               </Button>
             </CardContent>
           </Card>

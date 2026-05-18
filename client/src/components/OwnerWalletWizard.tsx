@@ -62,12 +62,12 @@ const walletPreferencesSchema = z.object({
 });
 
 const termsSchema = z.object({
-  agreedToColumnTerms: z.boolean().refine(val => val === true, "You must agree to Column terms"),
+  agreedToColumnTerms: z.boolean().refine(val => val === true, "You must agree to payment account terms"),
   agreedToPlatformTerms: z.boolean().refine(val => val === true, "You must agree to platform terms"),
 });
 
 const WIZARD_STEPS = [
-  { id: 'welcome', title: 'Welcome', description: 'Column Wallet Setup' },
+  { id: 'welcome', title: 'Welcome', description: 'Wallet Setup' },
   { id: 'business', title: 'Business Info', description: 'Verify your business details' },
   { id: 'funding', title: 'Funding Source', description: 'Add a payment method' },
   { id: 'preferences', title: 'Wallet Preferences', description: 'Configure your wallet' },
@@ -140,7 +140,7 @@ export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletW
     onSuccess: () => {
       toast({
         title: "Wallet Setup Complete",
-        description: "Your Column wallet has been successfully configured!",
+        description: "Your wallet has been successfully configured!",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
@@ -214,7 +214,7 @@ export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletW
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <Wallet className="h-6 w-6 text-blue-600" />
-              <CardTitle>Column Wallet Setup</CardTitle>
+              <CardTitle>Wallet Setup</CardTitle>
             </div>
             <Badge variant="outline">
               Step {currentStep + 1} of {WIZARD_STEPS.length}
@@ -233,9 +233,9 @@ export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletW
               <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                 <Wallet className="h-8 w-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-semibold">Welcome to Column Banking</h3>
+              <h3 className="text-xl font-semibold">Welcome to Wallet Setup</h3>
               <p className="text-muted-foreground max-w-md mx-auto">
-                We'll help you set up your Column wallet for secure payment processing. 
+                We'll help you set up your wallet for secure payment processing.
                 This will enable you to receive payments from drivers and manage your business finances.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
@@ -617,9 +617,9 @@ export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletW
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel>I agree to Column's Terms of Service and Privacy Policy *</FormLabel>
+                        <FormLabel>I agree to the payment account terms and privacy policy *</FormLabel>
                         <p className="text-sm text-muted-foreground">
-                          By checking this box, you agree to Column's banking terms and conditions.
+                          By checking this box, you agree to the wallet and payment account terms.
                         </p>
                       </div>
                     </FormItem>
@@ -665,7 +665,7 @@ export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletW
                   <div className="flex items-center space-x-2">
                     <AlertCircle className="h-4 w-4 text-amber-600" />
                     <p className="text-sm text-amber-800">
-                      Your wallet will be activated once Column verifies your business information. 
+                      Your wallet will be activated once your business information is verified.
                       This typically takes 1-2 business days.
                     </p>
                   </div>
@@ -682,13 +682,13 @@ export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletW
               </div>
               <h3 className="text-xl font-semibold">Wallet Setup Complete!</h3>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Your Column wallet has been successfully configured. You can now start managing 
+                Your wallet has been successfully configured. You can now start managing
                 your business finances and processing payments from drivers.
               </p>
               <div className="bg-green-50 p-4 rounded-lg">
                 <h4 className="font-semibold text-green-800 mb-2">What's Next?</h4>
                 <ul className="text-sm text-green-700 space-y-1 list-disc list-inside">
-                  <li>Your account is being verified by Column</li>
+                  <li>Your account is being verified</li>
                   <li>You'll receive an email once verification is complete</li>
                   <li>Start adding washout locations to your account</li>
                   <li>Begin accepting payments from drivers</li>

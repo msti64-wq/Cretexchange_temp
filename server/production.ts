@@ -54,7 +54,8 @@ app.use((req, res, next) => {
 
     // ALWAYS serve the app on the port specified in the environment variable PORT
     const port = parseInt(process.env.PORT || '5000', 10);
-    const host = process.env.HOST?.trim() || "127.0.0.1";
+    const isProduction = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT;
+    const host = process.env.HOST?.trim() || (isProduction ? "0.0.0.0" : "127.0.0.1");
     server.listen({
       port,
       host,

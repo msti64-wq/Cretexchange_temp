@@ -18,7 +18,7 @@ CreteXchange is a Progressive Web App (PWA) connecting concrete truck drivers wi
 
 - **User Types**: Drivers, Location Owners, Super Admins
 - **Core Features**: Washout location discovery, payment processing, wallet management, debit card issuance
-- **Tech Stack**: React + TypeScript, Express.js, PostgreSQL, Column BaaS, Lithic Cards, Stripe
+- **Tech Stack**: React + TypeScript, Express.js, PostgreSQL, Stripe
 - **Deployment**: Replit Autoscale (recommended) or Reserved VM
 
 ---
@@ -46,7 +46,7 @@ CreteXchange is a Progressive Web App (PWA) connecting concrete truck drivers wi
    - Driver registration and onboarding
    - Location discovery and check-in
    - Wallet funding and transactions
-   - Debit card request (sandbox mode)
+   - Debit card request
 
 ---
 
@@ -62,9 +62,9 @@ DATABASE_URL=<provided by Replit/Neon>
 # Node Environment
 NODE_ENV=production
 PORT=5000
-# Local testing uses 127.0.0.1. Cloud/container deployments may need 0.0.0.0.
-HOST=127.0.0.1
-# HOST=0.0.0.0
+# Railway/Render/Replit: HOST=0.0.0.0
+# Local-only testing: HOST=127.0.0.1
+HOST=0.0.0.0
 
 # Auth Secrets
 JWT_SECRET=<generate secure random string, at least 32 characters>
@@ -79,30 +79,7 @@ SESSION_SECRET=<generate secure random string>
 
 #### Payment & Banking APIs
 
-**Column BaaS** (Wallet & Bank Accounts)
-```bash
-COLUMN_API_KEY=<your Column API key>
-COLUMN_API_BASE_URL=https://api.column.com
-COLUMN_PLATFORM_ENTITY_ID=<your platform entity ID>
-COLUMN_PLATFORM_ACCOUNT_ID=<your platform account ID>
-COLUMN_PLATFORM_ACCOUNT_NUMBER=<your platform account number>
-COLUMN_PLATFORM_ROUTING=<your platform routing number>
-```
-
-**Lithic** (Debit Cards)
-```bash
-# Sandbox (for testing)
-LITHIC_API_KEY=<your Lithic sandbox API key>
-LITHIC_BASE_URL=https://sandbox.lithic.com/v1
-
-# Production (after BIN sponsorship)
-LITHIC_API_KEY=<your Lithic production API key>
-LITHIC_BASE_URL=https://api.lithic.com/v1
-LITHIC_CARD_PROGRAM_TOKEN=<token from Lithic after Column BIN approval>
-LITHIC_PRODUCT_ID=<product ID for physical cards>
-```
-
-**Stripe** (Subscription Payments)
+**Stripe** (Payments, wallet flows, and card issuing)
 ```bash
 STRIPE_SECRET_KEY=<your Stripe secret key>
 VITE_STRIPE_PUBLIC_KEY=<your Stripe publishable key>
@@ -131,83 +108,9 @@ VITE_GOOGLE_MAPS_API_KEY=<your Google Maps API key>
 
 ## API Integration Setup
 
-### 1. Column BaaS Setup
+### 1. Stripe Setup
 
-**Purpose**: Wallet management, bank accounts, book transfers
-
-**Setup Steps**:
-1. Sign up at [column.com](https://column.com)
-2. Complete KYC/business verification
-3. Create platform entity and account
-4. Get API credentials from dashboard
-5. Configure webhooks for transaction events
-
-**Production Endpoint**: `https://api.column.com`
-
-**Required Secrets**:
-- `COLUMN_API_KEY`
-- `COLUMN_PLATFORM_ENTITY_ID`
-- `COLUMN_PLATFORM_ACCOUNT_ID`
-- `COLUMN_PLATFORM_ACCOUNT_NUMBER`
-- `COLUMN_PLATFORM_ROUTING`
-
-**Testing**: Use Column's test environment credentials for development
-
----
-
-### 2. Lithic Card Issuance Setup
-
-**Purpose**: Debit card creation for instant wallet fund access
-
-#### Sandbox Setup (Current)
-```bash
-LITHIC_API_KEY=<sandbox API key>
-LITHIC_BASE_URL=https://sandbox.lithic.com/v1
-```
-
-**Capabilities**:
-- ✅ Virtual card creation
-- ✅ UI/UX testing
-- ✅ Card request workflows
-- ❌ No real fund access (sandbox limitation)
-
-#### Production Setup (For Live Deployment)
-
-**Prerequisites**:
-1. **Column BIN Sponsorship** (90-120 day process)
-   - Contact: sales@column.com
-   - Provide: Program details (debit cards for drivers, washout payments use case)
-   - Complete: Compliance review and documentation
-
-2. **Lithic Configuration**
-   - Column provides dedicated BIN
-   - Share BIN details with Lithic
-   - Receive `card_program_token` from Lithic
-
-3. **Physical Card Inventory**
-   - Contact Lithic sales for card design
-   - Order minimum quantity (500-1,000 cards)
-   - Receive `product_id` after order
-
-**Production Environment Variables**:
-```bash
-LITHIC_API_KEY=<production API key from Lithic>
-LITHIC_BASE_URL=https://api.lithic.com/v1
-LITHIC_CARD_PROGRAM_TOKEN=<token linking to Column BIN>
-LITHIC_PRODUCT_ID=<product ID for physical cards>
-```
-
-**Column-Lithic Architecture**:
-- Column: BIN sponsor, holds funds, compliance
-- Lithic: Card processor, authorization, fulfillment
-- Integration: `card_program_token` links Lithic cards to Column BIN
-- Result: Cards pull funds from Column wallet accounts ✅
-
----
-
-### 3. Stripe Setup
-
-**Purpose**: Subscription payments, owner membership fees
+**Purpose**: Subscription payments, owner membership fees, wallet flows, and card issuing
 
 **Setup Steps**:
 1. Create Stripe account at [stripe.com](https://stripe.com)
@@ -230,7 +133,7 @@ STRIPE_PLATFORM_FINANCIAL_ACCOUNT_ID=fa_...
 
 ---
 
-### 4. Google Cloud Setup
+### 2. Google Cloud Setup
 
 #### Google Cloud Storage (Photo Uploads)
 
@@ -283,9 +186,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
   - Verify no hardcoded credentials in code
 
 - [ ] **API Integrations**
-  - Column: Test wallet creation and transfers
-  - Lithic: Verify card creation (sandbox or production)
-  - Stripe: Test subscription payments
+  - Stripe: Test subscription payments, wallet flows, and card issuing
   - Google Maps: Verify location services
   - GCS: Test photo uploads
 
@@ -310,40 +211,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
 - [ ] Stripe has `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLIC_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PLATFORM_FINANCIAL_ACCOUNT_ID` configured for the same Stripe mode.
 - [ ] Object storage has `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS`, and `DEFAULT_OBJECT_STORAGE_BUCKET_ID` configured for the deployment bucket.
 - [ ] Google services have `GOOGLE_CLOUD_PROJECT_ID`, `GOOGLE_CLOUD_BUCKET_NAME`, and `VITE_GOOGLE_MAPS_API_KEY` configured; browser-exposed keys are domain restricted.
-- [ ] Column production wallet secrets are configured if wallet and transfer flows are enabled.
-- [ ] Lithic production secrets are configured if card issuing is enabled.
 - [ ] No placeholder, test-only, or local development values remain in deployment secrets.
-
-### Lithic Production Setup
-
-**Only required if you need Column wallet fund access via debit cards**:
-
-- [ ] **Column BIN Sponsorship**
-  - Application submitted to Column (sales@column.com)
-  - Compliance review completed
-  - BIN assigned (90-120 day timeline)
-
-- [ ] **Lithic Integration**
-  - BIN details shared with Lithic
-  - `card_program_token` received from Lithic
-  - Production API key configured
-  - Environment updated:
-    ```bash
-    LITHIC_BASE_URL=https://api.lithic.com/v1
-    LITHIC_CARD_PROGRAM_TOKEN=<token>
-    ```
-
-- [ ] **Physical Cards** (Optional)
-  - Card design approved
-  - Inventory ordered (500-1,000 minimum)
-  - `LITHIC_PRODUCT_ID` configured
-  - Card type updated to 'physical' in code
-
-- [ ] **Card Testing**
-  - End-to-end card issuance tested
-  - Column fund access verified
-  - Card controls configured (limits, restrictions)
-  - Fraud monitoring enabled
 
 ---
 
@@ -379,7 +247,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
    - Go to Replit Secrets
    - Add all production environment variables
    - Verify `NODE_ENV=production`
-   - Set `HOST=0.0.0.0` if the deployment platform requires binding to all interfaces
+   - Set `HOST=0.0.0.0` for Railway, Render, Replit, and other cloud/container deployments
 
 3. **Deploy Application**
    - Click "Deploy" button in Replit workspace
@@ -475,7 +343,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
 
 **PCI-DSS** (Payment Card Industry):
 - ✅ No card numbers stored in database
-- ✅ Stripe/Lithic handle card data securely
+- ✅ Stripe handles card data securely
 - ✅ Tokenization used for sensitive data
 - ✅ HTTPS enforced for all transactions
 
@@ -486,8 +354,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
 - ✅ Privacy policy required (add to app)
 
 **Banking Regulations**:
-- Column handles KYC/AML compliance
-- Lithic manages card network compliance
+- Stripe handles configured payment, Treasury, and card issuing compliance workflows
 - Platform acts as facilitator, not bank
 
 ### Security Best Practices
@@ -547,32 +414,7 @@ This is expected behavior. Follow this workaround:
 
 **Prevention**: Always run `npm run db:migrate` immediately after first deployment to any new environment.
 
-#### 1. Lithic Card Creation Fails
-
-**Symptom**: "Missing address" error during card request
-
-**Cause**: Driver profile incomplete (no street address)
-
-**Solution**:
-```bash
-# Verify driver has complete address in database
-# Check fields: street, city, state, zip
-# Update profile via UI or admin panel
-```
-
-#### 2. Column Wallet Not Accessible
-
-**Symptom**: "Column not onboarded" error
-
-**Cause**: Driver hasn't completed Column KYC
-
-**Solution**:
-1. Navigate to /driver/wallet
-2. Complete onboarding flow
-3. Provide SSN, DOB, address
-4. Wait for Column approval (usually instant)
-
-#### 3. Stripe Webhook Failures
+#### 1. Stripe Webhook Failures
 
 **Symptom**: Payments succeed but not reflected in app
 
@@ -586,7 +428,7 @@ This is expected behavior. Follow this workaround:
 # Test with Stripe CLI: stripe listen --forward-to localhost:5000/api/stripe/webhook
 ```
 
-#### 4. Mobile App Not Installing (PWA)
+#### 2. Mobile App Not Installing (PWA)
 
 **Symptom**: "Add to Home Screen" not appearing
 
@@ -598,7 +440,7 @@ This is expected behavior. Follow this workaround:
 - Check service worker registration
 - Test on supported browsers (Safari/Chrome)
 
-#### 5. Google Maps Not Loading
+#### 3. Google Maps Not Loading
 
 **Symptom**: Map shows gray screen or errors
 
@@ -633,8 +475,6 @@ LOG_LEVEL=debug
 - Docs: [docs.replit.com](https://docs.replit.com)
 
 **API Support**:
-- Column: support@column.com
-- Lithic: support@lithic.com
 - Stripe: https://support.stripe.com
 - Google Cloud: https://cloud.google.com/support
 
@@ -650,31 +490,13 @@ Complete list of all environment variables:
 # Core
 NODE_ENV=production
 PORT=5000
-# Local testing: HOST=127.0.0.1
-# Cloud/container deployment if needed: HOST=0.0.0.0
-HOST=127.0.0.1
+# Railway/Render/Replit: HOST=0.0.0.0
+# Local-only testing: HOST=127.0.0.1
+HOST=0.0.0.0
 DATABASE_URL=<auto-provided>
 BASE_URL=<production-app-url>
 JWT_SECRET=<secure-random-string-at-least-32-characters>
 SESSION_SECRET=<secure-random-string>
-
-# Column BaaS
-COLUMN_API_KEY=<column-api-key>
-COLUMN_API_BASE_URL=https://api.column.com
-COLUMN_PLATFORM_ENTITY_ID=<entity-id>
-COLUMN_PLATFORM_ACCOUNT_ID=<account-id>
-COLUMN_PLATFORM_ACCOUNT_NUMBER=<account-number>
-COLUMN_PLATFORM_ROUTING=<routing-number>
-
-# Lithic (Sandbox)
-LITHIC_API_KEY=<lithic-sandbox-key>
-LITHIC_BASE_URL=https://sandbox.lithic.com/v1
-
-# Lithic (Production - after BIN sponsorship)
-LITHIC_API_KEY=<lithic-production-key>
-LITHIC_BASE_URL=https://api.lithic.com/v1
-LITHIC_CARD_PROGRAM_TOKEN=<card-program-token>
-LITHIC_PRODUCT_ID=<product-id>
 
 # Stripe
 STRIPE_SECRET_KEY=<stripe-secret-key>
@@ -710,12 +532,6 @@ Expiry: Any future date
 CVC: Any 3 digits
 ```
 
-**Test SSN** (Lithic Sandbox):
-```
-Success: 123456789
-Failure: 000-00-0001 (triggers verification failure)
-```
-
 ---
 
 ## Release Notes
@@ -725,16 +541,14 @@ Failure: 000-00-0001 (triggers verification failure)
 **Features**:
 - ✅ Driver registration and authentication
 - ✅ Location discovery and check-in
-- ✅ Wallet management (Column BaaS)
+- ✅ Wallet management
 - ✅ Payment processing (Stripe)
-- ✅ Debit card requests (Lithic sandbox)
+- ✅ Debit card requests
 - ✅ Progressive Web App (PWA)
 - ✅ Mobile-responsive design
 - ✅ Security compliance (PCI-DSS, GDPR)
 
 **Known Limitations**:
-- Debit cards in sandbox mode (no Column fund access until BIN sponsorship)
-- Physical cards require production Lithic setup
 - Batch processing requires external cron service
 
 **Upcoming Features**:

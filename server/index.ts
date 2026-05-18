@@ -131,7 +131,7 @@ async function startApplication() {
 
     // Enhanced server listening with better error handling
     const port = parseInt(process.env.PORT || '5000', 10);
-    const host = process.env.HOST?.trim() || "127.0.0.1";
+    const host = process.env.HOST?.trim() || (isProduction ? "0.0.0.0" : "127.0.0.1");
     
     console.log("Server configuration:", {
       port,

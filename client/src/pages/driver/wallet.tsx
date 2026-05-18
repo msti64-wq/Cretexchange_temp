@@ -97,7 +97,7 @@ export default function DriverWallet() {
     placeholderData: (previousData) => previousData,
   });
 
-  // Fetch Column onboarding status
+  // Fetch payment account onboarding status
   const { data: columnStatus, isLoading: columnLoading, refetch: refetchColumnStatus } = useQuery<ColumnOnboardingStatus>({
     queryKey: ['/api/column/status'],
   });

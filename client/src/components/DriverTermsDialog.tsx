@@ -87,10 +87,10 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                       1. Wallet & Payment System
                     </h4>
                     <div className="space-y-2 ml-6 bg-muted/30 p-3 rounded">
-                      <p><strong>1.1 Column BaaS Integration:</strong></p>
+                      <p><strong>1.1 Wallet Verification:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• Your wallet is powered by Column banking services</p>
-                        <p>• Must complete Column identity verification (KYC) to activate wallet</p>
+                        <p>• Your wallet is powered by CreteXchange payment services</p>
+                        <p>• Must complete identity verification (KYC) to activate wallet</p>
                         <p>• Provide accurate personal information (SSN, date of birth, address)</p>
                         <p>• One wallet per driver account</p>
                       </div>
@@ -98,7 +98,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                       <p className="pt-2"><strong>1.2 Earning Payments:</strong></p>
                       <div className="ml-4 space-y-1">
                         <p>• Wallet credited when location owners approve your washout submissions</p>
-                        <p>• Payments processed instantly via Column book transfers</p>
+                        <p>• Payments processed through the configured payout system</p>
                         <p>• Platform fee ($0.40) deducted from each washout payment automatically</p>
                         <p>• You receive: (Location washout rate - $0.40 platform fee)</p>
                       </div>
@@ -108,12 +108,12 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                   <div>
                     <h4 className="font-semibold mb-2 flex items-center">
                       <CreditCard className="w-4 h-4 mr-2 text-purple-600" />
-                      2. Lithic Debit Card
+                      2. Debit Card
                     </h4>
                     <div className="space-y-2 ml-6">
                       <p><strong>2.1 Card Features:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• Request a physical Lithic debit card linked to your Column wallet</p>
+                        <p>• Request a physical debit card linked to your wallet</p>
                         <p>• Instant access to wallet funds at ATMs and stores</p>
                         <p>• No additional fees for card usage (standard ATM fees may apply)</p>
                         <p>• Card shipped to your verified address (7-10 business days)</p>
@@ -171,7 +171,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                       <p className="pt-2"><strong>4.3 Platform Fee:</strong></p>
                       <div className="ml-4 space-y-1">
                         <p>• <strong>$0.40 flat fee per completed washout</strong></p>
-                        <p>• Automatically deducted from payment via Column book transfer</p>
+                        <p>• Automatically deducted from payment through the wallet ledger</p>
                         <p>• Covers platform usage, payment processing, and support</p>
                       </div>
                     </div>
@@ -228,7 +228,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                 
                 <div className="border-t pt-4 bg-green-50 p-3 rounded">
                   <p className="font-semibold text-green-800 text-center">
-                    By clicking "I Agree," you confirm that you have read, understood, and accept all terms above, including the $0.40 platform fee per washout, withdrawal fee structure, and Column/Lithic banking services.
+                    By clicking "I Agree," you confirm that you have read, understood, and accept all terms above, including the $0.40 platform fee per washout, withdrawal fee structure, and wallet payment services.
                   </p>
                 </div>
               </div>

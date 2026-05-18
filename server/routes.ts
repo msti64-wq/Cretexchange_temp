@@ -1026,7 +1026,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Stripe onboarding endpoint (replaces Column/Lithic)
+  // Stripe onboarding endpoint
   app.post('/api/column/onboard', isAuthenticated, async (req: any, res) => {
     try {
       console.log('🔵 Starting onboarding for user:', req.user.id);
@@ -4809,10 +4809,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Owner subscription with Column BaaS (requires Stripe payment verification)
+  // Owner subscription activation (requires Stripe payment verification)
   app.post('/api/owners/subscribe', isAuthenticated, async (req: any, res) => {
     try {
-      console.log("Column BaaS subscription request started for user:", req.user.id);
+      console.log("Owner subscription request started for user:", req.user.id);
       
       const userId = req.user.id;
       const { paymentIntentId } = req.body;
@@ -5690,7 +5690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/owners/funding-sources - Get owner's Column funding sources
+  // GET /api/owners/funding-sources - Get owner's funding sources
   app.get('/api/owners/funding-sources', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -6890,7 +6890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/owners/wallet/fund - Fund wallet from a funding source via Column ACH
+  // POST /api/owners/wallet/fund - Fund wallet from a saved funding source
   app.post('/api/owners/wallet/fund', isAuthenticated, async (req: any, res) => {
     try {
       // Check if wallet funding feature is enabled
@@ -9377,7 +9377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedWithdrawal = await storage.updateWithdrawalStatus(
         withdrawalId,
         validatedData.status,
-        validatedData.columnTransferId, // Column transfer ID if provided
+        validatedData.columnTransferId,
         validatedData.failureReason
       );
 
@@ -11801,59 +11801,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error fixing photo ownership:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: errorMessage });
-    }
-  });
-
-  // Admin endpoint to retry Stripe Issuing cardholder enrollment
-  app.post('/api/admin/retry-lithic-enrollment/:driverId', isAuthenticated, async (req: any, res) => {
-    try {
-      const { driverId } = req.params;
-      
-      const driver = await storage.getDriverById(driverId);
-      if (!driver) {
-        return res.status(404).json({ message: "Driver not found" });
-      }
-
-      const user = await storage.getUser(driver.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      console.log('🔄 Retrying Stripe Issuing cardholder enrollment for driver:', driverId);
-
-      // Create Stripe Issuing cardholder
-      const cardholderResult = await stripeService.createCardholder({
-        connectedAccountId: driver.stripeConnectAccountId || '',
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email,
-        phone: user.phone ? `+1${user.phone}` : '+15555555555',
-        billing: {
-          address: {
-            line1: '123 Test St',
-            city: 'Dallas',
-            state: 'TX',
-            postal_code: '75001',
-            country: 'US'
-          }
-        }
-      });
-
-      console.log('✅ Stripe Issuing cardholder created:', cardholderResult.id);
-
-      // Update driver record
-      await storage.updateDriver(driver.id, {
-        stripeIssuingCardholderId: cardholderResult.id
-      });
-
-      res.json({
-        success: true,
-        cardholderId: cardholderResult.id
-      });
-    } catch (error) {
-      console.error('❌ Stripe Issuing enrollment failed:', error);
-      res.status(500).json({ 
-        message: error instanceof Error ? error.message : 'Cardholder enrollment failed' 
-      });
     }
   });
 

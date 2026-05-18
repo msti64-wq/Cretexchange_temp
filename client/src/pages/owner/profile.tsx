@@ -309,7 +309,7 @@ export default function OwnerProfile() {
             
             {owner?.isApproved && (
               <p className="text-sm text-muted-foreground mt-4">
-                $1.00/month per active location is automatically deducted from your Column wallet.
+                $1.00/month per active location is automatically deducted from your wallet.
               </p>
             )}
           </CardContent>

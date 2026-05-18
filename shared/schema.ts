@@ -957,7 +957,7 @@ export const adminWithdrawalUpdateSchema = z.object({
   failureReason: z.string().optional(),
 });
 
-// Column onboarding validation schemas
+// Payment account onboarding validation schemas
 export const columnOnboardingSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),

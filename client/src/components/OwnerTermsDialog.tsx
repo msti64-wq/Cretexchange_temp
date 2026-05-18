@@ -76,7 +76,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       <p className="pt-2"><strong>1.2 Monthly Location Fees:</strong></p>
                       <div className="ml-4 space-y-1">
                         <p>• <strong>$1.00 per active location per month</strong></p>
-                        <p>• Automatically charged on the 1st of each month via Column book transfer</p>
+                        <p>• Automatically charged on the 1st of each month through your wallet ledger</p>
                         <p>• Pro-rated for partial months when locations are activated mid-month</p>
                         <p>• You must maintain sufficient wallet balance for monthly charges</p>
                         <p>• Failed payments may result in location suspension</p>
@@ -85,7 +85,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       <p className="pt-2"><strong>1.3 Transaction Fees:</strong></p>
                       <div className="ml-4 space-y-1">
                         <p>• CreteXchange retains a <strong>$0.40 flat fee per completed washout</strong></p>
-                        <p>• Fee is automatically deducted from washout payments via Column book transfer</p>
+                        <p>• Fee is automatically deducted from washout payments through the wallet ledger</p>
                         <p>• You receive the washout rate you set minus the $0.40 platform fee</p>
                       </div>
                     </div>
@@ -97,17 +97,17 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       2. Payment Processing & Wallet
                     </h4>
                     <div className="space-y-2 ml-6">
-                      <p><strong>2.1 Column BaaS Integration:</strong></p>
+                      <p><strong>2.1 Wallet Verification:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• Your wallet is powered by Column banking services</p>
-                        <p>• You must complete Column business verification (KYB) to activate wallet</p>
+                        <p>• Your wallet is powered by CreteXchange payment services</p>
+                        <p>• You must complete business verification (KYB) to activate wallet</p>
                         <p>• Provide accurate business information (EIN, business address, etc.)</p>
                         <p>• Maintain valid funding source (ACH bank account or credit card)</p>
                       </div>
                       
                       <p className="pt-2"><strong>2.2 Wallet Operations:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• Washout earnings are credited to your wallet via Column book transfers</p>
+                        <p>• Washout earnings are credited to your wallet through the platform ledger</p>
                         <p>• Monthly location fees are deducted automatically from your wallet</p>
                         <p>• You can add funds via ACH transfer or credit card</p>
                         <p>• Auto top-up available to prevent low balance issues</p>
@@ -182,7 +182,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       <div className="ml-4 space-y-1">
                         <p>• Your business information is used for payment processing and verification</p>
                         <p>• Location data is shared with drivers to facilitate washout services</p>
-                        <p>• Financial data is securely stored and processed through Column</p>
+                        <p>• Financial data is securely stored and processed through CreteXchange payment providers</p>
                         <p>• Review our Privacy Policy for detailed data handling practices</p>
                       </div>
                       
@@ -205,7 +205,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       <p><strong>5.1 Monthly Billing:</strong></p>
                       <div className="ml-4 space-y-1">
                         <p>• Monthly location fees charged on the 1st of each month at 2:00 AM UTC</p>
-                        <p>• Automatic Column book transfer from your wallet to platform account</p>
+                        <p>• Automatic wallet ledger debit from your wallet to the platform account</p>
                         <p>• Failed payments trigger low balance alerts and potential suspension</p>
                         <p>• Use auto top-up to ensure sufficient funds for monthly charges</p>
                       </div>
@@ -213,7 +213,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       <p className="pt-2"><strong>5.2 Washout Payments:</strong></p>
                       <div className="ml-4 space-y-1">
                         <p>• Driver payments processed immediately when you approve washout</p>
-                        <p>• Your wallet credited instantly via Column book transfer</p>
+                        <p>• Your wallet is credited through the platform ledger</p>
                         <p>• Platform fee ($0.40) deducted automatically from each payment</p>
                       </div>
                     </div>

@@ -107,7 +107,6 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   createUser(user: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; phone?: string; address?: string; role: string }): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
-  updateUserColumnInfo(userId: string, columnCustomerId: string): Promise<User>;
   updateUserPassword(userId: string, passwordHash: string): Promise<User>;
   updateUserStatus(userId: string, isActive: boolean): Promise<User | undefined>;
   updateUserStripeInfo(userId: string, stripeData: { stripeConnectAccountId?: string; stripeCustomerId?: string }): Promise<User>;
@@ -124,8 +123,6 @@ export interface IStorage {
   getDriverById(id: string): Promise<Driver | undefined>;
   getDriverByConnectedAccountId(connectedAccountId: string): Promise<Driver | undefined>;
   updateDriver(driverId: string, driverData: Partial<InsertDriver>): Promise<Driver>;
-  updateDriverColumnInfo(driverId: string, columnData: { columnEntityId?: string; columnBankAccountId?: string; columnAccountLast4?: string }): Promise<Driver>;
-  updateDriverLithicInfo(driverId: string, lithicData: { lithicAccountHolderToken?: string; lithicFinancialAccountToken?: string }): Promise<Driver>;
   updateDriverPaymentPreferences(driverId: string, paymentData: { paymentMethod: "ach" | "venmo" | "zelle"; bankName?: string; accountHolderName?: string; routingNumber?: string; accountNumber?: string; venmoHandle?: string; zelleEmail?: string }): Promise<Driver>;
   updateDriverLocation(driverId: string, latitude: number, longitude: number): Promise<void>;
   updateDriverWallet(driverId: string, availableBalance?: string, pendingBalance?: string): Promise<DriverWallet>;
@@ -138,7 +135,6 @@ export interface IStorage {
   getOwner(userId: string): Promise<Owner | undefined>;
   getOwnerById(id: string): Promise<Owner | undefined>;
   updateOwner(ownerId: string, ownerData: Partial<InsertOwner>): Promise<Owner>;
-  updateOwnerColumnInfo(ownerId: string, columnData: { columnEntityId?: string; columnAccountId?: string }): Promise<Owner>;
   updateOwnerSubscription(ownerId: string, subscriptionStatus: string, pastDueDate?: Date | null, subscriptionEndsAt?: Date | null, gracePeriodStartDate?: Date | null, lastReminderSent?: Date | null): Promise<Owner>;
   // Owner wallet operations (replacing subscription model)
   getOwnerWalletBalance(ownerId: string): Promise<{ balance: string; status: string } | undefined>;
@@ -231,11 +227,11 @@ export interface IStorage {
   getMessageById(messageId: string): Promise<(Message & { user: User }) | undefined>;
   updateMessageStatus(messageId: string, status: string): Promise<Message>;
 
-  // Column webhook event operations for idempotency
-  createWebhookEvent(columnEventId: string, eventType: string, accountId?: string): Promise<boolean>;
-  isWebhookEventProcessed(columnEventId: string): Promise<boolean>;
-  markWebhookEventProcessed(columnEventId: string): Promise<void>;
-  markWebhookEventFailed(columnEventId: string, errorMessage: string): Promise<void>;
+  // Webhook event operations for idempotency
+  createWebhookEvent(eventId: string, eventType: string, accountId?: string): Promise<boolean>;
+  isWebhookEventProcessed(eventId: string): Promise<boolean>;
+  markWebhookEventProcessed(eventId: string): Promise<void>;
+  markWebhookEventFailed(eventId: string, errorMessage: string): Promise<void>;
 
   // Owner funding sources operations (replacing payment methods)
   createOwnerFundingSource(fundingSource: InsertOwnerFundingSource): Promise<OwnerFundingSource>;
@@ -491,18 +487,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateUserColumnInfo(userId: string, columnCustomerId: string): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ 
-        columnCustomerId,
-        updatedAt: new Date() 
-      })
-      .where(eq(users.id, userId))
-      .returning();
-    return user;
-  }
-
   async updateUserPassword(userId: string, passwordHash: string): Promise<User> {
     const [user] = await db
       .update(users)
@@ -598,30 +582,6 @@ export class DatabaseStorage implements IStorage {
       .update(drivers)
       .set({
         ...driverData,
-        updatedAt: new Date(),
-      })
-      .where(eq(drivers.id, driverId))
-      .returning();
-    return updatedDriver;
-  }
-
-  async updateDriverColumnInfo(driverId: string, columnData: { columnEntityId?: string; columnBankAccountId?: string; columnAccountLast4?: string }): Promise<Driver> {
-    const [updatedDriver] = await db
-      .update(drivers)
-      .set({
-        ...columnData,
-        updatedAt: new Date(),
-      })
-      .where(eq(drivers.id, driverId))
-      .returning();
-    return updatedDriver;
-  }
-
-  async updateDriverLithicInfo(driverId: string, lithicData: { lithicAccountHolderToken?: string; lithicFinancialAccountToken?: string }): Promise<Driver> {
-    const [updatedDriver] = await db
-      .update(drivers)
-      .set({
-        ...lithicData,
         updatedAt: new Date(),
       })
       .where(eq(drivers.id, driverId))
@@ -808,18 +768,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(owners.id, ownerId))
       .returning();
     return owner;
-  }
-
-  async updateOwnerColumnInfo(ownerId: string, columnData: { columnEntityId?: string; columnAccountId?: string }): Promise<Owner> {
-    const [updatedOwner] = await db
-      .update(owners)
-      .set({
-        ...columnData,
-        updatedAt: new Date(),
-      })
-      .where(eq(owners.id, ownerId))
-      .returning();
-    return updatedOwner;
   }
 
   // Owner wallet operations (replacing subscription model)
@@ -3519,7 +3467,7 @@ export class DatabaseStorage implements IStorage {
         const feeGenResult = await this.generateMonthlyFeesForDate(billingDate);
         console.log(`💳 Generated ${feeGenResult.created} fee entries for ${feeGenResult.owners.length} owners`);
 
-        // Process pending fees (debit owner wallets via Column book transfers)
+        // Process pending fees by debiting owner wallets and recording ledger payment
         if (feeGenResult.created > 0) {
           const feeProcessResult = await this.processPendingFees();
           console.log(`💳 Fee processing: ${feeProcessResult.processed} paid, ${feeProcessResult.failed} failed`);
@@ -4291,11 +4239,12 @@ export class DatabaseStorage implements IStorage {
             continue;
           }
 
-          // Debit owner wallet and transfer to platform via Column
+          // Debit owner wallet and record the fee payment
           await db.transaction(async (tx) => {
             const feeAmount = (feeCents / 100).toFixed(2);
             const balanceBefore = walletBalance.balance;
             const balanceAfter = ((balanceCents - feeCents) / 100).toFixed(2);
+            const transferId: string | null = null;
 
             // Create wallet transaction record
             const [walletTx] = await tx
@@ -4309,7 +4258,7 @@ export class DatabaseStorage implements IStorage {
                 description: `${fee.feeType} fee for period ${fee.periodStart} to ${fee.periodEnd}${fee.location ? ` (${fee.location.name})` : ''}`,
                 paymentId: null,
                 batchId: null,
-                columnTransferId: null, // Will be updated after Column transfer
+                columnTransferId: transferId,
               })
               .returning();
 
@@ -4322,69 +4271,13 @@ export class DatabaseStorage implements IStorage {
               })
               .where(eq(owners.id, owner.id));
 
-            // Attempt Column book transfer to platform account
-            let columnTransferId: string | null = null;
-            try {
-              // Import columnService for book transfers
-              const { columnService } = await import('./columnService');
-              
-              // Get platform account from service_payment_accounts
-              const [platformAccount] = await tx
-                .select()
-                .from(servicePaymentAccounts)
-                .where(eq(servicePaymentAccounts.accountType, 'platform'))
-                .limit(1);
-
-              if (!platformAccount || !platformAccount.columnBankAccountId) {
-                throw new Error('Platform Column account not configured');
-              }
-
-              if (!owner.columnAccountId) {
-                throw new Error('Owner Column account not configured');
-              }
-
-              // Create Column book transfer (owner → platform)
-              const columnTransfer = await columnService.createBookTransfer({
-                senderBankAccountId: owner.columnAccountId,
-                receiverBankAccountId: platformAccount.columnBankAccountId,
-                amount: feeCents,
-                currencyCode: 'USD',
-                description: `${fee.feeType} fee - period ${fee.periodStart} to ${fee.periodEnd}`,
-              });
-
-              columnTransferId = columnTransfer.id;
-              console.log(`✅ Column book transfer created: ${columnTransferId} for fee ${fee.id}`);
-
-              // Update wallet transaction with Column transfer ID
-              await tx
-                .update(ownerWalletTransactions)
-                .set({ columnTransferId })
-                .where(eq(ownerWalletTransactions.id, walletTx.id));
-
-            } catch (columnError: any) {
-              console.error(`❌ Column transfer failed for fee ${fee.id}:`, columnError);
-              // If Column transfer fails, we still debited the wallet, so mark as failed with retry
-              await this.updateFeeLedgerStatus(
-                fee.id,
-                'failed',
-                walletTx.id,
-                undefined,
-                `Column transfer failed: ${columnError.message}`
-              );
-              await this.updateFeeLedgerRetryCount(fee.id);
-              
-              results.failed++;
-              results.errors.push(`Fee ${fee.id}: Column transfer failed - ${columnError.message}`);
-              return; // Exit transaction handler
-            }
-
             // Mark fee as paid
             await tx
               .update(feesLedger)
               .set({
                 status: 'paid',
                 walletTxId: walletTx.id,
-                columnTransferId,
+                columnTransferId: transferId,
                 paidAt: new Date(),
                 updatedAt: new Date(),
               })
