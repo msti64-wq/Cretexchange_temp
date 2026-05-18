@@ -77,6 +77,16 @@ SESSION_SECRET=<generate secure random string>
 # No manual setup required when deployed on Replit
 ```
 
+#### One-Time Super Admin Creation
+
+These values are used only when running the maintenance script. Do not add them as public client variables and do not commit real values.
+
+```bash
+DATABASE_URL=<production-database-url>
+SUPERADMIN_EMAIL=<admin@example.com>
+SUPERADMIN_PASSWORD=<long-random-password>
+```
+
 #### Payment & Banking APIs
 
 **Stripe** (Payments, wallet flows, and card issuing)
@@ -179,6 +189,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
   - Run `npm run db:migrate` to sync schema
   - Verify all tables created successfully
   - Test database connectivity
+  - Create the initial super admin with `npm run create:superadmin`
 
 - [ ] **Environment Variables**
   - All required secrets configured in Replit Secrets
@@ -290,7 +301,21 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
    - Run this immediately after first deployment
    - Safe to run multiple times (idempotent)
 
-5. **Post-Deployment**
+5. **Create or Update the Super Admin**
+
+   Use the one-time maintenance script after migrations. This does not enable any public `/setup` route.
+
+   ```bash
+   export DATABASE_URL="<production-database-url>"
+   export SUPERADMIN_EMAIL="<admin@example.com>"
+   export SUPERADMIN_PASSWORD="<long-random-password>"
+
+   npm run create:superadmin
+   ```
+
+   The script hashes the password with the same bcrypt settings used by the app, creates the user if missing, or updates the matching email to `super_admin` with `isActive=true`. It does not print the password.
+
+6. **Post-Deployment**
    - Verify deployment health at `https://<app-name>.replit.app`
    - Confirm database tables created (check logs for "✓ Everything is up to date")
    - Test on mobile devices

@@ -10,7 +10,8 @@
     "check": "tsc",
     "test": "NODE_ENV=test JWT_SECRET=test-only-jwt-secret-32-characters-minimum SESSION_SECRET=test-only-session-secret node --import tsx tests/run-tests.ts",
     "db:push": "drizzle-kit push",
-    "db:migrate": "npm run db:push"
+    "db:migrate": "npm run db:push",
+    "create:superadmin": "tsx scripts/create-superadmin.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.17.0",
