@@ -1173,7 +1173,7 @@ export const systemSettings = pgTable("system_settings", {
   // Stripe Automatic Tax - enables/disables automatic tax calculation on all payments
   automaticTaxEnabled: boolean("automatic_tax_enabled").default(false).notNull(),
   // Platform Washout Fee - fee charged per washout transaction (in dollars)
-  platformWashoutFee: decimal("platform_washout_fee", { precision: 10, scale: 2 }).default("4.00").notNull(),
+  platformWashoutFee: decimal("platform_washout_fee", { precision: 10, scale: 2 }).default("5.00").notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
   updatedBy: varchar("updated_by").references(() => users.id), // Track who made the change
 });

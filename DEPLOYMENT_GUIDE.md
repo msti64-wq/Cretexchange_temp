@@ -220,6 +220,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
 - [ ] `DATABASE_URL` points at the production PostgreSQL database.
 - [ ] `JWT_SECRET` and `SESSION_SECRET` are separate high-entropy values; `JWT_SECRET` is at least 32 characters.
 - [ ] Stripe has `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLIC_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PLATFORM_FINANCIAL_ACCOUNT_ID` configured for the same Stripe mode.
+- [ ] `system_settings.platform_washout_fee` is set to `5.00` in production if the database was seeded with an older value.
 - [ ] Object storage has `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS`, and `DEFAULT_OBJECT_STORAGE_BUCKET_ID` configured for the deployment bucket.
 - [ ] Google services have `GOOGLE_CLOUD_PROJECT_ID`, `GOOGLE_CLOUD_BUCKET_NAME`, and `VITE_GOOGLE_MAPS_API_KEY` configured; browser-exposed keys are domain restricted.
 - [ ] No placeholder, test-only, or local development values remain in deployment secrets.

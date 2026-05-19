@@ -3069,7 +3069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const waiveOwnerPaymentFlag = await storage.getFeatureFlag('waive_owner_payment');
       const waiveMonthlyFees = waiveOwnerPaymentFlag?.enabled ?? false;
 
-      // CC is always required — owners need it for the weekly $4/washout billing
+      // CC is always required — owners need it for the weekly $5/washout billing
       if (!owner.stripePaymentMethodId) {
         return res.status(400).json({ 
           message: `Please add a credit card before adding locations. It is required for weekly washout billing ($5.00 per washout). Go to Payment Methods to add a card.` 
