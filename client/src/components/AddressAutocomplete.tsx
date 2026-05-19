@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MapPin, Loader2 } from "lucide-react";
@@ -23,12 +24,13 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
   const initializedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
     if (!apiKey || apiKey === 'YOUR_API_KEY') {
-      setError("Google Maps API key not configured");
+      setError("Google Maps is not configured. Set VITE_GOOGLE_MAPS_API_KEY and enable the Places and Geocoding APIs, or enter latitude and longitude manually.");
       return;
     }
 
@@ -50,7 +52,7 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
           const place = autocompleteRef.current?.getPlace();
 
           if (!place || !place.geometry || !place.address_components) {
-            setError("Please select a valid address from the suggestions");
+            setError("Select a valid address from the suggestions or enter latitude and longitude manually.");
             return;
           }
 
@@ -100,7 +102,7 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
         }
       } catch (err) {
         console.error('Error initializing autocomplete:', err);
-        setError("Failed to initialize address search");
+        setError("Failed to initialize address search. Check your Google Maps key and API access, or use manual coordinates.");
         initializedRef.current = false;
       }
     };
@@ -113,7 +115,7 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
         script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
         script.async = true;
         script.defer = true;
-        script.onerror = () => setError("Failed to load Google Maps");
+        script.onerror = () => setError("Failed to load Google Maps. Check the API key, key restrictions, and that Places/Geocoding are enabled.");
         document.head.appendChild(script);
       }
     };
@@ -144,18 +146,32 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
       if (pollRef.current) clearInterval(pollRef.current);
       clearTimeout(timeout);
     };
-  }, [onPlaceSelected]);
+  }, [onPlaceSelected, retryToken]);
 
   if (error) {
     return (
       <div className="space-y-2">
         <Label>Address Search (Manual Entry Required)</Label>
-        <div className="p-3 rounded-md bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 text-sm text-yellow-800 dark:text-yellow-200">
-          <p>{error === "Google Maps API key not configured"
+      <div className="p-3 rounded-md bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 text-sm text-yellow-800 dark:text-yellow-200">
+          <p>{error?.includes("Google Maps is not configured")
             ? "Address autocomplete unavailable. Please enter address manually below."
             : error}
           </p>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => {
+            initializedRef.current = false;
+            setError(null);
+            setIsLoading(false);
+            setRetryToken((value) => value + 1);
+          }}
+          data-testid="button-retry-address-autocomplete"
+        >
+          Retry address search
+        </Button>
       </div>
     );
   }

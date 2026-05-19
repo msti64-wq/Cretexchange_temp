@@ -41,6 +41,8 @@ export default function OwnerLocations() {
     city: "",
     state: "",
     zip: "",
+    latitude: "",
+    longitude: "",
     rate: "5.00",
     operatingHours: "",
     amenities: "",
@@ -86,7 +88,26 @@ export default function OwnerLocations() {
       city: place.city,
       state: place.state,
       zip: place.zip,
+      latitude: place.latitude?.toString() || "",
+      longitude: place.longitude?.toString() || "",
     }));
+  }, []);
+
+  const getReadableApiError = useCallback((error: unknown) => {
+    const rawMessage = error instanceof Error ? error.message : String(error);
+    const payloadMatch = rawMessage.match(/^\d+:\s*([\s\S]*)$/);
+    const payload = payloadMatch?.[1] ?? rawMessage;
+
+    try {
+      const parsed = JSON.parse(payload);
+      if (parsed && typeof parsed.message === "string") {
+        return parsed.message;
+      }
+    } catch {
+      // Fall through to the raw payload.
+    }
+
+    return payload;
   }, []);
 
   const { data: locations, isLoading } = useQuery<any[]>({
@@ -114,9 +135,13 @@ export default function OwnerLocations() {
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
     },
     onError: (error) => {
+      const message = getReadableApiError(error);
+      const geocodingHint = /geocod|google maps|latitude|longitude|address/i.test(message)
+        ? " If autocomplete fails, enter latitude and longitude manually in the form."
+        : "";
       toast({
         title: "Failed to Add Location",
-        description: error.message,
+        description: `${message}${geocodingHint}`,
         variant: "destructive",
       });
     },
@@ -439,7 +464,7 @@ export default function OwnerLocations() {
                       onPlaceSelected={handlePlaceSelected}
                     />
 
-                    {/* Address fields auto-filled by autocomplete, coords geocoded server-side */}
+                    {/* Address fields auto-filled by autocomplete, coordinates preserved or entered manually */}
                     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
                       <p className="text-sm font-medium">Location Details</p>
                       <div>
@@ -488,6 +513,48 @@ export default function OwnerLocations() {
                           required
                           data-testid="input-zip"
                         />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium">Coordinates</p>
+                          <p className="text-xs text-muted-foreground">
+                            Auto-filled from address lookup. If lookup fails, enter them manually to avoid geocoding errors.
+                          </p>
+                        </div>
+                        {(formData.latitude || formData.longitude) && (
+                          <Badge variant="outline" className="shrink-0">
+                            Coordinates set
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="latitude">Latitude</Label>
+                          <Input
+                            id="latitude"
+                            type="number"
+                            step="0.000001"
+                            value={formData.latitude}
+                            onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                            placeholder="e.g. 39.739236"
+                            data-testid="input-latitude"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="longitude">Longitude</Label>
+                          <Input
+                            id="longitude"
+                            type="number"
+                            step="0.000001"
+                            value={formData.longitude}
+                            onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                            placeholder="e.g. -104.990251"
+                            data-testid="input-longitude"
+                          />
+                        </div>
                       </div>
                     </div>
                   </>
@@ -543,6 +610,41 @@ export default function OwnerLocations() {
                         required
                         data-testid="input-zip"
                       />
+                    </div>
+
+                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
+                      <div>
+                        <p className="text-sm font-medium">Coordinates</p>
+                        <p className="text-xs text-muted-foreground">
+                          Required if address lookup is unavailable or fails.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="latitude">Latitude</Label>
+                          <Input
+                            id="latitude"
+                            type="number"
+                            step="0.000001"
+                            value={formData.latitude}
+                            onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                            placeholder="e.g. 39.739236"
+                            data-testid="input-latitude"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="longitude">Longitude</Label>
+                          <Input
+                            id="longitude"
+                            type="number"
+                            step="0.000001"
+                            value={formData.longitude}
+                            onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                            placeholder="e.g. -104.990251"
+                            data-testid="input-longitude"
+                          />
+                        </div>
+                      </div>
                     </div>
 
                   </>
