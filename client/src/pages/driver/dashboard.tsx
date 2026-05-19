@@ -11,7 +11,7 @@ import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2, RefreshCw, Navigation, CreditCard } from "lucide-react";
+import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2, RefreshCw, Navigation, CreditCard, Truck, Route, Loader2, ShieldAlert, ArrowRight, Activity, MapPinned } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 type DashboardMetricProps = {
@@ -25,16 +25,16 @@ type DashboardMetricProps = {
 
 function DashboardMetric({ title, value, helper, icon: Icon, tone, dataTestId }: DashboardMetricProps) {
   return (
-    <Card className="group overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <Card className="group overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border/90 hover:shadow-md">
       <div className="h-1 bg-gradient-to-r from-primary/70 via-secondary/60 to-accent/60" />
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground" data-testid={dataTestId}>{value}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid={dataTestId}>{value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
           </div>
-          <div className={`rounded-xl p-3 ${tone}`}>
+          <div className={`rounded-xl border border-border/60 p-3 ${tone}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -46,12 +46,12 @@ function DashboardMetric({ title, value, helper, icon: Icon, tone, dataTestId }:
 function DriverDashboardSkeleton() {
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="border-b bg-card">
-        <div className="mx-auto max-w-6xl p-4">
-          <Skeleton className="h-12 w-48" />
+      <div className="gradient-bg text-white">
+        <div className="mx-auto max-w-6xl px-4 py-4">
+          <Skeleton className="h-14 w-full max-w-md bg-white/20" />
         </div>
       </div>
-      <main className="mx-auto max-w-6xl space-y-6 p-4">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
             <Card key={item} className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
@@ -64,10 +64,10 @@ function DriverDashboardSkeleton() {
           ))}
         </div>
         <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-          <Skeleton className="h-64 rounded-lg" />
-          <Skeleton className="h-64 rounded-lg" />
+          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
         </div>
-        <Skeleton className="h-72 rounded-lg" />
+        <Skeleton className="h-72 rounded-2xl" />
       </main>
     </div>
   );
@@ -131,6 +131,11 @@ export default function DriverDashboard() {
   const totalPaid = Array.isArray(paymentHistory) ? paymentHistory.reduce((sum: number, payment: any) => 
     sum + Number(payment.amount || 0), 0
   ) : 0;
+  const latestActivity = Array.isArray(recentActivities) && recentActivities.length > 0 ? recentActivities[0] : null;
+  const latestLocationName = latestActivity?.washout_locations?.name || latestActivity?.location?.name || "Latest stop";
+  const latestLocationAddress = latestActivity?.washout_locations?.address || latestActivity?.location?.address || "";
+  const latestActivityAmount = Number(latestActivity?.washout_activities?.amount || latestActivity?.amount || 0);
+  const latestActivityStatus = latestActivity ? (latestActivity.washout_activities?.status || latestActivity.status) : null;
   const driverChartData = [
     { label: "Today", earnings: Math.max(adjustedDailyEarnings, 0), washouts: dailyStats?.visits || 0 },
     { label: "7 days", earnings: Math.max(weeklyNetEarnings, 0), washouts: weeklyStats?.totalWashouts || 0 },
@@ -142,20 +147,141 @@ export default function DriverDashboard() {
       <DriverHeader />
 
       {/* GPS Status Bar */}
-      <div className="px-4 py-3 bg-card border-b border-border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-sm font-medium" data-testid="text-gps-status">GPS Active</span>
+      <div className="border-b border-border/70 bg-card/95 px-4 py-3 shadow-sm">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)] animate-pulse" />
+            <span className="text-sm font-semibold tracking-tight" data-testid="text-gps-status">GPS Active</span>
           </div>
-          <div className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-3 py-1 rounded-full text-sm font-medium">
-            <MapPin className="w-4 h-4 inline mr-1" />
+          <div className="inline-flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">
+            <MapPin className="h-4 w-4" />
             <span data-testid="text-current-location">Location Enabled</span>
           </div>
         </div>
       </div>
 
-      <main className="mx-auto max-w-6xl p-4 space-y-6">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
+        <section className="grid gap-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm lg:grid-cols-[1.15fr_0.85fr] lg:p-6">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Field ops
+              </span>
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/25 dark:text-emerald-300">
+                GPS ready
+              </span>
+              <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                {dailyStats?.visits || 0} site stops today
+              </span>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Driver operations
+              </p>
+              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Driver Dashboard</h2>
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                Keep the truck moving, check earnings, and jump to the next washout location without losing time on site.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Button
+                variant="outline"
+                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                onClick={() => setLocation('/locations')}
+                data-testid="button-find-location-hero"
+              >
+                <MapPin className="h-5 w-5 text-primary" />
+                <span className="text-sm font-semibold">Find Location</span>
+                <span className="text-xs text-muted-foreground">Search nearby washout sites</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                onClick={() => setLocation('/wallet')}
+                data-testid="button-access-wallet-hero"
+              >
+                <Wallet className="h-5 w-5 text-secondary" />
+                <span className="text-sm font-semibold">My Wallet</span>
+                <span className="text-xs text-muted-foreground">Review payout history</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                onClick={() => setLocation('/activity')}
+                data-testid="button-view-all-hero"
+              >
+                <Activity className="h-5 w-5 text-accent" />
+                <span className="text-sm font-semibold">Recent Activity</span>
+                <span className="text-xs text-muted-foreground">Open washout history</span>
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Latest stop</p>
+                <h3 className="mt-1 text-lg font-semibold tracking-tight">{latestLocationName}</h3>
+              </div>
+              <div className="rounded-full bg-primary/10 p-2 text-primary">
+                <Truck className="h-5 w-5" />
+              </div>
+            </div>
+
+            {latestActivity ? (
+              <div className="mt-4 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <Route className="h-4 w-4 text-secondary" />
+                      <span className="truncate">{latestLocationName}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {new Date(latestActivity.washout_activities?.checkInTime || latestActivity.checkInTime).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </p>
+                    {latestLocationAddress && (
+                      <p className="mt-1 break-words text-xs text-muted-foreground">{latestLocationAddress}</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-semibold tracking-tight text-foreground">
+                      {formatCurrency(latestActivityAmount)}
+                    </p>
+                    <div className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                      latestActivityStatus === 'verified'
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                        : latestActivityStatus === 'pending'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
+                          : 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300'
+                    }`}>
+                      {latestActivityStatus === 'verified' ? 'Approved' : latestActivityStatus === 'pending' ? 'Pending' : 'Rejected'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Weekly net</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(weeklyNetEarnings)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/70 bg-background/80 px-3 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Wallet total</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(totalPaid)}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-background/70 p-4 text-sm text-muted-foreground">
+                No recent washouts yet. Your next location stop will appear here with payout details.
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Profile Completion Notice */}
         {(dashboardData as any)?.user && (
           !(dashboardData as any).user.phone || 
@@ -169,22 +295,22 @@ export default function DriverDashboard() {
           !(dashboardData as any).user.roleData?.truckNumber ||
           !(dashboardData as any).user.roleData?.hasAgreedToTerms
         ) && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <div className="w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-white text-xs font-bold">!</span>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+                <ShieldAlert className="h-4 w-4" />
               </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-amber-800 dark:text-amber-200 mb-1">
+              <div className="min-w-0 flex-1">
+                <h3 className="mb-1 font-semibold text-amber-900 dark:text-amber-100">
                   Complete Your Profile
                 </h3>
-                <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+                <p className="mb-3 text-sm text-amber-800 dark:text-amber-200">
                   Please complete your profile and set up your payment method to receive earnings from washout activities.
                 </p>
                 <Button
                   size="sm"
                   onClick={() => setLocation('/profile')}
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  className="h-10 bg-amber-600 text-white hover:bg-amber-700"
                   data-testid="button-complete-profile"
                 >
                   Complete Profile
@@ -254,81 +380,88 @@ export default function DriverDashboard() {
         </section>
 
         {/* Lottery Entries Card - always visible */}
-        <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${lotteryActive ? 'bg-yellow-500' : 'bg-yellow-300 dark:bg-yellow-700'}`}>
-                  <Ticket className="w-6 h-6 text-white" />
+        <Card className="overflow-hidden rounded-3xl border-border/70 bg-card/95 shadow-sm">
+          <div className="h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-600" />
+          <CardContent className="space-y-4 p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-200 ${lotteryActive ? 'bg-amber-500 text-white dark:border-amber-900/40' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
+                  <Ticket className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">Monthly Lottery</h3>
-                  <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Monthly lottery</p>
+                  <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                    {lotteryActive ? 'Entries are active' : 'Lottery coming soon'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
                     {lotteryActive
-                      ? `Drawing closes end of ${new Date().toLocaleDateString('en-US', { month: 'long' })}`
-                      : 'Coming soon — stay tuned!'}
+                      ? `Drawing closes at the end of ${new Date().toLocaleDateString('en-US', { month: 'long' })}`
+                      : 'Complete washouts to stay eligible when the program goes live.'}
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-yellow-700 dark:text-yellow-300" data-testid="text-lottery-entries">
+              <div className="rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-left sm:text-right">
+                <div className="text-3xl font-semibold tracking-tight text-foreground" data-testid="text-lottery-entries">
                   {lotteryActive ? lotteryEntryCount : '—'}
                 </div>
-                <div className="text-xs text-yellow-600 dark:text-yellow-400">
+                <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
                   {lotteryActive ? 'entries this month' : 'not active yet'}
                 </div>
               </div>
             </div>
 
-            {/* Toggle to see individual entries — only when active and has entries */}
             {lotteryActive && lotteryEntryCount > 0 && (
               <>
                 <button
                   onClick={() => setShowLotteryEntries(!showLotteryEntries)}
-                  className="flex items-center gap-1 text-xs font-medium text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 transition-colors w-full"
+                  className="flex w-full items-center gap-2 rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted/60"
                 >
-                  {showLotteryEntries ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  {showLotteryEntries ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   {showLotteryEntries ? "Hide" : "View"} my entries
                 </button>
 
                 {showLotteryEntries && (
-                  <div className="border-t border-yellow-200 dark:border-yellow-700 pt-3 space-y-2">
+                  <div className="space-y-2 border-t border-border/70 pt-3">
                     {lotteryEntriesLoading ? (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading entries...
+                        </div>
                         {[1, 2].map(i => (
-                          <div key={i} className="h-10 bg-yellow-100 dark:bg-yellow-800/30 rounded animate-pulse" />
+                          <div key={i} className="h-12 rounded-2xl bg-muted/50" />
                         ))}
                       </div>
                     ) : lotteryEntries && lotteryEntries.length > 0 ? (
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                      <div className="max-h-64 space-y-2 overflow-y-auto">
                         {lotteryEntries.map((entry: any) => (
                           <div
                             key={entry.id}
-                            className="bg-white/50 dark:bg-black/20 rounded-lg px-3 py-2 space-y-1"
+                            className="rounded-2xl border border-border/70 bg-muted/30 px-3 py-3"
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <Building2 className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-                                <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 truncate">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <Building2 className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <p className="truncate text-xs font-semibold text-foreground">
                                   {entry.locationName || entry.ownerCompany || "Location"}
                                 </p>
                               </div>
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                <Ticket className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
-                                <span className="text-sm font-bold text-yellow-700 dark:text-yellow-300">
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Ticket className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                                <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
                                   +{entry.entriesEarned}
                                 </span>
                               </div>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                            <div className="mt-2 flex items-center justify-between gap-3">
+                              <p className="text-xs text-muted-foreground">
                                 {entry.activityDate
                                   ? new Date(entry.activityDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                                   : new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </p>
                               {entry.ticketNumber && (
-                                <span className="text-xs font-mono font-semibold text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/40 px-2 py-0.5 rounded">
-                                  🎟 {entry.ticketNumber}
+                                <span className="rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] font-mono font-semibold text-foreground">
+                                  #{entry.ticketNumber}
                                 </span>
                               )}
                             </div>
@@ -336,7 +469,7 @@ export default function DriverDashboard() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-yellow-600 dark:text-yellow-400 text-center py-2">No entries found</p>
+                      <p className="py-2 text-center text-xs text-muted-foreground">No entries found</p>
                     )}
                   </div>
                 )}
@@ -344,22 +477,41 @@ export default function DriverDashboard() {
             )}
 
             {lotteryActive && lotteryEntryCount === 0 && (
-              <p className="text-xs text-yellow-600 dark:text-yellow-400 text-center py-1">
+              <p className="py-1 text-center text-xs text-muted-foreground">
                 Complete washouts at participating locations to earn entries.
               </p>
             )}
           </CardContent>
         </Card>
 
-        {/* Find Location Button */}
-        <Button 
-          className="w-full py-6 text-lg font-semibold bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 text-accent-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
-          onClick={() => setLocation('/locations')}
-          data-testid="button-find-location"
-        >
-          <MapPin className="w-6 h-6 mr-3" />
-          Find Location
-        </Button>
+        {/* Quick Actions */}
+        <section className="grid gap-3 sm:grid-cols-2">
+          <Button
+            variant="outline"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+            onClick={() => setLocation('/locations')}
+            data-testid="button-find-location"
+          >
+            <MapPin className="h-5 w-5 text-primary" />
+            <div>
+              <div className="text-sm font-semibold">Find Location</div>
+              <div className="text-xs text-muted-foreground">Open washout site list</div>
+            </div>
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+            onClick={() => setLocation('/wallet')}
+            data-testid="button-access-wallet"
+          >
+            <Wallet className="h-5 w-5 text-secondary" />
+            <div>
+              <div className="text-sm font-semibold">My Wallet</div>
+              <div className="text-xs text-muted-foreground">Check payout history</div>
+            </div>
+          </Button>
+        </section>
 
         {/* Earnings Summary */}
         <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
@@ -448,40 +600,36 @@ export default function DriverDashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <DollarSign className="w-5 h-5 text-green-600" />
-                <h3 className="font-semibold text-lg">Payment Status</h3>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Payout snapshot</p>
+                  <h3 className="font-semibold text-lg">Payment Status</h3>
+                </div>
               </div>
             </div>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600" data-testid="text-pending-earnings">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">Pending today</div>
+                  <div className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300" data-testid="text-pending-earnings">
                     {formatCurrency(adjustedDailyEarnings)}
                   </div>
-                  <div className="text-sm text-green-700 dark:text-green-300">Pending Today</div>
+                  <div className="mt-1 text-xs text-emerald-700/80 dark:text-emerald-300/80">Awaiting settlement</div>
                 </div>
-                <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-900/40 dark:bg-sky-950/20">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">Total paid</div>
+                  <div className="mt-2 text-2xl font-semibold tracking-tight text-sky-700 dark:text-sky-300">
                     {formatCurrency(totalPaid)}
                   </div>
-                  <div className="text-sm text-blue-700 dark:text-blue-300">Total Paid</div>
+                  <div className="mt-1 text-xs text-sky-700/80 dark:text-sky-300/80">Recorded payment history</div>
                 </div>
               </div>
-              <div className="text-center text-sm text-muted-foreground">
-                <p>Payments processed weekly • You receive full amounts</p>
+              <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                <span>Payments processed weekly</span>
+                <span className="font-medium text-foreground">You receive full amounts</span>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* My Wallet Button */}
-        <Button 
-          className="w-full py-6 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5"
-          onClick={() => setLocation('/wallet')}
-          data-testid="button-access-wallet"
-        >
-          <Wallet className="w-6 h-6 mr-3" />
-          My Wallet
-        </Button>
 
         {/* Recent Activity */}
         <StatCard
@@ -490,38 +638,43 @@ export default function DriverDashboard() {
             <Button 
               variant="ghost" 
               size="sm" 
-              className="text-primary hover:text-primary/80"
+              className="h-9 px-2 text-primary hover:text-primary/80"
               onClick={() => setLocation('/activity')}
               data-testid="button-view-all"
             >
               View All
+              <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           }
         >
           <div className="space-y-3">
             {!recentActivities?.length ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No recent washouts</p>
+              <div className="rounded-2xl border border-border/70 bg-muted/30 px-6 py-10 text-center text-muted-foreground">
+                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-background shadow-sm">
+                  <Clock className="h-7 w-7 opacity-50" />
+                </div>
+                <p className="text-sm font-medium text-foreground">No recent washouts</p>
+                <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
+                  New site activity will appear here once a washout is submitted.
+                </p>
               </div>
             ) : (
               recentActivities.map((activity: any, index: number) => (
-                <div key={activity.washout_activities?.id || activity.id || index} className="p-4 bg-muted/50 rounded-lg space-y-3" data-testid={`card-activity-${index}`}>
-                  {/* Header Row - Date and Amount */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <MapPin className="w-5 h-5 text-primary" />
+                <div key={activity.washout_activities?.id || activity.id || index} className="space-y-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm" data-testid={`card-activity-${index}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                        <Route className="h-5 w-5 text-primary" />
                       </div>
-                      <div>
-                        <div className="font-medium text-sm" data-testid={`text-activity-date-${index}`}>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold" data-testid={`text-activity-date-${index}`}>
                           {new Date(activity.washout_activities?.checkInTime || activity.checkInTime).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
                           })}
                         </div>
-                        <div className="text-xs text-muted-foreground" data-testid={`text-activity-time-${index}`}>
+                        <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-activity-time-${index}`}>
                           {new Date(activity.washout_activities?.checkInTime || activity.checkInTime).toLocaleTimeString('en-US', {
                             hour: 'numeric',
                             minute: '2-digit',
@@ -532,54 +685,51 @@ export default function DriverDashboard() {
                     </div>
                     
                     <div className="text-right">
-                      <div className="font-bold text-lg text-accent" data-testid={`text-activity-amount-${index}`}>
+                      <div className="text-lg font-semibold tracking-tight text-accent" data-testid={`text-activity-amount-${index}`}>
                         {formatCurrency(Number(activity.washout_activities?.amount || activity.amount || 0))}
                       </div>
                     </div>
                   </div>
                   
-                  {/* Location Row - Full width for location name */}
-                  <div className="w-full">
-                    <div className="text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
-                      📍 {activity.washout_locations?.name || activity.location?.name || 'Unknown Location'}
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                      <div className="flex items-center gap-2 text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
+                        <MapPinned className="h-4 w-4 text-secondary" />
+                        <span className="truncate">{activity.washout_locations?.name || activity.location?.name || 'Unknown Location'}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {activity.washout_locations?.address || activity.location?.address || 'Address unavailable'}
+                      </div>
                     </div>
+                    <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                      <div className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                        (activity.washout_activities?.status || activity.status) === 'verified'
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                          : (activity.washout_activities?.status || activity.status) === 'pending'
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
+                            : 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300'
+                      }`} data-testid={`text-activity-status-${index}`}>
+                        {(activity.washout_activities?.status || activity.status) === 'verified' ? 'Approved & Paid' : 
+                         (activity.washout_activities?.status || activity.status) === 'pending' ? 'Pending Review' : 'Rejected'}
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName
+                          ? `Owner: ${activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName} ${activity.location?.owner?.user?.lastName || activity.washout_locations?.owner?.user?.lastName || ''}`
+                          : 'Owner contact not available'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
                     {(activity.washout_locations?.address || activity.location?.address) && (
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs text-muted-foreground">
                         {activity.washout_locations?.address || activity.location?.address}
                       </div>
                     )}
-                    {(activity.location?.owner?.user || activity.washout_locations?.owner?.user) && (
-                      <div className="text-xs text-muted-foreground mt-1" data-testid={`text-owner-name-${index}`}>
-                        👤 Owner: {(activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName)} {(activity.location?.owner?.user?.lastName || activity.washout_locations?.owner?.user?.lastName)}
-                      </div>
-                    )}
-                    {(activity.location?.owner?.user?.phone || activity.washout_locations?.owner?.user?.phone) && (
-                      <div className="text-xs text-muted-foreground mt-1" data-testid={`text-owner-phone-${index}`}>
-                        📞 Phone: {activity.location?.owner?.user?.phone || activity.washout_locations?.owner?.user?.phone}
-                      </div>
-                    )}
-                    {((activity.washout_activities?.latitude && activity.washout_activities?.longitude) || (activity.latitude && activity.longitude)) && (
-                      <div className="text-xs text-muted-foreground mt-1" data-testid={`text-gps-coordinates-${index}`}>
-                        🌐 GPS: {Number(activity.washout_activities?.latitude || activity.latitude).toFixed(6)}, {Number(activity.washout_activities?.longitude || activity.longitude).toFixed(6)}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Status and Actions Row */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                    <div className={`text-xs font-medium px-3 py-1.5 rounded-full ${
-                      (activity.washout_activities?.status || activity.status) === 'verified' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300' : 
-                      (activity.washout_activities?.status || activity.status) === 'pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300' : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300'
-                    }`} data-testid={`text-activity-status-${index}`}>
-                      {(activity.washout_activities?.status || activity.status) === 'verified' ? '✅ Approved & Paid' : 
-                       (activity.washout_activities?.status || activity.status) === 'pending' ? '⏳ Pending Review' : '❌ Rejected'}
-                    </div>
-                    
-                    {/* Photos button - ALWAYS VISIBLE */}
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-xs h-8 px-3"
+                      className="h-9 px-3 text-xs"
                       onClick={() => {
                         console.log("Driver Photo Button Clicked:", activity);
                         setSelectedActivity(activity);
@@ -587,7 +737,7 @@ export default function DriverDashboard() {
                       }}
                       data-testid={`button-view-photos-${index}`}
                     >
-                      <ImageIcon className="w-4 h-4 mr-1" />
+                      <ImageIcon className="mr-1 h-4 w-4" />
                       Photos
                     </Button>
                   </div>
@@ -598,51 +748,51 @@ export default function DriverDashboard() {
         </StatCard>
 
         {/* Support Section */}
-        <StatCard title="Need Help?" className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-2 flex-1">
-              <p className="text-sm text-muted-foreground">Contact our support team for assistance</p>
-              <div className="flex items-center space-x-2 text-sm">
-                <Phone className="w-4 h-4 text-blue-600" />
-                <span className="font-medium text-blue-600" data-testid="text-support-phone">(469) 269-6709</span>
+        <StatCard title="Need Help?" className="border-sky-200 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-slate-900">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex-1 space-y-2">
+              <p className="text-sm text-muted-foreground">Contact the operations team for help with washouts, payouts, or site access.</p>
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="h-4 w-4 text-sky-600" />
+                <span className="font-medium text-sky-700 dark:text-sky-300" data-testid="text-support-phone">(469) 269-6709</span>
               </div>
             </div>
             <Button 
               size="sm" 
-              className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+              className="h-10 w-full bg-sky-600 text-white hover:bg-sky-700 sm:w-auto"
               onClick={() => setIsSupportDialogOpen(true)}
               data-testid="button-contact-support"
             >
-              <MessageCircle className="w-4 h-4 mr-2" />
+              <MessageCircle className="mr-2 h-4 w-4" />
               Message Support
             </Button>
           </div>
         </StatCard>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Button 
             variant="outline" 
-            className="h-20 flex-col space-y-2"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
             onClick={() => setLocation('/activity')}
             data-testid="button-view-history"
           >
-            <History className="w-6 h-6 text-primary" />
-            <div className="text-center">
-              <div className="font-medium">View History</div>
+            <History className="h-5 w-5 text-primary" />
+            <div>
+              <div className="text-sm font-semibold">View History</div>
               <div className="text-xs text-muted-foreground">Download CSV</div>
             </div>
           </Button>
           
           <Button 
             variant="outline" 
-            className="h-20 flex-col space-y-2"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
             onClick={() => setLocation('/profile')}
             data-testid="button-profile"
           >
-            <User className="w-6 h-6 text-secondary" />
-            <div className="text-center">
-              <div className="font-medium">Profile</div>
+            <User className="h-5 w-5 text-secondary" />
+            <div>
+              <div className="text-sm font-semibold">Profile</div>
               <div className="text-xs text-muted-foreground">Update Details</div>
             </div>
           </Button>
