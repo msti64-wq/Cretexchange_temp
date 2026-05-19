@@ -33,7 +33,7 @@ interface MapboxFeature {
   context?: MapboxContextEntry[];
 }
 
-const VERIFY_MESSAGE = "We could not verify this address. Please select a valid address from the dropdown suggestions or contact support.";
+const VERIFY_MESSAGE = "Please select an address from the suggestions.";
 
 function getContextEntry(feature: MapboxFeature, prefix: string) {
   return feature.context?.find((entry) => entry.id.startsWith(prefix));
@@ -128,7 +128,9 @@ export function AddressAutocomplete({ onPlaceSelected, onInputChange, defaultVal
         setSuggestions(features);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        console.warn("Mapbox autocomplete lookup failed:", (err as Error).message);
+        if (import.meta.env.DEV) {
+          console.warn("Mapbox autocomplete lookup failed:", (err as Error).message);
+        }
         setSuggestions([]);
         setError(VERIFY_MESSAGE);
       } finally {

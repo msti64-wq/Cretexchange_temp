@@ -104,6 +104,8 @@ export default function OwnerLocations() {
     }));
   }, []);
 
+  const canSubmitLocation = isAddressVerified && !!formData.latitude && !!formData.longitude;
+
   const updateAddressField = useCallback((field: "street" | "city" | "state" | "zip", value: string) => {
     setIsAddressVerified(false);
     setFormData((prev) => ({
@@ -298,7 +300,7 @@ export default function OwnerLocations() {
     if (!isAddressVerified || !formData.latitude || !formData.longitude) {
       toast({
         title: "Address Verification Required",
-        description: "We could not verify this address. Please select a valid address from the dropdown suggestions or contact support.",
+        description: "Please select an address from the suggestions.",
         variant: "destructive",
       });
       return;
@@ -516,6 +518,11 @@ export default function OwnerLocations() {
                     {/* Address fields auto-filled by autocomplete, coordinates must come from Places */}
                     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
                       <p className="text-sm font-medium">Location Details</p>
+                      {!canSubmitLocation && (
+                        <p className="text-xs text-muted-foreground">
+                          Please select an address from the suggestions.
+                        </p>
+                      )}
                       <div>
                         <Label htmlFor="street">Street Address</Label>
                         <Input
@@ -661,7 +668,7 @@ export default function OwnerLocations() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={addLocationMutation.isPending}
+                  disabled={addLocationMutation.isPending || !canSubmitLocation}
                   data-testid="button-submit-location"
                 >
                   {addLocationMutation.isPending ? "Creating..." : "Create Location"}

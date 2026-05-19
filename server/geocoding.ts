@@ -35,6 +35,12 @@ export async function geocodeAddress(
   const data = await response.json().catch(() => null) as any;
 
   if (!response.ok) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Mapbox geocoding failed:', {
+        status: response.status,
+        statusText: response.statusText,
+      });
+    }
     const reason = response.status === 401 || response.status === 403
       ? 'Mapbox rejected the geocoding request. Check VITE_MAPBOX_TOKEN and token restrictions.'
       : 'Unable to verify this address. Please select a valid address from the dropdown suggestions or contact support.';
@@ -43,6 +49,12 @@ export async function geocodeAddress(
 
   const feature = data?.features?.[0];
   if (!feature || !Array.isArray(feature.center) || feature.center.length < 2) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('Mapbox geocoding returned no coordinates:', {
+        addressQuery,
+        responseStatus: data?.message || data?.code || 'no_results',
+      });
+    }
     throw new Error(
       'We could not verify this address. Please select a valid address from the dropdown suggestions or contact support.'
     );
