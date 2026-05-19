@@ -11535,8 +11535,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
         objectName: storageKey,
         method: 'PUT',
-        ttlSec: 600 // 10 minutes to complete upload
-        // Note: contentType parameter not supported by this function
+        ttlSec: 600, // 10 minutes to complete upload
+        contentType,
       });
       
       res.json({ 
@@ -11546,7 +11546,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error generating upload URL:', error);
-      res.status(500).json({ message: 'Failed to generate upload URL' });
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : 'Failed to generate upload URL',
+        endpoint: '/api/photos/upload-url'
+      });
     }
   });
   

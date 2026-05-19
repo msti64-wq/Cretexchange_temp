@@ -90,7 +90,10 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       });
       
       if (!uploadUrlResponse.ok) {
-        throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status}`);
+        const errorBody = await uploadUrlResponse.text().catch(() => "");
+        throw new Error(
+          `Upload URL request failed (${uploadUrlResponse.status})${errorBody ? `: ${errorBody}` : ""}`
+        );
       }
       
       const { uploadUrl, storageKey, contentType } = await uploadUrlResponse.json();
@@ -107,7 +110,10 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       });
       
       if (!uploadResponse.ok) {
-        throw new Error(`Cloud upload failed: ${uploadResponse.status}`);
+        const errorBody = await uploadResponse.text().catch(() => "");
+        throw new Error(
+          `Cloud upload failed (${uploadResponse.status})${errorBody ? `: ${errorBody}` : ""}`
+        );
       }
       
       console.log("✅ Photo uploaded successfully to storage:", storageKey);

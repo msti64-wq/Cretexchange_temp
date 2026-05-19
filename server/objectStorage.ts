@@ -10,25 +10,51 @@ import {
 } from "./objectAcl";
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+const isReplitDeployment = !!process.env.REPLIT_DEPLOYMENT || !!process.env.REPLIT;
+
+function createStorageClient(): Storage {
+  if (isReplitDeployment) {
+    return new Storage({
+      credentials: {
+        audience: "replit",
+        subject_token_type: "access_token",
+        token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
+        type: "external_account",
+        credential_source: {
+          url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
+          format: {
+            type: "json",
+            subject_token_field_name: "access_token",
+          },
+        },
+        universe_domain: "googleapis.com",
+      },
+      projectId: "",
+    });
+  }
+
+  const credentialsEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+  const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID || "";
+
+  if (credentialsEnv && credentialsEnv.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(credentialsEnv);
+      return new Storage({
+        projectId: parsed.project_id || projectId,
+        credentials: parsed,
+      });
+    } catch (error) {
+      console.warn("Failed to parse GOOGLE_APPLICATION_CREDENTIALS as JSON; falling back to default Google auth.");
+    }
+  }
+
+  return new Storage({
+    projectId,
+  });
+}
 
 // The object storage client is used to interact with the object storage service.
-export const objectStorageClient = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
-      },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
+export const objectStorageClient = createStorageClient();
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -265,35 +291,60 @@ export async function signObjectURL({
   objectName,
   method,
   ttlSec,
+  contentType,
 }: {
   bucketName: string;
   objectName: string;
   method: "GET" | "PUT" | "DELETE" | "HEAD";
   ttlSec: number;
+  contentType?: string;
 }): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method,
-    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-  };
-  const response = await fetch(
-    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
+  const file = objectStorageClient.bucket(bucketName).file(objectName);
+
+  if (isReplitDeployment) {
+    const request = {
+      bucket_name: bucketName,
+      object_name: objectName,
+      method,
+      expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
+    };
+    const response = await fetch(
+      `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(request),
+      }
     );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to sign object URL, errorcode: ${response.status}, make sure the Replit object storage sidecar is available`
+      );
+    }
+
+    const { signed_url: signedURL } = await response.json();
+    return signedURL;
   }
 
-  const { signed_url: signedURL } = await response.json();
-  return signedURL;
+  const signedUrlOptions: Parameters<typeof file.getSignedUrl>[0] = {
+    version: "v4",
+    action: method === "GET" || method === "HEAD" ? "read" : method === "PUT" ? "write" : method === "DELETE" ? "delete" : "read",
+    expires: Date.now() + ttlSec * 1000,
+  };
+
+  if (contentType && method === "PUT") {
+    signedUrlOptions.contentType = contentType;
+  }
+
+  try {
+    const [signedURL] = await file.getSignedUrl(signedUrlOptions);
+    return signedURL;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Failed to sign object URL with GCS. Check the bucket, service account credentials, and upload configuration. ${message}`
+    );
+  }
 }
