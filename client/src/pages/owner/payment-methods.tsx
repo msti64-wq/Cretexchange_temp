@@ -243,7 +243,7 @@ export default function PaymentMethods() {
             <div className="text-sm">
               <p className="font-semibold text-green-800 dark:text-green-200">Trial Period Active — No Signup or Monthly Fees</p>
               <p className="text-green-700 dark:text-green-300 mt-1">
-                You are only charged <strong>$5.00 per completed washout</strong>, billed weekly to your card on file. No signup fee. No monthly location fee.
+                Minimum owner charge is <strong>$5.00 per completed washout</strong>, billed weekly to your card on file. No signup fee. No monthly location fee.
               </p>
             </div>
           </div>
@@ -307,7 +307,7 @@ export default function PaymentMethods() {
                 <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
                   <p className="font-medium">How weekly billing works</p>
                   <p>Each Sunday, all washouts completed during the past week are totaled and a single charge is made to your card on file.</p>
-                  <p>Example: 10 washouts in a week = <strong>$40.00</strong> charged on Sunday.</p>
+                  <p>Example: 10 washouts in a week = <strong>$50.00</strong> charged on Sunday.</p>
                 </div>
               </div>
             </CardContent>

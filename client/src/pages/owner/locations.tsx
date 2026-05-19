@@ -845,9 +845,9 @@ export default function OwnerLocations() {
                 <span className="text-white text-xs font-bold">✓</span>
               </div>
               <div>
-                <p className="font-medium text-green-800 dark:text-green-200">Trial Period — No Signup or Monthly Fees</p>
+                <p className="font-medium text-green-800 dark:text-green-200">Trial Period Active — No Signup or Monthly Fees</p>
                 <p className="text-sm text-green-700 dark:text-green-300 mt-0.5">
-                  No signup fee. No monthly location fee. You are only charged <strong>$5.00 per completed washout</strong>, billed weekly to your card on file.
+                  Minimum owner charge is <strong>$5.00 per completed washout</strong>, billed weekly to your card on file. No signup fee. No monthly location fee.
                 </p>
               </div>
             </div>
