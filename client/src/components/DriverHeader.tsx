@@ -43,14 +43,14 @@ export function DriverHeader() {
         </div>
       )}
 
-      <header className="gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)]">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="sticky top-0 z-40 gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)] backdrop-blur supports-[backdrop-filter]:backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="brand-frame flex h-14 w-14 items-center justify-center rounded-2xl flex-shrink-0">
+            <div className="brand-frame flex h-12 w-12 items-center justify-center rounded-2xl flex-shrink-0 sm:h-14 sm:w-14">
               <img
                 src={logoImage}
                 alt="CreteXchange"
-                className="h-9 w-9 object-contain"
+                className="h-8 w-8 object-contain sm:h-9 sm:w-9"
               />
             </div>
             <div className="min-w-0">
@@ -84,7 +84,7 @@ export function DriverHeader() {
                 variant="outline"
                 size="sm"
                 onClick={handleInstallClick}
-                className="h-10 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                className="h-11 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white sm:h-10"
                 title="Add to Home Screen"
                 data-testid="button-install-app"
               >
@@ -98,7 +98,7 @@ export function DriverHeader() {
               size="sm"
               onClick={logout}
               data-testid="button-logout"
-              className="h-10 border-white/20 bg-black/20 text-white hover:bg-black/35 hover:text-white"
+              className="h-11 border-white/20 bg-black/20 text-white hover:bg-black/35 hover:text-white sm:h-10"
             >
               <LogOut className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Logout</span>

@@ -76,8 +76,8 @@ export function MobileNav({ role }: MobileNavProps) {
   const navItems = getNavItems();
 
   return (
-    <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-50 overflow-x-auto px-3 py-3">
-      <div className="mx-auto flex min-w-max max-w-6xl gap-2">
+    <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-50 overflow-x-auto px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2">
+      <div className="mx-auto grid min-w-max max-w-6xl grid-flow-col auto-cols-[minmax(72px,1fr)] gap-2">
         {navItems.map((item) => {
           const isActive = location === item.path;
           const Icon = item.icon;
@@ -88,7 +88,7 @@ export function MobileNav({ role }: MobileNavProps) {
               type="button"
               onClick={() => setLocation(item.path)}
               className={cn(
-                "nav-item flex min-w-[72px] flex-col items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-xs font-medium",
+                "nav-item flex min-w-[72px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2.5 text-[11px] font-medium",
                 isActive
                   ? "active"
                   : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
@@ -96,7 +96,7 @@ export function MobileNav({ role }: MobileNavProps) {
               data-testid={`nav-${item.label.toLowerCase()}`}
             >
               <div className="relative">
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                 {(item.label === 'Alerts' || item.label === 'Messages') && unreadCount > 0 && (
                   <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-xs text-white" data-testid="badge-unread-count">
                     {unreadCount > 9 ? '9+' : unreadCount}

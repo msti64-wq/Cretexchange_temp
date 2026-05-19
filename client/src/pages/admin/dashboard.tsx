@@ -30,7 +30,7 @@ function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" 
         </div>
       </div>
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
             <Card key={item} className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
               <CardContent className="space-y-3 p-4">
@@ -237,7 +237,7 @@ export default function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
-        <section className="grid gap-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm lg:grid-cols-[1.35fr_0.65fr] lg:p-6">
+        <section className="grid gap-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm md:grid-cols-[1.35fr_0.65fr] md:p-6">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -299,7 +299,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Revenue signal</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-monthly-subscriptions">
@@ -341,7 +341,7 @@ export default function AdminDashboard() {
 
         {/* Operations Snapshot */}
         <section className="space-y-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <DashboardMetricCard
               title="Revenue"
               value={formatCurrency(weekStats?.subscriptionRevenue || 0)}
@@ -415,7 +415,7 @@ export default function AdminDashboard() {
           }
         >
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Active licenses</p>
                 <p className="mt-1 text-xl font-semibold tracking-tight">{weekStats?.activeLicenses || 0}</p>
@@ -439,7 +439,7 @@ export default function AdminDashboard() {
         </DashboardSectionCard>
 
         {/* Revenue and Support Overview */}
-        <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
           <DashboardSectionCard
             title="Subscription Revenue"
             description="Revenue and license activity this period."
@@ -454,7 +454,7 @@ export default function AdminDashboard() {
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">Collected revenue for the selected window</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   className="rounded-2xl border border-border/70 bg-background/80 p-4 text-left shadow-sm transition-colors hover:bg-muted/50"
                   onClick={() => window.location.href = '/subscriptions?filter=active'}

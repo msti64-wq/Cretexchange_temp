@@ -33,8 +33,8 @@ export function DashboardMetricCard({
       data-testid={dataTestId}
     >
       <div className="h-1 bg-gradient-to-r from-primary/70 via-secondary/60 to-accent/60" />
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
+      <CardContent className="p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3 sm:gap-4">
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
@@ -44,11 +44,11 @@ export function DashboardMetricCard({
                 </span>
               )}
             </div>
-            <div className="text-2xl font-semibold tracking-tight text-foreground">{value}</div>
+            <div className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{value}</div>
             {helper && <p className="text-xs text-muted-foreground">{helper}</p>}
           </div>
-          <div className={cn("rounded-xl border border-border/60 p-3", toneClassName)}>
-            <Icon className="h-5 w-5" />
+          <div className={cn("rounded-xl border border-border/60 p-2.5 sm:p-3", toneClassName)}>
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
         </div>
       </CardContent>

@@ -9,15 +9,15 @@ export function OwnerHeader() {
   const [, setLocation] = useLocation();
 
   return (
-    <header className="gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4">
+    <header className="sticky top-0 z-40 gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)] backdrop-blur supports-[backdrop-filter]:backdrop-blur-xl">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3 sm:py-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="brand-frame flex h-14 w-14 items-center justify-center rounded-2xl flex-shrink-0">
+            <div className="brand-frame flex h-12 w-12 items-center justify-center rounded-2xl flex-shrink-0 sm:h-14 sm:w-14">
               <img
                 src={logoImage}
                 alt="CreteXchange - Streamlining Concrete Connections"
-                className="h-9 w-9 object-contain"
+                className="h-8 w-8 object-contain sm:h-9 sm:w-9"
               />
             </div>
             <div className="min-w-0">
@@ -40,7 +40,7 @@ export function OwnerHeader() {
             size="sm"
             onClick={logout}
             data-testid="button-logout"
-            className="h-10 border-white/20 bg-black/20 text-white hover:bg-black/35 hover:text-white self-start sm:self-auto"
+            className="h-11 border-white/20 bg-black/20 text-white hover:bg-black/35 hover:text-white self-start sm:h-10 sm:self-auto"
           >
             <LogOut className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Logout</span>
@@ -53,7 +53,7 @@ export function OwnerHeader() {
             size="sm"
             onClick={() => setLocation('/profile')}
             data-testid="button-profile"
-            className="h-10 border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            className="h-11 border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white sm:h-10"
           >
             <User className="mr-2 h-4 w-4" />
             Profile
@@ -63,7 +63,7 @@ export function OwnerHeader() {
             size="sm"
             onClick={() => setLocation('/locations')}
             data-testid="button-add-location"
-            className="h-10 border border-amber-300/20 bg-amber-500 text-white hover:bg-amber-500/90"
+            className="h-11 border border-amber-300/20 bg-amber-500 text-white hover:bg-amber-500/90 sm:h-10"
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Location
@@ -73,7 +73,7 @@ export function OwnerHeader() {
             size="sm"
             onClick={() => setLocation('/payment-methods')}
             data-testid="button-payment-methods"
-            className="h-10 border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            className="h-11 border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white sm:h-10"
           >
             <CreditCard className="mr-2 h-4 w-4" />
             Payment Methods

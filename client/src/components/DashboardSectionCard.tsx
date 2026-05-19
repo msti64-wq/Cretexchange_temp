@@ -32,7 +32,7 @@ export function DashboardSectionCard({
       data-testid={dataTestId}
     >
       <div className="h-1 bg-gradient-to-r from-primary/70 via-secondary/60 to-accent/60" />
-      <CardHeader className="border-b border-border/60 pb-4 pt-5">
+      <CardHeader className="border-b border-border/60 px-4 pb-4 pt-4 sm:px-6 sm:pt-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -49,7 +49,7 @@ export function DashboardSectionCard({
           )}
         </div>
       </CardHeader>
-      <CardContent className={cn("pt-5", contentClassName)}>{children}</CardContent>
+      <CardContent className={cn("px-4 pb-4 pt-4 sm:px-6 sm:pb-6 sm:pt-5", contentClassName)}>{children}</CardContent>
     </Card>
   );
 }

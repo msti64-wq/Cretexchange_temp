@@ -313,7 +313,7 @@ export default function OwnerDashboard() {
 
         {/* Overview */}
         <section className="space-y-3">
-          <div className="grid gap-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm lg:grid-cols-[1.35fr_0.65fr] lg:p-6">
+          <div className="grid gap-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm md:grid-cols-[1.35fr_0.65fr] md:p-6">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -408,7 +408,7 @@ export default function OwnerDashboard() {
         </section>
 
         {/* Payment and Activity Analytics */}
-        <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+        <div className="grid gap-4 md:grid-cols-[1.25fr_0.75fr]">
           <DashboardSectionCard
             title="Washout Status Mix"
             description="Dollar value currently pending, approved, and rejected."
@@ -472,7 +472,7 @@ export default function OwnerDashboard() {
                   <p className="mt-1 text-xs text-muted-foreground">requires follow-up</p>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3 pt-1">
+              <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-3">
                 <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-center">
                   <p className="text-lg font-semibold tracking-tight" data-testid="text-month-washouts">{totalWashouts}</p>
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Washouts</p>

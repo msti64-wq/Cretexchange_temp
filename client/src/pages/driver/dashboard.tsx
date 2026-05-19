@@ -36,7 +36,7 @@ function DriverDashboardSkeleton() {
             </Card>
           ))}
         </div>
-        <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+        <div className="grid gap-4 md:grid-cols-[1.3fr_0.7fr]">
           <Skeleton className="h-64 rounded-2xl" />
           <Skeleton className="h-64 rounded-2xl" />
         </div>
@@ -134,7 +134,7 @@ export default function DriverDashboard() {
       </div>
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
-        <section className="grid gap-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm lg:grid-cols-[1.15fr_0.85fr] lg:p-6">
+        <section className="grid gap-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm md:grid-cols-[1.15fr_0.85fr] md:p-6">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -487,7 +487,7 @@ export default function DriverDashboard() {
         </section>
 
         {/* Earnings Summary */}
-        <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+        <div className="grid gap-4 md:grid-cols-[1.25fr_0.75fr]">
           <DashboardSectionCard
             title="Earnings Snapshot"
             description="Today, recent net earnings, and paid history."
@@ -540,7 +540,7 @@ export default function DriverDashboard() {
                   {formatCurrency(weeklyNetEarnings)}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">Washouts</p>
                   <p className="text-lg font-semibold" data-testid="text-weekly-washouts">{weeklyStats?.totalWashouts || 0}</p>
