@@ -9,6 +9,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { DashboardMetricCard } from "@/components/DashboardMetricCard";
 import { DashboardSectionCard } from "@/components/DashboardSectionCard";
+import { DashboardEmptyState } from "@/components/DashboardEmptyState";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -248,8 +249,23 @@ export default function DriverDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-background/70 p-4 text-sm text-muted-foreground">
-                No recent washouts yet. Your next location stop will appear here with payout details.
+              <div className="mt-4">
+                <DashboardEmptyState
+                  title="No recent washouts yet"
+                  description="Your next location stop will appear here with payout details."
+                  icon={Truck}
+                  toneClassName="bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-300"
+                  action={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9"
+                      onClick={() => setLocation('/locations')}
+                    >
+                      Find a location
+                    </Button>
+                  }
+                />
               </div>
             )}
           </div>
@@ -442,7 +458,12 @@ export default function DriverDashboard() {
                         ))}
                       </div>
                     ) : (
-                      <p className="py-2 text-center text-xs text-muted-foreground">No entries found</p>
+                      <DashboardEmptyState
+                        title="No entries found"
+                        description="You don’t have any lottery entries for this month yet."
+                        icon={Ticket}
+                        toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
+                      />
                     )}
                   </div>
                 )}
@@ -607,15 +628,22 @@ export default function DriverDashboard() {
         >
           <div className="space-y-3">
             {!recentActivities?.length ? (
-              <div className="rounded-2xl border border-border/70 bg-muted/30 px-6 py-10 text-center text-muted-foreground">
-                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-background shadow-sm">
-                  <Clock className="h-7 w-7 opacity-50" />
-                </div>
-                <p className="text-sm font-medium text-foreground">No recent washouts</p>
-                <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
-                  New site activity will appear here once a washout is submitted.
-                </p>
-              </div>
+              <DashboardEmptyState
+                title="No recent washouts"
+                description="New site activity will appear here once a washout is submitted."
+                icon={Clock}
+                toneClassName="bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-300"
+                action={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9"
+                    onClick={() => setLocation('/locations')}
+                  >
+                    Find a location
+                  </Button>
+                }
+              />
             ) : (
               recentActivities.map((activity: any, index: number) => (
                 <div key={activity.washout_activities?.id || activity.id || index} className="space-y-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm" data-testid={`card-activity-${index}`}>

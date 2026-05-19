@@ -11,6 +11,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { DashboardMetricCard } from "@/components/DashboardMetricCard";
 import { DashboardSectionCard } from "@/components/DashboardSectionCard";
+import { DashboardEmptyState } from "@/components/DashboardEmptyState";
 import { Users, Building, DollarSign, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -174,11 +175,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)]">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="sticky top-0 z-40 gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)] backdrop-blur supports-[backdrop-filter]:backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="brand-frame flex h-14 w-14 items-center justify-center rounded-2xl flex-shrink-0">
-              <img src={logoImage} alt="CreteXchange" className="h-9 w-9 object-contain" />
+            <div className="brand-frame flex h-12 w-12 items-center justify-center rounded-2xl flex-shrink-0 sm:h-14 sm:w-14">
+              <img src={logoImage} alt="CreteXchange" className="h-8 w-8 object-contain sm:h-9 sm:w-9" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -594,25 +595,25 @@ export default function AdminDashboard() {
               }
 
               return !filteredMessages || filteredMessages.length === 0 ? (
-                <div className="rounded-2xl border border-border/70 bg-muted/30 px-6 py-10 text-center">
-                  <MessageCircle className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                  {messageSearchTerm ? (
-                    <>
-                      <p className="font-medium text-foreground">No messages found</p>
-                      <p className="text-sm text-muted-foreground">Try adjusting your search terms</p>
-                    </>
-                  ) : showResolvedMessages ? (
-                    <>
-                      <p className="font-medium text-foreground">No support messages yet</p>
-                      <p className="text-sm text-muted-foreground">Messages from drivers and owners will appear here</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-medium text-foreground">No active support messages</p>
-                      <p className="text-sm text-muted-foreground">Resolved messages are hidden. Use search or toggle to view them.</p>
-                    </>
-                  )}
-                </div>
+                <DashboardEmptyState
+                  title={
+                    messageSearchTerm
+                      ? "No messages found"
+                      : showResolvedMessages
+                        ? "No support messages yet"
+                        : "No active support messages"
+                  }
+                  description={
+                    messageSearchTerm
+                      ? "Try adjusting your search terms."
+                      : showResolvedMessages
+                        ? "Messages from drivers and owners will appear here."
+                        : "Resolved messages are hidden. Use search or toggle to view them."
+                  }
+                  icon={MessageCircle}
+                  toneClassName={unreadMessages > 0 ? "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"}
+                  badge={<span className="rounded-full border border-border/70 bg-background/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{activeMessages} active</span>}
+                />
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                   {filteredMessages.slice(0, 5).map((message: any) => (

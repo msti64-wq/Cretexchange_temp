@@ -13,6 +13,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { DashboardMetricCard } from "@/components/DashboardMetricCard";
 import { DashboardSectionCard } from "@/components/DashboardSectionCard";
+import { DashboardEmptyState } from "@/components/DashboardEmptyState";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { DebugPanel } from "@/components/DebugPanel";
@@ -635,15 +636,23 @@ export default function OwnerDashboard() {
                 </div>
               </div>
             ) : !recentActivities?.length ? (
-              <div className="rounded-2xl border border-border/70 bg-muted/30 px-6 py-10 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-background shadow-sm">
-                  <Clock className="h-7 w-7 text-muted-foreground" />
-                </div>
-                <h3 className="text-base font-semibold">No activity found</h3>
-                <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                  There are no washouts for the selected period. Change the date range or check back after a driver submits a washout.
-                </p>
-              </div>
+              <DashboardEmptyState
+                title="No activity found"
+                description="There are no washouts for the selected period. Change the date range or check back after a driver submits a washout."
+                icon={Clock}
+                toneClassName="bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-300"
+                action={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9"
+                    onClick={() => setLocation('/locations')}
+                    data-testid="button-view-locations-empty"
+                  >
+                    View locations
+                  </Button>
+                }
+              />
             ) : (
               recentActivities.map((activity: any, index: number) => (
                 <div key={activity.id} className="space-y-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm" data-testid={`card-recent-activity-${index}`}>
