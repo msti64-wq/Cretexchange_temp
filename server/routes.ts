@@ -1426,27 +1426,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerUser = await storage.getUser(owner.userId);
       const driverUser = await storage.getUser(driver.userId);
 
+      const MIN_PLATFORM_WASHOUT_FEE = 5.0;
+
       // Get platform fee - check for owner-specific override first, then use global fee
       const systemSettings = await storage.getSystemSettings();
       let platformFee: number;
       
-      // Check if this owner has a custom platform fee (allow $0.00 as a valid override)
+      // Check if this owner has a custom platform fee
       const customFeeValue = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined
         ? parseFloat(owner.customPlatformFee)
         : NaN;
-      if (!isNaN(customFeeValue) && customFeeValue >= 0) {
-        platformFee = customFeeValue;
+      if (!isNaN(customFeeValue)) {
+        platformFee = Math.max(customFeeValue, MIN_PLATFORM_WASHOUT_FEE);
         console.log('💰 Using custom platform fee for owner:', ownerUser?.username, '- $' + platformFee);
       } else {
         // Use global platform fee from settings
-        platformFee = parseFloat(systemSettings.platformWashoutFee || '0.40');
+        platformFee = Math.max(
+          parseFloat(systemSettings.platformWashoutFee || '5.00'),
+          MIN_PLATFORM_WASHOUT_FEE
+        );
         console.log('💰 Using global platform fee: $' + platformFee);
       }
       
-      // Validate platform fee (safety check — $0.00 is explicitly allowed)
-      if (isNaN(platformFee) || platformFee < 0) {
+      // Validate platform fee (safety check)
+      if (isNaN(platformFee) || platformFee < MIN_PLATFORM_WASHOUT_FEE) {
         console.error('⚠️ Invalid platform fee detected:', platformFee);
-        platformFee = 0.40; // Fallback to default testing value
+        platformFee = MIN_PLATFORM_WASHOUT_FEE; // Fallback to minimum platform fee
         console.log('✅ Using fallback platform fee:', platformFee);
       }
       
@@ -3067,7 +3072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // CC is always required — owners need it for the weekly $4/washout billing
       if (!owner.stripePaymentMethodId) {
         return res.status(400).json({ 
-          message: `Please add a credit card before adding locations. It is required for weekly washout billing ($4.00 per washout). Go to Payment Methods to add a card.` 
+          message: `Please add a credit card before adding locations. It is required for weekly washout billing ($5.00 per washout). Go to Payment Methods to add a card.` 
         });
       }
 
@@ -3107,7 +3112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           location,
           feeCharged: false,
           trialMode: true,
-          message: 'Location created. No signup or monthly fee during trial — you will be billed $4.00 per completed washout, charged to your card weekly.'
+          message: 'Location created. No signup or monthly fee during trial — you will be billed $5.00 per completed washout, charged to your card weekly.'
         });
       }
 
@@ -3550,7 +3555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const customWashoutRate = owner.customWashoutRate ? parseFloat(owner.customWashoutRate) : null;
 
       // FEE STRUCTURE: Depends on billing model
-      // Standard: Driver receives full location rate, Owner pays location rate + $0.40 platform fee
+        // Standard: Driver receives full location rate, Owner pays location rate + platform fee
       // Custom (Lottery): Owner pays customWashoutRate only, Driver gets lottery entry (no cash)
       let driverAmount: number;
       let platformFee: number;
@@ -3565,7 +3570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // STANDARD BILLING MODEL: Driver gets paid, platform takes fee
         driverAmount = Number(activityDetails.amount); // Driver gets exact location rate
-        platformFee = 0.40; // Platform keeps $0.40 flat fee
+        platformFee = 5.00; // Platform keeps the minimum flat fee
         ownerFee = driverAmount + platformFee; // Owner pays total: driver amount + platform fee
       }
 
@@ -3874,7 +3879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverId: activityDetails.driverId,
         ownerId: owner.id,
         amount: driverAmount.toString(),
-        processingFee: platformFee.toFixed(2), // Platform fee ($0.40)
+        processingFee: platformFee.toFixed(2), // Platform fee ($5.00 minimum)
         washoutServiceFee: (ownerFee - platformFee).toFixed(2), // Driver portion
         status: 'completed', // Payment already succeeded via Stripe
         businessDate, // Set business date for reporting
@@ -7695,9 +7700,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate platform fee if being updated
       if (req.body.platformWashoutFee !== undefined) {
         const fee = parseFloat(req.body.platformWashoutFee);
-        if (isNaN(fee) || fee <= 0) {
+        if (isNaN(fee) || fee < 5) {
           return res.status(400).json({ 
-            message: "Platform washout fee must be a positive number greater than zero" 
+            message: "Platform washout fee must be at least $5.00" 
           });
         }
       }
@@ -8114,12 +8119,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerId = req.params.id;
       const { customPlatformFee } = req.body;
 
-      // Validate fee (can be null to clear, or must be positive)
+      // Validate fee (can be null to clear, or must meet the minimum)
       if (customPlatformFee !== null && customPlatformFee !== undefined) {
         const fee = parseFloat(customPlatformFee);
-        if (isNaN(fee) || fee <= 0) {
+        if (isNaN(fee) || fee < 5) {
           return res.status(400).json({ 
-            message: "Custom platform fee must be a positive number or null to use global fee" 
+            message: "Custom platform fee must be at least $5.00 or null to use global fee" 
           });
         }
       }
@@ -8641,7 +8646,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get system settings for platform fee
       const systemSettings = await storage.getSystemSettings();
-      const platformFee = systemSettings?.platformWashoutFee || '0.40';
+      const platformFee = Math.max(
+        parseFloat(systemSettings?.platformWashoutFee || '5.00'),
+        5.0
+      ).toFixed(2);
 
       // Calculate rate distribution
       const rateDistribution: Record<string, number> = {};
@@ -8665,13 +8673,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pendingAmountDistribution,
         testPricing: {
           driverPayment: '0.50',
-          platformFee: '0.40',
+          platformFee: '5.00',
           totalOwnerCharge: '0.90'
         },
         productionPricing: {
           driverPayment: '5.00',
-          platformFee: '0.40',
-          totalOwnerCharge: '5.40'
+          platformFee: '5.00',
+          totalOwnerCharge: '10.00'
         }
       });
     } catch (error: any) {
@@ -12376,7 +12384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const testWashoutAmount = washoutAmount || 5.00; // $5.00 default
-      const testPlatformFee = platformFee || 0.40; // $0.40 default
+      const testPlatformFee = platformFee || 5.00; // $5.00 default
 
       // 1. Get owner and verify they have a Stripe Connect account and payment method
       const ownerUser = await storage.getUserByUsername(ownerUsername);

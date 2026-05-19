@@ -15,7 +15,7 @@ Updated comprehensive Terms and Conditions for both Drivers and Location Owners 
    - Column BaaS integration details
    - KYC verification requirements
    - Instant payment processing via Column book transfers
-   - Platform fee disclosure: **$4.00 per washout**
+   - Platform fee disclosure: **$5.00 per washout**
 
 2. **Lithic Debit Card**
    - Physical debit card features and benefits
@@ -55,7 +55,7 @@ Updated comprehensive Terms and Conditions for both Drivers and Location Owners 
 1. **Platform Fees & Billing**
    - **One-time membership:** $1,500 (via Stripe)
    - **Monthly location fees:** $100/month per active location (via Column)
-   - **Transaction fee:** $4.00 per washout (via Column book transfer)
+   - **Transaction fee:** $5.00 per washout (via Column book transfer)
    - Pro-rated billing for mid-month activations
 
 2. **Payment Processing & Wallet**
@@ -118,7 +118,7 @@ Updated comprehensive Terms and Conditions for both Drivers and Location Owners 
 |-----|-----|
 | Generic wallet terms | Column BaaS integration details |
 | No debit card info | Lithic debit card section added |
-| Platform fee not mentioned | $4.00 per washout clearly stated |
+| Platform fee not mentioned | $5.00 per washout clearly stated |
 | Basic withdrawal info | Detailed fee structure and processing |
 | Limited compliance section | Expanded legal and compliance details |
 
@@ -127,7 +127,7 @@ Updated comprehensive Terms and Conditions for both Drivers and Location Owners 
 |-----|-----|
 | No dedicated terms dialog | Full OwnerTermsDialog component created |
 | Simple checkbox only | Comprehensive terms + "View Full Terms" button |
-| Fee structure unclear | All fees clearly itemized ($1,500 + $100/mo + $4/washout) |
+| Fee structure unclear | All fees clearly itemized ($1,500 + $100/mo + $5/washout) |
 | No billing cycle info | Detailed billing cycles and timing |
 | No Column integration info | Full Column/Lithic integration details |
 

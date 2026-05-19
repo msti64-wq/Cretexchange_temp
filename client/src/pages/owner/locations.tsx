@@ -847,7 +847,7 @@ export default function OwnerLocations() {
               <div>
                 <p className="font-medium text-green-800 dark:text-green-200">Trial Period — No Signup or Monthly Fees</p>
                 <p className="text-sm text-green-700 dark:text-green-300 mt-0.5">
-                  No signup fee. No monthly location fee. You are only charged <strong>$4.00 per completed washout</strong>, billed weekly to your card on file.
+                  No signup fee. No monthly location fee. You are only charged <strong>$5.00 per completed washout</strong>, billed weekly to your card on file.
                 </p>
               </div>
             </div>

@@ -79,7 +79,7 @@ export default function Register() {
             <p className="text-muted-foreground mb-4">
               Please sign in to complete your registration.
             </p>
-            <Button onClick={() => window.location.href = '/api/login'} data-testid="button-sign-in">
+            <Button onClick={() => window.location.href = '/login'} data-testid="button-sign-in">
               Sign In
             </Button>
           </CardContent>

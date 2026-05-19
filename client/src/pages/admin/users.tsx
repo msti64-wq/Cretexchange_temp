@@ -204,10 +204,10 @@ export default function AdminUsers() {
   const handleUpdateCustomPlatformFee = (data: z.infer<typeof customPlatformFeeSchema>) => {
     if (selectedOwner) {
       const feeValue = data.customPlatformFee ? parseFloat(data.customPlatformFee) : null;
-      if (data.customPlatformFee && (isNaN(feeValue as number) || (feeValue as number) <= 0)) {
+      if (data.customPlatformFee && (isNaN(feeValue as number) || (feeValue as number) < 5)) {
         toast({
           title: "Invalid Amount",
-          description: "Please enter a valid positive number or leave blank to use global fee",
+          description: "Please enter a valid amount of at least $5.00 or leave blank to use the global fee",
           variant: "destructive",
         });
         return;
@@ -287,7 +287,7 @@ export default function AdminUsers() {
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        window.location.href = "/login";
       }, 500);
       return;
     }
@@ -890,7 +890,7 @@ export default function AdminUsers() {
                 <p className="mb-2">
                   <span className="font-medium">Months on Platform:</span> {selectedOwner.createdAt && calculateMonthsOnPlatform(selectedOwner.createdAt)}
                 </p>
-                <p>Set a custom platform fee for this owner. Long-term partners can receive reduced rates based on their tenure and loyalty. Leave blank to use the global platform fee.</p>
+                <p>Set a custom platform fee for this owner. Leave blank to use the global platform fee. The minimum allowed fee is $5.00.</p>
               </>
             )}
           </div>
@@ -907,7 +907,7 @@ export default function AdminUsers() {
                       <Input
                         type="number"
                         step="0.01"
-                        min="0"
+                        min="5"
                         placeholder="Leave blank to use global fee"
                         {...field}
                         data-testid="input-custom-platform-fee"
@@ -915,7 +915,7 @@ export default function AdminUsers() {
                     </FormControl>
                     <FormMessage />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Leave blank to use global platform fee
+                      Leave blank to use the global minimum fee of $5.00
                     </p>
                   </FormItem>
                 )}

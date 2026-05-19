@@ -243,7 +243,7 @@ export default function PaymentMethods() {
             <div className="text-sm">
               <p className="font-semibold text-green-800 dark:text-green-200">Trial Period Active — No Signup or Monthly Fees</p>
               <p className="text-green-700 dark:text-green-300 mt-1">
-                You are only charged <strong>$4.00 per completed washout</strong>, billed weekly to your card on file. No signup fee. No monthly location fee.
+                You are only charged <strong>$5.00 per completed washout</strong>, billed weekly to your card on file. No signup fee. No monthly location fee.
               </p>
             </div>
           </div>
@@ -253,7 +253,7 @@ export default function PaymentMethods() {
         <div className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">Credit Card for Washout Billing</h2>
-            <p className="text-sm text-muted-foreground">Required — charged $4.00 per washout, billed weekly</p>
+            <p className="text-sm text-muted-foreground">Required — charged $5.00 per washout, billed weekly</p>
           </div>
           <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/20">
             <CardContent className="p-4">
@@ -284,7 +284,7 @@ export default function PaymentMethods() {
                   <CreditCard className="w-12 h-12 mx-auto mb-3 text-purple-600" />
                   <h3 className="font-medium mb-2">No Card on File</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    A credit card is required to add locations and receive washout requests. You will be charged $4.00 per completed washout, billed weekly.
+                    A credit card is required to add locations and receive washout requests. You will be charged $5.00 per completed washout, billed weekly.
                   </p>
                   <Button
                     onClick={() => setShowCardSetup(true)}

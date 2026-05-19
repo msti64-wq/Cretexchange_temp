@@ -1556,9 +1556,10 @@ export class DatabaseStorage implements IStorage {
         
         // Get platform fee from owner's custom fee or system default
         const systemSettings = await this.getSystemSettings();
+        const MIN_PLATFORM_WASHOUT_FEE = 5.0;
         const platformFee = owner.customPlatformFee 
-          ? parseFloat(owner.customPlatformFee)
-          : parseFloat(systemSettings?.platformWashoutFee || "0.40");
+          ? Math.max(parseFloat(owner.customPlatformFee), MIN_PLATFORM_WASHOUT_FEE)
+          : Math.max(parseFloat(systemSettings?.platformWashoutFee || "5.00"), MIN_PLATFORM_WASHOUT_FEE);
 
         // Calculate business date
         const now = new Date();

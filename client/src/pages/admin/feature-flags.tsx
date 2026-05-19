@@ -48,6 +48,10 @@ export default function AdminFeatureFlags() {
     queryKey: ['/api/admin/settings'],
     retry: false,
   });
+  const currentPlatformFee = Math.max(
+    parseFloat((systemSettings as any)?.platformWashoutFee || "5.00"),
+    5.0,
+  ).toFixed(2);
 
   const toggleMutation = useMutation({
     mutationFn: async ({ flagKey, enabled }: { flagKey: string; enabled: boolean }) => {
@@ -330,10 +334,10 @@ export default function AdminFeatureFlags() {
                 <div className="flex-1">
                   <h3 className="font-semibold">Platform Washout Fee</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Fee charged per washout transaction (currently ${(systemSettings as any)?.platformWashoutFee || '0.40'})
+                    Fee charged per washout transaction (minimum $5.00; currently ${currentPlatformFee})
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    💡 Testing: $0.40 (10% of production) • Production: $4.00
+                    💡 Testing and production both enforce a $5.00 minimum platform fee
                   </p>
                 </div>
               </div>
@@ -345,7 +349,7 @@ export default function AdminFeatureFlags() {
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder={(systemSettings as any)?.platformWashoutFee || '0.40'}
+                    placeholder={currentPlatformFee}
                     value={platformFee}
                     onChange={(e) => setPlatformFee(e.target.value)}
                     data-testid="input-platform-fee"

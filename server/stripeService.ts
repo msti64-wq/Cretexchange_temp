@@ -1186,7 +1186,7 @@ export async function processWashoutPaymentViaCard(params: {
   driverConnectedAccountId: string; // Driver's Stripe Connect account
   driverUsername: string;
   washoutAmount: number; // in cents - amount driver receives (e.g., 50 = $0.50)
-  platformFee: number; // in cents - platform fee (e.g., 40 = $0.40)
+  platformFee: number; // in cents - platform fee (e.g., 500 = $5.00)
   activityId?: string; // Link to specific washout activity
   locationId?: string; // Link to specific location
 }): Promise<Stripe.PaymentIntent> {
@@ -1267,7 +1267,7 @@ export async function processWashoutPayment(params: {
   driverFinancialAccountId: string;
   driverUsername: string;
   washoutAmount: number; // in cents - amount driver receives
-  platformFee: number; // in cents - $0.40 platform fee
+  platformFee: number; // in cents - $5.00 platform fee
   activityId?: string; // Link to specific washout activity
   locationId?: string; // Link to specific location
 }): Promise<{
