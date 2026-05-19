@@ -76,8 +76,8 @@ export function MobileNav({ role }: MobileNavProps) {
   const navItems = getNavItems();
 
   return (
-    <nav className="mobile-nav fixed bottom-0 left-0 right-0 px-2 py-2 z-50 overflow-x-auto">
-      <div className="flex gap-1 min-w-max">
+    <nav className="mobile-nav fixed bottom-0 left-0 right-0 z-50 overflow-x-auto px-3 py-3">
+      <div className="mx-auto flex min-w-max max-w-6xl gap-2">
         {navItems.map((item) => {
           const isActive = location === item.path;
           const Icon = item.icon;
@@ -85,22 +85,25 @@ export function MobileNav({ role }: MobileNavProps) {
           return (
             <button
               key={item.path}
+              type="button"
               onClick={() => setLocation(item.path)}
               className={cn(
-                "nav-item flex flex-col items-center py-2 relative px-3 min-w-[70px]",
-                isActive ? "active" : "text-muted-foreground"
+                "nav-item flex min-w-[72px] flex-col items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-xs font-medium",
+                isActive
+                  ? "active"
+                  : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
               )}
               data-testid={`nav-${item.label.toLowerCase()}`}
             >
               <div className="relative">
-                <Icon className="w-5 h-5 mb-1" />
+                <Icon className="h-5 w-5" />
                 {(item.label === 'Alerts' || item.label === 'Messages') && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-4 min-w-4 flex items-center justify-center px-1" data-testid="badge-unread-count">
+                  <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-xs text-white" data-testid="badge-unread-count">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </div>
-              <span className="text-xs">{item.label}</span>
+              <span className="leading-none">{item.label}</span>
             </button>
           );
         })}

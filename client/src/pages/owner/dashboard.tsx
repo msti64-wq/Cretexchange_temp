@@ -14,7 +14,7 @@ import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { DebugPanel } from "@/components/DebugPanel";
-import { Users, DollarSign, MapPin, Clock, LogOut, ImageIcon, Check, X, MessageCircle, Phone, CreditCard, AlertTriangle, ClipboardCheck, WalletCards } from "lucide-react";
+import { Users, DollarSign, MapPin, Clock, LogOut, ImageIcon, Check, X, MessageCircle, Phone, CreditCard, ClipboardCheck, WalletCards, Building2, ChevronRight, Gauge, Package, MapPinned, Clock3, Loader2, ShieldAlert, Activity } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -35,15 +35,16 @@ type OwnerMetricProps = {
 
 function OwnerMetric({ title, value, helper, icon: Icon, tone, dataTestId }: OwnerMetricProps) {
   return (
-    <Card className="rounded-lg border-border/80 bg-card/95 shadow-sm">
-      <CardContent className="p-4">
+    <Card className="group overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border/90 hover:shadow-md">
+      <div className="h-1 bg-gradient-to-r from-primary/70 via-secondary/60 to-accent/60" />
+      <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{title}</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground" data-testid={dataTestId}>{value}</p>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid={dataTestId}>{value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
           </div>
-          <div className={`rounded-lg p-2.5 ${tone}`}>
+          <div className={`rounded-xl border border-border/60 p-3 ${tone}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -55,15 +56,15 @@ function OwnerMetric({ title, value, helper, icon: Icon, tone, dataTestId }: Own
 function OwnerDashboardSkeleton() {
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="border-b bg-card">
-        <div className="mx-auto max-w-6xl p-4">
-          <Skeleton className="h-12 w-48" />
+      <div className="gradient-bg text-white">
+        <div className="mx-auto max-w-6xl px-4 py-4">
+          <Skeleton className="h-14 w-full max-w-md bg-white/20" />
         </div>
       </div>
-      <main className="mx-auto max-w-6xl space-y-6 p-4">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
-            <Card key={item} className="rounded-lg">
+            <Card key={item} className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
               <CardContent className="space-y-3 p-4">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="h-8 w-28" />
@@ -72,8 +73,8 @@ function OwnerDashboardSkeleton() {
             </Card>
           ))}
         </div>
-        <Skeleton className="h-72 rounded-lg" />
-        <Skeleton className="h-80 rounded-lg" />
+        <Skeleton className="h-72 rounded-2xl" />
+        <Skeleton className="h-80 rounded-2xl" />
       </main>
       <MobileNav role="owner" />
     </div>
@@ -306,28 +307,28 @@ export default function OwnerDashboard() {
     <div className="min-h-screen bg-background pb-20">
       <OwnerHeader />
 
-      <main className="mx-auto max-w-6xl p-4 space-y-6">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
         {/* Profile Completion Notice - Temporarily commented out for TypeScript fix */}
         {/* TODO: Re-enable after TypeScript configuration is resolved */}
 
         {/* Subscription Required Notice */}
         {(user && subscriptionData && (subscriptionData as any).status !== 'active') && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <CreditCard className="w-3 h-3 text-white" />
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm dark:border-sky-900/40 dark:bg-sky-950/20">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white">
+                <CreditCard className="h-4 w-4" />
               </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+              <div className="min-w-0 flex-1">
+                <h3 className="mb-1 font-semibold text-sky-900 dark:text-sky-100">
                   Subscription Required
                 </h3>
-                <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                <p className="mb-3 text-sm text-sky-800 dark:text-sky-200">
                   You need an active subscription to add washout locations. Each location requires a subscription to operate on the platform.
                 </p>
                 <Button
                   size="sm"
                   onClick={() => setLocation('/subscribe')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="h-10 bg-sky-600 text-white hover:bg-sky-700"
                   data-testid="button-subscribe"
                 >
                   Start Subscription
@@ -339,9 +340,63 @@ export default function OwnerDashboard() {
 
         {/* Overview */}
         <section className="space-y-3">
-          <div>
-            <h2 className="text-xl font-semibold tracking-normal">Owner Dashboard</h2>
-            <p className="text-sm text-muted-foreground">Review washouts, pending approvals, and location revenue at a glance.</p>
+          <div className="grid gap-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm lg:grid-cols-[1.35fr_0.65fr] lg:p-6">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Portfolio overview
+                </span>
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/25 dark:text-emerald-300">
+                  Live operations
+                </span>
+              </div>
+              <div>
+                <h2 className="text-2xl font-semibold tracking-tight">Owner Dashboard</h2>
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                  Monitor washout flow, approve jobs, and track payout exposure across your active sites.
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-3 py-2.5">
+                  <Gauge className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="text-xs font-medium text-foreground">{pendingCount} open reviews</p>
+                    <p className="text-[11px] text-muted-foreground">requires your attention</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-3 py-2.5">
+                  <Building2 className="h-4 w-4 text-secondary" />
+                  <div>
+                    <p className="text-xs font-medium text-foreground">{Number(locations) || 0} sites</p>
+                    <p className="text-[11px] text-muted-foreground">active washout locations</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-3 py-2.5">
+                  <Activity className="h-4 w-4 text-accent" />
+                  <div>
+                    <p className="text-xs font-medium text-foreground">{recentActivities.length} jobs</p>
+                    <p className="text-[11px] text-muted-foreground">in selected range</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Payment exposure</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight">{formatCurrency(pendingPayments)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">awaiting your review</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Approved for payout</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{formatCurrency(approvedPayments)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">ready to settle</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recycling network</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-amber-700 dark:text-amber-300">{Number(locations) || 0}</p>
+                <p className="mt-1 text-sm text-muted-foreground">active sites</p>
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <OwnerMetric
@@ -381,25 +436,30 @@ export default function OwnerDashboard() {
 
         {/* Payment and Activity Analytics */}
         <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-          <Card className="rounded-lg border-border/80 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <CardTitle className="text-lg">Washout Status Mix</CardTitle>
+          <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
+            <CardHeader className="border-b border-border/60 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-secondary" />
+                    <CardTitle className="text-base font-semibold">Washout Status Mix</CardTitle>
+                  </div>
                   <p className="text-sm text-muted-foreground">Dollar value currently pending, approved, and rejected.</p>
                 </div>
-                <Badge variant="outline">{dateRange}</Badge>
+                <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
+                  {dateRange}
+                </Badge>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-5">
               <ChartContainer
                 config={{
-                  amount: { label: "Amount", color: "var(--chart-2)" },
+                  amount: { label: "Amount", color: "var(--color-amount)" },
                 }}
-                className="h-[220px] w-full"
+                className="h-[240px] w-full"
               >
                 <BarChart data={ownerStatusChartData} margin={{ left: -18, right: 8, top: 8 }}>
-                  <CartesianGrid vertical={false} />
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis dataKey="label" tickLine={false} axisLine={false} />
                   <YAxis hide />
                   <ChartTooltip
@@ -410,41 +470,59 @@ export default function OwnerDashboard() {
                       />
                     }
                   />
-                  <Bar dataKey="amount" fill="var(--color-amount)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="amount" fill="var(--color-amount)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ChartContainer>
             </CardContent>
           </Card>
 
-          <Card className="rounded-lg border-border/80 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">30-Day Totals</CardTitle>
+          <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
+            <CardHeader className="border-b border-border/60 pb-4">
+              <div className="flex items-center gap-2">
+                <Clock3 className="h-4 w-4 text-accent" />
+                <CardTitle className="text-base font-semibold">30-Day Totals</CardTitle>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Total Payments</span>
-                <span className="text-xl font-semibold text-foreground" data-testid="text-month-total">
-                  {formatCurrency(monthStats?.totalPayments || 0)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Pending Payments</span>
-                <span className="text-lg font-semibold text-secondary" data-testid="text-pending-total">
-                  {formatCurrency(pendingPayments)}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 pt-2">
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-lg font-semibold" data-testid="text-month-washouts">{totalWashouts}</p>
-                  <p className="text-xs text-muted-foreground">Washouts</p>
+            <CardContent className="space-y-4 pt-5">
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total payments</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Current month activity</p>
+                  </div>
+                  <span className="text-2xl font-semibold tracking-tight text-foreground" data-testid="text-month-total">
+                    {formatCurrency(monthStats?.totalPayments || 0)}
+                  </span>
                 </div>
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-lg font-semibold" data-testid="text-month-drivers">{uniqueDrivers}</p>
-                  <p className="text-xs text-muted-foreground">Drivers</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Pending payments</p>
+                  <p className="mt-2 text-xl font-semibold tracking-tight text-secondary" data-testid="text-pending-total">
+                    {formatCurrency(pendingPayments)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">awaiting review</p>
                 </div>
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-lg font-semibold text-red-600 dark:text-red-500" data-testid="text-rejected-count">{rejectedCount}</p>
-                  <p className="text-xs text-muted-foreground">Rejected</p>
+                <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Rejected</p>
+                  <p className="mt-2 text-xl font-semibold tracking-tight text-red-600 dark:text-red-400" data-testid="text-rejected-count">
+                    {rejectedCount}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">requires follow-up</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3 pt-1">
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-center">
+                  <p className="text-lg font-semibold tracking-tight" data-testid="text-month-washouts">{totalWashouts}</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Washouts</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-center">
+                  <p className="text-lg font-semibold tracking-tight" data-testid="text-month-drivers">{uniqueDrivers}</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Drivers</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-center">
+                  <p className="text-lg font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{approvedCount}</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Approved</p>
                 </div>
               </div>
             </CardContent>
@@ -455,9 +533,9 @@ export default function OwnerDashboard() {
         <StatCard
           title="Recent Activity"
           subtitle={
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
               <Select value={dateRange} onValueChange={(value) => setDateRange(value as typeof dateRange)}>
-                <SelectTrigger className="w-32 h-8 text-xs" data-testid="select-date-range">
+                <SelectTrigger className="h-9 w-full text-xs sm:w-36" data-testid="select-date-range">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -472,26 +550,27 @@ export default function OwnerDashboard() {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="text-primary hover:text-primary/80"
+                className="h-9 justify-start px-2 text-primary hover:text-primary/80 sm:justify-center"
                 onClick={() => setLocation('/drivers')}
                 data-testid="button-view-all-activity"
               >
                 View All
+                <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
           }
         >
-          <div className="space-y-3">
+          <div className="space-y-4">
             {/* 72-hour auto-approval warning */}
             {recentActivities?.some((a: any) => a.status === 'pending') && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+                <div className="flex items-start gap-3">
+                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
                   <div className="text-sm">
-                    <p className="font-medium text-amber-800 dark:text-amber-400">
+                    <p className="font-semibold text-amber-900 dark:text-amber-200">
                       Review Required Within 72 Hours
                     </p>
-                    <p className="text-amber-700 dark:text-amber-500 text-xs mt-1">
+                    <p className="mt-1 text-amber-800/90 text-xs dark:text-amber-200/80">
                       Pending washouts must be approved or rejected within 72 hours. After this period, they will be automatically approved and charged to your account.
                     </p>
                   </div>
@@ -499,37 +578,53 @@ export default function OwnerDashboard() {
               </div>
             )}
             
-            {/* Loading state for activities */}
             {isActivitiesLoading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-                <p>Loading activities...</p>
+              <div className="grid gap-3">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-11 w-11 rounded-xl" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-40" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-6 w-20" />
+                    </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+                      <Skeleton className="h-10 w-full rounded-lg" />
+                      <Skeleton className="h-10 w-40 rounded-lg" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : isActivitiesFetching ? (
-              <div className="space-y-3 opacity-50 transition-opacity">
-                <div className="text-center py-2 text-sm text-muted-foreground">
-                  <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full inline-block mr-2"></div>
+              <div className="space-y-3 opacity-60 transition-opacity">
+                <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-4 py-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Updating activities...
                 </div>
                 {recentActivities.map((activity: any, index: number) => (
-                  <div key={activity.id} className="p-4 bg-muted/50 rounded-lg space-y-3" data-testid={`card-recent-activity-${index}`}>
+                  <div key={activity.id} className="space-y-3 rounded-2xl border border-border/70 bg-muted/30 p-4" data-testid={`card-recent-activity-${index}`}>
                     {/* Previous activity content will be dimmed while fetching */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <Users className="w-5 h-5 text-primary" />
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                          <Users className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <div className="font-medium text-sm" data-testid={`text-driver-name-${index}`}>
+                          <div className="text-sm font-semibold" data-testid={`text-driver-name-${index}`}>
                             {activity.driver?.user?.firstName} {activity.driver?.user?.lastName}
                           </div>
                           {activity.driver?.user?.phone && (
                             <div className="text-xs text-muted-foreground" data-testid={`text-driver-phone-${index}`}>
-                              📞 {activity.driver.user.phone}
+                              {activity.driver.user.phone}
                             </div>
                           )}
                           <div className="text-xs text-muted-foreground" data-testid={`text-activity-timestamp-${index}`}>
-                            🕒 {new Date(activity.checkInTime).toLocaleDateString()} at {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
+                            {new Date(activity.checkInTime).toLocaleDateString()} at {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
                               hour: 'numeric',
                               minute: '2-digit',
                               hour12: true
@@ -538,48 +633,49 @@ export default function OwnerDashboard() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold text-lg text-accent" data-testid={`text-activity-amount-${index}`}>
+                        <div className="text-lg font-semibold tracking-tight text-accent" data-testid={`text-activity-amount-${index}`}>
                           {formatCurrency(Number(activity.amount || 0))}
                         </div>
                       </div>
                     </div>
                     <div className="w-full">
-                      <div className="text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
-                        📍 {activity.location?.name}
+                      <div className="flex items-center gap-2 text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
+                        <MapPinned className="h-4 w-4 text-secondary" />
+                        <span>{activity.location?.name}</span>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (isAuthError || isDashboardAuthError) ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <X className="w-8 h-8 text-red-600 dark:text-red-400" />
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-900/40 dark:bg-red-950/20">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                  <X className="h-8 w-8 text-red-600 dark:text-red-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Authentication Required</h3>
-                <p className="text-muted-foreground mb-4">Your session has expired. Please log in again to view your washout activities.</p>
+                <h3 className="mb-2 text-lg font-semibold text-red-700 dark:text-red-300">Authentication Required</h3>
+                <p className="mb-4 text-sm text-muted-foreground">Your session has expired. Please log in again to view your washout activities.</p>
                 <div className="space-y-2">
                   <Button
                     onClick={clearPhantomActivities}
                     variant="outline"
-                    className="mr-2"
+                    className="mr-2 h-10"
                     data-testid="button-clear-cache"
                   >
                     Clear Cache
                   </Button>
                   <Button
                     onClick={logout}
-                    className="bg-red-600 hover:bg-red-700 text-white"
+                    className="h-10 bg-red-600 text-white hover:bg-red-700"
                     data-testid="button-reauth"
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
+                    <LogOut className="mr-2 h-4 w-4" />
                     Log In Again
                   </Button>
                 </div>
               </div>
             ) : !recentActivities?.length ? (
-              <div className="text-center py-12">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-muted">
+              <div className="rounded-2xl border border-border/70 bg-muted/30 px-6 py-10 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-background shadow-sm">
                   <Clock className="h-7 w-7 text-muted-foreground" />
                 </div>
                 <h3 className="text-base font-semibold">No activity found</h3>
@@ -589,24 +685,24 @@ export default function OwnerDashboard() {
               </div>
             ) : (
               recentActivities.map((activity: any, index: number) => (
-                <div key={activity.id} className="p-4 bg-muted/50 rounded-lg space-y-3" data-testid={`card-recent-activity-${index}`}>
+                <div key={activity.id} className="space-y-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm" data-testid={`card-recent-activity-${index}`}>
                   {/* Header Row - Driver and Amount */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Users className="w-5 h-5 text-primary" />
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                        <Users className="h-5 w-5 text-primary" />
                       </div>
-                      <div>
-                        <div className="font-medium text-sm" data-testid={`text-driver-name-${index}`}>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold" data-testid={`text-driver-name-${index}`}>
                           {activity.driver?.user?.firstName} {activity.driver?.user?.lastName}
                         </div>
                         {activity.driver?.user?.phone && (
                           <div className="text-xs text-muted-foreground" data-testid={`text-driver-phone-${index}`}>
-                            📞 {activity.driver.user.phone}
+                            {activity.driver.user.phone}
                           </div>
                         )}
                         <div className="text-xs text-muted-foreground" data-testid={`text-activity-timestamp-${index}`}>
-                          🕒 {new Date(activity.checkInTime).toLocaleDateString()} at {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
+                          {new Date(activity.checkInTime).toLocaleDateString()} at {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
                             hour: 'numeric',
                             minute: '2-digit',
                             hour12: true
@@ -616,7 +712,7 @@ export default function OwnerDashboard() {
                     </div>
                     
                     <div className="text-right">
-                      <div className="font-bold text-lg text-accent" data-testid={`text-activity-amount-${index}`}>
+                      <div className="text-lg font-semibold tracking-tight text-accent" data-testid={`text-activity-amount-${index}`}>
                         {formatCurrency(Number(activity.amount || 0))}
                       </div>
                     </div>
@@ -624,8 +720,9 @@ export default function OwnerDashboard() {
                   
                   {/* Location Row - Full width for location name */}
                   <div className="w-full">
-                    <div className="text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
-                      📍 {activity.location?.name}
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
+                      <MapPinned className="h-4 w-4 text-secondary" />
+                      <span>{activity.location?.name}</span>
                     </div>
                     {activity.location && (
                       <div className="text-xs text-muted-foreground mt-1">
@@ -638,8 +735,8 @@ export default function OwnerDashboard() {
                       </div>
                     )}
                     {(activity.latitude && activity.longitude) && (
-                      <div className="text-xs text-muted-foreground mt-1" data-testid={`text-gps-coordinates-${index}`}>
-                        🌐 GPS: {Number(activity.latitude).toFixed(6)}, {Number(activity.longitude).toFixed(6)}
+                      <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-gps-coordinates-${index}`}>
+                        GPS: {Number(activity.latitude).toFixed(6)}, {Number(activity.longitude).toFixed(6)}
                       </div>
                     )}
                   </div>
@@ -820,47 +917,47 @@ export default function OwnerDashboard() {
         </StatCard>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Button 
             variant="outline" 
-            className="h-20 flex-col space-y-2"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm"
             onClick={() => setLocation('/locations')}
             data-testid="button-manage-locations"
           >
-            <MapPin className="w-6 h-6 text-primary" />
-            <div className="text-center">
-              <div className="font-medium">Locations</div>
-              <div className="text-xs text-muted-foreground">Manage Sites</div>
+            <MapPin className="h-5 w-5 text-primary" />
+            <div>
+              <div className="text-sm font-semibold">Locations</div>
+              <div className="text-xs text-muted-foreground">Manage active sites</div>
             </div>
           </Button>
           
           <Button 
             variant="outline" 
-            className="h-20 flex-col space-y-2"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm"
             onClick={() => setLocation('/payments')}
             data-testid="button-view-payments"
           >
-            <DollarSign className="w-6 h-6 text-secondary" />
-            <div className="text-center">
-              <div className="font-medium">Payments</div>
-              <div className="text-xs text-muted-foreground">View History</div>
+            <DollarSign className="h-5 w-5 text-secondary" />
+            <div>
+              <div className="text-sm font-semibold">Payments</div>
+              <div className="text-xs text-muted-foreground">View payout history</div>
             </div>
           </Button>
         </div>
 
         {/* Support Section */}
-        <StatCard title="Need Help?" className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-2 flex-1">
-              <p className="text-sm text-muted-foreground">Contact our support team for assistance</p>
-              <div className="flex items-center space-x-2 text-sm">
-                <Phone className="w-4 h-4 text-blue-600" />
-                <span className="font-medium text-blue-600" data-testid="text-support-phone">(469) 269-6709</span>
+        <StatCard title="Need Help?" className="border-sky-200 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-slate-900">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex-1 space-y-2">
+              <p className="text-sm text-muted-foreground">Contact the operations team for onboarding, billing, or washout review questions.</p>
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="h-4 w-4 text-sky-600" />
+                <span className="font-medium text-sky-700 dark:text-sky-300" data-testid="text-support-phone">(469) 269-6709</span>
               </div>
             </div>
             <Button 
               size="sm" 
-              className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+              className="h-10 bg-sky-600 text-white hover:bg-sky-700 w-full sm:w-auto"
               onClick={() => setIsSupportDialogOpen(true)}
               data-testid="button-contact-support"
             >

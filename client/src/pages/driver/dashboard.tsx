@@ -25,15 +25,16 @@ type DashboardMetricProps = {
 
 function DashboardMetric({ title, value, helper, icon: Icon, tone, dataTestId }: DashboardMetricProps) {
   return (
-    <Card className="rounded-lg border-border/80 bg-card/95 shadow-sm">
-      <CardContent className="p-4">
+    <Card className="group overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+      <div className="h-1 bg-gradient-to-r from-primary/70 via-secondary/60 to-accent/60" />
+      <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{title}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
             <p className="mt-2 text-2xl font-semibold text-foreground" data-testid={dataTestId}>{value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
           </div>
-          <div className={`rounded-lg p-2.5 ${tone}`}>
+          <div className={`rounded-xl p-3 ${tone}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -53,7 +54,7 @@ function DriverDashboardSkeleton() {
       <main className="mx-auto max-w-6xl space-y-6 p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
-            <Card key={item} className="rounded-lg">
+            <Card key={item} className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
               <CardContent className="space-y-3 p-4">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="h-8 w-28" />
@@ -197,8 +198,11 @@ export default function DriverDashboard() {
         <section className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold tracking-normal">Driver Dashboard</h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Daily operations
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight">Driver Dashboard</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} performance and payout status.
               </p>
             </div>
@@ -359,7 +363,7 @@ export default function DriverDashboard() {
 
         {/* Earnings Summary */}
         <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-          <Card className="rounded-lg border-border/80 shadow-sm">
+          <Card className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -394,7 +398,7 @@ export default function DriverDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-lg border-border/80 shadow-sm">
+          <Card className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">7-Day Details</CardTitle>
             </CardHeader>
@@ -439,7 +443,7 @@ export default function DriverDashboard() {
         </div>
 
         {/* Payment Status */}
-        <Card>
+        <Card className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">

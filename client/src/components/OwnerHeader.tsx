@@ -9,66 +9,76 @@ export function OwnerHeader() {
   const [, setLocation] = useLocation();
 
   return (
-    <header className="gradient-bg text-white p-4 shadow-lg">
-      {/* Top Row - User Info and Logout */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3 flex-1">
-          <img 
-            src={logoImage}
-            alt="CreteXchange - Streamlining Concrete Connections"
-            className="w-16 h-16 object-contain flex-shrink-0"
-          />
-          <div className="flex-1">
-            <h1 className="font-semibold text-lg leading-tight" data-testid="text-owner-name">
-              Welcome, {user?.firstName} {user?.lastName}
-            </h1>
-            <p className="text-white/80 text-sm">Location Management</p>
+    <header className="gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)]">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="brand-frame flex h-14 w-14 items-center justify-center rounded-2xl flex-shrink-0">
+              <img
+                src={logoImage}
+                alt="CreteXchange - Streamlining Concrete Connections"
+                className="h-9 w-9 object-contain"
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                  Owner portal
+                </p>
+                <span className="dashboard-chip rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
+                  Marketplace control
+                </span>
+              </div>
+              <h1 className="mt-1 truncate text-xl font-semibold leading-tight" data-testid="text-owner-name">
+                Welcome, {user?.firstName} {user?.lastName}
+              </h1>
+              <p className="mt-1 text-sm text-white/80">Location management, approvals, and payouts.</p>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={logout}
+            data-testid="button-logout"
+            className="h-10 border-white/20 bg-black/20 text-white hover:bg-black/35 hover:text-white self-start sm:self-auto"
+          >
+            <LogOut className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Logout</span>
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={logout}
-          data-testid="button-logout"
-          className="bg-black border-black text-white hover:bg-gray-800 flex-shrink-0"
-        >
-          <LogOut className="w-4 h-4 sm:mr-2" />
-          <span className="hidden sm:inline">Logout</span>
-        </Button>
-      </div>
-      
-      {/* Action Buttons Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setLocation('/profile')}
-          data-testid="button-profile"
-          className="bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
-        >
-          <User className="w-4 h-4 mr-2" />
-          Profile
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setLocation('/locations')}
-          data-testid="button-add-location"
-          className="bg-green-600 hover:bg-green-700 text-white"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Location
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setLocation('/payment-methods')}
-          data-testid="button-payment-methods"
-          className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700"
-        >
-          <CreditCard className="w-4 h-4 mr-2" />
-          Payment Methods
-        </Button>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLocation('/profile')}
+            data-testid="button-profile"
+            className="h-10 border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+          >
+            <User className="mr-2 h-4 w-4" />
+            Profile
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setLocation('/locations')}
+            data-testid="button-add-location"
+            className="h-10 border border-amber-300/20 bg-amber-500 text-white hover:bg-amber-500/90"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Location
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLocation('/payment-methods')}
+            data-testid="button-payment-methods"
+            className="h-10 border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+          >
+            <CreditCard className="mr-2 h-4 w-4" />
+            Payment Methods
+          </Button>
+        </div>
       </div>
     </header>
   );

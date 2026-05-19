@@ -9,13 +9,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, type ComponentType } from "react";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { BarChart3, Users, Building, DollarSign, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck } from "lucide-react";
+import { Users, Building, DollarSign, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { PlatformPerformanceCard } from "@/components/PlatformPerformanceCard";
+import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 
 type AdminMetricProps = {
   title: string;
@@ -28,15 +29,16 @@ type AdminMetricProps = {
 
 function AdminMetric({ title, value, helper, icon: Icon, tone, dataTestId }: AdminMetricProps) {
   return (
-    <Card className="rounded-lg border-border/80 bg-card/95 shadow-sm">
-      <CardContent className="p-4">
+    <Card className="group overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+      <div className="h-1 bg-gradient-to-r from-primary/70 via-secondary/60 to-accent/60" />
+      <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{title}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
             <p className="mt-2 text-2xl font-semibold text-foreground" data-testid={dataTestId}>{value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
           </div>
-          <div className={`rounded-lg p-2.5 ${tone}`}>
+          <div className={`rounded-xl p-3 ${tone}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -56,7 +58,7 @@ function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" 
       <main className="mx-auto max-w-6xl space-y-6 p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
-            <Card key={item} className="rounded-lg">
+            <Card key={item} className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
               <CardContent className="space-y-3 p-4">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="h-8 w-28" />
@@ -194,25 +196,32 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <header className="gradient-bg text-white p-4 shadow-lg">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center space-x-3 min-w-0 flex-1">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-              <BarChart3 className="w-5 h-5" />
+      <header className="gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)]">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="brand-frame flex h-14 w-14 items-center justify-center rounded-2xl flex-shrink-0">
+              <img src={logoImage} alt="CreteXchange" className="h-9 w-9 object-contain" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-semibold text-lg truncate">System Overview</h1>
-              <p className="text-white/80 text-sm hidden sm:block">Platform Administration</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                  Admin console
+                </p>
+                <span className="dashboard-chip rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
+                  Marketplace oversight
+                </span>
+              </div>
+              <h1 className="mt-1 truncate text-xl font-semibold leading-tight">System Overview</h1>
+              <p className="mt-1 text-sm text-white/80">Platform administration and support signals.</p>
             </div>
           </div>
-          <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button
               variant="secondary"
               size="sm"
               onClick={handleExport}
               data-testid="button-export-report"
-              className="hidden sm:flex"
+              className="hidden h-10 bg-white text-primary hover:bg-white/90 sm:flex"
             >
               <Download className="w-4 h-4 mr-1" />
               Export
@@ -222,7 +231,7 @@ export default function AdminDashboard() {
               size="sm"
               onClick={handleExport}
               data-testid="button-export-report-mobile"
-              className="sm:hidden p-2"
+              className="h-10 bg-white text-primary hover:bg-white/90 sm:hidden p-2"
             >
               <Download className="w-4 h-4" />
             </Button>
@@ -231,7 +240,7 @@ export default function AdminDashboard() {
               size="sm"
               onClick={logout}
               data-testid="button-logout"
-              className="bg-black border-black text-white hover:bg-gray-800 hidden sm:flex"
+              className="hidden h-10 border-white/20 bg-black/20 text-white hover:bg-black/35 hover:text-white sm:flex"
             >
               <LogOut className="w-4 h-4 mr-1" />
               Logout
@@ -241,7 +250,7 @@ export default function AdminDashboard() {
               size="sm"
               onClick={logout}
               data-testid="button-logout-mobile"
-              className="bg-black border-black text-white hover:bg-gray-800 sm:hidden p-2"
+              className="h-10 border-white/20 bg-black/20 text-white hover:bg-black/35 hover:text-white sm:hidden p-2"
             >
               <LogOut className="w-4 h-4" />
             </Button>
@@ -253,8 +262,11 @@ export default function AdminDashboard() {
         {/* Operations Snapshot */}
         <section className="space-y-3">
           <div>
-            <h2 className="text-xl font-semibold tracking-normal">Admin Dashboard</h2>
-            <p className="text-sm text-muted-foreground">Monitor platform health, support workload, and revenue signals.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Operations center
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight">Admin Dashboard</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Monitor platform health, support workload, and revenue signals.</p>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <AdminMetric
@@ -335,7 +347,7 @@ export default function AdminDashboard() {
 
         {/* Revenue and Support Overview */}
         <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-          <Card className="rounded-lg border-border/80 shadow-sm">
+          <Card className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Subscription Revenue</CardTitle>
             </CardHeader>
@@ -382,7 +394,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-lg border-border/80 shadow-sm">
+          <Card className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
