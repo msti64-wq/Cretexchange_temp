@@ -1,18 +1,79 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useState, useEffect } from "react";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect, type ComponentType } from "react";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { BarChart3, Users, Building, DollarSign, TrendingUp, Calendar, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag, Trophy, Gift, PackageCheck } from "lucide-react";
+import { BarChart3, Users, Building, DollarSign, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { PlatformPerformanceCard } from "@/components/PlatformPerformanceCard";
+
+type AdminMetricProps = {
+  title: string;
+  value: string | number;
+  helper: string;
+  icon: ComponentType<{ className?: string }>;
+  tone: string;
+  dataTestId?: string;
+};
+
+function AdminMetric({ title, value, helper, icon: Icon, tone, dataTestId }: AdminMetricProps) {
+  return (
+    <Card className="rounded-lg border-border/80 bg-card/95 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{title}</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground" data-testid={dataTestId}>{value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
+          </div>
+          <div className={`rounded-lg p-2.5 ${tone}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
+  return (
+    <div className="min-h-screen bg-background pb-20">
+      <div className="gradient-bg p-4">
+        <div className="mx-auto max-w-6xl">
+          <Skeleton className="h-12 w-56 bg-white/30" />
+        </div>
+      </div>
+      <main className="mx-auto max-w-6xl space-y-6 p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <Card key={item} className="rounded-lg">
+              <CardContent className="space-y-3 p-4">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-8 w-28" />
+                <Skeleton className="h-3 w-36" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+          <Skeleton className="h-72 rounded-lg" />
+          <Skeleton className="h-72 rounded-lg" />
+        </div>
+      </main>
+      <MobileNav role={role} />
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -117,28 +178,25 @@ export default function AdminDashboard() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="animate-pulse space-y-4 p-4">
-          <div className="h-20 bg-muted rounded-lg" />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="h-32 bg-muted rounded-lg" />
-            <div className="h-32 bg-muted rounded-lg" />
-          </div>
-          <div className="h-48 bg-muted rounded-lg" />
-        </div>
-        <MobileNav role={user?.role} />
-      </div>
-    );
+    return <AdminDashboardSkeleton role={user?.role} />;
   }
 
   const { weekStats, monthStats } = dashboardData || {};
+  const allMessages = Array.isArray(messages) ? messages : [];
+  const unreadMessages = allMessages.filter((message: any) => message.status === "unread").length;
+  const activeMessages = allMessages.filter((message: any) => message.status !== "resolved").length;
+  const resolvedMessages = allMessages.filter((message: any) => message.status === "resolved").length;
+  const messageChartData = [
+    { label: "Unread", count: unreadMessages },
+    { label: "Active", count: activeMessages },
+    { label: "Resolved", count: resolvedMessages },
+  ];
 
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="gradient-bg text-white p-4 shadow-lg">
-        <div className="flex items-center justify-between">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center space-x-3 min-w-0 flex-1">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
               <BarChart3 className="w-5 h-5" />
@@ -191,8 +249,48 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="p-4 space-y-6">
-
+      <main className="mx-auto max-w-6xl p-4 space-y-6">
+        {/* Operations Snapshot */}
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-xl font-semibold tracking-normal">Admin Dashboard</h2>
+            <p className="text-sm text-muted-foreground">Monitor platform health, support workload, and revenue signals.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <AdminMetric
+              title="Revenue"
+              value={formatCurrency(weekStats?.subscriptionRevenue || 0)}
+              helper="Subscription revenue"
+              icon={DollarSign}
+              tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+              dataTestId="text-monthly-subscriptions-summary"
+            />
+            <AdminMetric
+              title="Active Licenses"
+              value={weekStats?.activeLicenses || 0}
+              helper={`${weekStats?.licenseRenewals || 0} renewals this month`}
+              icon={Building}
+              tone="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+              dataTestId="text-active-licenses-summary"
+            />
+            <AdminMetric
+              title="Support Queue"
+              value={activeMessages}
+              helper={`${unreadMessages} unread messages`}
+              icon={MessageCircle}
+              tone="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
+              dataTestId="text-active-messages-summary"
+            />
+            <AdminMetric
+              title="Prize Follow-Up"
+              value={pendingDrawings?.length || 0}
+              helper="Pending drawing deliveries"
+              icon={Gift}
+              tone="bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
+              dataTestId="text-pending-drawings-summary"
+            />
+          </div>
+        </section>
 
         {/* Platform Performance Analytics */}
         <StatCard title="Platform Performance Analytics">
@@ -235,52 +333,83 @@ export default function AdminDashboard() {
           </div>
         </StatCard>
 
-        {/* Owner Subscription Revenue */}
-        <StatCard title="Subscription Revenue">
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Monthly Subscriptions</span>
-              <span className="text-xl font-bold text-green-600" data-testid="text-monthly-subscriptions">
-                {formatCurrency(weekStats?.subscriptionRevenue || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Active Licenses</span>
-              <button 
-                className="text-lg font-semibold hover:text-primary transition-colors cursor-pointer hover:underline"
-                onClick={() => window.location.href = '/subscriptions?filter=active'}
-                data-testid="button-active-licenses"
-                title="Click to view active subscribers"
-              >
-                {weekStats?.activeLicenses || 0}
-              </button>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">License Renewals</span>
-              <div className="text-right">
-                <button 
-                  className="text-lg font-semibold text-foreground hover:text-primary transition-colors cursor-pointer hover:underline"
-                  onClick={() => window.location.href = '/subscriptions?filter=renewal'}
-                  data-testid="button-license-renewals"
-                  title="Click to view upcoming renewals"
+        {/* Revenue and Support Overview */}
+        <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+          <Card className="rounded-lg border-border/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Subscription Revenue</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Monthly Subscriptions</span>
+                <span className="text-xl font-semibold text-green-600" data-testid="text-monthly-subscriptions">
+                  {formatCurrency(weekStats?.subscriptionRevenue || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Active Licenses</span>
+                <button
+                  className="text-lg font-semibold hover:text-primary transition-colors cursor-pointer hover:underline"
+                  onClick={() => window.location.href = '/subscriptions?filter=active'}
+                  data-testid="button-active-licenses"
+                  title="Click to view active subscribers"
                 >
-                  {weekStats?.licenseRenewals || 0}
+                  {weekStats?.activeLicenses || 0}
                 </button>
-                <div className="text-sm text-muted-foreground">
-                  This month
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">License Renewals</span>
+                <div className="text-right">
+                  <button
+                    className="text-lg font-semibold text-foreground hover:text-primary transition-colors cursor-pointer hover:underline"
+                    onClick={() => window.location.href = '/subscriptions?filter=renewal'}
+                    data-testid="button-license-renewals"
+                    title="Click to view upcoming renewals"
+                  >
+                    {weekStats?.licenseRenewals || 0}
+                  </button>
+                  <div className="text-sm text-muted-foreground">This month</div>
                 </div>
               </div>
-            </div>
-            <div className="mt-4 pt-3 border-t border-border">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Stripe Integration</span>
-                <Badge variant="outline" data-testid="badge-stripe-status">
-                  {import.meta.env.VITE_STRIPE_PUBLIC_KEY ? "Connected" : "Development Mode"}
-                </Badge>
+              <div className="mt-4 pt-3 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Stripe Integration</span>
+                  <Badge variant="outline" data-testid="badge-stripe-status">
+                    {import.meta.env.VITE_STRIPE_PUBLIC_KEY ? "Connected" : "Development Mode"}
+                  </Badge>
+                </div>
               </div>
-            </div>
-          </div>
-        </StatCard>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-lg border-border/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg">Support Workload</CardTitle>
+                  <p className="text-sm text-muted-foreground">Current message status distribution.</p>
+                </div>
+                <Badge variant={activeMessages > 0 ? "secondary" : "outline"}>{activeMessages} active</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  count: { label: "Messages", color: "var(--chart-3)" },
+                }}
+                className="h-[210px] w-full"
+              >
+                <BarChart data={messageChartData} margin={{ left: -18, right: 8, top: 8 }}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis hide allowDecimals={false} />
+                  <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                  <Bar dataKey="count" fill="var(--color-count)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Messages Section */}
         <StatCard title="Support Messages">

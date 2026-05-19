@@ -1,17 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import React from "react";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { DebugPanel } from "@/components/DebugPanel";
-import { Building2, Users, DollarSign, MapPin, TrendingUp, Clock, Plus, LogOut, User, ImageIcon, Check, X, MessageCircle, Phone, Crown, CreditCard, AlertTriangle } from "lucide-react";
+import { Users, DollarSign, MapPin, Clock, LogOut, ImageIcon, Check, X, MessageCircle, Phone, CreditCard, AlertTriangle, ClipboardCheck, WalletCards } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -20,6 +23,62 @@ import { useToast } from "@/hooks/use-toast";
 import { formatAddress } from "@shared/addressUtils";
 
 const AUTO_APPROVAL_HOURS = 72;
+
+type OwnerMetricProps = {
+  title: string;
+  value: string | number;
+  helper: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: string;
+  dataTestId?: string;
+};
+
+function OwnerMetric({ title, value, helper, icon: Icon, tone, dataTestId }: OwnerMetricProps) {
+  return (
+    <Card className="rounded-lg border-border/80 bg-card/95 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{title}</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground" data-testid={dataTestId}>{value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
+          </div>
+          <div className={`rounded-lg p-2.5 ${tone}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OwnerDashboardSkeleton() {
+  return (
+    <div className="min-h-screen bg-background pb-20">
+      <div className="border-b bg-card">
+        <div className="mx-auto max-w-6xl p-4">
+          <Skeleton className="h-12 w-48" />
+        </div>
+      </div>
+      <main className="mx-auto max-w-6xl space-y-6 p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <Card key={item} className="rounded-lg">
+              <CardContent className="space-y-3 p-4">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-8 w-28" />
+                <Skeleton className="h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Skeleton className="h-72 rounded-lg" />
+        <Skeleton className="h-80 rounded-lg" />
+      </main>
+      <MobileNav role="owner" />
+    </div>
+  );
+}
 
 function getTimeUntilAutoApproval(createdAt: string | Date): { hours: number; minutes: number; isExpired: boolean; isUrgent: boolean } {
   const created = new Date(createdAt);
@@ -183,16 +242,7 @@ export default function OwnerDashboard() {
   
 
   if (isMainLoading) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="animate-pulse space-y-4 p-4">
-          <div className="h-20 bg-muted rounded-lg" />
-          <div className="h-32 bg-muted rounded-lg" />
-          <div className="h-32 bg-muted rounded-lg" />
-        </div>
-        <MobileNav role="owner" />
-      </div>
-    );
+    return <OwnerDashboardSkeleton />;
   }
 
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
@@ -230,6 +280,9 @@ export default function OwnerDashboard() {
     }
     return total;
   }, 0) || 0;
+  const pendingCount = recentActivities?.filter((activity: any) => activity.status === 'pending').length || 0;
+  const approvedCount = recentActivities?.filter((activity: any) => activity.status === 'verified').length || 0;
+  const rejectedCount = recentActivities?.filter((activity: any) => activity.status === 'rejected').length || 0;
 
   // Calculate total washouts from recent activities (exclude rejected washouts)
   const totalWashouts = recentActivities?.filter((activity: any) => 
@@ -243,12 +296,17 @@ export default function OwnerDashboard() {
       .map((activity: any) => activity.driver?.user?.id)
       .filter(Boolean)
   ).size : 0;
+  const ownerStatusChartData = [
+    { label: "Pending", amount: pendingPayments, count: pendingCount },
+    { label: "Approved", amount: approvedPayments, count: approvedCount },
+    { label: "Rejected", amount: rejectedPayments, count: rejectedCount },
+  ];
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <OwnerHeader />
 
-      <main className="p-4 space-y-6">
+      <main className="mx-auto max-w-6xl p-4 space-y-6">
         {/* Profile Completion Notice - Temporarily commented out for TypeScript fix */}
         {/* TODO: Re-enable after TypeScript configuration is resolved */}
 
@@ -279,71 +337,119 @@ export default function OwnerDashboard() {
           </div>
         )}
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <StatCard title="Today's Activity" className="text-center">
-            <div className="space-y-2">
-              <div className="text-2xl font-bold text-primary" data-testid="text-daily-visits">
-                {recentActivities?.length || 0}
-              </div>
-              <div className="text-xs text-muted-foreground">Washouts Today</div>
-              <div className="text-lg font-semibold text-green-600 dark:text-green-500" data-testid="text-pending-payments">
-                {formatCurrency(pendingPayments)}
-              </div>
-              <div className="text-xs text-muted-foreground">Pending Approval</div>
-            </div>
-          </StatCard>
-
-          <StatCard title="Locations & Revenue" className="text-center">
-            <div className="space-y-2">
-              <div className="text-2xl font-bold text-accent" data-testid="text-total-locations">
-                {Number(locations) || 0}
-              </div>
-              <div className="text-xs text-muted-foreground">Active Sites</div>
-              <div className="text-lg font-semibold text-green-600 dark:text-green-500" data-testid="text-approved-payments">
-                {formatCurrency(approvedPayments)}
-              </div>
-              <div className="text-xs text-muted-foreground">Ready for Payout</div>
-            </div>
-          </StatCard>
-        </div>
-
-
-        {/* 30-Day Totals */}
-        <StatCard title="30-Day Totals">
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Total Payments</span>
-              <span className="text-xl font-bold text-foreground" data-testid="text-month-total">
-                {formatCurrency(monthStats?.totalPayments || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Total Pending Payments</span>
-              <span className="text-xl font-bold text-secondary" data-testid="text-pending-total">
-                {formatCurrency(pendingPayments)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Total Washouts</span>
-              <span className="text-lg font-semibold" data-testid="text-month-washouts">
-                {totalWashouts}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Unique Drivers</span>
-              <span className="text-lg font-semibold" data-testid="text-month-drivers">
-                {uniqueDrivers}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Rejected Washouts</span>
-              <span className="text-lg font-semibold text-red-600 dark:text-red-500" data-testid="text-rejected-count">
-                {recentActivities?.filter((activity: any) => activity.status === 'rejected').length || 0}
-              </span>
-            </div>
+        {/* Overview */}
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-xl font-semibold tracking-normal">Owner Dashboard</h2>
+            <p className="text-sm text-muted-foreground">Review washouts, pending approvals, and location revenue at a glance.</p>
           </div>
-        </StatCard>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <OwnerMetric
+              title="Washouts"
+              value={recentActivities?.length || 0}
+              helper={`${pendingCount} pending approval`}
+              icon={ClipboardCheck}
+              tone="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+              dataTestId="text-daily-visits"
+            />
+            <OwnerMetric
+              title="Pending"
+              value={formatCurrency(pendingPayments)}
+              helper="Awaiting your review"
+              icon={Clock}
+              tone="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
+              dataTestId="text-pending-payments"
+            />
+            <OwnerMetric
+              title="Ready"
+              value={formatCurrency(approvedPayments)}
+              helper="Approved for payout"
+              icon={WalletCards}
+              tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+              dataTestId="text-approved-payments"
+            />
+            <OwnerMetric
+              title="Active Sites"
+              value={Number(locations) || 0}
+              helper="Washout locations"
+              icon={MapPin}
+              tone="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
+              dataTestId="text-total-locations"
+            />
+          </div>
+        </section>
+
+        {/* Payment and Activity Analytics */}
+        <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+          <Card className="rounded-lg border-border/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg">Washout Status Mix</CardTitle>
+                  <p className="text-sm text-muted-foreground">Dollar value currently pending, approved, and rejected.</p>
+                </div>
+                <Badge variant="outline">{dateRange}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  amount: { label: "Amount", color: "var(--chart-2)" },
+                }}
+                className="h-[220px] w-full"
+              >
+                <BarChart data={ownerStatusChartData} margin={{ left: -18, right: 8, top: 8 }}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis hide />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        hideLabel
+                        formatter={(value) => formatCurrency(Number(value))}
+                      />
+                    }
+                  />
+                  <Bar dataKey="amount" fill="var(--color-amount)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-lg border-border/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">30-Day Totals</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Total Payments</span>
+                <span className="text-xl font-semibold text-foreground" data-testid="text-month-total">
+                  {formatCurrency(monthStats?.totalPayments || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Pending Payments</span>
+                <span className="text-lg font-semibold text-secondary" data-testid="text-pending-total">
+                  {formatCurrency(pendingPayments)}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-2">
+                <div className="rounded-lg border p-3 text-center">
+                  <p className="text-lg font-semibold" data-testid="text-month-washouts">{totalWashouts}</p>
+                  <p className="text-xs text-muted-foreground">Washouts</p>
+                </div>
+                <div className="rounded-lg border p-3 text-center">
+                  <p className="text-lg font-semibold" data-testid="text-month-drivers">{uniqueDrivers}</p>
+                  <p className="text-xs text-muted-foreground">Drivers</p>
+                </div>
+                <div className="rounded-lg border p-3 text-center">
+                  <p className="text-lg font-semibold text-red-600 dark:text-red-500" data-testid="text-rejected-count">{rejectedCount}</p>
+                  <p className="text-xs text-muted-foreground">Rejected</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Recent Activity */}
         <StatCard
@@ -472,12 +578,14 @@ export default function OwnerDashboard() {
                 </div>
               </div>
             ) : !recentActivities?.length ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No activity found for this time period</p>
-                <div className="mt-4 text-xs bg-blue-100 dark:bg-blue-900/20 p-2 rounded">
-                  DEBUG: user={user?.id} | dateRange={dateRange} | length={recentActivities?.length} | authError={!!activitiesError}
+              <div className="text-center py-12">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-muted">
+                  <Clock className="h-7 w-7 text-muted-foreground" />
                 </div>
+                <h3 className="text-base font-semibold">No activity found</h3>
+                <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                  There are no washouts for the selected period. Change the date range or check back after a driver submits a washout.
+                </p>
               </div>
             ) : (
               recentActivities.map((activity: any, index: number) => (

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { DriverHeader } from "@/components/DriverHeader";
@@ -8,8 +9,68 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
-import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2 } from "lucide-react";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2, RefreshCw, Navigation, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+
+type DashboardMetricProps = {
+  title: string;
+  value: string | number;
+  helper: string;
+  icon: ComponentType<{ className?: string }>;
+  tone: string;
+  dataTestId?: string;
+};
+
+function DashboardMetric({ title, value, helper, icon: Icon, tone, dataTestId }: DashboardMetricProps) {
+  return (
+    <Card className="rounded-lg border-border/80 bg-card/95 shadow-sm">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground">{title}</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground" data-testid={dataTestId}>{value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
+          </div>
+          <div className={`rounded-lg p-2.5 ${tone}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DriverDashboardSkeleton() {
+  return (
+    <div className="min-h-screen bg-background pb-20">
+      <div className="border-b bg-card">
+        <div className="mx-auto max-w-6xl p-4">
+          <Skeleton className="h-12 w-48" />
+        </div>
+      </div>
+      <main className="mx-auto max-w-6xl space-y-6 p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <Card key={item} className="rounded-lg">
+              <CardContent className="space-y-3 p-4">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-8 w-28" />
+                <Skeleton className="h-3 w-36" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+          <Skeleton className="h-64 rounded-lg" />
+          <Skeleton className="h-64 rounded-lg" />
+        </div>
+        <Skeleton className="h-72 rounded-lg" />
+      </main>
+    </div>
+  );
+}
 
 export default function DriverDashboard() {
   const [, setLocation] = useLocation();
@@ -43,15 +104,7 @@ export default function DriverDashboard() {
   });
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="animate-pulse space-y-4 p-4">
-          <div className="h-20 bg-muted rounded-lg" />
-          <div className="h-32 bg-muted rounded-lg" />
-          <div className="h-32 bg-muted rounded-lg" />
-        </div>
-      </div>
-    );
+    return <DriverDashboardSkeleton />;
   }
 
   // Extract data with proper null checks and type annotation
@@ -72,6 +125,16 @@ export default function DriverDashboard() {
 
   // Calculate adjusted earnings (total minus rejected)
   const adjustedDailyEarnings = (dailyStats?.earnings || 0) - rejectedTotal;
+  const weeklyEarnings = weeklyStats?.totalEarnings || 0;
+  const weeklyNetEarnings = weeklyEarnings - rejectedTotal;
+  const totalPaid = Array.isArray(paymentHistory) ? paymentHistory.reduce((sum: number, payment: any) => 
+    sum + Number(payment.amount || 0), 0
+  ) : 0;
+  const driverChartData = [
+    { label: "Today", earnings: Math.max(adjustedDailyEarnings, 0), washouts: dailyStats?.visits || 0 },
+    { label: "7 days", earnings: Math.max(weeklyNetEarnings, 0), washouts: weeklyStats?.totalWashouts || 0 },
+    { label: "Paid", earnings: Math.max(totalPaid, 0), washouts: 0 },
+  ];
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -91,7 +154,7 @@ export default function DriverDashboard() {
         </div>
       </div>
 
-      <main className="p-4 space-y-6">
+      <main className="mx-auto max-w-6xl p-4 space-y-6">
         {/* Profile Completion Notice */}
         {(dashboardData as any)?.user && (
           !(dashboardData as any).user.phone || 
@@ -130,48 +193,61 @@ export default function DriverDashboard() {
           </div>
         )}
 
-        {/* Today's Activity */}
-        <StatCard
-          title="Today's Activity"
-          subtitle={
-            <div className="flex items-center justify-between">
-              <span>{new Date().toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-              })}</span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-primary hover:text-primary/80 text-xs"
-                onClick={() => refetch()}
-                data-testid="button-refresh-dashboard"
-              >
-                Refresh
-              </Button>
+        {/* Dashboard Snapshot */}
+        <section className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold tracking-normal">Driver Dashboard</h2>
+              <p className="text-sm text-muted-foreground">
+                {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} performance and payout status.
+              </p>
             </div>
-          }
-        >
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary mb-1" data-testid="text-daily-visits">
-                {dailyStats?.visits || 0}
-              </div>
-              <div className="text-sm text-muted-foreground">Site Visits</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-secondary mb-1" data-testid="text-daily-earnings">
-                {formatCurrency(adjustedDailyEarnings)}
-              </div>
-              <div className="text-sm text-muted-foreground">Today's Earnings</div>
-              {rejectedTotal > 0 && (
-                <div className="text-xs text-red-600 dark:text-red-400 mt-1" data-testid="text-rejected-amount">
-                  -{formatCurrency(rejectedTotal)} rejected
-                </div>
-              )}
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() => refetch()}
+              data-testid="button-refresh-dashboard"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
           </div>
-        </StatCard>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <DashboardMetric
+              title="Site Visits"
+              value={dailyStats?.visits || 0}
+              helper="Completed today"
+              icon={Navigation}
+              tone="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+              dataTestId="text-daily-visits"
+            />
+            <DashboardMetric
+              title="Today's Earnings"
+              value={formatCurrency(adjustedDailyEarnings)}
+              helper={rejectedTotal > 0 ? `${formatCurrency(rejectedTotal)} rejected` : "Net of rejected washouts"}
+              icon={DollarSign}
+              tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+              dataTestId="text-daily-earnings"
+            />
+            <DashboardMetric
+              title="7-Day Net"
+              value={formatCurrency(weeklyNetEarnings)}
+              helper={`${weeklyStats?.totalWashouts || 0} washouts this week`}
+              icon={TrendingUp}
+              tone="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
+              dataTestId="text-net-earnings"
+            />
+            <DashboardMetric
+              title="Total Paid"
+              value={formatCurrency(totalPaid)}
+              helper="Recorded payment history"
+              icon={CreditCard}
+              tone="bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-300"
+              dataTestId="text-total-paid"
+            />
+          </div>
+        </section>
 
         {/* Lottery Entries Card - always visible */}
         <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800">
@@ -281,59 +357,86 @@ export default function DriverDashboard() {
           Find Location
         </Button>
 
-        {/* 7-Day Summary */}
-        <StatCard
-          title="7-Day Summary"
-          subtitle={
-            <div className="flex items-center text-green-600 text-sm font-medium">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              +12%
-            </div>
-          }
-        >
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Total Earned</span>
-              <span className="text-2xl font-bold text-foreground" data-testid="text-weekly-earnings">
-                {formatCurrency(weeklyStats?.totalEarnings || 0)}
-              </span>
-            </div>
-            {rejectedTotal > 0 && (
+        {/* Earnings Summary */}
+        <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+          <Card className="rounded-lg border-border/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg">Earnings Snapshot</CardTitle>
+                  <p className="text-sm text-muted-foreground">Today, recent net earnings, and paid history.</p>
+                </div>
+                <TrendingUp className="h-5 w-5 text-emerald-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  earnings: { label: "Earnings", color: "var(--chart-1)" },
+                }}
+                className="h-[210px] w-full"
+              >
+                <BarChart data={driverChartData} margin={{ left: -18, right: 8, top: 8 }}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis hide />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        hideLabel
+                        formatter={(value) => formatCurrency(Number(value))}
+                      />
+                    }
+                  />
+                  <Bar dataKey="earnings" fill="var(--color-earnings)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-lg border-border/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">7-Day Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Rejected Amount</span>
-                <span className="text-lg font-semibold text-red-600 dark:text-red-400" data-testid="text-weekly-rejected">
-                  -{formatCurrency(rejectedTotal)}
+                <span className="text-sm text-muted-foreground">Total Earned</span>
+                <span className="text-xl font-semibold text-foreground" data-testid="text-weekly-earnings">
+                  {formatCurrency(weeklyEarnings)}
                 </span>
               </div>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Net Earnings</span>
-              <span className="text-xl font-bold text-green-600 dark:text-green-500" data-testid="text-net-earnings">
-                {formatCurrency((weeklyStats?.totalEarnings || 0) - rejectedTotal)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Total Washouts</span>
-              <span className="text-lg font-semibold" data-testid="text-weekly-washouts">
-                {weeklyStats?.totalWashouts || 0}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Avg per Washout</span>
-              <span className="text-lg font-semibold" data-testid="text-avg-washout">
-                {formatCurrency(weeklyStats?.avgPerWashout || 0)}
-              </span>
-            </div>
-            {rejectedWashouts.length > 0 && (
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Rejected Washouts</span>
-                <span className="text-lg font-semibold text-red-600 dark:text-red-400" data-testid="text-rejected-washouts">
-                  {rejectedWashouts.length} ({formatCurrency(rejectedTotal)})
+              {rejectedTotal > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Rejected Amount</span>
+                  <span className="text-base font-semibold text-red-600 dark:text-red-400" data-testid="text-weekly-rejected">
+                    -{formatCurrency(rejectedTotal)}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between items-center rounded-lg bg-emerald-50 px-3 py-2 dark:bg-emerald-950/20">
+                <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Net Earnings</span>
+                <span className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                  {formatCurrency(weeklyNetEarnings)}
                 </span>
               </div>
-            )}
-          </div>
-        </StatCard>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Washouts</p>
+                  <p className="text-lg font-semibold" data-testid="text-weekly-washouts">{weeklyStats?.totalWashouts || 0}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Avg Each</p>
+                  <p className="text-lg font-semibold" data-testid="text-avg-washout">{formatCurrency(weeklyStats?.avgPerWashout || 0)}</p>
+                </div>
+              </div>
+              {rejectedWashouts.length > 0 && (
+                <p className="text-xs text-red-600 dark:text-red-400" data-testid="text-rejected-washouts">
+                  {rejectedWashouts.length} rejected washouts totaling {formatCurrency(rejectedTotal)}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Payment Status */}
         <Card>
@@ -352,11 +455,9 @@ export default function DriverDashboard() {
                   </div>
                   <div className="text-sm text-green-700 dark:text-green-300">Pending Today</div>
                 </div>
-                <div className="text-center p-3 bg-blue-50 dark:blue-900/20 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600" data-testid="text-total-paid">
-                    {formatCurrency(Array.isArray(paymentHistory) ? paymentHistory.reduce((sum: number, payment: any) => 
-                      sum + Number(payment.amount || 0), 0
-                    ) : 0)}
+                <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(totalPaid)}
                   </div>
                   <div className="text-sm text-blue-700 dark:text-blue-300">Total Paid</div>
                 </div>
