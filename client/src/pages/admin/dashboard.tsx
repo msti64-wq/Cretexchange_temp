@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { PlatformPerformanceCard } from "@/components/PlatformPerformanceCard";
 import logoImage from "@assets/cretexchange-logo-white-transparent.png";
+import { ShieldAlert, Gauge, UsersRound } from "lucide-react";
 
 type AdminMetricProps = {
   title: string;
@@ -29,16 +30,16 @@ type AdminMetricProps = {
 
 function AdminMetric({ title, value, helper, icon: Icon, tone, dataTestId }: AdminMetricProps) {
   return (
-    <Card className="group overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <Card className="group overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border/90 hover:shadow-md">
       <div className="h-1 bg-gradient-to-r from-primary/70 via-secondary/60 to-accent/60" />
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground" data-testid={dataTestId}>{value}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid={dataTestId}>{value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
           </div>
-          <div className={`rounded-xl p-3 ${tone}`}>
+          <div className={`rounded-xl border border-border/60 p-3 ${tone}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -50,12 +51,12 @@ function AdminMetric({ title, value, helper, icon: Icon, tone, dataTestId }: Adm
 function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="gradient-bg p-4">
-        <div className="mx-auto max-w-6xl">
-          <Skeleton className="h-12 w-56 bg-white/30" />
+      <div className="gradient-bg text-white">
+        <div className="mx-auto max-w-6xl px-4 py-4">
+          <Skeleton className="h-14 w-full max-w-lg bg-white/20" />
         </div>
       </div>
-      <main className="mx-auto max-w-6xl space-y-6 p-4">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
             <Card key={item} className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
@@ -68,8 +69,8 @@ function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" 
           ))}
         </div>
         <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-          <Skeleton className="h-72 rounded-lg" />
-          <Skeleton className="h-72 rounded-lg" />
+          <Skeleton className="h-72 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
         </div>
       </main>
       <MobileNav role={role} />
@@ -193,6 +194,10 @@ export default function AdminDashboard() {
     { label: "Active", count: activeMessages },
     { label: "Resolved", count: resolvedMessages },
   ];
+  const supportSeverity = unreadMessages > 0 ? "Attention required" : activeMessages > 0 ? "Monitoring" : "Clear";
+  const activeLicenseRate = (weekStats?.activeLicenses || 0) > 0
+    ? Math.round(((weekStats?.licenseRenewals || 0) / Math.max(weekStats?.activeLicenses || 1, 1)) * 100)
+    : 0;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -215,7 +220,7 @@ export default function AdminDashboard() {
               <p className="mt-1 text-sm text-white/80">Platform administration and support signals.</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
             <Button
               variant="secondary"
               size="sm"
@@ -258,16 +263,111 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl p-4 space-y-6">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
+        <section className="grid gap-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm lg:grid-cols-[1.35fr_0.65fr] lg:p-6">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Executive summary
+              </span>
+              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                unreadMessages > 0
+                  ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300'
+              }`}>
+                Support: {supportSeverity}
+              </span>
+              <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                {weekStats?.activeLicenses || 0} active licenses
+              </span>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Operations center
+              </p>
+              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Admin Dashboard</h2>
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                Monitor platform health, revenue, support workload, and prize fulfillment from a single control surface.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Button
+                variant="outline"
+                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                onClick={() => window.location.href = '/users'}
+                data-testid="button-manage-users-hero"
+              >
+                <Users className="h-5 w-5 text-primary" />
+                <span className="text-sm font-semibold">Users</span>
+                <span className="text-xs text-muted-foreground">Review approvals and roles</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                onClick={() => window.location.href = '/locations'}
+                data-testid="button-manage-locations-hero"
+              >
+                <Building className="h-5 w-5 text-secondary" />
+                <span className="text-sm font-semibold">Locations</span>
+                <span className="text-xs text-muted-foreground">Monitor site network</span>
+              </Button>
+              {user?.role === 'super_admin' && (
+                <Button
+                  variant="outline"
+                  className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                  onClick={() => window.location.href = '/feature-flags'}
+                  data-testid="button-feature-flags-hero"
+                >
+                  <Flag className="h-5 w-5 text-emerald-600" />
+                  <span className="text-sm font-semibold">Feature Flags</span>
+                  <span className="text-xs text-muted-foreground">Control rollout settings</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Revenue signal</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-monthly-subscriptions">
+                {formatCurrency(weekStats?.subscriptionRevenue || 0)}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Subscription revenue this period</p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Support queue</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{activeMessages}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{unreadMessages} unread messages</p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Renewal mix</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{activeLicenseRate}%</p>
+              <p className="mt-1 text-sm text-muted-foreground">renewals vs active licenses</p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Prize follow-up</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{pendingDrawings?.length || 0}</p>
+              <p className="mt-1 text-sm text-muted-foreground">pending deliveries</p>
+            </div>
+          </div>
+        </section>
+
+        {error && !isUnauthorizedError(error as Error) && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm dark:border-red-900/40 dark:bg-red-950/20">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
+              <div className="min-w-0">
+                <p className="font-semibold text-red-800 dark:text-red-200">Dashboard data unavailable</p>
+                <p className="mt-1 text-sm text-red-700/90 dark:text-red-300/80">
+                  The control center could not load all admin data. Refresh the page or try again in a moment.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Operations Snapshot */}
         <section className="space-y-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Operations center
-            </p>
-            <h2 className="mt-1 text-2xl font-semibold tracking-tight">Admin Dashboard</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Monitor platform health, support workload, and revenue signals.</p>
-          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <AdminMetric
               title="Revenue"
@@ -305,12 +405,17 @@ export default function AdminDashboard() {
         </section>
 
         {/* Platform Performance Analytics */}
-        <StatCard title="Platform Performance Analytics">
-          <div className="space-y-4">
-            {/* Date Range Selector */}
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <span className="text-sm font-medium">Date Range</span>
-              <div className="flex gap-2">
+        <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
+          <CardHeader className="border-b border-border/60 pb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Gauge className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-base font-semibold">Platform Performance Analytics</CardTitle>
+                </div>
+                <p className="text-sm text-muted-foreground">License activity and platform utilization over the selected window.</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 sm:w-auto">
                 <Button 
                   size="sm"
                   variant={dateRange === "30" ? "default" : "outline"}
@@ -340,83 +445,115 @@ export default function AdminDashboard() {
                 </Button>
               </div>
             </div>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Active licenses</p>
+                <p className="mt-1 text-xl font-semibold tracking-tight">{weekStats?.activeLicenses || 0}</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Renewals</p>
+                <p className="mt-1 text-xl font-semibold tracking-tight">{weekStats?.licenseRenewals || 0}</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Support queue</p>
+                <p className="mt-1 text-xl font-semibold tracking-tight">{activeMessages}</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Open prizes</p>
+                <p className="mt-1 text-xl font-semibold tracking-tight">{pendingDrawings?.length || 0}</p>
+              </div>
+            </div>
 
             <PlatformPerformanceCard dateRange={parseInt(dateRange)} />
-          </div>
-        </StatCard>
+          </CardContent>
+        </Card>
 
         {/* Revenue and Support Overview */}
         <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-          <Card className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Subscription Revenue</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Monthly Subscriptions</span>
-                <span className="text-xl font-semibold text-green-600" data-testid="text-monthly-subscriptions">
-                  {formatCurrency(weekStats?.subscriptionRevenue || 0)}
-                </span>
+          <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
+            <CardHeader className="border-b border-border/60 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-emerald-600" />
+                    <CardTitle className="text-base font-semibold">Subscription Revenue</CardTitle>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Revenue and license activity this period.</p>
+                </div>
+                <Badge variant="outline" data-testid="badge-stripe-status" className="rounded-full px-3 py-1 text-xs font-medium">
+                  {import.meta.env.VITE_STRIPE_PUBLIC_KEY ? "Connected" : "Development Mode"}
+                </Badge>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Active Licenses</span>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-5">
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Monthly subscriptions</p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground" data-testid="text-monthly-subscriptions">
+                  {formatCurrency(weekStats?.subscriptionRevenue || 0)}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">Collected revenue for the selected window</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <button
-                  className="text-lg font-semibold hover:text-primary transition-colors cursor-pointer hover:underline"
+                  className="rounded-2xl border border-border/70 bg-background/80 p-4 text-left shadow-sm transition-colors hover:bg-muted/50"
                   onClick={() => window.location.href = '/subscriptions?filter=active'}
                   data-testid="button-active-licenses"
                   title="Click to view active subscribers"
                 >
-                  {weekStats?.activeLicenses || 0}
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Active licenses</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.activeLicenses || 0}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">View active subscribers</p>
+                </button>
+                <button
+                  className="rounded-2xl border border-border/70 bg-background/80 p-4 text-left shadow-sm transition-colors hover:bg-muted/50"
+                  onClick={() => window.location.href = '/subscriptions?filter=renewal'}
+                  data-testid="button-license-renewals"
+                  title="Click to view upcoming renewals"
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Renewals</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.licenseRenewals || 0}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Due this month</p>
                 </button>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">License Renewals</span>
-                <div className="text-right">
-                  <button
-                    className="text-lg font-semibold text-foreground hover:text-primary transition-colors cursor-pointer hover:underline"
-                    onClick={() => window.location.href = '/subscriptions?filter=renewal'}
-                    data-testid="button-license-renewals"
-                    title="Click to view upcoming renewals"
-                  >
-                    {weekStats?.licenseRenewals || 0}
-                  </button>
-                  <div className="text-sm text-muted-foreground">This month</div>
-                </div>
-              </div>
-              <div className="mt-4 pt-3 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Stripe Integration</span>
-                  <Badge variant="outline" data-testid="badge-stripe-status">
-                    {import.meta.env.VITE_STRIPE_PUBLIC_KEY ? "Connected" : "Development Mode"}
-                  </Badge>
-                </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                30-day payment volume:
+                <span className="ml-2 font-semibold text-foreground">
+                  {formatCurrency(monthStats?.totalPayments || 0)}
+                </span>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <CardTitle className="text-lg">Support Workload</CardTitle>
+          <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
+            <CardHeader className="border-b border-border/60 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <UsersRound className="h-4 w-4 text-orange-600" />
+                    <CardTitle className="text-base font-semibold">Support Workload</CardTitle>
+                  </div>
                   <p className="text-sm text-muted-foreground">Current message status distribution.</p>
                 </div>
-                <Badge variant={activeMessages > 0 ? "secondary" : "outline"}>{activeMessages} active</Badge>
+                <Badge variant={activeMessages > 0 ? "secondary" : "outline"} className="rounded-full px-3 py-1 text-xs font-medium">
+                  {activeMessages} active
+                </Badge>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-5">
               <ChartContainer
                 config={{
-                  count: { label: "Messages", color: "var(--chart-3)" },
+                  count: { label: "Messages", color: "var(--color-count)" },
                 }}
-                className="h-[210px] w-full"
+                className="h-[220px] w-full"
               >
                 <BarChart data={messageChartData} margin={{ left: -18, right: 8, top: 8 }}>
-                  <CartesianGrid vertical={false} />
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis dataKey="label" tickLine={false} axisLine={false} />
                   <YAxis hide allowDecimals={false} />
                   <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                  <Bar dataKey="count" fill="var(--color-count)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="count" fill="var(--color-count)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ChartContainer>
             </CardContent>
@@ -424,24 +561,41 @@ export default function AdminDashboard() {
         </div>
 
         {/* Messages Section */}
-        <StatCard title="Support Messages">
+        <StatCard
+          title="Support Messages"
+          subtitle={
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  {unreadMessages} unread
+                </span>
+                <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  {activeMessages} active
+                </span>
+                <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  {resolvedMessages} resolved
+                </span>
+              </div>
+            </div>
+          }
+        >
           <div className="space-y-4">
             {/* Search and Filter Controls */}
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search messages (includes resolved)..."
                   value={messageSearchTerm}
                   onChange={(e) => setMessageSearchTerm(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="h-10 pl-10 pr-10"
                   data-testid="input-search-messages"
                 />
                 {messageSearchTerm && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                    className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 p-0"
                     onClick={() => setMessageSearchTerm("")}
                     data-testid="button-clear-search"
                   >
@@ -454,15 +608,21 @@ export default function AdminDashboard() {
                 size="sm"
                 onClick={() => setShowResolvedMessages(!showResolvedMessages)}
                 data-testid="button-toggle-resolved"
+                className="h-10"
               >
                 {showResolvedMessages ? "Hide Resolved" : "Show Resolved"}
               </Button>
             </div>
 
             {messagesLoading ? (
-              <div className="text-center py-4">
-                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-                <p className="text-sm text-muted-foreground mt-2">Loading messages...</p>
+              <div className="grid gap-3">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="mt-3 h-3 w-3/4" />
+                    <Skeleton className="mt-2 h-3 w-2/3" />
+                  </div>
+                ))}
               </div>
             ) : (() => {
               // Filter messages based on search term and resolved toggle
@@ -484,35 +644,35 @@ export default function AdminDashboard() {
               }
 
               return !filteredMessages || filteredMessages.length === 0 ? (
-                <div className="text-center py-8">
-                  <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <div className="rounded-2xl border border-border/70 bg-muted/30 px-6 py-10 text-center">
+                  <MessageCircle className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                   {messageSearchTerm ? (
                     <>
-                      <p className="text-muted-foreground">No messages found</p>
+                      <p className="font-medium text-foreground">No messages found</p>
                       <p className="text-sm text-muted-foreground">Try adjusting your search terms</p>
                     </>
                   ) : showResolvedMessages ? (
                     <>
-                      <p className="text-muted-foreground">No support messages yet</p>
+                      <p className="font-medium text-foreground">No support messages yet</p>
                       <p className="text-sm text-muted-foreground">Messages from drivers and owners will appear here</p>
                     </>
                   ) : (
                     <>
-                      <p className="text-muted-foreground">No active support messages</p>
+                      <p className="font-medium text-foreground">No active support messages</p>
                       <p className="text-sm text-muted-foreground">Resolved messages are hidden. Use search or toggle to view them.</p>
                     </>
                   )}
                 </div>
               ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                   {filteredMessages.slice(0, 5).map((message: any) => (
                   <div 
                     key={message.id} 
-                    className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                    className="rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm transition-colors hover:bg-muted/50"
                     data-testid={`message-card-${message.id}`}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center space-x-2">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge 
                           variant={message.userRole === 'driver' ? 'default' : 'secondary'}
                           data-testid={`badge-user-role-${message.id}`}
@@ -530,28 +690,29 @@ export default function AdminDashboard() {
                            message.status === 'read' ? 'Read' : 'Resolved'}
                         </Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground flex items-center">
-                        <Clock className="w-3 h-3 mr-1" />
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <Clock className="mr-1 h-3 w-3" />
                         {new Date(message.createdAt).toLocaleDateString()}
                       </div>
                     </div>
-                    <h4 className="font-semibold mb-1" data-testid={`text-subject-${message.id}`}>
+                    <h4 className="mb-1 text-sm font-semibold" data-testid={`text-subject-${message.id}`}>
                       {message.subject}
                     </h4>
                     <p className="text-sm text-muted-foreground mb-2" data-testid={`text-user-name-${message.id}`}>
                       From: {message.user.firstName} {message.user.lastName}
                       {message.userPhone && ` • ${message.userPhone}`}
                     </p>
-                    <p className="text-sm mb-3 line-clamp-2" data-testid={`text-message-${message.id}`}>
+                    <p className="mb-3 line-clamp-2 text-sm" data-testid={`text-message-${message.id}`}>
                       {message.message}
                     </p>
-                    <div className="flex space-x-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       {message.status === 'unread' && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => updateMessageStatusMutation.mutate({ messageId: message.id, status: 'read' })}
                           data-testid={`button-mark-read-${message.id}`}
+                          className="h-9"
                         >
                           Mark as Read
                         </Button>
@@ -561,6 +722,7 @@ export default function AdminDashboard() {
                           size="sm"
                           onClick={() => updateMessageStatusMutation.mutate({ messageId: message.id, status: 'resolved' })}
                           data-testid={`button-resolve-${message.id}`}
+                          className="h-9"
                         >
                           <CheckCircle className="w-4 h-4 mr-1" />
                           Resolve
@@ -570,7 +732,7 @@ export default function AdminDashboard() {
                   </div>
                   ))}
                   {filteredMessages.length > 5 && (
-                    <div className="text-center pt-4">
+                    <div className="pt-4 text-center">
                       <p className="text-sm text-muted-foreground">
                         Showing 5 of {filteredMessages.length} messages
                       </p>
@@ -583,42 +745,66 @@ export default function AdminDashboard() {
         </StatCard>
 
         {/* Platform Health */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Platform Health</CardTitle>
+        <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
+          <CardHeader className="border-b border-border/60 pb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-emerald-600" />
+                  <CardTitle className="text-base font-semibold">Platform Health</CardTitle>
+                </div>
+                <p className="text-sm text-muted-foreground">Core system indicators and service availability.</p>
+              </div>
+              <Badge variant="default" data-testid="badge-system-status" className="rounded-full px-3 py-1 text-xs font-medium">
+                Operational
+              </Badge>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">System Status</span>
+          <CardContent className="space-y-3 pt-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    <span className="text-sm font-medium">Payment Processing</span>
+                  </div>
+                  <Badge variant="default" data-testid="badge-payment-status">Active</Badge>
                 </div>
-                <Badge variant="default" data-testid="badge-system-status">Operational</Badge>
+                <p className="mt-2 text-xs text-muted-foreground">Stripe and payout flows remain live.</p>
               </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">Payment Processing</span>
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                    <span className="text-sm font-medium">Object Storage</span>
+                  </div>
+                  <Badge variant="secondary" data-testid="badge-storage-status">Connected</Badge>
                 </div>
-                <Badge variant="default" data-testid="badge-payment-status">Active</Badge>
+                <p className="mt-2 text-xs text-muted-foreground">Media uploads and documents are available.</p>
               </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm">Object Storage</span>
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    <span className="text-sm font-medium">GPS Services</span>
+                  </div>
+                  <Badge variant="default" data-testid="badge-gps-status">Available</Badge>
                 </div>
-                <Badge variant="secondary" data-testid="badge-storage-status">Connected</Badge>
+                <p className="mt-2 text-xs text-muted-foreground">Field tracking and geolocation calls are healthy.</p>
               </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">GPS Services</span>
+              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`h-2.5 w-2.5 rounded-full ${unreadMessages > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                    <span className="text-sm font-medium">Support Risk</span>
+                  </div>
+                  <Badge variant={unreadMessages > 0 ? "destructive" : "default"} data-testid="badge-support-risk">
+                    {unreadMessages > 0 ? "Attention" : "Clear"}
+                  </Badge>
                 </div>
-                <Badge variant="default" data-testid="badge-gps-status">Available</Badge>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {unreadMessages > 0 ? `${unreadMessages} unread messages require review.` : 'No outstanding support risks.'}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -626,17 +812,22 @@ export default function AdminDashboard() {
 
         {/* Pending Prize Deliveries */}
         {pendingDrawings && pendingDrawings.length > 0 && (
-          <Card className="border-yellow-300 dark:border-yellow-700">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Gift className="w-4 h-4 text-yellow-600" />
-                Pending Prize Deliveries
-                <Badge className="ml-auto bg-yellow-100 text-yellow-700 border-yellow-300">
+          <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
+            <CardHeader className="border-b border-border/60 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Gift className="h-4 w-4 text-amber-600" />
+                    <CardTitle className="text-base font-semibold">Pending Prize Deliveries</CardTitle>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Follow up on winners who have not yet been marked delivered.</p>
+                </div>
+                <Badge className="rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
                   Reminder
                 </Badge>
-              </CardTitle>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-5">
               {pendingDrawings.map((drawing: any) => {
                 const monthName = new Date(drawing.lotteryYear, drawing.lotteryMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                 const winners = [
@@ -646,13 +837,18 @@ export default function AdminDashboard() {
                 ].filter(w => w.name && !w.delivered);
 
                 return (
-                  <div key={drawing.id}>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">{monthName} Drawing</p>
+                  <div key={drawing.id} className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{monthName} drawing</p>
+                      <span className="rounded-full border border-border/70 bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                        {winners.length} pending
+                      </span>
+                    </div>
                     <div className="space-y-2">
                       {winners.map((winner) => (
-                        <div key={winner.key} className="flex items-center justify-between bg-yellow-50 dark:bg-yellow-900/20 rounded-lg px-3 py-2">
+                        <div key={winner.key} className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/80 px-3 py-3">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium">{winner.place} — {winner.name}</p>
+                            <p className="text-sm font-semibold">{winner.place} — {winner.name}</p>
                             <p className="text-xs text-muted-foreground font-mono">{winner.ticket}</p>
                             {winner.prize && <p className="text-xs text-muted-foreground">Prize: {winner.prize}</p>}
                             <p className="text-xs text-muted-foreground">
@@ -662,11 +858,11 @@ export default function AdminDashboard() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="flex-shrink-0 text-green-700 border-green-400 hover:bg-green-50"
+                            className="h-9 flex-shrink-0 border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-950/20"
                             onClick={() => markDeliveredMutation.mutate({ drawingId: drawing.id, place: winner.key })}
                             disabled={markDeliveredMutation.isPending}
                           >
-                            <PackageCheck className="w-4 h-4 mr-1" />
+                            <PackageCheck className="mr-1 h-4 w-4" />
                             Delivered
                           </Button>
                         </div>
@@ -680,44 +876,44 @@ export default function AdminDashboard() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Button 
             variant="outline" 
-            className="h-20 flex-col space-y-2"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
             onClick={() => window.location.href = '/users'}
             data-testid="button-manage-users"
           >
-            <Users className="w-6 h-6 text-primary" />
-            <div className="text-center">
-              <div className="font-medium">Users</div>
-              <div className="text-xs text-muted-foreground">Manage & Approve</div>
+            <Users className="h-5 w-5 text-primary" />
+            <div>
+              <div className="text-sm font-semibold">Users</div>
+              <div className="text-xs text-muted-foreground">Manage & approve</div>
             </div>
           </Button>
           
           <Button 
             variant="outline" 
-            className="h-20 flex-col space-y-2"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
             onClick={() => window.location.href = '/locations'}
             data-testid="button-manage-locations"
           >
-            <Building className="w-6 h-6 text-secondary" />
-            <div className="text-center">
-              <div className="font-medium">Locations</div>
-              <div className="text-xs text-muted-foreground">Monitor Sites</div>
+            <Building className="h-5 w-5 text-secondary" />
+            <div>
+              <div className="text-sm font-semibold">Locations</div>
+              <div className="text-xs text-muted-foreground">Monitor sites</div>
             </div>
           </Button>
 
           {user?.role === 'super_admin' && (
             <Button 
               variant="outline" 
-              className="h-20 flex-col space-y-2"
+              className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
               onClick={() => window.location.href = '/feature-flags'}
               data-testid="button-feature-flags"
             >
-              <Flag className="w-6 h-6 text-green-600" />
-              <div className="text-center">
-                <div className="font-medium">Feature Flags</div>
-                <div className="text-xs text-muted-foreground">Control Features</div>
+              <Flag className="h-5 w-5 text-emerald-600" />
+              <div>
+                <div className="text-sm font-semibold">Feature Flags</div>
+                <div className="text-xs text-muted-foreground">Control rollout</div>
               </div>
             </Button>
           )}
