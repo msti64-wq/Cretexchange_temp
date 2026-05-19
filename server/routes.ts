@@ -3082,23 +3082,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Validate location data (lat/lng are optional — will be geocoded below)
+      // Validate location data. Owner creates must arrive with verified coordinates from Mapbox Places.
       const locationData = insertWashoutLocationSchema.parse({
         ...req.body,
         ownerId: owner.id,
       });
 
-      // Auto-geocode lat/lng from the address if not already provided
       if (!locationData.latitude || !locationData.longitude) {
-        try {
-          console.log(`🗺️ Geocoding address: ${req.body.street}, ${req.body.city}, ${req.body.state} ${req.body.zip}`);
-          const geo = await geocodeAddress(req.body.street, req.body.city, req.body.state, req.body.zip);
-          locationData.latitude = geo.latitude;
-          locationData.longitude = geo.longitude;
-          console.log(`✅ Geocoded: lat=${geo.latitude}, lng=${geo.longitude}`);
-        } catch (geoError: any) {
-          return res.status(400).json({ message: geoError.message });
-        }
+        console.warn("Owner location creation blocked: verified coordinates were not provided.");
+        return res.status(400).json({
+          message: "We could not verify this address. Please select a valid address from the dropdown suggestions or contact support."
+        });
       }
 
       // Create the location

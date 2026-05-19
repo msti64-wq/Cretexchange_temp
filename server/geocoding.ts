@@ -1,9 +1,9 @@
 /**
- * Server-side geocoding using Google Maps Geocoding API.
- * Automatically converts a street address into lat/lng coordinates.
+ * Server-side geocoding using the Mapbox Geocoding API.
+ * Converts a street address into lat/lng coordinates for owner locations.
  */
 
-const GOOGLE_MAPS_API_KEY = process.env.VITE_GOOGLE_MAPS_API_KEY;
+const MAPBOX_TOKEN = process.env.VITE_MAPBOX_TOKEN;
 
 export interface GeocodeResult {
   latitude: string;
@@ -17,52 +17,47 @@ export async function geocodeAddress(
   state: string,
   zip: string
 ): Promise<GeocodeResult> {
-  if (!GOOGLE_MAPS_API_KEY) {
+  if (!MAPBOX_TOKEN) {
     throw new Error(
-      'Google Maps API key is not configured. Set VITE_GOOGLE_MAPS_API_KEY on the server, or enter latitude and longitude manually.'
+      'Mapbox token is not configured. Set VITE_MAPBOX_TOKEN on the server or select a valid address from the dropdown suggestions.'
     );
   }
 
-  const addressQuery = `${street}, ${city}, ${state} ${zip}`;
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addressQuery)}&key=${GOOGLE_MAPS_API_KEY}`;
+  const addressQuery = `${street}, ${city}, ${state} ${zip}`.trim();
+  const url = new URL(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addressQuery)}.json`);
+  url.searchParams.set("access_token", MAPBOX_TOKEN);
+  url.searchParams.set("autocomplete", "false");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("types", "address");
+  url.searchParams.set("country", "us");
 
-  const response = await fetch(url);
+  const response = await fetch(url.toString());
+  const data = await response.json().catch(() => null) as any;
+
   if (!response.ok) {
-    throw new Error(`Geocoding request failed: ${response.status} ${response.statusText}`);
+    const reason = response.status === 401 || response.status === 403
+      ? 'Mapbox rejected the geocoding request. Check VITE_MAPBOX_TOKEN and token restrictions.'
+      : 'Unable to verify this address. Please select a valid address from the dropdown suggestions or contact support.';
+    throw new Error(reason);
   }
 
-  const data = await response.json() as any;
-
-  if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-    if (data.status === 'REQUEST_DENIED') {
-      throw new Error(
-        `Google rejected the geocoding request for "${addressQuery}". Check the VITE_GOOGLE_MAPS_API_KEY, API key restrictions, and that the Geocoding API is enabled.`
-      );
-    }
-
-    if (data.status === 'ZERO_RESULTS') {
-      throw new Error(
-        `Could not find coordinates for address: "${addressQuery}". Enter latitude and longitude manually or correct the address.`
-      );
-    }
-
-    if (data.status === 'OVER_QUERY_LIMIT') {
-      throw new Error(
-        `Google Maps geocoding quota was exceeded while looking up "${addressQuery}". Try again later or enter latitude and longitude manually.`
-      );
-    }
-
+  const feature = data?.features?.[0];
+  if (!feature || !Array.isArray(feature.center) || feature.center.length < 2) {
     throw new Error(
-      `Could not geocode address: "${addressQuery}". Google status: ${data.status}. Enter latitude and longitude manually or verify the Google Maps setup.`
+      'We could not verify this address. Please select a valid address from the dropdown suggestions or contact support.'
     );
   }
 
-  const result = data.results[0];
-  const { lat, lng } = result.geometry.location;
+  const [longitude, latitude] = feature.center;
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    throw new Error(
+      'We could not verify this address. Please select a valid address from the dropdown suggestions or contact support.'
+    );
+  }
 
   return {
-    latitude: lat.toString(),
-    longitude: lng.toString(),
-    formattedAddress: result.formatted_address,
+    latitude: latitude.toString(),
+    longitude: longitude.toString(),
+    formattedAddress: feature.place_name,
   };
 }

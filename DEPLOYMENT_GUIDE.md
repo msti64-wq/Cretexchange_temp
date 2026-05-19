@@ -109,9 +109,9 @@ PUBLIC_OBJECT_SEARCH_PATHS=/<bucket-name>/public,/<bucket-name>/uploads
 # Service account credentials (JSON) via Replit Secrets
 ```
 
-**Google Maps API** (Location Services)
+**Mapbox** (Location Search)
 ```bash
-VITE_GOOGLE_MAPS_API_KEY=<your Google Maps API key>
+VITE_MAPBOX_TOKEN=<your Mapbox access token>
 ```
 
 ---
@@ -165,18 +165,17 @@ PRIVATE_OBJECT_DIR=/<bucket-name>/private
 PUBLIC_OBJECT_SEARCH_PATHS=/<bucket-name>/public,/<bucket-name>/uploads
 ```
 
-#### Google Maps API (Location Services)
+#### Mapbox (Location Search)
 
 **Setup Steps**:
-1. Enable Maps JavaScript API in GCP
-2. Enable Places API
-3. Enable Geocoding API
-4. Create API key with restrictions (HTTP referrers)
-5. Add key to environment
+1. Create a Mapbox account
+2. Generate a public access token for client-side address search
+3. Verify the token can call the Geocoding API for your allowed domains
+4. Add the token to environment secrets as `VITE_MAPBOX_TOKEN`
 
 **Required Secret**:
 ```bash
-VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
+VITE_MAPBOX_TOKEN=<mapbox-token>
 ```
 
 ---
@@ -198,7 +197,7 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
 
 - [ ] **API Integrations**
   - Stripe: Test subscription payments, wallet flows, and card issuing
-  - Google Maps: Verify location services
+  - Mapbox: Verify location search and geocoding
   - GCS: Test photo uploads
 
 - [ ] **Security Audit**
@@ -222,7 +221,8 @@ VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
 - [ ] Stripe has `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLIC_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PLATFORM_FINANCIAL_ACCOUNT_ID` configured for the same Stripe mode.
 - [ ] `system_settings.platform_washout_fee` is set to `5.00` in production if the database was seeded with an older value.
 - [ ] Object storage has `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS`, and `DEFAULT_OBJECT_STORAGE_BUCKET_ID` configured for the deployment bucket.
-- [ ] Google services have `GOOGLE_CLOUD_PROJECT_ID`, `GOOGLE_CLOUD_BUCKET_NAME`, and `VITE_GOOGLE_MAPS_API_KEY` configured; browser-exposed keys are domain restricted.
+- [ ] Google Cloud Storage has `GOOGLE_CLOUD_PROJECT_ID` and `GOOGLE_CLOUD_BUCKET_NAME` configured.
+- [ ] Mapbox has `VITE_MAPBOX_TOKEN` configured for location search.
 - [ ] No placeholder, test-only, or local development values remain in deployment secrets.
 
 ---
@@ -466,18 +466,17 @@ This is expected behavior. Follow this workaround:
 - Check service worker registration
 - Test on supported browsers (Safari/Chrome)
 
-#### 3. Google Maps Not Loading
+#### 3. Mapbox Location Search Not Working
 
 **Symptom**: Map shows gray screen or errors
 
-**Cause**: API key missing, restricted, or quota exceeded
+**Cause**: Token missing, restricted, or geocoding request rejected
 
 **Solution**:
 ```bash
-# Verify VITE_GOOGLE_MAPS_API_KEY is set
-# Check API key restrictions in GCP console
-# Ensure Maps JavaScript API enabled
-# Review billing and quota in GCP
+# Verify VITE_MAPBOX_TOKEN is set
+# Check token restrictions and allowed origins
+# Confirm the token can call the Geocoding API
 ```
 
 ### Debug Mode
@@ -537,7 +536,7 @@ GOOGLE_APPLICATION_CREDENTIALS=<service-account-json>
 DEFAULT_OBJECT_STORAGE_BUCKET_ID=<bucket-name>
 PRIVATE_OBJECT_DIR=/<bucket-name>/private
 PUBLIC_OBJECT_SEARCH_PATHS=/<bucket-name>/public,/<bucket-name>/uploads
-VITE_GOOGLE_MAPS_API_KEY=<maps-api-key>
+VITE_MAPBOX_TOKEN=<mapbox-token>
 ```
 
 ### Testing Credentials

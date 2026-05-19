@@ -28,6 +28,7 @@ export default function OwnerLocations() {
   const [locationToEdit, setLocationToEdit] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedMaterialsForEdit, setSelectedMaterialsForEdit] = useState<string[]>([]);
+  const [isAddressVerified, setIsAddressVerified] = useState(false);
   
   // Inline rate editing state
   const [editingRateLocationId, setEditingRateLocationId] = useState<string | null>(null);
@@ -72,7 +73,7 @@ export default function OwnerLocations() {
     enabled: isRubbleServiceEnabled,
   });
 
-  // Stable callbacks for Google Maps components to prevent re-initialization
+  // Stable callbacks for Mapbox autocomplete to prevent stale verified state
   const handlePlaceSelected = useCallback((place: {
     formattedAddress: string;
     street: string;
@@ -91,9 +92,29 @@ export default function OwnerLocations() {
       latitude: place.latitude?.toString() || "",
       longitude: place.longitude?.toString() || "",
     }));
+    setIsAddressVerified(true);
   }, []);
 
-  const getReadableApiError = useCallback((error: unknown) => {
+  const handleAddressInputChange = useCallback(() => {
+    setIsAddressVerified(false);
+    setFormData((prev) => ({
+      ...prev,
+      latitude: "",
+      longitude: "",
+    }));
+  }, []);
+
+  const updateAddressField = useCallback((field: "street" | "city" | "state" | "zip", value: string) => {
+    setIsAddressVerified(false);
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+      latitude: "",
+      longitude: "",
+    }));
+  }, []);
+
+  const parseApiError = useCallback((error: unknown) => {
     const rawMessage = error instanceof Error ? error.message : String(error);
     const payloadMatch = rawMessage.match(/^\d+:\s*([\s\S]*)$/);
     const payload = payloadMatch?.[1] ?? rawMessage;
@@ -131,17 +152,27 @@ export default function OwnerLocations() {
         description: "New washout location has been created successfully.",
       });
       setIsAddDialogOpen(false);
+      setIsAddressVerified(false);
+      setFormData({
+        name: "",
+        street: "",
+        city: "",
+        state: "",
+        zip: "",
+        latitude: "",
+        longitude: "",
+        rate: "5.00",
+        operatingHours: "",
+        amenities: "",
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/locations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
     },
     onError: (error) => {
-      const message = getReadableApiError(error);
-      const geocodingHint = /geocod|google maps|latitude|longitude|address/i.test(message)
-        ? " If autocomplete fails, enter latitude and longitude manually in the form."
-        : "";
+      const message = parseApiError(error);
       toast({
         title: "Failed to Add Location",
-        description: `${message}${geocodingHint}`,
+        description: message,
         variant: "destructive",
       });
     },
@@ -263,6 +294,15 @@ export default function OwnerLocations() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isAddressVerified || !formData.latitude || !formData.longitude) {
+      toast({
+        title: "Address Verification Required",
+        description: "We could not verify this address. Please select a valid address from the dropdown suggestions or contact support.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const amenitiesArray = formData.amenities
       .split(',')
@@ -417,7 +457,15 @@ export default function OwnerLocations() {
               <p className="text-white/80 text-sm">Manage washout sites</p>
             </div>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog
+            open={isAddDialogOpen}
+            onOpenChange={(open) => {
+              setIsAddDialogOpen(open);
+              if (!open) {
+                setIsAddressVerified(false);
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button 
                 variant="secondary" 
@@ -457,14 +505,15 @@ export default function OwnerLocations() {
                   />
                 </div>
 
-                {/* Enhanced location creation with Google Maps */}
+                {/* Enhanced location creation with Mapbox */}
                 {isEnhancedCreationEnabled ? (
                   <>
                     <AddressAutocomplete
                       onPlaceSelected={handlePlaceSelected}
+                      onInputChange={handleAddressInputChange}
                     />
 
-                    {/* Address fields auto-filled by autocomplete, coordinates preserved or entered manually */}
+                    {/* Address fields auto-filled by autocomplete, coordinates must come from Places */}
                     <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
                       <p className="text-sm font-medium">Location Details</p>
                       <div>
@@ -472,7 +521,7 @@ export default function OwnerLocations() {
                         <Input
                           id="street"
                           value={formData.street}
-                          onChange={(e) => setFormData({...formData, street: e.target.value})}
+                          onChange={(e) => updateAddressField("street", e.target.value)}
                           placeholder="Auto-filled from search above"
                           required
                           data-testid="input-street"
@@ -485,7 +534,7 @@ export default function OwnerLocations() {
                           <Input
                             id="city"
                             value={formData.city}
-                            onChange={(e) => setFormData({...formData, city: e.target.value})}
+                            onChange={(e) => updateAddressField("city", e.target.value)}
                             required
                             data-testid="input-city"
                           />
@@ -495,7 +544,7 @@ export default function OwnerLocations() {
                           <Input
                             id="state"
                             value={formData.state}
-                            onChange={(e) => setFormData({...formData, state: e.target.value})}
+                            onChange={(e) => updateAddressField("state", e.target.value)}
                             maxLength={2}
                             required
                             data-testid="input-state"
@@ -508,53 +557,11 @@ export default function OwnerLocations() {
                         <Input
                           id="zip"
                           value={formData.zip}
-                          onChange={(e) => setFormData({...formData, zip: e.target.value})}
+                          onChange={(e) => updateAddressField("zip", e.target.value)}
                           maxLength={10}
                           required
                           data-testid="input-zip"
                         />
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium">Coordinates</p>
-                          <p className="text-xs text-muted-foreground">
-                            Auto-filled from address lookup. If lookup fails, enter them manually to avoid geocoding errors.
-                          </p>
-                        </div>
-                        {(formData.latitude || formData.longitude) && (
-                          <Badge variant="outline" className="shrink-0">
-                            Coordinates set
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="latitude">Latitude</Label>
-                          <Input
-                            id="latitude"
-                            type="number"
-                            step="0.000001"
-                            value={formData.latitude}
-                            onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                            placeholder="e.g. 39.739236"
-                            data-testid="input-latitude"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="longitude">Longitude</Label>
-                          <Input
-                            id="longitude"
-                            type="number"
-                            step="0.000001"
-                            value={formData.longitude}
-                            onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                            placeholder="e.g. -104.990251"
-                            data-testid="input-longitude"
-                          />
-                        </div>
                       </div>
                     </div>
                   </>
@@ -566,7 +573,7 @@ export default function OwnerLocations() {
                       <Input
                         id="street"
                         value={formData.street}
-                        onChange={(e) => setFormData({...formData, street: e.target.value})}
+                        onChange={(e) => updateAddressField("street", e.target.value)}
                         placeholder="123 Main Street"
                         required
                         data-testid="input-street"
@@ -575,26 +582,26 @@ export default function OwnerLocations() {
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="city">City</Label>
-                        <Input
-                          id="city"
-                          value={formData.city}
-                          onChange={(e) => setFormData({...formData, city: e.target.value})}
-                          placeholder="Austin"
-                          required
-                          data-testid="input-city"
-                        />
+                          <Label htmlFor="city">City</Label>
+                          <Input
+                            id="city"
+                            value={formData.city}
+                            onChange={(e) => updateAddressField("city", e.target.value)}
+                            placeholder="Austin"
+                            required
+                            data-testid="input-city"
+                          />
                       </div>
                       <div>
-                        <Label htmlFor="state">State</Label>
-                        <Input
-                          id="state"
-                          value={formData.state}
-                          onChange={(e) => setFormData({...formData, state: e.target.value})}
-                          placeholder="TX"
-                          maxLength={2}
-                          required
-                          data-testid="input-state"
+                          <Label htmlFor="state">State</Label>
+                          <Input
+                            id="state"
+                            value={formData.state}
+                            onChange={(e) => updateAddressField("state", e.target.value)}
+                            placeholder="TX"
+                            maxLength={2}
+                            required
+                            data-testid="input-state"
                         />
                       </div>
                     </div>
@@ -604,47 +611,12 @@ export default function OwnerLocations() {
                       <Input
                         id="zip"
                         value={formData.zip}
-                        onChange={(e) => setFormData({...formData, zip: e.target.value})}
+                        onChange={(e) => updateAddressField("zip", e.target.value)}
                         placeholder="78701"
                         maxLength={10}
                         required
                         data-testid="input-zip"
                       />
-                    </div>
-
-                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg border">
-                      <div>
-                        <p className="text-sm font-medium">Coordinates</p>
-                        <p className="text-xs text-muted-foreground">
-                          Required if address lookup is unavailable or fails.
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="latitude">Latitude</Label>
-                          <Input
-                            id="latitude"
-                            type="number"
-                            step="0.000001"
-                            value={formData.latitude}
-                            onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                            placeholder="e.g. 39.739236"
-                            data-testid="input-latitude"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="longitude">Longitude</Label>
-                          <Input
-                            id="longitude"
-                            type="number"
-                            step="0.000001"
-                            value={formData.longitude}
-                            onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                            placeholder="e.g. -104.990251"
-                            data-testid="input-longitude"
-                          />
-                        </div>
-                      </div>
                     </div>
 
                   </>

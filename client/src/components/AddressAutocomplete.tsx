@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,160 +14,163 @@ interface AddressAutocompleteProps {
     latitude: number;
     longitude: number;
   }) => void;
+  onInputChange?: (value: string) => void;
   defaultValue?: string;
 }
 
-export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: AddressAutocompleteProps) {
+interface MapboxContextEntry {
+  id: string;
+  text: string;
+  short_code?: string;
+}
+
+interface MapboxFeature {
+  id: string;
+  text: string;
+  place_name: string;
+  address?: string;
+  center: [number, number];
+  context?: MapboxContextEntry[];
+}
+
+const VERIFY_MESSAGE = "We could not verify this address. Please select a valid address from the dropdown suggestions or contact support.";
+
+function getContextEntry(feature: MapboxFeature, prefix: string) {
+  return feature.context?.find((entry) => entry.id.startsWith(prefix));
+}
+
+function buildLocationFromFeature(feature: MapboxFeature) {
+  const streetNumber = feature.address?.trim();
+  const streetName = feature.text?.trim();
+  const street = [streetNumber, streetName].filter(Boolean).join(" ").trim() || feature.place_name.split(",")[0].trim();
+  const city = getContextEntry(feature, "place")?.text || "";
+  const region = getContextEntry(feature, "region");
+  const state = region?.short_code?.split("-").pop()?.toUpperCase() || region?.text || "";
+  const zip = getContextEntry(feature, "postcode")?.text || "";
+  const [longitude, latitude] = feature.center || [];
+
+  return {
+    formattedAddress: feature.place_name || "",
+    street,
+    city,
+    state,
+    zip,
+    latitude,
+    longitude,
+  };
+}
+
+export function AddressAutocomplete({ onPlaceSelected, onInputChange, defaultValue = "" }: AddressAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const initializedRef = useRef(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const skipFetchRef = useRef(false);
+  const [query, setQuery] = useState(defaultValue);
+  const [suggestions, setSuggestions] = useState<MapboxFeature[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    setQuery(defaultValue);
+  }, [defaultValue]);
 
-    if (!apiKey || apiKey === 'YOUR_API_KEY') {
-      setError("Google Maps is not configured. Set VITE_GOOGLE_MAPS_API_KEY and enable the Places and Geocoding APIs, or enter latitude and longitude manually.");
+  useEffect(() => {
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
+
+    if (!token || token === "YOUR_MAPBOX_TOKEN") {
+      setSuggestions([]);
+      setError("Mapbox is not configured. Set VITE_MAPBOX_TOKEN to enable address search.");
       return;
     }
 
-    const initAutocomplete = () => {
-      if (!inputRef.current || initializedRef.current) return;
+    const trimmedQuery = query.trim();
+    if (skipFetchRef.current) {
+      skipFetchRef.current = false;
+      return;
+    }
 
-      const g = (window as any).google;
-      if (!g?.maps?.places?.Autocomplete) return;
+    if (trimmedQuery.length < 3) {
+      setSuggestions([]);
+      setError(null);
+      setIsSearching(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setIsSearching(true);
+      setError(null);
 
       try {
-        initializedRef.current = true;
-        autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
-          types: ['address'],
-          componentRestrictions: { country: 'us' },
-          fields: ['address_components', 'formatted_address', 'geometry', 'name'],
-        });
+        const url = new URL(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(trimmedQuery)}.json`);
+        url.searchParams.set("access_token", token);
+        url.searchParams.set("autocomplete", "true");
+        url.searchParams.set("types", "address");
+        url.searchParams.set("country", "us");
+        url.searchParams.set("limit", "5");
 
-        autocompleteRef.current.addListener('place_changed', () => {
-          const place = autocompleteRef.current?.getPlace();
+        const response = await fetch(url.toString(), { signal: controller.signal });
+        const data = await response.json().catch(() => null);
 
-          if (!place || !place.geometry || !place.address_components) {
-            setError("Select a valid address from the suggestions or enter latitude and longitude manually.");
-            return;
-          }
-
-          setIsLoading(true);
-          setError(null);
-
-          let street = '';
-          let city = '';
-          let state = '';
-          let zip = '';
-
-          place.address_components.forEach((component: google.maps.places.GeocoderAddressComponent) => {
-            const types = component.types;
-            if (types.includes('street_number')) {
-              street = component.long_name + ' ';
-            } else if (types.includes('route')) {
-              street += component.long_name;
-            } else if (types.includes('locality')) {
-              city = component.long_name;
-            } else if (types.includes('administrative_area_level_1')) {
-              state = component.short_name;
-            } else if (types.includes('postal_code')) {
-              zip = component.long_name;
-            }
-          });
-
-          const latitude = place.geometry.location.lat();
-          const longitude = place.geometry.location.lng();
-
-          onPlaceSelected({
-            formattedAddress: place.formatted_address || '',
-            street: street.trim(),
-            city,
-            state,
-            zip,
-            latitude,
-            longitude,
-          });
-
-          setIsLoading(false);
-        });
-
-        // Stop polling once initialized
-        if (pollRef.current) {
-          clearInterval(pollRef.current);
-          pollRef.current = null;
+        if (!response.ok) {
+          throw new Error(data?.message || VERIFY_MESSAGE);
         }
+
+        const features = Array.isArray(data?.features) ? data.features : [];
+        if (features.length === 0) {
+          setSuggestions([]);
+          setError(VERIFY_MESSAGE);
+          return;
+        }
+
+        setSuggestions(features);
       } catch (err) {
-        console.error('Error initializing autocomplete:', err);
-        setError("Failed to initialize address search. Check your Google Maps key and API access, or use manual coordinates.");
-        initializedRef.current = false;
+        if ((err as Error).name === "AbortError") return;
+        console.warn("Mapbox autocomplete lookup failed:", (err as Error).message);
+        setSuggestions([]);
+        setError(VERIFY_MESSAGE);
+      } finally {
+        setIsSearching(false);
       }
-    };
-
-    // Load the Maps script if it isn't already in the DOM
-    const ensureScriptLoaded = () => {
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (!existingScript) {
-        const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-        script.async = true;
-        script.defer = true;
-        script.onerror = () => setError("Failed to load Google Maps. Check the API key, key restrictions, and that Places/Geocoding are enabled.");
-        document.head.appendChild(script);
-      }
-    };
-
-    ensureScriptLoaded();
-
-    // Poll until google.maps.places is ready — handles all race conditions:
-    // script already loaded, script loading in progress, or script not yet added.
-    pollRef.current = setInterval(() => {
-      const g = (window as any).google;
-      if (g?.maps?.places?.Autocomplete) {
-        initAutocomplete();
-      }
-    }, 150);
-
-    // Give up after 15 seconds
-    const timeout = setTimeout(() => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
-      if (!initializedRef.current) {
-        setError("Google Maps took too long to load. Please enter address manually below.");
-      }
-    }, 15000);
+    }, 250);
 
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
       clearTimeout(timeout);
     };
-  }, [onPlaceSelected, retryToken]);
+  }, [query, retryToken]);
 
-  if (error) {
+  const emptyHint = useMemo(() => {
+    if (error) return error;
+    if (isSearching) return "Searching addresses...";
+    if (query.trim().length >= 3 && suggestions.length === 0) {
+      return VERIFY_MESSAGE;
+    }
+    return null;
+  }, [error, isSearching, query, suggestions.length]);
+
+  const handleSelectSuggestion = (feature: MapboxFeature) => {
+    const location = buildLocationFromFeature(feature);
+    skipFetchRef.current = true;
+    setQuery(feature.place_name);
+    setSuggestions([]);
+    setError(null);
+    onPlaceSelected(location);
+  };
+
+  if (error && query.trim().length < 3 && !suggestions.length) {
     return (
       <div className="space-y-2">
-        <Label>Address Search (Manual Entry Required)</Label>
-      <div className="p-3 rounded-md bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 text-sm text-yellow-800 dark:text-yellow-200">
-          <p>{error?.includes("Google Maps is not configured")
-            ? "Address autocomplete unavailable. Please enter address manually below."
-            : error}
-          </p>
+        <Label>Address Search</Label>
+        <div className="p-3 rounded-md bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 text-sm text-yellow-800 dark:text-yellow-200">
+          <p>{error}</p>
         </div>
         <Button
           type="button"
           variant="outline"
           className="w-full"
-          onClick={() => {
-            initializedRef.current = false;
-            setError(null);
-            setIsLoading(false);
-            setRetryToken((value) => value + 1);
-          }}
+          onClick={() => setRetryToken((value) => value + 1)}
           data-testid="button-retry-address-autocomplete"
         >
           Retry address search
@@ -190,19 +193,58 @@ export function AddressAutocomplete({ onPlaceSelected, defaultValue = "" }: Addr
           ref={inputRef}
           type="text"
           placeholder="Start typing an address..."
-          defaultValue={defaultValue}
+          value={query}
           className="pr-10"
           data-testid="input-address-autocomplete"
+          onChange={(e) => {
+            const value = e.target.value;
+            setQuery(value);
+            onInputChange?.(value);
+            setError(null);
+          }}
+          autoComplete="off"
         />
-        {isLoading && (
+        {isSearching && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
           </div>
         )}
+
+        {suggestions.length > 0 && (
+          <div className="absolute z-20 mt-2 w-full rounded-md border bg-background shadow-lg overflow-hidden">
+            <div className="max-h-64 overflow-auto">
+              {suggestions.map((feature) => (
+                <button
+                  key={feature.id}
+                  type="button"
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-muted border-b last:border-b-0"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSelectSuggestion(feature)}
+                  data-testid={`button-address-suggestion-${feature.id}`}
+                >
+                  <div className="font-medium">{feature.place_name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Select an address from the dropdown to auto-fill all fields
-      </p>
+
+      {emptyHint && !suggestions.length && (
+        <p className="text-xs text-muted-foreground">{emptyHint}</p>
+      )}
+
+      {error && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => setRetryToken((value) => value + 1)}
+          data-testid="button-retry-address-autocomplete"
+        >
+          Retry address search
+        </Button>
+      )}
     </div>
   );
 }
