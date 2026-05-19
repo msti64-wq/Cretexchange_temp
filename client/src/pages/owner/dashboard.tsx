@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import React from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
+import { DashboardMetricCard } from "@/components/DashboardMetricCard";
+import { DashboardSectionCard } from "@/components/DashboardSectionCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { DebugPanel } from "@/components/DebugPanel";
@@ -23,35 +25,6 @@ import { useToast } from "@/hooks/use-toast";
 import { formatAddress } from "@shared/addressUtils";
 
 const AUTO_APPROVAL_HOURS = 72;
-
-type OwnerMetricProps = {
-  title: string;
-  value: string | number;
-  helper: string;
-  icon: React.ComponentType<{ className?: string }>;
-  tone: string;
-  dataTestId?: string;
-};
-
-function OwnerMetric({ title, value, helper, icon: Icon, tone, dataTestId }: OwnerMetricProps) {
-  return (
-    <Card className="group overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border/90 hover:shadow-md">
-      <div className="h-1 bg-gradient-to-r from-primary/70 via-secondary/60 to-accent/60" />
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid={dataTestId}>{value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
-          </div>
-          <div className={`rounded-xl border border-border/60 p-3 ${tone}`}>
-            <Icon className="h-5 w-5" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function OwnerDashboardSkeleton() {
   return (
@@ -399,36 +372,36 @@ export default function OwnerDashboard() {
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <OwnerMetric
+            <DashboardMetricCard
               title="Washouts"
               value={recentActivities?.length || 0}
               helper={`${pendingCount} pending approval`}
               icon={ClipboardCheck}
-              tone="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+              toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
               dataTestId="text-daily-visits"
             />
-            <OwnerMetric
+            <DashboardMetricCard
               title="Pending"
               value={formatCurrency(pendingPayments)}
               helper="Awaiting your review"
               icon={Clock}
-              tone="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
+              toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
               dataTestId="text-pending-payments"
             />
-            <OwnerMetric
+            <DashboardMetricCard
               title="Ready"
               value={formatCurrency(approvedPayments)}
               helper="Approved for payout"
               icon={WalletCards}
-              tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+              toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-approved-payments"
             />
-            <OwnerMetric
+            <DashboardMetricCard
               title="Active Sites"
               value={Number(locations) || 0}
               helper="Washout locations"
               icon={MapPin}
-              tone="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
+              toneClassName="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
               dataTestId="text-total-locations"
             />
           </div>
@@ -436,22 +409,13 @@ export default function OwnerDashboard() {
 
         {/* Payment and Activity Analytics */}
         <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-          <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
-            <CardHeader className="border-b border-border/60 pb-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-secondary" />
-                    <CardTitle className="text-base font-semibold">Washout Status Mix</CardTitle>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Dollar value currently pending, approved, and rejected.</p>
-                </div>
-                <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
-                  {dateRange}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-5">
+          <DashboardSectionCard
+            title="Washout Status Mix"
+            description="Dollar value currently pending, approved, and rejected."
+            icon={<Package className="h-4 w-4 text-secondary" />}
+            badge={<Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">{dateRange}</Badge>}
+          >
+            <div className="pt-0">
               <ChartContainer
                 config={{
                   amount: { label: "Amount", color: "var(--color-amount)" },
@@ -473,17 +437,14 @@ export default function OwnerDashboard() {
                   <Bar dataKey="amount" fill="var(--color-amount)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ChartContainer>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardSectionCard>
 
-          <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
-            <CardHeader className="border-b border-border/60 pb-4">
-              <div className="flex items-center gap-2">
-                <Clock3 className="h-4 w-4 text-accent" />
-                <CardTitle className="text-base font-semibold">30-Day Totals</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-5">
+          <DashboardSectionCard
+            title="30-Day Totals"
+            icon={<Clock3 className="h-4 w-4 text-accent" />}
+          >
+            <div className="space-y-4">
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -525,8 +486,8 @@ export default function OwnerDashboard() {
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Approved</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardSectionCard>
         </div>
 
         {/* Recent Activity */}

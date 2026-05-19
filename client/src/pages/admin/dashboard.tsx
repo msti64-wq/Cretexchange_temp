@@ -1,14 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect, type ComponentType } from "react";
+import { useState, useEffect } from "react";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
+import { DashboardMetricCard } from "@/components/DashboardMetricCard";
+import { DashboardSectionCard } from "@/components/DashboardSectionCard";
 import { Users, Building, DollarSign, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -18,35 +20,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { PlatformPerformanceCard } from "@/components/PlatformPerformanceCard";
 import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 import { ShieldAlert, Gauge, UsersRound } from "lucide-react";
-
-type AdminMetricProps = {
-  title: string;
-  value: string | number;
-  helper: string;
-  icon: ComponentType<{ className?: string }>;
-  tone: string;
-  dataTestId?: string;
-};
-
-function AdminMetric({ title, value, helper, icon: Icon, tone, dataTestId }: AdminMetricProps) {
-  return (
-    <Card className="group overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border/90 hover:shadow-md">
-      <div className="h-1 bg-gradient-to-r from-primary/70 via-secondary/60 to-accent/60" />
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid={dataTestId}>{value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
-          </div>
-          <div className={`rounded-xl border border-border/60 p-3 ${tone}`}>
-            <Icon className="h-5 w-5" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
   return (
@@ -369,84 +342,79 @@ export default function AdminDashboard() {
         {/* Operations Snapshot */}
         <section className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <AdminMetric
+            <DashboardMetricCard
               title="Revenue"
               value={formatCurrency(weekStats?.subscriptionRevenue || 0)}
               helper="Subscription revenue"
               icon={DollarSign}
-              tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+              toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-monthly-subscriptions-summary"
             />
-            <AdminMetric
+            <DashboardMetricCard
               title="Active Licenses"
               value={weekStats?.activeLicenses || 0}
               helper={`${weekStats?.licenseRenewals || 0} renewals this month`}
               icon={Building}
-              tone="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+              toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
               dataTestId="text-active-licenses-summary"
             />
-            <AdminMetric
+            <DashboardMetricCard
               title="Support Queue"
               value={activeMessages}
               helper={`${unreadMessages} unread messages`}
               icon={MessageCircle}
-              tone="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
+              toneClassName="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
               dataTestId="text-active-messages-summary"
             />
-            <AdminMetric
+            <DashboardMetricCard
               title="Prize Follow-Up"
               value={pendingDrawings?.length || 0}
               helper="Pending drawing deliveries"
               icon={Gift}
-              tone="bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
+              toneClassName="bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
               dataTestId="text-pending-drawings-summary"
             />
           </div>
         </section>
 
         {/* Platform Performance Analytics */}
-        <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
-          <CardHeader className="border-b border-border/60 pb-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Gauge className="h-4 w-4 text-primary" />
-                  <CardTitle className="text-base font-semibold">Platform Performance Analytics</CardTitle>
-                </div>
-                <p className="text-sm text-muted-foreground">License activity and platform utilization over the selected window.</p>
-              </div>
-              <div className="grid grid-cols-3 gap-2 sm:w-auto">
-                <Button 
-                  size="sm"
-                  variant={dateRange === "30" ? "default" : "outline"}
-                  onClick={() => setDateRange("30")}
-                  data-testid="button-range-30-performance"
-                  className="text-xs"
-                >
-                  30 Days
-                </Button>
-                <Button 
-                  size="sm"
-                  variant={dateRange === "60" ? "default" : "outline"}
-                  onClick={() => setDateRange("60")}
-                  data-testid="button-range-60-performance"
-                  className="text-xs"
-                >
-                  60 Days
-                </Button>
-                <Button 
-                  size="sm"
-                  variant={dateRange === "90" ? "default" : "outline"}
-                  onClick={() => setDateRange("90")}
-                  data-testid="button-range-90-performance"
-                  className="text-xs"
-                >
-                  90 Days
-                </Button>
-              </div>
+        <DashboardSectionCard
+          title="Platform Performance Analytics"
+          description="License activity and platform utilization over the selected window."
+          icon={<Gauge className="h-4 w-4 text-primary" />}
+          action={
+            <div className="grid grid-cols-3 gap-2 sm:w-auto">
+              <Button 
+                size="sm"
+                variant={dateRange === "30" ? "default" : "outline"}
+                onClick={() => setDateRange("30")}
+                data-testid="button-range-30-performance"
+                className="text-xs"
+              >
+                30 Days
+              </Button>
+              <Button 
+                size="sm"
+                variant={dateRange === "60" ? "default" : "outline"}
+                onClick={() => setDateRange("60")}
+                data-testid="button-range-60-performance"
+                className="text-xs"
+              >
+                60 Days
+              </Button>
+              <Button 
+                size="sm"
+                variant={dateRange === "90" ? "default" : "outline"}
+                onClick={() => setDateRange("90")}
+                data-testid="button-range-90-performance"
+                className="text-xs"
+              >
+                90 Days
+              </Button>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-5">
+          }
+        >
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Active licenses</p>
@@ -467,27 +435,18 @@ export default function AdminDashboard() {
             </div>
 
             <PlatformPerformanceCard dateRange={parseInt(dateRange)} />
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardSectionCard>
 
         {/* Revenue and Support Overview */}
         <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-          <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
-            <CardHeader className="border-b border-border/60 pb-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-emerald-600" />
-                    <CardTitle className="text-base font-semibold">Subscription Revenue</CardTitle>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Revenue and license activity this period.</p>
-                </div>
-                <Badge variant="outline" data-testid="badge-stripe-status" className="rounded-full px-3 py-1 text-xs font-medium">
-                  {import.meta.env.VITE_STRIPE_PUBLIC_KEY ? "Connected" : "Development Mode"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-5">
+          <DashboardSectionCard
+            title="Subscription Revenue"
+            description="Revenue and license activity this period."
+            icon={<DollarSign className="h-4 w-4 text-emerald-600" />}
+            badge={<Badge variant="outline" data-testid="badge-stripe-status" className="rounded-full px-3 py-1 text-xs font-medium">{import.meta.env.VITE_STRIPE_PUBLIC_KEY ? "Connected" : "Development Mode"}</Badge>}
+          >
+            <div className="space-y-4">
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Monthly subscriptions</p>
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground" data-testid="text-monthly-subscriptions">
@@ -523,25 +482,16 @@ export default function AdminDashboard() {
                   {formatCurrency(monthStats?.totalPayments || 0)}
                 </span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardSectionCard>
 
-          <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
-            <CardHeader className="border-b border-border/60 pb-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <UsersRound className="h-4 w-4 text-orange-600" />
-                    <CardTitle className="text-base font-semibold">Support Workload</CardTitle>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Current message status distribution.</p>
-                </div>
-                <Badge variant={activeMessages > 0 ? "secondary" : "outline"} className="rounded-full px-3 py-1 text-xs font-medium">
-                  {activeMessages} active
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-5">
+          <DashboardSectionCard
+            title="Support Workload"
+            description="Current message status distribution."
+            icon={<UsersRound className="h-4 w-4 text-orange-600" />}
+            badge={<Badge variant={activeMessages > 0 ? "secondary" : "outline"} className="rounded-full px-3 py-1 text-xs font-medium">{activeMessages} active</Badge>}
+          >
+            <div>
               <ChartContainer
                 config={{
                   count: { label: "Messages", color: "var(--color-count)" },
@@ -556,8 +506,8 @@ export default function AdminDashboard() {
                   <Bar dataKey="count" fill="var(--color-count)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ChartContainer>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardSectionCard>
         </div>
 
         {/* Messages Section */}
@@ -745,22 +695,13 @@ export default function AdminDashboard() {
         </StatCard>
 
         {/* Platform Health */}
-        <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
-          <CardHeader className="border-b border-border/60 pb-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4 text-emerald-600" />
-                  <CardTitle className="text-base font-semibold">Platform Health</CardTitle>
-                </div>
-                <p className="text-sm text-muted-foreground">Core system indicators and service availability.</p>
-              </div>
-              <Badge variant="default" data-testid="badge-system-status" className="rounded-full px-3 py-1 text-xs font-medium">
-                Operational
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-5">
+        <DashboardSectionCard
+          title="Platform Health"
+          description="Core system indicators and service availability."
+          icon={<ShieldAlert className="h-4 w-4 text-emerald-600" />}
+          badge={<Badge variant="default" data-testid="badge-system-status" className="rounded-full px-3 py-1 text-xs font-medium">Operational</Badge>}
+        >
+          <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                 <div className="flex items-center justify-between gap-3">
@@ -807,27 +748,18 @@ export default function AdminDashboard() {
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardSectionCard>
 
         {/* Pending Prize Deliveries */}
         {pendingDrawings && pendingDrawings.length > 0 && (
-          <Card className="overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm">
-            <CardHeader className="border-b border-border/60 pb-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Gift className="h-4 w-4 text-amber-600" />
-                    <CardTitle className="text-base font-semibold">Pending Prize Deliveries</CardTitle>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Follow up on winners who have not yet been marked delivered.</p>
-                </div>
-                <Badge className="rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
-                  Reminder
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-5">
+          <DashboardSectionCard
+            title="Pending Prize Deliveries"
+            description="Follow up on winners who have not yet been marked delivered."
+            icon={<Gift className="h-4 w-4 text-amber-600" />}
+            badge={<Badge className="rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">Reminder</Badge>}
+          >
+            <div className="space-y-4">
               {pendingDrawings.map((drawing: any) => {
                 const monthName = new Date(drawing.lotteryYear, drawing.lotteryMonth - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                 const winners = [
@@ -871,8 +803,8 @@ export default function AdminDashboard() {
                   </div>
                 );
               })}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardSectionCard>
         )}
 
         {/* Quick Actions */}

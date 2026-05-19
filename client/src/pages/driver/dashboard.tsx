@@ -1,47 +1,20 @@
-import { useState, type ComponentType } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
+import { DashboardMetricCard } from "@/components/DashboardMetricCard";
+import { DashboardSectionCard } from "@/components/DashboardSectionCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2, RefreshCw, Navigation, CreditCard, Truck, Route, Loader2, ShieldAlert, ArrowRight, Activity, MapPinned } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-
-type DashboardMetricProps = {
-  title: string;
-  value: string | number;
-  helper: string;
-  icon: ComponentType<{ className?: string }>;
-  tone: string;
-  dataTestId?: string;
-};
-
-function DashboardMetric({ title, value, helper, icon: Icon, tone, dataTestId }: DashboardMetricProps) {
-  return (
-    <Card className="group overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border/90 hover:shadow-md">
-      <div className="h-1 bg-gradient-to-r from-primary/70 via-secondary/60 to-accent/60" />
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid={dataTestId}>{value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
-          </div>
-          <div className={`rounded-xl border border-border/60 p-3 ${tone}`}>
-            <Icon className="h-5 w-5" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function DriverDashboardSkeleton() {
   return (
@@ -344,36 +317,36 @@ export default function DriverDashboard() {
             </Button>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <DashboardMetric
+            <DashboardMetricCard
               title="Site Visits"
               value={dailyStats?.visits || 0}
               helper="Completed today"
               icon={Navigation}
-              tone="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+              toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
               dataTestId="text-daily-visits"
             />
-            <DashboardMetric
+            <DashboardMetricCard
               title="Today's Earnings"
               value={formatCurrency(adjustedDailyEarnings)}
               helper={rejectedTotal > 0 ? `${formatCurrency(rejectedTotal)} rejected` : "Net of rejected washouts"}
               icon={DollarSign}
-              tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+              toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-daily-earnings"
             />
-            <DashboardMetric
+            <DashboardMetricCard
               title="7-Day Net"
               value={formatCurrency(weeklyNetEarnings)}
               helper={`${weeklyStats?.totalWashouts || 0} washouts this week`}
               icon={TrendingUp}
-              tone="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
+              toneClassName="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
               dataTestId="text-net-earnings"
             />
-            <DashboardMetric
+            <DashboardMetricCard
               title="Total Paid"
               value={formatCurrency(totalPaid)}
               helper="Recorded payment history"
               icon={CreditCard}
-              tone="bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-300"
+              toneClassName="bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-300"
               dataTestId="text-total-paid"
             />
           </div>
@@ -515,17 +488,12 @@ export default function DriverDashboard() {
 
         {/* Earnings Summary */}
         <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-          <Card className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <CardTitle className="text-lg">Earnings Snapshot</CardTitle>
-                  <p className="text-sm text-muted-foreground">Today, recent net earnings, and paid history.</p>
-                </div>
-                <TrendingUp className="h-5 w-5 text-emerald-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
+          <DashboardSectionCard
+            title="Earnings Snapshot"
+            description="Today, recent net earnings, and paid history."
+            icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
+          >
+            <div>
               <ChartContainer
                 config={{
                   earnings: { label: "Earnings", color: "var(--chart-1)" },
@@ -547,14 +515,11 @@ export default function DriverDashboard() {
                   <Bar dataKey="earnings" fill="var(--color-earnings)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ChartContainer>
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardSectionCard>
 
-          <Card className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">7-Day Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <DashboardSectionCard title="7-Day Details">
+            <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Total Earned</span>
                 <span className="text-xl font-semibold text-foreground" data-testid="text-weekly-earnings">
@@ -590,23 +555,17 @@ export default function DriverDashboard() {
                   {rejectedWashouts.length} rejected washouts totaling {formatCurrency(rejectedTotal)}
                 </p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DashboardSectionCard>
         </div>
 
         {/* Payment Status */}
-        <Card className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <DollarSign className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Payout snapshot</p>
-                  <h3 className="font-semibold text-lg">Payment Status</h3>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4">
+        <DashboardSectionCard
+          title="Payment Status"
+          description="Payout snapshot and settlement details."
+          icon={<DollarSign className="w-5 h-5 text-green-600" />}
+        >
+          <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">Pending today</div>
@@ -627,9 +586,8 @@ export default function DriverDashboard() {
                 <span>Payments processed weekly</span>
                 <span className="font-medium text-foreground">You receive full amounts</span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardSectionCard>
 
         {/* Recent Activity */}
         <StatCard
