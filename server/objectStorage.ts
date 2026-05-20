@@ -130,6 +130,47 @@ export function getStorageSelection(): {
   };
 }
 
+function getS3UploadConfig(): S3Config {
+  const endpoint = process.env.S3_ENDPOINT?.trim();
+  const region = process.env.S3_REGION?.trim();
+  const accessKeyId = process.env.S3_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY?.trim();
+  const bucket = process.env.S3_BUCKET?.trim();
+
+  const missing = [
+    !endpoint ? "S3_ENDPOINT" : null,
+    !region ? "S3_REGION" : null,
+    !accessKeyId ? "S3_ACCESS_KEY_ID" : null,
+    !secretAccessKey ? "S3_SECRET_ACCESS_KEY" : null,
+    !bucket ? "S3_BUCKET" : null,
+  ].filter(Boolean) as string[];
+
+  if (missing.length > 0) {
+    throw new Error(`Missing object storage env vars: ${missing.join(", ")}`);
+  }
+
+  return {
+    endpoint: endpoint as string,
+    region: region as string,
+    accessKeyId: accessKeyId as string,
+    secretAccessKey: secretAccessKey as string,
+    bucket: bucket as string,
+  };
+}
+
+export function getUploadStorageSelection(): {
+  provider: "s3";
+  bucket: string;
+  s3EndpointPresent: boolean;
+} {
+  const config = getS3UploadConfig();
+  return {
+    provider: "s3",
+    bucket: config.bucket,
+    s3EndpointPresent: !!config.endpoint,
+  };
+}
+
 function normalizeMetadataForStorage(
   metadata: Record<string, string> = {}
 ): Record<string, string> {
@@ -347,39 +388,7 @@ function createS3Client(): S3Client {
 }
 
 function getS3Config(): S3Config {
-  const endpoint = process.env.S3_ENDPOINT?.trim();
-  const region = process.env.S3_REGION?.trim();
-  const accessKeyId = process.env.S3_ACCESS_KEY_ID?.trim();
-  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY?.trim();
-  const bucket = process.env.S3_BUCKET?.trim();
-
-  const missing = [
-    !endpoint ? "S3_ENDPOINT" : null,
-    !region ? "S3_REGION" : null,
-    !accessKeyId ? "S3_ACCESS_KEY_ID" : null,
-    !secretAccessKey ? "S3_SECRET_ACCESS_KEY" : null,
-    !bucket ? "S3_BUCKET" : null,
-  ].filter(Boolean) as string[];
-
-  if (missing.length > 0) {
-    throw new Error(`Missing object storage env vars: ${missing.join(", ")}`);
-  }
-
-  const validated = {
-    endpoint,
-    region,
-    accessKeyId,
-    secretAccessKey,
-    bucket,
-  };
-
-  return {
-    endpoint: validated.endpoint as string,
-    region: validated.region as string,
-    accessKeyId: validated.accessKeyId as string,
-    secretAccessKey: validated.secretAccessKey as string,
-    bucket: validated.bucket as string,
-  };
+  return getS3UploadConfig();
 }
 
 function resolveBackend(): StorageProvider {
@@ -1035,4 +1044,37 @@ export async function signObjectURL({
     }
     throw error instanceof Error ? error : new Error(String(error));
   }
+}
+
+export async function signUploadObjectURL({
+  objectName,
+  method,
+  ttlSec,
+  contentType,
+}: {
+  objectName: string;
+  method: "PUT";
+  ttlSec: number;
+  contentType?: string;
+}): Promise<string> {
+  const config = getS3UploadConfig();
+  console.log("Storage upload provider: s3");
+  await ensureS3BucketReady();
+  const signedUrl = await getS3SignedUrl(
+    getS3Client(),
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: objectName,
+      ContentType: contentType,
+    }),
+    { expiresIn: Math.max(1, Math.floor(ttlSec)) }
+  );
+  console.log("Signed URL generation succeeded:", {
+    provider: "s3",
+    bucket: config.bucket,
+    method,
+    objectName,
+    hasContentType: !!contentType,
+  });
+  return signedUrl;
 }

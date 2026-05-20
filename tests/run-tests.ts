@@ -374,6 +374,46 @@ test("object ACL enforces public read, private owner access, and default deny", 
   );
 });
 
+test("photo upload storage selection requires complete S3 config", async () => {
+  const { getUploadStorageSelection } = await import("../server/objectStorage");
+  const originalEnv = {
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
+    S3_REGION: process.env.S3_REGION,
+    S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
+    S3_BUCKET: process.env.S3_BUCKET,
+  };
+
+  process.env.S3_ENDPOINT = "https://example.r2.cloudflarestorage.com";
+  process.env.S3_REGION = "auto";
+  process.env.S3_ACCESS_KEY_ID = "test-access-key";
+  process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
+  process.env.S3_BUCKET = "test-bucket";
+
+  assert.deepEqual(getUploadStorageSelection(), {
+    provider: "s3",
+    bucket: "test-bucket",
+    s3EndpointPresent: true,
+  });
+
+  delete process.env.S3_BUCKET;
+  assert.throws(
+    () => getUploadStorageSelection(),
+    /Missing object storage env vars: S3_BUCKET/,
+  );
+
+  if (originalEnv.S3_ENDPOINT === undefined) delete process.env.S3_ENDPOINT;
+  else process.env.S3_ENDPOINT = originalEnv.S3_ENDPOINT;
+  if (originalEnv.S3_REGION === undefined) delete process.env.S3_REGION;
+  else process.env.S3_REGION = originalEnv.S3_REGION;
+  if (originalEnv.S3_ACCESS_KEY_ID === undefined) delete process.env.S3_ACCESS_KEY_ID;
+  else process.env.S3_ACCESS_KEY_ID = originalEnv.S3_ACCESS_KEY_ID;
+  if (originalEnv.S3_SECRET_ACCESS_KEY === undefined) delete process.env.S3_SECRET_ACCESS_KEY;
+  else process.env.S3_SECRET_ACCESS_KEY = originalEnv.S3_SECRET_ACCESS_KEY;
+  if (originalEnv.S3_BUCKET === undefined) delete process.env.S3_BUCKET;
+  else process.env.S3_BUCKET = originalEnv.S3_BUCKET;
+});
+
 type DbMock = {
   selectResults: unknown[][];
   inserts: unknown[];
