@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { installConsoleRedaction } from "../shared/logRedaction";
 import { setupVite, serveStatic, log } from "./vite";
+import { getStorageSelection } from "./objectStorage";
 
 installConsoleRedaction();
 
@@ -44,6 +45,9 @@ async function startApplication() {
   try {
     const { registerRoutes } = await import("./routes");
     const server = await registerRoutes(app);
+    const storageSelection = getStorageSelection();
+    console.log(`Storage provider selected: ${storageSelection.provider}`);
+    console.log(`Bucket: ${storageSelection.bucket}`);
 
     // Enhanced error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

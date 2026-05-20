@@ -1,6 +1,7 @@
 import express from "express";
 import { registerRoutes } from "./routes.js";
 import { serveStatic } from "./vite.js";
+import { getStorageSelection } from "./objectStorage.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -40,6 +41,9 @@ app.use((req, res, next) => {
 (async () => {
   try {
     const server = await registerRoutes(app);
+    const storageSelection = getStorageSelection();
+    console.log(`Storage provider selected: ${storageSelection.provider}`);
+    console.log(`Bucket: ${storageSelection.bucket}`);
 
     app.use((err: any, _req: any, res: any, _next: any) => {
       const status = err.status || err.statusCode || 500;

@@ -24,6 +24,7 @@ const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 const isReplitDeployment = !!process.env.REPLIT_DEPLOYMENT || !!process.env.REPLIT;
 const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
 const S3_ACL_POLICY_METADATA_KEY = "custom-acl-policy";
+type StorageProvider = "s3" | "replit" | "gcs";
 
 export interface ObjectStorageMetadata {
   size?: string | number;
@@ -64,28 +65,50 @@ export interface ObjectStorageClientLike {
   bucket(name: string): ObjectStorageBucketLike;
 }
 
-function hasS3Configuration(): boolean {
-  return !!(
-    process.env.S3_ENDPOINT?.trim() &&
-    process.env.S3_REGION?.trim() &&
-    process.env.S3_ACCESS_KEY_ID?.trim() &&
-    process.env.S3_SECRET_ACCESS_KEY?.trim()
-  );
+function getS3EnvState() {
+  const required = [
+    "S3_ENDPOINT",
+    "S3_REGION",
+    "S3_ACCESS_KEY_ID",
+    "S3_SECRET_ACCESS_KEY",
+    "S3_BUCKET",
+  ] as const;
+
+  const present = required.filter((name) => process.env[name]?.trim());
+  const missing = required.filter((name) => !process.env[name]?.trim());
+  const hasAny = present.length > 0;
+  const isComplete = missing.length === 0;
+
+  return {
+    hasAny,
+    isComplete,
+    missing,
+  };
 }
 
 function getConfiguredBucketName(): string {
-  const bucketName =
-    process.env.S3_BUCKET?.trim() ||
-    process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID?.trim() ||
-    "";
+  const s3Bucket = process.env.S3_BUCKET?.trim();
+  const defaultBucket = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID?.trim();
 
-  if (!bucketName) {
-    throw new Error(
-      "Object storage bucket is not configured. Set S3_BUCKET or DEFAULT_OBJECT_STORAGE_BUCKET_ID."
-    );
+  if (s3Bucket) {
+    return s3Bucket;
   }
 
-  return bucketName;
+  if (defaultBucket) {
+    return defaultBucket;
+  }
+
+  throw new Error("Missing object storage env vars: S3_BUCKET, DEFAULT_OBJECT_STORAGE_BUCKET_ID");
+}
+
+export function getStorageSelection(): {
+  provider: StorageProvider;
+  bucket: string;
+} {
+  return {
+    provider: getProviderName(),
+    bucket: getConfiguredBucketName(),
+  };
 }
 
 function normalizeMetadataForStorage(
@@ -183,6 +206,45 @@ function createStorageClient(): Storage {
   });
 }
 
+function getProviderName(): StorageProvider {
+  const s3State = getS3EnvState();
+  if (s3State.hasAny) {
+    if (!s3State.isComplete) {
+      throw new Error(`Missing object storage env vars: ${s3State.missing.join(", ")}`);
+    }
+    return "s3";
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    const hasGoogleConfig =
+      !!process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim() ||
+      !!process.env.GOOGLE_CLOUD_PROJECT_ID?.trim();
+
+    if (hasGoogleConfig) {
+      return "gcs";
+    }
+
+    throw new Error(
+      "Missing object storage env vars: S3_ENDPOINT, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET"
+    );
+  }
+
+  if (isReplitDeployment) {
+    return "replit";
+  }
+
+  return "gcs";
+}
+
+let loggedProviderName: StorageProvider | null = null;
+
+function logProviderName(provider: StorageProvider) {
+  if (loggedProviderName !== provider) {
+    console.info(`Object storage provider selected: ${provider}`);
+    loggedProviderName = provider;
+  }
+}
+
 function createS3Client(): S3Client {
   const endpoint = process.env.S3_ENDPOINT?.trim();
   const region = process.env.S3_REGION?.trim() || "us-east-1";
@@ -206,22 +268,8 @@ function createS3Client(): S3Client {
   });
 }
 
-function resolveBackend(): "s3" | "gcs" {
-  if (hasS3Configuration()) {
-    return "s3";
-  }
-
-  const hasGoogleConfig =
-    !!process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim() ||
-    !!process.env.GOOGLE_CLOUD_PROJECT_ID?.trim();
-
-  if (hasGoogleConfig || isReplitDeployment) {
-    return "gcs";
-  }
-
-  throw new Error(
-    "Object storage is not configured. Set S3_ENDPOINT, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, and S3_BUCKET or DEFAULT_OBJECT_STORAGE_BUCKET_ID, or configure Google Cloud Storage credentials."
-  );
+function resolveBackend(): StorageProvider {
+  return getProviderName();
 }
 
 class GcsStorageFile implements ObjectStorageFileLike {
@@ -517,7 +565,10 @@ class UnifiedObjectStorageClient implements ObjectStorageClientLike {
       throw new Error("Object storage bucket name is required");
     }
 
-    if (resolveBackend() === "s3") {
+    const provider = resolveBackend();
+    logProviderName(provider);
+
+    if (provider === "s3") {
       return new S3StorageBucket(getS3Client(), name);
     }
 
@@ -571,7 +622,7 @@ export class ObjectStorageService {
     );
     if (paths.length === 0) {
       throw new Error(
-        "PUBLIC_OBJECT_SEARCH_PATHS not set. Set it to a comma-separated list of public object paths for the configured storage bucket."
+        "Missing object storage env vars: PUBLIC_OBJECT_SEARCH_PATHS"
       );
     }
     return paths;
@@ -582,7 +633,7 @@ export class ObjectStorageService {
     const dir = process.env.PRIVATE_OBJECT_DIR || "";
     if (!dir) {
       throw new Error(
-        "PRIVATE_OBJECT_DIR not set. Set it to the private object path for the configured storage bucket."
+        "Missing object storage env vars: PRIVATE_OBJECT_DIR"
       );
     }
     return dir;
@@ -812,7 +863,33 @@ export async function signObjectURL({
   ttlSec: number;
   contentType?: string;
 }): Promise<string> {
+  const provider = resolveBackend();
+  logProviderName(provider);
   const file = objectStorageClient.bucket(bucketName).file(objectName);
+
+  if (provider === "replit") {
+    const request = {
+      bucket_name: bucketName,
+      object_name: objectName,
+      method,
+      expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
+    };
+    const response = await fetch(
+      `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(request),
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to sign object URL: ${response.status}`);
+    }
+    const { signed_url: signedURL } = await response.json();
+    return signedURL;
+  }
 
   try {
     const [signedURL] = await file.getSignedUrl({
@@ -829,8 +906,6 @@ export async function signObjectURL({
     return signedURL;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `Failed to sign object URL. Check your storage configuration and bucket credentials. ${message}`
-    );
+    throw new Error(message);
   }
 }
