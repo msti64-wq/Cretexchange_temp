@@ -3,6 +3,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import Stripe from "stripe";
+import { ObjectStorageService } from "../server/objectStorage";
 
 type TestCase = {
   name: string;
@@ -451,6 +452,7 @@ test("photo upload route uses S3 provider when S3 env vars are present", async (
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     S3_BUCKET: process.env.S3_BUCKET,
+    PRIVATE_OBJECT_DIR: process.env.PRIVATE_OBJECT_DIR,
   };
   const originalSend = S3Client.prototype.send;
   const originalLog = console.log;
@@ -461,6 +463,7 @@ test("photo upload route uses S3 provider when S3 env vars are present", async (
   process.env.S3_ACCESS_KEY_ID = "test-access-key";
   process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
   process.env.S3_BUCKET = "test-bucket";
+  process.env.PRIVATE_OBJECT_DIR = "private";
 
   S3Client.prototype.send = (async (command: unknown) => {
     if (command instanceof HeadBucketCommand) {
@@ -523,8 +526,22 @@ test("photo upload route uses S3 provider when S3 env vars are present", async (
   }
 });
 
-test("activity photo route returns internal object paths for authorized viewers", async () => {
+test("activity photo route returns signed GET URLs for authorized viewers when S3 is configured", async () => {
   const { app, gets } = createRouteRegistry();
+  const originalEnv = {
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
+    S3_REGION: process.env.S3_REGION,
+    S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
+    S3_BUCKET: process.env.S3_BUCKET,
+  };
+  const originalSend = S3Client.prototype.send;
+  process.env.S3_ENDPOINT = "https://example.r2.cloudflarestorage.com";
+  process.env.S3_REGION = "auto";
+  process.env.S3_ACCESS_KEY_ID = "test-access-key";
+  process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
+  process.env.S3_BUCKET = "test-bucket";
+
   await withPatchedStorage(
     {
       getWashoutActivity: async () => ({
@@ -557,6 +574,7 @@ test("activity photo route returns internal object paths for authorized viewers"
       ],
     },
     async () => {
+      S3Client.prototype.send = (async () => ({})) as never;
       const { registerRoutes } = await import("../server/routes");
       await registerRoutes(app as never);
       const route = gets.get("/api/photos/activity/:activityId");
@@ -571,9 +589,17 @@ test("activity photo route returns internal object paths for authorized viewers"
         ownerRes,
       );
       assert.equal(ownerRes.statusCode, 200);
-      assert.equal(
+      assert.match(
         (ownerRes.body as { photos: Array<{ url: string }> }).photos[0].url,
-        "/objects/photos/photo-1.jpg",
+        /^https:\/\/example\.r2\.cloudflarestorage\.com/,
+      );
+      assert.match(
+        (ownerRes.body as { photos: Array<{ url: string }> }).photos[0].url,
+        /X-Amz-Signature=/,
+      );
+      assert.match(
+        (ownerRes.body as { photos: Array<{ url: string }> }).photos[0].url,
+        /X-Amz-Credential=/,
       );
 
       const adminRes = createResponse();
@@ -585,12 +611,98 @@ test("activity photo route returns internal object paths for authorized viewers"
         adminRes,
       );
       assert.equal(adminRes.statusCode, 200);
-      assert.equal(
+      assert.match(
         (adminRes.body as { photos: Array<{ url: string }> }).photos[0].url,
-        "/objects/photos/photo-1.jpg",
+        /^https:\/\/example\.r2\.cloudflarestorage\.com/,
       );
     },
   );
+
+  S3Client.prototype.send = originalSend;
+  if (originalEnv.S3_ENDPOINT === undefined) delete process.env.S3_ENDPOINT;
+  else process.env.S3_ENDPOINT = originalEnv.S3_ENDPOINT;
+  if (originalEnv.S3_REGION === undefined) delete process.env.S3_REGION;
+  else process.env.S3_REGION = originalEnv.S3_REGION;
+  if (originalEnv.S3_ACCESS_KEY_ID === undefined) delete process.env.S3_ACCESS_KEY_ID;
+  else process.env.S3_ACCESS_KEY_ID = originalEnv.S3_ACCESS_KEY_ID;
+  if (originalEnv.S3_SECRET_ACCESS_KEY === undefined) delete process.env.S3_SECRET_ACCESS_KEY;
+  else process.env.S3_SECRET_ACCESS_KEY = originalEnv.S3_SECRET_ACCESS_KEY;
+  if (originalEnv.S3_BUCKET === undefined) delete process.env.S3_BUCKET;
+  else process.env.S3_BUCKET = originalEnv.S3_BUCKET;
+  if (originalEnv.PRIVATE_OBJECT_DIR === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+  else process.env.PRIVATE_OBJECT_DIR = originalEnv.PRIVATE_OBJECT_DIR;
+});
+
+test("create-with-photos applies ACL metadata for location owners", async () => {
+  const { app, posts } = createRouteRegistry();
+  const originalTrySetObjectEntityAclPolicy = ObjectStorageService.prototype.trySetObjectEntityAclPolicy;
+  const aclCalls: Array<{ rawPath: string; aclPolicy: { owner: string; visibility: string; aclRules?: Array<{ group: { type: string; id: string }; permission: string }> } }> = [];
+
+  ObjectStorageService.prototype.trySetObjectEntityAclPolicy = (async function (
+    this: unknown,
+    rawPath: string,
+    aclPolicy: { owner: string; visibility: string; aclRules?: Array<{ group: { type: string; id: string }; permission: string }> },
+  ) {
+    aclCalls.push({ rawPath, aclPolicy });
+    return rawPath;
+  }) as never;
+
+  try {
+    await withPatchedStorage(
+      {
+        getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+        createWashoutActivityWithPhotos: async (_activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => ({
+          activity: { id: "activity_1", locationId: "location_1" },
+          photos: photos.map((photo, index) => ({
+            id: `photo_${index + 1}`,
+            storageKey: photo.storageKey,
+            contentType: photo.contentType,
+            uploadedAt: new Date("2025-01-01T00:00:00.000Z"),
+          })),
+        }),
+      },
+      async () => {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = posts.get("/api/activities/create-with-photos");
+        assert.equal(typeof route, "function");
+
+        const res = createResponse();
+        await route!(
+          {
+            user: { id: "driver_user_1", role: "driver" },
+            body: {
+              activityData: {
+                locationId: "location_1",
+                amount: "4.00",
+                checkInTime: "2025-01-01T00:00:00.000Z",
+                status: "pending",
+              },
+              photoData: [
+                {
+                  storageKey: "photo-1.jpg",
+                  contentType: "image/jpeg",
+                  fileSize: 12345,
+                },
+              ],
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 200);
+        assert.equal(aclCalls.length, 1);
+        assert.equal(aclCalls[0].rawPath, "/objects/photos/photo-1.jpg");
+        assert.equal(aclCalls[0].aclPolicy.owner, "driver_user_1");
+        assert.equal(aclCalls[0].aclPolicy.visibility, "private");
+        assert.equal(aclCalls[0].aclPolicy.aclRules?.[0].group.type, "LOCATION_OWNER");
+        assert.equal(aclCalls[0].aclPolicy.aclRules?.[0].group.id, "location_1");
+        assert.equal(aclCalls[0].aclPolicy.aclRules?.[0].permission, "read");
+      },
+    );
+  } finally {
+    ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
+  }
 });
 
 type DbMock = {

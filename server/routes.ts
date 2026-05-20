@@ -8,7 +8,7 @@ import { washoutActivities, withdrawals, walletTransactions, driverWallets, owne
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { getJwtSecret } from "./jwtSecret";
-import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getStorageSelection, getPhotoUploadProviderSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getPhotoReadProviderSelection, getPhotoUploadProviderSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema } from "@shared/schema";
 import type { Driver, FeeLedger, FeatureFlag, LocationMaterialIntent, Notification, Owner, OwnerFundingSource, Payment, PendingWashoutPayment, User, WalletTransaction, WashoutActivity, WashoutLocation, WashoutPhoto, Withdrawal } from "@shared/schema";
@@ -11473,6 +11473,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { activityId } = req.params;
       const userId = req.user.id;
+
+      console.log("Photo view endpoint called:", {
+        endpoint: "/api/photos/activity/:activityId",
+        activityId,
+        userId,
+        role: req.user?.role,
+        objectPathPrefix: "photos/",
+      });
       
       // Get the activity to verify access
       const activity = await storage.getWashoutActivity(activityId);
@@ -11493,11 +11501,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isDriver = !!driver && activity.driverId === driver.id;
       const isAdmin = user?.role === "admin" || user?.role === "super_admin";
       const allowed = isOwner || isDriver || isAdmin;
+      const aclReason = isAdmin
+        ? "admin-role"
+        : isOwner
+          ? "location-owner"
+          : isDriver
+            ? "driver-owns-activity"
+            : "access-denied";
 
       console.log("Photo activity ACL decision:", {
         activityId,
         userId,
         role: user?.role,
+        reason: aclReason,
         locationId: activity.locationId,
         locationOwnerId: location.ownerId,
         activityDriverId: activity.driverId,
@@ -11513,21 +11529,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get photos for this activity
       const photos = await storage.getPhotosByActivity(activityId) as WashoutPhoto[];
-      
-      const photoReadProvider = process.env.S3_ENDPOINT?.trim() &&
-        process.env.S3_REGION?.trim() &&
-        process.env.S3_ACCESS_KEY_ID?.trim() &&
-        process.env.S3_SECRET_ACCESS_KEY?.trim() &&
-        process.env.S3_BUCKET?.trim()
-          ? "s3"
-          : "replit";
-      console.log("Photo read provider selected:", photoReadProvider);
 
-      const previewPhotos = photos.map((photo) => ({
-        id: photo.id,
-        url: `/objects/photos/${photo.storageKey}`,
-        uploadedAt: photo.uploadedAt,
-        contentType: photo.contentType
+      const readSelection = getPhotoReadProviderSelection();
+      console.log("Photo view signed GET provider selected:", {
+        provider: readSelection.provider,
+        bucket: readSelection.bucket,
+        s3EndpointPresent: readSelection.s3EndpointPresent,
+      });
+
+      const privateDir = readSelection.provider === "s3"
+        ? new ObjectStorageService().getPrivateObjectDir()
+        : "";
+
+      const previewPhotos = await Promise.all(photos.map(async (photo) => {
+        const url = readSelection.provider === "s3"
+          ? await signObjectURL({
+              bucketName: readSelection.bucket,
+              objectName: `${privateDir}/photos/${photo.storageKey}`,
+              method: "GET",
+              ttlSec: 300,
+            })
+          : `/objects/photos/${photo.storageKey}`;
+
+        return {
+          id: photo.id,
+          url,
+          uploadedAt: photo.uploadedAt,
+          contentType: photo.contentType
+        };
       }));
 
       res.json({ photos: previewPhotos });
@@ -11634,6 +11663,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activityResult.data,
         photos
       );
+
+      if (result.photos.length > 0) {
+        const objectStorageService = new ObjectStorageService();
+        const aclPolicy: ObjectAclPolicy = {
+          owner: userId,
+          visibility: "private",
+          aclRules: [
+            {
+              group: {
+                type: ObjectAccessGroupType.LOCATION_OWNER,
+                id: activityResult.data.locationId,
+              },
+              permission: ObjectPermission.READ,
+            },
+          ],
+        };
+
+        for (const photo of result.photos) {
+          try {
+            await objectStorageService.trySetObjectEntityAclPolicy(
+              `/objects/photos/${photo.storageKey}`,
+              aclPolicy,
+            );
+            console.log("Photo ACL applied:", {
+              activityId: result.activity.id,
+              locationId: activityResult.data.locationId,
+              objectPathPrefix: "photos/",
+              photoId: photo.id,
+            });
+          } catch (error) {
+            console.warn("Photo ACL application failed:", {
+              activityId: result.activity.id,
+              locationId: activityResult.data.locationId,
+              objectPathPrefix: "photos/",
+              photoId: photo.id,
+              reason: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+      }
       
       res.json({
         activity: result.activity,
@@ -11651,10 +11720,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/objects/photos/:key', isAuthenticated, async (req: any, res) => {
     try {
       const { key } = req.params;
-      const storageSelection = getStorageSelection();
+      const storageSelection = getPhotoReadProviderSelection();
       console.log('📸 Photo proxy request:', {
+        endpoint: '/api/objects/photos/:key',
         key,
         userId: req.user?.id,
+        role: req.user?.role,
+        objectPathPrefix: "photos/",
         timestamp: new Date().toISOString()
       });
       
@@ -11662,20 +11734,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Photo key is required' });
       }
 
-      console.log("Photo read provider selected:", storageSelection.provider);
+      console.log("Photo proxy provider selected:", {
+        provider: storageSelection.provider,
+        bucket: storageSelection.bucket,
+        s3EndpointPresent: storageSelection.s3EndpointPresent,
+      });
 
       const objectStorageService = new ObjectStorageService();
       const objectFile = await objectStorageService.getObjectEntityFile(`/objects/photos/${key}`);
+      const aclPolicy = await getObjectAclPolicy(objectFile);
       const canAccess = await objectStorageService.canAccessObjectEntity({
         objectFile,
         userId: req.user?.id,
         userRole: req.user?.role,
         requestedPermission: ObjectPermission.READ,
       });
+      const aclReason = req.user?.role === "admin" || req.user?.role === "super_admin"
+        ? "admin-role"
+        : !aclPolicy
+          ? "missing-acl-policy"
+          : aclPolicy.owner === req.user?.id
+            ? "object-owner"
+            : aclPolicy.visibility === "public"
+              ? "public-visibility"
+              : "acl-rules-denied";
       console.log("Photo proxy ACL decision:", {
         key,
         userId: req.user?.id,
         role: req.user?.role,
+        reason: aclReason,
         allowed: canAccess,
       });
 

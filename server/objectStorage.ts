@@ -205,6 +205,48 @@ export function getPhotoUploadProviderSelection(): {
   };
 }
 
+export function getPhotoReadProviderSelection(): {
+  provider: "s3" | "replit";
+  bucket: string;
+  s3EndpointPresent: boolean;
+  missing?: string[];
+} {
+  const required = [
+    "S3_ENDPOINT",
+    "S3_REGION",
+    "S3_ACCESS_KEY_ID",
+    "S3_SECRET_ACCESS_KEY",
+    "S3_BUCKET",
+  ] as const;
+
+  const missing = required.filter((name) => !process.env[name]?.trim());
+  const s3EndpointPresent = !!process.env.S3_ENDPOINT?.trim();
+  const bucket =
+    process.env.S3_BUCKET?.trim() ||
+    process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID?.trim() ||
+    process.env.GOOGLE_CLOUD_BUCKET_NAME?.trim() ||
+    "";
+
+  if (missing.length === 0) {
+    return {
+      provider: "s3",
+      bucket,
+      s3EndpointPresent,
+    };
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(`Missing object storage env vars: ${missing.join(", ")}`);
+  }
+
+  return {
+    provider: "replit",
+    bucket,
+    s3EndpointPresent,
+    missing,
+  };
+}
+
 function normalizeMetadataForStorage(
   metadata: Record<string, string> = {}
 ): Record<string, string> {
@@ -1064,7 +1106,7 @@ export async function signObjectURL({
           : method === "PUT"
             ? "write"
             : "delete",
-      expires: Date.now() + ttlSec * 1000,
+      expires: new Date(Date.now() + ttlSec * 1000),
       contentType,
     });
     console.log("Signed URL generation succeeded:", {
