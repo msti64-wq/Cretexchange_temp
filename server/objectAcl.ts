@@ -178,13 +178,22 @@ export async function getObjectAclPolicy(
 // Checks if the user can access the object.
 export async function canAccessObject({
   userId,
+  userRole,
   objectFile,
   requestedPermission,
 }: {
   userId?: string;
+  userRole?: string;
   objectFile: ObjectStorageFileLike;
   requestedPermission: ObjectPermission;
 }): Promise<boolean> {
+  if (
+    requestedPermission === ObjectPermission.READ &&
+    (userRole === "admin" || userRole === "super_admin")
+  ) {
+    return true;
+  }
+
   // When this function is called, the acl policy is required.
   const aclPolicy = await getObjectAclPolicy(objectFile);
   if (!aclPolicy) {

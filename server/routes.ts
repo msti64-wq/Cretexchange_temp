@@ -9526,6 +9526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log(`📁 Object request: ${req.path} by user ${req.user?.username || 'unknown'}`);
     
     const userId = req.user?.id;
+    const userRole = req.user?.role;
     const objectStorageService = new ObjectStorageService();
     try {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
@@ -9534,23 +9535,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const canAccess = await objectStorageService.canAccessObjectEntity({
         objectFile,
         userId: userId,
+        userRole,
         requestedPermission: ObjectPermission.READ,
+      });
+      console.log("Photo object ACL decision:", {
+        path: req.path,
+        userId,
+        role: userRole,
+        allowed: canAccess,
       });
       
       if (!canAccess) {
         console.log(`❌ Access denied for user ${req.user?.username} to ${req.path}`);
-        return res.sendStatus(401);
+        return res.status(403).json({ message: "You are not authorized to view this photo." });
       }
       
       console.log(`✅ Access granted for user ${req.user?.username} to ${req.path}`);
-      objectStorageService.downloadObject(objectFile, res);
+      await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
       console.error("Error checking object access:", error);
       if (error instanceof ObjectNotFoundError) {
         console.log(`❌ Object not found: ${req.path}`);
-        return res.sendStatus(404);
+        return res.status(404).json({ message: "Photo not found" });
       }
-      return res.sendStatus(500);
+      return res.status(500).json({ message: error instanceof Error ? error.message : "Failed to load photo" });
     }
   });
 
@@ -11478,46 +11486,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Location not found' });
       }
       
-      // Check if user is the location owner
+      const user = await storage.getUser(userId);
       const owner = await storage.getOwner(userId);
-      const isOwner = owner && location.ownerId === owner.id;
-      
-      // Check if user is the driver who performed this washout
+      const isOwner = !!owner && location.ownerId === owner.id;
       const driver = await storage.getDriver(userId);
-      const isDriver = driver && activity.driverId === driver.id;
+      const isDriver = !!driver && activity.driverId === driver.id;
+      const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+      const allowed = isOwner || isDriver || isAdmin;
+
+      console.log("Photo activity ACL decision:", {
+        activityId,
+        userId,
+        role: user?.role,
+        locationId: activity.locationId,
+        locationOwnerId: location.ownerId,
+        activityDriverId: activity.driverId,
+        isOwner,
+        isDriver,
+        isAdmin,
+        allowed,
+      });
       
-      if (!isOwner && !isDriver) {
-        return res.status(403).json({ message: 'Not authorized to view these photos' });
+      if (!allowed) {
+        return res.status(403).json({ message: 'You are not authorized to view these washout photos.' });
       }
       
       // Get photos for this activity
       const photos = await storage.getPhotosByActivity(activityId) as WashoutPhoto[];
       
-      // Generate signed URLs for each photo
-      const signedUrls = await Promise.all(
-        photos.map(async (photo) => {
-          const objectStorageService = new ObjectStorageService();
-          const privateDir = objectStorageService.getPrivateObjectDir();
-          const signedUrl = await signObjectURL({
-            bucketName: getDefaultObjectStorageBucketName(),
-            objectName: `${privateDir}/photos/${photo.storageKey}`,
-            method: 'GET',
-            ttlSec: 3600 // 1 hour expiry
-          });
-          
-          return {
-            id: photo.id,
-            url: signedUrl,
-            uploadedAt: photo.uploadedAt,
-            contentType: photo.contentType
-          };
-        })
-      );
-      
-      res.json({ photos: signedUrls });
+      const photoReadProvider = process.env.S3_ENDPOINT?.trim() &&
+        process.env.S3_REGION?.trim() &&
+        process.env.S3_ACCESS_KEY_ID?.trim() &&
+        process.env.S3_SECRET_ACCESS_KEY?.trim() &&
+        process.env.S3_BUCKET?.trim()
+          ? "s3"
+          : "replit";
+      console.log("Photo read provider selected:", photoReadProvider);
+
+      const previewPhotos = photos.map((photo) => ({
+        id: photo.id,
+        url: `/objects/photos/${photo.storageKey}`,
+        uploadedAt: photo.uploadedAt,
+        contentType: photo.contentType
+      }));
+
+      res.json({ photos: previewPhotos });
     } catch (error) {
       console.error('Error getting activity photos:', error);
-      res.status(500).json({ message: 'Failed to get photos' });
+      const message = error instanceof Error ? error.message : 'Failed to get photos';
+      res.status(500).json({ message });
     }
   });
   
@@ -11634,6 +11651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/objects/photos/:key', isAuthenticated, async (req: any, res) => {
     try {
       const { key } = req.params;
+      const storageSelection = getStorageSelection();
       console.log('📸 Photo proxy request:', {
         key,
         userId: req.user?.id,
@@ -11644,83 +11662,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Photo key is required' });
       }
 
-      // For now, allow all authenticated users to access photos
-      // TODO: Implement proper ACL checks based on location ownership
-      console.log('✅ Authenticated user accessing photo');
-      
-      // Get signed URL for internal use
-      console.log('🔗 Creating signed URL for:', {
-        bucketName: getDefaultObjectStorageBucketName(),
-        objectName: key
-      });
+      console.log("Photo read provider selected:", storageSelection.provider);
+
       const objectStorageService = new ObjectStorageService();
-      const privateDir = objectStorageService.getPrivateObjectDir();
-      
-      const signedUrl = await signObjectURL({
-        bucketName: getDefaultObjectStorageBucketName(),
-        objectName: `${privateDir}/photos/${key}`,
-        method: 'GET',
-        ttlSec: 120
+      const objectFile = await objectStorageService.getObjectEntityFile(`/objects/photos/${key}`);
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        requestedPermission: ObjectPermission.READ,
       });
-      
-      console.log('✅ Signed URL created, fetching image...');
-      
-      // Fetch image from GCS and proxy it
-      const imageResponse = await fetch(signedUrl);
-      console.log('📥 GCS response:', {
-        status: imageResponse.status,
-        statusText: imageResponse.statusText,
-        headers: Object.fromEntries(imageResponse.headers.entries())
+      console.log("Photo proxy ACL decision:", {
+        key,
+        userId: req.user?.id,
+        role: req.user?.role,
+        allowed: canAccess,
       });
-      
-      if (!imageResponse.ok) {
-        console.error('❌ Image not found in GCS:', {
-          key,
-          status: imageResponse.status,
-          statusText: imageResponse.statusText,
-          signedUrl: signedUrl.substring(0, 100) + '...',
-          bucketName: getDefaultObjectStorageBucketName(),
-          environment: process.env.REPLIT_DEPLOYMENT ? 'PRODUCTION' : 'DEVELOPMENT'
-        });
-        
-        // TODO: Add photo cleanup job to remove orphaned database references
-        return res.status(404).json({ 
-          message: 'Image not found',
+
+      if (!canAccess) {
+        return res.status(403).json({
+          message: "You are not authorized to view this photo.",
           photoKey: key,
-          suggestion: 'Photo may have failed to upload properly or been deleted from storage'
         });
       }
 
-      // Set appropriate headers for image serving
-      const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-      const contentLength = imageResponse.headers.get('content-length');
-      
-      res.set({
-        'Content-Type': contentType,
-        'Cache-Control': 'private, max-age=3600',
-        ...(contentLength && { 'Content-Length': contentLength })
-      });
-
-      // Stream the image data to the response
-      if (imageResponse.body) {
-        const reader = imageResponse.body.getReader();
-        const pump = async () => {
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              res.write(value);
-            }
-            res.end();
-          } catch (error) {
-            console.error('Error streaming image:', error);
-            res.end();
-          }
-        };
-        pump();
-      } else {
-        res.status(500).json({ message: 'Failed to stream image' });
-      }
+      await objectStorageService.downloadObject(objectFile, res);
       
     } catch (error) {
       console.error('❌ Error serving photo:', {
@@ -11728,7 +11694,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stack: (error as Error).stack,
         key: req.params?.key
       });
-      res.status(500).json({ message: 'Failed to serve photo' });
+      const message = error instanceof ObjectNotFoundError
+        ? "Photo not found"
+        : error instanceof Error
+          ? error.message
+          : "Failed to serve photo";
+      const status = error instanceof ObjectNotFoundError ? 404 : 500;
+      res.status(status).json({ message });
     }
   });
 

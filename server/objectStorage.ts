@@ -967,15 +967,18 @@ export class ObjectStorageService {
   // Checks if the user can access the object entity.
   async canAccessObjectEntity({
     userId,
+    userRole,
     objectFile,
     requestedPermission,
   }: {
     userId?: string;
+    userRole?: string;
     objectFile: ObjectStorageFileLike;
     requestedPermission?: ObjectPermission;
   }): Promise<boolean> {
     return canAccessObject({
       userId,
+      userRole,
       objectFile,
       requestedPermission: requestedPermission ?? ObjectPermission.READ,
     });

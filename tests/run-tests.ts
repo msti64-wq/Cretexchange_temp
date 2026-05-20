@@ -52,13 +52,30 @@ function createResponse() {
 
 function createRouteRegistry() {
   const posts = new Map<string, Function>();
+  const gets = new Map<string, Function>();
+  const puts = new Map<string, Function>();
+  const deletes = new Map<string, Function>();
+  const patches = new Map<string, Function>();
   const app = {
+    get(path: string, ...handlers: Function[]) {
+      gets.set(path, handlers[handlers.length - 1]);
+    },
     post(path: string, ...handlers: Function[]) {
       posts.set(path, handlers[handlers.length - 1]);
     },
+    put(path: string, ...handlers: Function[]) {
+      puts.set(path, handlers[handlers.length - 1]);
+    },
+    delete(path: string, ...handlers: Function[]) {
+      deletes.set(path, handlers[handlers.length - 1]);
+    },
+    patch(path: string, ...handlers: Function[]) {
+      patches.set(path, handlers[handlers.length - 1]);
+    },
+    use() {},
   };
 
-  return { app, posts };
+  return { app, posts, gets, puts, deletes, patches };
 }
 
 async function withPatchedStorage(
@@ -374,6 +391,15 @@ test("object ACL enforces public read, private owner access, and default deny", 
     }),
     false,
   );
+
+  assert.equal(
+    await canAccessObject({
+      userRole: "admin",
+      objectFile: noPolicy as never,
+      requestedPermission: ObjectPermission.READ,
+    }),
+    true,
+  );
 });
 
 test("photo upload storage selection requires complete S3 config", async () => {
@@ -495,6 +521,76 @@ test("photo upload route uses S3 provider when S3 env vars are present", async (
     if (originalEnv.PRIVATE_OBJECT_DIR === undefined) delete process.env.PRIVATE_OBJECT_DIR;
     else process.env.PRIVATE_OBJECT_DIR = originalEnv.PRIVATE_OBJECT_DIR;
   }
+});
+
+test("activity photo route returns internal object paths for authorized viewers", async () => {
+  const { app, gets } = createRouteRegistry();
+  await withPatchedStorage(
+    {
+      getWashoutActivity: async () => ({
+        id: "activity_1",
+        locationId: "location_1",
+        driverId: "driver_row_1",
+      }),
+      getWashoutLocation: async () => ({
+        id: "location_1",
+        ownerId: "owner_row_1",
+      }),
+      getOwner: async (userId: string) =>
+        userId === "owner_user_1" ? { id: "owner_row_1", userId } : undefined,
+      getDriver: async (userId: string) =>
+        userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined,
+      getUser: async (userId: string) =>
+        userId === "admin_user_1"
+          ? makeUser({ id: userId, role: "admin" })
+          : makeUser({
+              id: userId,
+              role: userId === "owner_user_1" ? "owner" : "driver",
+            }),
+      getPhotosByActivity: async () => [
+        {
+          id: "photo_1",
+          storageKey: "photo-1.jpg",
+          uploadedAt: new Date("2025-01-01T00:00:00.000Z"),
+          contentType: "image/jpeg",
+        },
+      ],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/photos/activity/:activityId");
+      assert.equal(typeof route, "function");
+
+      const ownerRes = createResponse();
+      await route!(
+        {
+          params: { activityId: "activity_1" },
+          user: { id: "owner_user_1", role: "owner" },
+        },
+        ownerRes,
+      );
+      assert.equal(ownerRes.statusCode, 200);
+      assert.equal(
+        (ownerRes.body as { photos: Array<{ url: string }> }).photos[0].url,
+        "/objects/photos/photo-1.jpg",
+      );
+
+      const adminRes = createResponse();
+      await route!(
+        {
+          params: { activityId: "activity_1" },
+          user: { id: "admin_user_1", role: "admin" },
+        },
+        adminRes,
+      );
+      assert.equal(adminRes.statusCode, 200);
+      assert.equal(
+        (adminRes.body as { photos: Array<{ url: string }> }).photos[0].url,
+        "/objects/photos/photo-1.jpg",
+      );
+    },
+  );
 });
 
 type DbMock = {

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, ImageIcon, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 
 interface PhotoModalProps {
   isOpen: boolean;
@@ -32,8 +32,19 @@ export function PhotoModal({
     queryKey: ['activity-photos', activity?.id],
     queryFn: async () => {
       if (!activity?.id) return { photos: [] };
-      const response = await apiRequest(`/api/photos/activity/${activity.id}`);
-      return response.json();
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`/api/photos/activity/${activity.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || `Failed to load photos (${response.status})`
+        );
+      }
+
+      return payload;
     },
     enabled: !!activity?.id && isOpen
   });
@@ -72,6 +83,8 @@ export function PhotoModal({
 
   // Show error state
   if (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to load photos";
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
@@ -80,7 +93,7 @@ export function PhotoModal({
           </DialogHeader>
           <div className="flex items-center justify-center p-8 text-red-600">
             <ImageIcon className="h-8 w-8" />
-            <span className="ml-2">Failed to load photos</span>
+            <span className="ml-2">{errorMessage}</span>
           </div>
         </DialogContent>
       </Dialog>
@@ -158,15 +171,11 @@ export function PhotoModal({
           <div className="relative">
             <div className="flex items-center justify-center bg-gray-100 rounded-lg min-h-[400px] relative">
               {/* Main Photo - NEW: Simple img tag with signed URL */}
-              <img
+              <AuthenticatedImage
                 src={currentPhoto.url}
                 alt={`Washout photo ${currentPhotoIndex + 1}`}
                 className="max-w-full max-h-[500px] object-contain rounded-lg"
                 data-testid={`photo-${currentPhotoIndex}`}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder-image.jpg';
-                }}
               />
 
               {/* Navigation buttons for multiple photos */}
@@ -217,7 +226,7 @@ export function PhotoModal({
                     }`}
                     data-testid={`thumbnail-${index}`}
                   >
-                    <img
+                    <AuthenticatedImage
                       src={photo.url}
                       alt={`Thumbnail ${index + 1}`}
                       className="w-full h-full object-cover"

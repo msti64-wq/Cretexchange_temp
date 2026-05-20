@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { apiRequest } from "@/lib/queryClient";
 import { ImageIcon, Loader2 } from "lucide-react";
 
 interface AuthenticatedImageProps {
@@ -14,6 +13,7 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let objectUrl: string | null = null;
@@ -22,6 +22,7 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
       try {
         setLoading(true);
         setError(false);
+        setErrorMessage(null);
         
         // For server-side photos that require authentication
         if (src.startsWith('/objects/photos/')) {
@@ -29,32 +30,38 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
           const photoKey = src.replace('/objects/photos/', '');
           console.log('🔍 AuthenticatedImage: Processing photo key:', { src, photoKey });
           
-          // Fetch image data with authentication and create blob URL
           const proxyUrl = `/api/objects/photos/${encodeURIComponent(photoKey)}`;
           console.log('🌐 AuthenticatedImage: Fetching authenticated image:', proxyUrl);
-          
-          const response = await apiRequest(proxyUrl);
-          if (response.ok) {
-            const blob = await response.blob();
-            objectUrl = URL.createObjectURL(blob);
-            console.log('✅ AuthenticatedImage: Created blob URL:', {
-              blobSize: blob.size,
-              blobType: blob.type
-            });
-            setBlobUrl(objectUrl);
-          } else {
+
+          const token = localStorage.getItem("authToken");
+          const response = await fetch(proxyUrl, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          });
+          if (!response.ok) {
+            const errorBody = await response.json().catch(() => null);
+            const message = errorBody?.message || `Failed to fetch image: ${response.status}`;
             console.error('❌ AuthenticatedImage: Failed to fetch image:', {
               status: response.status,
-              statusText: response.statusText
+              statusText: response.statusText,
+              message,
             });
-            throw new Error(`Failed to fetch image: ${response.status}`);
+            throw new Error(message);
           }
+
+          const blob = await response.blob();
+          objectUrl = URL.createObjectURL(blob);
+          console.log('✅ AuthenticatedImage: Created blob URL:', {
+            blobSize: blob.size,
+            blobType: blob.type
+          });
+          setBlobUrl(objectUrl);
         } else {
           // For other URLs (sessionStorage, external URLs), use directly
           setBlobUrl(src);
         }
       } catch (err) {
         console.error("Error fetching authenticated image:", err);
+        setErrorMessage(err instanceof Error ? err.message : "Failed to load image");
         setError(true);
       } finally {
         setLoading(false);
@@ -83,7 +90,7 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
     return (
       <div className={`flex flex-col items-center justify-center bg-muted text-muted-foreground ${className}`} data-testid={testId}>
         <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
-        <span className="text-sm">Failed to load image</span>
+        <span className="text-sm">{errorMessage || "Failed to load image"}</span>
       </div>
     );
   }
