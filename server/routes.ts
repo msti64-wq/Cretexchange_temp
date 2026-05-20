@@ -8,7 +8,7 @@ import { washoutActivities, withdrawals, walletTransactions, driverWallets, owne
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { getJwtSecret } from "./jwtSecret";
-import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, objectStorageClient, signObjectURL } from "./objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getStorageSelection, objectStorageClient, signObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema } from "@shared/schema";
 import type { Driver, FeeLedger, FeatureFlag, LocationMaterialIntent, Notification, Owner, OwnerFundingSource, Payment, PendingWashoutPayment, User, WalletTransaction, WashoutActivity, WashoutLocation, WashoutPhoto, Withdrawal } from "@shared/schema";
@@ -11524,6 +11524,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get upload URL for new photos
   app.post('/api/photos/upload-url', isAuthenticated, async (req: any, res) => {
     try {
+      const storageSelection = getStorageSelection();
+      console.log("Upload URL route called:", {
+        provider: storageSelection.provider,
+        bucket: storageSelection.bucket,
+        s3EndpointPresent: storageSelection.s3EndpointPresent,
+      });
+
       const { contentType = 'image/jpeg' } = req.body;
       
       // Generate unique filename
@@ -11540,6 +11547,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         objectName: `${privateDir}/photos/${storageKey}`,
         method: 'PUT',
         ttlSec: 600, // 10 minutes to complete upload
+        contentType,
+      });
+
+      console.log("Upload URL generated successfully:", {
+        provider: storageSelection.provider,
+        bucket: storageSelection.bucket,
+        storageKey,
         contentType,
       });
       

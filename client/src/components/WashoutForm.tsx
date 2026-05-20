@@ -101,19 +101,50 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       
       // Step 2: Upload directly to cloud storage
       console.log("☁️ Uploading to cloud storage...");
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': contentType,
-        },
-      });
+      let uploadResponse: Response;
+      try {
+        uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: file,
+          headers: {
+            'Content-Type': contentType,
+          },
+        });
+      } catch (fetchError) {
+        const storageHost = (() => {
+          try {
+            return new URL(uploadUrl).hostname;
+          } catch {
+            return "object storage";
+          }
+        })();
+        const message =
+          fetchError instanceof TypeError || String(fetchError).toLowerCase().includes("fetch failed")
+            ? `Browser upload could not reach ${storageHost}. If signed URL generation succeeded, check R2 CORS rules for PUT/HEAD from this app origin.`
+            : `Browser upload failed for ${storageHost}. ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`;
+
+        console.error("❌ Browser upload request failed:", {
+          storageHost,
+          message,
+          error: fetchError,
+        });
+        throw new Error(message);
+      }
       
       if (!uploadResponse.ok) {
         const errorBody = await uploadResponse.text().catch(() => "");
-        throw new Error(
-          `Cloud upload failed (${uploadResponse.status})${errorBody ? `: ${errorBody}` : ""}`
-        );
+        const storageHost = (() => {
+          try {
+            return new URL(uploadUrl).hostname;
+          } catch {
+            return "object storage";
+          }
+        })();
+        const message =
+          uploadResponse.status === 403 || uploadResponse.status === 400
+            ? `Object storage rejected the upload (${uploadResponse.status}). Verify bucket access and R2 CORS rules for ${storageHost}.`
+            : `Cloud upload failed (${uploadResponse.status})${errorBody ? `: ${errorBody}` : ""}`;
+        throw new Error(message);
       }
       
       console.log("✅ Photo uploaded successfully to storage:", storageKey);

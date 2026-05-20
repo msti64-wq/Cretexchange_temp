@@ -48,6 +48,7 @@ async function startApplication() {
     const storageSelection = getStorageSelection();
     console.log(`Storage provider selected: ${storageSelection.provider}`);
     console.log(`Bucket: ${storageSelection.bucket}`);
+    console.log(`S3 endpoint present: ${storageSelection.s3EndpointPresent}`);
 
     // Enhanced error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

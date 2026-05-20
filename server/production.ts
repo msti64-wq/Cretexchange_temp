@@ -44,6 +44,7 @@ app.use((req, res, next) => {
     const storageSelection = getStorageSelection();
     console.log(`Storage provider selected: ${storageSelection.provider}`);
     console.log(`Bucket: ${storageSelection.bucket}`);
+    console.log(`S3 endpoint present: ${storageSelection.s3EndpointPresent}`);
 
     app.use((err: any, _req: any, res: any, _next: any) => {
       const status = err.status || err.statusCode || 500;
