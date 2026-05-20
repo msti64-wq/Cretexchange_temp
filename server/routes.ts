@@ -8,7 +8,7 @@ import { washoutActivities, withdrawals, walletTransactions, driverWallets, owne
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { getJwtSecret } from "./jwtSecret";
-import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getStorageSelection, getUploadStorageSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getStorageSelection, getPhotoUploadProviderSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema } from "@shared/schema";
 import type { Driver, FeeLedger, FeatureFlag, LocationMaterialIntent, Notification, Owner, OwnerFundingSource, Payment, PendingWashoutPayment, User, WalletTransaction, WashoutActivity, WashoutLocation, WashoutPhoto, Withdrawal } from "@shared/schema";
@@ -11524,8 +11524,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get upload URL for new photos
   app.post('/api/photos/upload-url', isAuthenticated, async (req: any, res) => {
     try {
-      const storageSelection = getUploadStorageSelection();
-      console.log("Storage upload provider: s3");
+      const storageSelection = getPhotoUploadProviderSelection();
+      console.log(`Photo upload provider selected: ${storageSelection.provider}`);
+      if (storageSelection.provider !== "s3") {
+        return res.status(500).json({
+          message: `Missing object storage env vars: ${storageSelection.missing?.join(", ") || "S3_ENDPOINT, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET"}`,
+          endpoint: '/api/photos/upload-url',
+        });
+      }
       console.log("Upload URL route called:", {
         provider: storageSelection.provider,
         bucket: storageSelection.bucket,

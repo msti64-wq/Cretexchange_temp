@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import express from "express";
 import jwt from "jsonwebtoken";
+import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import Stripe from "stripe";
 
 type TestCase = {
@@ -382,6 +384,7 @@ test("photo upload storage selection requires complete S3 config", async () => {
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     S3_BUCKET: process.env.S3_BUCKET,
+    PRIVATE_OBJECT_DIR: process.env.PRIVATE_OBJECT_DIR,
   };
 
   process.env.S3_ENDPOINT = "https://example.r2.cloudflarestorage.com";
@@ -389,6 +392,7 @@ test("photo upload storage selection requires complete S3 config", async () => {
   process.env.S3_ACCESS_KEY_ID = "test-access-key";
   process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
   process.env.S3_BUCKET = "test-bucket";
+  process.env.PRIVATE_OBJECT_DIR = "private";
 
   assert.deepEqual(getUploadStorageSelection(), {
     provider: "s3",
@@ -412,6 +416,85 @@ test("photo upload storage selection requires complete S3 config", async () => {
   else process.env.S3_SECRET_ACCESS_KEY = originalEnv.S3_SECRET_ACCESS_KEY;
   if (originalEnv.S3_BUCKET === undefined) delete process.env.S3_BUCKET;
   else process.env.S3_BUCKET = originalEnv.S3_BUCKET;
+});
+
+test("photo upload route uses S3 provider when S3 env vars are present", async () => {
+  const originalEnv = {
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
+    S3_REGION: process.env.S3_REGION,
+    S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
+    S3_BUCKET: process.env.S3_BUCKET,
+  };
+  const originalSend = S3Client.prototype.send;
+  const originalLog = console.log;
+  const logs: string[] = [];
+
+  process.env.S3_ENDPOINT = "https://example.r2.cloudflarestorage.com";
+  process.env.S3_REGION = "auto";
+  process.env.S3_ACCESS_KEY_ID = "test-access-key";
+  process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
+  process.env.S3_BUCKET = "test-bucket";
+
+  S3Client.prototype.send = (async (command: unknown) => {
+    if (command instanceof HeadBucketCommand) {
+      return {};
+    }
+    throw new Error(`Unexpected S3 command in test: ${command?.constructor?.name || "unknown"}`);
+  }) as typeof S3Client.prototype.send;
+
+  console.log = (...args: unknown[]) => {
+    logs.push(args.map((value) => String(value)).join(" "));
+  };
+
+  try {
+    const expressApp = express();
+    const routes = new Map<string, Function>();
+    const originalPost = expressApp.post.bind(expressApp);
+    (expressApp as typeof expressApp & { post: typeof expressApp.post }).post = ((path: string, ...handlers: Function[]) => {
+      routes.set(path, handlers[handlers.length - 1]);
+      return originalPost(path, ...handlers);
+    }) as typeof expressApp.post;
+
+    const { registerRoutes } = await import("../server/routes");
+    await registerRoutes(expressApp as never);
+
+    const uploadRoute = routes.get("/api/photos/upload-url");
+    assert.equal(typeof uploadRoute, "function");
+
+    const req = {
+      body: { contentType: "image/jpeg" },
+      user: { id: "driver_1" },
+    };
+    const res = createResponse();
+
+    await uploadRoute!(req as never, res as never);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(typeof (res.body as { uploadUrl: string }).uploadUrl, "string");
+    assert.equal((res.body as { contentType: string }).contentType, "image/jpeg");
+    assert.ok(
+      logs.some((line) => line.includes("Photo upload provider selected: s3")),
+    );
+    assert.ok(
+      logs.some((line) => line.includes("Signed URL generation succeeded")),
+    );
+  } finally {
+    S3Client.prototype.send = originalSend;
+    console.log = originalLog;
+    if (originalEnv.S3_ENDPOINT === undefined) delete process.env.S3_ENDPOINT;
+    else process.env.S3_ENDPOINT = originalEnv.S3_ENDPOINT;
+    if (originalEnv.S3_REGION === undefined) delete process.env.S3_REGION;
+    else process.env.S3_REGION = originalEnv.S3_REGION;
+    if (originalEnv.S3_ACCESS_KEY_ID === undefined) delete process.env.S3_ACCESS_KEY_ID;
+    else process.env.S3_ACCESS_KEY_ID = originalEnv.S3_ACCESS_KEY_ID;
+    if (originalEnv.S3_SECRET_ACCESS_KEY === undefined) delete process.env.S3_SECRET_ACCESS_KEY;
+    else process.env.S3_SECRET_ACCESS_KEY = originalEnv.S3_SECRET_ACCESS_KEY;
+    if (originalEnv.S3_BUCKET === undefined) delete process.env.S3_BUCKET;
+    else process.env.S3_BUCKET = originalEnv.S3_BUCKET;
+    if (originalEnv.PRIVATE_OBJECT_DIR === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+    else process.env.PRIVATE_OBJECT_DIR = originalEnv.PRIVATE_OBJECT_DIR;
+  }
 });
 
 type DbMock = {
