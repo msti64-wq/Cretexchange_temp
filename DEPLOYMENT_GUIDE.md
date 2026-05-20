@@ -109,6 +109,18 @@ PUBLIC_OBJECT_SEARCH_PATHS=/<bucket-name>/public,/<bucket-name>/uploads
 # Service account credentials (JSON) via Replit Secrets
 ```
 
+**S3-Compatible Storage** (Railway / Render / Cloudflare R2 / AWS S3)
+```bash
+S3_ENDPOINT=<your S3-compatible endpoint>
+S3_REGION=<your region>
+S3_ACCESS_KEY_ID=<your access key>
+S3_SECRET_ACCESS_KEY=<your secret key>
+S3_BUCKET=<your bucket name>
+DEFAULT_OBJECT_STORAGE_BUCKET_ID=<your object storage bucket name>
+PRIVATE_OBJECT_DIR=/<bucket-name>/private
+PUBLIC_OBJECT_SEARCH_PATHS=/<bucket-name>/public,/<bucket-name>/uploads
+```
+
 **Mapbox** (Location Search)
 ```bash
 VITE_MAPBOX_TOKEN=<your Mapbox access token>
@@ -213,6 +225,7 @@ VITE_MAPBOX_TOKEN=<mapbox-token>
   - Core user flows tested end-to-end
   - Payment flows verified (test mode)
   - Error handling tested
+  - Object storage configured for the target deployment path (Google Cloud Storage or S3-compatible storage)
 
 ### Deployment Secrets Checklist
 
@@ -221,7 +234,7 @@ VITE_MAPBOX_TOKEN=<mapbox-token>
 - [ ] Stripe has `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLIC_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PLATFORM_FINANCIAL_ACCOUNT_ID` configured for the same Stripe mode.
 - [ ] `system_settings.platform_washout_fee` is set to `5.00` in production if the database was seeded with an older value.
 - [ ] Object storage has `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS`, and `DEFAULT_OBJECT_STORAGE_BUCKET_ID` configured for the deployment bucket.
-- [ ] Google Cloud Storage has `GOOGLE_CLOUD_PROJECT_ID` and `GOOGLE_CLOUD_BUCKET_NAME` configured.
+- [ ] Google Cloud Storage or S3-compatible storage has the required provider credentials configured.
 - [ ] Mapbox has `VITE_MAPBOX_TOKEN` configured for location search.
 - [ ] No placeholder, test-only, or local development values remain in deployment secrets.
 
@@ -529,10 +542,15 @@ VITE_STRIPE_PUBLIC_KEY=<stripe-public-key>
 STRIPE_WEBHOOK_SECRET=<webhook-secret>
 STRIPE_PLATFORM_FINANCIAL_ACCOUNT_ID=<stripe-platform-financial-account-id>
 
-# Object Storage and Google Cloud
+# Object Storage and Cloud Storage
 GOOGLE_CLOUD_PROJECT_ID=<gcp-project-id>
 GOOGLE_CLOUD_BUCKET_NAME=<bucket-name>
 GOOGLE_APPLICATION_CREDENTIALS=<service-account-json>
+S3_ENDPOINT=<s3-compatible-endpoint>
+S3_REGION=<region>
+S3_ACCESS_KEY_ID=<s3-access-key>
+S3_SECRET_ACCESS_KEY=<s3-secret-key>
+S3_BUCKET=<bucket-name>
 DEFAULT_OBJECT_STORAGE_BUCKET_ID=<bucket-name>
 PRIVATE_OBJECT_DIR=/<bucket-name>/private
 PUBLIC_OBJECT_SEARCH_PATHS=/<bucket-name>/public,/<bucket-name>/uploads

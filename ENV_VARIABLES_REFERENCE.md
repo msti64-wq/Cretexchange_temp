@@ -49,6 +49,11 @@ GOOGLE_CLOUD_BUCKET_NAME=your-gcs-bucket-name
 DEFAULT_OBJECT_STORAGE_BUCKET_ID=your-object-storage-bucket-name
 PRIVATE_OBJECT_DIR=/your-object-storage-bucket-name/private
 PUBLIC_OBJECT_SEARCH_PATHS=/your-object-storage-bucket-name/public,/your-object-storage-bucket-name/uploads
+S3_ENDPOINT=https://your-s3-compatible-endpoint
+S3_REGION=us-east-1
+S3_ACCESS_KEY_ID=your-s3-access-key-id
+S3_SECRET_ACCESS_KEY=your-s3-secret-access-key
+S3_BUCKET=your-s3-bucket-name
 VITE_MAPBOX_TOKEN=your-mapbox-token
 ```
 

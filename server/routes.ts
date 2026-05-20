@@ -8,7 +8,7 @@ import { washoutActivities, withdrawals, walletTransactions, driverWallets, owne
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { getJwtSecret } from "./jwtSecret";
-import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, signObjectURL } from "./objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, objectStorageClient, signObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema } from "@shared/schema";
 import type { Driver, FeeLedger, FeatureFlag, LocationMaterialIntent, Notification, Owner, OwnerFundingSource, Payment, PendingWashoutPayment, User, WalletTransaction, WashoutActivity, WashoutLocation, WashoutPhoto, Withdrawal } from "@shared/schema";
@@ -11496,9 +11496,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate signed URLs for each photo
       const signedUrls = await Promise.all(
         photos.map(async (photo) => {
+          const objectStorageService = new ObjectStorageService();
+          const privateDir = objectStorageService.getPrivateObjectDir();
           const signedUrl = await signObjectURL({
-            bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
-            objectName: photo.storageKey,
+            bucketName: getDefaultObjectStorageBucketName(),
+            objectName: `${privateDir}/photos/${photo.storageKey}`,
             method: 'GET',
             ttlSec: 3600 // 1 hour expiry
           });
@@ -11529,11 +11531,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const randomId = Math.random().toString(36).substr(2, 9);
       const extension = contentType === 'image/png' ? 'png' : 'jpg';
       const storageKey = `photo-${timestamp}-${randomId}.${extension}`;
+      const objectStorageService = new ObjectStorageService();
+      const privateDir = objectStorageService.getPrivateObjectDir();
       
       // Generate signed upload URL  
       const uploadUrl = await signObjectURL({
-        bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
-        objectName: storageKey,
+        bucketName: getDefaultObjectStorageBucketName(),
+        objectName: `${privateDir}/photos/${storageKey}`,
         method: 'PUT',
         ttlSec: 600, // 10 minutes to complete upload
         contentType,
@@ -11626,13 +11630,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get signed URL for internal use
       console.log('🔗 Creating signed URL for:', {
-        bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID,
+        bucketName: getDefaultObjectStorageBucketName(),
         objectName: key
       });
+      const objectStorageService = new ObjectStorageService();
+      const privateDir = objectStorageService.getPrivateObjectDir();
       
       const signedUrl = await signObjectURL({
-        bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
-        objectName: key,
+        bucketName: getDefaultObjectStorageBucketName(),
+        objectName: `${privateDir}/photos/${key}`,
         method: 'GET',
         ttlSec: 120
       });
@@ -11653,7 +11659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: imageResponse.status,
           statusText: imageResponse.statusText,
           signedUrl: signedUrl.substring(0, 100) + '...',
-          bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID,
+          bucketName: getDefaultObjectStorageBucketName(),
           environment: process.env.REPLIT_DEPLOYMENT ? 'PRODUCTION' : 'DEVELOPMENT'
         });
         
@@ -11728,9 +11734,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // In production: Add proper authorization checks here
       
       // Generate presigned URL for GET request with 2-minute expiry
+      const objectStorageService = new ObjectStorageService();
+      const privateDir = objectStorageService.getPrivateObjectDir();
       const signedUrl = await signObjectURL({
-        bucketName: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID!,
-        objectName: key,
+        bucketName: getDefaultObjectStorageBucketName(),
+        objectName: `${privateDir}/photos/${key}`,
         method: 'GET',
         ttlSec: 120
       });
