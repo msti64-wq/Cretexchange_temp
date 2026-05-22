@@ -159,18 +159,20 @@ export default function DriverDashboard() {
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
               <Button
-                variant="outline"
-                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                variant="default"
+                className="h-auto min-h-24 flex-col items-start justify-start gap-1.5 rounded-2xl border border-primary/30 bg-primary px-4 py-4 text-left text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25 active:translate-y-0 focus-visible:ring-primary/50"
                 onClick={() => setLocation('/locations')}
                 data-testid="button-find-location-hero"
               >
-                <MapPin className="h-5 w-5 text-primary" />
-                <span className="text-sm font-semibold">Find Location</span>
-                <span className="text-xs text-muted-foreground">Search nearby washout sites</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
+                  <MapPin className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-sm font-semibold tracking-tight">Find Location</span>
+                <span className="text-xs text-primary-foreground/85">Search nearby washout sites</span>
               </Button>
               <Button
                 variant="outline"
-                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                className="h-auto min-h-24 flex-col items-start justify-start gap-1.5 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
                 onClick={() => setLocation('/wallet')}
                 data-testid="button-access-wallet-hero"
               >
@@ -482,13 +484,15 @@ export default function DriverDashboard() {
         <section className="grid gap-3 sm:grid-cols-2">
           <Button
             variant="outline"
-            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/10"
             onClick={() => setLocation('/locations')}
             data-testid="button-find-location"
           >
-            <MapPin className="h-5 w-5 text-primary" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white shadow-sm shadow-primary/20">
+              <MapPin className="h-4 w-4 text-white" />
+            </div>
             <div>
-              <div className="text-sm font-semibold">Find Location</div>
+              <div className="text-sm font-semibold text-foreground">Find Location</div>
               <div className="text-xs text-muted-foreground">Open washout site list</div>
             </div>
           </Button>
