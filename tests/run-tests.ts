@@ -530,6 +530,89 @@ test("photo upload route uses S3 provider when S3 env vars are present", async (
   }
 });
 
+test("photo upload route rejects unsupported formats and oversized files", async () => {
+  const originalEnv = {
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
+    S3_REGION: process.env.S3_REGION,
+    S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
+    S3_BUCKET: process.env.S3_BUCKET,
+    PRIVATE_OBJECT_DIR: process.env.PRIVATE_OBJECT_DIR,
+  };
+  const originalSend = S3Client.prototype.send;
+  process.env.S3_ENDPOINT = "https://example.r2.cloudflarestorage.com";
+  process.env.S3_REGION = "auto";
+  process.env.S3_ACCESS_KEY_ID = "test-access-key";
+  process.env.S3_SECRET_ACCESS_KEY = "test-secret-key";
+  process.env.S3_BUCKET = "test-bucket";
+  process.env.PRIVATE_OBJECT_DIR = "private";
+
+  S3Client.prototype.send = (async (command: unknown) => {
+    if (command instanceof HeadBucketCommand) {
+      return {};
+    }
+    throw new Error(`Unexpected S3 command in test: ${command?.constructor?.name || "unknown"}`);
+  }) as typeof S3Client.prototype.send;
+
+  try {
+    const expressApp = express();
+    const routes = new Map<string, Function>();
+    const originalPost = expressApp.post.bind(expressApp);
+    (expressApp as typeof expressApp & { post: typeof expressApp.post }).post = ((path: string, ...handlers: Function[]) => {
+      routes.set(path, handlers[handlers.length - 1]);
+      return originalPost(path, ...handlers);
+    }) as typeof expressApp.post;
+
+    const { registerRoutes } = await import("../server/routes");
+    await registerRoutes(expressApp as never);
+
+    const uploadRoute = routes.get("/api/photos/upload-url");
+    assert.equal(typeof uploadRoute, "function");
+
+    const unsupportedRes = createResponse();
+    await uploadRoute!(
+      {
+        body: { contentType: "image/gif", fileSize: 12345 },
+        user: { id: "driver_1" },
+      },
+      unsupportedRes as never,
+    );
+    assert.equal(unsupportedRes.statusCode, 400);
+    assert.match(
+      String((unsupportedRes.body as { message?: string }).message || ""),
+      /Unsupported photo format/,
+    );
+
+    const oversizedRes = createResponse();
+    await uploadRoute!(
+      {
+        body: { contentType: "image/jpeg", fileSize: 20 * 1024 * 1024 },
+        user: { id: "driver_1" },
+      },
+      oversizedRes as never,
+    );
+    assert.equal(oversizedRes.statusCode, 400);
+    assert.match(
+      String((oversizedRes.body as { message?: string }).message || ""),
+      /Photo is too large/,
+    );
+  } finally {
+    S3Client.prototype.send = originalSend;
+    if (originalEnv.S3_ENDPOINT === undefined) delete process.env.S3_ENDPOINT;
+    else process.env.S3_ENDPOINT = originalEnv.S3_ENDPOINT;
+    if (originalEnv.S3_REGION === undefined) delete process.env.S3_REGION;
+    else process.env.S3_REGION = originalEnv.S3_REGION;
+    if (originalEnv.S3_ACCESS_KEY_ID === undefined) delete process.env.S3_ACCESS_KEY_ID;
+    else process.env.S3_ACCESS_KEY_ID = originalEnv.S3_ACCESS_KEY_ID;
+    if (originalEnv.S3_SECRET_ACCESS_KEY === undefined) delete process.env.S3_SECRET_ACCESS_KEY;
+    else process.env.S3_SECRET_ACCESS_KEY = originalEnv.S3_SECRET_ACCESS_KEY;
+    if (originalEnv.S3_BUCKET === undefined) delete process.env.S3_BUCKET;
+    else process.env.S3_BUCKET = originalEnv.S3_BUCKET;
+    if (originalEnv.PRIVATE_OBJECT_DIR === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+    else process.env.PRIVATE_OBJECT_DIR = originalEnv.PRIVATE_OBJECT_DIR;
+  }
+});
+
 test("activity photo route returns signed GET URLs for authorized viewers when S3 is configured", async () => {
   const { app, gets } = createRouteRegistry();
   const originalEnv = {
@@ -709,14 +792,19 @@ test("create-with-photos applies ACL metadata for location owners", async () => 
                   status: "pending",
                 },
                 photoData: [
-                  {
-                    storageKey: "photo-1.jpg",
-                    contentType: "image/jpeg",
-                    fileSize: 12345,
-                  },
-                ],
-              },
+                {
+                  storageKey: "photo-1.jpg",
+                  contentType: "image/jpeg",
+                  fileSize: 12345,
+                  photoTakenAt: "2025-01-01T00:00:00.000Z",
+                  uploadedAt: "2025-01-01T00:05:00.000Z",
+                  gpsLatitude: 40,
+                  gpsLongitude: -100,
+                  imageFingerprint: "0123456789abcdef",
+                },
+              ],
             },
+          },
             res,
           );
 
@@ -737,6 +825,71 @@ test("create-with-photos applies ACL metadata for location owners", async () => 
   } finally {
     ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
   }
+});
+
+test("create-with-photos rejects missing gps metadata with 400", async () => {
+  const { app, posts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+      getWashoutLocation: async (locationId: string) =>
+        locationId === "location_1"
+          ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+          : undefined,
+      getRecentWashoutPhotoDuplicateCandidates: async () => [],
+      createWashoutActivityWithPhotos: async () => {
+        throw new Error("should not be called");
+      },
+    },
+    async () => {
+      const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      process.env.PRIVATE_OBJECT_DIR = "private";
+      try {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = posts.get("/api/activities/create-with-photos");
+        assert.equal(typeof route, "function");
+
+        const res = createResponse();
+        await route!(
+          {
+            user: { id: "driver_user_1", role: "driver" },
+            body: {
+              activityData: {
+                locationId: "location_1",
+                amount: "4.00",
+                checkInTime: "2025-01-01T00:00:00.000Z",
+                status: "pending",
+              },
+              photoData: [
+                {
+                  storageKey: "photo-1.jpg",
+                  contentType: "image/jpeg",
+                  fileSize: 12345,
+                  photoTakenAt: "2025-01-01T00:00:00.000Z",
+                  uploadedAt: "2025-01-01T00:05:00.000Z",
+                  gpsLatitude: null,
+                  gpsLongitude: null,
+                  imageFingerprint: "0123456789abcdef",
+                },
+              ],
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 400);
+        assert.match(
+          String((res.body as { message?: string }).message || ""),
+          /enable GPS/i,
+        );
+      } finally {
+        if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+        else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
+      }
+    },
+  );
 });
 
 test("photo verification helper flags missing gps and out-of-range photos", async () => {

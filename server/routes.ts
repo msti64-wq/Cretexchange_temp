@@ -25,6 +25,14 @@ import {
 } from "@shared/photoFingerprint";
 
 const JWT_SECRET = getJwtSecret();
+const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
+const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
 
 type QueuedPendingWashoutPayment = PendingWashoutPayment & {
   activity: WashoutActivity;
@@ -11620,12 +11628,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         s3EndpointPresent: storageSelection.s3EndpointPresent,
       });
 
-      const { contentType = 'image/jpeg' } = req.body;
+      const { contentType = 'image/jpeg', fileSize } = req.body;
+      if (!SUPPORTED_PHOTO_CONTENT_TYPES.has(contentType)) {
+        return res.status(400).json({
+          message: `Unsupported photo format: ${contentType}. Please use JPEG, PNG, WebP, HEIC, or HEIF.`,
+          endpoint: '/api/photos/upload-url',
+        });
+      }
+
+      if (fileSize != null) {
+        const numericFileSize = Number(fileSize);
+        if (!Number.isFinite(numericFileSize) || numericFileSize <= 0) {
+          return res.status(400).json({
+            message: "Invalid fileSize. Please reselect the photo and try again.",
+            endpoint: '/api/photos/upload-url',
+          });
+        }
+
+        if (numericFileSize > MAX_PHOTO_UPLOAD_BYTES) {
+          return res.status(400).json({
+            message: `Photo is too large. Please use a photo smaller than ${Math.floor(MAX_PHOTO_UPLOAD_BYTES / (1024 * 1024))} MB.`,
+            endpoint: '/api/photos/upload-url',
+          });
+        }
+      }
       
       // Generate unique filename
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substr(2, 9);
-      const extension = contentType === 'image/png' ? 'png' : 'jpg';
+      const extension =
+        contentType === "image/png" ? "png" :
+        contentType === "image/webp" ? "webp" :
+        contentType === "image/heic" ? "heic" :
+        contentType === "image/heif" ? "heif" : "jpg";
       const storageKey = `photo-${timestamp}-${randomId}.${extension}`;
       const objectStorageService = new ObjectStorageService();
       const privateDir = objectStorageService.getPrivateObjectDir();
@@ -11698,9 +11733,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       duplicateWindowStart.setDate(duplicateWindowStart.getDate() - PHOTO_DUPLICATE_LOOKBACK_DAYS);
       const recentDuplicateCandidates = await storage.getRecentWashoutPhotoDuplicateCandidates(duplicateWindowStart);
 
+      if (!Array.isArray(photoData) || photoData.length === 0) {
+        return res.status(400).json({
+          message: "At least one photo is required.",
+        });
+      }
+
       // Prepare photos with verification metadata
       const photos = [];
       for (const photo of photoData || []) {
+        if (!photo || typeof photo !== "object") {
+          return res.status(400).json({
+            message: "Invalid photo metadata. Please re-upload the photo and try again.",
+          });
+        }
+
+        if (typeof photo.storageKey !== "string" || !photo.storageKey.trim()) {
+          return res.status(400).json({
+            message: "Photo upload is missing its storage key. Please re-upload the photo.",
+          });
+        }
+
+        if (typeof photo.contentType !== "string" || !photo.contentType.trim()) {
+          return res.status(400).json({
+            message: "Photo upload is missing its content type. Please re-upload the photo.",
+          });
+        }
+
+        if (photo.fileSize == null || !Number.isFinite(Number(photo.fileSize)) || Number(photo.fileSize) <= 0) {
+          return res.status(400).json({
+            message: "Photo upload is missing its file size. Please re-upload the photo.",
+          });
+        }
+
+        if (photo.gpsLatitude == null || photo.gpsLongitude == null) {
+          return res.status(400).json({
+            message: "Please enable GPS and retake the photo so it can be verified.",
+          });
+        }
+
         const photoTakenAt = photo.photoTakenAt ? new Date(photo.photoTakenAt) : new Date();
         const uploadedAt = photo.uploadedAt ? new Date(photo.uploadedAt) : new Date();
         const gpsLatitude = photo.gpsLatitude != null ? Number(photo.gpsLatitude) : null;

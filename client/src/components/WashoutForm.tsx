@@ -12,6 +12,15 @@ import { formatAddress } from "@shared/addressUtils";
 import { getCurrentLocation } from "@/lib/gps";
 import { computePhotoFingerprint } from "@/lib/photoFingerprint";
 
+const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
+const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
+
 interface WashoutFormProps {
   location: {
     id: string;
@@ -117,6 +126,19 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     browserLocation: { lat: number; lng: number } | null,
   ): Promise<string> => {
     console.log("🔧 NEW: Direct file upload started for:", file.name, file.size, "bytes");
+
+    const contentType = file.type || "image/jpeg";
+    if (!SUPPORTED_PHOTO_CONTENT_TYPES.has(contentType)) {
+      throw new Error(
+        `Unsupported photo format: ${contentType || "unknown"}. Please use JPEG, PNG, WebP, HEIC, or HEIF.`,
+      );
+    }
+
+    if (file.size > MAX_PHOTO_UPLOAD_BYTES) {
+      throw new Error(
+        `Photo is too large (${Math.ceil(file.size / (1024 * 1024))} MB). Please use a photo under ${Math.floor(MAX_PHOTO_UPLOAD_BYTES / (1024 * 1024))} MB.`,
+      );
+    }
     
     try {
       // Step 1: Get signed upload URL from new endpoint
@@ -124,7 +146,8 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       const uploadUrlResponse = await apiRequest("/api/photos/upload-url", {
         method: "POST",
         body: JSON.stringify({
-          contentType: file.type || 'image/jpeg'
+          contentType,
+          fileSize: file.size,
         }),
       });
       
@@ -135,8 +158,8 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
         );
       }
       
-      const { uploadUrl, storageKey, contentType } = await uploadUrlResponse.json();
-      console.log("✅ Got signed upload URL:", { storageKey, contentType });
+      const { uploadUrl, storageKey, contentType: responseContentType } = await uploadUrlResponse.json();
+      console.log("✅ Got signed upload URL:", { storageKey, contentType: responseContentType });
       
       // Step 2: Upload directly to cloud storage
       console.log("☁️ Uploading to cloud storage...");
@@ -146,7 +169,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
           method: 'PUT',
           body: file,
           headers: {
-            'Content-Type': contentType,
+            'Content-Type': responseContentType,
           },
         });
       } catch (fetchError) {
@@ -201,7 +224,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
 
       const photoMetadata = {
         storageKey,
-        contentType,
+        contentType: responseContentType,
         fileSize: file.size,
         photoTakenAt: new Date(file.lastModified || Date.now()).toISOString(),
         uploadedAt: new Date().toISOString(),
@@ -386,6 +409,15 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       toast({
         title: "Photos Required",
         description: "Please upload at least one photo before checking in.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (gpsStatus === "unavailable" || !gpsLocation) {
+      toast({
+        title: "Location Required",
+        description: "Please enable GPS and try again so the photo can be verified.",
         variant: "destructive",
       });
       return;
