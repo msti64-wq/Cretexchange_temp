@@ -15,6 +15,13 @@
       "when": 1768850000000,
       "tag": "0001_add_photo_metadata_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768851000000,
+      "tag": "0002_add_washout_photo_driver_location",
+      "breakpoints": true
     }
   ]
 }
