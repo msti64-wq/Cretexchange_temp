@@ -12,6 +12,40 @@ import { formatAddress } from "@shared/addressUtils";
 import { getCurrentLocation } from "@/lib/gps";
 import { computePhotoFingerprint } from "@/lib/photoFingerprint";
 
+function extractServerErrorMessage(error: unknown): string {
+  const fallback = "Complete washout failed. Please try again.";
+
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  const rawMessage = error.message?.trim();
+  if (!rawMessage) {
+    return fallback;
+  }
+
+  const prefixedStatusMatch = rawMessage.match(/^\d+:\s*([\s\S]*)$/);
+  const responseText = (prefixedStatusMatch?.[1] || rawMessage).trim();
+
+  if (!responseText) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(responseText);
+    if (parsed && typeof parsed === "object") {
+      const message = (parsed as { message?: unknown }).message;
+      if (typeof message === "string" && message.trim()) {
+        return message.trim();
+      }
+    }
+  } catch {
+    // The response body may already be plain text.
+  }
+
+  return responseText;
+}
+
 const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
 const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
   "image/jpeg",
@@ -113,9 +147,10 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       onSuccess?.();
     },
     onError: (error) => {
+      const errorMessage = extractServerErrorMessage(error);
       toast({
         title: "Check-in Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },

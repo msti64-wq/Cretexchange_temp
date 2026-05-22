@@ -11789,8 +11789,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        const photoTakenAt = photo.photoTakenAt ? new Date(photo.photoTakenAt) : new Date();
         const uploadedAt = photo.uploadedAt ? new Date(photo.uploadedAt) : new Date();
+        const photoTakenAt = photo.photoTakenAt
+          ? new Date(photo.photoTakenAt)
+          : uploadedAt;
         const gpsLatitude = photo.gpsLatitude != null ? Number(photo.gpsLatitude) : null;
         const gpsLongitude = photo.gpsLongitude != null ? Number(photo.gpsLongitude) : null;
         const imageFingerprint = typeof photo.imageFingerprint === "string" && photo.imageFingerprint.trim()
