@@ -70,11 +70,14 @@ async function main() {
       ["duplicate_similarity_score", "integer"],
       ["duplicate_hash_distance", "integer"],
       ["photo_taken_at", "timestamp"],
+      ["uploaded_at", "timestamp"],
       ["gps_latitude", "numeric(10,8)"],
       ["gps_longitude", "numeric(11,8)"],
       ["verification_status", '"photo_verification_status" DEFAULT \'needs_review\' NOT NULL'],
       ["verification_distance_miles", "numeric(8,3)"],
       ["verification_reason", "text"],
+      ["file_size", "integer"],
+      ["content_type", "varchar DEFAULT 'image/jpeg'"],
     ] as const;
 
     for (const [columnName, definition] of columnsToEnsure) {
@@ -109,13 +112,21 @@ async function main() {
       WHERE "content_type" IS NULL;
     `);
 
+    await client.query(`
+      UPDATE "washout_photos"
+      SET "uploaded_at" = COALESCE("uploaded_at", NOW())
+      WHERE "uploaded_at" IS NULL;
+    `);
+
     await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "photo_taken_at" SET DEFAULT now();`);
+    await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "uploaded_at" SET DEFAULT now();`);
     await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "verification_status" SET DEFAULT 'needs_review';`);
     await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "content_type" SET DEFAULT 'image/jpeg';`);
 
     await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "driver_id" SET NOT NULL;`);
     await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "location_id" SET NOT NULL;`);
     await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "photo_taken_at" SET NOT NULL;`);
+    await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "uploaded_at" SET NOT NULL;`);
     await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "verification_status" SET NOT NULL;`);
 
     if (!(await constraintExists(client, "washout_photos", "washout_photos_driver_id_drivers_id_fk"))) {
@@ -150,4 +161,3 @@ async function main() {
 }
 
 await main();
-

@@ -94,8 +94,21 @@ export const debitCardRequests = pgTable("debit_card_requests", {
 export const washoutPhotos = pgTable("washout_photos", {
 	id: varchar().default(gen_random_uuid()).primaryKey().notNull(),
 	activityId: varchar("activity_id").notNull(),
+	driverId: varchar("driver_id").notNull(),
+	locationId: varchar("location_id").notNull(),
 	storageKey: varchar("storage_key").notNull(),
+	imageFingerprint: text("image_fingerprint"),
+	duplicateMatchedPhotoId: varchar("duplicate_matched_photo_id"),
+	duplicateMatchedUploadedAt: timestamp("duplicate_matched_uploaded_at", { mode: 'string' }),
+	duplicateSimilarityScore: integer("duplicate_similarity_score"),
+	duplicateHashDistance: integer("duplicate_hash_distance"),
+	photoTakenAt: timestamp("photo_taken_at", { mode: 'string' }).notNull(),
 	uploadedAt: timestamp("uploaded_at", { mode: 'string' }).defaultNow().notNull(),
+	gpsLatitude: numeric("gps_latitude", { precision: 10, scale:  8 }),
+	gpsLongitude: numeric("gps_longitude", { precision: 11, scale:  8 }),
+	verificationStatus: photoVerificationStatus("verification_status").default('needs_review').notNull(),
+	verificationDistanceMiles: numeric("verification_distance_miles", { precision: 8, scale: 3 }),
+	verificationReason: text("verification_reason"),
 	fileSize: integer("file_size"),
 	contentType: varchar("content_type").default('image/jpeg'),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
@@ -104,6 +117,16 @@ export const washoutPhotos = pgTable("washout_photos", {
 			columns: [table.activityId],
 			foreignColumns: [washoutActivities.id],
 			name: "washout_photos_activity_id_washout_activities_id_fk"
+	}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.driverId],
+			foreignColumns: [drivers.id],
+			name: "washout_photos_driver_id_drivers_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.locationId],
+			foreignColumns: [washoutLocations.id],
+			name: "washout_photos_location_id_washout_locations_id_fk"
 		}).onDelete("cascade"),
 ]);
 
