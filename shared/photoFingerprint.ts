@@ -1,5 +1,5 @@
 export const PHOTO_FINGERPRINT_GRID_SIZE = 8;
-export const PHOTO_DUPLICATE_LOOKBACK_DAYS = 60;
+export const PHOTO_DUPLICATE_LOOKBACK_DAYS = 90;
 export const PHOTO_DUPLICATE_HAMMING_THRESHOLD = 10;
 
 export interface PhotoFingerprintCandidate {

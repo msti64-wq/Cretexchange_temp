@@ -330,6 +330,10 @@ export const washoutPhotos = pgTable("washout_photos", {
   locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "cascade" }),
   storageKey: varchar("storage_key").notNull(), // e.g., "photo-1758728697596-jji6m2mh1.jpg"
   imageFingerprint: text("image_fingerprint"),
+  duplicateMatchedPhotoId: varchar("duplicate_matched_photo_id"),
+  duplicateMatchedUploadedAt: timestamp("duplicate_matched_uploaded_at"),
+  duplicateSimilarityScore: integer("duplicate_similarity_score"),
+  duplicateHashDistance: integer("duplicate_hash_distance"),
   photoTakenAt: timestamp("photo_taken_at").notNull(),
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
   gpsLatitude: decimal("gps_latitude", { precision: 10, scale: 8 }),

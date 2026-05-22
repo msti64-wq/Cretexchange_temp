@@ -890,6 +890,7 @@ test("create-with-photos stores verification metadata from driver gps", async ()
 test("create-with-photos flags duplicate fingerprints for review", async () => {
   const { app, posts } = createRouteRegistry();
   let capturedPhotos: Array<Record<string, unknown>> = [];
+  let duplicateWindowStart: Date | null = null;
   const originalTrySetObjectEntityAclPolicy = ObjectStorageService.prototype.trySetObjectEntityAclPolicy;
   ObjectStorageService.prototype.trySetObjectEntityAclPolicy = (async function (
     this: unknown,
@@ -905,7 +906,9 @@ test("create-with-photos flags duplicate fingerprints for review", async () => {
         locationId === "location_1"
           ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
           : undefined,
-      getRecentWashoutPhotoDuplicateCandidates: async () => [
+      getRecentWashoutPhotoDuplicateCandidates: async (since: Date) => {
+        duplicateWindowStart = since;
+        return [
         {
           photoId: "prior_photo_1",
           activityId: "activity_prior",
@@ -916,7 +919,8 @@ test("create-with-photos flags duplicate fingerprints for review", async () => {
           priorUploadedAt: "2025-01-01T00:00:00.000Z",
           imageFingerprint: "ffffffffffffffff",
         },
-      ],
+      ];
+      },
       createWashoutActivityWithPhotos: async (_activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => {
         capturedPhotos = photos;
         return {
@@ -979,7 +983,14 @@ test("create-with-photos flags duplicate fingerprints for review", async () => {
 
         assert.equal(res.statusCode, 200);
         assert.equal(capturedPhotos.length, 1);
+        assert.ok(duplicateWindowStart instanceof Date);
+        const lookbackDays =
+          (Date.now() - duplicateWindowStart.getTime()) / (24 * 60 * 60 * 1000);
+        assert.ok(lookbackDays > 89 && lookbackDays < 91);
         assert.equal(capturedPhotos[0].verificationStatus, "needs_review");
+        assert.equal(capturedPhotos[0].duplicateMatchedPhotoId, "prior_photo_1");
+        assert.equal(capturedPhotos[0].duplicateSimilarityScore, 100);
+        assert.equal(capturedPhotos[0].duplicateHashDistance, 0);
         assert.match(
           String(capturedPhotos[0].verificationReason),
           /Possible duplicate photo detected/,

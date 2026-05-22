@@ -26,6 +26,10 @@ interface PhotoItem {
   verificationStatus?: "verified" | "warning" | "failed" | "needs_review" | null;
   verificationDistanceMiles?: string | number | null;
   verificationReason?: string | null;
+  duplicateMatchedPhotoId?: string | null;
+  duplicateMatchedUploadedAt?: string | null;
+  duplicateSimilarityScore?: number | string | null;
+  duplicateHashDistance?: number | string | null;
   locationId?: string | null;
   driverId?: string | null;
   duplicateMatches?: PhotoDuplicateMatch[] | null;
@@ -141,6 +145,17 @@ export function PhotoModal({
       ? null
       : Number(currentPhoto.verificationDistanceMiles);
   const duplicateMatches = currentPhoto.duplicateMatches || [];
+  const duplicateMatchedUploadedAt = currentPhoto.duplicateMatchedUploadedAt
+    ? new Date(currentPhoto.duplicateMatchedUploadedAt).toLocaleString()
+    : null;
+  const duplicateSimilarityScore =
+    currentPhoto.duplicateSimilarityScore == null
+      ? null
+      : Number(currentPhoto.duplicateSimilarityScore);
+  const duplicateHashDistance =
+    currentPhoto.duplicateHashDistance == null
+      ? null
+      : Number(currentPhoto.duplicateHashDistance);
   const badgeVariant =
     verificationStatus === "verified"
       ? "default"
@@ -299,6 +314,22 @@ export function PhotoModal({
               <p className="text-xs text-muted-foreground">
                 {currentPhoto.verificationReason}
               </p>
+            )}
+            {currentPhoto.duplicateMatchedPhotoId && (
+              <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                <div>
+                  Duplicate match photo ID: {currentPhoto.duplicateMatchedPhotoId}
+                </div>
+                <div>
+                  Duplicate match uploaded: {duplicateMatchedUploadedAt || "Unknown"}
+                </div>
+                <div>
+                  Duplicate similarity: {duplicateSimilarityScore == null ? "Unknown" : `${duplicateSimilarityScore}%`}
+                </div>
+                <div>
+                  Duplicate hash distance: {duplicateHashDistance == null ? "Unknown" : duplicateHashDistance}
+                </div>
+              </div>
             )}
           </div>
 

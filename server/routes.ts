@@ -18,7 +18,11 @@ import * as stripeService from "./stripeService";
 import stripeClient from "./stripeService";
 import { geocodeAddress } from "./geocoding";
 import { evaluatePhotoVerification } from "@shared/photoVerification";
-import { findLikelyDuplicatePhotoMatches, PHOTO_DUPLICATE_LOOKBACK_DAYS } from "@shared/photoFingerprint";
+import {
+  findLikelyDuplicatePhotoMatches,
+  PHOTO_DUPLICATE_LOOKBACK_DAYS,
+  type PhotoFingerprintCandidate,
+} from "@shared/photoFingerprint";
 
 const JWT_SECRET = getJwtSecret();
 
@@ -11564,7 +11568,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
           : `/objects/photos/${photo.storageKey}`;
         const duplicateMatches = isAdmin
-          ? findLikelyDuplicatePhotoMatches(photo.imageFingerprint, recentDuplicateCandidates)
+          ? findLikelyDuplicatePhotoMatches(
+              photo.imageFingerprint,
+              recentDuplicateCandidates.filter((candidate: PhotoFingerprintCandidate) => candidate.photoId !== photo.id),
+            )
           : [];
 
         return {
@@ -11577,6 +11584,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           verificationStatus: photo.verificationStatus,
           verificationDistanceMiles: photo.verificationDistanceMiles,
           verificationReason: photo.verificationReason,
+          duplicateMatchedPhotoId: photo.duplicateMatchedPhotoId,
+          duplicateMatchedUploadedAt: photo.duplicateMatchedUploadedAt,
+          duplicateSimilarityScore: photo.duplicateSimilarityScore,
+          duplicateHashDistance: photo.duplicateHashDistance,
           locationId: photo.locationId,
           driverId: photo.driverId,
           contentType: photo.contentType,
@@ -11688,7 +11699,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recentDuplicateCandidates = await storage.getRecentWashoutPhotoDuplicateCandidates(duplicateWindowStart);
 
       // Prepare photos with verification metadata
-      const duplicateComparisonCandidates = [...recentDuplicateCandidates];
       const photos = [];
       for (const photo of photoData || []) {
         const photoTakenAt = photo.photoTakenAt ? new Date(photo.photoTakenAt) : new Date();
@@ -11704,7 +11714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           locationLatitude,
           locationLongitude,
         });
-        const duplicateMatches = findLikelyDuplicatePhotoMatches(imageFingerprint, duplicateComparisonCandidates);
+        const duplicateMatches = findLikelyDuplicatePhotoMatches(imageFingerprint, recentDuplicateCandidates);
         const hasDuplicateSignal = duplicateMatches.length > 0 || !imageFingerprint;
         const duplicateReason = duplicateMatches.length > 0
           ? `Possible duplicate photo detected${duplicateMatches.length > 1 ? ` (${duplicateMatches.length} matches)` : ""}.`
@@ -11724,6 +11734,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           gpsLatitude,
           gpsLongitude,
           imageFingerprint,
+          duplicateMatchedPhotoId: duplicateMatches[0]?.photoId ?? null,
+          duplicateMatchedUploadedAt: duplicateMatches[0]?.priorUploadedAt ? new Date(duplicateMatches[0].priorUploadedAt) : null,
+          duplicateSimilarityScore: duplicateMatches[0]?.confidence ?? null,
+          duplicateHashDistance: duplicateMatches[0]?.hashDistance ?? null,
           verificationStatus: hasDuplicateSignal ? "needs_review" : verification.status,
           verificationDistanceMiles: verification.distanceMiles == null ? null : verification.distanceMiles.toFixed(3),
           verificationReason,
