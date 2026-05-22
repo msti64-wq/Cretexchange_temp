@@ -23,6 +23,7 @@ import {
   PHOTO_DUPLICATE_LOOKBACK_DAYS,
   type PhotoFingerprintCandidate,
 } from "@shared/photoFingerprint";
+import { evaluatePhotoFreshness } from "@shared/photoFreshness";
 
 const JWT_SECRET = getJwtSecret();
 const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
@@ -11743,7 +11744,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const duplicateWindowStart = new Date();
       duplicateWindowStart.setDate(duplicateWindowStart.getDate() - PHOTO_DUPLICATE_LOOKBACK_DAYS);
-      const recentDuplicateCandidates = await storage.getRecentWashoutPhotoDuplicateCandidates(duplicateWindowStart);
+      let recentDuplicateCandidates: PhotoFingerprintCandidate[] = [];
+      let duplicateLookupFailed = false;
+      try {
+        recentDuplicateCandidates = await storage.getRecentWashoutPhotoDuplicateCandidates(duplicateWindowStart);
+      } catch (error) {
+        duplicateLookupFailed = true;
+        console.warn("Duplicate photo lookup failed; continuing without duplicate matches:", {
+          endpoint: "/api/activities/create-with-photos",
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      }
 
       // Prepare photos with verification metadata
       const photos = [];
@@ -11785,20 +11796,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const imageFingerprint = typeof photo.imageFingerprint === "string" && photo.imageFingerprint.trim()
           ? photo.imageFingerprint.trim().toLowerCase()
           : null;
+        if (!Number.isFinite(photoTakenAt.getTime()) || !Number.isFinite(uploadedAt.getTime())) {
+          return res.status(400).json({
+            message: "Photo timestamps are invalid. Please re-upload the photo.",
+          });
+        }
+
+        const freshness = evaluatePhotoFreshness({
+          photoTakenAt,
+          uploadedAt,
+        });
+
+        if (freshness.status === "rejected") {
+          return res.status(400).json({
+            message: freshness.reason,
+          });
+        }
+
         const verification = evaluatePhotoVerification({
           gpsLatitude,
           gpsLongitude,
           locationLatitude,
           locationLongitude,
         });
-        const duplicateMatches = findLikelyDuplicatePhotoMatches(imageFingerprint, recentDuplicateCandidates);
-        const hasDuplicateSignal = duplicateMatches.length > 0 || !imageFingerprint;
-        const duplicateReason = duplicateMatches.length > 0
-          ? `Possible duplicate photo detected${duplicateMatches.length > 1 ? ` (${duplicateMatches.length} matches)` : ""}.`
-          : !imageFingerprint
-            ? "Image fingerprint unavailable."
+        let duplicateMatches: ReturnType<typeof findLikelyDuplicatePhotoMatches> = [];
+        let duplicateReason: string | null = null;
+        try {
+          duplicateMatches = findLikelyDuplicatePhotoMatches(imageFingerprint, recentDuplicateCandidates);
+          duplicateReason = duplicateMatches.length > 0
+            ? `Possible duplicate photo detected${duplicateMatches.length > 1 ? ` (${duplicateMatches.length} matches)` : ""}.`
+            : !imageFingerprint
+              ? "Image fingerprint unavailable."
+              : duplicateLookupFailed
+                ? "Duplicate verification unavailable."
+                : null;
+        } catch (error) {
+          duplicateLookupFailed = true;
+          duplicateReason = "Duplicate verification unavailable.";
+          console.warn("Duplicate fingerprint comparison failed; continuing without duplicate matches:", {
+            endpoint: "/api/activities/create-with-photos",
+            reason: error instanceof Error ? error.message : String(error),
+          });
+        }
+
+        const freshnessReason =
+          freshness.status === "review"
+            ? freshness.reason
             : null;
-        const verificationReason = [duplicateReason, verification.reason].filter(Boolean).join(" ").trim();
+        const hasDuplicateSignal = duplicateMatches.length > 0 || !imageFingerprint || duplicateLookupFailed || freshness.status === "review";
+        const verificationReason = [duplicateReason, freshnessReason, verification.reason].filter(Boolean).join(" ").trim();
 
         const photoRow = {
           storageKey: photo.storageKey,

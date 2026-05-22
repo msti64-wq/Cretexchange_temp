@@ -1195,6 +1195,235 @@ test("create-with-photos stores verification metadata from driver gps", async ()
   ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
 });
 
+test("create-with-photos marks moderately stale photos for review", async () => {
+  const { app, posts } = createRouteRegistry();
+  let capturedPhotos: Array<Record<string, unknown>> = [];
+  const originalTrySetObjectEntityAclPolicy = ObjectStorageService.prototype.trySetObjectEntityAclPolicy;
+  ObjectStorageService.prototype.trySetObjectEntityAclPolicy = (async function (
+    this: unknown,
+    rawPath: string,
+  ) {
+    return rawPath;
+  }) as never;
+
+  await withPatchedStorage(
+    {
+      getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+      getWashoutLocation: async (locationId: string) =>
+        locationId === "location_1"
+          ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+          : undefined,
+      getRecentWashoutPhotoDuplicateCandidates: async () => [],
+      createWashoutActivityWithPhotos: async (_activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => {
+        capturedPhotos = photos;
+        return {
+          activity: { id: "activity_1", locationId: "location_1" },
+          photos: photos.map((photo, index) => ({
+            id: `photo_${index + 1}`,
+            storageKey: photo.storageKey,
+            contentType: photo.contentType,
+            uploadedAt: new Date("2026-05-22T21:23:05.084Z"),
+            photoTakenAt: photo.photoTakenAt,
+            gpsLatitude: photo.gpsLatitude,
+            gpsLongitude: photo.gpsLongitude,
+            verificationStatus: photo.verificationStatus,
+            verificationDistanceMiles: photo.verificationDistanceMiles,
+            verificationReason: photo.verificationReason,
+            driverId: photo.driverId,
+            locationId: photo.locationId,
+          })),
+        };
+      },
+    },
+    async () => {
+      const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      process.env.PRIVATE_OBJECT_DIR = "private";
+      try {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = posts.get("/api/activities/create-with-photos");
+        assert.equal(typeof route, "function");
+
+        const res = createResponse();
+        await route!(
+          {
+            user: { id: "driver_user_1", role: "driver" },
+            body: {
+              activityData: {
+                locationId: "location_1",
+                amount: "0.01",
+                checkInTime: "2026-05-22T21:23:05.084Z",
+                status: "pending",
+              },
+              photoData: [
+                {
+                  storageKey: "photo-1.jpg",
+                  contentType: "image/jpeg",
+                  fileSize: 12345,
+                  photoTakenAt: "2026-05-22T13:00:00.000Z",
+                  uploadedAt: "2026-05-22T21:23:05.084Z",
+                  gpsLatitude: 40,
+                  gpsLongitude: -100,
+                  imageFingerprint: "0123456789abcdef",
+                },
+              ],
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 200);
+        assert.equal(capturedPhotos.length, 1);
+        assert.equal(capturedPhotos[0].verificationStatus, "needs_review");
+        assert.match(String(capturedPhotos[0].verificationReason), /marked for review/i);
+      } finally {
+        if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+        else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
+      }
+    },
+  );
+
+  ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
+});
+
+test("create-with-photos rejects stale photo metadata", async () => {
+  const { app, posts } = createRouteRegistry();
+  const originalTrySetObjectEntityAclPolicy = ObjectStorageService.prototype.trySetObjectEntityAclPolicy;
+  ObjectStorageService.prototype.trySetObjectEntityAclPolicy = (async function (
+    this: unknown,
+    rawPath: string,
+  ) {
+    return rawPath;
+  }) as never;
+
+  await withPatchedStorage(
+    {
+      getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+      getWashoutLocation: async (locationId: string) =>
+        locationId === "location_1"
+          ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+          : undefined,
+      getRecentWashoutPhotoDuplicateCandidates: async () => [],
+      createWashoutActivityWithPhotos: async () => {
+        throw new Error("should not be called");
+      },
+    },
+    async () => {
+      const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      process.env.PRIVATE_OBJECT_DIR = "private";
+      try {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = posts.get("/api/activities/create-with-photos");
+        assert.equal(typeof route, "function");
+
+        const res = createResponse();
+        await route!(
+          {
+            user: { id: "driver_user_1", role: "driver" },
+            body: {
+              activityData: {
+                locationId: "location_1",
+                amount: "0.01",
+                checkInTime: "2026-05-22T21:23:05.084Z",
+                status: "pending",
+              },
+              photoData: [
+                {
+                  storageKey: "photo-1779484984494-yl95qr87o.jpg",
+                  contentType: "image/jpeg",
+                  fileSize: 12345,
+                  photoTakenAt: "2026-04-08T15:05:31.590Z",
+                  uploadedAt: "2026-05-22T21:23:05.084Z",
+                  gpsLatitude: 40,
+                  gpsLongitude: -100,
+                  imageFingerprint: "0123456789abcdef",
+                },
+              ],
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 400);
+        assert.match(
+          String((res.body as { message?: string }).message || ""),
+          /Please take a new photo at the washout site before completing checkout\./,
+        );
+      } finally {
+        if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+        else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
+      }
+    },
+  );
+
+  ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
+});
+
+test("create-with-photos rejects missing photo metadata", async () => {
+  const { app, posts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+      getWashoutLocation: async (locationId: string) =>
+        locationId === "location_1"
+          ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+          : undefined,
+      getRecentWashoutPhotoDuplicateCandidates: async () => [],
+      createWashoutActivityWithPhotos: async () => {
+        throw new Error("should not be called");
+      },
+    },
+    async () => {
+      const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      process.env.PRIVATE_OBJECT_DIR = "private";
+      try {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = posts.get("/api/activities/create-with-photos");
+        assert.equal(typeof route, "function");
+
+        const res = createResponse();
+        await route!(
+          {
+            user: { id: "driver_user_1", role: "driver" },
+            body: {
+              activityData: {
+                locationId: "location_1",
+                amount: "0.01",
+                checkInTime: "2026-05-22T21:23:05.084Z",
+                status: "pending",
+              },
+              photoData: [
+                {
+                  contentType: "image/jpeg",
+                  fileSize: 12345,
+                  photoTakenAt: "2026-05-22T15:05:31.590Z",
+                  uploadedAt: "2026-05-22T21:23:05.084Z",
+                  gpsLatitude: 40,
+                  gpsLongitude: -100,
+                  imageFingerprint: "0123456789abcdef",
+                },
+              ],
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 400);
+        assert.match(
+          String((res.body as { message?: string }).message || ""),
+          /missing its storage key/i,
+        );
+      } finally {
+        if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+        else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
+      }
+    },
+  );
+});
+
 test("create-with-photos flags duplicate fingerprints for review", async () => {
   const { app, posts } = createRouteRegistry();
   let capturedPhotos: Array<Record<string, unknown>> = [];
