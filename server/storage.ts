@@ -94,6 +94,7 @@ import {
 import { db } from "./db";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
 import { formatAddress } from "@shared/addressUtils";
+import type { PhotoFingerprintCandidate } from "@shared/photoFingerprint";
 
 type IdentityDocument = typeof identityDocuments.$inferSelect;
 
@@ -194,6 +195,7 @@ export interface IStorage {
   createWashoutPhoto(photo: InsertWashoutPhoto): Promise<WashoutPhoto>;
   getPhotosByActivity(activityId: string): Promise<WashoutPhoto[]>;
   getPhotoById(photoId: string): Promise<WashoutPhoto | undefined>;
+  getRecentWashoutPhotoDuplicateCandidates(since: Date): Promise<PhotoFingerprintCandidate[]>;
   deletePhoto(photoId: string): Promise<boolean>;
   // Transactional operation: create activity with photos atomically
   createWashoutActivityWithPhotos(
@@ -1360,6 +1362,38 @@ export class DatabaseStorage implements IStorage {
       .from(washoutPhotos)
       .where(eq(washoutPhotos.id, photoId));
     return photo;
+  }
+
+  async getRecentWashoutPhotoDuplicateCandidates(since: Date): Promise<PhotoFingerprintCandidate[]> {
+    const recentPhotos = await db
+      .select({
+        photo: getTableColumns(washoutPhotos),
+        user: getTableColumns(users),
+        location: getTableColumns(washoutLocations),
+      })
+      .from(washoutPhotos)
+      .innerJoin(washoutActivities, eq(washoutPhotos.activityId, washoutActivities.id))
+      .innerJoin(drivers, eq(washoutPhotos.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .innerJoin(washoutLocations, eq(washoutPhotos.locationId, washoutLocations.id))
+      .where(
+        and(
+          gte(washoutPhotos.uploadedAt, since),
+          isNotNull(washoutPhotos.imageFingerprint),
+        ),
+      )
+      .orderBy(desc(washoutPhotos.uploadedAt));
+
+    return recentPhotos.map(({ photo, user, location }) => ({
+      photoId: photo.id,
+      activityId: photo.activityId,
+      driverId: photo.driverId,
+      driverName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username,
+      locationId: photo.locationId,
+      locationName: location.name,
+      priorUploadedAt: new Date(photo.uploadedAt as unknown as string | number | Date).toISOString(),
+      imageFingerprint: String(photo.imageFingerprint ?? ""),
+    }));
   }
 
   async deletePhoto(photoId: string): Promise<boolean> {

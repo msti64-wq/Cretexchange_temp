@@ -574,6 +574,19 @@ test("activity photo route returns signed GET URLs for authorized viewers when S
           storageKey: "photo-1.jpg",
           uploadedAt: new Date("2025-01-01T00:00:00.000Z"),
           contentType: "image/jpeg",
+          imageFingerprint: "ffffffffffffffff",
+        },
+      ],
+      getRecentWashoutPhotoDuplicateCandidates: async () => [
+        {
+          photoId: "prior_photo_1",
+          activityId: "activity_0",
+          driverId: "driver_row_0",
+          driverName: "Prior Driver",
+          locationId: "location_0",
+          locationName: "Prior Location",
+          priorUploadedAt: "2024-12-01T00:00:00.000Z",
+          imageFingerprint: "ffffffffffffffff",
         },
       ],
     },
@@ -593,6 +606,7 @@ test("activity photo route returns signed GET URLs for authorized viewers when S
         ownerRes,
       );
       assert.equal(ownerRes.statusCode, 200);
+      assert.equal((ownerRes.body as { photos: Array<{ duplicateMatches?: unknown }> }).photos[0].duplicateMatches, undefined);
       assert.match(
         (ownerRes.body as { photos: Array<{ url: string }> }).photos[0].url,
         /^https:\/\/example\.r2\.cloudflarestorage\.com/,
@@ -615,6 +629,10 @@ test("activity photo route returns signed GET URLs for authorized viewers when S
         adminRes,
       );
       assert.equal(adminRes.statusCode, 200);
+      assert.equal(
+        ((adminRes.body as { photos: Array<{ duplicateMatches: Array<{ confidence: number }> }> }).photos[0].duplicateMatches || []).length,
+        1,
+      );
       assert.match(
         (adminRes.body as { photos: Array<{ url: string }> }).photos[0].url,
         /^https:\/\/example\.r2\.cloudflarestorage\.com/,
@@ -659,6 +677,7 @@ test("create-with-photos applies ACL metadata for location owners", async () => 
           locationId === "location_1"
             ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
             : undefined,
+        getRecentWashoutPhotoDuplicateCandidates: async () => [],
         createWashoutActivityWithPhotos: async (_activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => ({
           activity: { id: "activity_1", locationId: "location_1" },
           photos: photos.map((photo, index) => ({
@@ -742,6 +761,38 @@ test("photo verification helper flags missing gps and out-of-range photos", asyn
   assert.ok(outOfRange.distanceMiles != null);
 });
 
+test("photo fingerprint helper builds stable hashes and detects duplicates", async () => {
+  const {
+    buildAverageHashFromGrayscaleValues,
+    calculatePhotoFingerprintHammingDistance,
+    findLikelyDuplicatePhotoMatches,
+  } = await import("../shared/photoFingerprint");
+
+  const grayscale = Array.from({ length: 64 }, (_, index) => index);
+  const fingerprint = buildAverageHashFromGrayscaleValues(grayscale);
+  assert.equal(fingerprint.length, 16);
+
+  const identicalDistance = calculatePhotoFingerprintHammingDistance(fingerprint, fingerprint);
+  assert.equal(identicalDistance, 0);
+
+  const matches = findLikelyDuplicatePhotoMatches(fingerprint, [
+    {
+      photoId: "photo_prior",
+      activityId: "activity_prior",
+      driverId: "driver_prior",
+      driverName: "Prior Driver",
+      locationId: "location_prior",
+      locationName: "Prior Location",
+      priorUploadedAt: "2025-01-01T00:00:00.000Z",
+      imageFingerprint: fingerprint,
+    },
+  ]);
+
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].confidence, 100);
+  assert.equal(matches[0].hashDistance, 0);
+});
+
 test("create-with-photos stores verification metadata from driver gps", async () => {
   const { app, posts } = createRouteRegistry();
   let capturedPhotos: Array<Record<string, unknown>> = [];
@@ -760,6 +811,7 @@ test("create-with-photos stores verification metadata from driver gps", async ()
         locationId === "location_1"
           ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
           : undefined,
+      getRecentWashoutPhotoDuplicateCandidates: async () => [],
       createWashoutActivityWithPhotos: async (_activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => {
         capturedPhotos = photos;
         return {
@@ -810,6 +862,7 @@ test("create-with-photos stores verification metadata from driver gps", async ()
                   uploadedAt: "2025-01-01T00:05:00.000Z",
                   gpsLatitude: 40,
                   gpsLongitude: -100,
+                  imageFingerprint: "0123456789abcdef",
                 },
               ],
             },
@@ -824,6 +877,113 @@ test("create-with-photos stores verification metadata from driver gps", async ()
         assert.equal(capturedPhotos[0].verificationStatus, "verified");
         assert.equal(capturedPhotos[0].verificationDistanceMiles, "0.000");
         assert.equal(capturedPhotos[0].verificationReason, "Within 1 mile of the washout location.");
+      } finally {
+        if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+        else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
+      }
+    },
+  );
+
+  ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
+});
+
+test("create-with-photos flags duplicate fingerprints for review", async () => {
+  const { app, posts } = createRouteRegistry();
+  let capturedPhotos: Array<Record<string, unknown>> = [];
+  const originalTrySetObjectEntityAclPolicy = ObjectStorageService.prototype.trySetObjectEntityAclPolicy;
+  ObjectStorageService.prototype.trySetObjectEntityAclPolicy = (async function (
+    this: unknown,
+    rawPath: string,
+  ) {
+    return rawPath;
+  }) as never;
+
+  await withPatchedStorage(
+    {
+      getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+      getWashoutLocation: async (locationId: string) =>
+        locationId === "location_1"
+          ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+          : undefined,
+      getRecentWashoutPhotoDuplicateCandidates: async () => [
+        {
+          photoId: "prior_photo_1",
+          activityId: "activity_prior",
+          driverId: "driver_row_9",
+          driverName: "Prior Driver",
+          locationId: "location_prior",
+          locationName: "Prior Location",
+          priorUploadedAt: "2025-01-01T00:00:00.000Z",
+          imageFingerprint: "ffffffffffffffff",
+        },
+      ],
+      createWashoutActivityWithPhotos: async (_activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => {
+        capturedPhotos = photos;
+        return {
+          activity: { id: "activity_1", locationId: "location_1" },
+          photos: photos.map((photo, index) => ({
+            id: `photo_${index + 1}`,
+            storageKey: photo.storageKey,
+            contentType: photo.contentType,
+            uploadedAt: new Date("2025-01-01T00:00:00.000Z"),
+            photoTakenAt: photo.photoTakenAt,
+            gpsLatitude: photo.gpsLatitude,
+            gpsLongitude: photo.gpsLongitude,
+            verificationStatus: photo.verificationStatus,
+            verificationDistanceMiles: photo.verificationDistanceMiles,
+            verificationReason: photo.verificationReason,
+            driverId: photo.driverId,
+            locationId: photo.locationId,
+            duplicateMatches: photo.duplicateMatches,
+            imageFingerprint: photo.imageFingerprint,
+          })),
+        };
+      },
+    },
+    async () => {
+      const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      process.env.PRIVATE_OBJECT_DIR = "private";
+      try {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = posts.get("/api/activities/create-with-photos");
+        assert.equal(typeof route, "function");
+
+        const res = createResponse();
+        await route!(
+          {
+            user: { id: "driver_user_1", role: "driver" },
+            body: {
+              activityData: {
+                locationId: "location_1",
+                amount: "4.00",
+                checkInTime: "2025-01-01T00:00:00.000Z",
+                status: "pending",
+              },
+              photoData: [
+                {
+                  storageKey: "photo-1.jpg",
+                  contentType: "image/jpeg",
+                  fileSize: 12345,
+                  photoTakenAt: "2025-01-01T00:00:00.000Z",
+                  uploadedAt: "2025-01-01T00:05:00.000Z",
+                  gpsLatitude: 40,
+                  gpsLongitude: -100,
+                  imageFingerprint: "ffffffffffffffff",
+                },
+              ],
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 200);
+        assert.equal(capturedPhotos.length, 1);
+        assert.equal(capturedPhotos[0].verificationStatus, "needs_review");
+        assert.match(
+          String(capturedPhotos[0].verificationReason),
+          /Possible duplicate photo detected/,
+        );
       } finally {
         if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
         else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;

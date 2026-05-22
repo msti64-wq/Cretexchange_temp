@@ -18,6 +18,7 @@ import * as stripeService from "./stripeService";
 import stripeClient from "./stripeService";
 import { geocodeAddress } from "./geocoding";
 import { evaluatePhotoVerification } from "@shared/photoVerification";
+import { findLikelyDuplicatePhotoMatches, PHOTO_DUPLICATE_LOOKBACK_DAYS } from "@shared/photoFingerprint";
 
 const JWT_SECRET = getJwtSecret();
 
@@ -11547,6 +11548,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? new ObjectStorageService().getPrivateObjectDir()
         : "";
 
+      const duplicateWindowStart = new Date();
+      duplicateWindowStart.setDate(duplicateWindowStart.getDate() - PHOTO_DUPLICATE_LOOKBACK_DAYS);
+      const recentDuplicateCandidates = isAdmin
+        ? await storage.getRecentWashoutPhotoDuplicateCandidates(duplicateWindowStart)
+        : [];
+
       const previewPhotos = await Promise.all(photos.map(async (photo) => {
         const url = readSelection.provider === "s3"
           ? await signObjectURL({
@@ -11556,6 +11563,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ttlSec: 300,
             })
           : `/objects/photos/${photo.storageKey}`;
+        const duplicateMatches = isAdmin
+          ? findLikelyDuplicatePhotoMatches(photo.imageFingerprint, recentDuplicateCandidates)
+          : [];
 
         return {
           id: photo.id,
@@ -11569,7 +11579,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           verificationReason: photo.verificationReason,
           locationId: photo.locationId,
           driverId: photo.driverId,
-          contentType: photo.contentType
+          contentType: photo.contentType,
+          duplicateMatches: isAdmin ? duplicateMatches : undefined,
         };
       }));
 
@@ -11672,33 +11683,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const locationLatitude = location.latitude != null ? Number(location.latitude) : null;
       const locationLongitude = location.longitude != null ? Number(location.longitude) : null;
 
+      const duplicateWindowStart = new Date();
+      duplicateWindowStart.setDate(duplicateWindowStart.getDate() - PHOTO_DUPLICATE_LOOKBACK_DAYS);
+      const recentDuplicateCandidates = await storage.getRecentWashoutPhotoDuplicateCandidates(duplicateWindowStart);
+
       // Prepare photos with verification metadata
-      const photos = (photoData?.map((photo: any) => {
+      const duplicateComparisonCandidates = [...recentDuplicateCandidates];
+      const photos = [];
+      for (const photo of photoData || []) {
         const photoTakenAt = photo.photoTakenAt ? new Date(photo.photoTakenAt) : new Date();
+        const uploadedAt = photo.uploadedAt ? new Date(photo.uploadedAt) : new Date();
         const gpsLatitude = photo.gpsLatitude != null ? Number(photo.gpsLatitude) : null;
         const gpsLongitude = photo.gpsLongitude != null ? Number(photo.gpsLongitude) : null;
+        const imageFingerprint = typeof photo.imageFingerprint === "string" && photo.imageFingerprint.trim()
+          ? photo.imageFingerprint.trim().toLowerCase()
+          : null;
         const verification = evaluatePhotoVerification({
           gpsLatitude,
           gpsLongitude,
           locationLatitude,
           locationLongitude,
         });
+        const duplicateMatches = findLikelyDuplicatePhotoMatches(imageFingerprint, duplicateComparisonCandidates);
+        const hasDuplicateSignal = duplicateMatches.length > 0 || !imageFingerprint;
+        const duplicateReason = duplicateMatches.length > 0
+          ? `Possible duplicate photo detected${duplicateMatches.length > 1 ? ` (${duplicateMatches.length} matches)` : ""}.`
+          : !imageFingerprint
+            ? "Image fingerprint unavailable."
+            : null;
+        const verificationReason = [duplicateReason, verification.reason].filter(Boolean).join(" ").trim();
 
-        return {
+        const photoRow = {
           storageKey: photo.storageKey,
           contentType: photo.contentType || 'image/jpeg',
           fileSize: photo.fileSize,
           driverId: driver.id,
           locationId: activityResult.data.locationId,
           photoTakenAt,
-          uploadedAt: photo.uploadedAt ? new Date(photo.uploadedAt) : new Date(),
+          uploadedAt,
           gpsLatitude,
           gpsLongitude,
-          verificationStatus: verification.status,
+          imageFingerprint,
+          verificationStatus: hasDuplicateSignal ? "needs_review" : verification.status,
           verificationDistanceMiles: verification.distanceMiles == null ? null : verification.distanceMiles.toFixed(3),
-          verificationReason: verification.reason,
+          verificationReason,
         };
-      }) || []);
+
+        photos.push(photoRow);
+      }
 
       // Create activity with photos atomically
       const result = await storage.createWashoutActivityWithPhotos(

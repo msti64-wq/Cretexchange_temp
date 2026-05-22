@@ -10,6 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { UploadResult } from "@uppy/core";
 import { formatAddress } from "@shared/addressUtils";
 import { getCurrentLocation } from "@/lib/gps";
+import { computePhotoFingerprint } from "@/lib/photoFingerprint";
 
 interface WashoutFormProps {
   location: {
@@ -36,6 +37,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     uploadedAt: string;
     gpsLatitude: number | null;
     gpsLongitude: number | null;
+    imageFingerprint: string | null;
   }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
@@ -187,6 +189,16 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       console.log("✅ Photo uploaded successfully to storage:", storageKey);
       
       // Store photo metadata for later submission
+      let imageFingerprint: string | null = null;
+      try {
+        imageFingerprint = await computePhotoFingerprint(file);
+      } catch (fingerprintError) {
+        console.warn("⚠️ Photo fingerprint generation failed:", {
+          fileName: file.name,
+          reason: fingerprintError instanceof Error ? fingerprintError.message : String(fingerprintError),
+        });
+      }
+
       const photoMetadata = {
         storageKey,
         contentType,
@@ -195,6 +207,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
         uploadedAt: new Date().toISOString(),
         gpsLatitude: browserLocation?.lat ?? null,
         gpsLongitude: browserLocation?.lng ?? null,
+        imageFingerprint,
       };
       
       setPhotoData(prev => [...prev, photoMetadata]);

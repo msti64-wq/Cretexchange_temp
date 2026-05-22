@@ -329,6 +329,7 @@ export const washoutPhotos = pgTable("washout_photos", {
   driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
   locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "cascade" }),
   storageKey: varchar("storage_key").notNull(), // e.g., "photo-1758728697596-jji6m2mh1.jpg"
+  imageFingerprint: text("image_fingerprint"),
   photoTakenAt: timestamp("photo_taken_at").notNull(),
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
   gpsLatitude: decimal("gps_latitude", { precision: 10, scale: 8 }),

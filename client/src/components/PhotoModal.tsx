@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
 import { formatPhotoVerificationStatus } from "@shared/photoVerification";
+import type { PhotoDuplicateMatch } from "@shared/photoFingerprint";
 
 interface PhotoModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ interface PhotoItem {
   verificationReason?: string | null;
   locationId?: string | null;
   driverId?: string | null;
+  duplicateMatches?: PhotoDuplicateMatch[] | null;
 }
 
 export function PhotoModal({ 
@@ -138,6 +140,7 @@ export function PhotoModal({
     currentPhoto.verificationDistanceMiles == null
       ? null
       : Number(currentPhoto.verificationDistanceMiles);
+  const duplicateMatches = currentPhoto.duplicateMatches || [];
   const badgeVariant =
     verificationStatus === "verified"
       ? "default"
@@ -298,6 +301,41 @@ export function PhotoModal({
               </p>
             )}
           </div>
+
+          {duplicateMatches.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-medium text-amber-900">Possible duplicate matches</div>
+                <Badge variant="secondary">
+                  {duplicateMatches.length} match{duplicateMatches.length === 1 ? "" : "es"}
+                </Badge>
+              </div>
+              <div className="mt-3 space-y-2">
+                {duplicateMatches.map((match, index) => (
+                  <div
+                    key={`${match.photoId}-${index}`}
+                    className="rounded-md border border-amber-200 bg-background p-3 text-xs text-foreground"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-medium">
+                        Prior upload:{" "}
+                        {match.priorUploadedAt
+                          ? new Date(match.priorUploadedAt).toLocaleString()
+                          : "Unknown"}
+                      </div>
+                      <Badge variant="outline">{match.confidence}% confidence</Badge>
+                    </div>
+                    <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                      <div>Driver: {match.driverName || match.driverId}</div>
+                      <div>Location: {match.locationName || match.locationId}</div>
+                      <div>Match photo: {match.photoId}</div>
+                      <div>Hash distance: {match.hashDistance}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
