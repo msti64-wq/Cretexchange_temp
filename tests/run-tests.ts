@@ -1520,6 +1520,74 @@ test("create-with-photos rejects missing photo metadata", async () => {
   );
 });
 
+test("create-with-photos returns a specific message when the db insert fails", async () => {
+  const { app, posts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+      getWashoutLocation: async (locationId: string) =>
+        locationId === "location_1"
+          ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+          : undefined,
+      getRecentWashoutPhotoDuplicateCandidates: async () => [],
+      createWashoutActivityWithPhotos: async () => {
+        throw new Error("database connection lost");
+      },
+    },
+    async () => {
+      const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      process.env.PRIVATE_OBJECT_DIR = "private";
+      try {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = posts.get("/api/activities/create-with-photos");
+        assert.equal(typeof route, "function");
+
+        const res = createResponse();
+        await route!(
+          {
+            user: { id: "driver_user_1", role: "driver" },
+            body: {
+              activityData: {
+                locationId: "location_1",
+                amount: "0.01",
+                latitude: "40.000000",
+                longitude: "-100.000000",
+                notes: "Mobile checkout",
+                checkInTime: "2026-05-22T21:23:05.084Z",
+                status: "pending",
+              },
+              photoData: [
+                {
+                  storageKey: "photo-1.jpg",
+                  contentType: "image/jpeg",
+                  fileSize: 12345,
+                  photoTakenAt: "2026-05-22T20:55:31.590Z",
+                  uploadedAt: "2026-05-22T21:23:05.084Z",
+                  gpsLatitude: 40,
+                  gpsLongitude: -100,
+                  imageFingerprint: "0123456789abcdef",
+                },
+              ],
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 500);
+        assert.match(
+          String((res.body as { message?: string }).message || ""),
+          /Database insert failed\. Please try again\./,
+        );
+      } finally {
+        if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+        else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
+      }
+    },
+  );
+});
+
 test("create-with-photos flags duplicate fingerprints for review", async () => {
   const { app, posts } = createRouteRegistry();
   let capturedPhotos: Array<Record<string, unknown>> = [];

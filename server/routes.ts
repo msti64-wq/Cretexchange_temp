@@ -11700,6 +11700,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const { activityData, photoData } = req.body;
+      console.info("Create-with-photos request received:", {
+        endpoint: "/api/activities/create-with-photos",
+        userId,
+        hasActivityData: Boolean(activityData),
+        hasPhotoData: Array.isArray(photoData),
+        photoCount: Array.isArray(photoData) ? photoData.length : 0,
+      });
       
       // Verify user is a driver FIRST
       const driver = await storage.getDriver(userId);
@@ -11715,6 +11722,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate input with complete data
       const activityResult = insertWashoutActivitySchema.safeParse(completeActivityData);
+      console.info("Create-with-photos activity validation result:", {
+        endpoint: "/api/activities/create-with-photos",
+        userId,
+        driverId: driver.id,
+        locationId: activityData?.locationId ?? null,
+        status: activityData?.status ?? null,
+        amount: activityData?.amount ?? null,
+        success: activityResult.success,
+        issueCount: activityResult.success ? 0 : activityResult.error.issues.length,
+      });
       if (!activityResult.success) {
         return res.status(400).json({ 
           message: "Invalid activity data", 
@@ -11723,8 +11740,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const location = await storage.getWashoutLocation(activityResult.data.locationId);
+      console.info("Create-with-photos location lookup result:", {
+        endpoint: "/api/activities/create-with-photos",
+        locationId: activityResult.data.locationId,
+        found: Boolean(location),
+        ownerId: location?.ownerId ?? null,
+      });
       if (!location) {
-        return res.status(404).json({ message: "Location not found" });
+        return res.status(400).json({ message: "Invalid location. Please reselect the washout site and try again." });
       }
 
       if (activityResult.data.status !== "pending") {
@@ -11758,7 +11781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Prepare photos with verification metadata
       const photos = [];
-      for (const photo of photoData || []) {
+      for (const [index, photo] of (photoData || []).entries()) {
         if (!photo || typeof photo !== "object") {
           return res.status(400).json({
             message: "Invalid photo metadata. Please re-upload the photo and try again.",
@@ -11809,6 +11832,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           uploadedAt,
         });
 
+        console.info("Create-with-photos photo freshness result:", {
+          endpoint: "/api/activities/create-with-photos",
+          userId,
+          locationId: activityResult.data.locationId,
+          photoIndex: index,
+          storageKey: photo.storageKey,
+          status: freshness.status,
+          ageHours: freshness.ageHours,
+          reason: freshness.reason,
+        });
+
         if (freshness.status === "rejected") {
           return res.status(400).json({
             message: freshness.reason,
@@ -11847,6 +11881,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : null;
         const hasDuplicateSignal = duplicateMatches.length > 0 || !imageFingerprint || duplicateLookupFailed || freshness.status === "review";
         const verificationReason = [duplicateReason, freshnessReason, verification.reason].filter(Boolean).join(" ").trim();
+        console.info("Create-with-photos photo verification result:", {
+          endpoint: "/api/activities/create-with-photos",
+          userId,
+          locationId: activityResult.data.locationId,
+          photoIndex: index,
+          storageKey: photo.storageKey,
+          gpsLatitude,
+          gpsLongitude,
+          verificationStatus: hasDuplicateSignal ? "needs_review" : verification.status,
+          verificationDistanceMiles: verification.distanceMiles,
+          duplicateMatchCount: duplicateMatches.length,
+          duplicateLookupFailed,
+          freshnessStatus: freshness.status,
+          freshnessReason,
+          verificationReason,
+        });
 
         const photoRow = {
           storageKey: photo.storageKey,
@@ -11872,10 +11922,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create activity with photos atomically
-      const result = await storage.createWashoutActivityWithPhotos(
-        activityResult.data,
-        photos
-      );
+      console.info("Create-with-photos DB insert starting:", {
+        endpoint: "/api/activities/create-with-photos",
+        userId,
+        driverId: driver.id,
+        locationId: activityResult.data.locationId,
+        photoCount: photos.length,
+      });
+
+      let result;
+      try {
+        result = await storage.createWashoutActivityWithPhotos(
+          activityResult.data,
+          photos
+        );
+      } catch (error) {
+        console.error("Create-with-photos DB insert failed:", {
+          endpoint: "/api/activities/create-with-photos",
+          userId,
+          driverId: driver.id,
+          locationId: activityResult.data.locationId,
+          photoCount: photos.length,
+          reason: error instanceof Error ? error.message : String(error),
+        });
+        return res.status(500).json({
+          message: "Database insert failed. Please try again.",
+        });
+      }
+      console.info("Create-with-photos DB insert completed:", {
+        endpoint: "/api/activities/create-with-photos",
+        userId,
+        driverId: driver.id,
+        locationId: activityResult.data.locationId,
+        activityId: result.activity.id,
+        photoCount: result.photos.length,
+      });
 
       if (result.photos.length > 0) {
         const objectStorageService = new ObjectStorageService();
@@ -11922,8 +12003,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         photoCount: result.photos.length
       });
     } catch (error) {
-      console.error('Error creating activity with photos:', error);
-      res.status(500).json({ message: 'Failed to create activity' });
+      console.error('Error creating activity with photos:', {
+        endpoint: "/api/activities/create-with-photos",
+        reason: error instanceof Error ? error.message : String(error),
+      });
+      res.status(500).json({ message: 'Checkout failed unexpectedly. Please try again.' });
     }
   });
 
