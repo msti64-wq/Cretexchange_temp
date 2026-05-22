@@ -27,6 +27,10 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
     },
     onSuccess: () => {
       toast({ title: "Terms accepted successfully" });
+      queryClient.setQueryData(['/api/drivers/terms-status'], {
+        hasAgreed: true,
+        agreedAt: new Date().toISOString(),
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/drivers/terms-status'] });
       queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
       onOpenChange(false);

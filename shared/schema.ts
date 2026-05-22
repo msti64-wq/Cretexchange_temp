@@ -42,6 +42,7 @@ export const ownerWalletStatusEnum = pgEnum("owner_wallet_status", ["active", "s
 export const paymentFrequencyEnum = pgEnum("payment_frequency", ["weekly", "biweekly", "monthly"]);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "trial", "past_due"]);
 export const washoutStatusEnum = pgEnum("washout_status", ["pending", "verified", "rejected"]);
+export const photoVerificationStatusEnum = pgEnum("photo_verification_status", ["verified", "warning", "failed", "needs_review"]);
 export const messageStatusEnum = pgEnum("message_status", ["unread", "read", "resolved"]);
 export const distributionFrequencyEnum = pgEnum("distribution_frequency", ["daily", "weekly", "biweekly", "monthly"]);
 
@@ -325,8 +326,16 @@ export const washoutActivities = pgTable("washout_activities", {
 export const washoutPhotos = pgTable("washout_photos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
+  driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
+  locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "cascade" }),
   storageKey: varchar("storage_key").notNull(), // e.g., "photo-1758728697596-jji6m2mh1.jpg"
+  photoTakenAt: timestamp("photo_taken_at").notNull(),
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+  gpsLatitude: decimal("gps_latitude", { precision: 10, scale: 8 }),
+  gpsLongitude: decimal("gps_longitude", { precision: 11, scale: 8 }),
+  verificationStatus: photoVerificationStatusEnum("verification_status").notNull().default("needs_review"),
+  verificationDistanceMiles: decimal("verification_distance_miles", { precision: 8, scale: 3 }),
+  verificationReason: text("verification_reason"),
   fileSize: integer("file_size"), // Optional: track file size
   contentType: varchar("content_type").default("image/jpeg"), // e.g., "image/jpeg"
   createdAt: timestamp("created_at").defaultNow(),

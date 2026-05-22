@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, ImageIcon, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { AuthenticatedImage } from "@/components/AuthenticatedImage";
+import { formatPhotoVerificationStatus } from "@shared/photoVerification";
 
 interface PhotoModalProps {
   isOpen: boolean;
@@ -18,6 +19,14 @@ interface PhotoItem {
   id: string;
   url: string;
   uploadedAt?: string | null;
+  photoTakenAt?: string | null;
+  gpsLatitude?: string | number | null;
+  gpsLongitude?: string | number | null;
+  verificationStatus?: "verified" | "warning" | "failed" | "needs_review" | null;
+  verificationDistanceMiles?: string | number | null;
+  verificationReason?: string | null;
+  locationId?: string | null;
+  driverId?: string | null;
 }
 
 export function PhotoModal({ 
@@ -124,6 +133,19 @@ export function PhotoModal({
   }
 
   const currentPhoto = photos[currentPhotoIndex];
+  const verificationStatus = currentPhoto.verificationStatus || "needs_review";
+  const distanceMiles =
+    currentPhoto.verificationDistanceMiles == null
+      ? null
+      : Number(currentPhoto.verificationDistanceMiles);
+  const badgeVariant =
+    verificationStatus === "verified"
+      ? "default"
+      : verificationStatus === "warning"
+        ? "secondary"
+        : verificationStatus === "failed"
+          ? "destructive"
+          : "outline";
 
   const nextPhoto = () => {
     setCurrentPhotoIndex((prev) => (prev + 1) % photos.length);
@@ -238,10 +260,43 @@ export function PhotoModal({
           </div>
 
           {/* Photo Metadata */}
-          <div className="text-xs text-gray-500 text-center">
-            Uploaded: {currentPhoto.uploadedAt ? 
-              new Date(currentPhoto.uploadedAt).toLocaleString() : 'Unknown'
-            }
+          <div className="rounded-lg border bg-muted/30 p-3 text-sm space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Verification</span>
+                <Badge variant={badgeVariant}>
+                  {formatPhotoVerificationStatus(verificationStatus)}
+                </Badge>
+              </div>
+              {distanceMiles != null && (
+                <span className="text-xs text-muted-foreground">
+                  {distanceMiles.toFixed(2)} mi from location
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+              <div>
+                Taken: {currentPhoto.photoTakenAt
+                  ? new Date(currentPhoto.photoTakenAt).toLocaleString()
+                  : "Unknown"}
+              </div>
+              <div>
+                Uploaded: {currentPhoto.uploadedAt
+                  ? new Date(currentPhoto.uploadedAt).toLocaleString()
+                  : "Unknown"}
+              </div>
+              <div>
+                Location ID: {currentPhoto.locationId || activity?.location?.id || "Unknown"}
+              </div>
+              <div>
+                Driver ID: {currentPhoto.driverId || activity?.driver?.id || "Unknown"}
+              </div>
+            </div>
+            {currentPhoto.verificationReason && (
+              <p className="text-xs text-muted-foreground">
+                {currentPhoto.verificationReason}
+              </p>
+            )}
           </div>
         </div>
       </DialogContent>

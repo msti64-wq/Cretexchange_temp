@@ -25,6 +25,10 @@ process.env.DATABASE_URL =
   process.env.DATABASE_URL || "postgres://user:pass@127.0.0.1:1/test";
 process.env.STRIPE_SECRET_KEY =
   process.env.STRIPE_SECRET_KEY || "sk_test_unit_test_secret";
+process.env.PRIVATE_OBJECT_DIR =
+  process.env.PRIVATE_OBJECT_DIR || "private";
+process.env.PUBLIC_OBJECT_SEARCH_PATHS =
+  process.env.PUBLIC_OBJECT_SEARCH_PATHS || "public";
 
 function createResponse() {
   return {
@@ -651,6 +655,10 @@ test("create-with-photos applies ACL metadata for location owners", async () => 
     await withPatchedStorage(
       {
         getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+        getWashoutLocation: async (locationId: string) =>
+          locationId === "location_1"
+            ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+            : undefined,
         createWashoutActivityWithPhotos: async (_activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => ({
           activity: { id: "activity_1", locationId: "location_1" },
           photos: photos.map((photo, index) => ({
@@ -662,6 +670,121 @@ test("create-with-photos applies ACL metadata for location owners", async () => 
         }),
       },
       async () => {
+        const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+        process.env.PRIVATE_OBJECT_DIR = "private";
+        try {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = posts.get("/api/activities/create-with-photos");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: "driver_user_1", role: "driver" },
+              body: {
+                activityData: {
+                  locationId: "location_1",
+                  amount: "4.00",
+                  checkInTime: "2025-01-01T00:00:00.000Z",
+                  status: "pending",
+                },
+                photoData: [
+                  {
+                    storageKey: "photo-1.jpg",
+                    contentType: "image/jpeg",
+                    fileSize: 12345,
+                  },
+                ],
+              },
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.equal(aclCalls.length, 1);
+          assert.equal(aclCalls[0].rawPath, "/objects/photos/photo-1.jpg");
+          assert.equal(aclCalls[0].aclPolicy.owner, "driver_user_1");
+          assert.equal(aclCalls[0].aclPolicy.visibility, "private");
+          assert.equal(aclCalls[0].aclPolicy.aclRules?.[0].group.type, "LOCATION_OWNER");
+          assert.equal(aclCalls[0].aclPolicy.aclRules?.[0].group.id, "location_1");
+          assert.equal(aclCalls[0].aclPolicy.aclRules?.[0].permission, "read");
+        } finally {
+          if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+          else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
+        }
+      },
+    );
+  } finally {
+    ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
+  }
+});
+
+test("photo verification helper flags missing gps and out-of-range photos", async () => {
+  const { evaluatePhotoVerification } = await import("../shared/photoVerification");
+
+  const missingGps = evaluatePhotoVerification({
+    gpsLatitude: null,
+    gpsLongitude: null,
+    locationLatitude: 40,
+    locationLongitude: -100,
+  });
+  assert.equal(missingGps.status, "needs_review");
+  assert.equal(missingGps.distanceMiles, null);
+
+  const outOfRange = evaluatePhotoVerification({
+    gpsLatitude: 41,
+    gpsLongitude: -100,
+    locationLatitude: 40,
+    locationLongitude: -100,
+  });
+  assert.equal(outOfRange.status, "failed");
+  assert.ok(outOfRange.distanceMiles != null);
+});
+
+test("create-with-photos stores verification metadata from driver gps", async () => {
+  const { app, posts } = createRouteRegistry();
+  let capturedPhotos: Array<Record<string, unknown>> = [];
+  const originalTrySetObjectEntityAclPolicy = ObjectStorageService.prototype.trySetObjectEntityAclPolicy;
+  ObjectStorageService.prototype.trySetObjectEntityAclPolicy = (async function (
+    this: unknown,
+    rawPath: string,
+  ) {
+    return rawPath;
+  }) as never;
+
+  await withPatchedStorage(
+    {
+      getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+      getWashoutLocation: async (locationId: string) =>
+        locationId === "location_1"
+          ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+          : undefined,
+      createWashoutActivityWithPhotos: async (_activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => {
+        capturedPhotos = photos;
+        return {
+          activity: { id: "activity_1", locationId: "location_1" },
+          photos: photos.map((photo, index) => ({
+            id: `photo_${index + 1}`,
+            storageKey: photo.storageKey,
+            contentType: photo.contentType,
+            uploadedAt: new Date("2025-01-01T00:00:00.000Z"),
+            photoTakenAt: photo.photoTakenAt,
+            gpsLatitude: photo.gpsLatitude,
+            gpsLongitude: photo.gpsLongitude,
+            verificationStatus: photo.verificationStatus,
+            verificationDistanceMiles: photo.verificationDistanceMiles,
+            verificationReason: photo.verificationReason,
+            driverId: photo.driverId,
+            locationId: photo.locationId,
+          })),
+        };
+      },
+    },
+    async () => {
+      const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      process.env.PRIVATE_OBJECT_DIR = "private";
+      try {
         const { registerRoutes } = await import("../server/routes");
         await registerRoutes(app as never);
         const route = posts.get("/api/activities/create-with-photos");
@@ -683,6 +806,10 @@ test("create-with-photos applies ACL metadata for location owners", async () => 
                   storageKey: "photo-1.jpg",
                   contentType: "image/jpeg",
                   fileSize: 12345,
+                  photoTakenAt: "2025-01-01T00:00:00.000Z",
+                  uploadedAt: "2025-01-01T00:05:00.000Z",
+                  gpsLatitude: 40,
+                  gpsLongitude: -100,
                 },
               ],
             },
@@ -691,18 +818,20 @@ test("create-with-photos applies ACL metadata for location owners", async () => 
         );
 
         assert.equal(res.statusCode, 200);
-        assert.equal(aclCalls.length, 1);
-        assert.equal(aclCalls[0].rawPath, "/objects/photos/photo-1.jpg");
-        assert.equal(aclCalls[0].aclPolicy.owner, "driver_user_1");
-        assert.equal(aclCalls[0].aclPolicy.visibility, "private");
-        assert.equal(aclCalls[0].aclPolicy.aclRules?.[0].group.type, "LOCATION_OWNER");
-        assert.equal(aclCalls[0].aclPolicy.aclRules?.[0].group.id, "location_1");
-        assert.equal(aclCalls[0].aclPolicy.aclRules?.[0].permission, "read");
-      },
-    );
-  } finally {
-    ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
-  }
+        assert.equal(capturedPhotos.length, 1);
+        assert.equal(capturedPhotos[0].driverId, "driver_row_1");
+        assert.equal(capturedPhotos[0].locationId, "location_1");
+        assert.equal(capturedPhotos[0].verificationStatus, "verified");
+        assert.equal(capturedPhotos[0].verificationDistanceMiles, "0.000");
+        assert.equal(capturedPhotos[0].verificationReason, "Within 1 mile of the washout location.");
+      } finally {
+        if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+        else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
+      }
+    },
+  );
+
+  ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
 });
 
 type DbMock = {

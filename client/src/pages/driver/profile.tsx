@@ -36,6 +36,7 @@ export default function DriverProfile() {
   });
 
   const { enabled: waiveDriverPayment } = useFeatureFlag(FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT);
+  const { enabled: walletFundingEnabled } = useFeatureFlag(FEATURE_FLAGS.WALLET_FUNDING);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -47,6 +48,8 @@ export default function DriverProfile() {
         description: "Your profile has been successfully updated.",
       });
       setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/drivers/terms-status'] });
       refetch();
     },
     onError: (error) => {
@@ -232,21 +235,23 @@ export default function DriverProfile() {
               >
                 {isEditing ? "Cancel" : "Edit Profile"}
               </Button>
-              <Button 
-                variant="secondary"
-                size="sm"
-                onClick={() => accountLinkMutation.mutate()}
-                disabled={accountLinkMutation.isPending}
-                data-testid="button-accept-terms"
-              >
-                {accountLinkMutation.isPending ? "Loading..." : "Accept Terms & Conditions"}
-              </Button>
+              {walletFundingEnabled && (
+                <Button 
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => accountLinkMutation.mutate()}
+                  disabled={accountLinkMutation.isPending}
+                  data-testid="button-accept-terms"
+                >
+                  {accountLinkMutation.isPending ? "Loading..." : "Accept Terms & Conditions"}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Stripe Verification Status */}
-        <StripeVerificationStatus userRole="driver" />
+        {walletFundingEnabled && <StripeVerificationStatus userRole="driver" />}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Personal Information */}
@@ -763,8 +768,9 @@ export default function DriverProfile() {
         onOpenChange={setShowTermsDialog}
         readOnly={termsStatus?.hasAgreed || false}
         onAccepted={() => {
-          // Refresh terms status when accepted from profile
-          window.location.reload();
+          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/drivers/terms-status'] });
+          refetch();
         }}
       />
 

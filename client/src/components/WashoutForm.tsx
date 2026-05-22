@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ObjectUploader } from "@/components/ObjectUploader";
-import { Camera, MapPin, Clock } from "lucide-react";
+import { Camera, MapPin, Clock, ShieldAlert, ShieldCheck, Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { UploadResult } from "@uppy/core";
 import { formatAddress } from "@shared/addressUtils";
+import { getCurrentLocation } from "@/lib/gps";
 
 interface WashoutFormProps {
   location: {
@@ -21,11 +21,10 @@ interface WashoutFormProps {
     zip: string;
     rate: string;
   };
-  currentLocation?: { lat: number; lng: number } | null;
   onSuccess?: () => void;
 }
 
-export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFormProps) {
+export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   const { toast } = useToast();
   const [notes, setNotes] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]); // Keep for compatibility
@@ -33,9 +32,44 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     storageKey: string;
     contentType: string;
     fileSize: number;
+    photoTakenAt: string;
+    uploadedAt: string;
+    gpsLatitude: number | null;
+    gpsLongitude: number | null;
   }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
+  const [gpsStatus, setGpsStatus] = useState<"idle" | "checking" | "available" | "unavailable">("idle");
+  const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsWarning, setGpsWarning] = useState<string | null>(null);
+
+  const ensureGpsLocation = async () => {
+    if (gpsLocation) {
+      return gpsLocation;
+    }
+
+    setGpsStatus("checking");
+    try {
+      const coords = await getCurrentLocation();
+      const nextLocation = { lat: coords.latitude, lng: coords.longitude };
+      setGpsLocation(nextLocation);
+      setGpsStatus("available");
+      setGpsWarning(null);
+      return nextLocation;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Location access unavailable.";
+      setGpsStatus("unavailable");
+      setGpsWarning(message);
+      toast({
+        title: "Location access unavailable",
+        description: "Photos will still upload, but they may need manual review.",
+      });
+      return null;
+    }
+  };
 
   const checkInMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -76,7 +110,10 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
     },
   });
 
-  const handleDirectFileUpload = async (file: File): Promise<string> => {
+  const handleDirectFileUpload = async (
+    file: File,
+    browserLocation: { lat: number; lng: number } | null,
+  ): Promise<string> => {
     console.log("🔧 NEW: Direct file upload started for:", file.name, file.size, "bytes");
     
     try {
@@ -153,7 +190,11 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
       const photoMetadata = {
         storageKey,
         contentType,
-        fileSize: file.size
+        fileSize: file.size,
+        photoTakenAt: new Date(file.lastModified || Date.now()).toISOString(),
+        uploadedAt: new Date().toISOString(),
+        gpsLatitude: browserLocation?.lat ?? null,
+        gpsLongitude: browserLocation?.lng ?? null,
       };
       
       setPhotoData(prev => [...prev, photoMetadata]);
@@ -387,8 +428,8 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
         activityData: {
           locationId: location.id,
           amount: location.rate,
-          latitude: currentLocation?.lat?.toString(),
-          longitude: currentLocation?.lng?.toString(),
+          latitude: gpsLocation?.lat?.toString(),
+          longitude: gpsLocation?.lng?.toString(),
           notes,
           checkInTime: new Date(), // Send Date object as expected by schema
           status: 'pending', // Add required status field
@@ -435,10 +476,29 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
           </div>
 
           {/* GPS Status */}
-          {currentLocation && (
-            <div className="flex items-center text-sm text-green-600">
-              <MapPin className="w-4 h-4 mr-1" />
-              <span data-testid="text-gps-verified">GPS Location Verified</span>
+          {gpsStatus === "available" && gpsLocation && (
+            <div className="flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              <span data-testid="text-gps-verified">
+                GPS captured at {gpsLocation.lat.toFixed(5)}, {gpsLocation.lng.toFixed(5)}
+              </span>
+            </div>
+          )}
+          {gpsStatus === "checking" && (
+            <div className="flex items-center rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <span>Checking device location...</span>
+            </div>
+          )}
+          {gpsStatus === "unavailable" && (
+            <div className="flex items-start rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <ShieldAlert className="w-4 h-4 mr-2 mt-0.5" />
+              <div>
+                <p className="font-medium">Device location unavailable</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  {gpsWarning || "Photos will upload, but they may need manual review."}
+                </p>
+              </div>
             </div>
           )}
 
@@ -469,6 +529,9 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
                     console.log(`File ${index + 1}: ${file.name}, ${file.size} bytes, ${file.type}`);
                   });
                   
+                  // Request browser geolocation before starting uploads.
+                  const browserLocation = await ensureGpsLocation();
+
                   // CRITICAL FIX: Set processing state during direct upload
                   setIsProcessingPhotos(true);
                   console.log("🔄 Direct photo upload started - blocking form submission");
@@ -480,7 +543,7 @@ export function WashoutForm({ location, currentLocation, onSuccess }: WashoutFor
                     const file = files[i];
                     try {
                       console.log(`Processing file ${i + 1}/${files.length}: ${file.name}`);
-                      const serverUrl = await handleDirectFileUpload(file);
+                      const serverUrl = await handleDirectFileUpload(file, browserLocation);
                       console.log(`✅ File ${i + 1} uploaded successfully:`, serverUrl);
                       newUrls.push(serverUrl);
                     } catch (error) {

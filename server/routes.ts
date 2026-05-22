@@ -17,6 +17,7 @@ import { z } from "zod";
 import * as stripeService from "./stripeService";
 import stripeClient from "./stripeService";
 import { geocodeAddress } from "./geocoding";
+import { evaluatePhotoVerification } from "@shared/photoVerification";
 
 const JWT_SECRET = getJwtSecret();
 
@@ -2242,6 +2243,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/drivers/profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const body = req.body || {};
+      const pick = <T,>(nextValue: unknown, currentValue: T): T =>
+        (nextValue !== undefined ? (nextValue as T) : currentValue);
       
       // First, get or create the driver record
       let driver = await storage.getDriver(userId);
@@ -2249,42 +2253,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create driver record if it doesn't exist
         const driverData = {
           userId,
-          employerName: req.body.employerName || "",
-          employerStreet: req.body.employerStreet || "",
-          employerCity: req.body.employerCity || "",
-          employerState: req.body.employerState || "",
-          employerZip: req.body.employerZip || "",
-          employerPhone: req.body.employerPhone || "",
-          licenseNumber: req.body.licenseNumber || "",
-          truckNumber: req.body.truckNumber || "",
+          employerName: body.employerName ?? "",
+          employerStreet: body.employerStreet ?? "",
+          employerCity: body.employerCity ?? "",
+          employerState: body.employerState ?? "",
+          employerZip: body.employerZip ?? "",
+          employerPhone: body.employerPhone ?? "",
+          licenseNumber: body.licenseNumber ?? "",
+          truckNumber: body.truckNumber ?? "",
         };
         driver = await storage.createDriver(driverData);
       } else {
         // Update existing driver record
         driver = await storage.updateDriver(driver.id, {
-          employerName: req.body.employerName || driver.employerName,
-          employerStreet: req.body.employerStreet || driver.employerStreet,
-          employerCity: req.body.employerCity || driver.employerCity,
-          employerState: req.body.employerState || driver.employerState,
-          employerZip: req.body.employerZip || driver.employerZip,
-          employerPhone: req.body.employerPhone || driver.employerPhone,
-          licenseNumber: req.body.licenseNumber || driver.licenseNumber,
-          truckNumber: req.body.truckNumber || driver.truckNumber,
+          employerName: pick(body.employerName, driver.employerName),
+          employerStreet: pick(body.employerStreet, driver.employerStreet),
+          employerCity: pick(body.employerCity, driver.employerCity),
+          employerState: pick(body.employerState, driver.employerState),
+          employerZip: pick(body.employerZip, driver.employerZip),
+          employerPhone: pick(body.employerPhone, driver.employerPhone),
+          licenseNumber: pick(body.licenseNumber, driver.licenseNumber),
+          truckNumber: pick(body.truckNumber, driver.truckNumber),
           // Payment details - map frontend field names to database column names
-          paymentMethod: req.body.paymentMethod || driver.paymentMethod,
-          venmoHandle: req.body.venmoUsername || driver.venmoHandle,
-          zelleEmail: req.body.zelleInfo || driver.zelleEmail,
-          bankName: req.body.bankName || driver.bankName,
-          routingNumber: req.body.routingNumber || driver.routingNumber,
-          accountNumber: req.body.accountNumber || driver.accountNumber,
-          accountHolderName: req.body.accountHolderName || driver.accountHolderName,
+          paymentMethod: pick(body.paymentMethod, driver.paymentMethod),
+          venmoHandle: pick(body.venmoUsername, driver.venmoHandle),
+          zelleEmail: pick(body.zelleInfo, driver.zelleEmail),
+          bankName: pick(body.bankName, driver.bankName),
+          routingNumber: pick(body.routingNumber, driver.routingNumber),
+          accountNumber: pick(body.accountNumber, driver.accountNumber),
+          accountHolderName: pick(body.accountHolderName, driver.accountHolderName),
           // Stripe verification fields
-          dateOfBirth: req.body.dateOfBirth || driver.dateOfBirth,
-          ssnLast4: req.body.ssnLast4 || driver.ssnLast4,
-          businessWebsite: req.body.businessWebsite || driver.businessWebsite,
+          dateOfBirth: pick(body.dateOfBirth, driver.dateOfBirth),
+          ssnLast4: pick(body.ssnLast4, driver.ssnLast4),
+          businessWebsite: pick(body.businessWebsite, driver.businessWebsite),
           // Lottery prize payout preference
-          payoutPreference: req.body.payoutPreference || driver.payoutPreference,
-          payoutPreferenceNote: req.body.payoutPreferenceNote !== undefined ? req.body.payoutPreferenceNote : driver.payoutPreferenceNote,
+          payoutPreference: pick(body.payoutPreference, driver.payoutPreference),
+          payoutPreferenceNote: body.payoutPreferenceNote !== undefined ? body.payoutPreferenceNote : driver.payoutPreferenceNote,
         });
       }
 
@@ -2299,16 +2303,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: userId,
         username: currentUser.username, // Preserve existing username
         passwordHash: currentUser.passwordHash, // Preserve existing password hash
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
-        email: req.body.email,
-        phone: req.body.phone,
-        street: req.body.street,
-        city: req.body.city,
-        state: req.body.state,
-        zip: req.body.zip,
-        paymentMethod: req.body.paymentMethod,
-        paymentFrequency: req.body.paymentFrequency,
+        firstName: pick(body.firstName, currentUser.firstName),
+        lastName: pick(body.lastName, currentUser.lastName),
+        email: pick(body.email, currentUser.email),
+        phone: pick(body.phone, currentUser.phone),
+        street: pick(body.street, currentUser.street),
+        city: pick(body.city, currentUser.city),
+        state: pick(body.state, currentUser.state),
+        zip: pick(body.zip, currentUser.zip),
+        paymentMethod: pick(body.paymentMethod, currentUser.paymentMethod),
+        paymentFrequency: pick(body.paymentFrequency, currentUser.paymentFrequency),
         role: currentUser.role, // Preserve existing role
       });
 
@@ -2345,17 +2349,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await stripeService.updateConnectedAccountWithCompleteInfo(
             stripeAccountId,
             {
-              firstName: req.body.firstName || currentUser.firstName,
-              lastName: req.body.lastName || currentUser.lastName,
-              email: req.body.email || currentUser.email,
-              phone: req.body.phone || currentUser.phone,
-              street: req.body.street || currentUser.street,
-              city: req.body.city || currentUser.city,
-              state: req.body.state || currentUser.state,
-              zip: req.body.zip || currentUser.zip,
-              dateOfBirth: req.body.dateOfBirth || driver.dateOfBirth,
-              ssnLast4: req.body.ssnLast4 || driver.ssnLast4,
-              businessWebsite: req.body.businessWebsite || driver.businessWebsite,
+              firstName: pick(body.firstName, currentUser.firstName),
+              lastName: pick(body.lastName, currentUser.lastName),
+              email: pick(body.email, currentUser.email),
+              phone: pick(body.phone, currentUser.phone),
+              street: pick(body.street, currentUser.street),
+              city: pick(body.city, currentUser.city),
+              state: pick(body.state, currentUser.state),
+              zip: pick(body.zip, currentUser.zip),
+              dateOfBirth: pick(body.dateOfBirth, driver.dateOfBirth),
+              ssnLast4: pick(body.ssnLast4, driver.ssnLast4),
+              businessWebsite: pick(body.businessWebsite, driver.businessWebsite),
             },
             {
               timestamp: Math.floor(Date.now() / 1000),
@@ -11510,10 +11514,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : "access-denied";
 
       console.log("Photo activity ACL decision:", {
+        endpoint: "/api/photos/activity/:activityId",
         activityId,
         userId,
         role: user?.role,
         reason: aclReason,
+        objectPathPrefix: "photos/",
         locationId: activity.locationId,
         locationOwnerId: location.ownerId,
         activityDriverId: activity.driverId,
@@ -11555,6 +11561,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: photo.id,
           url,
           uploadedAt: photo.uploadedAt,
+          photoTakenAt: photo.photoTakenAt,
+          gpsLatitude: photo.gpsLatitude,
+          gpsLongitude: photo.gpsLongitude,
+          verificationStatus: photo.verificationStatus,
+          verificationDistanceMiles: photo.verificationDistanceMiles,
+          verificationReason: photo.verificationReason,
+          locationId: photo.locationId,
+          driverId: photo.driverId,
           contentType: photo.contentType
         };
       }));
@@ -11650,14 +11664,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Prepare photos with driver verification
-      const photos = photoData?.map((photo: any) => ({
-        storageKey: photo.storageKey,
-        contentType: photo.contentType || 'image/jpeg',
-        fileSize: photo.fileSize,
-        uploadedAt: new Date()
-      })) || [];
-      
+      const location = await storage.getWashoutLocation(activityResult.data.locationId);
+      if (!location) {
+        return res.status(404).json({ message: "Location not found" });
+      }
+
+      const locationLatitude = location.latitude != null ? Number(location.latitude) : null;
+      const locationLongitude = location.longitude != null ? Number(location.longitude) : null;
+
+      // Prepare photos with verification metadata
+      const photos = (photoData?.map((photo: any) => {
+        const photoTakenAt = photo.photoTakenAt ? new Date(photo.photoTakenAt) : new Date();
+        const gpsLatitude = photo.gpsLatitude != null ? Number(photo.gpsLatitude) : null;
+        const gpsLongitude = photo.gpsLongitude != null ? Number(photo.gpsLongitude) : null;
+        const verification = evaluatePhotoVerification({
+          gpsLatitude,
+          gpsLongitude,
+          locationLatitude,
+          locationLongitude,
+        });
+
+        return {
+          storageKey: photo.storageKey,
+          contentType: photo.contentType || 'image/jpeg',
+          fileSize: photo.fileSize,
+          driverId: driver.id,
+          locationId: activityResult.data.locationId,
+          photoTakenAt,
+          uploadedAt: photo.uploadedAt ? new Date(photo.uploadedAt) : new Date(),
+          gpsLatitude,
+          gpsLongitude,
+          verificationStatus: verification.status,
+          verificationDistanceMiles: verification.distanceMiles == null ? null : verification.distanceMiles.toFixed(3),
+          verificationReason: verification.reason,
+        };
+      }) || []);
+
       // Create activity with photos atomically
       const result = await storage.createWashoutActivityWithPhotos(
         activityResult.data,
@@ -11723,7 +11765,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storageSelection = getPhotoReadProviderSelection();
       console.log('📸 Photo proxy request:', {
         endpoint: '/api/objects/photos/:key',
-        key,
         userId: req.user?.id,
         role: req.user?.role,
         objectPathPrefix: "photos/",
@@ -11757,7 +11798,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? "object-owner"
             : aclPolicy.visibility === "public"
               ? "public-visibility"
-              : "acl-rules-denied";
+              : canAccess
+                ? "acl-rules-allowed"
+                : "acl-rules-denied";
       console.log("Photo proxy ACL decision:", {
         key,
         userId: req.user?.id,
@@ -11779,7 +11822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ Error serving photo:', {
         error: (error as Error).message,
         stack: (error as Error).stack,
-        key: req.params?.key
+        objectPathPrefix: "photos/"
       });
       const message = error instanceof ObjectNotFoundError
         ? "Photo not found"
@@ -13147,6 +13190,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { visitId } = req.params;
       const { beforePhotoUrl, afterPhotoUrl, latitude, longitude } = req.body;
+      const numericLatitude = Number(latitude);
+      const numericLongitude = Number(longitude);
 
       // Get driver
       const driver = await storage.getDriver(req.user.id);
@@ -13185,11 +13230,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Geofence validation (500 feet = ~0.095 miles)
       const R = 3959; // Earth radius in miles
-      const dLat = (location.latitude - latitude) * Math.PI / 180;
-      const dLon = (location.longitude - longitude) * Math.PI / 180;
+      const dLat = (location.latitude - numericLatitude) * Math.PI / 180;
+      const dLon = (location.longitude - numericLongitude) * Math.PI / 180;
       const a = 
         Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(latitude * Math.PI / 180) * Math.cos(location.latitude * Math.PI / 180) *
+        Math.cos(numericLatitude * Math.PI / 180) * Math.cos(location.latitude * Math.PI / 180) *
         Math.sin(dLon/2) * Math.sin(dLon/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       const distance = R * c;
@@ -13202,18 +13247,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const photoVerification = evaluatePhotoVerification({
+        gpsLatitude: numericLatitude,
+        gpsLongitude: numericLongitude,
+        locationLatitude: location.latitude,
+        locationLongitude: location.longitude,
+      });
+
       // Update visit status to completed
       const updatedVisit = await storage.updateWashoutActivityStatus(visitId, 'completed');
 
       // Create photos
       await storage.createWashoutPhoto({
         activityId: visitId,
+        driverId: driver.id,
+        locationId: visit.locationId,
         storageKey: beforePhotoUrl,
+        photoTakenAt: new Date(),
+        uploadedAt: new Date(),
+        gpsLatitude: numericLatitude,
+        gpsLongitude: numericLongitude,
+        verificationStatus: photoVerification.status,
+        verificationDistanceMiles: photoVerification.distanceMiles == null ? null : photoVerification.distanceMiles.toFixed(3),
+        verificationReason: photoVerification.reason,
       });
 
       await storage.createWashoutPhoto({
         activityId: visitId,
+        driverId: driver.id,
+        locationId: visit.locationId,
         storageKey: afterPhotoUrl,
+        photoTakenAt: new Date(),
+        uploadedAt: new Date(),
+        gpsLatitude: numericLatitude,
+        gpsLongitude: numericLongitude,
+        verificationStatus: photoVerification.status,
+        verificationDistanceMiles: photoVerification.distanceMiles == null ? null : photoVerification.distanceMiles.toFixed(3),
+        verificationReason: photoVerification.reason,
       });
 
       // Get the material intent for payment calculation

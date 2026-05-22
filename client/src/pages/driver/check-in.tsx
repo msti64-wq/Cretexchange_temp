@@ -1,18 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
-import { useState, useEffect } from "react";
 import { DriverHeader } from "@/components/DriverHeader";
 import { WashoutForm } from "@/components/WashoutForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MapPin, AlertCircle } from "lucide-react";
-import { getCurrentLocation } from "@/lib/gps";
 
 export default function DriverCheckIn() {
   const { locationId } = useParams();
   const [, setLocation] = useLocation();
-  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
 
   const { data: location, isLoading } = useQuery({
     queryKey: ['/api/drivers/locations'],
@@ -25,20 +21,6 @@ export default function DriverCheckIn() {
     },
     enabled: !!locationId,
   });
-
-  useEffect(() => {
-    // Get user's current location
-    getCurrentLocation()
-      .then(coords => {
-        setCurrentLocation({ lat: coords.latitude, lng: coords.longitude });
-        setLocationError(null);
-      })
-      .catch(error => {
-        setLocationError(error.message);
-        // Fallback for development: use a default location (Denver, CO area)
-        setCurrentLocation({ lat: 39.7392, lng: -104.9903 });
-      });
-  }, []);
 
   const handleSuccess = () => {
     setLocation('/activity');
@@ -97,27 +79,9 @@ export default function DriverCheckIn() {
           Back to Locations
         </Button>
 
-        {/* Location Error Alert */}
-        {locationError && (
-          <Card className="mb-4 border-yellow-200 bg-yellow-50">
-            <CardContent className="p-4">
-              <div className="flex items-start space-x-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                <div>
-                  <h3 className="font-medium text-yellow-800">Location Access Required</h3>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    {locationError} GPS verification may not be available for this check-in.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Check-in Form */}
         <WashoutForm
           location={location}
-          currentLocation={currentLocation}
           onSuccess={handleSuccess}
         />
       </div>
