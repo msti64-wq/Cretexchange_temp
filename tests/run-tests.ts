@@ -1520,7 +1520,7 @@ test("create-with-photos rejects missing photo metadata", async () => {
   );
 });
 
-test("create-with-photos returns a specific message when the db insert fails", async () => {
+test("create-with-photos returns a schema message when the db insert fails", async () => {
   const { app, posts } = createRouteRegistry();
 
   await withPatchedStorage(
@@ -1532,7 +1532,15 @@ test("create-with-photos returns a specific message when the db insert fails", a
           : undefined,
       getRecentWashoutPhotoDuplicateCandidates: async () => [],
       createWashoutActivityWithPhotos: async () => {
-        throw new Error("database connection lost");
+        const error = new Error('column "photo_taken_at" of relation "washout_photos" does not exist') as Error & {
+          code?: string;
+          table?: string;
+          column?: string;
+        };
+        error.code = "42703";
+        error.table = "washout_photos";
+        error.column = "photo_taken_at";
+        throw error;
       },
     },
     async () => {
@@ -1578,7 +1586,7 @@ test("create-with-photos returns a specific message when the db insert fails", a
         assert.equal(res.statusCode, 500);
         assert.match(
           String((res.body as { message?: string }).message || ""),
-          /Database insert failed\. Please try again\./,
+          /Database schema is missing required photo metadata fields\. Please deploy the latest migration\./,
         );
       } finally {
         if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;

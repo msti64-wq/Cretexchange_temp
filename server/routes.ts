@@ -24,6 +24,7 @@ import {
   type PhotoFingerprintCandidate,
 } from "@shared/photoFingerprint";
 import { evaluatePhotoFreshness } from "@shared/photoFreshness";
+import { summarizeDatabaseError } from "./dbErrors";
 
 const JWT_SECRET = getJwtSecret();
 const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
@@ -11781,7 +11782,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Prepare photos with verification metadata
       const photos = [];
-      for (const [index, photo] of (photoData || []).entries()) {
+      for (let index = 0; index < (photoData || []).length; index += 1) {
+        const photo = (photoData || [])[index];
         if (!photo || typeof photo !== "object") {
           return res.status(400).json({
             message: "Invalid photo metadata. Please re-upload the photo and try again.",
@@ -11937,14 +11939,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           photos
         );
       } catch (error) {
+        const dbError = summarizeDatabaseError(error, {
+          phase: "create-with-photos",
+          table: "washout_photos",
+        });
         console.error("Create-with-photos DB insert failed:", {
           endpoint: "/api/activities/create-with-photos",
           userId,
           driverId: driver.id,
           locationId: activityResult.data.locationId,
           photoCount: photos.length,
-          reason: error instanceof Error ? error.message : String(error),
+          ...dbError,
         });
+        if (dbError.category === "schema_mismatch" || dbError.category === "enum_mismatch") {
+          return res.status(500).json({
+            message: "Database schema is missing required photo metadata fields. Please deploy the latest migration.",
+          });
+        }
+
+        if (dbError.category === "null_violation") {
+          return res.status(500).json({
+            message: "Database rejected required photo metadata. Please re-upload the photo.",
+          });
+        }
+
+        if (dbError.category === "foreign_key_violation") {
+          return res.status(500).json({
+            message: "Database rejected an invalid location or photo reference. Please try again.",
+          });
+        }
+
+        if (dbError.category === "unique_violation" || dbError.category === "constraint_violation") {
+          return res.status(500).json({
+            message: "Database constraint prevented checkout. Please try again.",
+          });
+        }
+
         return res.status(500).json({
           message: "Database insert failed. Please try again.",
         });
@@ -12003,10 +12033,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         photoCount: result.photos.length
       });
     } catch (error) {
+      const dbError = summarizeDatabaseError(error, {
+        phase: "create-with-photos",
+        table: "washout_activities",
+      });
       console.error('Error creating activity with photos:', {
         endpoint: "/api/activities/create-with-photos",
-        reason: error instanceof Error ? error.message : String(error),
+        ...dbError,
       });
+
+      if (dbError.category === "schema_mismatch" || dbError.category === "enum_mismatch") {
+        return res.status(500).json({
+          message: "Database schema is missing required photo metadata fields. Please deploy the latest migration.",
+        });
+      }
+
+      if (dbError.category === "null_violation") {
+        return res.status(500).json({
+          message: "Database rejected required photo metadata. Please re-upload the photo.",
+        });
+      }
+
+      if (dbError.category === "foreign_key_violation") {
+        return res.status(500).json({
+          message: "Database rejected an invalid location or photo reference. Please try again.",
+        });
+      }
+
+      if (dbError.category === "unique_violation" || dbError.category === "constraint_violation") {
+        return res.status(500).json({
+          message: "Database constraint prevented checkout. Please try again.",
+        });
+      }
+
       res.status(500).json({ message: 'Checkout failed unexpectedly. Please try again.' });
     }
   });

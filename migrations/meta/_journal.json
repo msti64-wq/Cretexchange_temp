@@ -8,6 +8,13 @@
       "when": 1761091807330,
       "tag": "0000_oval_jean_grey",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768850000000,
+      "tag": "0001_add_photo_metadata_fields",
+      "breakpoints": true
     }
   ]
 }

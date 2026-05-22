@@ -92,6 +92,7 @@ import {
   lotteryDrawings,
 } from "@shared/schema";
 import { db } from "./db";
+import { summarizeDatabaseError } from "./dbErrors";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
 import { formatAddress } from "@shared/addressUtils";
 import type { PhotoFingerprintCandidate } from "@shared/photoFingerprint";
@@ -1410,7 +1411,16 @@ export class DatabaseStorage implements IStorage {
   ): Promise<{ activity: WashoutActivity; photos: WashoutPhoto[] }> {
     return await db.transaction(async (tx) => {
       // Create the activity first
-      const [newActivity] = await tx.insert(washoutActivities).values(activity).returning();
+      let newActivity: WashoutActivity;
+      try {
+        [newActivity] = await tx.insert(washoutActivities).values(activity).returning();
+      } catch (error) {
+        console.error("Create-with-photos activity insert failed:", summarizeDatabaseError(error, {
+          phase: "activity-insert",
+          table: "washout_activities",
+        }));
+        throw error;
+      }
       
       // Create photos with the activity ID
       const photoValues = photos.map(photo => ({
@@ -1418,7 +1428,16 @@ export class DatabaseStorage implements IStorage {
         activityId: newActivity.id
       }));
       
-      const newPhotos = await tx.insert(washoutPhotos).values(photoValues).returning();
+      let newPhotos: WashoutPhoto[];
+      try {
+        newPhotos = await tx.insert(washoutPhotos).values(photoValues).returning();
+      } catch (error) {
+        console.error("Create-with-photos photo insert failed:", summarizeDatabaseError(error, {
+          phase: "photo-insert",
+          table: "washout_photos",
+        }));
+        throw error;
+      }
       
       return {
         activity: newActivity,
