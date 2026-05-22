@@ -15,6 +15,8 @@ interface PWAInstallState {
   applyUpdate: () => void;
 }
 
+const INSTALL_PROMPT_SESSION_KEY = "pwaInstallPromptHandled";
+
 let globalDeferredPrompt: BeforeInstallPromptEvent | null = null;
 const listeners = new Set<() => void>();
 
@@ -31,8 +33,23 @@ if (typeof window !== "undefined") {
 
   window.addEventListener("appinstalled", () => {
     globalDeferredPrompt = null;
+    markInstallPromptHandledThisSession();
     notifyListeners();
   });
+}
+
+function canUseSessionStorage() {
+  return typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
+}
+
+export function hasHandledInstallPromptThisSession() {
+  if (!canUseSessionStorage()) return false;
+  return window.sessionStorage.getItem(INSTALL_PROMPT_SESSION_KEY) === "true";
+}
+
+export function markInstallPromptHandledThisSession() {
+  if (!canUseSessionStorage()) return;
+  window.sessionStorage.setItem(INSTALL_PROMPT_SESSION_KEY, "true");
 }
 
 export function usePWAInstall(): PWAInstallState {
@@ -49,7 +66,7 @@ export function usePWAInstall(): PWAInstallState {
     /iPad|iPhone|iPod/.test(navigator.userAgent) &&
     !(window as any).MSStream;
 
-  const canInstall = !isInstalled && (!!globalDeferredPrompt || isIOS);
+  const canInstall = !isInstalled && !hasHandledInstallPromptThisSession() && (!!globalDeferredPrompt || isIOS);
 
   useEffect(() => {
     const refresh = () => forceUpdate((n) => n + 1);
@@ -72,13 +89,12 @@ export function usePWAInstall(): PWAInstallState {
   }, []);
 
   const install = useCallback(async (): Promise<"accepted" | "dismissed" | null> => {
-    if (!globalDeferredPrompt) return null;
+    if (hasHandledInstallPromptThisSession() || !globalDeferredPrompt) return null;
     await globalDeferredPrompt.prompt();
     const { outcome } = await globalDeferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      globalDeferredPrompt = null;
-      notifyListeners();
-    }
+    markInstallPromptHandledThisSession();
+    globalDeferredPrompt = null;
+    notifyListeners();
     return outcome;
   }, []);
 

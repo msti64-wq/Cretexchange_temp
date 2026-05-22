@@ -3,7 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Smartphone, Download, X, Share } from "lucide-react";
 import logoImage from "@assets/cretexchange-logo-transparent.png";
-import { usePWAInstall } from "@/hooks/usePWAInstall";
+import {
+  hasHandledInstallPromptThisSession,
+  markInstallPromptHandledThisSession,
+  usePWAInstall,
+} from "@/hooks/usePWAInstall";
 
 interface InstallPromptProps {
   userType: "driver" | "owner";
@@ -15,10 +19,11 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
   const { isIOS, install } = usePWAInstall();
   const [visible, setVisible] = useState(true);
 
-  if (!visible) return null;
+  if (!visible || hasHandledInstallPromptThisSession()) return null;
 
   const handleInstall = async () => {
     const outcome = await install();
+    markInstallPromptHandledThisSession();
     if (outcome === "accepted") {
       onInstall?.();
     }
@@ -26,7 +31,7 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
   };
 
   const handleDismiss = () => {
-    localStorage.setItem("pwaInstallDismissed", "true");
+    markInstallPromptHandledThisSession();
     setVisible(false);
     onDismiss?.();
   };

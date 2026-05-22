@@ -19,6 +19,7 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import StripeVerificationStatus from "@/components/StripeVerificationStatus";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
+import { hasHandledInstallPromptThisSession, markInstallPromptHandledThisSession } from "@/hooks/usePWAInstall";
 
 export default function DriverProfile() {
   const { toast } = useToast();
@@ -180,7 +181,7 @@ export default function DriverProfile() {
         showInstallPrompt
       });
       
-      if (isProfileComplete && hasEssentialInfo && !showInstallPrompt) {
+      if (isProfileComplete && hasEssentialInfo && !showInstallPrompt && !hasHandledInstallPromptThisSession()) {
         // Small delay to ensure profile save completed before showing prompt
         const timer = setTimeout(() => {
           console.log('✅ Profile complete! Showing install prompt...');
@@ -684,7 +685,9 @@ export default function DriverProfile() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    localStorage.removeItem('pwaInstallDismissed');
+                    if (hasHandledInstallPromptThisSession()) {
+                      return;
+                    }
                     setShowInstallPrompt(true);
                   }}
                   data-testid="button-install-app-manual"
@@ -783,10 +786,12 @@ export default function DriverProfile() {
           userType="driver"
           onInstall={() => {
             console.log('✅ User accepted install prompt from profile');
+            markInstallPromptHandledThisSession();
             setShowInstallPrompt(false);
           }}
           onDismiss={() => {
             console.log('❌ User dismissed install prompt from profile');
+            markInstallPromptHandledThisSession();
             setShowInstallPrompt(false);
           }}
         />
