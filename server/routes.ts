@@ -52,6 +52,38 @@ type RubbleLocationWithIntents = WashoutLocation & {
   materialIntents: LocationMaterialIntent[];
 };
 
+type LotteryWinnerSummary = {
+  place: number;
+  driverId: string;
+  driverName: string;
+  ticketNumber: string | null;
+  payoutPreference: string | null;
+  prize?: string | null;
+};
+
+function buildLotteryWinnerMessage(winner: LotteryWinnerSummary, monthName: string, year: number): { title: string; message: string } {
+  const placeLabel = winner.place === 1 ? "1st Place" : winner.place === 2 ? "2nd Place" : "3rd Place";
+  const prizeText = winner.prize ? ` Your prize: ${winner.prize}.` : "";
+  return {
+    title: `🎉 You Won ${placeLabel} in the ${monthName} ${year} Lottery!`,
+    message: `Congratulations! Your ticket ${winner.ticketNumber || ""} was selected as the ${placeLabel} winner of the ${monthName} ${year} lottery.${prizeText} We will be in touch soon to arrange your prize delivery. Thank you for being part of CreteXchange!`,
+  };
+}
+
+function buildLotteryParticipantMessage(monthName: string, year: number, winners: LotteryWinnerSummary[], nextMonthName: string, nextYear: number): { title: string; message: string } {
+  const winnerSummary = winners
+    .map((winner) => {
+      const placeLabel = winner.place === 1 ? "1st Place" : winner.place === 2 ? "2nd Place" : "3rd Place";
+      return `${placeLabel} — ${winner.driverName}`;
+    })
+    .join("; ");
+
+  return {
+    title: `🎰 ${monthName} ${year} Lottery Drawing Complete!`,
+    message: `The ${monthName} ${year} lottery drawing is complete. Winners: ${winnerSummary}. Thank you for participating. Every completed washout earns another entry for the next drawing in ${nextMonthName} ${nextYear}.`,
+  };
+}
+
 // Initialize Stripe only if secret key is available
 const stripe: Stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -3558,6 +3590,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Activity not found" });
       }
       const activityLocation = await storage.getWashoutLocation(activityDetails.locationId) as WashoutLocation | undefined;
+      if (!activityLocation || activityLocation.ownerId !== owner.id) {
+        return res.status(403).json({ message: "This washout does not belong to your location." });
+      }
+      if (activityDetails.status !== 'pending') {
+        return res.status(409).json({ message: "This washout has already been processed." });
+      }
 
       // NOTE: Activity verification moved to AFTER successful payment processing
       // to prevent partial state (verified activity but failed payment)
@@ -3658,8 +3696,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`   Owner ID: ${owner.id}, Payment ID: ${payment.id}`);
         }
         
+        // Verify activity immediately (payment will be processed later in batch)
+        const activity = await storage.verifyWashoutActivity(id, userId);
+
         // ========== DRIVER COMPENSATION FOR BATCH PROCESSING ==========
-        if (useCustomBillingModel) {
+        if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
           // CUSTOM BILLING MODEL: Create lottery entry only if lottery program is enabled
           try {
             const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
@@ -3680,9 +3721,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         // NOTE: For standard model, driver wallet credit happens when batch payment succeeds (in batch processor)
-        
-        // Verify activity immediately (payment will be processed later in batch)
-        const activity = await storage.verifyWashoutActivity(id, userId);
         
         const compensationType = useCustomBillingModel ? 'lottery entry' : 'pending payment';
         console.log(`✅ Washout ${id} approved with ${billingCadence} billing. Payment ${payment.id} pending batch processing. Driver receives: ${compensationType}`);
@@ -3930,16 +3968,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // ========== DRIVER COMPENSATION: CASH OR LOTTERY ENTRY ==========
-      if (useCustomBillingModel) {
+      if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
         // CUSTOM BILLING MODEL: Create lottery entry instead of cash payment
         try {
-          const lotteryEntry = await storage.createDriverLotteryEntry({
-            driverId: driver.id,
-            activityId: id,
-            ownerId: owner.id,
-            entriesEarned: 1, // 1 entry per washout
-          });
-          console.log(`🎰 Lottery entry created for driver ${driver.id}, entry ID: ${lotteryEntry.id}`);
+          const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
+          const lotteryEnabled = lotteryFlag?.enabled ?? false;
+          if (lotteryEnabled) {
+            const lotteryEntry = await storage.createDriverLotteryEntry({
+              driverId: driver.id,
+              activityId: id,
+              ownerId: owner.id,
+              entriesEarned: 1, // 1 entry per washout
+            });
+            console.log(`🎰 Lottery entry created for driver ${driver.id}, entry ID: ${lotteryEntry.id}`);
+          } else {
+            console.log(`🎰 Lottery program disabled — no entry created for driver ${driver.id} on washout ${id}`);
+          }
         } catch (lotteryError: any) {
           console.error(`❌ Failed to create lottery entry for washout ${id}:`, lotteryError);
           // Don't fail the transaction - lottery entry is nice-to-have
@@ -3975,6 +4019,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify activity as final step
       const activity = await storage.verifyWashoutActivity(id, userId);
+      
+      if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
+        try {
+          const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
+          const lotteryEnabled = lotteryFlag?.enabled ?? false;
+          if (lotteryEnabled) {
+            const lotteryEntry = await storage.createDriverLotteryEntry({
+              driverId: driver.id,
+              activityId: id,
+              ownerId: owner.id,
+              entriesEarned: 1,
+            });
+            console.log(`🎰 Lottery entry created for driver ${driver.id}, entry ID: ${lotteryEntry.id}`);
+          } else {
+            console.log(`🎰 Lottery program disabled — no entry created for driver ${driver.id} on washout ${id}`);
+          }
+        } catch (lotteryError: any) {
+          console.error(`❌ Failed to create lottery entry for washout ${id}:`, lotteryError);
+          // Don't fail the transaction - lottery entry is nice-to-have
+        }
+      }
       
       const compensationType = useCustomBillingModel ? 'lottery entry' : `$${driverAmount}`;
       console.log(`✅ Washout ${id} fully processed: Payment completed, driver received ${compensationType}, activity verified`);
@@ -8398,12 +8463,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const numberOfWinners = Math.min(3, Math.max(1, parseInt(rawWinners) || 3));
 
-      // Check if drawing already exists for this month/year
-      const existing = await storage.getLotteryDrawingByMonthYear(month, year);
-      if (existing) {
-        return res.status(409).json({ message: `A drawing for ${month}/${year} has already been executed` });
-      }
-
       // Get all non-archived entries for this month/year
       const allEntries = await storage.getDriverLotteryEntryTotals(month, year);
       if (!allEntries || allEntries.length === 0) {
@@ -8430,32 +8489,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Shuffle pool using Fisher-Yates
-      for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
-      }
+      const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+      const existing = await storage.getLotteryDrawingByMonthYear(month, year);
 
-      // Pick up to numberOfWinners unique winners
-      const winners: typeof pool = [];
-      const pickedDriverIds = new Set<string>();
-      for (const slot of pool) {
-        if (!pickedDriverIds.has(slot.driverId)) {
-          winners.push(slot);
-          pickedDriverIds.add(slot.driverId);
-          if (winners.length === numberOfWinners) break;
+      let winners: LotteryWinnerSummary[];
+      let prizes: (string | null)[];
+      if (existing) {
+        winners = [];
+        if (existing.firstPlaceDriverId && existing.firstPlaceDriverName) {
+          winners.push({
+            place: 1,
+            driverId: existing.firstPlaceDriverId,
+            driverName: existing.firstPlaceDriverName,
+            ticketNumber: existing.firstPlaceTicketNumber || null,
+            payoutPreference: existing.firstPlacePayoutPreference || null,
+            prize: existing.firstPrize || null,
+          });
         }
-      }
+        if (existing.secondPlaceDriverId && existing.secondPlaceDriverName) {
+          winners.push({
+            place: 2,
+            driverId: existing.secondPlaceDriverId,
+            driverName: existing.secondPlaceDriverName,
+            ticketNumber: existing.secondPlaceTicketNumber || null,
+            payoutPreference: existing.secondPlacePayoutPreference || null,
+            prize: existing.secondPrize || null,
+          });
+        }
+        if (existing.thirdPlaceDriverId && existing.thirdPlaceDriverName) {
+          winners.push({
+            place: 3,
+            driverId: existing.thirdPlaceDriverId,
+            driverName: existing.thirdPlaceDriverName,
+            ticketNumber: existing.thirdPlaceTicketNumber || null,
+            payoutPreference: existing.thirdPlacePayoutPreference || null,
+            prize: existing.thirdPrize || null,
+          });
+        }
+        prizes = [existing.firstPrize || null, existing.secondPrize || null, existing.thirdPrize || null];
+      } else {
+        // Shuffle pool using Fisher-Yates
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
 
-      if (winners.length < 1) {
-        return res.status(400).json({ message: "Not enough unique drivers to hold a drawing" });
+        // Pick up to numberOfWinners unique winners
+        winners = [];
+        const pickedDriverIds = new Set<string>();
+        for (const slot of pool) {
+          if (!pickedDriverIds.has(slot.driverId)) {
+            winners.push({
+              place: winners.length + 1,
+              driverId: slot.driverId,
+              driverName: slot.driverName,
+              ticketNumber: slot.ticketNumber,
+              payoutPreference: slot.payoutPreference,
+              prize: null,
+            });
+            pickedDriverIds.add(slot.driverId);
+            if (winners.length === numberOfWinners) break;
+          }
+        }
+
+        if (winners.length < 1) {
+          return res.status(400).json({ message: "Not enough unique drivers to hold a drawing" });
+        }
+        prizes = [firstPrize || null, secondPrize || null, thirdPrize || null];
       }
 
       const [first, second, third] = winners;
-      const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+      const nextMonthDate = new Date(year, month, 1);
+      const nextMonthName = nextMonthDate.toLocaleDateString('en-US', { month: 'long' });
+      const nextMonthYear = nextMonthDate.getFullYear();
+      const participantDriverIds = Array.from(new Set<string>(allEntries.map((entry: { driverId: string }) => entry.driverId)));
+      const allDrivers = await storage.getAllDrivers() as DriverWithUser[];
+      const driverMap = new Map(allDrivers.map((driver) => [driver.id, driver]));
 
-      // Create the drawing record
-      const drawing = await storage.createLotteryDrawing({
+      const drawing = existing || await storage.createLotteryDrawing({
         lotteryMonth: month,
         lotteryYear: year,
         executedBy: user.id,
@@ -8463,70 +8574,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstPlaceDriverName: first?.driverName || null,
         firstPlaceTicketNumber: first?.ticketNumber || null,
         firstPlacePayoutPreference: first?.payoutPreference || null,
-        firstPrize: firstPrize || null,
+        firstPrize: prizes[0],
         secondPlaceDriverId: second?.driverId || null,
         secondPlaceDriverName: second?.driverName || null,
         secondPlaceTicketNumber: second?.ticketNumber || null,
         secondPlacePayoutPreference: second?.payoutPreference || null,
-        secondPrize: secondPrize || null,
+        secondPrize: prizes[1],
         thirdPlaceDriverId: third?.driverId || null,
         thirdPlaceDriverName: third?.driverName || null,
         thirdPlaceTicketNumber: third?.ticketNumber || null,
         thirdPlacePayoutPreference: third?.payoutPreference || null,
-        thirdPrize: thirdPrize || null,
+        thirdPrize: prizes[2],
       });
 
-      // Send notifications to winners
-      const placeLabels = ['🥇 1st Place', '🥈 2nd Place', '🥉 3rd Place'];
-      const prizes = [firstPrize, secondPrize, thirdPrize];
-      for (let i = 0; i < winners.length; i++) {
-        const winner = winners[i];
-        const driver = await storage.getDriverById(winner.driverId);
-        if (driver) {
-          const prizeText = prizes[i] ? ` Your prize: ${prizes[i]}.` : '';
-          await storage.createNotification({
-            userId: driver.userId,
-            title: `🎉 You Won ${placeLabels[i]} in the ${monthName} ${year} Lottery!`,
-            message: `Congratulations! Your ticket ${winner.ticketNumber || ''} was selected as the ${placeLabels[i]} winner of the ${monthName} ${year} lottery.${prizeText} We will be in touch soon to arrange your prize delivery. Thank you for being part of CreteXchange!`,
-            type: 'lottery_winner',
-            data: { month, year, place: i + 1, ticketNumber: winner.ticketNumber, prize: prizes[i] },
-          });
+      const winnerMessages = winners.map((winner, index) => ({
+        winner,
+        ...buildLotteryWinnerMessage({ ...winner, prize: prizes[index] }, monthName, year),
+        prize: prizes[index],
+      }));
+      const participantMessage = buildLotteryParticipantMessage(monthName, year, winners, nextMonthName, nextMonthYear);
+
+      let winnerNotificationCount = 0;
+      for (const { winner, title, message, prize } of winnerMessages) {
+        const driver = driverMap.get(winner.driverId);
+        if (!driver) continue;
+        const result = await storage.createLotteryNotificationOnce({
+          lotteryDrawingId: drawing.id,
+          lotteryMonth: month,
+          lotteryYear: year,
+          userId: driver.userId,
+          driverId: driver.id,
+          notificationKind: 'winner',
+          place: winner.place,
+          title,
+          message,
+          data: {
+            month,
+            year,
+            place: winner.place,
+            ticketNumber: winner.ticketNumber,
+            prize,
+            driverName: winner.driverName,
+          },
+        });
+        if (result.created) {
+          winnerNotificationCount += 1;
         }
       }
 
-      // Send broadcast notification to all non-winning drivers
-      const winnerDriverIds = new Set(winners.map(w => w.driverId));
-      const nextMonthDate = new Date(year, month, 1); // month is 0-indexed in Date constructor, so this gives next month
-      const nextMonthName = nextMonthDate.toLocaleDateString('en-US', { month: 'long' });
-      const nextMonthYear = nextMonthDate.getFullYear();
-
-      try {
-        const allDrivers = await storage.getAllDrivers() as DriverWithUser[];
-        const broadcastDrivers = allDrivers.filter((d) => !winnerDriverIds.has(d.id));
-        for (const driver of broadcastDrivers) {
-          await storage.createNotification({
-            userId: driver.userId,
-            title: `🎰 ${monthName} ${year} Lottery Drawing Complete!`,
-            message: `The ${monthName} ${year} lottery drawing has concluded and winners have been notified. A new drawing is now underway for ${nextMonthName} ${nextMonthYear} — every washout you complete earns you another entry. Good luck!`,
-            type: 'lottery_drawing_complete',
-            data: { month, year, nextMonth: nextMonthDate.getMonth() + 1, nextYear: nextMonthYear },
-          });
+      let participantNotificationCount = 0;
+      for (const driverId of participantDriverIds) {
+        const driver = driverMap.get(driverId);
+        if (!driver) continue;
+        const result = await storage.createLotteryNotificationOnce({
+          lotteryDrawingId: drawing.id,
+          lotteryMonth: month,
+          lotteryYear: year,
+          userId: driver.userId,
+          driverId: driver.id,
+          notificationKind: 'participant',
+          title: participantMessage.title,
+          message: participantMessage.message,
+          data: {
+            month,
+            year,
+            winners: winners.map((winner) => ({
+              place: winner.place,
+              driverName: winner.driverName,
+            })),
+            nextMonth: nextMonthDate.getMonth() + 1,
+            nextYear: nextMonthYear,
+          },
+        });
+        if (result.created) {
+          participantNotificationCount += 1;
         }
-        console.log(`📢 Broadcast notification sent to ${broadcastDrivers.length} non-winning drivers`);
-      } catch (broadcastError: any) {
-        console.error('❌ Failed to send broadcast notifications:', broadcastError.message);
-        // Non-fatal — drawing still succeeded
       }
 
-      // Archive the month entries
-      await storage.archiveLotteryMonth(month, year);
+      const summary = await storage.getLotteryNotificationSummary(drawing.id);
+      if (summary) {
+        await storage.updateLotteryDrawingNotificationSummary(drawing.id, summary);
+      }
+
+      if (!existing) {
+        await storage.archiveLotteryMonth(month, year);
+      }
 
       console.log(`🎰 Lottery drawing executed for ${monthName} ${year} by ${user.username}. Winners: ${winners.map(w => w.driverName).join(', ')}`);
+      console.log(`📣 Lottery notifications ${existing ? 'ensured' : 'sent'} for drawing ${drawing.id}: ${winnerNotificationCount} winner messages, ${participantNotificationCount} participant announcements`);
 
       res.json({
         message: `Drawing complete! ${winners.length} winner${winners.length !== 1 ? 's' : ''} selected and notified.`,
-        drawing,
-        winners: winners.map((w, i) => ({ place: i + 1, ...w })),
+        drawing: summary ? { ...drawing, ...summary } : drawing,
+        winners: winners.map((w) => ({ ...w })),
       });
     } catch (error: any) {
       console.error("Error executing lottery drawing:", error);

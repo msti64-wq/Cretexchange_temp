@@ -30,6 +30,7 @@ import {
   locationMaterialIntents,
   identityDocuments,
   driverLotteryEntries,
+  lotteryNotifications,
   type User,
   type UpsertUser,
   type Driver,
@@ -89,6 +90,8 @@ import {
   type InsertLocationMaterialIntent,
   type DriverLotteryEntry,
   type InsertDriverLotteryEntry,
+  type LotteryNotification,
+  type InsertLotteryNotification,
   lotteryDrawings,
 } from "@shared/schema";
 import { db } from "./db";
@@ -385,6 +388,12 @@ export interface IStorage {
   getLotteryDrawingByMonthYear(month: number, year: number): Promise<any | undefined>;
   getPendingLotteryDrawings(): Promise<any[]>;
   markLotteryPrizeDelivered(drawingId: string, place: 'first' | 'second' | 'third'): Promise<any>;
+  updateLotteryDrawingNotificationSummary(drawingId: string, updates: {
+    winnerNotificationCount?: number;
+    winnerNotificationsSentAt?: Date | null;
+    participantNotificationCount?: number;
+    participantNotificationsSentAt?: Date | null;
+  }): Promise<any>;
 
   // Driver lottery entries operations
   createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<any>;
@@ -396,6 +405,14 @@ export interface IStorage {
   getDriverLotteryEntryByActivity(activityId: string): Promise<any | undefined>;
   archiveLotteryMonth(month: number, year: number): Promise<number>;
   getLotteryMonths(): Promise<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>;
+  createLotteryNotificationOnce(notification: InsertLotteryNotification): Promise<{ record: LotteryNotification; created: boolean }>;
+  getLotteryNotificationsByDrawing(drawingId: string): Promise<LotteryNotification[]>;
+  getLotteryNotificationSummary(drawingId: string): Promise<{
+    winnerNotificationCount: number;
+    participantNotificationCount: number;
+    winnerNotificationsSentAt: Date | null;
+    participantNotificationsSentAt: Date | null;
+  } | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4573,39 +4590,170 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async updateLotteryDrawingNotificationSummary(drawingId: string, updates: {
+    winnerNotificationCount?: number;
+    winnerNotificationsSentAt?: Date | null;
+    participantNotificationCount?: number;
+    participantNotificationsSentAt?: Date | null;
+  }): Promise<any> {
+    const [updated] = await db
+      .update(lotteryDrawings)
+      .set(updates)
+      .where(eq(lotteryDrawings.id, drawingId))
+      .returning();
+    return updated;
+  }
+
   // Driver lottery entries operations
   async createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<DriverLotteryEntry> {
+    const [existingEntry] = await db
+      .select()
+      .from(driverLotteryEntries)
+      .where(eq(driverLotteryEntries.activityId, entry.activityId))
+      .limit(1);
+    if (existingEntry) {
+      return existingEntry;
+    }
+
     const now = new Date();
     const month = now.getMonth() + 1; // 1-12
     const year = now.getFullYear();
 
-    // Count all entries for this month/year (including archived) to generate a sequential ticket number
-    const [countResult] = await db
-      .select({ count: sql<number>`COUNT(*)::integer` })
-      .from(driverLotteryEntries)
-      .where(and(
-        eq(driverLotteryEntries.lotteryMonth, month),
-        eq(driverLotteryEntries.lotteryYear, year),
-      ));
-    const sequence = (countResult?.count ?? 0) + 1;
-    const paddedSeq = String(sequence).padStart(4, '0');
-    const paddedMonth = String(month).padStart(2, '0');
-    const ticketNumber = `CX-${year}${paddedMonth}-${paddedSeq}`;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      // Count all entries for this month/year (including archived) to generate a sequential ticket number
+      const [countResult] = await db
+        .select({ count: sql<number>`COUNT(*)::integer` })
+        .from(driverLotteryEntries)
+        .where(and(
+          eq(driverLotteryEntries.lotteryMonth, month),
+          eq(driverLotteryEntries.lotteryYear, year),
+        ));
+      const sequence = (countResult?.count ?? 0) + 1;
+      const paddedSeq = String(sequence).padStart(4, '0');
+      const paddedMonth = String(month).padStart(2, '0');
+      const ticketNumber = `CX-${year}${paddedMonth}-${paddedSeq}`;
 
-    const [newEntry] = await db
-      .insert(driverLotteryEntries)
-      .values({
-        driverId: entry.driverId,
-        activityId: entry.activityId,
-        ownerId: entry.ownerId,
-        ticketNumber,
-        entriesEarned: entry.entriesEarned ?? 1,
-        lotteryMonth: month,
-        lotteryYear: year,
-        isArchived: false,
+      try {
+        const [newEntry] = await db
+          .insert(driverLotteryEntries)
+          .values({
+            driverId: entry.driverId,
+            activityId: entry.activityId,
+            ownerId: entry.ownerId,
+            ticketNumber,
+            entriesEarned: entry.entriesEarned ?? 1,
+            lotteryMonth: month,
+            lotteryYear: year,
+            isArchived: false,
+          })
+          .returning();
+        return newEntry;
+      } catch (error) {
+        const [existingAfterFailure] = await db
+          .select()
+          .from(driverLotteryEntries)
+          .where(eq(driverLotteryEntries.activityId, entry.activityId))
+          .limit(1);
+        if (existingAfterFailure) {
+          return existingAfterFailure;
+        }
+
+        const errorCode = (error as { code?: string }).code;
+        if (errorCode === '23505' && attempt < 2) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new Error("Unable to create lottery entry");
+  }
+
+  async getDriverLotteryEntryByActivity(activityId: string): Promise<DriverLotteryEntry | undefined> {
+    const [entry] = await db
+      .select()
+      .from(driverLotteryEntries)
+      .where(eq(driverLotteryEntries.activityId, activityId))
+      .limit(1);
+    return entry;
+  }
+
+  async createLotteryNotificationOnce(notification: InsertLotteryNotification): Promise<{ record: LotteryNotification; created: boolean }> {
+    return await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(lotteryNotifications)
+        .values(notification)
+        .onConflictDoNothing({
+          target: [
+            lotteryNotifications.lotteryDrawingId,
+            lotteryNotifications.userId,
+            lotteryNotifications.notificationKind,
+          ],
+        })
+        .returning();
+
+      if (inserted.length === 0) {
+        const [existing] = await tx
+          .select()
+          .from(lotteryNotifications)
+          .where(and(
+            eq(lotteryNotifications.lotteryDrawingId, notification.lotteryDrawingId),
+            eq(lotteryNotifications.userId, notification.userId),
+            eq(lotteryNotifications.notificationKind, notification.notificationKind),
+          ))
+          .limit(1);
+        if (!existing) {
+          throw new Error("Unable to load existing lottery notification");
+        }
+        return { record: existing, created: false };
+      }
+
+      const [created] = inserted;
+      const [message] = await tx.insert(notifications).values({
+        userId: notification.userId,
+        title: notification.title,
+        message: notification.message,
+        type: notification.notificationKind === "winner" ? "lottery_winner" : "lottery_announcement",
+        data: notification.data ?? null,
+      }).returning();
+
+      const [updated] = await tx
+        .update(lotteryNotifications)
+        .set({
+          notificationId: message.id,
+          sentAt: new Date(),
+        })
+        .where(eq(lotteryNotifications.id, created.id))
+        .returning();
+
+      return { record: updated, created: true };
+    });
+  }
+
+  async getLotteryNotificationsByDrawing(drawingId: string): Promise<LotteryNotification[]> {
+    return await db
+      .select()
+      .from(lotteryNotifications)
+      .where(eq(lotteryNotifications.lotteryDrawingId, drawingId))
+      .orderBy(desc(lotteryNotifications.createdAt));
+  }
+
+  async getLotteryNotificationSummary(drawingId: string): Promise<{
+    winnerNotificationCount: number;
+    participantNotificationCount: number;
+    winnerNotificationsSentAt: Date | null;
+    participantNotificationsSentAt: Date | null;
+  } | undefined> {
+    const [summary] = await db
+      .select({
+        winnerNotificationCount: sql<number>`COALESCE(SUM(CASE WHEN ${lotteryNotifications.notificationKind} = 'winner' THEN 1 ELSE 0 END), 0)::integer`,
+        participantNotificationCount: sql<number>`COALESCE(SUM(CASE WHEN ${lotteryNotifications.notificationKind} = 'participant' THEN 1 ELSE 0 END), 0)::integer`,
+        winnerNotificationsSentAt: sql<Date | null>`MAX(CASE WHEN ${lotteryNotifications.notificationKind} = 'winner' THEN ${lotteryNotifications.sentAt} ELSE NULL END)`,
+        participantNotificationsSentAt: sql<Date | null>`MAX(CASE WHEN ${lotteryNotifications.notificationKind} = 'participant' THEN ${lotteryNotifications.sentAt} ELSE NULL END)`,
       })
-      .returning();
-    return newEntry;
+      .from(lotteryNotifications)
+      .where(eq(lotteryNotifications.lotteryDrawingId, drawingId));
+    return summary;
   }
 
   async getDriverLotteryEntries(driverId: string): Promise<DriverLotteryEntry[]> {
@@ -4773,13 +4921,6 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getDriverLotteryEntryByActivity(activityId: string): Promise<DriverLotteryEntry | undefined> {
-    const [entry] = await db
-      .select()
-      .from(driverLotteryEntries)
-      .where(eq(driverLotteryEntries.activityId, activityId));
-    return entry;
-  }
 }
 
 export const storage: any = new DatabaseStorage();

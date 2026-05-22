@@ -410,6 +410,14 @@ export default function AdminLottery() {
               <p className="text-xs text-yellow-600 dark:text-yellow-400">
                 Drawn on {new Date(existingDrawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant={existingDrawing.winnerNotificationsSentAt ? "default" : "outline"} className={existingDrawing.winnerNotificationsSentAt ? "bg-green-600 hover:bg-green-700" : ""}>
+                  Winners {existingDrawing.winnerNotificationsSentAt ? `sent (${existingDrawing.winnerNotificationCount || 0})` : 'pending'}
+                </Badge>
+                <Badge variant={existingDrawing.participantNotificationsSentAt ? "default" : "outline"} className={existingDrawing.participantNotificationsSentAt ? "bg-blue-600 hover:bg-blue-700" : ""}>
+                  Participants {existingDrawing.participantNotificationsSentAt ? `sent (${existingDrawing.participantNotificationCount || 0})` : 'pending'}
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {[

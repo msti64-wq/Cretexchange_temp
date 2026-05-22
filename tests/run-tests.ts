@@ -1714,6 +1714,316 @@ test("create-with-photos flags duplicate fingerprints for review", async () => {
   ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
 });
 
+test("owner verify rejects washouts outside the owner's locations", async () => {
+  const { app, puts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getOwner: async () => ({
+        id: "owner_1",
+        userId: "user_1",
+        useCustomBillingModel: true,
+        customWashoutRate: "12.00",
+      }),
+      getWashoutActivity: async () => ({
+        id: "activity_1",
+        locationId: "location_other",
+        status: "pending",
+        amount: "10.00",
+        driverId: "driver_row_1",
+        serviceType: "washout",
+      }),
+      getWashoutLocation: async () => ({
+        id: "location_other",
+        ownerId: "owner_other",
+      }),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/owners/activities/:id/verify");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { id: "activity_1" },
+          user: { id: "user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 403);
+      assert.match(
+        String((res.body as { message?: string }).message || ""),
+        /does not belong to your location/i,
+      );
+    },
+  );
+});
+
+test("owner verify rejects already processed washouts", async () => {
+  const { app, puts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getOwner: async () => ({
+        id: "owner_1",
+        userId: "user_1",
+        useCustomBillingModel: true,
+        customWashoutRate: "12.00",
+      }),
+      getWashoutActivity: async () => ({
+        id: "activity_1",
+        locationId: "location_1",
+        status: "rejected",
+        amount: "10.00",
+        driverId: "driver_row_1",
+        serviceType: "washout",
+      }),
+      getWashoutLocation: async () => ({
+        id: "location_1",
+        ownerId: "owner_1",
+      }),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/owners/activities/:id/verify");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { id: "activity_1" },
+          user: { id: "user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 409);
+      assert.match(
+        String((res.body as { message?: string }).message || ""),
+        /already been processed/i,
+      );
+    },
+  );
+});
+
+test("owner verify is idempotent for lottery entry creation on retry", async () => {
+  const { app, puts } = createRouteRegistry();
+  let activityStatus: "pending" | "verified" | "rejected" = "pending";
+  let lotteryEntryCalls = 0;
+
+  await withMockedDb([[]], async () => {
+    await withPatchedStorage(
+      {
+        getOwner: async () => ({
+          id: "owner_1",
+          userId: "user_1",
+          useCustomBillingModel: true,
+          customWashoutRate: "12.00",
+        }),
+        getWashoutActivity: async () => ({
+          id: "activity_1",
+          locationId: "location_1",
+          status: activityStatus,
+          amount: "10.00",
+          driverId: "driver_row_1",
+          serviceType: "washout",
+        }),
+        getWashoutLocation: async () => ({
+          id: "location_1",
+          ownerId: "owner_1",
+        }),
+        getOwnerBillingSettings: async () => ({
+          billingCadence: "weekly",
+          billingTimezone: "America/Chicago",
+          billingCutoffTime: "23:59:00",
+        }),
+        calculateBusinessDateForOwner: async () => "2026-05-22",
+        getDriverById: async () => ({
+          id: "driver_row_1",
+          userId: "driver_user_1",
+        }),
+        getUserById: async () => ({
+          id: "driver_user_1",
+          username: "driver1",
+          firstName: "Driver",
+          lastName: "One",
+        }),
+        getFeatureFlag: async () => ({ enabled: true }),
+        createPayment: async () => ({
+          id: "payment_1",
+        }),
+        verifyWashoutActivity: async () => {
+          activityStatus = "verified";
+          return {
+            id: "activity_1",
+            locationId: "location_1",
+            status: "verified",
+            amount: "10.00",
+            driverId: "driver_row_1",
+            serviceType: "washout",
+          };
+        },
+        createDriverLotteryEntry: async () => {
+          lotteryEntryCalls += 1;
+          return {
+            id: "lottery_entry_1",
+            driverId: "driver_row_1",
+            activityId: "activity_1",
+            ownerId: "owner_1",
+            ticketNumber: "CX-202605-0001",
+            entriesEarned: 1,
+            lotteryMonth: 5,
+            lotteryYear: 2026,
+            isArchived: false,
+          };
+        },
+      },
+      async () => {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = puts.get("/api/owners/activities/:id/verify");
+        assert.equal(typeof route, "function");
+
+        const firstRes = createResponse();
+        await route!(
+          {
+            params: { id: "activity_1" },
+            user: { id: "user_1" },
+          },
+          firstRes,
+        );
+
+        assert.equal(firstRes.statusCode, 200);
+        assert.equal(lotteryEntryCalls, 1);
+
+        const secondRes = createResponse();
+        await route!(
+          {
+            params: { id: "activity_1" },
+            user: { id: "user_1" },
+          },
+          secondRes,
+        );
+
+        assert.equal(secondRes.statusCode, 409);
+        assert.equal(lotteryEntryCalls, 1);
+      },
+    );
+  });
+});
+
+for (const winnerCount of [1, 2, 3] as const) {
+  test(`lottery drawing sends winner and participant messages for ${winnerCount} winner${winnerCount === 1 ? "" : "s"}`, async () => {
+    const fixture = createLotteryMessagingFixture(winnerCount);
+    const route = await getLotteryExecuteRoute();
+
+    await withPatchedStorage(fixture.patch, async () => {
+      await withMockedRandom(0, async () => {
+        const res = createResponse();
+        await route(
+          {
+            user: { id: "admin_user_1" },
+            body: {
+              month: 5,
+              year: 2026,
+              numberOfWinners: winnerCount,
+              firstPrize: "Gold Prize",
+              secondPrize: winnerCount >= 2 ? "Silver Prize" : "",
+              thirdPrize: winnerCount >= 3 ? "Bronze Prize" : "",
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 200);
+        const body = res.body as any;
+        assert.equal(body.drawing.winnerNotificationCount, winnerCount);
+        assert.equal(body.drawing.participantNotificationCount, 3);
+
+        const winnerMessages = fixture.state.notificationCalls.filter((call) => call.notificationKind === "winner");
+        const participantMessages = fixture.state.notificationCalls.filter((call) => call.notificationKind === "participant");
+        assert.equal(winnerMessages.length, winnerCount);
+        assert.equal(participantMessages.length, 3);
+
+        const participantUserIds = new Set(participantMessages.map((call) => call.userId));
+        assert.deepEqual(participantUserIds, new Set(["driver_user_1", "driver_user_2", "driver_user_3"]));
+
+        const winnerUserIds = new Set(winnerMessages.map((call) => call.userId));
+        for (const userId of winnerUserIds) {
+          assert(participantUserIds.has(userId), "winners should receive the general announcement too");
+        }
+
+        const participantMessage = participantMessages[0];
+        assert(participantMessage.message.includes("Winners:"));
+        assert(participantMessage.message.includes("Alex Stone"));
+        assert(!participantMessage.message.includes("@"));
+        assert(!participantMessage.message.includes("555"));
+        assert.deepEqual(
+          participantMessage.data.winners,
+          winnerMessages.map((call, index) => ({
+            place: index + 1,
+            driverName: call.data.driverName,
+          })),
+        );
+      });
+    });
+  });
+}
+
+test("lottery drawing retry does not duplicate winner or participant messages", async () => {
+  const fixture = createLotteryMessagingFixture(3);
+  const route = await getLotteryExecuteRoute();
+
+  await withPatchedStorage(fixture.patch, async () => {
+    await withMockedRandom(0, async () => {
+      const firstRes = createResponse();
+      await route(
+        {
+          user: { id: "admin_user_1" },
+          body: {
+            month: 5,
+            year: 2026,
+            numberOfWinners: 3,
+            firstPrize: "Gold Prize",
+            secondPrize: "Silver Prize",
+            thirdPrize: "Bronze Prize",
+          },
+        },
+        firstRes,
+      );
+
+      assert.equal(firstRes.statusCode, 200);
+      const firstCount = fixture.state.notificationCalls.length;
+      assert.equal(firstCount, 6);
+
+      const secondRes = createResponse();
+      await route(
+        {
+          user: { id: "admin_user_1" },
+          body: {
+            month: 5,
+            year: 2026,
+            numberOfWinners: 3,
+            firstPrize: "Gold Prize",
+            secondPrize: "Silver Prize",
+            thirdPrize: "Bronze Prize",
+          },
+        },
+        secondRes,
+      );
+
+      assert.equal(secondRes.statusCode, 200);
+      assert.equal(fixture.state.notificationCalls.length, firstCount);
+      assert.equal((secondRes.body as any).drawing.winnerNotificationCount, 3);
+      assert.equal((secondRes.body as any).drawing.participantNotificationCount, 3);
+    });
+  });
+});
+
 type DbMock = {
   selectResults: unknown[][];
   inserts: unknown[];
@@ -1749,9 +2059,11 @@ async function withMockedDb(
     }),
   });
   dbObject.insert = () => ({
-    values: async (payload: unknown) => {
+    values: (payload: unknown) => {
       mock.inserts.push(payload);
-      return [];
+      return {
+        returning: async () => [],
+      };
     },
   });
   dbObject.update = (table: unknown) => ({
@@ -1769,6 +2081,163 @@ async function withMockedDb(
     dbObject.select = original.select;
     dbObject.insert = original.insert;
     dbObject.update = original.update;
+  }
+}
+
+type LotteryMessagingFixture = {
+  patch: Record<string, unknown>;
+  state: {
+    notificationCalls: Array<{
+      userId: string;
+      driverId: string | null;
+      notificationKind: "winner" | "participant";
+      place: number | null;
+      title: string;
+      message: string;
+      data: any;
+    }>;
+    currentDrawing: any;
+  };
+};
+
+function createLotteryMessagingFixture(winnerCount: 1 | 2 | 3): LotteryMessagingFixture {
+  const drivers = [
+    { id: "driver_row_1", userId: "driver_user_1", username: "alpha", firstName: "Alex", lastName: "Stone" },
+    { id: "driver_row_2", userId: "driver_user_2", username: "bravo", firstName: "Blake", lastName: "River" },
+    { id: "driver_row_3", userId: "driver_user_3", username: "charlie", firstName: "Casey", lastName: "Lane" },
+  ];
+
+  const totals = drivers.map((driver, index) => ({
+    driverId: driver.id,
+    driverName: `${driver.firstName} ${driver.lastName}`,
+    totalEntries: 3 - index,
+    payoutPreference: "bank_transfer",
+    payoutPreferenceNote: null,
+  }));
+
+  const individualEntries = drivers.flatMap((driver, index) => (
+    Array.from({ length: 3 - index }, (_, entryIndex) => ({
+      id: `entry_${driver.id}_${entryIndex + 1}`,
+      driverId: driver.id,
+      ticketNumber: `CX-202605-${String(index * 10 + entryIndex + 1).padStart(4, "0")}`,
+      entriesEarned: 1,
+      lotteryMonth: 5,
+      lotteryYear: 2026,
+      isArchived: false,
+      createdAt: new Date("2026-05-01T00:00:00Z"),
+      driver: {
+        id: driver.id,
+        userId: driver.userId,
+        user: {
+          id: driver.userId,
+          username: driver.username,
+          firstName: driver.firstName,
+          lastName: driver.lastName,
+        },
+      },
+      owner: { id: "owner_1", userId: "owner_user_1", companyName: "Owner Co" },
+      activity: {
+        id: `activity_${driver.id}`,
+        checkInTime: new Date("2026-05-01T00:00:00Z"),
+      },
+    }))
+  ));
+
+  const state = {
+    expectedWinnerCount: winnerCount,
+    notificationCalls: [] as LotteryMessagingFixture["state"]["notificationCalls"],
+    currentDrawing: null as any,
+  };
+  const notificationKeySet = new Set<string>();
+
+  const patch: Record<string, unknown> = {
+    getUser: async () => ({
+      id: "admin_user_1",
+      username: "admin1",
+      email: "admin@example.com",
+      firstName: "Admin",
+      lastName: "User",
+      role: "admin",
+      isActive: true,
+    }),
+    getDriverLotteryEntryTotals: async () => totals,
+    getAllDriverLotteryEntries: async () => individualEntries,
+    getAllDrivers: async () => drivers.map((driver) => ({
+      id: driver.id,
+      userId: driver.userId,
+      user: {
+        id: driver.userId,
+        username: driver.username,
+        firstName: driver.firstName,
+        lastName: driver.lastName,
+      },
+    })),
+    getLotteryDrawingByMonthYear: async () => state.currentDrawing,
+    createLotteryDrawing: async (payload: any) => {
+      state.currentDrawing = {
+        id: "drawing_1",
+        drawingDate: new Date("2026-05-22T00:00:00Z"),
+        executedByName: "admin1",
+        winnerNotificationCount: 0,
+        participantNotificationCount: 0,
+        winnerNotificationsSentAt: null,
+        participantNotificationsSentAt: null,
+        ...payload,
+      };
+      return state.currentDrawing;
+    },
+    createLotteryNotificationOnce: async (notification: any) => {
+      const key = `${notification.lotteryDrawingId}:${notification.userId}:${notification.notificationKind}`;
+      const created = !notificationKeySet.has(key);
+      if (created) {
+        notificationKeySet.add(key);
+        state.notificationCalls.push(notification);
+      }
+      return {
+        created,
+        record: {
+          id: `lottery_notification_${notificationKeySet.size}`,
+          notificationId: created ? `notification_${notificationKeySet.size}` : null,
+          sentAt: created ? new Date("2026-05-22T00:00:00Z") : null,
+          ...notification,
+        },
+      };
+    },
+    getLotteryNotificationSummary: async () => ({
+      winnerNotificationCount: state.notificationCalls.filter((n) => n.notificationKind === "winner").length,
+      participantNotificationCount: state.notificationCalls.filter((n) => n.notificationKind === "participant").length,
+      winnerNotificationsSentAt: state.notificationCalls.some((n) => n.notificationKind === "winner") ? new Date("2026-05-22T00:00:00Z") : null,
+      participantNotificationsSentAt: state.notificationCalls.some((n) => n.notificationKind === "participant") ? new Date("2026-05-22T00:00:00Z") : null,
+    }),
+    updateLotteryDrawingNotificationSummary: async (_drawingId: string, updates: any) => {
+      state.currentDrawing = {
+        ...state.currentDrawing,
+        ...updates,
+      };
+      return state.currentDrawing;
+    },
+    archiveLotteryMonth: async () => 0,
+  };
+
+  return { patch, state };
+}
+
+async function getLotteryExecuteRoute() {
+  const { app, posts } = createRouteRegistry();
+  const { registerRoutes } = await import("../server/routes");
+  await registerRoutes(app as never);
+  const route = posts.get("/api/admin/lottery/execute");
+  assert.equal(typeof route, "function");
+  return route as Function;
+}
+
+async function withMockedRandom<T>(value: number, run: () => Promise<T>): Promise<T> {
+  const original = Math.random;
+  Math.random = () => value;
+  try {
+    return await run();
+  } finally {
+    Math.random = original;
   }
 }
 

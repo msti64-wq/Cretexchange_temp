@@ -43,6 +43,7 @@ export const paymentFrequencyEnum = pgEnum("payment_frequency", ["weekly", "biwe
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "trial", "past_due"]);
 export const washoutStatusEnum = pgEnum("washout_status", ["pending", "verified", "rejected"]);
 export const photoVerificationStatusEnum = pgEnum("photo_verification_status", ["verified", "warning", "failed", "needs_review"]);
+export const lotteryNotificationKindEnum = pgEnum("lottery_notification_kind", ["winner", "participant"]);
 export const messageStatusEnum = pgEnum("message_status", ["unread", "read", "resolved"]);
 export const distributionFrequencyEnum = pgEnum("distribution_frequency", ["daily", "weekly", "biweekly", "monthly"]);
 
@@ -691,9 +692,34 @@ export const lotteryDrawings = pgTable("lottery_drawings", {
   thirdPrize: varchar("third_prize"),
   thirdPlaceDelivered: boolean("third_place_delivered").default(false),
   thirdPlaceDeliveredAt: timestamp("third_place_delivered_at"),
+  winnerNotificationCount: integer("winner_notification_count").notNull().default(0),
+  winnerNotificationsSentAt: timestamp("winner_notifications_sent_at"),
+  participantNotificationCount: integer("participant_notification_count").notNull().default(0),
+  participantNotificationsSentAt: timestamp("participant_notifications_sent_at"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   monthYearUnique: uniqueIndex("uniq_lottery_drawings_month_year").on(table.lotteryMonth, table.lotteryYear),
+}));
+
+export const lotteryNotifications = pgTable("lottery_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lotteryDrawingId: varchar("lottery_drawing_id").notNull().references(() => lotteryDrawings.id, { onDelete: "cascade" }),
+  lotteryMonth: integer("lottery_month").notNull(),
+  lotteryYear: integer("lottery_year").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  driverId: varchar("driver_id").references(() => drivers.id, { onDelete: "cascade" }),
+  notificationKind: lotteryNotificationKindEnum("notification_kind").notNull(),
+  place: integer("place"),
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  notificationId: varchar("notification_id").references(() => notifications.id, { onDelete: "set null" }),
+  data: jsonb("data"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  drawingUserKindUnique: uniqueIndex("uniq_lottery_notifications_drawing_user_kind").on(table.lotteryDrawingId, table.userId, table.notificationKind),
+  drawingIndex: index("idx_lottery_notifications_drawing").on(table.lotteryDrawingId),
+  userIndex: index("idx_lottery_notifications_user").on(table.userId),
 }));
 
 // Relations
@@ -764,6 +790,12 @@ export const feesLedgerRelations = relations(feesLedger, ({ one }) => ({
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
+export const lotteryNotificationsRelations = relations(lotteryNotifications, ({ one }) => ({
+  drawing: one(lotteryDrawings, { fields: [lotteryNotifications.lotteryDrawingId], references: [lotteryDrawings.id] }),
+  user: one(users, { fields: [lotteryNotifications.userId], references: [users.id] }),
+  driver: one(drivers, { fields: [lotteryNotifications.driverId], references: [drivers.id] }),
 }));
 
 export const driverWalletsRelations = relations(driverWallets, ({ one, many }) => ({
@@ -1262,6 +1294,16 @@ export const insertDriverLotteryEntrySchema = createInsertSchema(driverLotteryEn
 
 export type DriverLotteryEntry = typeof driverLotteryEntries.$inferSelect;
 export type InsertDriverLotteryEntry = z.infer<typeof insertDriverLotteryEntrySchema>;
+
+export const insertLotteryNotificationSchema = createInsertSchema(lotteryNotifications).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+  notificationId: true,
+});
+
+export type LotteryNotification = typeof lotteryNotifications.$inferSelect;
+export type InsertLotteryNotification = z.infer<typeof insertLotteryNotificationSchema>;
 
 // Date range validation schema
 export const dateRangeSchema = z.enum(['today', 'yesterday', '7days', '30days', '90days', 'all']).default('today');

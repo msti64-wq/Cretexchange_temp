@@ -542,6 +542,16 @@ export default function SuperAdminLotteryDashboard() {
                 ? `Drawing executed on ${new Date(selectedDrawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} by ${selectedDrawing.executedByName || 'admin'}`
                 : 'No drawing has been executed for this period yet.'}
             </CardDescription>
+            {selectedDrawing && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant={selectedDrawing.winnerNotificationsSentAt ? 'default' : 'outline'} className={selectedDrawing.winnerNotificationsSentAt ? 'bg-green-600 hover:bg-green-700' : ''}>
+                  Winners {selectedDrawing.winnerNotificationsSentAt ? `sent (${selectedDrawing.winnerNotificationCount || 0})` : 'pending'}
+                </Badge>
+                <Badge variant={selectedDrawing.participantNotificationsSentAt ? 'default' : 'outline'} className={selectedDrawing.participantNotificationsSentAt ? 'bg-blue-600 hover:bg-blue-700' : ''}>
+                  Participants {selectedDrawing.participantNotificationsSentAt ? `sent (${selectedDrawing.participantNotificationCount || 0})` : 'pending'}
+                </Badge>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {!selectedDrawing ? (
@@ -629,7 +639,7 @@ export default function SuperAdminLotteryDashboard() {
                 ))}
 
                 <p className="text-xs text-muted-foreground pt-2 border-t">
-                  Winner notifications are sent automatically when a drawing is executed. Use the "Notify Winner" button on the leaderboard to send additional messages to any driver.
+                  Winner and participant announcements are sent automatically when a drawing is executed. Use the "Notify Winner" button on the leaderboard to send additional messages to any driver.
                 </p>
               </div>
             )}
