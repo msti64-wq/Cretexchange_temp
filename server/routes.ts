@@ -11726,18 +11726,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Location not found" });
       }
 
+      if (activityResult.data.status !== "pending") {
+        return res.status(400).json({
+          message: "Checkout must start in pending status.",
+        });
+      }
+
+      if (!Array.isArray(photoData) || photoData.length === 0) {
+        return res.status(400).json({
+          message: "At least one photo is required to complete checkout.",
+        });
+      }
+
       const locationLatitude = location.latitude != null ? Number(location.latitude) : null;
       const locationLongitude = location.longitude != null ? Number(location.longitude) : null;
 
       const duplicateWindowStart = new Date();
       duplicateWindowStart.setDate(duplicateWindowStart.getDate() - PHOTO_DUPLICATE_LOOKBACK_DAYS);
       const recentDuplicateCandidates = await storage.getRecentWashoutPhotoDuplicateCandidates(duplicateWindowStart);
-
-      if (!Array.isArray(photoData) || photoData.length === 0) {
-        return res.status(400).json({
-          message: "At least one photo is required.",
-        });
-      }
 
       // Prepare photos with verification metadata
       const photos = [];
@@ -13310,6 +13316,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const numericLatitude = Number(latitude);
       const numericLongitude = Number(longitude);
 
+      if (!beforePhotoUrl || !afterPhotoUrl) {
+        return res.status(400).json({ message: 'Before and after photos are required' });
+      }
+
+      if (!Number.isFinite(numericLatitude) || !Number.isFinite(numericLongitude)) {
+        return res.status(400).json({ message: 'GPS coordinates are required to complete the visit' });
+      }
+
       // Get driver
       const driver = await storage.getDriver(req.user.id);
       if (!driver) {
@@ -13332,11 +13346,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (visit.status !== 'in_progress') {
         return res.status(400).json({ message: 'Visit is not in progress' });
-      }
-
-      // Validate required photos
-      if (!beforePhotoUrl || !afterPhotoUrl) {
-        return res.status(400).json({ message: 'Before and after photos are required' });
       }
 
       // Get location for geofence check
@@ -13411,7 +13420,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (!matchingIntent) {
-        throw new Error('Material intent not found');
+        return res.status(400).json({
+          message: "Material configuration is missing for this location. Please contact support before completing checkout.",
+        });
       }
 
       // Book the $2 platform fee (or $0.20 in testing)

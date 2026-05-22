@@ -827,6 +827,119 @@ test("create-with-photos applies ACL metadata for location owners", async () => 
   }
 });
 
+test("create-with-photos rejects missing photo data with 400", async () => {
+  const { app, posts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+      getWashoutLocation: async (locationId: string) =>
+        locationId === "location_1"
+          ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+          : undefined,
+      getRecentWashoutPhotoDuplicateCandidates: async () => [],
+      createWashoutActivityWithPhotos: async () => {
+        throw new Error("should not be called");
+      },
+    },
+    async () => {
+      const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      process.env.PRIVATE_OBJECT_DIR = "private";
+      try {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = posts.get("/api/activities/create-with-photos");
+        assert.equal(typeof route, "function");
+
+        const res = createResponse();
+        await route!(
+          {
+            user: { id: "driver_user_1", role: "driver" },
+            body: {
+              activityData: {
+                locationId: "location_1",
+                amount: "4.00",
+                checkInTime: "2025-01-01T00:00:00.000Z",
+                status: "pending",
+              },
+              photoData: [],
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 400);
+        assert.match(String((res.body as { message?: string }).message || ""), /At least one photo is required/i);
+      } finally {
+        if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+        else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
+      }
+    },
+  );
+});
+
+test("create-with-photos rejects invalid status with 400", async () => {
+  const { app, posts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+      getWashoutLocation: async (locationId: string) =>
+        locationId === "location_1"
+          ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+          : undefined,
+      getRecentWashoutPhotoDuplicateCandidates: async () => [],
+      createWashoutActivityWithPhotos: async () => {
+        throw new Error("should not be called");
+      },
+    },
+    async () => {
+      const originalPrivateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      process.env.PRIVATE_OBJECT_DIR = "private";
+      try {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = posts.get("/api/activities/create-with-photos");
+        assert.equal(typeof route, "function");
+
+        const res = createResponse();
+        await route!(
+          {
+            user: { id: "driver_user_1", role: "driver" },
+            body: {
+              activityData: {
+                locationId: "location_1",
+                amount: "4.00",
+                checkInTime: "2025-01-01T00:00:00.000Z",
+                status: "verified",
+              },
+              photoData: [
+                {
+                  storageKey: "photo-1.jpg",
+                  contentType: "image/jpeg",
+                  fileSize: 12345,
+                  photoTakenAt: "2025-01-01T00:00:00.000Z",
+                  uploadedAt: "2025-01-01T00:05:00.000Z",
+                  gpsLatitude: 40,
+                  gpsLongitude: -100,
+                  imageFingerprint: "0123456789abcdef",
+                },
+              ],
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 400);
+        assert.match(String((res.body as { message?: string }).message || ""), /Checkout must start in pending status/i);
+      } finally {
+        if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
+        else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
+      }
+    },
+  );
+});
+
 test("create-with-photos rejects missing gps metadata with 400", async () => {
   const { app, posts } = createRouteRegistry();
 
@@ -888,6 +1001,48 @@ test("create-with-photos rejects missing gps metadata with 400", async () => {
         if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
         else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
       }
+    },
+  );
+});
+
+test("rubble complete rejects missing GPS coordinates with 400", async () => {
+  const { app, posts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getDriver: async (userId: string) => (userId === "driver_user_1" ? { id: "driver_row_1", userId } : undefined),
+      getWashoutActivity: async (visitId: string) =>
+        visitId === "visit_1"
+          ? { id: "visit_1", driverId: "driver_row_1", locationId: "location_1", serviceType: "rubble_dropoff", status: "in_progress", materialSlug: "dirt", materialCustomLabel: null }
+          : undefined,
+      getWashoutLocation: async (locationId: string) =>
+        locationId === "location_1"
+          ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
+          : undefined,
+      updateWashoutActivityStatus: async () => ({ id: "visit_1", locationId: "location_1" }),
+      getLocationMaterialIntents: async () => [{ materialSlug: "dirt", driverPayCents: 100 }],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = posts.get("/api/rubble/visits/:visitId/complete");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "driver_user_1", role: "driver" },
+          params: { visitId: "visit_1" },
+          body: {
+            beforePhotoUrl: "/objects/photos/before.jpg",
+            afterPhotoUrl: "/objects/photos/after.jpg",
+          },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 400);
+      assert.match(String((res.body as { message?: string }).message || ""), /GPS coordinates are required/i);
     },
   );
 });
