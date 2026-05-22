@@ -86,52 +86,15 @@ async function startApplication() {
     if (!isProduction) {
       await setupVite(app, server);
     } else {
-      // Enhanced static file serving for production
       const path = await import("path");
       const fs = await import("fs");
-      
-      const distPath = path.resolve(process.cwd(), "dist", "public");
+      const distPath = path.resolve(import.meta.dirname, "public");
       console.log("Production static file configuration:", {
         distPath,
         exists: fs.existsSync(distPath),
-        cwd: process.cwd()
+        cwd: process.cwd(),
       });
-      
-      if (fs.existsSync(distPath)) {
-        // Serve static files with proper caching headers
-        app.use(express.static(distPath, {
-          maxAge: isProduction ? '1d' : 0, // Cache for 1 day in production
-          etag: true,
-          lastModified: true
-        }));
-        
-        // SPA fallback - serve index.html for all non-API routes
-        app.get("*", (_req, res) => {
-          const indexPath = path.resolve(distPath, "index.html");
-          try {
-            console.log("Serving SPA fallback:", { url: _req.originalUrl, indexPath });
-            res.sendFile(indexPath);
-          } catch (fileError) {
-            console.error("Failed to serve index.html:", fileError);
-            res.status(500).json({ message: "Application failed to load" });
-          }
-        });
-      } else {
-        console.error(`Static files directory not found: ${distPath}`);
-        console.log("Attempting fallback to serveStatic function...");
-        try {
-          serveStatic(app);
-        } catch (fallbackError) {
-          console.error("Fallback serveStatic also failed:", fallbackError);
-          // Last resort - serve a basic error page
-          app.get("*", (_req, res) => {
-            res.status(503).json({ 
-              message: "Application temporarily unavailable",
-              error: "Static files not found"
-            });
-          });
-        }
-      }
+      serveStatic(app);
     }
 
     // Enhanced server listening with better error handling
