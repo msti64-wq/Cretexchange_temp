@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileNav } from "@/components/MobileNav";
-import { User, Settings, Save, LogOut, AlertCircle, Crown, Lock, Eye, EyeOff, Mail } from "lucide-react";
+import { User, Settings, Save, AlertCircle, Crown, Lock, Eye, EyeOff, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export default function AdminProfile() {
   const { toast } = useToast();
@@ -224,15 +225,14 @@ export default function AdminProfile() {
               <p className="text-white/80 text-sm">{isSuperAdmin ? 'Super Administrator' : 'Administrator'}</p>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <LogoutButton
             onClick={handleLogout}
-            className="text-white hover:bg-white/10 flex-shrink-0"
-            data-testid="button-logout"
-          >
-            <LogOut className="w-4 h-4" />
-          </Button>
+            dataTestId="button-logout"
+            tone="glass"
+            label="Logout"
+            iconOnlyOnMobile={true}
+            className="flex-shrink-0"
+          />
         </div>
       </header>
       

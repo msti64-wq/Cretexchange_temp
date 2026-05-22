@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
-import { LogOut, Smartphone, RefreshCw, Share } from "lucide-react";
+import { Smartphone, RefreshCw, Share } from "lucide-react";
 import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 import { Button } from "@/components/ui/button";
+import { LogoutButton } from "@/components/LogoutButton";
 import {
   Dialog,
   DialogContent,
@@ -96,16 +97,7 @@ export function DriverHeader() {
               </Button>
             )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={logout}
-              data-testid="button-logout"
-              className="h-9 border-white/20 bg-black/20 px-3 text-white hover:bg-black/35 hover:text-white sm:h-10 sm:px-4"
-            >
-              <LogOut className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
+            <LogoutButton onClick={logout} dataTestId="button-logout" tone="glass" />
           </div>
         </div>
       </header>

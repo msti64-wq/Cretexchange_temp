@@ -12,13 +12,14 @@ import { StatCard } from "@/components/StatCard";
 import { DashboardMetricCard } from "@/components/DashboardMetricCard";
 import { DashboardSectionCard } from "@/components/DashboardSectionCard";
 import { DashboardEmptyState } from "@/components/DashboardEmptyState";
-import { Users, Building, DollarSign, Download, LogOut, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck } from "lucide-react";
+import { Users, Building, DollarSign, Download, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { PlatformPerformanceCard } from "@/components/PlatformPerformanceCard";
+import { LogoutButton } from "@/components/LogoutButton";
 import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 import { ShieldAlert, Gauge, UsersRound } from "lucide-react";
 
@@ -214,25 +215,7 @@ export default function AdminDashboard() {
             >
               <Download className="w-4 h-4" />
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={logout}
-              data-testid="button-logout"
-              className="hidden h-10 border-white/20 bg-black/20 text-white hover:bg-black/35 hover:text-white sm:flex"
-            >
-              <LogOut className="w-4 h-4 mr-1" />
-              Logout
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={logout}
-              data-testid="button-logout-mobile"
-              className="h-10 border-white/20 bg-black/20 text-white hover:bg-black/35 hover:text-white sm:hidden p-2"
-            >
-              <LogOut className="w-4 h-4" />
-            </Button>
+            <LogoutButton onClick={logout} dataTestId="button-logout" tone="glass" />
           </div>
         </div>
       </header>

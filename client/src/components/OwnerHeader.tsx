@@ -1,8 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, User, Plus, CreditCard } from "lucide-react";
+import { User, Plus, CreditCard } from "lucide-react";
 import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export function OwnerHeader() {
   const { user, logout } = useAuth();
@@ -35,16 +36,7 @@ export function OwnerHeader() {
               <p className="mt-1 text-sm text-white/80">Location management, approvals, and payouts.</p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={logout}
-            data-testid="button-logout"
-            className="h-11 border-white/20 bg-black/20 text-white hover:bg-black/35 hover:text-white self-start sm:h-10 sm:self-auto"
-          >
-            <LogOut className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Logout</span>
-          </Button>
+          <LogoutButton onClick={logout} dataTestId="button-logout" tone="glass" className="self-start sm:self-auto" />
         </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">

@@ -17,13 +17,14 @@ import { DashboardEmptyState } from "@/components/DashboardEmptyState";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { DebugPanel } from "@/components/DebugPanel";
-import { Users, DollarSign, MapPin, Clock, LogOut, ImageIcon, Check, X, MessageCircle, Phone, CreditCard, ClipboardCheck, WalletCards, Building2, ChevronRight, Gauge, Package, MapPinned, Clock3, Loader2, ShieldAlert, Activity } from "lucide-react";
+import { Users, DollarSign, MapPin, Clock, ImageIcon, Check, X, MessageCircle, Phone, CreditCard, ClipboardCheck, WalletCards, Building2, ChevronRight, Gauge, Package, MapPinned, Clock3, Loader2, ShieldAlert, Activity } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { OwnerHeader } from "@/components/OwnerHeader";
 import { useToast } from "@/hooks/use-toast";
 import { formatAddress } from "@shared/addressUtils";
+import { LogoutButton } from "@/components/LogoutButton";
 
 const AUTO_APPROVAL_HOURS = 72;
 
@@ -625,14 +626,13 @@ export default function OwnerDashboard() {
                   >
                     Clear Cache
                   </Button>
-                  <Button
+                  <LogoutButton
                     onClick={logout}
-                    className="h-10 bg-red-600 text-white hover:bg-red-700"
-                    data-testid="button-reauth"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log In Again
-                  </Button>
+                    tone="danger"
+                    label="Log In Again"
+                    iconOnlyOnMobile={false}
+                    dataTestId="button-reauth"
+                  />
                 </div>
               </div>
             ) : !recentActivities?.length ? (

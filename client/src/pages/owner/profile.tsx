@@ -10,11 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileNav } from "@/components/MobileNav";
-import { Building2, CreditCard, Save, LogOut, AlertCircle, Crown, Lock, Eye, EyeOff, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
+import { Building2, CreditCard, Save, AlertCircle, Crown, Lock, Eye, EyeOff, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import StripeVerificationStatus from "@/components/StripeVerificationStatus";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export default function OwnerProfile() {
   const { toast } = useToast();
@@ -242,15 +243,13 @@ export default function OwnerProfile() {
               <p className="text-white/80 text-sm">Location Owner</p>
             </div>
           </div>
-          <Button 
-            size="sm"
+          <LogoutButton
             onClick={handleLogout}
-            className="bg-slate-800 hover:bg-slate-700 text-white"
-            data-testid="button-logout"
-          >
-            <LogOut className="w-4 h-4 mr-1" />
-            Logout
-          </Button>
+            dataTestId="button-logout"
+            tone="glass"
+            label="Logout"
+            iconOnlyOnMobile={true}
+          />
         </div>
       </header>
       
