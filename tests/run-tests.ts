@@ -1863,12 +1863,7 @@ test("owner verify approves legacy pending washouts and falls back when driver S
         id: "location_1",
         ownerId: "owner_1",
       }),
-      getOwnerBillingSettings: async () => ({
-        billingCadence: "immediate",
-        billingTimezone: "America/Chicago",
-        billingCutoffTime: "23:59:00",
-      }),
-      calculateBusinessDateForOwner: async () => "2026-05-28",
+      getOwnerBillingSettings: async () => null,
       getDriverById: async () => ({
         id: "driver_row_1",
         userId: "driver_user_1",
@@ -1922,6 +1917,83 @@ test("owner verify approves legacy pending washouts and falls back when driver S
       assert.equal((res.body as { paymentStatus?: string }).paymentStatus, "awaiting_driver_stripe");
       assert.equal((res.body as { payoutStatus?: string }).payoutStatus, "not_started");
       assert.match(String((res.body as { message?: string }).message || ""), /payment will be processed once the driver completes payment setup/i);
+    },
+  );
+});
+
+test("owner verify still succeeds when deferred payment persistence fails after approval", async () => {
+  const { app, puts } = createRouteRegistry();
+  let verified = false;
+
+  await withPatchedStorage(
+    {
+      getOwner: async () => ({
+        id: "owner_1",
+        userId: "user_1",
+        useCustomBillingModel: false,
+        customWashoutRate: null,
+        stripeCustomerId: "cus_owner_1",
+        stripePaymentMethodId: "pm_owner_1",
+      }),
+      getWashoutActivity: async () => ({
+        id: "activity_1",
+        locationId: "location_1",
+        status: "pending_owner_approval",
+        amount: "10.00",
+        driverId: "driver_row_1",
+        serviceType: "washout",
+      }),
+      getWashoutLocation: async () => ({
+        id: "location_1",
+        ownerId: "owner_1",
+      }),
+      getOwnerBillingSettings: async () => null,
+      getDriverById: async () => ({
+        id: "driver_row_1",
+        userId: "driver_user_1",
+      }),
+      getUserById: async () => ({
+        id: "driver_user_1",
+        username: "driver1",
+        firstName: "Driver",
+        lastName: "One",
+        stripeConnectAccountId: null,
+      }),
+      createPayment: async () => {
+        throw new Error("deferred payment record failed");
+      },
+      verifyWashoutActivity: async () => {
+        verified = true;
+        return {
+          id: "activity_1",
+          locationId: "location_1",
+          status: "verified",
+          amount: "10.00",
+          driverId: "driver_row_1",
+          serviceType: "washout",
+        };
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/owners/activities/:id/verify");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { id: "activity_1" },
+          user: { id: "user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal(verified, true);
+      assert.equal((res.body as { status?: string }).status, "verified");
+      assert.match(String((res.body as { message?: string }).message || ""), /washout approved/i);
+      assert.match(String((res.body as { warning?: string }).warning || ""), /deferred payment record failed/i);
     },
   );
 });

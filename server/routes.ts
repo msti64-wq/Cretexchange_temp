@@ -3754,29 +3754,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put('/api/owners/activities/:id/verify', isAuthenticated, async (req: any, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const authRole = req.user?.role || null;
+    let approvedActivity: WashoutActivity | null = null;
+    let approvalResponseMessage = "Washout approved.";
+    let approvalResponsePaymentStatus: string | null = null;
+    let approvalResponsePayoutStatus: string | null = null;
+    let approvalResponseDeferReason: string | null = null;
+    const approvalDebugContext: Record<string, unknown> = {
+      route: '/api/owners/activities/:id/verify',
+      activityId: id,
+      ownerId: null,
+      locationId: null,
+      driverId: null,
+      currentStatus: null,
+      currentApprovalStatus: null,
+      resolvedLocationOwnerId: null,
+      authUserId: userId,
+      authRole,
+      permissionCheckResult: null,
+      paymentStatus: null,
+      payoutStatus: null,
+      deferReason: null,
+    };
+
     try {
-      const { id } = req.params;
-      const userId = req.user.id;
 
       // Get the owner to ensure they have permission
       const owner = await storage.getOwner(userId);
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
       }
+      approvalDebugContext.ownerId = owner.id;
 
       // Get the activity details before verification
       const activityDetails = await storage.getWashoutActivity(id);
       if (!activityDetails) {
         return res.status(404).json({ message: "Activity not found" });
       }
+      approvalDebugContext.locationId = activityDetails.locationId;
+      approvalDebugContext.driverId = activityDetails.driverId;
+      approvalDebugContext.currentStatus = activityDetails.status;
+      approvalDebugContext.currentApprovalStatus = getWashoutApprovalDisplayStatus(activityDetails.status);
       const activityLocation = await storage.getWashoutLocation(activityDetails.locationId) as WashoutLocation | undefined;
       if (!activityLocation || activityLocation.ownerId !== owner.id) {
+        approvalDebugContext.resolvedLocationOwnerId = activityLocation?.ownerId || null;
+        approvalDebugContext.permissionCheckResult = false;
         const failureDetails = {
           activityId: activityDetails.id,
           ownerId: owner.id,
           locationId: activityDetails.locationId,
           resolvedLocationOwnerId: activityLocation?.ownerId || null,
           driverId: activityDetails.driverId,
+          authRole,
         };
         console.error("❌ Washout approval rejected due to ownership mismatch:", failureDetails);
         return res.status(403).json({
@@ -3785,6 +3816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       if (!isPendingWashoutApproval(activityDetails.status)) {
+        approvalDebugContext.permissionCheckResult = false;
         const failureDetails = {
           activityId: activityDetails.id,
           ownerId: owner.id,
@@ -3793,6 +3825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentStatus: activityDetails.status,
           displayStatus: getWashoutApprovalDisplayStatus(activityDetails.status),
           requiredTransition: "pending -> verified",
+          authRole,
         };
         console.error("❌ Washout approval rejected due to invalid state transition:", failureDetails);
         return res.status(409).json({
@@ -3801,8 +3834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // NOTE: Activity verification moved to AFTER successful payment processing
-      // to prevent partial state (verified activity but failed payment)
+      // Approval is persisted before payment processing so payment failures cannot block owner approval.
 
       // ========== CHECK FOR CUSTOM BILLING MODEL (LOTTERY PROGRAM) ==========
       // Custom billing model: Owner pays fixed custom rate, driver gets lottery entry (no payout)
@@ -3831,16 +3863,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get owner's billing settings for business date calculation
       const billingSettings = await storage.getOwnerBillingSettings(owner.id);
-      if (!billingSettings) {
-        return res.status(500).json({ message: "Owner billing settings not found" });
+      let billingCadence: 'immediate' | 'daily' | 'weekly' = 'immediate';
+      let businessDate = new Date().toISOString().slice(0, 10);
+      if (billingSettings) {
+        billingCadence = billingSettings.billingCadence;
+        try {
+          // Calculate business date using proper cutoff time logic
+          businessDate = await storage.calculateBusinessDateForOwner(
+            owner.id,
+            billingSettings.billingTimezone,
+            billingSettings.billingCutoffTime
+          );
+        } catch (businessDateError: any) {
+          console.warn(`⚠️ Failed to calculate business date for washout ${id}; using today's date instead:`, businessDateError?.message || businessDateError);
+        }
+      } else {
+        console.warn(`⚠️ Owner billing settings not found for owner ${owner.id}; defaulting approval billing context for washout ${id}`);
       }
-      
-      // Calculate business date using proper cutoff time logic
-      const businessDate = await storage.calculateBusinessDateForOwner(
-        owner.id,
-        billingSettings.billingTimezone,
-        billingSettings.billingCutoffTime
-      );
 
       // Get driver information for payment processing
       const driver = await storage.getDriverById(activityDetails.driverId);
@@ -3855,13 +3894,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const driverStripeReadiness = await resolveDriverStripeReadiness(driverUser);
+      approvalDebugContext.permissionCheckResult = true;
+      approvalDebugContext.paymentStatus = driverStripeReadiness.ready ? 'ready' : 'deferred';
+      approvalDebugContext.deferReason = driverStripeReadiness.reason || null;
 
       // ========== CHECK BILLING CADENCE TO DETERMINE PAYMENT PROCESSING ==========
-      const { billingCadence } = billingSettings;
+      // Approve the activity first so payment processing can never block owner approval.
+      approvedActivity = await storage.verifyWashoutActivity(id, userId);
+      console.log(`✅ Washout ${id} approval persisted before payment processing`, {
+        ownerId: owner.id,
+        locationId: activityDetails.locationId,
+        driverId: activityDetails.driverId,
+        authRole,
+        currentStatus: activityDetails.status,
+        approvalStatus: getWashoutApprovalDisplayStatus(activityDetails.status),
+      });
 
       if (!driverStripeReadiness.ready) {
         const deferredReason = driverStripeReadiness.reason || 'Driver Stripe account not ready';
         console.log(`⏸️ Deferring washout ${id} payment until driver Stripe setup is complete: ${deferredReason}`);
+        approvalResponseMessage = "Washout approved. Payment will be processed once the driver completes payment setup.";
+        approvalResponsePaymentStatus = "awaiting_driver_stripe";
+        approvalResponsePayoutStatus = "not_started";
+        approvalResponseDeferReason = deferredReason;
+        approvalDebugContext.paymentStatus = "awaiting_driver_stripe";
+        approvalDebugContext.payoutStatus = "not_started";
+        approvalDebugContext.deferReason = deferredReason;
 
         const payment = await storage.createPayment({
           activityId: id,
@@ -3877,7 +3935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           businessDate,
         });
 
-        const activity = await storage.verifyWashoutActivity(id, userId);
+        const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
 
         console.log(`✅ Washout ${id} approved with deferred payment ${payment.id} awaiting driver Stripe setup`, {
           ownerId: owner.id,
@@ -3887,19 +3945,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           payoutStatus: payment.payoutStatus,
           deferReason: deferredReason,
         });
+        approvalResponseMessage = "Washout approved. Payment will be processed once the driver completes payment setup.";
+        approvalResponsePaymentStatus = payment.status;
+        approvalResponsePayoutStatus = payment.payoutStatus;
+        approvalResponseDeferReason = payment.deferReason;
 
         return res.json({
           ...activity,
-          message: "Washout approved. Payment will be processed once the driver completes payment setup.",
-          paymentStatus: payment.status,
-          payoutStatus: payment.payoutStatus,
-          deferReason: payment.deferReason,
+          message: approvalResponseMessage,
+          paymentStatus: approvalResponsePaymentStatus,
+          payoutStatus: approvalResponsePayoutStatus,
+          deferReason: approvalResponseDeferReason,
         });
       }
 
       // For daily/weekly batch processing, create pending payment and skip immediate processing
       if (billingCadence === 'daily' || billingCadence === 'weekly') {
         console.log(`📅 Owner ${owner.id} uses ${billingCadence} billing cadence - creating pending payment for batch processing`);
+        approvalResponseMessage = "Washout approved. Payment will be processed in the next billing run.";
+        approvalResponsePaymentStatus = "pending";
+        approvalResponsePayoutStatus = "not_started";
+        approvalResponseDeferReason = null;
+        approvalDebugContext.paymentStatus = "pending";
+        approvalDebugContext.payoutStatus = "not_started";
+        approvalDebugContext.deferReason = null;
         
         // Create pending payment record for batch processing
         const payment = await storage.createPayment({
@@ -3941,7 +4010,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Verify activity immediately (payment will be processed later in batch)
-        const activity = await storage.verifyWashoutActivity(id, userId);
+        const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
 
         // ========== DRIVER COMPENSATION FOR BATCH PROCESSING ==========
         if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
@@ -3968,8 +4037,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const compensationType = useCustomBillingModel ? 'lottery entry' : 'pending payment';
         console.log(`✅ Washout ${id} approved with ${billingCadence} billing. Payment ${payment.id} pending batch processing. Driver receives: ${compensationType}`);
+        approvalResponseMessage = "Washout approved. Payment will be processed in the next billing run.";
+        approvalResponsePaymentStatus = payment.status;
+        approvalResponsePayoutStatus = "not_started";
         
-        return res.json(activity);
+        return res.json({
+          ...activity,
+          message: approvalResponseMessage,
+          paymentStatus: approvalResponsePaymentStatus,
+          payoutStatus: approvalResponsePayoutStatus,
+        });
       }
       
       // ========== IMMEDIATE STRIPE CONNECT PAYMENT PROCESSING ==========
@@ -4107,6 +4184,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Verify payment succeeded before recording it
           if (paymentIntent.status === 'succeeded') {
             paymentProcessedSuccessfully = true;
+            approvalDebugContext.paymentStatus = "completed";
+            approvalDebugContext.payoutStatus = "completed";
+            approvalDebugContext.deferReason = null;
             console.log(`✅ Stripe payment succeeded for washout ${id}: ${paymentIntent.id}`);
           } else {
             // Payment not immediately successful - fallback to pending payment
@@ -4148,6 +4228,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // When Stripe is unavailable or unconfigured for immediate cadence owners
       if (shouldFallbackToPending) {
         console.log(`⚠️ Falling back to pending payment for washout ${id}: ${fallbackReason}`, fallbackDetails || {});
+        approvalResponseMessage = "Washout approved. Payment will be processed later.";
+        approvalResponsePaymentStatus = "pending";
+        approvalResponsePayoutStatus = "not_started";
+        approvalResponseDeferReason = fallbackReason;
+        approvalDebugContext.paymentStatus = "pending";
+        approvalDebugContext.payoutStatus = "not_started";
+        approvalDebugContext.deferReason = fallbackReason;
         
         // Create pending payment record for batch processing
         const payment = await storage.createPayment({
@@ -4162,11 +4249,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Verify activity (payment will be processed later in batch)
-        const activity = await storage.verifyWashoutActivity(id, userId);
+        const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
         
         console.log(`✅ Washout ${id} approved with pending payment ${payment.id} (fallback: ${fallbackReason})`, fallbackDetails || {});
+        approvalResponseMessage = "Washout approved. Payment will be processed later.";
+        approvalResponsePaymentStatus = payment.status;
+        approvalResponsePayoutStatus = "not_started";
+        approvalResponseDeferReason = fallbackReason;
         
-        return res.json(activity);
+        return res.json({
+          ...activity,
+          message: approvalResponseMessage,
+          paymentStatus: approvalResponsePaymentStatus,
+          payoutStatus: approvalResponsePayoutStatus,
+          deferReason: approvalResponseDeferReason,
+        });
       }
       
       // ========== STOP HERE IF IMMEDIATE PAYMENT FAILED ==========
@@ -4187,6 +4284,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           driverId: driver.id,
           reason: fallbackReason,
         };
+        approvalResponseMessage = "Washout approved. Payment will be processed later.";
+        approvalResponsePaymentStatus = "pending";
+        approvalResponsePayoutStatus = "not_started";
+        approvalResponseDeferReason = fallbackReason;
       }
 
       // ========== LEGACY: STRIPE TREASURY TRANSFERS (disabled) ==========
@@ -4291,7 +4392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify activity as final step
-      const activity = await storage.verifyWashoutActivity(id, userId);
+      const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
       
       if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
         try {
@@ -4316,14 +4417,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const compensationType = useCustomBillingModel ? 'lottery entry' : `$${driverAmount}`;
       console.log(`✅ Washout ${id} fully processed: Payment completed, driver received ${compensationType}, activity verified`);
+      approvalResponseMessage = "Washout approved and payment completed.";
+      approvalResponsePaymentStatus = "completed";
+      approvalResponsePayoutStatus = "completed";
 
-      res.json(activity);
+      res.json({
+        ...activity,
+        message: approvalResponseMessage,
+        paymentStatus: approvalResponsePaymentStatus,
+        payoutStatus: approvalResponsePayoutStatus,
+      });
     } catch (error) {
-      console.error("Error verifying activity:", error);
+      console.error("Error verifying activity:", {
+        error,
+        approvalDebugContext,
+      });
       const errorMessage = error instanceof Error ? error.message : String(error);
+      if (approvedActivity) {
+        return res.json({
+          ...approvedActivity,
+          message: approvalResponseMessage,
+          paymentStatus: approvalResponsePaymentStatus || undefined,
+          payoutStatus: approvalResponsePayoutStatus || undefined,
+          deferReason: approvalResponseDeferReason || undefined,
+          warning: errorMessage,
+        });
+      }
       res.status(500).json({
         message: "Failed to verify activity",
         error: errorMessage,
+        details: approvalDebugContext,
       });
     }
   });
