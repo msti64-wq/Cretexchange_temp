@@ -25,6 +25,26 @@ import {
 } from "@shared/photoFingerprint";
 import { evaluatePhotoFreshness } from "@shared/photoFreshness";
 import { summarizeDatabaseError } from "./dbErrors";
+import {
+  ensureCurrentTermsVersions,
+  getTermsStateForUser,
+  parseTermsTypes,
+  recordCurrentTermsAcceptance,
+  requireCurrentTerms,
+} from "./terms";
+import { TERMS_TYPES } from "@shared/terms";
+import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, resolveLocationMonthlyFeeCents } from "./locationBilling";
+import { resolveOwnerBillingPolicy, getActiveBillingPolicyLabels } from "./billingPolicy";
+import { runOwnerBillingNow } from "./ownerBillingRuns";
+import { resolveOwnerMembershipState } from "../shared/ownerMembership";
+import { resolveOwnerLocationAccessState, isOwnerProfileComplete } from "../shared/ownerLocationAccess";
+import {
+  buildDriverReport,
+  buildOwnerReport,
+  reportResponseToCsv,
+  reportResponseToJsonWithColumns,
+  type ReportQueryInput,
+} from "./reportService";
 
 const JWT_SECRET = getJwtSecret();
 const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
@@ -9884,6 +9904,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error during ACL backfill:", error);
       res.status(500).json({ error: "Failed to backfill ACL policies" });
+    }
+  });
+
+  app.get("/api/reports/owner", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || !["owner", "admin", "super_admin"].includes(user.role || "")) {
+        return res.status(403).json({ message: "Owner or admin access required" });
+      }
+
+      const reportQuery: ReportQueryInput = {
+        dateRange: req.query.dateRange as string | undefined,
+        startDate: req.query.startDate as string | undefined,
+        endDate: req.query.endDate as string | undefined,
+        ownerId: req.query.ownerId as string | undefined,
+        locationId: req.query.locationId as string | undefined,
+        paymentStatus: req.query.paymentStatus as string | undefined,
+        washoutStatus: req.query.washoutStatus as string | undefined,
+      };
+
+      if (reportQuery.dateRange === "custom" && (!reportQuery.startDate || !reportQuery.endDate)) {
+        return res.status(400).json({ message: "Custom date range requires startDate and endDate" });
+      }
+
+      const isAdmin = user.role === "admin" || user.role === "super_admin";
+      const owner = user.role === "owner" ? await storage.getOwner(user.id) : null;
+
+      if (user.role === "owner") {
+        if (!owner) {
+          return res.status(404).json({ message: "Owner not found" });
+        }
+
+        const membershipState = resolveOwnerMembershipState(owner);
+        if (!membershipState.dashboardAccessAllowed) {
+          return res.status(403).json({ message: membershipState.accountStatusMessage || "Your account is pending review." });
+        }
+
+        if (reportQuery.ownerId && reportQuery.ownerId !== owner.id) {
+          return res.status(403).json({ message: "You can only access reports for your own owner account" });
+        }
+
+        if (reportQuery.locationId) {
+          const location = await storage.getWashoutLocation(reportQuery.locationId);
+          if (!location || location.ownerId !== owner.id) {
+            return res.status(403).json({ message: "You can only access reports for your own locations" });
+          }
+        }
+      }
+
+      const report = await buildOwnerReport(storage, {
+        userId: user.id,
+        role: user.role || "owner",
+        owner: owner || undefined,
+      }, reportQuery);
+
+      if ((req.query.format as string | undefined) === "csv") {
+        const csv = reportResponseToCsv(report);
+        const filename = `owner-report-${new Date().toISOString().split("T")[0]}.csv`;
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return res.send(csv);
+      }
+
+      res.json(reportResponseToJsonWithColumns(report));
+    } catch (error: any) {
+      const statusCode = error?.message === "Forbidden" ? 403 : 500;
+      console.error("Error generating owner report:", error);
+      res.status(statusCode).json({ message: error?.message || "Failed to generate owner report" });
+    }
+  });
+
+  app.get("/api/reports/driver", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || !["driver", "admin", "super_admin"].includes(user.role || "")) {
+        return res.status(403).json({ message: "Driver or admin access required" });
+      }
+
+      const reportQuery: ReportQueryInput = {
+        dateRange: req.query.dateRange as string | undefined,
+        startDate: req.query.startDate as string | undefined,
+        endDate: req.query.endDate as string | undefined,
+        driverId: req.query.driverId as string | undefined,
+        ownerId: req.query.ownerId as string | undefined,
+        locationId: req.query.locationId as string | undefined,
+        paymentStatus: req.query.paymentStatus as string | undefined,
+        washoutStatus: req.query.washoutStatus as string | undefined,
+      };
+
+      if (reportQuery.dateRange === "custom" && (!reportQuery.startDate || !reportQuery.endDate)) {
+        return res.status(400).json({ message: "Custom date range requires startDate and endDate" });
+      }
+
+      const driver = user.role === "driver" ? await storage.getDriver(user.id) : null;
+      if (user.role === "driver") {
+        if (!driver) {
+          return res.status(404).json({ message: "Driver not found" });
+        }
+        if (reportQuery.driverId && reportQuery.driverId !== driver.id) {
+          return res.status(403).json({ message: "You can only access reports for your own driver account" });
+        }
+      }
+
+      const report = await buildDriverReport(storage, {
+        userId: user.id,
+        role: user.role || "driver",
+        driver: driver || undefined,
+      }, reportQuery);
+
+      if ((req.query.format as string | undefined) === "csv") {
+        const csv = reportResponseToCsv(report);
+        const filename = `driver-report-${new Date().toISOString().split("T")[0]}.csv`;
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return res.send(csv);
+      }
+
+      res.json(reportResponseToJsonWithColumns(report));
+    } catch (error: any) {
+      const statusCode = error?.message === "Forbidden" ? 403 : 500;
+      console.error("Error generating driver report:", error);
+      res.status(statusCode).json({ message: error?.message || "Failed to generate driver report" });
     }
   });
 

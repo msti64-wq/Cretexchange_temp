@@ -21,6 +21,7 @@ const DriverProfile = lazy(() => import("@/pages/driver/profile"));
 const DriverCheckIn = lazy(() => import("@/pages/driver/check-in"));
 const DriverWallet = lazy(() => import("@/pages/driver/wallet"));
 const DriverNotifications = lazy(() => import("@/pages/driver/notifications"));
+const DriverReports = lazy(() => import("@/pages/driver/reports"));
 
 // Owner pages
 const OwnerDashboard = lazy(() => import("@/pages/owner/dashboard"));
@@ -32,6 +33,7 @@ const OwnerSubscribe = lazy(() => import("@/pages/owner/subscribe"));
 const OwnerPaymentMethods = lazy(() => import("@/pages/owner/payment-methods"));
 const OwnerWallet = lazy(() => import("@/pages/owner/wallet"));
 const OwnerNotifications = lazy(() => import("@/pages/owner/notifications"));
+const OwnerReports = lazy(() => import("@/pages/owner/reports"));
 
 // Admin pages
 const AdminDashboard = lazy(() => import("@/pages/admin/dashboard"));
@@ -49,6 +51,7 @@ const AdminReconciliation = lazy(() => import("@/pages/admin/reconciliation"));
 const AdminBillingSettings = lazy(() => import("@/pages/admin/billing-settings"));
 const AdminLottery = lazy(() => import("@/pages/admin/lottery"));
 const SuperAdminLotteryDashboard = lazy(() => import("@/pages/super-admin/lottery-dashboard"));
+const AdminReports = lazy(() => import("@/pages/admin/reports"));
 
 // Wrapper components for Register with preselected roles
 const GeneralRegister = (props: RouteComponentProps) => <Register />;
@@ -107,6 +110,7 @@ function Router() {
           <Route path="/wallet" component={DriverWallet} />
           <Route path="/notifications" component={DriverNotifications} />
           <Route path="/profile" component={DriverProfile} />
+          <Route path="/reports" component={DriverReports} />
           <Route path="/check-in/:locationId?" component={DriverCheckIn} />
           <Route component={NotFound} />
         </Switch>
@@ -128,6 +132,7 @@ function Router() {
           <Route path="/profile" component={OwnerProfile} />
           <Route path="/subscribe" component={OwnerSubscribe} />
           <Route path="/payment-methods" component={OwnerPaymentMethods} />
+          <Route path="/reports" component={OwnerReports} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
@@ -150,6 +155,7 @@ function Router() {
           <Route path="/billing-settings" component={AdminBillingSettings} />
           <Route path="/lottery" component={AdminLottery} />
           <Route path="/lottery-dashboard" component={SuperAdminLotteryDashboard} />
+          <Route path="/reports" component={AdminReports} />
           <Route path="/settings" component={AdminSettings} />
           <Route path="/profile" component={AdminProfile} />
           <Route path="/service-accounts" component={ServiceAccountsPage} />

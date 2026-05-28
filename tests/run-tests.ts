@@ -30,6 +30,8 @@ process.env.PRIVATE_OBJECT_DIR =
 process.env.PUBLIC_OBJECT_SEARCH_PATHS =
   process.env.PUBLIC_OBJECT_SEARCH_PATHS || "public";
 
+await import("./reports.test.ts");
+
 function createResponse() {
   return {
     statusCode: 200,
