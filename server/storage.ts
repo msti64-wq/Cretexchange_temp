@@ -96,7 +96,8 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { summarizeDatabaseError } from "./dbErrors";
-import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
 import type { PhotoFingerprintCandidate } from "@shared/photoFingerprint";
 
@@ -209,8 +210,11 @@ export interface IStorage {
 
   // Payment operations
   createPayment(payment: InsertPayment): Promise<Payment>;
+  getPaymentById(paymentId: string): Promise<Payment | undefined>;
   getPaymentsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { location: WashoutLocation } })[]>;
   getPaymentsByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { driver: Driver & { user: User } } })[]>;
+  getPaymentsAwaitingDriverStripe(): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User }; owner: Owner & { user: User }; location: WashoutLocation })[]>;
+  getPaymentsAwaitingDriverStripeByDriver(driverId: string): Promise<(Payment & { activity: WashoutActivity & { location: WashoutLocation }; owner: Owner & { user: User } })[]>;
   updatePaymentStatus(paymentId: string, status: string, columnTransferId?: string): Promise<Payment>;
   getAllPayments(startDate?: Date, endDate?: Date): Promise<(Payment & { driver: Driver & { user: User }; owner: Owner & { user: User }; activity: WashoutActivity })[]>;
 
@@ -1670,6 +1674,14 @@ export class DatabaseStorage implements IStorage {
     return newPayment;
   }
 
+  async getPaymentById(paymentId: string): Promise<Payment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.id, paymentId));
+    return payment;
+  }
+
   async getPaymentsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { location: WashoutLocation } })[]> {
     const conditions = [eq(payments.driverId, driverId)];
     
@@ -1728,6 +1740,60 @@ export class DatabaseStorage implements IStorage {
         }
       }
     }));
+  }
+
+  async getPaymentsAwaitingDriverStripe(): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User }; owner: Owner & { user: User }; location: WashoutLocation })[]> {
+    const driverUsers = alias(users, "payment_driver_users");
+    const ownerUsers = alias(users, "payment_owner_users");
+
+    return await db
+      .select({
+        ...getTableColumns(payments),
+        activity: washoutActivities,
+        driver: drivers,
+        driverUser: driverUsers,
+        owner: owners,
+        ownerUser: ownerUsers,
+        location: washoutLocations,
+      })
+      .from(payments)
+      .leftJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
+      .leftJoin(drivers, eq(payments.driverId, drivers.id))
+      .leftJoin(driverUsers, eq(drivers.userId, driverUsers.id))
+      .leftJoin(owners, eq(payments.ownerId, owners.id))
+      .leftJoin(ownerUsers, eq(owners.userId, ownerUsers.id))
+      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .where(
+        and(
+          inArray(payments.status, ["awaiting_driver_stripe", "pending_driver_onboarding"]),
+          eq(payments.payoutStatus, "not_started"),
+        ),
+      ) as any;
+  }
+
+  async getPaymentsAwaitingDriverStripeByDriver(driverId: string): Promise<(Payment & { activity: WashoutActivity & { location: WashoutLocation }; owner: Owner & { user: User } })[]> {
+    const ownerUsers = alias(users, "payment_owner_users");
+
+    return await db
+      .select({
+        ...getTableColumns(payments),
+        activity: washoutActivities,
+        owner: owners,
+        ownerUser: ownerUsers,
+        location: washoutLocations,
+      })
+      .from(payments)
+      .leftJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
+      .leftJoin(owners, eq(payments.ownerId, owners.id))
+      .leftJoin(ownerUsers, eq(owners.userId, ownerUsers.id))
+      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .where(
+        and(
+          eq(payments.driverId, driverId),
+          inArray(payments.status, ["awaiting_driver_stripe", "pending_driver_onboarding"]),
+          eq(payments.payoutStatus, "not_started"),
+        ),
+      ) as any;
   }
 
   async updatePaymentStatus(paymentId: string, status: string, stripePaymentIntentId?: string): Promise<Payment> {

@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2, RefreshCw, Navigation, CreditCard, Truck, Route, Loader2, ShieldAlert, ArrowRight, Activity, MapPinned } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
+import { getDriverStripeSetupMessage } from "@shared/driverPaymentStatus";
 
 function DriverDashboardSkeleton() {
   return (
@@ -89,6 +90,10 @@ export default function DriverDashboard() {
   const recentActivities = (dashboardData as any)?.recentActivities || null;
   const lotteryEntryCount = (dashboardData as any)?.lotteryEntryCount || 0;
   const lotteryActive = (dashboardData as any)?.lotteryActive ?? false;
+  const awaitingDriverStripePayments = Array.isArray((dashboardData as any)?.awaitingDriverStripePayments)
+    ? (dashboardData as any).awaitingDriverStripePayments
+    : [];
+  const awaitingDriverStripeCount = Number((dashboardData as any)?.awaitingDriverStripeCount || 0);
 
   // Calculate rejected washouts and their total amount
   const rejectedWashouts = recentActivities?.filter((activity: any) => 
@@ -307,6 +312,47 @@ export default function DriverDashboard() {
                 >
                   Complete Profile
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {awaitingDriverStripeCount > 0 && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+                <CreditCard className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="mb-1 font-semibold text-amber-900 dark:text-amber-100">
+                  Payment setup needed
+                </h3>
+                <p className="mb-3 text-sm text-amber-800 dark:text-amber-200">
+                  {getDriverStripeSetupMessage()}
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => setLocation('/profile')}
+                  className="h-10 bg-amber-600 text-white hover:bg-amber-700"
+                  data-testid="button-complete-stripe-setup"
+                >
+                  Set Up Stripe Payments
+                </Button>
+                <div className="mt-3 space-y-2">
+                  {awaitingDriverStripePayments.slice(0, 3).map((payment: any) => (
+                    <div key={payment.id} className="rounded-xl border border-amber-200 bg-white/80 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium">
+                          {payment.location?.name || payment.activity?.location?.name || "Washout"}
+                        </span>
+                        <span>{formatCurrency(Number(payment.amount || 0) + Number(payment.processingFee || 0))}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                        Awaiting your payment setup before payout can be processed.
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

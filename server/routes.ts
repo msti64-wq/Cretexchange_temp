@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
-import { washoutActivities, withdrawals, walletTransactions, driverWallets, owners, ownerFundingSources, debitCardRequests, ownerWalletTransactions, balanceReconciliations, users } from "../shared/schema";
+import { washoutActivities, withdrawals, walletTransactions, driverWallets, owners, ownerFundingSources, debitCardRequests, ownerWalletTransactions, balanceReconciliations, users, payments } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { getJwtSecret } from "./jwtSecret";
@@ -39,6 +39,7 @@ import { runOwnerBillingNow } from "./ownerBillingRuns";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState, isOwnerProfileComplete } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
+import { isAwaitingDriverStripePaymentStatus, getDriverStripeSetupMessage } from "../shared/driverPaymentStatus";
 import {
   buildDriverReport,
   buildOwnerReport,
@@ -82,12 +83,170 @@ type LotteryWinnerSummary = {
   prize?: string | null;
 };
 
+type DriverStripeReadiness = {
+  ready: boolean;
+  reason?: string;
+  accountId?: string;
+};
+
 function buildLotteryWinnerMessage(winner: LotteryWinnerSummary, monthName: string, year: number): { title: string; message: string } {
   const placeLabel = winner.place === 1 ? "1st Place" : winner.place === 2 ? "2nd Place" : "3rd Place";
   const prizeText = winner.prize ? ` Your prize: ${winner.prize}.` : "";
   return {
     title: `🎉 You Won ${placeLabel} in the ${monthName} ${year} Lottery!`,
     message: `Congratulations! Your ticket ${winner.ticketNumber || ""} was selected as the ${placeLabel} winner of the ${monthName} ${year} lottery.${prizeText} We will be in touch soon to arrange your prize delivery. Thank you for being part of CreteXchange!`,
+  };
+}
+
+async function resolveDriverStripeReadiness(driverUser: User): Promise<DriverStripeReadiness> {
+  if (!stripe) {
+    return { ready: false, reason: "Stripe not configured" };
+  }
+
+  if (!driverUser.stripeConnectAccountId) {
+    return { ready: false, reason: "Driver missing Stripe Connect account" };
+  }
+
+  try {
+    const driverAccount = await stripe.accounts.retrieve(driverUser.stripeConnectAccountId);
+    const transfersCapability = driverAccount.capabilities?.transfers;
+
+    if (transfersCapability !== 'active') {
+      return {
+        ready: false,
+        reason: `Driver transfers capability ${transfersCapability || 'inactive'}`,
+        accountId: driverAccount.id,
+      };
+    }
+
+    return { ready: true, accountId: driverAccount.id };
+  } catch (error: any) {
+    console.error('❌ Failed to inspect driver Stripe account readiness:', {
+      driverUserId: driverUser.id,
+      stripeConnectAccountId: driverUser.stripeConnectAccountId,
+      error: error?.message,
+    });
+    return {
+      ready: false,
+      reason: `Unable to verify driver Stripe readiness: ${error?.message || 'unknown error'}`,
+    };
+  }
+}
+
+async function finalizeChargedWashoutPayment(params: {
+  paymentId: string;
+  paymentIntentId: string;
+  owner: Owner;
+  driver: Driver;
+  driverUser: User;
+  activityId: string;
+  activityLocation?: WashoutLocation | null;
+  ownerFee: number;
+  driverAmount: number;
+  platformFee: number;
+  useCustomBillingModel: boolean;
+  activityDetails: WashoutActivity;
+  businessDate: string;
+}) {
+  const {
+    paymentId,
+    paymentIntentId,
+    owner,
+    driver,
+    driverUser,
+    activityId,
+    activityLocation,
+    ownerFee,
+    driverAmount,
+    platformFee,
+    useCustomBillingModel,
+    activityDetails,
+    businessDate,
+  } = params;
+
+  await storage.updatePaymentStatus(paymentId, 'completed', paymentIntentId);
+  await db
+    .update(payments)
+    .set({
+      payoutStatus: 'completed',
+      updatedAt: new Date(),
+    })
+    .where(eq(payments.id, paymentId));
+
+  try {
+    console.log(`📝 Creating owner wallet transaction for washout ${activityId}:`, {
+      ownerId: owner.id,
+      type: 'washout_charge',
+      amount: ownerFee.toFixed(2),
+      paymentId,
+    });
+    
+    const [insertedTxn] = await db.insert(ownerWalletTransactions).values({
+      ownerId: owner.id,
+      type: 'washout_charge',
+      amount: ownerFee.toFixed(2),
+      balanceBefore: "0.00",
+      balanceAfter: "0.00",
+      description: `Washout payment - ${driverUser?.username || 'Driver'} at ${activityLocation?.name || 'Location'}`,
+      paymentId,
+    }).returning();
+    
+    console.log(`✅ Owner wallet transaction recorded for washout ${activityId}, transaction ID: ${insertedTxn?.id}`);
+  } catch (txnError: any) {
+    console.error(`❌ Failed to record owner wallet transaction for washout ${activityId}:`, txnError);
+    console.error(`   Error message: ${txnError.message}`);
+    console.error(`   Owner ID: ${owner.id}, Payment ID: ${paymentId}`);
+  }
+  
+  if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
+    try {
+      const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
+      const lotteryEnabled = lotteryFlag?.enabled ?? false;
+      if (lotteryEnabled) {
+        const lotteryEntry = await storage.createDriverLotteryEntry({
+          driverId: driver.id,
+          activityId,
+          ownerId: owner.id,
+          entriesEarned: 1,
+        });
+        console.log(`🎰 Lottery entry created for driver ${driver.id}, entry ID: ${lotteryEntry.id}`);
+      } else {
+        console.log(`🎰 Lottery program disabled — no entry created for driver ${driver.id} on washout ${activityId}`);
+      }
+    } catch (lotteryError: any) {
+      console.error(`❌ Failed to create lottery entry for washout ${activityId}:`, lotteryError);
+    }
+  } else {
+    let driverWallet = await storage.getDriverWallet(driver.id);
+    if (!driverWallet) {
+      await storage.createDriverWallet({ driverId: driver.id });
+    }
+    
+    await storage.adjustDriverWalletBalance(driver.id, driverAmount, 0);
+    
+    const updatedWallet = await storage.getDriverWallet(driver.id);
+    const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
+    
+    await storage.createWalletTransaction({
+      driverId: driver.id,
+      amount: driverAmount.toString(),
+      direction: "credit",
+      balanceAfter: newBalance.toString(),
+      currency: "USD",
+      sourceType: "washout",
+      sourceId: activityId,
+      status: "posted",
+      description: `Washout payment for activity ${activityId}`,
+    });
+  }
+
+  return {
+    paymentId,
+    paymentIntentId,
+    businessDate,
+    ownerFee,
+    driverAmount,
+    platformFee,
   };
 }
 
@@ -106,11 +265,7 @@ function buildLotteryParticipantMessage(monthName: string, year: number, winners
 }
 
 // Initialize Stripe only if secret key is available
-const stripe: Stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2025-08-27.basil",
-    })
-  : (null as unknown as Stripe);
+const stripe: Stripe = stripeService.stripe;
 
 /**
  * Validate that an IP string is a valid IPv4 address
@@ -2056,6 +2211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get recent activities
       const recentActivities = await storage.getRecentActivitiesByDriver(driver.id, 5);
+      const awaitingDriverStripePayments = await storage.getPaymentsAwaitingDriverStripeByDriver(driver.id);
 
       const dailyEarnings = todayActivities.reduce((sum, activity) => {
         // Handle both possible data structures from Drizzle joins
@@ -2110,6 +2266,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user: userWithRoleData,
         lotteryEntryCount,
         lotteryActive,
+        awaitingDriverStripePayments: awaitingDriverStripePayments.slice(0, 5),
+        awaitingDriverStripeCount: awaitingDriverStripePayments.length,
       });
     } catch (error) {
       console.error("Error fetching driver dashboard:", error);
@@ -3696,9 +3854,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver user account not found" });
       }
 
+      const driverStripeReadiness = await resolveDriverStripeReadiness(driverUser);
+
       // ========== CHECK BILLING CADENCE TO DETERMINE PAYMENT PROCESSING ==========
       const { billingCadence } = billingSettings;
-      
+
+      if (!driverStripeReadiness.ready) {
+        const deferredReason = driverStripeReadiness.reason || 'Driver Stripe account not ready';
+        console.log(`⏸️ Deferring washout ${id} payment until driver Stripe setup is complete: ${deferredReason}`);
+
+        const payment = await storage.createPayment({
+          activityId: id,
+          driverId: activityDetails.driverId,
+          ownerId: owner.id,
+          amount: driverAmount.toString(),
+          processingFee: platformFee.toFixed(2),
+          washoutServiceFee: (ownerFee - platformFee).toFixed(2),
+          status: 'awaiting_driver_stripe',
+          payoutStatus: 'not_started',
+          deferReason: deferredReason,
+          deferredAt: new Date(),
+          businessDate,
+        });
+
+        const activity = await storage.verifyWashoutActivity(id, userId);
+
+        console.log(`✅ Washout ${id} approved with deferred payment ${payment.id} awaiting driver Stripe setup`, {
+          ownerId: owner.id,
+          activityId: id,
+          driverId: driver.id,
+          paymentStatus: payment.status,
+          payoutStatus: payment.payoutStatus,
+          deferReason: deferredReason,
+        });
+
+        return res.json({
+          ...activity,
+          message: "Washout approved. Payment will be processed once the driver completes payment setup.",
+          paymentStatus: payment.status,
+          payoutStatus: payment.payoutStatus,
+          deferReason: payment.deferReason,
+        });
+      }
+
       // For daily/weekly batch processing, create pending payment and skip immediate processing
       if (billingCadence === 'daily' || billingCadence === 'weekly') {
         console.log(`📅 Owner ${owner.id} uses ${billingCadence} billing cadence - creating pending payment for batch processing`);
@@ -4140,6 +4338,267 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error rejecting activity:", error);
       res.status(500).json({ message: "Failed to reject activity" });
+    }
+  });
+
+  app.post('/api/admin/payments/process-awaiting-driver-stripe', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const paymentId = typeof req.body?.paymentId === 'string' ? req.body.paymentId : null;
+      const awaitingPayments: any[] = paymentId
+        ? [await storage.getPaymentById(paymentId)].filter(Boolean)
+        : await storage.getPaymentsAwaitingDriverStripe();
+
+      if (awaitingPayments.length === 0) {
+        return res.json({
+          message: 'No deferred driver Stripe payments found',
+          processed: 0,
+          skipped: 0,
+          failed: 0,
+          results: [],
+        });
+      }
+
+      const results: Array<Record<string, unknown>> = [];
+      let processed = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (const payment of awaitingPayments) {
+        if (!payment) continue;
+
+        try {
+          const activityDetails = await storage.getWashoutActivity(payment.activityId);
+          if (!activityDetails) {
+            skipped += 1;
+            results.push({
+              paymentId: payment.id,
+              status: 'skipped',
+              reason: 'Activity not found',
+            });
+            continue;
+          }
+
+          const owner = await storage.getOwnerById(payment.ownerId);
+          if (!owner) {
+            skipped += 1;
+            results.push({
+              paymentId: payment.id,
+              status: 'skipped',
+              reason: 'Owner not found',
+            });
+            continue;
+          }
+
+          const ownerUser = await storage.getUser(owner.userId);
+          if (!ownerUser) {
+            skipped += 1;
+            results.push({
+              paymentId: payment.id,
+              status: 'skipped',
+              reason: 'Owner user not found',
+            });
+            continue;
+          }
+
+          const driver = await storage.getDriverById(payment.driverId);
+          if (!driver) {
+            skipped += 1;
+            results.push({
+              paymentId: payment.id,
+              status: 'skipped',
+              reason: 'Driver not found',
+            });
+            continue;
+          }
+
+          const driverUser = await storage.getUser(driver.userId);
+          if (!driverUser) {
+            skipped += 1;
+            results.push({
+              paymentId: payment.id,
+              status: 'skipped',
+              reason: 'Driver user not found',
+            });
+            continue;
+          }
+
+          const readiness = await resolveDriverStripeReadiness(driverUser);
+          if (!readiness.ready) {
+            await db
+              .update(payments)
+              .set({
+                deferReason: readiness.reason || payment.deferReason,
+                updatedAt: new Date(),
+              })
+              .where(eq(payments.id, payment.id));
+
+            skipped += 1;
+            results.push({
+              paymentId: payment.id,
+              status: 'skipped',
+              reason: readiness.reason || 'Driver Stripe not ready',
+              paymentStatus: payment.status,
+              payoutStatus: payment.payoutStatus,
+            });
+            continue;
+          }
+
+          if (!ownerUser.stripeCustomerId || !ownerUser.stripePaymentMethodId) {
+            await db
+              .update(payments)
+              .set({
+                deferReason: 'Owner payment method missing',
+                updatedAt: new Date(),
+              })
+              .where(eq(payments.id, payment.id));
+
+            skipped += 1;
+            results.push({
+              paymentId: payment.id,
+              status: 'skipped',
+              reason: 'Owner payment method missing',
+              paymentStatus: payment.status,
+              payoutStatus: payment.payoutStatus,
+            });
+            continue;
+          }
+
+          const paymentMethod = await stripe.paymentMethods.retrieve(ownerUser.stripePaymentMethodId);
+          if (paymentMethod.type !== 'card' && paymentMethod.type !== 'link') {
+            await db
+              .update(payments)
+              .set({
+                deferReason: `Unsupported payment method type (${paymentMethod.type})`,
+                updatedAt: new Date(),
+              })
+              .where(eq(payments.id, payment.id));
+
+            skipped += 1;
+            results.push({
+              paymentId: payment.id,
+              status: 'skipped',
+              reason: `Unsupported payment method type (${paymentMethod.type})`,
+              paymentStatus: payment.status,
+              payoutStatus: payment.payoutStatus,
+            });
+            continue;
+          }
+
+          const ownerFee = Number(payment.amount) + Number(payment.processingFee);
+          const driverAmount = Number(payment.amount);
+          const platformFee = Number(payment.processingFee);
+
+          await db
+            .update(payments)
+            .set({
+              payoutStatus: 'processing',
+              updatedAt: new Date(),
+            })
+            .where(eq(payments.id, payment.id));
+
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(ownerFee * 100),
+            currency: 'usd',
+            customer: ownerUser.stripeCustomerId,
+            payment_method: ownerUser.stripePaymentMethodId,
+            payment_method_types: ['card', 'link'],
+            capture_method: 'automatic',
+            off_session: true,
+            confirm: true,
+            description: `Washout payment - Activity ${payment.activityId}`,
+            metadata: {
+              activityId: payment.activityId,
+              ownerId: owner.id,
+              driverId: driver.id,
+              driverAmount: driverAmount.toFixed(2),
+              platformFee: platformFee.toFixed(2),
+              businessDate: payment.businessDate || '',
+            },
+            transfer_data: {
+              destination: driverUser.stripeConnectAccountId,
+            },
+            application_fee_amount: Math.round(platformFee * 100),
+          });
+
+          if (paymentIntent.status !== 'succeeded') {
+            await db
+              .update(payments)
+              .set({
+                payoutStatus: 'not_started',
+                deferReason: `Payment status: ${paymentIntent.status}`,
+                updatedAt: new Date(),
+              })
+              .where(eq(payments.id, payment.id));
+
+            skipped += 1;
+            results.push({
+              paymentId: payment.id,
+              status: 'skipped',
+              reason: `Payment status: ${paymentIntent.status}`,
+              paymentStatus: payment.status,
+            });
+            continue;
+          }
+
+          await finalizeChargedWashoutPayment({
+            paymentId: payment.id,
+            paymentIntentId: paymentIntent.id,
+            owner,
+            driver,
+            driverUser,
+            activityId: payment.activityId,
+            activityLocation: activityDetails.locationId ? await storage.getWashoutLocation(activityDetails.locationId) : null,
+            ownerFee,
+            driverAmount,
+            platformFee,
+            useCustomBillingModel: owner.useCustomBillingModel === true,
+            activityDetails,
+            businessDate: payment.businessDate || '',
+          });
+
+          processed += 1;
+          results.push({
+            paymentId: payment.id,
+            status: 'processed',
+            paymentStatus: 'completed',
+            payoutStatus: 'completed',
+            paymentIntentId: paymentIntent.id,
+          });
+        } catch (error: any) {
+          failed += 1;
+          console.error('❌ Failed to process deferred driver Stripe payment:', {
+            paymentId: payment.id,
+            activityId: payment.activityId,
+            ownerId: payment.ownerId,
+            driverId: payment.driverId,
+            error: error?.message,
+          });
+          results.push({
+            paymentId: payment.id,
+            status: 'failed',
+            error: error?.message || 'Unknown error',
+          });
+        }
+      }
+
+      res.json({
+        message: 'Deferred driver Stripe payments processed',
+        processed,
+        skipped,
+        failed,
+        results,
+      });
+    } catch (error: any) {
+      console.error('❌ Error processing deferred driver Stripe payments:', error);
+      res.status(500).json({
+        message: 'Failed to process deferred driver Stripe payments',
+        error: error.message,
+      });
     }
   });
 
@@ -7716,10 +8175,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const weekStats = await storage.getSystemStats(7);
       const monthStats = await storage.getSystemStats(30);
+      const awaitingDriverStripePayments = await storage.getPaymentsAwaitingDriverStripe();
 
       res.json({
         weekStats,
         monthStats,
+        awaitingDriverStripePayments: awaitingDriverStripePayments.slice(0, 5),
+        awaitingDriverStripeCount: awaitingDriverStripePayments.length,
       });
     } catch (error) {
       console.error("Error fetching admin dashboard:", error);

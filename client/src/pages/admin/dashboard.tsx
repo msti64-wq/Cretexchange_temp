@@ -12,7 +12,7 @@ import { StatCard } from "@/components/StatCard";
 import { DashboardMetricCard } from "@/components/DashboardMetricCard";
 import { DashboardSectionCard } from "@/components/DashboardSectionCard";
 import { DashboardEmptyState } from "@/components/DashboardEmptyState";
-import { Users, Building, DollarSign, Download, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck } from "lucide-react";
+import { Users, Building, DollarSign, Download, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -160,6 +160,10 @@ export default function AdminDashboard() {
   }
 
   const { weekStats, monthStats } = dashboardData || {};
+  const awaitingDriverStripePayments = Array.isArray(dashboardData?.awaitingDriverStripePayments)
+    ? dashboardData.awaitingDriverStripePayments
+    : [];
+  const awaitingDriverStripeCount = Number(dashboardData?.awaitingDriverStripeCount || 0);
   const allMessages = Array.isArray(messages) ? messages : [];
   const unreadMessages = allMessages.filter((message: any) => message.status === "unread").length;
   const activeMessages = allMessages.filter((message: any) => message.status !== "resolved").length;
@@ -358,8 +362,53 @@ export default function AdminDashboard() {
               toneClassName="bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
               dataTestId="text-pending-drawings-summary"
             />
+            <DashboardMetricCard
+              title="Driver Stripe Deferred"
+              value={awaitingDriverStripeCount}
+              helper="Approved washouts waiting on driver setup"
+              icon={CreditCard}
+              toneClassName="bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+              dataTestId="text-awaiting-driver-stripe-summary"
+            />
           </div>
         </section>
+
+        {awaitingDriverStripeCount > 0 && (
+          <DashboardSectionCard
+            title="Approved Washouts Waiting on Driver Setup"
+            description="These washouts are approved, but payment will not be processed until the driver finishes Stripe onboarding."
+            icon={<CreditCard className="h-4 w-4 text-primary" />}
+          >
+            <div className="space-y-2">
+              {awaitingDriverStripePayments.slice(0, 5).map((payment: any) => (
+                <div
+                  key={payment.id}
+                  className="rounded-2xl border border-border/70 bg-background/80 p-3 shadow-sm"
+                  data-testid={`deferred-payment-${payment.id}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground">
+                        {payment.driverUser?.username || payment.driver?.user?.username || payment.driver?.user?.firstName || "Driver"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {payment.location?.name || payment.activity?.location?.name || "Washout"} • {payment.activity?.location?.street || payment.location?.street || ""}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-foreground">
+                        {formatCurrency(Number(payment.amount || 0) + Number(payment.processingFee || 0))}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {payment.status}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DashboardSectionCard>
+        )}
 
         {/* Platform Performance Analytics */}
         <DashboardSectionCard

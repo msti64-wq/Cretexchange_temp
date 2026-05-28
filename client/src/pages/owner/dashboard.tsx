@@ -169,7 +169,12 @@ export default function OwnerDashboard() {
     },
     onSuccess: (data, activityId) => {
       console.log("Approval successful:", data);
-      toast({ title: "Washout approved for payment" });
+      toast({
+        title: data?.message || "Washout approved for payment",
+        description: data?.paymentStatus === 'awaiting_driver_stripe'
+          ? "Payment will be processed once the driver completes payment setup."
+          : undefined,
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
       queryClient.invalidateQueries({ predicate: (query) => 
         Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))

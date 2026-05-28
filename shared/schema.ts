@@ -394,6 +394,9 @@ export const payments = pgTable("payments", {
   processingFee: decimal("processing_fee", { precision: 10, scale: 2 }).notNull(),
   washoutServiceFee: decimal("washout_service_fee", { precision: 10, scale: 2 }).notNull().default("8.00"),
   tipAmountCents: integer("tip_amount_cents"), // Optional tip from owner to driver in cents
+  payoutStatus: varchar("payout_status").notNull().default("not_started"),
+  deferReason: text("defer_reason"),
+  deferredAt: timestamp("deferred_at"),
   // Stripe payment tracking - critical for reconciliation
   stripePaymentIntentId: varchar("stripe_payment_intent_id"), // Stripe PaymentIntent ID for this payment
   stripeTransferId: varchar("stripe_transfer_id"), // Stripe Transfer ID to driver

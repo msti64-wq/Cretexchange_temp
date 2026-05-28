@@ -107,6 +107,28 @@ async function withPatchedStorage(
   }
 }
 
+async function withPatchedStripe(
+  patch: Record<string, unknown>,
+  run: () => Promise<void>,
+) {
+  const stripeService = await import("../server/stripeService");
+  const stripeObject = stripeService.stripe as unknown as Record<string, unknown>;
+  const original = new Map<string, unknown>();
+
+  for (const [key, value] of Object.entries(patch)) {
+    original.set(key, stripeObject[key]);
+    stripeObject[key] = value;
+  }
+
+  try {
+    await run();
+  } finally {
+    for (const [key, value] of original.entries()) {
+      stripeObject[key] = value;
+    }
+  }
+}
+
 function makeUser(overrides: Record<string, unknown> = {}) {
   return {
     id: "user_1",
@@ -1858,12 +1880,14 @@ test("owner verify approves legacy pending washouts and falls back when driver S
         lastName: "One",
         stripeConnectAccountId: null,
       }),
-      createPayment: async () => {
-        createdPayment = true;
-        return {
-          id: "payment_1",
-        };
-      },
+            createPayment: async () => {
+              createdPayment = true;
+              return {
+                id: "payment_1",
+                status: "awaiting_driver_stripe",
+                payoutStatus: "not_started",
+              };
+            },
       verifyWashoutActivity: async () => {
         verified = true;
         return {
@@ -1895,8 +1919,363 @@ test("owner verify approves legacy pending washouts and falls back when driver S
       assert.equal(verified, true);
       assert.equal(createdPayment, true);
       assert.equal((res.body as { status?: string }).status, "verified");
+      assert.equal((res.body as { paymentStatus?: string }).paymentStatus, "awaiting_driver_stripe");
+      assert.equal((res.body as { payoutStatus?: string }).payoutStatus, "not_started");
+      assert.match(String((res.body as { message?: string }).message || ""), /payment will be processed once the driver completes payment setup/i);
     },
   );
+});
+
+test("owner verify charges normally when driver Stripe is ready", async () => {
+  const { app, puts } = createRouteRegistry();
+  let createdPayment: Record<string, unknown> | null = null;
+  let walletCredits = 0;
+
+  await withMockedDb([[]], async (mock) => {
+    await withPatchedStripe(
+      {
+        accounts: {
+          retrieve: async () => ({
+            id: "acct_driver_1",
+            capabilities: { transfers: "active" },
+          }),
+        },
+        paymentMethods: {
+          retrieve: async () => ({
+            id: "pm_owner_1",
+            type: "card",
+            card: { brand: "visa", last4: "4242" },
+          }),
+        },
+        paymentIntents: {
+          create: async () => ({
+            id: "pi_1",
+            status: "succeeded",
+          }),
+        },
+      },
+      async () => {
+        await withPatchedStorage(
+          {
+            getOwner: async () => ({
+              id: "owner_1",
+              userId: "user_1",
+              useCustomBillingModel: false,
+              customWashoutRate: null,
+              stripeCustomerId: "cus_owner_1",
+              stripePaymentMethodId: "pm_owner_1",
+            }),
+            getWashoutActivity: async () => ({
+              id: "activity_1",
+              locationId: "location_1",
+              status: "pending",
+              amount: "10.00",
+              driverId: "driver_row_1",
+              serviceType: "washout",
+            }),
+            getWashoutLocation: async () => ({
+              id: "location_1",
+              ownerId: "owner_1",
+              name: "Site A",
+            }),
+            getOwnerBillingSettings: async () => ({
+              billingCadence: "immediate",
+              billingTimezone: "America/Chicago",
+              billingCutoffTime: "23:59:00",
+            }),
+            calculateBusinessDateForOwner: async () => "2026-05-28",
+            getDriverById: async () => ({
+              id: "driver_row_1",
+              userId: "driver_user_1",
+            }),
+            getUserById: async () => ({
+              id: "driver_user_1",
+              username: "driver1",
+              firstName: "Driver",
+              lastName: "One",
+              stripeConnectAccountId: "acct_driver_1",
+            }),
+            getDriverWallet: async () => null,
+            createDriverWallet: async () => ({ id: "wallet_1" }),
+            adjustDriverWalletBalance: async () => undefined,
+            createWalletTransaction: async () => undefined,
+            createPayment: async (payment: Record<string, unknown>) => {
+              createdPayment = payment;
+              return {
+                id: "payment_1",
+                ...payment,
+              } as any;
+            },
+            updatePaymentStatus: async () => ({
+              id: "payment_1",
+              status: "completed",
+            }),
+            verifyWashoutActivity: async () => ({
+              id: "activity_1",
+              locationId: "location_1",
+              status: "verified",
+              amount: "10.00",
+              driverId: "driver_row_1",
+              serviceType: "washout",
+            }),
+          },
+          async () => {
+            const { registerRoutes } = await import("../server/routes");
+            await registerRoutes(app as never);
+            const route = puts.get("/api/owners/activities/:id/verify");
+            assert.equal(typeof route, "function");
+
+            const res = createResponse();
+            await route!(
+              {
+                params: { id: "activity_1" },
+                user: { id: "user_1" },
+              },
+              res,
+            );
+
+            assert.equal(res.statusCode, 200);
+            assert.equal((res.body as { status?: string }).status, "verified");
+            assert.equal(createdPayment?.status, "completed");
+          },
+        );
+      },
+    );
+  });
+});
+
+test("driver dashboard shows approved washouts awaiting Stripe setup", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getDriver: async () => ({
+        id: "driver_row_1",
+        userId: "driver_user_1",
+        truckNumber: "Truck 1",
+      }),
+      getActivitiesByDriver: async () => [],
+      getDriverStats: async () => ({ totalEarnings: 0, totalWashouts: 0, avgPerWashout: 0 }),
+      getRecentActivitiesByDriver: async () => [],
+      getUser: async () => ({
+        id: "driver_user_1",
+        username: "driver1",
+        firstName: "Driver",
+        lastName: "One",
+      }),
+      getFeatureFlag: async () => ({ enabled: false }),
+      getDriverLotteryEntryCount: async () => 0,
+      getPaymentsAwaitingDriverStripeByDriver: async () => ([
+        {
+          id: "payment_1",
+          amount: "10.00",
+          processingFee: "5.00",
+          status: "awaiting_driver_stripe",
+          payoutStatus: "not_started",
+          location: { name: "Site A" },
+          activity: { locationId: "location_1" },
+        },
+      ]),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/drivers/dashboard");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "driver_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { awaitingDriverStripeCount?: number }).awaitingDriverStripeCount, 1);
+      assert.equal(
+        (res.body as { awaitingDriverStripePayments?: Array<{ status?: string }> }).awaitingDriverStripePayments?.[0]?.status,
+        "awaiting_driver_stripe",
+      );
+    },
+  );
+});
+
+test("admin dashboard shows payments awaiting driver Stripe setup", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "admin",
+      }),
+      getSystemStats: async () => ({ totalEarnings: 0, totalWashouts: 0, totalDrivers: 0, totalOwners: 0 }),
+      getPaymentsAwaitingDriverStripe: async () => ([
+        {
+          id: "payment_1",
+          amount: "10.00",
+          processingFee: "5.00",
+          status: "awaiting_driver_stripe",
+          payoutStatus: "not_started",
+          driverUser: { username: "driver1" },
+          activity: { location: { name: "Site A", street: "1 Main St" } },
+          location: { name: "Site A", street: "1 Main St" },
+        },
+      ]),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/dashboard");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { awaitingDriverStripeCount?: number }).awaitingDriverStripeCount, 1);
+    },
+  );
+});
+
+test("deferred driver Stripe payment can be processed once the driver is ready", async () => {
+  const { app, posts } = createRouteRegistry();
+  let paymentStatusUpdates: Array<Record<string, unknown>> = [];
+
+  await withMockedDb([[]], async (mock) => {
+    await withPatchedStripe(
+      {
+        accounts: {
+          retrieve: async () => ({
+            id: "acct_driver_1",
+            capabilities: { transfers: "active" },
+          }),
+        },
+        paymentMethods: {
+          retrieve: async () => ({
+            id: "pm_owner_1",
+            type: "card",
+            card: { brand: "visa", last4: "4242" },
+          }),
+        },
+        paymentIntents: {
+          create: async () => ({
+            id: "pi_deferred_1",
+            status: "succeeded",
+          }),
+        },
+      },
+      async () => {
+        await withPatchedStorage(
+          {
+            getPaymentById: async () => ({
+              id: "payment_1",
+              activityId: "activity_1",
+              driverId: "driver_row_1",
+              ownerId: "owner_1",
+              amount: "10.00",
+              processingFee: "5.00",
+              washoutServiceFee: "5.00",
+              payoutStatus: "not_started",
+              status: "awaiting_driver_stripe",
+              businessDate: "2026-05-28",
+            }),
+            getWashoutActivity: async () => ({
+              id: "activity_1",
+              locationId: "location_1",
+              status: "verified",
+              amount: "10.00",
+              driverId: "driver_row_1",
+              serviceType: "washout",
+            }),
+            getWashoutLocation: async () => ({
+              id: "location_1",
+              ownerId: "owner_1",
+              name: "Site A",
+              street: "1 Main St",
+            }),
+            getOwnerById: async () => ({
+              id: "owner_1",
+              userId: "user_owner_1",
+              useCustomBillingModel: false,
+              customWashoutRate: null,
+              stripeCustomerId: "cus_owner_1",
+              stripePaymentMethodId: "pm_owner_1",
+            }),
+            getUser: async (id: string) => {
+              if (id === "admin_1") {
+                return {
+                  id: "admin_1",
+                  username: "admin1",
+                  role: "admin",
+                };
+              }
+              if (id === "user_owner_1") {
+                return {
+                  id: "user_owner_1",
+                  username: "owner1",
+                  firstName: "Owner",
+                  lastName: "One",
+                  stripeCustomerId: "cus_owner_1",
+                  stripePaymentMethodId: "pm_owner_1",
+                };
+              }
+              return {
+                id: "driver_user_1",
+                username: "driver1",
+                firstName: "Driver",
+                lastName: "One",
+                stripeConnectAccountId: "acct_driver_1",
+              };
+            },
+            getDriverById: async () => ({
+              id: "driver_row_1",
+              userId: "driver_user_1",
+            }),
+            getDriverWallet: async () => null,
+            createDriverWallet: async () => ({ id: "wallet_1" }),
+            adjustDriverWalletBalance: async () => undefined,
+            createWalletTransaction: async () => undefined,
+            createDriverLotteryEntry: async () => ({ id: "lottery_1" }),
+            updatePaymentStatus: async () => ({
+              id: "payment_1",
+              status: "completed",
+            }),
+          },
+          async () => {
+            const { registerRoutes } = await import("../server/routes");
+            await registerRoutes(app as never);
+            const route = posts.get("/api/admin/payments/process-awaiting-driver-stripe");
+            assert.equal(typeof route, "function");
+
+            const res = createResponse();
+            await route!(
+              {
+                body: { paymentId: "payment_1" },
+                user: { id: "admin_1", role: "admin" },
+              },
+              res,
+            );
+
+            assert.equal(res.statusCode, 200);
+            assert.equal((res.body as { processed?: number }).processed, 1);
+            assert.equal((res.body as { skipped?: number }).skipped, 0);
+            assert.equal((res.body as { failed?: number }).failed, 0);
+            paymentStatusUpdates = mock.updates;
+          },
+        );
+      },
+    );
+  });
+
+  assert.ok(paymentStatusUpdates.length > 0);
 });
 
 test("owner verify is idempotent for lottery entry creation on retry", async () => {
@@ -1905,101 +2284,114 @@ test("owner verify is idempotent for lottery entry creation on retry", async () 
   let lotteryEntryCalls = 0;
 
   await withMockedDb([[]], async () => {
-    await withPatchedStorage(
+    await withPatchedStripe(
       {
-        getOwner: async () => ({
-          id: "owner_1",
-          userId: "user_1",
-          useCustomBillingModel: true,
-          customWashoutRate: "12.00",
-        }),
-        getWashoutActivity: async () => ({
-          id: "activity_1",
-          locationId: "location_1",
-          status: activityStatus,
-          amount: "10.00",
-          driverId: "driver_row_1",
-          serviceType: "washout",
-        }),
-        getWashoutLocation: async () => ({
-          id: "location_1",
-          ownerId: "owner_1",
-        }),
-        getOwnerBillingSettings: async () => ({
-          billingCadence: "weekly",
-          billingTimezone: "America/Chicago",
-          billingCutoffTime: "23:59:00",
-        }),
-        calculateBusinessDateForOwner: async () => "2026-05-22",
-        getDriverById: async () => ({
-          id: "driver_row_1",
-          userId: "driver_user_1",
-        }),
-        getUserById: async () => ({
-          id: "driver_user_1",
-          username: "driver1",
-          firstName: "Driver",
-          lastName: "One",
-        }),
-        getFeatureFlag: async () => ({ enabled: true }),
-        createPayment: async () => ({
-          id: "payment_1",
-        }),
-        verifyWashoutActivity: async () => {
-          activityStatus = "verified";
-          return {
-            id: "activity_1",
-            locationId: "location_1",
-            status: "verified",
-            amount: "10.00",
-            driverId: "driver_row_1",
-            serviceType: "washout",
-          };
-        },
-        createDriverLotteryEntry: async () => {
-          lotteryEntryCalls += 1;
-          return {
-            id: "lottery_entry_1",
-            driverId: "driver_row_1",
-            activityId: "activity_1",
-            ownerId: "owner_1",
-            ticketNumber: "CX-202605-0001",
-            entriesEarned: 1,
-            lotteryMonth: 5,
-            lotteryYear: 2026,
-            isArchived: false,
-          };
+        accounts: {
+          retrieve: async () => ({
+            id: "acct_driver_1",
+            capabilities: { transfers: "active" },
+          }),
         },
       },
       async () => {
-        const { registerRoutes } = await import("../server/routes");
-        await registerRoutes(app as never);
-        const route = puts.get("/api/owners/activities/:id/verify");
-        assert.equal(typeof route, "function");
-
-        const firstRes = createResponse();
-        await route!(
+        await withPatchedStorage(
           {
-            params: { id: "activity_1" },
-            user: { id: "user_1" },
+            getOwner: async () => ({
+              id: "owner_1",
+              userId: "user_1",
+              useCustomBillingModel: true,
+              customWashoutRate: "12.00",
+            }),
+            getWashoutActivity: async () => ({
+              id: "activity_1",
+              locationId: "location_1",
+              status: activityStatus,
+              amount: "10.00",
+              driverId: "driver_row_1",
+              serviceType: "washout",
+            }),
+            getWashoutLocation: async () => ({
+              id: "location_1",
+              ownerId: "owner_1",
+            }),
+            getOwnerBillingSettings: async () => ({
+              billingCadence: "weekly",
+              billingTimezone: "America/Chicago",
+              billingCutoffTime: "23:59:00",
+            }),
+            calculateBusinessDateForOwner: async () => "2026-05-22",
+            getDriverById: async () => ({
+              id: "driver_row_1",
+              userId: "driver_user_1",
+            }),
+            getUserById: async () => ({
+              id: "driver_user_1",
+              username: "driver1",
+              firstName: "Driver",
+              lastName: "One",
+              stripeConnectAccountId: "acct_driver_1",
+            }),
+            getFeatureFlag: async () => ({ enabled: true }),
+            createPayment: async () => ({
+              id: "payment_1",
+            }),
+            verifyWashoutActivity: async () => {
+              activityStatus = "verified";
+              return {
+                id: "activity_1",
+                locationId: "location_1",
+                status: "verified",
+                amount: "10.00",
+                driverId: "driver_row_1",
+                serviceType: "washout",
+              };
+            },
+            createDriverLotteryEntry: async () => {
+              lotteryEntryCalls += 1;
+              return {
+                id: "lottery_entry_1",
+                driverId: "driver_row_1",
+                activityId: "activity_1",
+                ownerId: "owner_1",
+                ticketNumber: "CX-202605-0001",
+                entriesEarned: 1,
+                lotteryMonth: 5,
+                lotteryYear: 2026,
+                isArchived: false,
+              };
+            },
           },
-          firstRes,
-        );
+          async () => {
+            const { registerRoutes } = await import("../server/routes");
+            await registerRoutes(app as never);
+            const route = puts.get("/api/owners/activities/:id/verify");
+            assert.equal(typeof route, "function");
 
-        assert.equal(firstRes.statusCode, 200);
-        assert.equal(lotteryEntryCalls, 1);
+            const firstRes = createResponse();
+            await route!(
+              {
+                params: { id: "activity_1" },
+                user: { id: "user_1" },
+              },
+              firstRes,
+            );
 
-        const secondRes = createResponse();
-        await route!(
-          {
-            params: { id: "activity_1" },
-            user: { id: "user_1" },
+            assert.equal(firstRes.statusCode, 200);
+            assert.equal(lotteryEntryCalls, 1);
+
+            const secondRes = createResponse();
+            await route!(
+              {
+                params: { id: "activity_1" },
+                user: { id: "user_1" },
+              },
+              secondRes,
+            );
+
+            assert.equal(secondRes.statusCode, 409);
+            assert.equal(lotteryEntryCalls, 1);
           },
-          secondRes,
         );
-
-        assert.equal(secondRes.statusCode, 409);
-        assert.equal(lotteryEntryCalls, 1);
       },
     );
   });
