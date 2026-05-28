@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatAddress } from "@shared/addressUtils";
 import { LogoutButton } from "@/components/LogoutButton";
 import { resolveOwnerMembershipState } from "@shared/ownerMembership";
+import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 
 const AUTO_APPROVAL_HOURS = 72;
 
@@ -83,6 +84,28 @@ export default function OwnerDashboard() {
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | '90days' | 'all'>('today');
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const ownerRecord = (user as any)?.roleData || {};
+  const membershipState = resolveOwnerMembershipState(ownerRecord);
+
+  const parseApiError = (error: unknown) => {
+    const rawMessage = error instanceof Error ? error.message : String(error);
+    const payloadMatch = rawMessage.match(/^\d+:\s*([\s\S]*)$/);
+    const payload = payloadMatch?.[1] ?? rawMessage;
+
+    try {
+      const parsed = JSON.parse(payload);
+      if (parsed && typeof parsed.message === "string") {
+        return parsed.message;
+      }
+      if (parsed && typeof parsed.error === "string") {
+        return parsed.error;
+      }
+    } catch {
+      // Fall through to the raw payload.
+    }
+
+    return payload;
+  };
 
   // EMERGENCY: Clear phantom activities on component mount
   useEffect(() => {
@@ -112,8 +135,16 @@ export default function OwnerDashboard() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
+  const { data: allActivitiesData, isLoading: isAllActivitiesLoading, isFetching: isAllActivitiesFetching } = useQuery<any>({
+    queryKey: ['/api/owners/activities?dateRange=all'],
+    refetchInterval: 30000,
+    staleTime: 0,
+    gcTime: 0,
+    enabled: membershipState.dashboardAccessAllowed,
+  });
+
   // Separate query for activities with date range filtering
-  const { data: activitiesData, isLoading: isActivitiesLoading, isFetching: isActivitiesFetching, error: activitiesError, status: activitiesStatus } = useQuery<any>({
+  const { data: activitiesData, error: activitiesError } = useQuery<any>({
     queryKey: [`/api/owners/activities?dateRange=${dateRange}`],
     refetchInterval: 30000, // Refresh every 30 seconds
     staleTime: 0, // Force fresh data
@@ -145,8 +176,9 @@ export default function OwnerDashboard() {
       });
     },
     onError: (error, activityId) => {
-      console.error("Approval failed:", error);
-      toast({ title: "Failed to approve washout", variant: "destructive" });
+      const message = parseApiError(error);
+      console.error("Approval failed:", { activityId, message, error });
+      toast({ title: "Failed to approve washout", description: message, variant: "destructive" });
     },
   });
 
@@ -218,43 +250,35 @@ export default function OwnerDashboard() {
   }
 
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
-  
-  // CRITICAL FIX: Force empty activities when authentication fails to prevent phantom data
-  // Backend now handles phantom activity filtering, so we can trust the API response
+
+  const approvalQueueActivities = Array.isArray(allActivitiesData)
+    ? filterPendingWashoutApprovals(allActivitiesData)
+    : [];
+
   const recentActivities = (isAuthError || isDashboardAuthError) 
     ? [] 
     : Array.isArray(activitiesData) ? activitiesData : [];
-  
-  
 
-  // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
-
-  // Calculate pending payments (awaiting approval)
-  const pendingPayments = recentActivities?.reduce((total: number, activity: any) => {
-    if (activity.status === 'pending') {
-      return total + Number(activity.amount || 0);
-    }
-    return total;
-  }, 0) || 0;
-
-  // Calculate approved payments (verified but not yet paid)
+  const pendingPayments = approvalQueueActivities.reduce((total: number, activity: any) => {
+    return total + Number(activity.amount || 0);
+  }, 0);
+  const pendingCount = approvalQueueActivities.length;
   const approvedPayments = recentActivities?.reduce((total: number, activity: any) => {
     if (activity.status === 'verified') {
       return total + Number(activity.amount || 0);
     }
     return total;
   }, 0) || 0;
-
-  // Calculate rejected payments
   const rejectedPayments = recentActivities?.reduce((total: number, activity: any) => {
     if (activity.status === 'rejected') {
       return total + Number(activity.amount || 0);
     }
     return total;
   }, 0) || 0;
-  const pendingCount = recentActivities?.filter((activity: any) => activity.status === 'pending').length || 0;
   const approvedCount = recentActivities?.filter((activity: any) => activity.status === 'verified').length || 0;
   const rejectedCount = recentActivities?.filter((activity: any) => activity.status === 'rejected').length || 0;
+
+  // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
 
   // Calculate total washouts from recent activities (exclude rejected washouts)
   const totalWashouts = recentActivities?.filter((activity: any) => 
@@ -273,9 +297,6 @@ export default function OwnerDashboard() {
     { label: "Approved", amount: approvedPayments, count: approvedCount },
     { label: "Rejected", amount: rejectedPayments, count: rejectedCount },
   ];
-
-  const ownerRecord = (user as any)?.roleData || {};
-  const membershipState = resolveOwnerMembershipState(ownerRecord);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -515,7 +536,7 @@ export default function OwnerDashboard() {
         >
           <div className="space-y-4">
             {/* 72-hour auto-approval warning */}
-            {recentActivities?.some((a: any) => a.status === 'pending') && (
+            {approvalQueueActivities.some((a: any) => isPendingWashoutApproval(a.status)) && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
                 <div className="flex items-start gap-3">
                   <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -531,7 +552,7 @@ export default function OwnerDashboard() {
               </div>
             )}
             
-            {isActivitiesLoading ? (
+            {isAllActivitiesLoading ? (
               <div className="grid gap-3">
                 {[1, 2, 3].map((item) => (
                   <div key={item} className="rounded-2xl border border-border/70 bg-muted/30 p-4">
@@ -553,13 +574,13 @@ export default function OwnerDashboard() {
                   </div>
                 ))}
               </div>
-            ) : isActivitiesFetching ? (
+            ) : isAllActivitiesFetching ? (
               <div className="space-y-3 opacity-60 transition-opacity">
                 <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-4 py-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Updating activities...
                 </div>
-                {recentActivities.map((activity: any, index: number) => (
+                {approvalQueueActivities.map((activity: any, index: number) => (
                   <div key={activity.id} className="space-y-3 rounded-2xl border border-border/70 bg-muted/30 p-4" data-testid={`card-recent-activity-${index}`}>
                     {/* Previous activity content will be dimmed while fetching */}
                     <div className="flex items-center justify-between gap-3">
@@ -625,7 +646,7 @@ export default function OwnerDashboard() {
                   />
                 </div>
               </div>
-            ) : !recentActivities?.length ? (
+            ) : !approvalQueueActivities.length ? (
               <DashboardEmptyState
                 title="No activity found"
                 description="There are no washouts for the selected period. Change the date range or check back after a driver submits a washout."
@@ -644,7 +665,7 @@ export default function OwnerDashboard() {
                 }
               />
             ) : (
-              recentActivities.map((activity: any, index: number) => (
+              approvalQueueActivities.map((activity: any, index: number) => (
                 <div key={activity.id} className="space-y-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm" data-testid={`card-recent-activity-${index}`}>
                   {/* Header Row - Driver and Amount */}
                   <div className="flex items-center justify-between gap-3">
@@ -715,11 +736,9 @@ export default function OwnerDashboard() {
                           className="text-xs w-fit"
                           data-testid={`badge-activity-status-${index}`}
                         >
-                          {activity.status === 'verified' ? 'Approved' : 
-                           activity.status === 'rejected' ? 'Rejected' : 
-                           'Pending Review'}
+                          {getWashoutApprovalDisplayStatus(activity.status)}
                         </Badge>
-                        {activity.status === 'pending' && activity.checkInTime && (() => {
+                        {isPendingWashoutApproval(activity.status) && activity.checkInTime && (() => {
                           const timeLeft = getTimeUntilAutoApproval(activity.checkInTime);
                           return (
                             <span 
@@ -759,7 +778,7 @@ export default function OwnerDashboard() {
                         </Button>
                         
                         {/* Approval buttons for pending washouts */}
-                        {activity.status === 'pending' && (
+                        {isPendingWashoutApproval(activity.status) && (
                           <>
                             <Button
                               size="sm"
@@ -799,11 +818,9 @@ export default function OwnerDashboard() {
                           className="text-xs"
                           data-testid={`badge-activity-status-${index}`}
                         >
-                          {activity.status === 'verified' ? 'Approved' : 
-                           activity.status === 'rejected' ? 'Rejected' : 
-                           'Pending Review'}
+                          {getWashoutApprovalDisplayStatus(activity.status)}
                         </Badge>
-                        {activity.status === 'pending' && activity.checkInTime && (() => {
+                        {isPendingWashoutApproval(activity.status) && activity.checkInTime && (() => {
                           const timeLeft = getTimeUntilAutoApproval(activity.checkInTime);
                           return (
                             <span 
@@ -842,7 +859,7 @@ export default function OwnerDashboard() {
                         </Button>
                         
                         {/* Approval buttons for pending washouts */}
-                        {activity.status === 'pending' && (
+                        {isPendingWashoutApproval(activity.status) && (
                           <>
                             <Button
                               size="sm"

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
+import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "../shared/washoutApproval";
 
 function makeOwner(overrides: Record<string, unknown> = {}) {
   return {
@@ -82,4 +83,20 @@ test("waived owner with profile complete and card on file can manage locations",
 
   assert.equal(membershipState.dashboardAccessAllowed, true);
   assert.equal(locationState.canManageLocations, true);
+});
+
+test("washout approval helper keeps legacy pending records visible", () => {
+  const queue = filterPendingWashoutApprovals([
+    { id: "old", status: "pending_owner_approval", createdAt: new Date("2026-05-26T10:00:00Z") },
+    { id: "today", status: "pending", createdAt: new Date("2026-05-28T10:00:00Z") },
+    { id: "photo", status: "photo_pending", createdAt: new Date("2026-05-24T10:00:00Z") },
+    { id: "done", status: "verified", createdAt: new Date("2026-05-20T10:00:00Z") },
+  ]);
+
+  assert.equal(queue.length, 3);
+  assert.equal(isPendingWashoutApproval(queue[0].status), true);
+  assert.equal(getWashoutApprovalDisplayStatus(queue[0].status), "Pending Review");
+  assert.equal(isPendingWashoutApproval("photo_pending"), true);
+  assert.equal(isPendingWashoutApproval("submitted"), true);
+  assert.equal(isPendingWashoutApproval("verified"), false);
 });

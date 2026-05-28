@@ -16,6 +16,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2, RefreshCw, Navigation, CreditCard, Truck, Route, Loader2, ShieldAlert, ArrowRight, Activity, MapPinned } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 
 function DriverDashboardSkeleton() {
   return (
@@ -230,11 +231,11 @@ export default function DriverDashboard() {
                     <div className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
                       latestActivityStatus === 'verified'
                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-                        : latestActivityStatus === 'pending'
+                        : isPendingWashoutApproval(latestActivityStatus)
                           ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
                           : 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300'
                     }`}>
-                      {latestActivityStatus === 'verified' ? 'Approved' : latestActivityStatus === 'pending' ? 'Pending' : 'Rejected'}
+                      {getWashoutApprovalDisplayStatus(latestActivityStatus)}
                     </div>
                   </div>
                 </div>
@@ -695,12 +696,11 @@ export default function DriverDashboard() {
                       <div className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
                         (activity.washout_activities?.status || activity.status) === 'verified'
                           ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-                          : (activity.washout_activities?.status || activity.status) === 'pending'
+                          : isPendingWashoutApproval(activity.washout_activities?.status || activity.status)
                             ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
                             : 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300'
                       }`} data-testid={`text-activity-status-${index}`}>
-                        {(activity.washout_activities?.status || activity.status) === 'verified' ? 'Approved & Paid' : 
-                         (activity.washout_activities?.status || activity.status) === 'pending' ? 'Pending Review' : 'Rejected'}
+                        {getWashoutApprovalDisplayStatus(activity.washout_activities?.status || activity.status)}
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
                         {activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName

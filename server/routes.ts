@@ -38,6 +38,7 @@ import { resolveOwnerBillingPolicy, getActiveBillingPolicyLabels } from "./billi
 import { runOwnerBillingNow } from "./ownerBillingRuns";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState, isOwnerProfileComplete } from "../shared/ownerLocationAccess";
+import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
 import {
   buildDriverReport,
   buildOwnerReport,
@@ -3612,10 +3613,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const activityLocation = await storage.getWashoutLocation(activityDetails.locationId) as WashoutLocation | undefined;
       if (!activityLocation || activityLocation.ownerId !== owner.id) {
-        return res.status(403).json({ message: "This washout does not belong to your location." });
+        const failureDetails = {
+          activityId: activityDetails.id,
+          ownerId: owner.id,
+          locationId: activityDetails.locationId,
+          resolvedLocationOwnerId: activityLocation?.ownerId || null,
+          driverId: activityDetails.driverId,
+        };
+        console.error("❌ Washout approval rejected due to ownership mismatch:", failureDetails);
+        return res.status(403).json({
+          message: "This washout does not belong to your location.",
+          details: failureDetails,
+        });
       }
-      if (activityDetails.status !== 'pending') {
-        return res.status(409).json({ message: "This washout has already been processed." });
+      if (!isPendingWashoutApproval(activityDetails.status)) {
+        const failureDetails = {
+          activityId: activityDetails.id,
+          ownerId: owner.id,
+          locationId: activityDetails.locationId,
+          driverId: activityDetails.driverId,
+          currentStatus: activityDetails.status,
+          displayStatus: getWashoutApprovalDisplayStatus(activityDetails.status),
+          requiredTransition: "pending -> verified",
+        };
+        console.error("❌ Washout approval rejected due to invalid state transition:", failureDetails);
+        return res.status(409).json({
+          message: "This washout has already been processed or is not awaiting owner approval.",
+          details: failureDetails,
+        });
       }
 
       // NOTE: Activity verification moved to AFTER successful payment processing
@@ -3754,6 +3779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let paymentProcessedSuccessfully = false;
       let shouldFallbackToPending = false;
       let fallbackReason = '';
+      let fallbackDetails: Record<string, unknown> | null = null;
       
       try {
         console.log(`🔄 Processing immediate Stripe Connect payment for washout ${id} (immediate cadence)...`);
@@ -3763,50 +3789,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`⚠️ Stripe not configured - falling back to pending payment for batch processing`);
           shouldFallbackToPending = true;
           fallbackReason = 'Stripe not configured';
+          fallbackDetails = {
+            ownerId: owner.id,
+            activityId: id,
+            driverId: driver.id,
+            reason: fallbackReason,
+          };
         }
         // Only proceed with Stripe validations and processing if not falling back
         else {
           // Validate owner has Stripe Customer and Payment Method
           if (!owner.stripeCustomerId || !owner.stripePaymentMethodId) {
             const errorMsg = `Owner missing ${!owner.stripeCustomerId ? 'Stripe Customer ID' : 'payment method'}`;
-            console.error(`❌ ${errorMsg} - cannot process payment`);
-            return res.status(400).json({ 
-              message: `Payment failed: ${errorMsg}. Please add a payment method in your profile.` 
-            });
+            console.warn(`⚠️ ${errorMsg} - falling back to pending payment so approval can complete`);
+            shouldFallbackToPending = true;
+            fallbackReason = errorMsg;
+            fallbackDetails = {
+              ownerId: owner.id,
+              activityId: id,
+              driverId: driver.id,
+              reason: fallbackReason,
+            };
           }
           // Validate driver has Stripe Connect Account
           if (!driverUser.stripeConnectAccountId) {
-            console.warn(`⚠️ Driver ${driver.id} (user ${driverUser.id}) missing Stripe Connect Account - cannot process payment`);
-            return res.status(400).json({ 
-              message: 'Payment failed: Driver has not completed payment setup. Please ask the driver to complete their Stripe Connect onboarding before approving this washout.' 
-            });
+            console.warn(`⚠️ Driver ${driver.id} (user ${driverUser.id}) missing Stripe Connect Account - falling back to pending payment`);
+            shouldFallbackToPending = true;
+            fallbackReason = 'Driver missing Stripe Connect account';
+            fallbackDetails = {
+              ownerId: owner.id,
+              activityId: id,
+              driverId: driver.id,
+              reason: fallbackReason,
+            };
           }
           
           // Validate driver's Stripe account has active transfers capability (required for Destination Charges)
-          const driverAccount = await stripe.accounts.retrieve(driverUser.stripeConnectAccountId);
-          const transfersCapability = driverAccount.capabilities?.transfers;
-          
-          if (transfersCapability !== 'active') {
-            console.warn(`⚠️ Driver ${driver.id} (account ${driverAccount.id}) transfers capability is ${transfersCapability || 'not requested'} - cannot receive payments`);
-            console.warn(`   Driver must complete Stripe onboarding to activate transfers capability`);
-            return res.status(400).json({ 
-              message: `Payment failed: Driver's payment account is not fully set up (transfers capability: ${transfersCapability || 'inactive'}). Please ask the driver to complete their Stripe Connect onboarding in their profile page before approving this washout.` 
-            });
+          if (!shouldFallbackToPending) {
+            const driverAccount = await stripe.accounts.retrieve(driverUser.stripeConnectAccountId);
+            const transfersCapability = driverAccount.capabilities?.transfers;
+            
+            if (transfersCapability !== 'active') {
+              console.warn(`⚠️ Driver ${driver.id} (account ${driverAccount.id}) transfers capability is ${transfersCapability || 'not requested'} - falling back to pending payment`);
+              console.warn(`   Driver can still complete washouts without Stripe; approval will continue and payment will queue.`);
+              shouldFallbackToPending = true;
+              fallbackReason = `Driver transfers capability ${transfersCapability || 'inactive'}`;
+              fallbackDetails = {
+                ownerId: owner.id,
+                activityId: id,
+                driverId: driver.id,
+                reason: fallbackReason,
+              };
+            } else {
+              console.log(`✅ Driver ${driver.id} has active transfers capability - proceeding with payment`);
+            }
           }
-          
-          console.log(`✅ Driver ${driver.id} has active transfers capability - proceeding with payment`);
         
-          // All prerequisites met - process payment
-          // Verify payment method is card or link-based (Link uses card details underneath)
-          const paymentMethod = await stripe.paymentMethods.retrieve(owner.stripePaymentMethodId);
-          console.log(`🔍 Owner payment method: type=${paymentMethod.type}, id=${paymentMethod.id}`);
-          
-          if (paymentMethod.type !== 'card' && paymentMethod.type !== 'link') {
-            console.error(`❌ Payment method ${paymentMethod.id} is ${paymentMethod.type}, but card or link required`);
-            return res.status(400).json({ 
-              message: `Payment failed: Unsupported payment method type (${paymentMethod.type}). Please add a credit/debit card.` 
-            });
+          if (!shouldFallbackToPending) {
+            // All prerequisites met - process payment
+            // Verify payment method is card or link-based (Link uses card details underneath)
+            const paymentMethod = await stripe.paymentMethods.retrieve(owner.stripePaymentMethodId);
+            console.log(`🔍 Owner payment method: type=${paymentMethod.type}, id=${paymentMethod.id}`);
+            
+            if (paymentMethod.type !== 'card' && paymentMethod.type !== 'link') {
+              console.warn(`⚠️ Payment method ${paymentMethod.id} is ${paymentMethod.type}, falling back to pending payment`);
+              shouldFallbackToPending = true;
+              fallbackReason = `Unsupported payment method type (${paymentMethod.type})`;
+              fallbackDetails = {
+                ownerId: owner.id,
+                activityId: id,
+                driverId: driver.id,
+                reason: fallbackReason,
+              };
+            }
           }
+          
+          if (!shouldFallbackToPending) {
+            const paymentMethod = await stripe.paymentMethods.retrieve(owner.stripePaymentMethodId);
           
           // Process immediate Stripe Connect Destination Charge
           const cardInfo = paymentMethod.type === 'card' && paymentMethod.card 
@@ -3856,7 +3915,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.warn(`⚠️ Payment Intent ${paymentIntent.id} has status: ${paymentIntent.status} (expected: succeeded), falling back to pending`);
             shouldFallbackToPending = true;
             fallbackReason = `Payment status: ${paymentIntent.status}`;
+            fallbackDetails = {
+              ownerId: owner.id,
+              activityId: id,
+              driverId: driver.id,
+              paymentIntentId: paymentIntent.id,
+              reason: fallbackReason,
+            };
           }
+        }
         } // End of else block (Stripe configured)
       } catch (stripePaymentError: any) {
         console.error(`❌ Error processing Stripe payment for washout ${id}:`, stripePaymentError);
@@ -3865,48 +3932,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`   Decline code:`, stripePaymentError.decline_code);
         console.error(`   Error message:`, stripePaymentError.message);
         
-        // Determine if this is a user-fixable error (card decline) or a system error
-        const isCardDecline = stripePaymentError.decline_code || 
-                              stripePaymentError.code === 'card_declined' ||
-                              stripePaymentError.type === 'StripeCardError';
-        
-        if (isCardDecline) {
-          // Card decline errors - user can fix by using a different card
-          // Map common decline codes to user-friendly messages
-          const declineMessages: Record<string, string> = {
-            'insufficient_funds': 'Your card has insufficient funds. Please use a different card or add funds.',
-            'card_declined': 'Your card was declined by your bank. Please contact your bank or use a different card.',
-            'do_not_honor': 'Your bank declined this transaction. Please contact your bank or use a different card.',
-            'expired_card': 'Your card has expired. Please update your payment method.',
-            'incorrect_cvc': 'The card security code (CVV) is incorrect. Please try again.',
-            'lost_card': 'This card has been reported lost. Please use a different card.',
-            'stolen_card': 'This card has been reported stolen. Please use a different card.',
-            'fraudulent': 'This transaction was flagged as potentially fraudulent. Please contact your bank.',
-            'generic_decline': 'Your card was declined. Please contact your bank or try a different card.',
-            'processing_error': 'There was an error processing your card. Please try again.',
-          };
-          
-          const userMessage = stripePaymentError.decline_code 
-            ? (declineMessages[stripePaymentError.decline_code] || 
-               `Your card was declined (${stripePaymentError.decline_code}). Please try a different card.`)
-            : 'Your card was declined. Please contact your bank or try a different payment method.';
-          
-          // Return error for card declines - user needs to fix their payment method
-          return res.status(400).json({ 
-            message: userMessage
-          });
-        } else {
-          // System/API error - fallback to pending payment for batch processing
-          console.warn(`⚠️ Stripe API error, falling back to pending payment: ${stripePaymentError.message}`);
-          shouldFallbackToPending = true;
-          fallbackReason = `Stripe API error: ${stripePaymentError.message}`;
-        }
+        console.warn(`⚠️ Stripe API error, falling back to pending payment: ${stripePaymentError.message}`);
+        shouldFallbackToPending = true;
+        fallbackReason = `Stripe API error: ${stripePaymentError.message}`;
+        fallbackDetails = {
+          ownerId: owner.id,
+          activityId: id,
+          driverId: driver.id,
+          reason: fallbackReason,
+          stripeErrorType: stripePaymentError.type,
+          stripeErrorCode: stripePaymentError.code,
+          declineCode: stripePaymentError.decline_code,
+        };
       }
       
       // ========== FALLBACK TO PENDING PAYMENT IF NEEDED ==========
       // When Stripe is unavailable or unconfigured for immediate cadence owners
       if (shouldFallbackToPending) {
-        console.log(`⚠️ Falling back to pending payment for washout ${id}: ${fallbackReason}`);
+        console.log(`⚠️ Falling back to pending payment for washout ${id}: ${fallbackReason}`, fallbackDetails || {});
         
         // Create pending payment record for batch processing
         const payment = await storage.createPayment({
@@ -3923,7 +3966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify activity (payment will be processed later in batch)
         const activity = await storage.verifyWashoutActivity(id, userId);
         
-        console.log(`✅ Washout ${id} approved with pending payment ${payment.id} (fallback: ${fallbackReason})`);
+        console.log(`✅ Washout ${id} approved with pending payment ${payment.id} (fallback: ${fallbackReason})`, fallbackDetails || {});
         
         return res.json(activity);
       }
@@ -3931,10 +3974,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ========== STOP HERE IF IMMEDIATE PAYMENT FAILED ==========
       // Don't proceed to database writes if Connect payment failed
       if (!paymentProcessedSuccessfully) {
-        console.error(`❌ Stripe Connect payment failed for washout ${id} - cannot approve activity`);
-        return res.status(500).json({ 
-          message: 'Payment processing failed. Please ensure you have a valid payment method and the driver has completed Stripe Connect onboarding.' 
+        console.error(`❌ Stripe Connect payment failed for washout ${id} - using pending fallback instead`, {
+          ownerId: owner.id,
+          activityId: id,
+          driverId: driver.id,
+          fallbackReason,
+          fallbackDetails,
         });
+        shouldFallbackToPending = true;
+        fallbackReason = fallbackReason || 'Payment processing did not complete';
+        fallbackDetails = fallbackDetails || {
+          ownerId: owner.id,
+          activityId: id,
+          driverId: driver.id,
+          reason: fallbackReason,
+        };
       }
 
       // ========== LEGACY: STRIPE TREASURY TRANSFERS (disabled) ==========
@@ -4068,7 +4122,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(activity);
     } catch (error) {
       console.error("Error verifying activity:", error);
-      res.status(500).json({ message: "Failed to verify activity" });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({
+        message: "Failed to verify activity",
+        error: errorMessage,
+      });
     }
   });
 

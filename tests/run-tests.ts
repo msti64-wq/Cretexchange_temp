@@ -1809,6 +1809,92 @@ test("owner verify rejects already processed washouts", async () => {
         String((res.body as { message?: string }).message || ""),
         /already been processed/i,
       );
+      assert.equal((res.body as { details?: { currentStatus?: string } }).details?.currentStatus, "rejected");
+    },
+  );
+});
+
+test("owner verify approves legacy pending washouts and falls back when driver Stripe is missing", async () => {
+  const { app, puts } = createRouteRegistry();
+  let verified = false;
+  let createdPayment = false;
+
+  await withPatchedStorage(
+    {
+      getOwner: async () => ({
+        id: "owner_1",
+        userId: "user_1",
+        useCustomBillingModel: false,
+        customWashoutRate: null,
+        stripeCustomerId: "cus_owner_1",
+        stripePaymentMethodId: "pm_owner_1",
+      }),
+      getWashoutActivity: async () => ({
+        id: "activity_1",
+        locationId: "location_1",
+        status: "pending_owner_approval",
+        amount: "10.00",
+        driverId: "driver_row_1",
+        serviceType: "washout",
+      }),
+      getWashoutLocation: async () => ({
+        id: "location_1",
+        ownerId: "owner_1",
+      }),
+      getOwnerBillingSettings: async () => ({
+        billingCadence: "immediate",
+        billingTimezone: "America/Chicago",
+        billingCutoffTime: "23:59:00",
+      }),
+      calculateBusinessDateForOwner: async () => "2026-05-28",
+      getDriverById: async () => ({
+        id: "driver_row_1",
+        userId: "driver_user_1",
+      }),
+      getUserById: async () => ({
+        id: "driver_user_1",
+        username: "driver1",
+        firstName: "Driver",
+        lastName: "One",
+        stripeConnectAccountId: null,
+      }),
+      createPayment: async () => {
+        createdPayment = true;
+        return {
+          id: "payment_1",
+        };
+      },
+      verifyWashoutActivity: async () => {
+        verified = true;
+        return {
+          id: "activity_1",
+          locationId: "location_1",
+          status: "verified",
+          amount: "10.00",
+          driverId: "driver_row_1",
+          serviceType: "washout",
+        };
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/owners/activities/:id/verify");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { id: "activity_1" },
+          user: { id: "user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal(verified, true);
+      assert.equal(createdPayment, true);
+      assert.equal((res.body as { status?: string }).status, "verified");
     },
   );
 });
