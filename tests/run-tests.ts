@@ -31,6 +31,7 @@ process.env.PUBLIC_OBJECT_SEARCH_PATHS =
   process.env.PUBLIC_OBJECT_SEARCH_PATHS || "public";
 
 await import("./reports.test.ts");
+await import("./owner-access.test.ts");
 
 function createResponse() {
   return {

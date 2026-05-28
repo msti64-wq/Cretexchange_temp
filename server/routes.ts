@@ -303,14 +303,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let owner = null;
-      let subscriptionStatus = null;
+      let membershipState = null;
       let stripeOnboarding = null;
 
       if (user.role === 'owner') {
         owner = await storage.getOwner(user.id);
         if (owner) {
-          // Get subscription status
-          subscriptionStatus = owner.subscriptionStatus || 'inactive';
+          membershipState = resolveOwnerMembershipState(owner);
           
           // Owners don't have Stripe Connect accounts (only drivers do)
           stripeOnboarding = { note: 'Owners do not use Stripe Connect accounts' };
@@ -334,9 +333,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyName: owner.companyName,
           businessLicense: owner.businessLicense,
           taxId: owner.taxId,
-          subscriptionStatus: owner.subscriptionStatus
+          membershipStatus: membershipState?.membershipStatus || (owner.subscriptionStatus || 'inactive'),
+          dashboardAccessAllowed: membershipState?.dashboardAccessAllowed ?? false,
+          accountStatusMessage: membershipState?.accountStatusMessage || null,
         } : null,
-        subscriptionStatus,
+        membershipState,
         stripeOnboarding
       });
     } catch (error) {

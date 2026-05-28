@@ -17,7 +17,7 @@ import { DashboardEmptyState } from "@/components/DashboardEmptyState";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { DebugPanel } from "@/components/DebugPanel";
-import { Users, DollarSign, MapPin, Clock, ImageIcon, Check, X, MessageCircle, Phone, CreditCard, ClipboardCheck, WalletCards, Building2, ChevronRight, Gauge, Package, MapPinned, Clock3, Loader2, ShieldAlert, Activity } from "lucide-react";
+import { Users, DollarSign, MapPin, Clock, ImageIcon, Check, X, MessageCircle, Phone, ClipboardCheck, WalletCards, Building2, ChevronRight, Gauge, Package, MapPinned, Clock3, Loader2, ShieldAlert, Activity } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,6 +25,7 @@ import { OwnerHeader } from "@/components/OwnerHeader";
 import { useToast } from "@/hooks/use-toast";
 import { formatAddress } from "@shared/addressUtils";
 import { LogoutButton } from "@/components/LogoutButton";
+import { resolveOwnerMembershipState } from "@shared/ownerMembership";
 
 const AUTO_APPROVAL_HOURS = 72;
 
@@ -123,11 +124,6 @@ export default function OwnerDashboard() {
   const isAuthError = activitiesError && activitiesError.toString().includes('401');
   const isDashboardAuthError = activitiesError && activitiesError.toString().includes('Invalid token');
 
-
-  const { data: subscriptionData } = useQuery<any>({
-    queryKey: ['/api/payments/subscription-status'],
-    refetchInterval: 300000, // Refresh every 5 minutes
-  });
 
   const approveMutation = useMutation({
     mutationFn: async (activityId: string) => {
@@ -278,6 +274,9 @@ export default function OwnerDashboard() {
     { label: "Rejected", amount: rejectedPayments, count: rejectedCount },
   ];
 
+  const ownerRecord = (user as any)?.roleData || {};
+  const membershipState = resolveOwnerMembershipState(ownerRecord);
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <OwnerHeader />
@@ -286,28 +285,19 @@ export default function OwnerDashboard() {
         {/* Profile Completion Notice - Temporarily commented out for TypeScript fix */}
         {/* TODO: Re-enable after TypeScript configuration is resolved */}
 
-        {/* Subscription Required Notice */}
-        {(user && subscriptionData && (subscriptionData as any).status !== 'active') && (
-          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm dark:border-sky-900/40 dark:bg-sky-950/20">
+        {!membershipState.dashboardAccessAllowed && membershipState.accountStatusMessage && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white">
-                <CreditCard className="h-4 w-4" />
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+                <ShieldAlert className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="mb-1 font-semibold text-sky-900 dark:text-sky-100">
-                  Subscription Required
+                <h3 className="mb-1 font-semibold text-amber-900 dark:text-amber-100">
+                  {membershipState.membershipStatus === "pending_review" ? "Account Pending Review" : "Account Status"}
                 </h3>
-                <p className="mb-3 text-sm text-sky-800 dark:text-sky-200">
-                  You need an active subscription to add washout locations. Each location requires a subscription to operate on the platform.
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  {membershipState.accountStatusMessage}
                 </p>
-                <Button
-                  size="sm"
-                  onClick={() => setLocation('/subscribe')}
-                  className="h-10 bg-sky-600 text-white hover:bg-sky-700"
-                  data-testid="button-subscribe"
-                >
-                  Start Subscription
-                </Button>
               </div>
             </div>
           </div>
@@ -952,15 +942,15 @@ export default function OwnerDashboard() {
         onClose={() => setIsSupportDialogOpen(false)}
       />
 
-      <DebugPanel
-        currentDateRange={dateRange}
-        activitiesData={activitiesData as any}
-        queryKeys={[
-          '/api/owners/dashboard',
-          `/api/owners/activities?dateRange=${dateRange}`,
-          '/api/payments/subscription-status'
-        ]}
-      />
+        <DebugPanel
+          currentDateRange={dateRange}
+          activitiesData={activitiesData as any}
+          queryKeys={[
+            '/api/owners/dashboard',
+            `/api/owners/activities?dateRange=${dateRange}`,
+            '/api/auth/user'
+          ]}
+        />
 
       <MobileNav role="owner" />
     </div>

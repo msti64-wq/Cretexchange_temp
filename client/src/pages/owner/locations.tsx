@@ -20,9 +20,13 @@ import { formatAddress } from "@shared/addressUtils";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { useAuth } from "@/hooks/useAuth";
+import { resolveOwnerMembershipState } from "@shared/ownerMembership";
+import { resolveOwnerLocationAccessState } from "@shared/ownerLocationAccess";
 
 export default function OwnerLocations() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [locationToDelete, setLocationToDelete] = useState<any>(null);
   const [locationToEdit, setLocationToEdit] = useState<any>(null);
@@ -137,11 +141,9 @@ export default function OwnerLocations() {
     queryKey: ['/api/owners/locations'],
   });
 
-  const { data: subscriptionData } = useQuery<any>({
-    queryKey: ['/api/payments/subscription-status'],
-  });
-
-  const { enabled: waiveOwnerPayment } = useFeatureFlag(FEATURE_FLAGS.WAIVE_OWNER_PAYMENT);
+  const ownerRecord = (user as any)?.roleData || {};
+  const membershipState = resolveOwnerMembershipState(ownerRecord);
+  const locationAccessState = resolveOwnerLocationAccessState(ownerRecord, user as any);
 
   const addLocationMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -474,17 +476,14 @@ export default function OwnerLocations() {
                 size="sm" 
                 data-testid="button-add-location" 
                 className="bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
-                disabled={!waiveOwnerPayment && (subscriptionData as any)?.status !== 'active'}
-                title={!waiveOwnerPayment && (subscriptionData as any)?.status === 'past_due' 
-                  ? "Feature restricted during grace period - payment required"
-                  : !waiveOwnerPayment && (subscriptionData as any)?.status !== 'active' 
-                  ? `Active subscription required (Current: ${(subscriptionData as any)?.status || 'none'}) - Try refreshing page` 
+                disabled={!membershipState.dashboardAccessAllowed || !locationAccessState.canManageLocations}
+                title={!membershipState.dashboardAccessAllowed
+                  ? membershipState.accountStatusMessage || "Your account is pending review."
+                  : !locationAccessState.canManageLocations
+                  ? locationAccessState.blockingMessage || "Complete your owner profile and add a payment method before setting up locations."
                   : ""}
                 onClick={() => {
-                  console.log('Subscription status:', subscriptionData, 'Trial waive:', waiveOwnerPayment);
-                  if (!waiveOwnerPayment && (subscriptionData as any)?.status !== 'active') {
-                    queryClient.invalidateQueries({ queryKey: ['/api/payments/subscription-status'] });
-                  }
+                  console.log('Membership status:', membershipState, 'Location access:', locationAccessState);
                 }}
               >
                 <Plus className="w-4 h-4 mr-1" />
@@ -918,47 +917,15 @@ export default function OwnerLocations() {
       </header>
 
       <main className="p-4 space-y-4">
-        {/* Trial Mode Banner */}
-        {waiveOwnerPayment && (
-          <div className="bg-green-50 dark:bg-green-950/30 border border-green-300 dark:border-green-700 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-white text-xs font-bold">✓</span>
-              </div>
-              <div>
-                <p className="font-medium text-green-800 dark:text-green-200">Trial Period — No Signup or Monthly Fees</p>
-                <p className="text-sm text-green-700 dark:text-green-300 mt-0.5">
-                  No signup fee. No monthly location fee. Owners are charged a minimum of <strong>$5.00 per completed washout</strong>, billed weekly to the card on file.
-                </p>
-              </div>
-            </div>
+        {!membershipState.dashboardAccessAllowed && membershipState.accountStatusMessage && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+            <p className="text-sm text-amber-800 dark:text-amber-200">{membershipState.accountStatusMessage}</p>
           </div>
         )}
 
-        {/* Subscription Required Notice */}
-        {!waiveOwnerPayment && subscriptionData && (subscriptionData as any).status !== 'active' && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-white text-xs font-bold">!</span>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
-                  Active Subscription Required
-                </h3>
-                <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                  You must have an active subscription to add and manage washout locations. Each location requires a subscription to operate.
-                </p>
-                <Button
-                  size="sm"
-                  onClick={() => window.location.href = '/subscribe'}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                  data-testid="button-subscribe-locations"
-                >
-                  Get Subscription
-                </Button>
-              </div>
-            </div>
+        {membershipState.dashboardAccessAllowed && !locationAccessState.canManageLocations && locationAccessState.blockingMessage && (
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm dark:border-sky-900/40 dark:bg-sky-950/20">
+            <p className="text-sm text-sky-800 dark:text-sky-200">{locationAccessState.blockingMessage}</p>
           </div>
         )}
 

@@ -24,9 +24,15 @@ interface WhoamiResponse {
     companyName?: string;
     businessLicense?: string;
     taxId?: string;
-    subscriptionStatus?: string;
+    membershipStatus?: string;
+    dashboardAccessAllowed?: boolean;
+    accountStatusMessage?: string | null;
   };
-  subscriptionStatus?: string;
+  membershipState?: {
+    membershipStatus: string;
+    dashboardAccessAllowed: boolean;
+    accountStatusMessage?: string;
+  } | null;
   stripeOnboarding?: any;
 }
 
@@ -149,7 +155,8 @@ export function DebugPanel({ currentDateRange = 'today', activitiesData, queryKe
                       <>
                         <p><strong>Owner ID:</strong> {whoamiData.owner.id}</p>
                         <p><strong>Company:</strong> {whoamiData.owner.companyName || 'Not set'}</p>
-                        <p><strong>Subscription:</strong> {whoamiData.subscriptionStatus || 'Unknown'}</p>
+                        <p><strong>Membership:</strong> {whoamiData.owner.membershipStatus || 'Unknown'}</p>
+                        <p><strong>Dashboard Access:</strong> {whoamiData.owner.dashboardAccessAllowed ? 'Allowed' : 'Blocked'}</p>
                       </>
                     )}
                   </div>
