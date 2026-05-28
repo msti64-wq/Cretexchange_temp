@@ -97,8 +97,8 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
   },
   {
     key: FEATURE_FLAGS.LOTTERY_ENABLED,
-    description: 'Lottery Program: Allow drivers to earn lottery ticket entries on washout completion. When disabled, no entries are created and the lottery ticket card is hidden from the driver dashboard.',
-    enabled: false, // Disabled during trial — enable when lottery program launches
+    description: 'Lottery Program: Allow drivers to earn lottery ticket entries on washout completion. This is enabled by default unless explicitly disabled by an admin or env override.',
+    enabled: true, // Active by default unless explicitly disabled
     allowedRoles: [],
   },
 ];

@@ -36,6 +36,7 @@ import { TERMS_TYPES } from "@shared/terms";
 import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, resolveLocationMonthlyFeeCents } from "./locationBilling";
 import { resolveOwnerBillingPolicy, getActiveBillingPolicyLabels } from "./billingPolicy";
 import { runOwnerBillingNow } from "./ownerBillingRuns";
+import { LOTTERY_FEATURE_FLAG_KEY, resolveLotteryEnabled } from "./lottery";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState, isOwnerProfileComplete } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
@@ -89,12 +90,47 @@ type DriverStripeReadiness = {
   accountId?: string;
 };
 
+type LotteryStatusSnapshot = {
+  enabled: boolean;
+  source: "env" | "flag" | "default";
+  currentMonth: number;
+  currentYear: number;
+  currentDrawing: any | null;
+  driverEntryCount?: number;
+  currentDrawingMessage: string;
+};
+
 function buildLotteryWinnerMessage(winner: LotteryWinnerSummary, monthName: string, year: number): { title: string; message: string } {
   const placeLabel = winner.place === 1 ? "1st Place" : winner.place === 2 ? "2nd Place" : "3rd Place";
   const prizeText = winner.prize ? ` Your prize: ${winner.prize}.` : "";
   return {
     title: `🎉 You Won ${placeLabel} in the ${monthName} ${year} Lottery!`,
     message: `Congratulations! Your ticket ${winner.ticketNumber || ""} was selected as the ${placeLabel} winner of the ${monthName} ${year} lottery.${prizeText} We will be in touch soon to arrange your prize delivery. Thank you for being part of CreteXchange!`,
+  };
+}
+
+async function buildLotteryStatusSnapshot(driverId?: string): Promise<LotteryStatusSnapshot> {
+  const resolution = await resolveLotteryEnabled(storage);
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const currentDrawing = await storage.getLotteryDrawingByMonthYear(currentMonth, currentYear);
+  const driverEntryCount = driverId
+    ? await storage.getDriverLotteryEntryCount(driverId)
+    : undefined;
+
+  return {
+    enabled: resolution.enabled,
+    source: resolution.source,
+    currentMonth,
+    currentYear,
+    currentDrawing: currentDrawing ?? null,
+    driverEntryCount,
+    currentDrawingMessage: resolution.enabled
+      ? currentDrawing
+        ? `Current drawing is open for ${new Date(currentYear, currentMonth - 1, 1).toLocaleDateString('en-US', { month: 'long' })} ${currentYear}.`
+        : `Lottery is active for ${new Date(currentYear, currentMonth - 1, 1).toLocaleDateString('en-US', { month: 'long' })} ${currentYear}, but no drawing has been posted yet.`
+      : 'Lottery is currently disabled by an administrator.',
   };
 }
 
@@ -200,7 +236,7 @@ async function finalizeChargedWashoutPayment(params: {
   
   if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
     try {
-      const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
+        const lotteryFlag = await storage.getFeatureFlag(LOTTERY_FEATURE_FLAG_KEY);
       const lotteryEnabled = lotteryFlag?.enabled ?? false;
       if (lotteryEnabled) {
         const lotteryEntry = await storage.createDriverLotteryEntry({
@@ -2222,17 +2258,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user data for profile completion checks
       const user = await storage.getUser(userId);
 
-      // Get driver lottery entry count and flag state
+      // Get driver lottery entry count and current draw status
+      let lotteryActive = true;
       let lotteryEntryCount = 0;
-      let lotteryActive = false;
+      let lotteryStatus: LotteryStatusSnapshot | null = null;
       try {
-        const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
-        lotteryActive = lotteryFlag?.enabled ?? false;
-        if (lotteryActive) {
-          lotteryEntryCount = await storage.getDriverLotteryEntryCount(driver.id) || 0;
-        }
+        lotteryStatus = await buildLotteryStatusSnapshot(driver.id);
+        lotteryActive = lotteryStatus.enabled;
+        lotteryEntryCount = lotteryStatus.driverEntryCount ?? 0;
       } catch (e) {
-        console.log('Lottery count unavailable:', e);
+        console.log('Lottery status unavailable:', e);
+        lotteryActive = true;
       }
       
       // Combine user data with driver-specific data for profile completion checks
@@ -2266,6 +2302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user: userWithRoleData,
         lotteryEntryCount,
         lotteryActive,
+        lotteryStatus,
         awaitingDriverStripePayments: awaitingDriverStripePayments.slice(0, 5),
         awaitingDriverStripeCount: awaitingDriverStripePayments.length,
       });
@@ -4016,8 +4053,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
           // CUSTOM BILLING MODEL: Create lottery entry only if lottery program is enabled
           try {
-            const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
-            const lotteryEnabled = lotteryFlag?.enabled ?? false;
+            const lotteryEnabled = (await resolveLotteryEnabled(storage)).enabled;
             if (lotteryEnabled) {
               const lotteryEntry = await storage.createDriverLotteryEntry({
                 driverId: driver.id,
@@ -4345,8 +4381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
         // CUSTOM BILLING MODEL: Create lottery entry instead of cash payment
         try {
-          const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
-          const lotteryEnabled = lotteryFlag?.enabled ?? false;
+          const lotteryEnabled = (await resolveLotteryEnabled(storage)).enabled;
           if (lotteryEnabled) {
             const lotteryEntry = await storage.createDriverLotteryEntry({
               driverId: driver.id,
@@ -4396,8 +4431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
         try {
-          const lotteryFlag = await storage.getFeatureFlag('lottery_enabled');
-          const lotteryEnabled = lotteryFlag?.enabled ?? false;
+          const lotteryEnabled = (await resolveLotteryEnabled(storage)).enabled;
           if (lotteryEnabled) {
             const lotteryEntry = await storage.createDriverLotteryEntry({
               driverId: driver.id,
@@ -8969,7 +9003,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Shared lottery status endpoint for drivers/admins
+  app.get('/api/lottery/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || !['driver', 'admin', 'super_admin'].includes(user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const driver = user.role === 'driver' ? await storage.getDriver(user.id) : undefined;
+      const status = await buildLotteryStatusSnapshot(driver?.id);
+      const monthName = new Date(status.currentYear, status.currentMonth - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+      const currentDrawing = status.currentDrawing ? {
+        ...status.currentDrawing,
+        monthName,
+      } : null;
+
+      res.json({
+        ...status,
+        currentDrawing,
+        currentDrawingMessage: status.enabled
+          ? currentDrawing
+            ? `Current drawing is open for ${monthName} ${status.currentYear}.`
+            : `Lottery is active for ${monthName} ${status.currentYear}, but no drawing has been posted yet.`
+          : 'Lottery is currently disabled by an administrator.',
+      });
+    } catch (error: any) {
+      console.error("Error fetching lottery status:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch lottery status" });
+    }
+  });
+
+  // Alias for driver-owned lottery entries
+  app.get('/api/lottery/entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+      const driver = await storage.getDriver(user.id);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      const { month, year } = req.query;
+      const monthNum = month ? parseInt(month as string) : undefined;
+      const yearNum = year ? parseInt(year as string) : undefined;
+      const entries = await storage.getDriverLotteryEntriesWithDetails(driver.id, monthNum, yearNum);
+      res.json(entries);
+    } catch (error: any) {
+      console.error("Error fetching lottery entries:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch lottery entries" });
+    }
+  });
+
   // ========== ADMIN LOTTERY MANAGEMENT ENDPOINTS ==========
+
+  // Combined admin lottery overview
+  app.get('/api/admin/lottery', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { month, year } = req.query;
+      const now = new Date();
+      const selectedMonth = month ? parseInt(month as string) : now.getMonth() + 1;
+      const selectedYear = year ? parseInt(year as string) : now.getFullYear();
+      const status = await buildLotteryStatusSnapshot();
+      const [entries, totals, months, drawings, pendingDrawings] = await Promise.all([
+        storage.getAllDriverLotteryEntries(new Date(selectedYear, selectedMonth - 1, 1), new Date(selectedYear, selectedMonth, 0, 23, 59, 59)),
+        storage.getDriverLotteryEntryTotals(selectedMonth, selectedYear),
+        storage.getLotteryMonths(),
+        storage.getLotteryDrawings(),
+        storage.getPendingLotteryDrawings(),
+      ]);
+
+      const totalTickets = totals.reduce((sum: number, row: { totalEntries?: number | string | null }) => sum + Number(row.totalEntries || 0), 0);
+
+      res.json({
+        status,
+        selectedMonth,
+        selectedYear,
+        totalEligibleWashouts: entries.length,
+        totalTickets,
+        driversEntered: totals.length,
+        totals,
+        months,
+        drawings,
+        pendingDrawings,
+        currentDrawing: status.currentDrawing,
+      });
+    } catch (error: any) {
+      console.error("Error fetching admin lottery summary:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch lottery summary" });
+    }
+  });
+
+  // Support a friendlier draw endpoint that forwards to the existing execute handler.
+  app.post('/api/admin/lottery/draw', isAuthenticated, async (_req: any, res) => {
+    res.redirect(307, '/api/admin/lottery/execute');
+  });
 
   // Get all lottery entries with driver details (admin/super admin)
   app.get('/api/admin/lottery/entries', isAuthenticated, async (req: any, res) => {
@@ -13237,7 +13372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const definition = FEATURE_FLAG_DEFINITIONS.find(d => d.key === flagKey);
         existingFlag = await storage.createFeatureFlag({
           flagKey,
-          enabled: false,
+          enabled: definition?.enabled ?? false,
           description: definition?.description || flagKey,
           allowedRoles: definition?.allowedRoles || [],
         });

@@ -58,7 +58,7 @@ const STORAGE_KEY = 'lottery_dashboard_reset_date';
 
 export default function SuperAdminLotteryDashboard() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   
   const now = new Date();
@@ -89,6 +89,17 @@ export default function SuperAdminLotteryDashboard() {
 
   const { data: allDrawings } = useQuery<any[]>({
     queryKey: ['/api/admin/lottery/drawings'],
+  });
+
+  const { data: lotteryOverview } = useQuery<any>({
+    queryKey: ['/api/admin/lottery'],
+    queryFn: async () => {
+      const response = await fetch('/api/admin/lottery', {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch lottery overview');
+      return response.json();
+    },
   });
 
   const { data: totals, isLoading: totalsLoading, refetch: refetchTotals } = useQuery<{ driverId: string; driverName: string; totalEntries: number }[]>({
@@ -266,6 +277,20 @@ export default function SuperAdminLotteryDashboard() {
     });
   };
 
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/95 px-5 py-4 shadow-sm">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Loading lottery dashboard</p>
+            <p className="text-xs text-muted-foreground">Verifying access and loading live lottery data</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (user?.role !== 'super_admin') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -332,6 +357,38 @@ export default function SuperAdminLotteryDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto p-4 space-y-6">
+        {lotteryOverview && (
+          <Card className={lotteryOverview.status?.enabled ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/30 dark:bg-emerald-950/20" : "border-amber-200 bg-amber-50/60 dark:border-amber-900/30 dark:bg-amber-950/20"}>
+            <CardContent className="p-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Lottery status</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {lotteryOverview.status?.enabled ? 'Lottery active' : 'Lottery disabled'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {lotteryOverview.currentDrawing
+                    ? `Current drawing: ${MONTH_NAMES[lotteryOverview.currentDrawing.lotteryMonth - 1]} ${lotteryOverview.currentDrawing.lotteryYear}`
+                    : 'No active drawing exists yet.'}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Eligible washouts</p>
+                  <p className="text-2xl font-semibold text-foreground">{lotteryOverview.totalEligibleWashouts || 0}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Tickets / entries</p>
+                  <p className="text-2xl font-semibold text-foreground">{lotteryOverview.totalTickets || 0}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Drivers entered</p>
+                  <p className="text-2xl font-semibold text-foreground">{lotteryOverview.driversEntered || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {resetDate && (
           <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
             <CardContent className="p-4 flex items-center justify-between">

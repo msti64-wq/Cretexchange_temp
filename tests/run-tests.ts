@@ -46,6 +46,16 @@ function createResponse() {
       this.body = payload;
       return this;
     },
+    redirect(statusOrUrl: number | string, url?: string) {
+      if (typeof statusOrUrl === "number") {
+        this.statusCode = statusOrUrl;
+        this.headers.location = url || "";
+      } else {
+        this.statusCode = 302;
+        this.headers.location = statusOrUrl;
+      }
+      return this;
+    },
     set(headers: Record<string, string>) {
       this.headers = { ...this.headers, ...headers };
       return this;
@@ -2169,6 +2179,185 @@ test("driver dashboard shows approved washouts awaiting Stripe setup", async () 
         (res.body as { awaitingDriverStripePayments?: Array<{ status?: string }> }).awaitingDriverStripePayments?.[0]?.status,
         "awaiting_driver_stripe",
       );
+    },
+  );
+});
+
+test("driver dashboard shows lottery as active by default", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getDriver: async () => ({
+        id: "driver_row_1",
+        userId: "driver_user_1",
+        truckNumber: "Truck 1",
+      }),
+      getActivitiesByDriver: async () => [],
+      getDriverStats: async () => ({ totalEarnings: 0, totalWashouts: 0, avgPerWashout: 0 }),
+      getRecentActivitiesByDriver: async () => [],
+      getUser: async () => ({
+        id: "driver_user_1",
+        username: "driver1",
+        firstName: "Driver",
+        lastName: "One",
+      }),
+      getFeatureFlag: async () => undefined,
+      getDriverLotteryEntryCount: async () => 7,
+      getLotteryDrawingByMonthYear: async () => ({
+        id: "drawing_1",
+        lotteryMonth: new Date().getMonth() + 1,
+        lotteryYear: new Date().getFullYear(),
+        drawingDate: new Date().toISOString(),
+      }),
+      getPaymentsAwaitingDriverStripeByDriver: async () => [],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/drivers/dashboard");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "driver_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { lotteryActive?: boolean }).lotteryActive, true);
+      assert.equal((res.body as { lotteryEntryCount?: number }).lotteryEntryCount, 7);
+      assert.equal((res.body as { lotteryStatus?: { enabled?: boolean } }).lotteryStatus?.enabled, true);
+    },
+  );
+});
+
+test("lottery status endpoint defaults to active and returns drawing context", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "driver_user_1",
+        username: "driver1",
+        role: "driver",
+      }),
+      getDriver: async () => ({
+        id: "driver_row_1",
+        userId: "driver_user_1",
+        truckNumber: "Truck 1",
+      }),
+      getFeatureFlag: async () => undefined,
+      getDriverLotteryEntryCount: async () => 4,
+      getLotteryDrawingByMonthYear: async () => ({
+        id: "drawing_1",
+        lotteryMonth: new Date().getMonth() + 1,
+        lotteryYear: new Date().getFullYear(),
+        drawingDate: new Date().toISOString(),
+      }),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/lottery/status");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "driver_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { enabled?: boolean }).enabled, true);
+      assert.equal((res.body as { driverEntryCount?: number }).driverEntryCount, 4);
+      assert.match((res.body as { currentDrawingMessage?: string }).currentDrawingMessage || "", /Current drawing is open|Lottery is active/i);
+    },
+  );
+});
+
+test("admin lottery overview and draw alias require admin access", async () => {
+  const { app, gets, posts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getFeatureFlag: async () => ({ enabled: true }),
+      getLotteryDrawingByMonthYear: async () => null,
+      getDriverLotteryEntryTotals: async () => ([{ driverId: "driver_1", driverName: "Driver One", totalEntries: 3 }]),
+      getLotteryMonths: async () => ([{ month: 5, year: 2026, isArchived: false, totalEntries: 3 }]),
+      getLotteryDrawings: async () => ([{ id: "drawing_1", lotteryMonth: 5, lotteryYear: 2026 }]),
+      getPendingLotteryDrawings: async () => ([]),
+      getAllDriverLotteryEntries: async () => ([{ id: "entry_1" }, { id: "entry_2" }]),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+
+      const overviewRoute = gets.get("/api/admin/lottery");
+      assert.equal(typeof overviewRoute, "function");
+      const overviewRes = createResponse();
+      await overviewRoute!(
+        {
+          user: { id: "admin_1" },
+          query: { month: "5", year: "2026" },
+        },
+        overviewRes,
+      );
+      assert.equal(overviewRes.statusCode, 200);
+      assert.equal((overviewRes.body as { totalEligibleWashouts?: number }).totalEligibleWashouts, 2);
+      assert.equal((overviewRes.body as { totalTickets?: number }).totalTickets, 3);
+      assert.equal((overviewRes.body as { driversEntered?: number }).driversEntered, 1);
+
+      const drawRoute = posts.get("/api/admin/lottery/draw");
+      assert.equal(typeof drawRoute, "function");
+      const drawRes = createResponse();
+      await drawRoute!(
+        {
+          user: { id: "admin_1" },
+        },
+        drawRes,
+      );
+      assert.equal(drawRes.statusCode, 307);
+      assert.equal(drawRes.headers.location, "/api/admin/lottery/execute");
+    },
+  );
+});
+
+test("driver cannot access admin lottery overview", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "driver_user_1",
+        username: "driver1",
+        role: "driver",
+      }),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/lottery");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "driver_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 403);
     },
   );
 });

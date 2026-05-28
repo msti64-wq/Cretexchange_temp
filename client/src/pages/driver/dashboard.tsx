@@ -88,8 +88,15 @@ export default function DriverDashboard() {
   const dailyStats = (dashboardData as any)?.dailyStats || null;
   const weeklyStats = (dashboardData as any)?.weeklyStats || null;
   const recentActivities = (dashboardData as any)?.recentActivities || null;
-  const lotteryEntryCount = (dashboardData as any)?.lotteryEntryCount || 0;
-  const lotteryActive = (dashboardData as any)?.lotteryActive ?? false;
+  const lotteryStatus = (dashboardData as any)?.lotteryStatus || null;
+  const lotteryEntryCount = lotteryStatus?.driverEntryCount ?? ((dashboardData as any)?.lotteryEntryCount || 0);
+  const lotteryActive = lotteryStatus?.enabled ?? ((dashboardData as any)?.lotteryActive ?? true);
+  const currentLotteryDrawing = lotteryStatus?.currentDrawing || null;
+  const currentLotteryStatusMessage = lotteryStatus?.currentDrawingMessage || (
+    lotteryActive
+      ? `Lottery is active for ${new Date().toLocaleDateString('en-US', { month: 'long' })} ${new Date().getFullYear()}.`
+      : 'Lottery is currently disabled by an administrator.'
+  );
   const awaitingDriverStripePayments = Array.isArray((dashboardData as any)?.awaitingDriverStripePayments)
     ? (dashboardData as any).awaitingDriverStripePayments
     : [];
@@ -429,12 +436,10 @@ export default function DriverDashboard() {
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Monthly lottery</p>
                   <h3 className="text-lg font-semibold tracking-tight text-foreground">
-                    {lotteryActive ? 'Entries are active' : 'Lottery coming soon'}
+                    {lotteryActive ? 'Lottery active' : 'Lottery disabled'}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    {lotteryActive
-                      ? `Drawing closes at the end of ${new Date().toLocaleDateString('en-US', { month: 'long' })}`
-                      : 'Complete washouts to stay eligible when the program goes live.'}
+                    {currentLotteryStatusMessage}
                   </p>
                 </div>
               </div>
@@ -443,8 +448,16 @@ export default function DriverDashboard() {
                   {lotteryActive ? lotteryEntryCount : '—'}
                 </div>
                 <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                  {lotteryActive ? 'entries this month' : 'not active yet'}
+                  {lotteryActive ? 'entries this month' : 'not available'}
                 </div>
+                {lotteryActive && currentLotteryDrawing && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    Current drawing: {currentLotteryDrawing.lotteryMonth}/{currentLotteryDrawing.lotteryYear}
+                    {currentLotteryDrawing.drawingDate
+                      ? ` · ${new Date(currentLotteryDrawing.drawingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                      : ''}
+                  </p>
+                )}
               </div>
             </div>
 
