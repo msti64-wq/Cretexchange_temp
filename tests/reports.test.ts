@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildDriverReport, buildOwnerReport } from "../server/reportService";
-import type { Driver, Owner, Payment, User, WashoutActivity, WashoutLocation } from "../shared/schema";
+import { buildBillingAuditReport, billingAuditReportToCsv } from "../server/billingAuditReport";
+import type { BillingBatch, Driver, Owner, Payment, User, WashoutActivity, WashoutLocation, WashoutPhoto } from "../shared/schema";
+import { registerRoutes } from "../server/routes";
 
 function makeUser(overrides: Partial<User> & { id: string; role: "driver" | "owner" | "admin" | "super_admin" }): User {
   return {
@@ -179,6 +181,62 @@ function makeActivity(
   } as any;
 }
 
+function makeBillingBatch(
+  id: string,
+  owner: Owner,
+  businessDate: string,
+  status: BillingBatch["status"],
+  stripePaymentIntentId: string,
+  stripeChargeId?: string | null,
+  stripeBatchTransferId?: string | null,
+): BillingBatch {
+  return {
+    id,
+    ownerId: owner.id,
+    businessDate,
+    cutoffTime: "23:59",
+    timezone: "America/Chicago",
+    totalAmount: "205.00",
+    totalFees: "10.00",
+    paymentCount: 3,
+    stripePaymentIntentId,
+    stripeBatchTransferId: stripeBatchTransferId || null,
+    status,
+    processingStartedAt: null,
+    completedAt: status === "completed" ? new Date(`${businessDate}T15:00:00.000Z`) : null,
+    failureReason: status === "failed" ? "Stripe payment failed" : null,
+    retryCount: 0,
+    metadata: null,
+    createdAt: new Date(`${businessDate}T12:00:00.000Z`),
+    updatedAt: new Date(`${businessDate}T16:00:00.000Z`),
+  } as any;
+}
+
+function makePhoto(id: string, activityId: string, driverId: string, locationId: string, verificationStatus: string): WashoutPhoto {
+  return {
+    id,
+    activityId,
+    driverId,
+    locationId,
+    storageKey: `${id}.jpg`,
+    uploadedAt: new Date(),
+    contentType: "image/jpeg",
+    imageFingerprint: `${id}-fingerprint`,
+    photoTakenAt: new Date(),
+    verificationStatus,
+    verificationReason: null,
+    verificationDistanceMiles: null,
+    duplicateMatchedPhotoId: null,
+    duplicateMatchedUploadedAt: null,
+    duplicateSimilarityScore: null,
+    duplicateHashDistance: null,
+    gpsLatitude: null,
+    gpsLongitude: null,
+    fileSize: null,
+    createdAt: new Date(),
+  } as any;
+}
+
 function makePayment(id: string, activity: WashoutActivity, driver: Driver & { user: User }, owner: Owner, amount: string, status: string, paidAt?: Date, tipAmountCents?: number | null): Payment & { activity: WashoutActivity } {
   return {
     id,
@@ -220,18 +278,47 @@ function createStorageFixture() {
 
   const location1 = makeLocation("location-1", owner1.id, "North Yard");
   const location2 = makeLocation("location-2", owner2.id, "South Yard");
+  const location3 = makeLocation("location-3", owner1.id, "West Yard");
 
   const activityToday = makeActivity("activity-today", { ...driver1, user: driverUser1 }, location1, "verified", "100.00", new Date());
   const activityWeek = makeActivity("activity-week", { ...driver1, user: driverUser1 }, location1, "pending", "75.00", new Date(Date.now() - 3 * 24 * 60 * 60 * 1000));
   const activityOld = makeActivity("activity-old", { ...driver1, user: driverUser1 }, location1, "pending", "50.00", new Date(Date.now() - 10 * 24 * 60 * 60 * 1000));
   const activityOtherOwner = makeActivity("activity-other", { ...driver2, user: driverUser2 }, location2, "verified", "120.00", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000));
+  const activityMultiDriver = makeActivity("activity-multi-driver", { ...driver2, user: driverUser2 }, location3, "verified", "30.00", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000));
+  const activityRefunded = makeActivity("activity-refunded", { ...driver1, user: driverUser1 }, location3, "verified", "50.00", new Date(Date.now() - 1 * 24 * 60 * 60 * 1000));
+  const activityLegacy = makeActivity("activity-legacy", { ...driver1, user: driverUser1 }, location1, "verified", "55.00", new Date(Date.now() - 5 * 24 * 60 * 60 * 1000));
 
+  const paymentToday = makePayment("payment-today", activityToday, { ...driver1, user: driverUser1 }, owner1, "100.00", "completed", new Date(), 0);
   const paymentWeek = makePayment("payment-week", activityWeek, { ...driver1, user: driverUser1 }, owner1, "75.00", "completed", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 500);
-  const paymentOther = makePayment("payment-other", activityOtherOwner, { ...driver2, user: driverUser2 }, owner2, "120.00", "pending", new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), 0);
+  const paymentMultiDriver = makePayment("payment-multi-driver", activityMultiDriver, { ...driver2, user: driverUser2 }, owner1, "30.00", "completed", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 0);
+  const paymentRefunded = makePayment("payment-refunded", activityRefunded, { ...driver1, user: driverUser1 }, owner1, "50.00", "refunded", new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), 0);
+  paymentRefunded.refundedAt = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000);
+  paymentRefunded.refundAmount = "50.00";
+  paymentRefunded.refundReason = "Owner dispute";
+  paymentRefunded.stripePaymentIntentId = "pi_123";
+  paymentRefunded.stripeChargeId = "ch_refund";
+  paymentRefunded.batchId = "batch-1";
+  paymentRefunded.businessDate = new Date().toISOString().split("T")[0];
+  const paymentFailed = makePayment("payment-failed", activityOtherOwner, { ...driver2, user: driverUser2 }, owner2, "120.00", "failed", undefined, 0);
+  paymentFailed.stripePaymentIntentId = "pi_fail";
+  paymentFailed.batchId = "batch-2";
+  const paymentLegacy = makePayment("payment-legacy", activityLegacy, { ...driver1, user: driverUser1 }, owner1, "55.00", "pending", new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), 0);
+  paymentLegacy.batchId = null;
+  paymentLegacy.businessDate = null;
+  paymentLegacy.stripePaymentIntentId = null;
+  paymentLegacy.stripeChargeId = null;
 
-  const ticketToday = { activityId: activityToday.id, ticketNumber: "CX-202605-0001", ownerId: owner1.id, driverId: driver1.id };
-  const ticketWeek = { activityId: activityWeek.id, ticketNumber: "CX-202605-0002", ownerId: owner1.id, driverId: driver1.id };
-  const ticketOther = { activityId: activityOtherOwner.id, ticketNumber: "CX-202605-0003", ownerId: owner2.id, driverId: driver2.id };
+  const photoToday = makePhoto("photo-today", activityToday.id, driver1.id, location1.id, "verified");
+  const photoWeek = makePhoto("photo-week", activityWeek.id, driver1.id, location1.id, "needs_review");
+  const photoOther = makePhoto("photo-other", activityOtherOwner.id, driver2.id, location2.id, "verified");
+  const photoMulti = makePhoto("photo-multi", activityMultiDriver.id, driver2.id, location3.id, "verified");
+  const photoRefunded = makePhoto("photo-refunded", activityRefunded.id, driver1.id, location3.id, "verified");
+
+  const lotteryEntries = [
+    { activityId: activityToday.id, ticketNumber: "CX-202605-0001", ownerId: owner1.id, driverId: driver1.id },
+    { activityId: activityWeek.id, ticketNumber: "CX-202605-0002", ownerId: owner1.id, driverId: driver1.id },
+    { activityId: activityOtherOwner.id, ticketNumber: "CX-202605-0003", ownerId: owner2.id, driverId: driver2.id },
+  ];
 
   const owners = [owner1, owner2];
   const ownerUsers = new Map([
@@ -242,9 +329,27 @@ function createStorageFixture() {
     [driver1.userId, driverUser1],
     [driver2.userId, driverUser2],
   ]);
-  const activities = [activityToday, activityWeek, activityOld, activityOtherOwner];
-  const payments = [paymentWeek, paymentOther];
-  const lotteryEntries = [ticketToday, ticketWeek, ticketOther];
+  const ownerById = new Map([
+    [owner1.id, owner1],
+    [owner2.id, owner2],
+  ]);
+  const driverById = new Map([
+    [driver1.id, driver1],
+    [driver2.id, driver2],
+  ]);
+  const activities = [activityToday, activityWeek, activityOld, activityOtherOwner, activityMultiDriver, activityRefunded, activityLegacy];
+  const payments = [paymentToday, paymentWeek, paymentMultiDriver, paymentRefunded, paymentFailed, paymentLegacy];
+  const billingBatches = [
+    makeBillingBatch("batch-1", owner1, new Date().toISOString().split("T")[0], "completed", "pi_123", "ch_123", "tr_123"),
+    makeBillingBatch("batch-2", owner2, new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], "failed", "pi_fail", null, null),
+  ];
+  const photosByActivity = new Map<string, WashoutPhoto[]>([
+    [activityToday.id, [photoToday]],
+    [activityWeek.id, [photoWeek]],
+    [activityOtherOwner.id, [photoOther]],
+    [activityMultiDriver.id, [photoMulti]],
+    [activityRefunded.id, [photoRefunded]],
+  ]);
 
   const storage = {
     async getUser(userId: string) {
@@ -264,6 +369,17 @@ function createStorageFixture() {
     },
     async getAllOwners() {
       return owners.map((owner) => ({ ...owner, user: ownerUsers.get(owner.userId)! }));
+    },
+    async getBillingBatches(startDate?: Date, endDate?: Date) {
+      return billingBatches.filter((batch) => !startDate || batch.createdAt >= startDate)
+        .filter((batch) => !endDate || batch.createdAt <= endDate)
+        .map((batch) => {
+          const owner = ownerById.get(batch.ownerId)!;
+          return {
+            ...batch,
+            owner: { ...owner, user: ownerUsers.get(owner.userId)! },
+          };
+        });
     },
     async getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date) {
       return activities
@@ -302,7 +418,21 @@ function createStorageFixture() {
       return payments
         .filter((payment) => !startDate || payment.createdAt >= startDate)
         .filter((payment) => !endDate || payment.createdAt <= endDate)
-        .map((payment) => ({ ...payment, activity: activities.find((a) => a.id === payment.activityId)! }));
+        .map((payment) => ({
+          ...payment,
+          activity: activities.find((a) => a.id === payment.activityId)!,
+          driver: (() => {
+            const driver = driverById.get(payment.driverId)!;
+            return { ...driver, user: driverUsers.get(driver.userId)! };
+          })() as any,
+          owner: (() => {
+            const owner = ownerById.get(payment.ownerId)!;
+            return { ...owner, user: ownerUsers.get(owner.userId)! };
+          })() as any,
+        }));
+    },
+    async getPhotosByActivity(activityId: string) {
+      return photosByActivity.get(activityId) || [];
     },
     async getAllDriverLotteryEntries(startDate?: Date, endDate?: Date) {
       return lotteryEntries.filter((entry) => {
@@ -327,12 +457,22 @@ function createStorageFixture() {
     adminUser,
     location1,
     location2,
+    location3,
     activityToday,
     activityWeek,
     activityOld,
     activityOtherOwner,
+    activityMultiDriver,
+    activityRefunded,
+    activityLegacy,
+    paymentToday,
     paymentWeek,
-    paymentOther,
+    paymentMultiDriver,
+    paymentRefunded,
+    paymentFailed,
+    paymentLegacy,
+    billingBatches,
+    lotteryEntries,
   };
 }
 
@@ -357,8 +497,11 @@ test("owner weekly report excludes older washouts", async () => {
     { dateRange: "weekly" },
   );
 
-  assert.equal(report.rows.length, 2);
-  assert.deepEqual(report.rows.map((row) => row.washoutId).sort(), [fixture.activityToday.id, fixture.activityWeek.id].sort());
+  assert.equal(report.rows.length, 5);
+  assert.deepEqual(
+    report.rows.map((row) => row.washoutId).sort(),
+    [fixture.activityToday.id, fixture.activityWeek.id, fixture.activityMultiDriver.id, fixture.activityRefunded.id, fixture.activityLegacy.id].sort(),
+  );
 });
 
 test("owner custom date report filters the requested day", async () => {
@@ -384,7 +527,8 @@ test("driver daily report includes ticket numbers", async () => {
 
   assert.equal(report.rows.length, 1);
   assert.equal(report.rows[0].ticketNumber, "CX-202605-0001");
-  assert.equal(report.rows[0].driverPaymentAmount, "");
+  assert.equal(report.rows[0].driverPaymentAmount, "100.00");
+  assert.equal(report.rows[0].paymentStatus, "paid");
 });
 
 test("driver weekly report includes payment rows and payment status", async () => {
@@ -395,7 +539,7 @@ test("driver weekly report includes payment rows and payment status", async () =
     { dateRange: "weekly" },
   );
 
-  assert.equal(report.rows.length, 2);
+  assert.equal(report.rows.length, 4);
   assert.ok(report.rows.some((row) => row.paymentStatus === "paid"));
   assert.equal(report.summary.totalTips, "5.00");
 });
@@ -408,7 +552,7 @@ test("admin owner report spans multiple owners", async () => {
     { dateRange: "weekly" },
   );
 
-  assert.equal(report.rows.length, 3);
+  assert.equal(report.rows.length, 6);
   assert.ok(report.rows.some((row) => row.ownerId === fixture.owner1.id));
   assert.ok(report.rows.some((row) => row.ownerId === fixture.owner2.id));
 });
@@ -423,4 +567,84 @@ test("permission checks prevent a driver from requesting another driver report",
     ),
     /Forbidden/i,
   );
+});
+
+function createRouteRegistry() {
+  const gets = new Map<string, Function>();
+  const app = {
+    get(path: string, ...handlers: Function[]) {
+      gets.set(path, handlers[handlers.length - 1]);
+    },
+    post() {},
+    put() {},
+    delete() {},
+    patch() {},
+    use() {},
+  };
+  return { app, gets };
+}
+
+test("billing audit report filters by owner and groups multiple drivers/locations", async () => {
+  const fixture = createStorageFixture();
+  const report = await buildBillingAuditReport(
+    fixture.storage as any,
+    { dateRange: "weekly", ownerId: fixture.owner1.id },
+  );
+
+  assert.equal(report.scope, "super_admin");
+  assert.ok(report.rows.every((row) => row.ownerId === fixture.owner1.id));
+  assert.ok(report.runs.some((run) => run.driverCount === 2));
+  assert.ok(report.runs.some((run) => run.locationCount === 2));
+
+  const csv = billingAuditReportToCsv(report);
+  assert.match(csv, /Billing Run ID/);
+  assert.match(csv, /Stripe PaymentIntent ID/);
+  assert.match(csv, /Photo Count/);
+  assert.match(csv, /Legacy \/ Unlinked/);
+});
+
+test("billing audit report filters by stripe transaction id", async () => {
+  const fixture = createStorageFixture();
+  const report = await buildBillingAuditReport(
+    fixture.storage as any,
+    { dateRange: "weekly", stripeTransactionId: "pi_123" },
+  );
+
+  assert.equal(report.runs.length, 1);
+  assert.ok(report.runs[0].billingRunId.includes("batch-1"));
+  assert.ok(report.rows.every((row) => row.stripePaymentIntentId.includes("pi_123") || row.billingBatchId === "batch-1"));
+});
+
+test("billing audit report custom date range includes refunded rows and excludes legacy rows outside the window", async () => {
+  const fixture = createStorageFixture();
+  const targetDate = fixture.activityRefunded.checkInTime.toISOString().split("T")[0];
+  const report = await buildBillingAuditReport(
+    fixture.storage as any,
+    { dateRange: "custom", startDate: targetDate, endDate: targetDate },
+  );
+
+  assert.ok(report.rows.some((row) => row.paymentStatus === "refunded"));
+  assert.ok(report.summary.totalRefunded > "0.00");
+  assert.equal(report.rows.length, 1);
+});
+
+test("billing audit report includes failed and legacy/unlinked rows", async () => {
+  const fixture = createStorageFixture();
+  const report = await buildBillingAuditReport(
+    fixture.storage as any,
+    { dateRange: "weekly" },
+  );
+
+  assert.ok(report.rows.some((row) => row.paymentStatus === "failed"));
+  assert.ok(report.rows.some((row) => row.legacyUnlinked));
+  assert.ok(report.summary.totalFailed > "0.00");
+  assert.ok(report.summary.totalLegacyUnlinked > 0);
+});
+
+test("billing audit report route is registered", async () => {
+  const { app, gets } = createRouteRegistry();
+  await registerRoutes(app as never);
+  const route = gets.get("/api/reports/billing-audit");
+  assert.equal(typeof route, "function");
+  assert.ok(gets.has("/api/reports/billing-audit"));
 });

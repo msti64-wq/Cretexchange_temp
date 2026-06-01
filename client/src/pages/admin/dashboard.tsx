@@ -284,6 +284,18 @@ export default function AdminDashboard() {
                   <span className="text-xs text-muted-foreground">Control rollout settings</span>
                 </Button>
               )}
+              {user?.role === 'super_admin' && (
+                <Button
+                  variant="outline"
+                  className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                  onClick={() => window.location.href = '/billing-audit-report'}
+                  data-testid="button-billing-audit-report-hero"
+                >
+                  <Search className="h-5 w-5 text-amber-600" />
+                  <span className="text-sm font-semibold">Billing Audit</span>
+                  <span className="text-xs text-muted-foreground">Reconcile Stripe and washouts</span>
+                </Button>
+              )}
             </div>
           </div>
 

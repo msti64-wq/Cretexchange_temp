@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
-type BillingRun = any;
-type BillingRunItem = any;
+
+type BillingBatch = any;
 type Payment = any;
 type User = any;
 type Owner = any;
@@ -12,48 +12,50 @@ export type OwnerBillingRunStatus = "pending" | "processing" | "paid" | "failed"
 
 export interface OwnerBillingRunStorage {
   getUser(userId: string): Promise<User | undefined>;
-  getOwner(userId: string): Promise<Owner | undefined>;
   getOwnerById(ownerId: string): Promise<Owner | undefined>;
-  getOwnerBillingSummary(ownerId: string, startDate?: Date, endDate?: Date): Promise<{
+  getOwnerBillingSettings(ownerId: string): Promise<{
+    billingCadence: string;
+    billingCutoffTime: string;
+    billingTimezone: string;
+    billingDayOfWeek: number;
+  } | undefined>;
+  getAllOwnersBillingSettings(): Promise<{
     ownerId: string;
-    currentUnbilledBalanceCents: number;
-    unbilledWashoutCount: number;
-    lastBillingRun: BillingRun | null;
-    recentRuns: BillingRun[];
-  }>;
-  getPendingPaymentsForOwnerBilling(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
-  getBillingRun(runId: string): Promise<BillingRun | undefined>;
-  createBillingRun(run: Partial<BillingRun> & {
+    companyName: string;
+    username: string;
+    billingCadence: string;
+    billingCutoffTime: string;
+    billingTimezone: string;
+    billingDayOfWeek: number;
+  }[]>;
+  getPendingPaymentsForOwnerBilling(
+    ownerId: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
+  getBillingBatch(batchId: string): Promise<BillingBatch | undefined>;
+  getBillingBatchByOwnerAndDate(ownerId: string, businessDate: string): Promise<BillingBatch | undefined>;
+  createBillingBatch(batch: Partial<BillingBatch> & {
     ownerId: string;
-    runType: OwnerBillingRunType;
-    triggeredByAdminId?: string | null;
-    startDate?: string | null;
-    endDate?: string | null;
-    status: OwnerBillingRunStatus;
-    stripePaymentIntentId?: string | null;
-    amount: string;
-    washoutCount: number;
-    processedAt?: Date | null;
+    businessDate: string;
+    cutoffTime: string;
+    timezone: string;
+    status: string;
+    totalAmount: string;
+    totalFees: string;
+    paymentCount: number;
+    processingStartedAt?: Date | null;
+    completedAt?: Date | null;
     failureReason?: string | null;
     metadata?: any;
-  }): Promise<BillingRun>;
-  createBillingRunItem(item: {
-    billingRunId: string;
-    paymentId: string;
-    ownerId: string;
-    activityId: string;
-    status: OwnerBillingRunStatus;
-    amount: string;
-    processedAt?: Date | null;
-    failureReason?: string;
-    metadata?: any;
-  }): Promise<BillingRunItem>;
-  updateBillingRunItemsStatus(runId: string, status: OwnerBillingRunStatus, failureReason?: string): Promise<number>;
-  lockPaymentsForBillingRun(paymentIds: string[], runId: string): Promise<number>;
-  updateBillingRunStatus(runId: string, status: string, stripePaymentIntentId?: string, failureReason?: string): Promise<BillingRun>;
-  clearBillingRunLocks(runId: string): Promise<number>;
-  completeBillingRun(runId: string, stripePaymentIntentId: string): Promise<void>;
-  failBillingRun(runId: string, failureReason: string, stripePaymentIntentId?: string): Promise<void>;
+  }): Promise<BillingBatch>;
+  assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void>;
+  getPaymentsByBatchId(batchId: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
+  updateBillingBatchStatus(batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string): Promise<BillingBatch>;
+  updateBillingBatchProcessing(batchId: string, totalAmount: string, totalFees: string, paymentCount: number, stripePaymentIntentId?: string): Promise<BillingBatch>;
+  markBillingBatchCompleted(batchId: string): Promise<BillingBatch>;
+  markBillingBatchFailed(batchId: string, failureReason: string): Promise<void>;
+  completeBatchPayment(batchId: string, stripePaymentIntentId: string): Promise<void>;
 }
 
 export interface StripePaymentIntentLike {
@@ -70,14 +72,34 @@ export interface StripeBillingChargeClient {
   };
 }
 
-export interface RunOwnerBillingNowOptions {
-  ownerId: string;
+export interface ProcessOwnerBillingRunOptions {
+  ownerId?: string;
   triggeredByAdminId?: string;
   runType: OwnerBillingRunType;
   startDate?: Date;
   endDate?: Date;
+  existingBatchId?: string | null;
   storage: OwnerBillingRunStorage;
   stripeClient?: StripeBillingChargeClient | null;
+}
+
+export interface OwnerBillingRunResult {
+  ownerId: string;
+  billingBatch: BillingBatch | null;
+  status: OwnerBillingRunStatus;
+  message: string;
+  amountCents: number;
+  washoutCount: number;
+  stripePaymentIntentId?: string | null;
+}
+
+export interface OwnerBillingRunSummary {
+  runs: OwnerBillingRunResult[];
+  processed: number;
+  failed: number;
+  skipped: number;
+  totalAmountCents: number;
+  totalWashoutCount: number;
 }
 
 function toCents(amount: string | number | null | undefined): number {
@@ -95,14 +117,40 @@ function formatMoney(amountCents: number): string {
   return (amountCents / 100).toFixed(2);
 }
 
-export async function runOwnerBillingNow(options: RunOwnerBillingNowOptions): Promise<{
-  billingRun: BillingRun;
-  status: OwnerBillingRunStatus;
-  message: string;
-  amountCents: number;
-  washoutCount: number;
-}> {
-  const { ownerId, triggeredByAdminId, runType, startDate, endDate, storage, stripeClient } = options;
+function toDateKey(value?: Date | null): string {
+  return value ? value.toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
+}
+
+async function loadCandidatePayments(
+  storage: OwnerBillingRunStorage,
+  ownerId: string,
+  startDate?: Date,
+  endDate?: Date,
+  existingBatchId?: string | null,
+): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
+  if (existingBatchId) {
+    const assignedPayments = await storage.getPaymentsByBatchId(existingBatchId);
+    if (assignedPayments.length > 0) {
+      return assignedPayments;
+    }
+  }
+
+  return await storage.getPendingPaymentsForOwnerBilling(ownerId, startDate, endDate);
+}
+
+async function processSingleOwnerBillingRun(
+  options: ProcessOwnerBillingRunOptions & { ownerId: string }
+): Promise<OwnerBillingRunResult> {
+  const {
+    ownerId,
+    triggeredByAdminId,
+    runType,
+    startDate,
+    endDate,
+    existingBatchId,
+    storage,
+    stripeClient,
+  } = options;
 
   const owner = await storage.getOwnerById(ownerId);
   if (!owner) {
@@ -114,109 +162,164 @@ export async function runOwnerBillingNow(options: RunOwnerBillingNowOptions): Pr
     throw new Error(`Owner user ${owner.userId} not found`);
   }
 
-  const candidatePayments = await storage.getPendingPaymentsForOwnerBilling(ownerId, startDate, endDate);
-  const summaryAmountCents = candidatePayments.reduce((sum, payment) => {
+  console.log(`💳 [OWNER_BILLING] Starting ${runType} run for owner ${ownerId}`, {
+    startDate: startDate ? startDate.toISOString() : null,
+    endDate: endDate ? endDate.toISOString() : null,
+    reusedBatchId: existingBatchId || null,
+  });
+
+  const billingDateKey = toDateKey(startDate ?? endDate);
+  const existingBatch = existingBatchId
+    ? await storage.getBillingBatch(existingBatchId)
+    : await storage.getBillingBatchByOwnerAndDate(ownerId, billingDateKey);
+
+  if (existingBatch?.status === "completed") {
+    return {
+      ownerId,
+      billingBatch: existingBatch,
+      status: "skipped",
+      message: "Billing batch already completed.",
+      amountCents: Math.round(Number(existingBatch.totalAmount || 0) * 100),
+      washoutCount: Number(existingBatch.paymentCount || 0),
+      stripePaymentIntentId: existingBatch.stripePaymentIntentId || null,
+    };
+  }
+
+  const candidatePayments = await loadCandidatePayments(
+    storage,
+    ownerId,
+    startDate,
+    endDate,
+    existingBatchId || existingBatch?.id || null,
+  );
+
+  console.log(`💳 [OWNER_BILLING] Candidate washouts for owner ${ownerId}: ${candidatePayments.length}`);
+
+  const candidateAmountCents = candidatePayments.reduce((sum, payment) => {
     return sum + toCents(payment.amount) + toCents(payment.processingFee) + toCents(payment.washoutServiceFee);
   }, 0);
 
-  const billingRun = await storage.createBillingRun({
-    ownerId,
+  const batchMetadata = {
     runType,
     triggeredByAdminId: triggeredByAdminId || null,
-    startDate: startDate ? startDate.toISOString().split("T")[0] : null,
-    endDate: endDate ? endDate.toISOString().split("T")[0] : null,
-    status: "pending",
-    amount: formatMoney(summaryAmountCents),
-    washoutCount: candidatePayments.length,
-    metadata: {
-      ownerUsername: ownerUser.username,
-      ownerCompanyName: owner.companyName,
-      requestedBy: triggeredByAdminId || null,
-      requestedAt: new Date().toISOString(),
-    },
-  } as any);
+    requestedAt: new Date().toISOString(),
+    startDate: startDate ? startDate.toISOString() : null,
+    endDate: endDate ? endDate.toISOString() : null,
+    ownerUsername: ownerUser.username,
+    ownerCompanyName: owner.companyName,
+    reusedBatchId: existingBatch?.id || existingBatchId || null,
+  };
+
+  const billingBatch =
+    existingBatch ||
+    await storage.createBillingBatch({
+      ownerId,
+      businessDate: billingDateKey,
+      cutoffTime: owner.billingCutoffTime || "23:59:00",
+      timezone: owner.billingTimezone || "America/Chicago",
+      status: "pending",
+      totalAmount: formatMoney(candidateAmountCents),
+      totalFees: "0.00",
+      paymentCount: candidatePayments.length,
+      metadata: batchMetadata,
+    } as any);
 
   if (candidatePayments.length === 0) {
-    await storage.updateBillingRunStatus(billingRun.id, "skipped", undefined, "No unbilled washouts found");
+    await storage.updateBillingBatchStatus(
+      billingBatch.id,
+      "skipped",
+      undefined,
+      "No unbilled completed washouts found"
+    );
     return {
-      billingRun: await storage.getBillingRun(billingRun.id) as BillingRun,
+      ownerId,
+      billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
       status: "skipped",
-      message: "No unbilled washouts found for this owner.",
+      message: "No unbilled completed washouts found for this owner.",
       amountCents: 0,
       washoutCount: 0,
     };
   }
 
-  const paymentIds = candidatePayments.map((payment) => payment.id);
-  const lockedCount = await storage.lockPaymentsForBillingRun(paymentIds, billingRun.id);
-  if (lockedCount !== paymentIds.length) {
-    await storage.updateBillingRunStatus(
-      billingRun.id,
-      "failed",
-      undefined,
-      "One or more washouts were claimed by another billing run before processing started"
-    );
-    return {
-      billingRun: await storage.getBillingRun(billingRun.id) as BillingRun,
-      status: "failed",
-      message: "Some washouts were already claimed by another billing run.",
-      amountCents: summaryAmountCents,
-      washoutCount: candidatePayments.length,
-    };
+  let batchPayments = await storage.getPaymentsByBatchId(billingBatch.id);
+  if (batchPayments.length === 0) {
+    const paymentIds = candidatePayments.map((payment) => payment.id);
+    await storage.assignPaymentsToBatch(paymentIds, billingBatch.id, billingDateKey);
+    batchPayments = await storage.getPaymentsByBatchId(billingBatch.id);
+    if (batchPayments.length !== candidatePayments.length) {
+      await storage.updateBillingBatchStatus(
+        billingBatch.id,
+        "failed",
+        undefined,
+        "Unable to lock all washouts for billing"
+      );
+      return {
+        ownerId,
+        billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
+        status: "failed",
+        message: "Unable to lock washouts for billing.",
+        amountCents: candidateAmountCents,
+        washoutCount: candidatePayments.length,
+      };
+    }
   }
 
-  for (const payment of candidatePayments) {
-    const itemAmountCents =
-      toCents(payment.amount) + toCents(payment.processingFee) + toCents(payment.washoutServiceFee);
-    await storage.createBillingRunItem({
-      billingRunId: billingRun.id,
-      paymentId: payment.id,
-      ownerId,
-      activityId: payment.activityId,
-      status: "pending",
-      amount: formatMoney(itemAmountCents),
-      metadata: {
-        driverId: payment.driverId,
-        driverAmount: payment.amount,
-        processingFee: payment.processingFee,
-        washoutServiceFee: payment.washoutServiceFee,
-        businessDate: payment.businessDate,
-      },
-    } as any);
-  }
+  const paymentsToBill = batchPayments.length > 0 ? batchPayments : candidatePayments;
+  const totalAmountCents = paymentsToBill.reduce((sum, payment) => {
+    return sum + toCents(payment.amount) + toCents(payment.processingFee) + toCents(payment.washoutServiceFee);
+  }, 0);
+  const totalFeesCents = paymentsToBill.reduce((sum, payment) => {
+    return sum + toCents(payment.processingFee) + toCents(payment.washoutServiceFee);
+  }, 0);
 
-  await storage.updateBillingRunStatus(billingRun.id, "processing");
+  await storage.updateBillingBatchProcessing(
+    billingBatch.id,
+    formatMoney(totalAmountCents),
+    formatMoney(totalFeesCents),
+    paymentsToBill.length,
+  );
 
   if (!stripeClient) {
-    await storage.updateBillingRunStatus(billingRun.id, "skipped", undefined, "Stripe is not configured");
-    await storage.updateBillingRunItemsStatus(billingRun.id, "skipped", "Stripe is not configured");
-    await storage.clearBillingRunLocks(billingRun.id);
+    const failureReason = "Stripe is not configured";
+    await storage.updateBillingBatchStatus(billingBatch.id, "skipped", undefined, failureReason);
+    console.log(`⏭️  [OWNER_BILLING] Stripe unavailable for owner ${ownerId} batch ${billingBatch.id} - skipping`);
     return {
-      billingRun: await storage.getBillingRun(billingRun.id) as BillingRun,
+      ownerId,
+      billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
       status: "skipped",
       message: "Stripe is not configured. Billing was not attempted.",
-      amountCents: summaryAmountCents,
-      washoutCount: candidatePayments.length,
+      amountCents: totalAmountCents,
+      washoutCount: paymentsToBill.length,
     };
   }
 
   if (!ownerUser.stripeCustomerId || !owner.stripePaymentMethodId) {
-    await storage.failBillingRun(
-      billingRun.id,
-      `Owner is missing ${!ownerUser.stripeCustomerId ? "Stripe customer" : "payment method"}`
-    );
+    const failureReason = `Owner is missing ${!ownerUser.stripeCustomerId ? "Stripe customer" : "payment method"}`;
+    await storage.markBillingBatchFailed(billingBatch.id, failureReason);
+    console.warn(`⚠️  [OWNER_BILLING] Missing payment setup for owner ${ownerId}: ${failureReason}`);
     return {
-      billingRun: await storage.getBillingRun(billingRun.id) as BillingRun,
+      ownerId,
+      billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
       status: "failed",
       message: "Owner payment method is not configured.",
-      amountCents: summaryAmountCents,
-      washoutCount: candidatePayments.length,
+      amountCents: totalAmountCents,
+      washoutCount: paymentsToBill.length,
     };
   }
 
+  const paymentIntentMetadata = {
+    batchId: billingBatch.id,
+    ownerId,
+    runType,
+    startDate: startDate ? startDate.toISOString().split("T")[0] : "",
+    endDate: endDate ? endDate.toISOString().split("T")[0] : "",
+    washoutCount: String(paymentsToBill.length),
+    amountCents: String(totalAmountCents),
+  };
+
   try {
     const paymentIntent = await stripeClient.paymentIntents.create({
-      amount: summaryAmountCents,
+      amount: totalAmountCents,
       currency: "usd",
       customer: ownerUser.stripeCustomerId,
       payment_method: owner.stripePaymentMethodId,
@@ -224,61 +327,153 @@ export async function runOwnerBillingNow(options: RunOwnerBillingNowOptions): Pr
       automatic_payment_methods: {
         enabled: true,
       },
-      description: `Owner billing run - ${candidatePayments.length} washouts`,
-      metadata: {
-        billingRunId: billingRun.id,
-        ownerId,
-        runType,
-        washoutCount: String(candidatePayments.length),
-        amountCents: String(summaryAmountCents),
-      },
+      description: `Owner billing run - ${paymentsToBill.length} washouts`,
+      metadata: paymentIntentMetadata,
     } as any, {
-      idempotencyKey: `owner_billing_run_${billingRun.id}`,
+      idempotencyKey: `owner_billing_run_${billingBatch.id}`,
+    });
+
+    console.log(`💳 [OWNER_BILLING] Stripe payment intent created for owner ${ownerId}`, {
+      billingBatchId: billingBatch.id,
+      paymentIntentId: paymentIntent.id,
+      amountCents: totalAmountCents,
+      washoutCount: paymentsToBill.length,
     });
 
     if (paymentIntent.status && paymentIntent.status !== "succeeded") {
       if (paymentIntent.status === "processing") {
-        await storage.updateBillingRunStatus(billingRun.id, "processing", paymentIntent.id);
+        await storage.updateBillingBatchStatus(billingBatch.id, "processing", paymentIntent.id);
+        console.log(`⏳ [OWNER_BILLING] Payment intent ${paymentIntent.id} still processing for owner ${ownerId}`);
         return {
-          billingRun: await storage.getBillingRun(billingRun.id) as BillingRun,
+          ownerId,
+          billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
           status: "processing",
           message: "Stripe accepted the charge and is still processing it.",
-          amountCents: summaryAmountCents,
-          washoutCount: candidatePayments.length,
+          amountCents: totalAmountCents,
+          washoutCount: paymentsToBill.length,
+          stripePaymentIntentId: paymentIntent.id,
         };
       }
 
-      await storage.failBillingRun(
-        billingRun.id,
-        `Stripe returned status ${paymentIntent.status}`,
-        paymentIntent.id
-      );
+      const failureReason = `Stripe returned status ${paymentIntent.status}`;
+      await storage.markBillingBatchFailed(billingBatch.id, failureReason);
+      console.warn(`❌ [OWNER_BILLING] Stripe charge incomplete for owner ${ownerId}: ${failureReason}`);
       return {
-        billingRun: await storage.getBillingRun(billingRun.id) as BillingRun,
+        ownerId,
+        billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
         status: "failed",
         message: `Stripe charge did not complete (${paymentIntent.status}).`,
-        amountCents: summaryAmountCents,
-        washoutCount: candidatePayments.length,
+        amountCents: totalAmountCents,
+        washoutCount: paymentsToBill.length,
+        stripePaymentIntentId: paymentIntent.id,
       };
     }
 
-    await storage.completeBillingRun(billingRun.id, paymentIntent.id);
+    await storage.completeBatchPayment(billingBatch.id, paymentIntent.id);
+    console.log(`✅ [OWNER_BILLING] Billing completed for owner ${ownerId}`, {
+      billingBatchId: billingBatch.id,
+      paymentIntentId: paymentIntent.id,
+      amountCents: totalAmountCents,
+      washoutCount: paymentsToBill.length,
+    });
     return {
-      billingRun: await storage.getBillingRun(billingRun.id) as BillingRun,
+      ownerId,
+      billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
       status: "paid",
-      message: `Successfully charged $${(summaryAmountCents / 100).toFixed(2)} for ${candidatePayments.length} washouts.`,
-      amountCents: summaryAmountCents,
-      washoutCount: candidatePayments.length,
+      message: `Successfully charged $${(totalAmountCents / 100).toFixed(2)} for ${paymentsToBill.length} washouts.`,
+      amountCents: totalAmountCents,
+      washoutCount: paymentsToBill.length,
+      stripePaymentIntentId: paymentIntent.id,
     };
   } catch (error) {
     const failureReason = error instanceof Error ? error.message : "Unknown Stripe error";
-    await storage.failBillingRun(billingRun.id, failureReason);
+    await storage.markBillingBatchFailed(billingBatch.id, failureReason);
+    console.error(`❌ [OWNER_BILLING] Billing failed for owner ${ownerId}: ${failureReason}`);
     return {
-      billingRun: await storage.getBillingRun(billingRun.id) as BillingRun,
+      ownerId,
+      billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
       status: "failed",
       message: failureReason,
-      amountCents: summaryAmountCents,
-      washoutCount: candidatePayments.length,
+      amountCents: totalAmountCents,
+      washoutCount: paymentsToBill.length,
     };
   }
+}
+
+export async function processOwnerBillingRun(
+  options: ProcessOwnerBillingRunOptions
+): Promise<OwnerBillingRunSummary> {
+  const { ownerId, startDate, endDate, storage, stripeClient } = options;
+
+  const runResults: OwnerBillingRunResult[] = [];
+  const ownersToProcess = ownerId
+    ? [{ ownerId }]
+    : await storage.getAllOwnersBillingSettings();
+
+  for (const ownerEntry of ownersToProcess) {
+    const currentOwnerId = ownerEntry.ownerId;
+
+    if (!ownerId) {
+      const previewPayments = await storage.getPendingPaymentsForOwnerBilling(currentOwnerId, startDate, endDate);
+      if (previewPayments.length === 0) {
+        continue;
+      }
+    }
+
+    try {
+      const result = await processSingleOwnerBillingRun({
+        ...options,
+        ownerId: currentOwnerId,
+      });
+      runResults.push(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown billing run error";
+      runResults.push({
+        ownerId: currentOwnerId,
+        billingBatch: null,
+        status: "failed",
+        message,
+        amountCents: 0,
+        washoutCount: 0,
+      });
+    }
+  }
+
+  return {
+    runs: runResults,
+    processed: runResults.filter((run) => run.status === "paid" || run.status === "processing").length,
+    failed: runResults.filter((run) => run.status === "failed").length,
+    skipped: runResults.filter((run) => run.status === "skipped").length,
+    totalAmountCents: runResults.reduce((sum, run) => sum + run.amountCents, 0),
+    totalWashoutCount: runResults.reduce((sum, run) => sum + run.washoutCount, 0),
+  };
+}
+
+export async function runOwnerBillingNow(options: ProcessOwnerBillingRunOptions): Promise<{
+  billingRun: BillingBatch | null;
+  status: OwnerBillingRunStatus;
+  message: string;
+  amountCents: number;
+  washoutCount: number;
+}> {
+  const ownerResult = await processOwnerBillingRun(options);
+  const [firstRun] = ownerResult.runs;
+
+  if (!firstRun) {
+    return {
+      billingRun: null,
+      status: "skipped",
+      message: "No owner billing runs were processed.",
+      amountCents: 0,
+      washoutCount: 0,
+    };
+  }
+
+  return {
+    billingRun: firstRun.billingBatch,
+    status: firstRun.status,
+    message: firstRun.message,
+    amountCents: firstRun.amountCents,
+    washoutCount: firstRun.washoutCount,
+  };
 }

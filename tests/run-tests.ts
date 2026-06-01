@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import Stripe from "stripe";
 import { ObjectStorageService } from "../server/objectStorage";
+import { processOwnerBillingRun } from "../server/ownerBillingRuns";
 
 type TestCase = {
   name: string;
@@ -137,6 +138,221 @@ async function withPatchedStripe(
       stripeObject[key] = value;
     }
   }
+}
+
+function createOwnerBillingRunFixture(params: {
+  ownerId?: string;
+  ownerCompanyName?: string;
+  ownerUsername?: string;
+  ownerStripeCustomerId?: string | null;
+  ownerStripePaymentMethodId?: string | null;
+  billingCadence?: string;
+  billingCutoffTime?: string;
+  billingTimezone?: string;
+  billingDayOfWeek?: number;
+  payments: Array<Record<string, unknown>>;
+  stripeMode?: "succeeded" | "processing" | "throw";
+}) {
+  const ownerId = params.ownerId || "owner_1";
+  const owner = {
+    id: ownerId,
+    userId: "user_owner_1",
+    companyName: params.ownerCompanyName || "Owner Co",
+    stripePaymentMethodId: params.ownerStripePaymentMethodId ?? "pm_owner_1",
+    billingCutoffTime: params.billingCutoffTime || "23:59:00",
+    billingTimezone: params.billingTimezone || "America/Chicago",
+    billingDayOfWeek: params.billingDayOfWeek ?? 1,
+  };
+  const ownerUser = {
+    id: "user_owner_1",
+    username: params.ownerUsername || "owner1",
+    firstName: "Owner",
+    lastName: "One",
+    stripeCustomerId: params.ownerStripeCustomerId ?? "cus_owner_1",
+  };
+
+  let batch: Record<string, unknown> | null = null;
+  let chargeCount = 0;
+  let lastIntent: Record<string, unknown> | null = null;
+  let payments = params.payments.map((payment, index) => ({
+    id: payment.id || `payment_${index + 1}`,
+    ownerId,
+    driverId: payment.driverId || `driver_${index + 1}`,
+    activityId: payment.activityId || `activity_${index + 1}`,
+    amount: payment.amount || "10.00",
+    processingFee: payment.processingFee || "5.00",
+    washoutServiceFee: payment.washoutServiceFee || "5.00",
+    status: payment.status || "pending",
+    batchId: payment.batchId ?? null,
+    businessDate: payment.businessDate || "2026-05-28",
+    createdAt: payment.createdAt || new Date("2026-05-28T12:00:00Z"),
+    activity: payment.activity || { id: payment.activityId || `activity_${index + 1}` },
+    driver: payment.driver || {
+      id: payment.driverId || `driver_${index + 1}`,
+      user: {
+        id: `driver_user_${index + 1}`,
+        username: `driver${index + 1}`,
+        firstName: "Driver",
+        lastName: String(index + 1),
+        stripeConnectAccountId: payment.stripeConnectAccountId ?? "acct_driver_1",
+      },
+    },
+  }));
+
+  const storage = {
+    getOwnerById: async (id: string) => (id === ownerId ? owner : undefined),
+    getUser: async (id: string) => (id === owner.userId ? ownerUser : undefined),
+    getAllOwnersBillingSettings: async () => [
+      {
+        ownerId,
+        companyName: owner.companyName || ownerUser.username,
+        username: ownerUser.username,
+        billingCadence: params.billingCadence || "weekly",
+        billingCutoffTime: owner.billingCutoffTime,
+        billingTimezone: owner.billingTimezone,
+        billingDayOfWeek: owner.billingDayOfWeek,
+      },
+    ],
+    getPendingPaymentsForOwnerBilling: async (_ownerId: string, startDate?: Date, endDate?: Date) => {
+      const startKey = startDate ? startDate.toISOString().split("T")[0] : undefined;
+      const endKey = endDate ? endDate.toISOString().split("T")[0] : undefined;
+      return payments.filter((payment) => {
+        if (payment.ownerId !== ownerId) return false;
+        if (payment.status !== "pending") return false;
+        if (payment.batchId) return false;
+        if (startKey && String(payment.businessDate) < startKey) return false;
+        if (endKey && String(payment.businessDate) > endKey) return false;
+        return true;
+      }) as any;
+    },
+    getBillingBatch: async (id: string) => batch?.id === id ? batch : undefined,
+    getBillingBatchByOwnerAndDate: async (id: string, businessDate: string) => {
+      if (!batch) return undefined;
+      return batch.ownerId === id && batch.businessDate === businessDate ? batch : undefined;
+    },
+    createBillingBatch: async (input: Record<string, unknown>) => {
+      batch = {
+        id: batch?.id || "batch_1",
+        stripePaymentIntentId: batch?.stripePaymentIntentId || null,
+        failureReason: batch?.failureReason || null,
+        completedAt: batch?.completedAt || null,
+        processingStartedAt: batch?.processingStartedAt || null,
+        retryCount: batch?.retryCount || 0,
+        ...input,
+      };
+      return batch as any;
+    },
+    assignPaymentsToBatch: async (paymentIds: string[], batchId: string, businessDate: string) => {
+      payments = payments.map((payment) => paymentIds.includes(String(payment.id)) ? {
+        ...payment,
+        batchId,
+        businessDate,
+      } : payment);
+    },
+    getPaymentsByBatchId: async (batchId: string) => {
+      return payments.filter((payment) => payment.batchId === batchId).map((payment) => ({
+        ...payment,
+        activity: payment.activity,
+        driver: payment.driver,
+      })) as any;
+    },
+    updateBillingBatchStatus: async (batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string) => {
+      batch = {
+        ...(batch || { id: batchId }),
+        id: batchId,
+        status,
+        stripePaymentIntentId: stripePaymentIntentId || batch?.stripePaymentIntentId || null,
+        failureReason: failureReason || null,
+        completedAt: status === "completed" ? new Date("2026-05-28T14:00:00Z") : batch?.completedAt || null,
+        updatedAt: new Date("2026-05-28T14:00:00Z"),
+      };
+      if (status === "completed") {
+        payments = payments.map((payment) => payment.batchId === batchId ? {
+          ...payment,
+          status: "completed",
+          stripePaymentIntentId: stripePaymentIntentId || payment.stripePaymentIntentId || null,
+          paidAt: new Date("2026-05-28T14:00:00Z"),
+        } : payment);
+      }
+      return batch as any;
+    },
+    updateBillingBatchProcessing: async (batchId: string, totalAmount: string, totalFees: string, paymentCount: number, stripePaymentIntentId?: string) => {
+      batch = {
+        ...(batch || { id: batchId }),
+        id: batchId,
+        totalAmount,
+        totalFees,
+        paymentCount,
+        status: "processing",
+        processingStartedAt: new Date("2026-05-28T13:00:00Z"),
+        stripePaymentIntentId: stripePaymentIntentId || batch?.stripePaymentIntentId || null,
+      };
+      return batch as any;
+    },
+    markBillingBatchCompleted: async (batchId: string) => {
+      batch = {
+        ...(batch || { id: batchId }),
+        id: batchId,
+        status: "completed",
+        completedAt: new Date("2026-05-28T14:00:00Z"),
+      };
+      return batch as any;
+    },
+    completeBatchPayment: async (batchId: string, stripePaymentIntentId: string) => {
+      batch = {
+        ...(batch || { id: batchId }),
+        id: batchId,
+        status: "completed",
+        stripePaymentIntentId,
+        completedAt: new Date("2026-05-28T14:00:00Z"),
+      };
+      payments = payments.map((payment) => payment.batchId === batchId ? {
+        ...payment,
+        status: "completed",
+        stripePaymentIntentId,
+        paidAt: new Date("2026-05-28T14:00:00Z"),
+      } : payment);
+    },
+    markBillingBatchFailed: async (batchId: string, failureReason: string) => {
+      batch = {
+        ...(batch || { id: batchId }),
+        id: batchId,
+        status: "failed",
+        failureReason,
+      };
+    },
+  } as const;
+
+  const stripeClient = params.stripeMode
+    ? {
+        paymentIntents: {
+          create: async (intent: Record<string, unknown>) => {
+            chargeCount++;
+            lastIntent = intent;
+            if (params.stripeMode === "throw") {
+              throw new Error("Stripe charge failed");
+            }
+            return {
+              id: `pi_${chargeCount}`,
+              status: params.stripeMode,
+              amount: intent.amount,
+            };
+          },
+        },
+      }
+    : null;
+
+  return {
+    storage: storage as any,
+    stripeClient: stripeClient as any,
+    getBatch: () => batch,
+    getChargeCount: () => chargeCount,
+    getLastIntent: () => lastIntent,
+    setPaymentsStatus: (status: string) => {
+      payments = payments.map((payment) => ({ ...payment, status }));
+    },
+    getPayments: () => payments,
+  };
 }
 
 function makeUser(overrides: Record<string, unknown> = {}) {
@@ -2278,6 +2494,160 @@ test("lottery status endpoint defaults to active and returns drawing context", a
       assert.match((res.body as { currentDrawingMessage?: string }).currentDrawingMessage || "", /Current drawing is open|Lottery is active/i);
     },
   );
+});
+
+test("weekly owner billing charges via the unified engine", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    payments: [
+      {
+        id: "payment_1",
+        amount: "10.00",
+        processingFee: "5.00",
+        washoutServiceFee: "5.00",
+      },
+    ],
+    stripeMode: "succeeded",
+  });
+
+  const result = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "weekly_scheduled",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-28T23:59:59.999Z"),
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(result.runs.length, 1);
+  assert.equal(result.runs[0].status, "paid");
+  assert.equal(result.totalWashoutCount, 1);
+  assert.equal(fixture.getChargeCount(), 1);
+  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 2000);
+  assert.equal((fixture.getBatch() as { status?: string } | null)?.status, "completed");
+});
+
+test("manual owner billing uses the same engine and sums fee overrides", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    payments: [
+      {
+        id: "payment_1",
+        amount: "12.00",
+        processingFee: "3.00",
+        washoutServiceFee: "5.00",
+      },
+      {
+        id: "payment_2",
+        amount: "8.00",
+        processingFee: "2.00",
+        washoutServiceFee: "5.00",
+      },
+    ],
+    stripeMode: "succeeded",
+  });
+
+  const result = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(result.runs[0].status, "paid");
+  assert.equal(result.totalWashoutCount, 2);
+  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 3500);
+  assert.equal((fixture.getBatch() as { metadata?: { runType?: string; triggeredByAdminId?: string } } | null)?.metadata?.runType, "admin_manual");
+  assert.equal((fixture.getBatch() as { metadata?: { runType?: string; triggeredByAdminId?: string } } | null)?.metadata?.triggeredByAdminId, "admin_1");
+});
+
+test("duplicate owner billing run does not double charge", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    payments: [
+      {
+        id: "payment_1",
+        amount: "10.00",
+        processingFee: "5.00",
+        washoutServiceFee: "5.00",
+      },
+    ],
+    stripeMode: "succeeded",
+  });
+
+  const first = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "weekly_scheduled",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-28T23:59:59.999Z"),
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+  const second = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "weekly_scheduled",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-28T23:59:59.999Z"),
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(first.runs[0].status, "paid");
+  assert.equal(second.runs[0].status, "skipped");
+  assert.equal(fixture.getChargeCount(), 1);
+});
+
+test("failed Stripe charge records failure without double charging", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    payments: [
+      {
+        id: "payment_1",
+        amount: "10.00",
+        processingFee: "5.00",
+        washoutServiceFee: "5.00",
+      },
+    ],
+    stripeMode: "throw",
+  });
+
+  const result = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "weekly_scheduled",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-28T23:59:59.999Z"),
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(result.runs[0].status, "failed");
+  assert.equal((fixture.getBatch() as { status?: string; failureReason?: string } | null)?.status, "failed");
+  assert.match(String((fixture.getBatch() as { failureReason?: string } | null)?.failureReason || ""), /Stripe charge failed/);
+  assert.equal(fixture.getChargeCount(), 1);
+});
+
+test("owner billing skips cleanly when there are no billable washouts", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    payments: [],
+    stripeMode: "succeeded",
+  });
+
+  const result = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "weekly_scheduled",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-28T23:59:59.999Z"),
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(result.runs[0].status, "skipped");
+  assert.equal(result.runs[0].washoutCount, 0);
+  assert.equal(fixture.getChargeCount(), 0);
 });
 
 test("admin lottery overview and draw alias require admin access", async () => {

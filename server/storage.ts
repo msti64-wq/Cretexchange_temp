@@ -96,6 +96,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { summarizeDatabaseError } from "./dbErrors";
+import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
@@ -315,12 +316,14 @@ export interface IStorage {
   createBillingBatch(batch: InsertBillingBatch): Promise<BillingBatch>;
   getBillingBatch(id: string): Promise<BillingBatch | undefined>;
   getBillingBatchByOwnerAndDate(ownerId: string, businessDate: string): Promise<BillingBatch | undefined>;
+  getBillingBatches(startDate?: Date, endDate?: Date): Promise<(BillingBatch & { owner: Owner & { user: User } })[]>;
   getBillingBatchesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<BillingBatch[]>;
   getBillingBatchesByStatus(status: string): Promise<(BillingBatch & { owner: Owner & { user: User } })[]>;
   updateBillingBatchStatus(batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string): Promise<BillingBatch>;
   updateBillingBatchProcessing(batchId: string, totalAmount: string, totalFees: string, paymentCount: number, stripePaymentIntentId?: string): Promise<BillingBatch>;
   markBillingBatchCompleted(batchId: string): Promise<BillingBatch>;
   getPendingPaymentsForBatch(ownerId: string, businessDate: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
+  getPendingPaymentsForOwnerBilling(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
   assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void>;
   getPaymentsByBatchId(batchId: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
   
@@ -2939,8 +2942,36 @@ export class DatabaseStorage implements IStorage {
           eq(billingBatches.ownerId, ownerId),
           eq(billingBatches.businessDate, businessDate)
         )
-      );
+    );
     return batch;
+  }
+
+  async getBillingBatches(startDate?: Date, endDate?: Date): Promise<(BillingBatch & { owner: Owner & { user: User } })[]> {
+    const conditions = [] as any[];
+
+    if (startDate) {
+      conditions.push(gte(billingBatches.createdAt, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(billingBatches.createdAt, endDate));
+    }
+
+    const results = await db
+      .select({
+        batch: getTableColumns(billingBatches),
+        owner: getTableColumns(owners),
+        user: getTableColumns(users),
+      })
+      .from(billingBatches)
+      .innerJoin(owners, eq(billingBatches.ownerId, owners.id))
+      .innerJoin(users, eq(owners.userId, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(billingBatches.createdAt));
+
+    return results.map(({ batch, owner, user }) => ({
+      ...batch,
+      owner: { ...owner, user },
+    }));
   }
 
   async getBillingBatchesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<BillingBatch[]> {
@@ -3343,6 +3374,42 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  async getPendingPaymentsForOwnerBilling(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
+    const conditions = [
+      eq(payments.ownerId, ownerId),
+      eq(payments.status, 'pending'),
+      isNull(payments.batchId),
+    ];
+
+    if (startDate) {
+      conditions.push(gte(payments.businessDate, startDate.toISOString().split('T')[0]));
+    }
+
+    if (endDate) {
+      conditions.push(lte(payments.businessDate, endDate.toISOString().split('T')[0]));
+    }
+
+    const pendingPayments = await db
+      .select({
+        payment: getTableColumns(payments),
+        activity: getTableColumns(washoutActivities),
+        driver: getTableColumns(drivers),
+        user: getTableColumns(users),
+      })
+      .from(payments)
+      .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
+      .innerJoin(drivers, eq(payments.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .where(and(...conditions))
+      .orderBy(payments.createdAt);
+
+    return pendingPayments.map(({ payment, activity, driver, user }) => ({
+      ...payment,
+      activity,
+      driver: { ...driver, user },
+    }));
+  }
+
   async assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void> {
     if (paymentIds.length === 0) return;
 
@@ -3653,125 +3720,40 @@ export class DatabaseStorage implements IStorage {
 
   // Process a single owner's batch for a business date
   private async processOwnerBatch(ownerId: string, businessDate: string, billingSettings?: { billingCadence: string; billingCutoffTime: string; billingTimezone: string }): Promise<void> {
-    return await db.transaction(async (tx) => {
-      try {
-        // Check if batch already exists for this owner/date (idempotency)
-        const existingBatch = await this.getBillingBatchByOwnerAndDate(ownerId, businessDate);
-        if (existingBatch) {
-          console.log(`⚠️  Batch already exists for owner ${ownerId} on ${businessDate}: ${existingBatch.id}`);
-          return;
-        }
+    const billingStart = new Date(`${businessDate}T00:00:00.000Z`);
+    const billingEnd = new Date(`${businessDate}T23:59:59.999Z`);
+    const existingBatch = await this.getBillingBatchByOwnerAndDate(ownerId, businessDate);
+    const stripe = await this.getStripeInstance();
 
-        // Get pending payments for this owner and business date
-        const pendingPayments = await this.getPendingPaymentsForBatch(ownerId, businessDate);
-        
-        if (pendingPayments.length === 0) {
-          console.log(`ℹ️  No pending payments for owner ${ownerId} on ${businessDate}`);
-          return;
-        }
-
-        // Calculate batch totals
-        const totalAmount = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-        const totalFees = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee) + parseFloat(payment.washoutServiceFee), 0);
-        const paymentCount = pendingPayments.length;
-
-        console.log(`💰 Processing batch for owner ${ownerId}: ${paymentCount} payments totaling $${totalAmount.toFixed(2)} (fees: $${totalFees.toFixed(2)})`);
-
-        // Get billing settings if not provided
-        const batchBillingSettings = billingSettings || await this.getOwnerBillingSettings(ownerId);
-        if (!batchBillingSettings) {
-          throw new Error(`No billing settings found for owner ${ownerId}`);
-        }
-
-        // Create billing batch record with proper timezone and cutoff time
-        const billingBatch = await this.createBillingBatch({
-          ownerId,
-          businessDate,
-          cutoffTime: batchBillingSettings.billingCutoffTime,
-          timezone: batchBillingSettings.billingTimezone,
-          status: 'processing',
-          totalAmount: totalAmount.toFixed(2),
-          totalFees: totalFees.toFixed(2),
-          paymentCount,
-          processingStartedAt: new Date(),
-        });
-
-        // Assign payments to the batch
-        const paymentIds = pendingPayments.map(p => p.id);
-        await this.assignPaymentsToBatch(paymentIds, billingBatch.id, businessDate);
-
-        // Create Stripe PaymentIntent or simulate for development
-        let stripePaymentIntentId: string;
-        let processingResult: { success: boolean; error?: string } = { success: false };
-
-        try {
-          // Check if we're in a Stripe-enabled environment
-          const stripe = await this.getStripeInstance();
-          
-          if (stripe) {
-            // Production/Stripe-enabled environment: Create real PaymentIntent
-            stripePaymentIntentId = await this.createStripePaymentIntent(
-              billingBatch.id,
-              ownerId,
-              totalAmount,
-              totalFees,
-              paymentCount,
-              batchBillingSettings
-            );
-            
-            // Update batch with real Stripe payment intent
-            await this.updateBillingBatchProcessing(
-              billingBatch.id, 
-              totalAmount.toFixed(2), 
-              totalFees.toFixed(2), 
-              paymentCount, 
-              stripePaymentIntentId
-            );
-            
-            console.log(`💳 Created Stripe PaymentIntent ${stripePaymentIntentId} for batch ${billingBatch.id}`);
-            
-            // Payment completion will be handled by Stripe webhook
-            // Mark batch as processing and wait for webhook
-            processingResult = { success: true };
-            
-          } else {
-            // Development environment: Simulate success
-            stripePaymentIntentId = `pi_simulated_${billingBatch.id}_${Date.now()}`;
-            
-            // Update batch with simulated payment intent
-            await this.updateBillingBatchProcessing(
-              billingBatch.id, 
-              totalAmount.toFixed(2), 
-              totalFees.toFixed(2), 
-              paymentCount, 
-              stripePaymentIntentId
-            );
-
-            // Simulate successful payment processing immediately
-            await this.completeBatchPayment(billingBatch.id, stripePaymentIntentId);
-            
-            console.log(`🧪 Simulated successful payment for batch ${billingBatch.id} (development mode)`);
-            processingResult = { success: true };
-          }
-          
-        } catch (error: any) {
-          console.error(`❌ Error creating payment for batch ${billingBatch.id}:`, error);
-          
-          // Mark batch as failed
-          await this.markBillingBatchFailed(billingBatch.id, error.message);
-          processingResult = { success: false, error: error.message };
-          
-          // Don't throw here - we want to continue processing other batches
-          // The caller will see this batch marked as failed
-        }
-
-        console.log(`✅ Successfully processed batch ${billingBatch.id} for owner ${ownerId}`);
-
-      } catch (error: any) {
-        console.error(`❌ Error processing batch for owner ${ownerId}:`, error);
-        throw error; // Will rollback transaction
-      }
+    const result = await processOwnerBillingRun({
+      ownerId,
+      runType: 'weekly_scheduled',
+      startDate: billingStart,
+      endDate: billingEnd,
+      existingBatchId: existingBatch?.id || null,
+      storage: this as any,
+      stripeClient: stripe,
     });
+
+    const ownerResult = result.runs[0];
+    if (!ownerResult) {
+      console.log(`ℹ️  No billing run result returned for owner ${ownerId} on ${businessDate}`);
+      return;
+    }
+
+    if (ownerResult.status === 'failed') {
+      console.error(`❌ Billing run failed for owner ${ownerId} on ${businessDate}: ${ownerResult.message}`);
+      throw new Error(ownerResult.message);
+    }
+
+    if (ownerResult.status === 'skipped') {
+      console.log(`ℹ️  Billing run skipped for owner ${ownerId} on ${businessDate}: ${ownerResult.message}`);
+      return;
+    }
+
+    console.log(
+      `✅ Billing run processed for owner ${ownerId} on ${businessDate}: ${ownerResult.washoutCount} washouts, $${(ownerResult.amountCents / 100).toFixed(2)}`
+    );
   }
 
   // Complete batch payment processing (normally called by Stripe webhook)

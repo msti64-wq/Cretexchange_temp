@@ -9,7 +9,7 @@ function formatValue(value: unknown): string {
   return String(value);
 }
 
-export async function downloadReportCsv(url: string, filename: string): Promise<void> {
+export async function downloadReportFile(url: string, filename: string): Promise<void> {
   const response = await apiRequest(url, { method: "GET" });
   const blob = await response.blob();
   const blobUrl = window.URL.createObjectURL(blob);
@@ -20,6 +20,10 @@ export async function downloadReportCsv(url: string, filename: string): Promise<
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(blobUrl);
+}
+
+export async function downloadReportCsv(url: string, filename: string): Promise<void> {
+  return downloadReportFile(url, filename);
 }
 
 export function downloadReportPdf(

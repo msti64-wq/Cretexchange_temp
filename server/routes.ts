@@ -35,7 +35,7 @@ import {
 import { TERMS_TYPES } from "@shared/terms";
 import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, resolveLocationMonthlyFeeCents } from "./locationBilling";
 import { resolveOwnerBillingPolicy, getActiveBillingPolicyLabels } from "./billingPolicy";
-import { runOwnerBillingNow } from "./ownerBillingRuns";
+import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { LOTTERY_FEATURE_FLAG_KEY, resolveLotteryEnabled } from "./lottery";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState, isOwnerProfileComplete } from "../shared/ownerLocationAccess";
@@ -48,6 +48,13 @@ import {
   reportResponseToJsonWithColumns,
   type ReportQueryInput,
 } from "./reportService";
+import {
+  buildBillingAuditReport,
+  billingAuditReportToCsv,
+  billingAuditReportToJson,
+  billingAuditReportToPdfBuffer,
+} from "./billingAuditReport";
+import type { BillingAuditReportQueryInput } from "../shared/billingAuditReport";
 
 const JWT_SECRET = getJwtSecret();
 const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
@@ -10819,6 +10826,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/reports/billing-audit", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const reportQuery: BillingAuditReportQueryInput = {
+        dateRange: req.query.dateRange as string | undefined,
+        startDate: req.query.startDate as string | undefined,
+        endDate: req.query.endDate as string | undefined,
+        ownerId: req.query.ownerId as string | undefined,
+        locationId: req.query.locationId as string | undefined,
+        driverId: req.query.driverId as string | undefined,
+        stripeTransactionId: req.query.stripeTransactionId as string | undefined,
+        billingRunId: req.query.billingRunId as string | undefined,
+        status: req.query.status as string | undefined,
+      };
+
+      if (reportQuery.dateRange === "custom" && (!reportQuery.startDate || !reportQuery.endDate)) {
+        return res.status(400).json({ message: "Custom date range requires startDate and endDate" });
+      }
+
+      const report = await buildBillingAuditReport(storage as any, reportQuery);
+      const format = String(req.query.format || "json").toLowerCase();
+
+      if (format === "csv") {
+        const csv = billingAuditReportToCsv(report);
+        const filename = `billing-audit-report-${new Date().toISOString().split("T")[0]}.csv`;
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return res.send(csv);
+      }
+
+      if (format === "pdf") {
+        const pdf = billingAuditReportToPdfBuffer(report);
+        const filename = `billing-audit-report-${new Date().toISOString().split("T")[0]}.pdf`;
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return res.send(pdf);
+      }
+
+      return res.json(billingAuditReportToJson(report));
+    } catch (error: any) {
+      const statusCode = error?.message === "Forbidden" ? 403 : 500;
+      console.error("Error generating billing audit report:", error);
+      res.status(statusCode).json({ message: error?.message || "Failed to generate billing audit report" });
+    }
+  });
+
   // CSV export endpoint
   app.get('/api/export/:type', isAuthenticated, async (req: any, res) => {
     try {
@@ -11957,17 +12014,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const { businessDate, dryRun = false } = req.body;
+      const { businessDate, dryRun = false, ownerId, startDate, endDate, runType } = req.body;
       const cutoffDate = businessDate || new Date().toISOString().split('T')[0];
 
       console.log(`🔄 Admin triggered ${dryRun ? 'DRY RUN' : 'manual'} batch processing for ${cutoffDate}`);
-      
-      const results = dryRun 
+
+      const shouldUseUnifiedEngine = Boolean(ownerId || startDate || endDate);
+      const results = dryRun
         ? await storage.getDryRunBatchPreview(cutoffDate)
-        : await storage.processDailyBatches(cutoffDate);
+        : shouldUseUnifiedEngine
+          ? await processOwnerBillingRun({
+              ownerId: ownerId || undefined,
+              startDate: startDate ? new Date(startDate) : undefined,
+              endDate: endDate ? new Date(endDate) : undefined,
+              runType: (runType || "admin_manual") as "weekly_scheduled" | "admin_manual",
+              triggeredByAdminId: req.user.id,
+              storage: storage as any,
+              stripeClient: stripeClient,
+            })
+          : await storage.processDailyBatches(cutoffDate);
       
       res.json({
-        message: dryRun ? "Dry run completed" : "Batch processing completed",
+        message: dryRun ? "Dry run completed" : shouldUseUnifiedEngine ? "Billing run completed" : "Batch processing completed",
         businessDate: cutoffDate,
         dryRun,
         results
