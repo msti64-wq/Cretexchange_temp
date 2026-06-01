@@ -86,6 +86,9 @@ export default function OwnerDashboard() {
   const { toast } = useToast();
   const ownerRecord = (user as any)?.roleData || {};
   const membershipState = resolveOwnerMembershipState(ownerRecord);
+  const approvalDebugMode =
+    import.meta.env.DEV ||
+    (typeof window !== "undefined" && window.location.search.includes("debugApproval=1"));
 
   const parseApiError = (error: unknown) => {
     const rawMessage = error instanceof Error ? error.message : String(error);
@@ -95,9 +98,23 @@ export default function OwnerDashboard() {
     try {
       const parsed = JSON.parse(payload);
       if (parsed && typeof parsed.message === "string") {
+        if (approvalDebugMode && parsed.details) {
+          const detailText =
+            typeof parsed.details === "string"
+              ? parsed.details
+              : JSON.stringify(parsed.details, null, 2);
+          return `${parsed.message}\n\n${detailText}`;
+        }
         return parsed.message;
       }
       if (parsed && typeof parsed.error === "string") {
+        if (approvalDebugMode && parsed.details) {
+          const detailText =
+            typeof parsed.details === "string"
+              ? parsed.details
+              : JSON.stringify(parsed.details, null, 2);
+          return `${parsed.error}\n\n${detailText}`;
+        }
         return parsed.error;
       }
     } catch {

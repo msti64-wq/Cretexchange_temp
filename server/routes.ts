@@ -4462,9 +4462,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payoutStatus: approvalResponsePayoutStatus,
       });
     } catch (error) {
+      const dbError = summarizeDatabaseError(error, {
+        phase: "washout-approval",
+        table: "washout_activities",
+      });
       console.error("Error verifying activity:", {
         error,
+        dbError,
         approvalDebugContext,
+        query: typeof error === "object" && error && "query" in error ? (error as { query?: string }).query : undefined,
+        params: typeof error === "object" && error && "params" in error ? (error as { params?: unknown[] }).params : undefined,
+        stack: error instanceof Error ? error.stack : undefined,
       });
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (approvedActivity) {
@@ -4480,7 +4488,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         message: "Failed to verify activity",
         error: errorMessage,
-        details: approvalDebugContext,
+        details: {
+          ...approvalDebugContext,
+          dbError,
+        },
       });
     }
   });
@@ -12625,9 +12636,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const duplicateWindowStart = new Date();
       duplicateWindowStart.setDate(duplicateWindowStart.getDate() - PHOTO_DUPLICATE_LOOKBACK_DAYS);
-      const recentDuplicateCandidates = isAdmin
-        ? await storage.getRecentWashoutPhotoDuplicateCandidates(duplicateWindowStart)
-        : [];
+      let recentDuplicateCandidates: PhotoFingerprintCandidate[] = [];
+      if (isAdmin) {
+        try {
+          recentDuplicateCandidates = await storage.getRecentWashoutPhotoDuplicateCandidates(duplicateWindowStart);
+        } catch (error) {
+          console.warn("Admin duplicate photo lookup failed; continuing without duplicate matches:", {
+            endpoint: "/api/photos/activity/:activityId",
+            activityId,
+            userId,
+            ...summarizeDatabaseError(error, {
+              phase: "photo-duplicate-candidate-lookup",
+              table: "washout_photos",
+            }),
+            query: typeof error === "object" && error && "query" in error ? (error as { query?: string }).query : undefined,
+            params: typeof error === "object" && error && "params" in error ? (error as { params?: unknown[] }).params : undefined,
+            stack: error instanceof Error ? error.stack : undefined,
+          });
+          recentDuplicateCandidates = [];
+        }
+      }
 
       const previewPhotos = await Promise.all(photos.map(async (photo) => {
         const url = readSelection.provider === "s3"
@@ -12837,7 +12865,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         duplicateLookupFailed = true;
         console.warn("Duplicate photo lookup failed; continuing without duplicate matches:", {
           endpoint: "/api/activities/create-with-photos",
-          reason: error instanceof Error ? error.message : String(error),
+          ...summarizeDatabaseError(error, {
+            phase: "photo-duplicate-candidate-lookup",
+            table: "washout_photos",
+          }),
+          query: typeof error === "object" && error && "query" in error ? (error as { query?: string }).query : undefined,
+          params: typeof error === "object" && error && "params" in error ? (error as { params?: unknown[] }).params : undefined,
+          stack: error instanceof Error ? error.stack : undefined,
+          ownerUserId: req.user?.id ?? null,
+          driverId: driver.id,
+          locationId: activityResult?.data?.locationId ?? null,
+          photoCount: Array.isArray(photoData) ? photoData.length : 0,
         });
       }
 

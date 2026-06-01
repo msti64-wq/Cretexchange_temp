@@ -1387,35 +1387,62 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRecentWashoutPhotoDuplicateCandidates(since: Date): Promise<PhotoFingerprintCandidate[]> {
-    const recentPhotos = await db
-      .select({
-        photo: getTableColumns(washoutPhotos),
-        user: getTableColumns(users),
-        location: getTableColumns(washoutLocations),
-      })
-      .from(washoutPhotos)
-      .innerJoin(washoutActivities, eq(washoutPhotos.activityId, washoutActivities.id))
-      .innerJoin(drivers, eq(washoutPhotos.driverId, drivers.id))
-      .innerJoin(users, eq(drivers.userId, users.id))
-      .innerJoin(washoutLocations, eq(washoutPhotos.locationId, washoutLocations.id))
-      .where(
-        and(
-          gte(washoutPhotos.uploadedAt, since),
-          isNotNull(washoutPhotos.imageFingerprint),
-        ),
-      )
-      .orderBy(desc(washoutPhotos.uploadedAt));
+    try {
+      const recentPhotos = await db
+        .select()
+        .from(washoutPhotos)
+        .where(
+          and(
+            gte(washoutPhotos.uploadedAt, since),
+            isNotNull(washoutPhotos.imageFingerprint),
+          ),
+        )
+        .orderBy(desc(washoutPhotos.uploadedAt));
 
-    return recentPhotos.map(({ photo, user, location }) => ({
-      photoId: photo.id,
-      activityId: photo.activityId,
-      driverId: photo.driverId,
-      driverName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username,
-      locationId: photo.locationId,
-      locationName: location.name,
-      priorUploadedAt: new Date(photo.uploadedAt as unknown as string | number | Date).toISOString(),
-      imageFingerprint: String(photo.imageFingerprint ?? ""),
-    }));
+      const candidates: PhotoFingerprintCandidate[] = [];
+
+      for (const photo of recentPhotos) {
+        const [activity, driver, location] = await Promise.all([
+          this.getWashoutActivity(photo.activityId),
+          this.getDriverById(photo.driverId),
+          this.getWashoutLocation(photo.locationId),
+        ]);
+
+        if (!activity || !driver || !location) {
+          continue;
+        }
+
+        const user = await this.getUserById(driver.userId);
+        if (!user) {
+          continue;
+        }
+
+        candidates.push({
+          photoId: photo.id,
+          activityId: photo.activityId,
+          driverId: photo.driverId,
+          driverName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username,
+          locationId: photo.locationId,
+          locationName: location.name,
+          priorUploadedAt: new Date(photo.uploadedAt as unknown as string | number | Date).toISOString(),
+          imageFingerprint: String(photo.imageFingerprint ?? ""),
+        });
+      }
+
+      return candidates;
+    } catch (error) {
+      console.error("Duplicate photo candidate lookup failed; returning empty candidate list:", {
+        ...summarizeDatabaseError(error, {
+          phase: "photo-duplicate-candidate-lookup",
+          table: "washout_photos",
+        }),
+        query: typeof error === "object" && error && "query" in error ? (error as { query?: string }).query : undefined,
+        params: typeof error === "object" && error && "params" in error ? (error as { params?: unknown[] }).params : undefined,
+        stack: error instanceof Error ? error.stack : undefined,
+        since: since.toISOString(),
+      });
+      return [];
+    }
   }
 
   async deletePhoto(photoId: string): Promise<boolean> {
