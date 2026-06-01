@@ -1063,13 +1063,14 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(washoutLocations.name);
     
-    return results.map((row: any) => ({
+    const mappedLocations: any = results.map((row: any) => ({
       ...row.washout_locations,
       owner: {
         ...row.owners,
         user: row.users
       }
-    }));
+    })) as any;
+    return mappedLocations;
   }
 
   async updateLocationVisibility(locationId: string, isVisible: boolean): Promise<WashoutLocation> {
@@ -1141,13 +1142,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(washoutLocations.createdAt));
 
     // Transform the nested structure to flat structure expected by frontend
-    return results.map((row: any) => ({
+    const mappedPayments: any = results.map((row: any) => ({
       ...row.washout_locations,
       owner: {
         ...row.owners,
         user: row.users
       }
-    }));
+    })) as any;
+    return mappedPayments;
   }
 
   // Admin pricing operations - batch update all locations to new rate
@@ -1281,10 +1283,11 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(washoutActivities.checkInTime));
 
-    return results.map((row: any) => ({
+    const mappedPayments: any = results.map((row: any) => ({
       ...row.washout_activities,
       location: row.washout_locations
-    }));
+    })) as any;
+    return mappedPayments;
   }
 
   async getActivitiesByLocation(locationId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { driver: Driver & { user: User } })[]> {
@@ -1306,14 +1309,15 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(washoutActivities.checkInTime));
 
-    return results.map((row: any) => ({
+    const mappedActivities: any = results.map((row: any) => ({
       ...row.washout_activities,
       driver: {
         ...row.drivers,
         user: row.users
       },
       location: row.washout_locations
-    }));
+    })) as any;
+    return mappedActivities;
   }
 
   async getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]> {
@@ -1546,10 +1550,12 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(washoutActivities.checkInTime))
       .limit(limit);
     
-    return results.map((row: any) => ({
+    const mappedPayments: any = results.map((row: any) => ({
       ...row.washout_activities,
       location: row.washout_locations
-    }));
+    })) as any;
+    return mappedPayments;
+    return mappedPayments;
   }
 
   async getAllActivities(startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]> {
@@ -1564,7 +1570,39 @@ export class DatabaseStorage implements IStorage {
     }
 
     const results = await db
-      .select()
+      .select({
+        activityId: washoutActivities.id,
+        activityDriverId: washoutActivities.driverId,
+        activityLocationId: washoutActivities.locationId,
+        activityCheckInTime: washoutActivities.checkInTime,
+        activityStatus: washoutActivities.status,
+        activityAmount: washoutActivities.amount,
+        activityNotes: washoutActivities.notes,
+        activityPhotoUrls: washoutActivities.photoUrls,
+        locationId: washoutLocations.id,
+        locationOwnerId: washoutLocations.ownerId,
+        locationName: washoutLocations.name,
+        locationStreet: washoutLocations.street,
+        locationCity: washoutLocations.city,
+        locationState: washoutLocations.state,
+        locationZip: washoutLocations.zip,
+        locationRate: washoutLocations.rate,
+        locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
+        driverId: drivers.id,
+        driverUserId: drivers.userId,
+        driverTruckNumber: drivers.truckNumber,
+        driverLicenseNumber: drivers.licenseNumber,
+        driverEmployerName: drivers.employerName,
+        driverEmployerStreet: drivers.employerStreet,
+        driverEmployerCity: drivers.employerCity,
+        driverEmployerState: drivers.employerState,
+        driverEmployerZip: drivers.employerZip,
+        driverEmployerPhone: drivers.employerPhone,
+        driverPhone: users.phone,
+        driverFirstName: users.firstName,
+        driverLastName: users.lastName,
+        driverEmail: users.email,
+      })
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
@@ -1572,14 +1610,66 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(washoutActivities.checkInTime));
     
-    return results.map((row: any) => ({
-      ...row.washout_activities,
-      location: row.washout_locations,
+    const mappedBatches: any = results.map((row: any) => ({
+      id: row.activityId,
+      driverId: row.activityDriverId,
+      locationId: row.activityLocationId,
+      checkInTime: row.activityCheckInTime,
+      status: row.activityStatus,
+      amount: row.activityAmount,
+      notes: row.activityNotes,
+      photoUrls: row.activityPhotoUrls,
+      createdAt: row.activityCheckInTime,
+      updatedAt: row.activityCheckInTime,
+      location: {
+        id: row.locationId,
+        ownerId: row.locationOwnerId,
+        name: row.locationName,
+        street: row.locationStreet,
+        city: row.locationCity,
+        state: row.locationState,
+        zip: row.locationZip,
+        rate: row.locationRate,
+        monthlyFeeCents: row.locationMonthlyFeeCents,
+      },
       driver: {
-        ...row.drivers,
-        user: row.users
-      }
+        id: row.driverId,
+        userId: row.driverUserId,
+        truckNumber: row.driverTruckNumber,
+        licenseNumber: row.driverLicenseNumber,
+        employerName: row.driverEmployerName,
+        employerStreet: row.driverEmployerStreet,
+        employerCity: row.driverEmployerCity,
+        employerState: row.driverEmployerState,
+        employerZip: row.driverEmployerZip,
+        employerPhone: row.driverEmployerPhone,
+        user: {
+          id: row.driverUserId,
+          username: row.driverEmail,
+          email: row.driverEmail,
+          passwordHash: "",
+          firstName: row.driverFirstName,
+          lastName: row.driverLastName,
+          role: "driver",
+          phone: row.driverPhone,
+          street: "",
+          city: "",
+          state: "",
+          zip: "",
+          paymentMethod: "ach",
+          paymentFrequency: "weekly",
+          stripeConnectAccountId: null,
+          columnCustomerId: null,
+          stripeCustomerId: null,
+          stripeConnectBalance: null,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          profileImageUrl: null,
+        } as User,
+      },
     }));
+    return mappedBatches;
   }
 
   // ============= AUTO-APPROVAL OPERATIONS =============
@@ -1606,14 +1696,15 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`📋 Found ${results.length} expired pending activities`);
     
-    return results.map((row: any) => ({
+    const mappedBatches: any = results.map((row: any) => ({
       ...row.washout_activities,
       location: row.washout_locations,
       driver: {
         ...row.drivers,
         user: row.users
       }
-    }));
+    })) as any;
+    return mappedBatches;
   }
 
   async autoApproveExpiredActivities(hoursOld: number = 72): Promise<{ approved: number; failed: number; errors: string[] }> {
@@ -1731,13 +1822,14 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(payments.createdAt));
 
-    return results.map((row: any) => ({
+    const mappedBatches: any = results.map((row: any) => ({
       ...row.payments,
       activity: {
         ...row.washout_activities,
         location: row.washout_locations
       }
-    }));
+    })) as any;
+    return mappedBatches;
   }
 
   async getPaymentsByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { driver: Driver & { user: User } } })[]> {
@@ -1760,7 +1852,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(payments.createdAt));
 
-    return results.map((row: any) => ({
+    const mappedBatches: any = results.map((row: any) => ({
       ...row.payments,
       activity: {
         ...row.washout_activities,
@@ -1769,7 +1861,8 @@ export class DatabaseStorage implements IStorage {
           user: row.users
         }
       }
-    }));
+    })) as any;
+    return mappedBatches;
   }
 
   async getPaymentsAwaitingDriverStripe(): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User }; owner: Owner & { user: User }; location: WashoutLocation })[]> {
@@ -1859,41 +1952,160 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(payments.createdAt, endDate));
     }
 
+    const ownerUsers = alias(users, "payment_owner_users");
+
     const results = await db
-      .select()
+      .select({
+        paymentId: payments.id,
+        paymentDriverId: payments.driverId,
+        paymentOwnerId: payments.ownerId,
+        paymentActivityId: payments.activityId,
+        paymentAmount: payments.amount,
+        paymentProcessingFee: payments.processingFee,
+        paymentWashoutServiceFee: payments.washoutServiceFee,
+        paymentTipAmountCents: payments.tipAmountCents,
+        paymentPayoutStatus: payments.payoutStatus,
+        paymentDeferReason: payments.deferReason,
+        paymentDeferredAt: payments.deferredAt,
+        paymentStripePaymentIntentId: payments.stripePaymentIntentId,
+        paymentStripeTransferId: payments.stripeTransferId,
+        paymentStripeChargeId: payments.stripeChargeId,
+        paymentStatus: payments.status,
+        paymentRefundedAt: payments.refundedAt,
+        paymentRefundAmount: payments.refundAmount,
+        paymentRefundReason: payments.refundReason,
+        paymentBatchId: payments.batchId,
+        paymentBusinessDate: payments.businessDate,
+        paymentPaidAt: payments.paidAt,
+        paymentCreatedAt: payments.createdAt,
+        paymentUpdatedAt: payments.updatedAt,
+        driverId: drivers.id,
+        driverUserId: drivers.userId,
+        driverTruckNumber: drivers.truckNumber,
+        driverFirstName: users.firstName,
+        driverLastName: users.lastName,
+        driverEmail: users.email,
+        driverPhone: users.phone,
+        ownerId: owners.id,
+        ownerUserId: owners.userId,
+        ownerCompanyName: owners.companyName,
+        ownerStripeCustomerId: owners.stripeCustomerId,
+        ownerFirstName: ownerUsers.firstName,
+        ownerLastName: ownerUsers.lastName,
+        ownerEmail: ownerUsers.email,
+        ownerPhone: ownerUsers.phone,
+        activityId: washoutActivities.id,
+        activityLocationId: washoutActivities.locationId,
+        activityCheckInTime: washoutActivities.checkInTime,
+        activityStatus: washoutActivities.status,
+        activityAmount: washoutActivities.amount,
+        activityNotes: washoutActivities.notes,
+      })
       .from(payments)
       .innerJoin(drivers, eq(payments.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
       .innerJoin(owners, eq(payments.ownerId, owners.id))
+      .innerJoin(ownerUsers, eq(owners.userId, ownerUsers.id))
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
       .where(and(...conditions))
       .orderBy(desc(payments.createdAt));
 
-    // Transform the results to handle the owner user relationship
-    const transformedResults: any[] = [];
-    
-    for (const row of results) {
-      // Get the owner's user information
-      const [ownerUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, row.owners.userId));
-
-      transformedResults.push({
-        ...row.payments,
-        driver: {
-          ...row.drivers,
-          user: row.users
-        },
-        owner: {
-          ...row.owners,
-          user: ownerUser
-        },
-        activity: row.washout_activities
-      });
-    }
-
-    return transformedResults;
+    const mappedPayments: any = results.map((row: any) => ({
+      id: row.paymentId,
+      driverId: row.paymentDriverId,
+      ownerId: row.paymentOwnerId,
+      activityId: row.paymentActivityId,
+      amount: row.paymentAmount,
+      processingFee: row.paymentProcessingFee,
+      washoutServiceFee: row.paymentWashoutServiceFee,
+      tipAmountCents: row.paymentTipAmountCents,
+      payoutStatus: row.paymentPayoutStatus,
+      deferReason: row.paymentDeferReason,
+      deferredAt: row.paymentDeferredAt,
+      stripePaymentIntentId: row.paymentStripePaymentIntentId,
+      stripeTransferId: row.paymentStripeTransferId,
+      stripeChargeId: row.paymentStripeChargeId,
+      status: row.paymentStatus,
+      refundedAt: row.paymentRefundedAt,
+      refundAmount: row.paymentRefundAmount,
+      refundReason: row.paymentRefundReason,
+      batchId: row.paymentBatchId,
+      businessDate: row.paymentBusinessDate,
+      paidAt: row.paymentPaidAt,
+      createdAt: row.paymentCreatedAt,
+      updatedAt: row.paymentUpdatedAt,
+      driver: {
+        id: row.driverId,
+        userId: row.driverUserId,
+        truckNumber: row.driverTruckNumber,
+        user: {
+          id: row.driverUserId,
+          username: row.driverEmail,
+          email: row.driverEmail,
+          passwordHash: "",
+          firstName: row.driverFirstName,
+          lastName: row.driverLastName,
+          role: "driver",
+          phone: row.driverPhone,
+          street: "",
+          city: "",
+          state: "",
+          zip: "",
+          paymentMethod: "ach",
+          paymentFrequency: "weekly",
+          stripeConnectAccountId: null,
+          columnCustomerId: null,
+          stripeCustomerId: null,
+          stripeConnectBalance: null,
+          isActive: true,
+          createdAt: row.paymentCreatedAt,
+          updatedAt: row.paymentUpdatedAt,
+          profileImageUrl: null,
+        } as User,
+      },
+      owner: {
+        id: row.ownerId,
+        userId: row.ownerUserId,
+        companyName: row.ownerCompanyName,
+        stripeCustomerId: row.ownerStripeCustomerId,
+        user: {
+          id: row.ownerUserId,
+          username: row.ownerEmail,
+          email: row.ownerEmail,
+          passwordHash: "",
+          firstName: row.ownerFirstName,
+          lastName: row.ownerLastName,
+          role: "owner",
+          phone: row.ownerPhone,
+          street: "",
+          city: "",
+          state: "",
+          zip: "",
+          paymentMethod: "ach",
+          paymentFrequency: "weekly",
+          stripeConnectAccountId: null,
+          columnCustomerId: null,
+          stripeCustomerId: row.ownerStripeCustomerId,
+          stripeConnectBalance: null,
+          isActive: true,
+          createdAt: row.paymentCreatedAt,
+          updatedAt: row.paymentUpdatedAt,
+          profileImageUrl: null,
+        } as User,
+      },
+      activity: {
+        id: row.activityId,
+        driverId: row.paymentDriverId,
+        locationId: row.activityLocationId,
+        checkInTime: row.activityCheckInTime,
+        status: row.activityStatus,
+        amount: row.activityAmount,
+        notes: row.activityNotes,
+        createdAt: row.paymentCreatedAt,
+        updatedAt: row.paymentUpdatedAt,
+      } as WashoutActivity,
+    })) as any;
+    return mappedPayments;
   }
 
   // Statistics operations
@@ -2076,10 +2288,11 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(messages.userId, users.id))
       .orderBy(desc(messages.createdAt));
     
-    return results.map((row: any) => ({
+    const mappedBatches: any = results.map((row: any) => ({
       ...row.messages,
       user: row.users
-    }));
+    })) as any;
+    return mappedBatches;
   }
 
   async getMessageById(messageId: string): Promise<(Message & { user: User }) | undefined> {
@@ -2622,13 +2835,14 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(withdrawals.createdAt));
     
-    return results.map((row: any) => ({
+    const mappedBatches: any = results.map((row: any) => ({
       ...row.withdrawals,
       driver: {
         ...row.drivers,
         user: row.users
       }
-    }));
+    })) as any;
+    return mappedBatches;
   }
 
   // Wallet statistics
@@ -2956,22 +3170,96 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(billingBatches.createdAt, endDate));
     }
 
+    const ownerUsers = alias(users, "billing_batch_owner_users");
+
     const results = await db
       .select({
-        batch: getTableColumns(billingBatches),
-        owner: getTableColumns(owners),
-        user: getTableColumns(users),
+        batchId: billingBatches.id,
+        batchOwnerId: billingBatches.ownerId,
+        batchBusinessDate: billingBatches.businessDate,
+        batchCutoffTime: billingBatches.cutoffTime,
+        batchTimezone: billingBatches.timezone,
+        batchTotalAmount: billingBatches.totalAmount,
+        batchTotalFees: billingBatches.totalFees,
+        batchPaymentCount: billingBatches.paymentCount,
+        batchStripePaymentIntentId: billingBatches.stripePaymentIntentId,
+        batchStripeBatchTransferId: billingBatches.stripeBatchTransferId,
+        batchStatus: billingBatches.status,
+        batchProcessingStartedAt: billingBatches.processingStartedAt,
+        batchCompletedAt: billingBatches.completedAt,
+        batchFailureReason: billingBatches.failureReason,
+        batchRetryCount: billingBatches.retryCount,
+        batchMetadata: billingBatches.metadata,
+        batchCreatedAt: billingBatches.createdAt,
+        batchUpdatedAt: billingBatches.updatedAt,
+        ownerId: owners.id,
+        ownerUserId: owners.userId,
+        ownerCompanyName: owners.companyName,
+        ownerStripeCustomerId: owners.stripeCustomerId,
+        ownerStripePaymentMethodId: owners.stripePaymentMethodId,
+        ownerFirstName: ownerUsers.firstName,
+        ownerLastName: ownerUsers.lastName,
+        ownerEmail: ownerUsers.email,
+        ownerPhone: ownerUsers.phone,
       })
       .from(billingBatches)
       .innerJoin(owners, eq(billingBatches.ownerId, owners.id))
-      .innerJoin(users, eq(owners.userId, users.id))
+      .innerJoin(ownerUsers, eq(owners.userId, ownerUsers.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(billingBatches.createdAt));
 
-    return results.map(({ batch, owner, user }) => ({
-      ...batch,
-      owner: { ...owner, user },
-    }));
+    const mappedBatches: any = results.map((row: any) => ({
+      id: row.batchId,
+      ownerId: row.batchOwnerId,
+      businessDate: row.batchBusinessDate,
+      cutoffTime: row.batchCutoffTime,
+      timezone: row.batchTimezone,
+      totalAmount: row.batchTotalAmount,
+      totalFees: row.batchTotalFees,
+      paymentCount: row.batchPaymentCount,
+      stripePaymentIntentId: row.batchStripePaymentIntentId,
+      stripeBatchTransferId: row.batchStripeBatchTransferId,
+      status: row.batchStatus,
+      processingStartedAt: row.batchProcessingStartedAt,
+      completedAt: row.batchCompletedAt,
+      failureReason: row.batchFailureReason,
+      retryCount: row.batchRetryCount,
+      metadata: row.batchMetadata,
+      createdAt: row.batchCreatedAt,
+      updatedAt: row.batchUpdatedAt,
+      owner: {
+        id: row.ownerId,
+        userId: row.ownerUserId,
+        companyName: row.ownerCompanyName,
+        stripeCustomerId: row.ownerStripeCustomerId,
+        stripePaymentMethodId: row.ownerStripePaymentMethodId,
+        user: {
+          id: row.ownerUserId,
+          username: row.ownerEmail,
+          email: row.ownerEmail,
+          passwordHash: "",
+          firstName: row.ownerFirstName,
+          lastName: row.ownerLastName,
+          role: "owner",
+          phone: row.ownerPhone,
+          street: "",
+          city: "",
+          state: "",
+          zip: "",
+          paymentMethod: "ach",
+          paymentFrequency: "weekly",
+          stripeConnectAccountId: null,
+          columnCustomerId: null,
+          stripeCustomerId: row.ownerStripeCustomerId,
+          stripeConnectBalance: null,
+          isActive: true,
+          createdAt: row.batchCreatedAt,
+          updatedAt: row.batchUpdatedAt,
+          profileImageUrl: null,
+        } as User,
+      },
+    })) as any;
+    return mappedBatches;
   }
 
   async getBillingBatchesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<BillingBatch[]> {

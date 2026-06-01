@@ -641,6 +641,111 @@ test("billing audit report includes failed and legacy/unlinked rows", async () =
   assert.ok(report.summary.totalLegacyUnlinked > 0);
 });
 
+test("billing audit report builds from minimal safe report fields only", async () => {
+  const ownerUser = makeUser({ id: "owner-user-min", role: "owner", firstName: "Owner", lastName: "One", email: "owner@example.com" });
+  const driverUser = makeUser({ id: "driver-user-min", role: "driver", firstName: "Driver", lastName: "One", email: "driver@example.com", phone: "5552223333" });
+  const owner = {
+    id: "owner-min",
+    userId: ownerUser.id,
+    companyName: "Minimal Owner LLC",
+    stripeCustomerId: "cus_min",
+    stripePaymentMethodId: "pm_min",
+  } as any;
+  const driver = {
+    id: "driver-min",
+    userId: driverUser.id,
+    truckNumber: "T-1",
+  } as any;
+  const location = {
+    id: "location-min",
+    ownerId: owner.id,
+    name: "Minimal Site",
+    street: "1 Main St",
+    city: "Austin",
+    state: "TX",
+    zip: "78701",
+    rate: "5.00",
+    monthlyFeeCents: 100,
+  } as any;
+  const activity = {
+    id: "activity-min",
+    driverId: driver.id,
+    locationId: location.id,
+    status: "verified",
+    amount: "5.00",
+    checkInTime: new Date("2026-05-01T12:00:00.000Z"),
+    checkOutTime: null,
+    photoUrls: [],
+    notes: "Minimal activity",
+    verifiedBy: null,
+    verifiedAt: null,
+    latitude: null,
+    longitude: null,
+    serviceType: "washout",
+    materialSlug: null,
+    materialCustomLabel: null,
+    qty: null,
+    unit: null,
+    amountCentsOwnerToDriver: null,
+    feeCentsPlatform: 0,
+    createdAt: new Date("2026-05-01T12:00:00.000Z"),
+    updatedAt: new Date("2026-05-01T12:00:00.000Z"),
+    location,
+    driver: { ...driver, user: driverUser },
+  } as any;
+  const payment = {
+    id: "payment-min",
+    driverId: driver.id,
+    ownerId: owner.id,
+    activityId: activity.id,
+    amount: "5.00",
+    processingFee: "0.30",
+    washoutServiceFee: "4.70",
+    tipAmountCents: 0,
+    payoutStatus: "not_started",
+    deferReason: null,
+    deferredAt: null,
+    stripePaymentIntentId: "pi_min",
+    stripeTransferId: null,
+    stripeChargeId: "ch_min",
+    status: "paid",
+    refundedAt: null,
+    refundAmount: null,
+    refundReason: null,
+    batchId: null,
+    businessDate: "2026-05-01",
+    paidAt: new Date("2026-05-01T12:30:00.000Z"),
+    createdAt: new Date("2026-05-01T12:00:00.000Z"),
+    updatedAt: new Date("2026-05-01T12:30:00.000Z"),
+    driver: { ...driver, user: driverUser },
+    owner: { ...owner, user: ownerUser },
+    activity,
+  } as any;
+
+  const storage = {
+    async getAllPayments() {
+      return [payment];
+    },
+    async getAllActivities() {
+      return [activity];
+    },
+    async getBillingBatches() {
+      return [];
+    },
+    async getPhotosByActivity() {
+      return [];
+    },
+  };
+
+  const report = await buildBillingAuditReport(storage as any, { dateRange: "custom", startDate: "2026-05-01", endDate: "2026-05-01" });
+
+  assert.equal(report.rows.length, 1);
+  assert.equal(report.rows[0].paymentId, "payment-min");
+  assert.equal(report.rows[0].legacyUnlinked, true);
+  assert.equal(report.rows[0].ownerCompanyName, "Minimal Owner LLC");
+  assert.equal(report.rows[0].driverDisplayName, "Driver One");
+});
+
 test("billing audit report route is registered", async () => {
   const { app, gets } = createRouteRegistry();
   await registerRoutes(app as never);
