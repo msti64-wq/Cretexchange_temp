@@ -5,6 +5,8 @@ import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import Stripe from "stripe";
 import { ObjectStorageService } from "../server/objectStorage";
 import { processOwnerBillingRun } from "../server/ownerBillingRuns";
+import { resolveBillingPolicy } from "../shared/billingPolicy";
+import { updateSystemSettingsSchema } from "../shared/schema";
 
 type TestCase = {
   name: string;
@@ -33,6 +35,133 @@ process.env.PUBLIC_OBJECT_SEARCH_PATHS =
 
 await import("./reports.test.ts");
 await import("./owner-access.test.ts");
+
+test("billing policy resolver treats blank and null as defaults and zero as an override", () => {
+  const platform = {
+    enableAnnualMembership: true,
+    enableMonthlyLocationDues: true,
+    defaultAnnualMembershipAmount: "15.00",
+    defaultMonthlyLocationDuesAmount: "10.00",
+    defaultPerWashoutFee: "5.00",
+  };
+
+  const defaultPolicy = resolveBillingPolicy(
+    platform,
+    {
+      annualMembershipEnabledOverride: null,
+      monthlyLocationDuesEnabledOverride: null,
+      membershipFeeOverride: "",
+      perWashoutFeeOverride: null,
+    },
+    {
+      monthlyLocationFeeOverride: null,
+    },
+  );
+
+  assert.equal(defaultPolicy.annualMembershipAmountCents, 1500);
+  assert.equal(defaultPolicy.monthlyLocationDuesAmountCents, 1000);
+  assert.equal(defaultPolicy.perWashoutFeeCents, 500);
+
+  const zeroPolicy = resolveBillingPolicy(
+    platform,
+    {
+      membershipFeeOverride: 0,
+      perWashoutFeeOverride: 0,
+    },
+    {
+      monthlyLocationFeeOverride: 0,
+    },
+  );
+
+  assert.equal(zeroPolicy.annualMembershipAmountCents, 0);
+  assert.equal(zeroPolicy.monthlyLocationDuesAmountCents, 0);
+  assert.equal(zeroPolicy.perWashoutFeeCents, 0);
+
+  const positivePolicy = resolveBillingPolicy(
+    platform,
+    {
+      membershipFeeOverride: "12.34",
+      perWashoutFeeOverride: "1.25",
+    },
+    {
+      monthlyLocationFeeOverride: 250,
+    },
+  );
+
+  assert.equal(positivePolicy.annualMembershipAmountCents, 1234);
+  assert.equal(positivePolicy.monthlyLocationDuesAmountCents, 250);
+  assert.equal(positivePolicy.perWashoutFeeCents, 125);
+});
+
+test("system settings schema allows zero and rejects negative platform fees", () => {
+  assert.equal(updateSystemSettingsSchema.safeParse({ platformWashoutFee: "0.00" }).success, true);
+  assert.equal(updateSystemSettingsSchema.safeParse({ platformWashoutFee: "7.25" }).success, true);
+  assert.equal(updateSystemSettingsSchema.safeParse({ platformWashoutFee: "-1.00" }).success, false);
+});
+
+test("admin custom billing route accepts zero and blank washout rates", async () => {
+  const { app, puts } = createRouteRegistry();
+  const calls: Array<{ ownerId: string; useCustomBillingModel: boolean; customWashoutRate: string | null }> = [];
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({ id: "admin_1", role: "super_admin" }),
+      getOwnerById: async () => ({ id: "owner_1", userId: "owner_user_1" }),
+      updateOwnerCustomBillingSettings: async (ownerId: string, useCustomBillingModel: boolean, customWashoutRate: string | null) => {
+        calls.push({ ownerId, useCustomBillingModel, customWashoutRate });
+        return {
+          id: "owner_1",
+          userId: "owner_user_1",
+          useCustomBillingModel,
+          customWashoutRate,
+        } as any;
+      },
+      getUserById: async () => ({ id: "owner_user_1", username: "owner", firstName: "Owner", lastName: "One" }),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/admin/owners/:id/custom-billing");
+      assert.equal(typeof route, "function");
+
+      const zeroRes = createResponse();
+      await route!(
+        {
+          params: { id: "owner_1" },
+          user: { id: "admin_1" },
+          body: { useCustomBillingModel: true, customWashoutRate: "0.00" },
+        },
+        zeroRes,
+      );
+      assert.equal(zeroRes.statusCode, 200);
+      assert.equal(calls[0].customWashoutRate, "0.00");
+
+      const blankRes = createResponse();
+      await route!(
+        {
+          params: { id: "owner_1" },
+          user: { id: "admin_1" },
+          body: { useCustomBillingModel: true, customWashoutRate: "" },
+        },
+        blankRes,
+      );
+      assert.equal(blankRes.statusCode, 200);
+      assert.equal(calls[1].customWashoutRate, null);
+
+      const negativeRes = createResponse();
+      await route!(
+        {
+          params: { id: "owner_1" },
+          user: { id: "admin_1" },
+          body: { useCustomBillingModel: true, customWashoutRate: "-1.00" },
+        },
+        negativeRes,
+      );
+      assert.equal(negativeRes.statusCode, 400);
+      assert.match(String((negativeRes.body as { message?: string }).message || ""), /zero or greater/i);
+    },
+  );
+});
 
 function createResponse() {
   return {

@@ -1694,7 +1694,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerUser = await storage.getUser(owner.userId);
       const driverUser = await storage.getUser(driver.userId);
 
-      const MIN_PLATFORM_WASHOUT_FEE = 5.0;
+      const MIN_PLATFORM_WASHOUT_FEE = 0.0;
 
       // Get platform fee - check for owner-specific override first, then use global fee
       const systemSettings = await storage.getSystemSettings();
@@ -3883,7 +3883,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ========== CHECK FOR CUSTOM BILLING MODEL (LOTTERY PROGRAM) ==========
       // Custom billing model: Owner pays fixed custom rate, driver gets lottery entry (no payout)
       const useCustomBillingModel = owner.useCustomBillingModel === true;
-      const customWashoutRate = owner.customWashoutRate ? parseFloat(owner.customWashoutRate) : null;
+      let defaultCustomWashoutRate = 5.00;
+      try {
+        const systemSettings = await storage.getSystemSettings();
+        defaultCustomWashoutRate = parseFloat(systemSettings?.platformWashoutFee || "5.00");
+      } catch (error) {
+        console.warn("⚠️ Unable to load system settings for custom billing fallback; using default rate", {
+          ownerId: owner.id,
+          activityId: activityDetails.id,
+          message: (error as Error)?.message,
+        });
+      }
+      const customWashoutRate = owner.customWashoutRate !== null && owner.customWashoutRate !== undefined && owner.customWashoutRate !== ""
+        ? parseFloat(owner.customWashoutRate)
+        : defaultCustomWashoutRate;
 
       // FEE STRUCTURE: Depends on billing model
         // Standard: Driver receives full location rate, Owner pays location rate + platform fee
@@ -3892,7 +3905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let platformFee: number;
       let ownerFee: number;
 
-      if (useCustomBillingModel && customWashoutRate !== null) {
+      if (useCustomBillingModel) {
         // CUSTOM BILLING MODEL: Owner pays flat custom rate, platform keeps it all
         driverAmount = 0; // Driver gets lottery entry, not cash
         platformFee = customWashoutRate; // Platform keeps entire custom rate
@@ -8494,9 +8507,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate platform fee if being updated
       if (req.body.platformWashoutFee !== undefined) {
         const fee = parseFloat(req.body.platformWashoutFee);
-        if (isNaN(fee) || fee < 5) {
+        if (isNaN(fee) || fee < 0) {
           return res.status(400).json({ 
-            message: "Platform washout fee must be at least $5.00" 
+            message: "Platform washout fee must be zero or greater" 
           });
         }
       }
@@ -8913,12 +8926,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerId = req.params.id;
       const { customPlatformFee } = req.body;
 
-      // Validate fee (can be null to clear, or must meet the minimum)
-      if (customPlatformFee !== null && customPlatformFee !== undefined) {
+      const hasCustomPlatformFee = customPlatformFee !== null && customPlatformFee !== undefined && customPlatformFee !== '';
+      if (hasCustomPlatformFee) {
         const fee = parseFloat(customPlatformFee);
-        if (isNaN(fee) || fee < 5) {
-          return res.status(400).json({ 
-            message: "Custom platform fee must be at least $5.00 or null to use global fee" 
+        if (isNaN(fee) || fee < 0) {
+          return res.status(400).json({
+            message: "Custom platform fee must be zero or greater, or blank to use the global fee"
           });
         }
       }
@@ -8952,19 +8965,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerId = req.params.id;
       const { useCustomBillingModel, customWashoutRate } = req.body;
 
-      // Validate rate when enabling custom billing
-      if (useCustomBillingModel && (!customWashoutRate || parseFloat(customWashoutRate) <= 0)) {
-        return res.status(400).json({ 
-          message: "Custom washout rate is required when enabling custom billing model" 
-        });
-      }
-
-      // Validate rate if provided
-      if (customWashoutRate !== null && customWashoutRate !== undefined && customWashoutRate !== '') {
+      const hasCustomWashoutRate = customWashoutRate !== null && customWashoutRate !== undefined && customWashoutRate !== '';
+      if (hasCustomWashoutRate) {
         const rate = parseFloat(customWashoutRate);
-        if (isNaN(rate) || rate <= 0) {
-          return res.status(400).json({ 
-            message: "Custom washout rate must be a positive number" 
+        if (isNaN(rate) || rate < 0) {
+          return res.status(400).json({
+            message: "Custom washout rate must be zero or greater, or blank to use the default rate"
           });
         }
       }
@@ -8978,13 +8984,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateOwnerCustomBillingSettings(
         ownerId, 
         useCustomBillingModel === true,
-        customWashoutRate || null
+        hasCustomWashoutRate ? customWashoutRate : null
       );
 
       const ownerUser = await storage.getUserById(owner.userId);
       console.log('✅ Custom billing settings updated for owner:', ownerUser?.username, 
         'useCustomBillingModel:', useCustomBillingModel, 
-        'customWashoutRate:', customWashoutRate || 'not set');
+        'customWashoutRate:', hasCustomWashoutRate ? customWashoutRate : 'default');
 
       res.json({ 
         message: "Custom billing settings updated successfully", 

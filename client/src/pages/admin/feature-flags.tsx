@@ -50,7 +50,7 @@ export default function AdminFeatureFlags() {
   });
   const currentPlatformFee = Math.max(
     parseFloat((systemSettings as any)?.platformWashoutFee || "5.00"),
-    5.0,
+    0.0,
   ).toFixed(2);
 
   const toggleMutation = useMutation({
@@ -198,10 +198,10 @@ export default function AdminFeatureFlags() {
 
   const handleUpdatePlatformFee = () => {
     const feeValue = parseFloat(platformFee);
-    if (isNaN(feeValue) || feeValue <= 0) {
+    if (isNaN(feeValue) || feeValue < 0) {
       toast({
         title: "Invalid Amount",
-        description: "Please enter a valid positive number greater than zero",
+        description: "Please enter a valid number zero or greater",
         variant: "destructive",
       });
       return;
@@ -334,10 +334,10 @@ export default function AdminFeatureFlags() {
                 <div className="flex-1">
                   <h3 className="font-semibold">Platform Washout Fee</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Fee charged per washout transaction (minimum $5.00; currently ${currentPlatformFee})
+                    Fee charged per washout transaction (blank/default can be overridden to $0.00; currently ${currentPlatformFee})
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    💡 Testing and production both enforce a $5.00 minimum platform fee
+                    💡 Leave blank to use the current default. Enter 0.00 to waive the fee.
                   </p>
                 </div>
               </div>

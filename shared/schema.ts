@@ -1233,7 +1233,7 @@ export const updateSystemSettingsSchema = z.object({
   automaticTaxEnabled: z.boolean().optional(),
   platformWashoutFee: z.string()
     .regex(/^\d+(\.\d{1,2})?$/, "Must be a valid decimal number")
-    .refine((val) => parseFloat(val) > 0, "Platform fee must be greater than zero")
+    .refine((val) => parseFloat(val) >= 0, "Platform fee must be zero or greater")
     .optional(),
 });
 

@@ -203,18 +203,20 @@ export default function AdminUsers() {
 
   const handleUpdateCustomPlatformFee = (data: z.infer<typeof customPlatformFeeSchema>) => {
     if (selectedOwner) {
-      const feeValue = data.customPlatformFee ? parseFloat(data.customPlatformFee) : null;
-      if (data.customPlatformFee && (isNaN(feeValue as number) || (feeValue as number) < 5)) {
+      const feeInput = data.customPlatformFee ?? "";
+      const hasCustomPlatformFee = feeInput !== "";
+      const feeValue = hasCustomPlatformFee ? parseFloat(feeInput) : null;
+      if (hasCustomPlatformFee && (isNaN(feeValue as number) || (feeValue as number) < 0)) {
         toast({
           title: "Invalid Amount",
-          description: "Please enter a valid amount of at least $5.00 or leave blank to use the global fee",
+          description: "Please enter a valid amount zero or greater, or leave blank to use the global fee",
           variant: "destructive",
         });
         return;
       }
       customPlatformFeeMutation.mutate({
         ownerId: selectedOwner.id,
-        customPlatformFee: data.customPlatformFee || null,
+        customPlatformFee: hasCustomPlatformFee ? feeInput : null,
       });
     }
   };
@@ -247,19 +249,13 @@ export default function AdminUsers() {
 
   const handleUpdateCustomBilling = (data: z.infer<typeof customBillingModelSchema>) => {
     if (selectedOwner) {
-      if (data.useCustomBillingModel && !data.customWashoutRate) {
-        toast({
-          title: "Rate Required",
-          description: "Please enter a custom washout rate when enabling the custom billing model",
-          variant: "destructive",
-        });
-        return;
-      }
-      const rateValue = data.customWashoutRate ? parseFloat(data.customWashoutRate) : null;
-      if (data.customWashoutRate && (isNaN(rateValue as number) || (rateValue as number) <= 0)) {
+      const rateInput = data.customWashoutRate ?? "";
+      const hasCustomWashoutRate = rateInput !== "";
+      const rateValue = hasCustomWashoutRate ? parseFloat(rateInput) : null;
+      if (hasCustomWashoutRate && (isNaN(rateValue as number) || (rateValue as number) < 0)) {
         toast({
           title: "Invalid Rate",
-          description: "Please enter a valid positive number for the washout rate",
+          description: "Please enter a valid rate zero or greater, or leave blank to use the default rate",
           variant: "destructive",
         });
         return;
@@ -267,7 +263,7 @@ export default function AdminUsers() {
       customBillingModelMutation.mutate({
         ownerId: selectedOwner.id,
         useCustomBillingModel: data.useCustomBillingModel,
-        customWashoutRate: data.customWashoutRate || null,
+        customWashoutRate: hasCustomWashoutRate ? rateInput : null,
       });
     }
   };
@@ -890,7 +886,7 @@ export default function AdminUsers() {
                 <p className="mb-2">
                   <span className="font-medium">Months on Platform:</span> {selectedOwner.createdAt && calculateMonthsOnPlatform(selectedOwner.createdAt)}
                 </p>
-                <p>Set a custom platform fee for this owner. Leave blank to use the global platform fee. The minimum allowed fee is $5.00.</p>
+                <p>Set a custom platform fee for this owner. Leave blank to use the global platform fee. Enter 0.00 to waive the fee.</p>
               </>
             )}
           </div>
@@ -907,7 +903,7 @@ export default function AdminUsers() {
                       <Input
                         type="number"
                         step="0.01"
-                        min="5"
+                        min="0"
                         placeholder="Leave blank to use global fee"
                         {...field}
                         data-testid="input-custom-platform-fee"
@@ -915,7 +911,7 @@ export default function AdminUsers() {
                     </FormControl>
                     <FormMessage />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Leave blank to use the global minimum fee of $5.00
+                      Leave blank to use the global default fee. Enter 0.00 to waive the fee.
                     </p>
                   </FormItem>
                 )}
@@ -995,14 +991,14 @@ export default function AdminUsers() {
                         type="number"
                         step="0.01"
                         min="0"
-                        placeholder="e.g., 2.50"
+                        placeholder="e.g., 2.50 or 0.00"
                         {...field}
                         data-testid="input-custom-washout-rate"
                       />
                     </FormControl>
                     <FormMessage />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Amount owner pays per washout (platform keeps full amount, driver gets lottery entry)
+                      Amount owner pays per washout. Leave blank to use the default rate. Enter 0.00 to waive the fee.
                     </p>
                   </FormItem>
                 )}
