@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
-import { resolveDriverLocationVisibilityState, resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
+import { getMissingOwnerProfileFields, resolveDriverLocationVisibilityState, resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "../shared/washoutApproval";
 
 function makeOwner(overrides: Record<string, unknown> = {}) {
@@ -74,6 +74,42 @@ test("active owner missing card can see dashboard but cannot manage locations", 
   assert.equal(membershipState.dashboardAccessAllowed, true);
   assert.equal(locationState.canManageLocations, false);
   assert.match(locationState.blockingMessage || "", /add a payment method/i);
+});
+
+test("incomplete owner profile is blocked with missing field labels", () => {
+  const owner = makeOwner({ profileCompleted: false, companyName: "", businessLicense: "", taxId: "", stripePaymentMethodId: "pm_123" });
+  const user = makeUser({ firstName: "", lastName: "", email: "", phone: "", street: "", city: "", state: "", zip: "" });
+
+  const missingFields = getMissingOwnerProfileFields(owner, user);
+  const locationState = resolveOwnerLocationAccessState(owner, user);
+
+  assert.ok(missingFields.includes("firstName"));
+  assert.ok(missingFields.includes("companyName"));
+  assert.equal(locationState.canManageLocations, false);
+  assert.ok(locationState.missingProfileFieldLabels.includes("First name"));
+  assert.ok(locationState.missingProfileFieldLabels.includes("Company name"));
+  assert.match(locationState.blockingMessage || "", /Missing:/i);
+});
+
+test("complete owner profile with card on file can manage locations", () => {
+  const owner = makeOwner({ stripePaymentMethodId: "pm_123" });
+  const locationState = resolveOwnerLocationAccessState(owner, makeUser());
+
+  assert.equal(locationState.canManageLocations, true);
+  assert.equal(locationState.missingProfileFields.length, 0);
+});
+
+test("column and lithic legacy fields are not required for location setup", () => {
+  const owner = makeOwner({
+    stripePaymentMethodId: "pm_123",
+    columnEntityId: null,
+    columnAccountId: null,
+    lithicAccountHolderToken: null,
+    lithicFinancialAccountToken: null,
+  });
+  const locationState = resolveOwnerLocationAccessState(owner, makeUser());
+
+  assert.equal(locationState.canManageLocations, true);
 });
 
 test("waived owner with profile complete and card on file can manage locations", () => {

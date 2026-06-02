@@ -130,6 +130,9 @@ export default function OwnerLocations() {
     try {
       const parsed = JSON.parse(payload);
       if (parsed && typeof parsed.message === "string") {
+        if (Array.isArray(parsed.missingFieldLabels) && parsed.missingFieldLabels.length > 0) {
+          return `${parsed.message}\nMissing: ${parsed.missingFieldLabels.join(", ")}`;
+        }
         return parsed.message;
       }
     } catch {
@@ -967,6 +970,11 @@ export default function OwnerLocations() {
         {membershipState.dashboardAccessAllowed && !locationAccessState.canManageLocations && locationAccessState.blockingMessage && (
           <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm dark:border-sky-900/40 dark:bg-sky-950/20">
             <p className="text-sm text-sky-800 dark:text-sky-200">{locationAccessState.blockingMessage}</p>
+            {locationAccessState.missingProfileFieldLabels.length > 0 && (
+              <p className="mt-2 text-xs text-sky-700 dark:text-sky-300">
+                Missing profile fields: {locationAccessState.missingProfileFieldLabels.join(", ")}
+              </p>
+            )}
           </div>
         )}
 

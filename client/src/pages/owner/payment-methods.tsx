@@ -595,6 +595,10 @@ export default function PaymentMethods() {
                 setShowCardSetup(false);
                 queryClient.invalidateQueries({ queryKey: ['/api/owners/profile'] });
                 queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+                void queryClient.refetchQueries({ queryKey: ['/api/auth/user'] });
+                queryClient.invalidateQueries({ queryKey: ['/api/owners/locations'] });
+                void queryClient.refetchQueries({ queryKey: ['/api/owners/locations'] });
+                queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
               }}
               onCancel={() => setShowCardSetup(false)}
             />

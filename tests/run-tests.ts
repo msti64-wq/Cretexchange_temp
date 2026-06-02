@@ -268,6 +268,124 @@ test("owner can create location with default driver tip and no monthly billing r
   );
 });
 
+test("auth user response includes derived owner profile completion state", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "owner_user_1",
+        role: "owner",
+        firstName: "Olivia",
+        lastName: "Owner",
+        email: "olivia@example.com",
+        phone: "555-0100",
+        street: "1 Main St",
+        city: "Austin",
+        state: "TX",
+        zip: "78701",
+      }),
+      getOwner: async () => ({
+        id: "owner_1",
+        userId: "owner_user_1",
+        companyName: "Alpha Concrete",
+        businessLicense: "BL-100",
+        taxId: "12-3456789",
+        stripePaymentMethodId: "pm_123",
+        membershipStatus: "active",
+        isApproved: false,
+        locationSetupOverride: false,
+      }),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/auth/user");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "owner_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const body = res.body as { roleData?: { profileCompleted?: boolean; missingProfileFields?: string[]; missingProfileFieldLabels?: string[]; canManageLocations?: boolean; paymentMethodOnFile?: boolean } };
+      assert.equal(body.roleData?.profileCompleted, true);
+      assert.equal(body.roleData?.canManageLocations, true);
+      assert.equal(body.roleData?.paymentMethodOnFile, true);
+      assert.deepEqual(body.roleData?.missingProfileFields, []);
+    },
+  );
+});
+
+test("owner add location returns missing profile fields when blocked", async () => {
+  const { app, posts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getOwner: async () => ({
+        id: "owner_1",
+        userId: "owner_user_1",
+        companyName: "",
+        businessLicense: "",
+        taxId: "",
+        stripePaymentMethodId: "pm_123",
+        membershipStatus: "active",
+        isApproved: false,
+        locationSetupOverride: false,
+      }),
+      getUser: async () => ({
+        id: "owner_user_1",
+        role: "owner",
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        street: "",
+        city: "",
+        state: "",
+        zip: "",
+      }),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = posts.get("/api/owners/locations");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "owner_user_1" },
+          body: {
+            name: "Site A",
+            street: "1 Main St",
+            city: "Austin",
+            state: "TX",
+            zip: "78701",
+            latitude: "30.2672",
+            longitude: "-97.7431",
+            rate: 5,
+          },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 403);
+      const body = res.body as { missingFields?: string[]; missingFieldLabels?: string[]; message?: string };
+      assert.ok(Array.isArray(body.missingFields));
+      assert.ok(body.missingFields?.includes("firstName"));
+      assert.ok(body.missingFields?.includes("companyName"));
+      assert.ok(body.missingFieldLabels?.includes("First name"));
+      assert.ok(body.missingFieldLabels?.includes("Company name"));
+      assert.match(body.message || "", /complete your owner profile/i);
+    },
+  );
+});
+
 test("superadmin can see owner locations and membership status in admin list", async () => {
   const { app, gets } = createRouteRegistry();
 

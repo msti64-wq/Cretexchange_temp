@@ -44,7 +44,7 @@ import {
 import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { LOTTERY_FEATURE_FLAG_KEY, resolveLotteryEnabled } from "./lottery";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
-import { resolveOwnerLocationAccessState, isOwnerProfileComplete } from "../shared/ownerLocationAccess";
+import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
 import { isAwaitingDriverStripePaymentStatus, getDriverStripeSetupMessage } from "../shared/driverPaymentStatus";
 import {
@@ -857,7 +857,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }
       } else if (user.role === 'owner') {
-        roleData = await storage.getOwner(userId);
+        const ownerData = await storage.getOwner(userId);
+        if (ownerData) {
+          const ownerProfileState = resolveOwnerLocationAccessState(ownerData, user);
+          roleData = {
+            ...ownerData,
+            profileCompleted: ownerProfileState.profileCompleted,
+            missingProfileFields: ownerProfileState.missingProfileFields,
+            missingProfileFieldLabels: ownerProfileState.missingProfileFieldLabels,
+            paymentMethodOnFile: ownerProfileState.paymentMethodOnFile,
+            locationSetupOverride: ownerProfileState.locationSetupOverride,
+            canManageLocations: ownerProfileState.canManageLocations,
+            locationSetupBlockingMessage: ownerProfileState.blockingMessage || null,
+          };
+        }
       }
 
       res.json({ ...user, roleData });
@@ -3393,6 +3406,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!locationAccessState.canManageLocations) {
         return res.status(403).json({
           message: locationAccessState.blockingMessage || "Please complete your owner profile and add a payment method before setting up washout locations.",
+          missingFields: locationAccessState.missingProfileFields,
+          missingFieldLabels: locationAccessState.missingProfileFieldLabels,
+          profileCompleted: locationAccessState.profileCompleted,
+          paymentMethodOnFile: locationAccessState.paymentMethodOnFile,
         });
       }
 

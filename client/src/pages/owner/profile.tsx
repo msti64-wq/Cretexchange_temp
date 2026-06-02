@@ -53,7 +53,12 @@ export default function OwnerProfile() {
       });
       setIsEditing(false);
       refetch();
-      // Also invalidate owner dashboard data so profile completion notices update
+      // Also invalidate auth/owner data so profile completion and location gates update
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      void queryClient.refetchQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/locations'] });
+      void queryClient.refetchQueries({ queryKey: ['/api/owners/locations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
     },
     onError: (error) => {
