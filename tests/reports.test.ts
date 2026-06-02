@@ -238,6 +238,7 @@ function makePhoto(id: string, activityId: string, driverId: string, locationId:
 }
 
 function makePayment(id: string, activity: WashoutActivity, driver: Driver & { user: User }, owner: Owner, amount: string, status: string, paidAt?: Date, tipAmountCents?: number | null): Payment & { activity: WashoutActivity } {
+  const driverTip = tipAmountCents ?? 0;
   return {
     id,
     driverId: driver.id,
@@ -245,8 +246,8 @@ function makePayment(id: string, activity: WashoutActivity, driver: Driver & { u
     activityId: activity.id,
     amount,
     processingFee: "0.40",
-    washoutServiceFee: "4.60",
-    tipAmountCents: tipAmountCents ?? null,
+    washoutServiceFee: (driverTip / 100).toFixed(2),
+    tipAmountCents: driverTip,
     stripePaymentIntentId: null,
     stripeTransferId: null,
     stripeChargeId: null,
@@ -700,8 +701,8 @@ test("billing audit report builds from minimal safe report fields only", async (
     activityId: activity.id,
     amount: "5.00",
     processingFee: "0.30",
-    washoutServiceFee: "4.70",
-    tipAmountCents: 0,
+    washoutServiceFee: "0.70",
+    tipAmountCents: 70,
     payoutStatus: "not_started",
     deferReason: null,
     deferredAt: null,
@@ -744,6 +745,10 @@ test("billing audit report builds from minimal safe report fields only", async (
   assert.equal(report.rows[0].legacyUnlinked, true);
   assert.equal(report.rows[0].ownerCompanyName, "Minimal Owner LLC");
   assert.equal(report.rows[0].driverDisplayName, "Driver One");
+  assert.equal(report.rows[0].platformFeeTotal, "0.30");
+  assert.equal(report.rows[0].driverIncentiveTip, "0.70");
+  assert.equal(report.summary.totalPlatformFeeTotal, "0.30");
+  assert.equal(report.summary.totalDriverTips, "0.70");
 });
 
 test("billing audit report route is registered", async () => {

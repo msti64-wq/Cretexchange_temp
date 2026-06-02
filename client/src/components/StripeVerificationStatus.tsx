@@ -9,6 +9,7 @@ import { apiRequest } from '@/lib/queryClient';
 
 interface StripeVerificationStatusProps {
   userRole: 'driver' | 'owner';
+  purpose?: 'owner-payments' | 'driver-tip-payouts';
 }
 
 interface StripeRequirements {
@@ -34,7 +35,7 @@ interface StripeRequirements {
   message?: string;
 }
 
-export default function StripeVerificationStatus({ userRole }: StripeVerificationStatusProps) {
+export default function StripeVerificationStatus({ userRole, purpose = 'owner-payments' }: StripeVerificationStatusProps) {
   const [isRedirecting, setIsRedirecting] = useState(false);
   
   const endpoint = userRole === 'driver' 
@@ -90,9 +91,15 @@ export default function StripeVerificationStatus({ userRole }: StripeVerificatio
     return (
       <Alert>
         <Shield className="h-4 w-4" />
-        <AlertTitle>Payment Account Not Set Up</AlertTitle>
+        <AlertTitle>
+          {purpose === 'driver-tip-payouts' && userRole === 'driver'
+            ? 'Optional Tip Payouts Not Set Up'
+            : 'Payment Account Not Set Up'}
+        </AlertTitle>
         <AlertDescription>
-          Your payment account hasn't been created yet. Complete your profile to set up payments.
+          {purpose === 'driver-tip-payouts' && userRole === 'driver'
+            ? "Your optional tip payout setup hasn't been created yet. Complete your profile only if you want to receive owner-funded tips."
+            : 'Your payment account hasn\'t been created yet. Complete your profile to set up payments.'}
         </AlertDescription>
       </Alert>
     );
@@ -102,11 +109,15 @@ export default function StripeVerificationStatus({ userRole }: StripeVerificatio
 
   if (isVerified) {
     return (
-      <Alert className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
+        <Alert className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
         <CheckCircle className="h-4 w-4 text-green-600" />
-        <AlertTitle className="text-green-800 dark:text-green-200">Account Verified</AlertTitle>
+        <AlertTitle className="text-green-800 dark:text-green-200">
+          {purpose === 'driver-tip-payouts' && userRole === 'driver' ? 'Tip Payouts Ready' : 'Account Verified'}
+        </AlertTitle>
         <AlertDescription className="text-green-700 dark:text-green-300">
-          Your payment account is fully verified and ready to {userRole === 'driver' ? 'receive payments' : 'process transactions'}.
+          {purpose === 'driver-tip-payouts' && userRole === 'driver'
+            ? 'Your optional tip payout setup is verified and ready to receive owner-funded tips.'
+            : `Your payment account is fully verified and ready to ${userRole === 'driver' ? 'receive payments' : 'process transactions'}.`}
         </AlertDescription>
       </Alert>
     );
@@ -131,17 +142,25 @@ export default function StripeVerificationStatus({ userRole }: StripeVerificatio
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
             )}
             <CardTitle className="text-lg">
-              {isPastDue ? 'Verification Required' : 'Complete Verification'}
+              {purpose === 'driver-tip-payouts' && userRole === 'driver'
+                ? (isPastDue ? 'Tip Payout Verification Required' : 'Complete Tip Payout Setup')
+                : (isPastDue ? 'Verification Required' : 'Complete Verification')}
             </CardTitle>
           </div>
           <Badge variant={isPastDue ? 'destructive' : 'secondary'}>
-            {isPastDue ? 'Action Required' : 'Pending'}
+            {purpose === 'driver-tip-payouts' && userRole === 'driver'
+              ? (isPastDue ? 'Action Required' : 'Optional')
+              : (isPastDue ? 'Action Required' : 'Pending')}
           </Badge>
         </div>
         <CardDescription>
-          {isPastDue 
-            ? 'Your payment account is missing required information and cannot process payments until resolved.'
-            : 'Complete verification to enable full payment functionality.'}
+          {purpose === 'driver-tip-payouts' && userRole === 'driver'
+            ? (isPastDue
+              ? 'Your optional tip payout setup is missing required information and cannot receive owner-funded tips until resolved.'
+              : 'This optional setup is only needed if you want to receive owner-funded tips. Washouts and lottery entries do not require it.')
+            : (isPastDue
+              ? 'Your payment account is missing required information and cannot process payments until resolved.'
+              : 'Complete verification to enable full payment functionality.')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -160,11 +179,13 @@ export default function StripeVerificationStatus({ userRole }: StripeVerificatio
           <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
             <Shield className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-700 dark:text-blue-300 text-sm">
-              {needsFullSsn && needsIdDocument 
-                ? 'You will need to provide your full Social Security Number and photo ID for verification.'
-                : needsFullSsn 
-                  ? 'You will need to provide your full Social Security Number for verification.'
-                  : 'You will need to upload a photo ID (driver\'s license or passport) for verification.'}
+              {purpose === 'driver-tip-payouts' && userRole === 'driver'
+                ? 'This optional setup is only needed if you want to receive owner-funded tips.'
+                : needsFullSsn && needsIdDocument 
+                  ? 'You will need to provide your full Social Security Number and photo ID for verification.'
+                  : needsFullSsn 
+                    ? 'You will need to provide your full Social Security Number for verification.'
+                    : 'You will need to upload a photo ID (driver\'s license or passport) for verification.'}
               {' '}This information is securely collected by Stripe and never stored on our servers.
             </AlertDescription>
           </Alert>
@@ -186,7 +207,9 @@ export default function StripeVerificationStatus({ userRole }: StripeVerificatio
             ) : (
               <>
                 <ExternalLink className="h-4 w-4 mr-2" />
-                Complete Verification
+                {purpose === 'driver-tip-payouts' && userRole === 'driver'
+                  ? 'Set Up Tip Payouts'
+                  : 'Complete Verification'}
               </>
             )}
           </Button>
@@ -200,7 +223,7 @@ export default function StripeVerificationStatus({ userRole }: StripeVerificatio
         </div>
 
         <p className="text-xs text-muted-foreground">
-          You will be redirected to Stripe's secure website to complete verification.
+          You will be redirected to Stripe's secure website to complete the setup.
           After completing the process, you'll be returned to this page automatically.
         </p>
       </CardContent>

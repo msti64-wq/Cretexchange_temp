@@ -137,9 +137,11 @@ function buildSummary(rows: BillingAuditItem[], runs: BillingAuditRun[]): Billin
     (acc, row) => {
       const amount = Number.parseFloat(row.amountCharged || "0");
       const platformFee = Number.parseFloat(row.platformFeeTotal || "0");
+      const driverTip = Number.parseFloat(row.driverIncentiveTip || "0");
       acc.totalWashouts += 1;
       acc.totalAmountCharged += amount;
       acc.totalPlatformFeeTotal += platformFee;
+      acc.totalDriverTips += driverTip;
       if (row.paymentStatus === "paid") acc.totalPaid += amount;
       if (row.paymentStatus === "pending") acc.totalPending += amount;
       if (row.paymentStatus === "failed") acc.totalFailed += amount;
@@ -153,6 +155,7 @@ function buildSummary(rows: BillingAuditItem[], runs: BillingAuditRun[]): Billin
       totalWashouts: 0,
       totalAmountCharged: 0,
       totalPlatformFeeTotal: 0,
+      totalDriverTips: 0,
       totalPaid: 0,
       totalPending: 0,
       totalFailed: 0,
@@ -167,6 +170,7 @@ function buildSummary(rows: BillingAuditItem[], runs: BillingAuditRun[]): Billin
     totalWashouts: summary.totalWashouts,
     totalAmountCharged: toMoney(summary.totalAmountCharged),
     totalPlatformFeeTotal: toMoney(summary.totalPlatformFeeTotal),
+    totalDriverTips: toMoney(summary.totalDriverTips),
     totalPaid: toMoney(summary.totalPaid),
     totalPending: toMoney(summary.totalPending),
     totalFailed: toMoney(summary.totalFailed),
@@ -210,8 +214,9 @@ export async function buildBillingAuditReport(
     const batch = payment.batchId ? batchById.get(payment.batchId) : undefined;
     const paymentStatus = normalizePaymentStatus(payment);
     const groupKey = batch?.id || buildLegacyBillingRunId(payment.ownerId);
-    const amountChargedCents = toCents(payment.amount) + toCents(payment.processingFee) + toCents(payment.washoutServiceFee);
-    const platformFeeCents = toCents(payment.processingFee) + toCents(payment.washoutServiceFee);
+    const driverIncentiveTipCents = Number(payment.tipAmountCents || 0);
+    const amountChargedCents = toCents(payment.amount) + toCents(payment.processingFee) + driverIncentiveTipCents;
+    const platformFeeCents = toCents(payment.processingFee);
     const paymentCreatedAtDate = new Date(payment.createdAt as unknown as string | number | Date);
     const paymentPaidAtDate = payment.paidAt ? new Date(payment.paidAt as unknown as string | number | Date) : null;
     const paymentFailedAtDate = payment.status === "failed" ? new Date(payment.updatedAt as unknown as string | number | Date) : null;
@@ -255,6 +260,7 @@ export async function buildBillingAuditReport(
       checkInTime: formatDateTime(activity.checkInTime),
       amountCharged: toMoney(amountChargedCents),
       platformFeeTotal: toMoney(platformFeeCents),
+      driverIncentiveTip: toMoney(driverIncentiveTipCents),
       paymentStatus,
       paymentId: payment.id,
       paymentCreatedAt: formatDateTime(paymentCreatedAtDate),
@@ -344,6 +350,7 @@ export async function buildBillingAuditReport(
       checkInTime: row.checkInTime,
       amountCharged: row.amountCharged,
       platformFeeTotal: row.platformFeeTotal,
+      driverIncentiveTip: row.driverIncentiveTip,
       paymentStatus: row.paymentStatus,
       paymentId: row.paymentId,
       paymentCreatedAt: row.paymentCreatedAt,
@@ -376,14 +383,15 @@ export async function buildBillingAuditReport(
     const locationsVisited = Array.from(new Set(items.map((item) => item.locationName).filter(Boolean))).sort();
     const totalAmountCharged = items.reduce((sum, item) => sum + Number.parseFloat(item.amountCharged || "0"), 0);
     const totalPlatformFeeTotal = items.reduce((sum, item) => sum + Number.parseFloat(item.platformFeeTotal || "0"), 0);
+    const totalDriverTips = items.reduce((sum, item) => sum + Number.parseFloat(item.driverIncentiveTip || "0"), 0);
 
     const billingRunCreatedAt = batch?.createdAt ? formatDateTime(batch.createdAt) : items.reduce((earliest, item) => (earliest && earliest < item.paymentCreatedAt ? earliest : item.paymentCreatedAt), items[0]?.paymentCreatedAt || "");
     const billingRunPaidAt = batch?.completedAt ? formatDateTime(batch.completedAt) : items.find((item) => item.paymentPaidAt)?.paymentPaidAt || "";
     const billingRunFailedAt = batch?.status === "failed" ? formatDateTime(batch.updatedAt) : items.find((item) => item.paymentFailedAt)?.paymentFailedAt || "";
 
-    return {
-      billingRunId,
-      billingRunLabel: sample.billingRunLabel,
+  return {
+    billingRunId,
+    billingRunLabel: sample.billingRunLabel,
       billingRunType: sample.billingRunType,
       billingRunStatus: runStatus,
       billingBatchId: sample.billingBatchId,
@@ -399,8 +407,9 @@ export async function buildBillingAuditReport(
       billingRunCreatedAt,
       billingRunPaidAt,
       billingRunFailedAt,
-      totalAmountCharged: toMoney(totalAmountCharged * 100),
-      totalPlatformFeeTotal: toMoney(totalPlatformFeeTotal * 100),
+      totalAmountCharged: toMoney(totalAmountCharged),
+      totalPlatformFeeTotal: toMoney(totalPlatformFeeTotal),
+      totalDriverTips: toMoney(totalDriverTips),
       washoutCount: items.length,
       driverCount: driverCounts.length,
       locationCount: locationCounts.length,
@@ -470,6 +479,7 @@ const AUDIT_CSV_COLUMNS: Array<{ key: keyof BillingAuditItem; label: string }> =
   { key: "checkInTime", label: "Washout Date/Time" },
   { key: "amountCharged", label: "Amount Charged" },
   { key: "platformFeeTotal", label: "Platform Fee Total" },
+  { key: "driverIncentiveTip", label: "Driver Incentive Tip" },
   { key: "paymentStatus", label: "Payment Status" },
   { key: "paymentId", label: "Payment ID" },
   { key: "paymentCreatedAt", label: "Payment Created At" },
@@ -523,6 +533,7 @@ export function billingAuditReportToPdfBuffer(report: BillingAuditReportResponse
     `Washouts: ${report.summary.totalWashouts}`,
     `Charged: $${report.summary.totalAmountCharged}`,
     `Platform fees: $${report.summary.totalPlatformFeeTotal}`,
+    `Driver tips: $${report.summary.totalDriverTips}`,
     `Paid: $${report.summary.totalPaid}`,
     `Pending: $${report.summary.totalPending}`,
     `Failed: $${report.summary.totalFailed}`,

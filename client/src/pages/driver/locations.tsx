@@ -307,7 +307,10 @@ export default function DriverLocations() {
                       <div className="text-2xl font-bold text-accent mb-1" data-testid={`text-location-rate-${index}`}>
                         {formatCurrency(Number(location.rate))}
                       </div>
-                      <div className="text-xs text-muted-foreground">per washout</div>
+                      <div className="text-xs text-muted-foreground">driver payout per washout</div>
+                      <div className="text-xs text-muted-foreground">
+                        Driver tip: {formatCurrency(Number(location.driverIncentiveTip || 0))}
+                      </div>
                     </div>
                   </div>
 

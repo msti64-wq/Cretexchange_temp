@@ -49,6 +49,7 @@ export default function OwnerLocations() {
     latitude: "",
     longitude: "",
     rate: "5.00",
+    driverIncentiveTip: "0.00",
     operatingHours: "",
     amenities: "",
   });
@@ -60,6 +61,7 @@ export default function OwnerLocations() {
     state: "",
     zip: "",
     rate: "5.00",
+    driverIncentiveTip: "0.00",
     operatingHours: "",
     amenities: "",
     description: "",
@@ -166,6 +168,7 @@ export default function OwnerLocations() {
         latitude: "",
         longitude: "",
         rate: "5.00",
+        driverIncentiveTip: "0.00",
         operatingHours: "",
         amenities: "",
       });
@@ -316,6 +319,7 @@ export default function OwnerLocations() {
     addLocationMutation.mutate({
       ...formData,
       rate: parseFloat(formData.rate),
+      driverIncentiveTip: parseFloat(formData.driverIncentiveTip || "0"),
       amenities: amenitiesArray,
     });
   };
@@ -330,6 +334,7 @@ export default function OwnerLocations() {
       state: location.state || "",
       zip: location.zip || "",
       rate: location.rate?.toString() || "5.00",
+      driverIncentiveTip: location.driverIncentiveTip?.toString() || "0.00",
       operatingHours: location.operatingHours || "",
       amenities: location.amenities?.join(", ") || "",
       description: location.description || "",
@@ -379,6 +384,7 @@ export default function OwnerLocations() {
       locationData: {
         ...editFormData,
         rate: parseFloat(editFormData.rate),
+        driverIncentiveTip: parseFloat(editFormData.driverIncentiveTip || "0"),
         amenities: amenitiesArray,
       }
     });
@@ -629,7 +635,7 @@ export default function OwnerLocations() {
                 )}
 
                 <div>
-                  <Label htmlFor="rate">Rate per Washout ($)</Label>
+                  <Label htmlFor="rate">Driver payout per washout ($)</Label>
                   <Input
                     id="rate"
                     type="number"
@@ -640,6 +646,25 @@ export default function OwnerLocations() {
                     required
                     data-testid="input-rate"
                   />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    This is the washout rate drivers see at this location. The platform fee is billed separately.
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="driverIncentiveTip">Driver Incentive Tip per Washout ($)</Label>
+                  <Input
+                    id="driverIncentiveTip"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.driverIncentiveTip}
+                    onChange={(e) => setFormData({...formData, driverIncentiveTip: e.target.value})}
+                    data-testid="input-driver-incentive-tip"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Optional owner-funded incentive paid to the driver. Leave at 0.00 for no tip.
+                  </p>
                 </div>
 
                 <div>
@@ -746,7 +771,7 @@ export default function OwnerLocations() {
                 </div>
 
                 <div>
-                  <Label htmlFor="edit-rate">Rate per Washout ($)</Label>
+                  <Label htmlFor="edit-rate">Driver payout per washout ($)</Label>
                   <Input
                     id="edit-rate"
                     type="number"
@@ -757,6 +782,22 @@ export default function OwnerLocations() {
                     required
                     data-testid="input-edit-rate"
                   />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-driverIncentiveTip">Driver Incentive Tip per Washout ($)</Label>
+                  <Input
+                    id="edit-driverIncentiveTip"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editFormData.driverIncentiveTip}
+                    onChange={(e) => setEditFormData({...editFormData, driverIncentiveTip: e.target.value})}
+                    data-testid="input-edit-driver-incentive-tip"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Optional owner-funded incentive paid to the driver. Leave at 0.00 for no tip.
+                  </p>
                 </div>
 
                 <div>
@@ -1068,7 +1109,10 @@ export default function OwnerLocations() {
                               </div>
                               <Pencil className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
-                            <div className="text-xs text-muted-foreground">per washout (click to edit)</div>
+                            <div className="text-xs text-muted-foreground">driver payout per washout (click to edit)</div>
+                            <div className="text-xs text-muted-foreground">
+                              Driver tip: {formatCurrency(Number(location.driverIncentiveTip || 0))}
+                            </div>
                           </div>
                         )}
                       </div>

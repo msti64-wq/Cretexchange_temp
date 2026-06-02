@@ -37,7 +37,7 @@ export default function DriverProfile() {
   });
 
   const { enabled: waiveDriverPayment } = useFeatureFlag(FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT);
-  const { enabled: walletFundingEnabled } = useFeatureFlag(FEATURE_FLAGS.WALLET_FUNDING);
+  const { enabled: driverStripePayoutsEnabled } = useFeatureFlag(FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -87,34 +87,6 @@ export default function DriverProfile() {
     businessWebsite: "",
     payoutPreference: "bank_transfer",
     payoutPreferenceNote: "",
-  });
-
-  // Account Link mutation for T&C acceptance
-  const accountLinkMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/stripe/account-link", {});
-      const data = await response.json();
-      if (!response.ok) {
-        // Include detailed error info from server
-        const errorMsg = data.stripeError || data.details || data.message || "Unknown error";
-        throw new Error(`${errorMsg} (Code: ${data.code || 'N/A'})`);
-      }
-      return data;
-    },
-    onSuccess: (data) => {
-      if (data.accountSetupLink) {
-        // Redirect to Stripe Account Link for T&C acceptance
-        window.location.href = data.accountSetupLink;
-      }
-    },
-    onError: (error: any) => {
-      console.error("Account Link Error:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to generate account link. Please ensure your profile is complete.",
-        variant: "destructive",
-      });
-    },
   });
 
   // Update form data when user data loads
@@ -236,23 +208,25 @@ export default function DriverProfile() {
               >
                 {isEditing ? "Cancel" : "Edit Profile"}
               </Button>
-              {walletFundingEnabled && (
-                <Button 
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => accountLinkMutation.mutate()}
-                  disabled={accountLinkMutation.isPending}
-                  data-testid="button-accept-terms"
-                >
-                  {accountLinkMutation.isPending ? "Loading..." : "Accept Terms & Conditions"}
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Stripe Verification Status */}
-        {walletFundingEnabled && <StripeVerificationStatus userRole="driver" />}
+        {driverStripePayoutsEnabled && (
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h3 className="flex items-center gap-2 text-base font-semibold">
+                <CreditCard className="w-5 h-5" />
+                Optional Owner Payments
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Drivers can complete washouts and earn lottery entries without Stripe onboarding.
+                Set this up only if you want to receive owner-funded tips from participating locations.
+              </p>
+            </div>
+            <StripeVerificationStatus userRole="driver" purpose="driver-tip-payouts" />
+          </section>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Personal Information */}

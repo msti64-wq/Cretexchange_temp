@@ -19,6 +19,8 @@ export const OWNER_REPORT_COLUMNS: ReportColumn[] = [
   { key: "quantity", label: "Quantity" },
   { key: "unit", label: "Unit" },
   { key: "amountCharged", label: "Amount Charged" },
+  { key: "platformFee", label: "Platform Fee" },
+  { key: "driverIncentiveTip", label: "Driver Incentive Tip" },
   { key: "paymentStatus", label: "Payment Status" },
   { key: "paymentDate", label: "Payment Date" },
   { key: "notes", label: "Notes / Exceptions" },
@@ -41,10 +43,10 @@ export const DRIVER_REPORT_COLUMNS: ReportColumn[] = [
   { key: "quantity", label: "Quantity" },
   { key: "unit", label: "Unit" },
   { key: "amountCharged", label: "Amount Charged" },
+  { key: "platformFee", label: "Platform Fee" },
   { key: "tipAmount", label: "Tip Amount" },
   { key: "driverPaymentAmount", label: "Payment to Driver" },
   { key: "paymentStatus", label: "Payment Status" },
   { key: "paymentDate", label: "Payment Date" },
   { key: "notes", label: "Notes / Exceptions" },
 ];
-

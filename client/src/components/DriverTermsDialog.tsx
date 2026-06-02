@@ -103,8 +103,8 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                       <div className="ml-4 space-y-1">
                         <p>• Wallet credited when location owners approve your washout submissions</p>
                         <p>• Payments processed through the configured payout system</p>
-                        <p>• Platform fee ($5.00) deducted from each washout payment automatically</p>
-                        <p>• You receive: (Location washout rate - $5.00 platform fee)</p>
+                        <p>• The platform fee is charged to the owner and does not reduce your base washout rate</p>
+                        <p>• You receive the location washout rate plus any owner-funded driver incentive tip</p>
                       </div>
                     </div>
                   </div>
@@ -174,9 +174,9 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                       
                       <p className="pt-2"><strong>4.3 Platform Fee:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• <strong>$5.00 flat fee per completed washout</strong></p>
-                        <p>• Automatically deducted from payment through the wallet ledger</p>
-                        <p>• Covers platform usage, payment processing, and support</p>
+                        <p>• The platform fee is charged to the owner per completed washout</p>
+                        <p>• Any owner-funded driver incentive tip is separate from the platform fee</p>
+                        <p>• Your payout is the washout rate plus any configured tip</p>
                       </div>
                     </div>
                   </div>
@@ -232,7 +232,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                 
                 <div className="border-t pt-4 bg-green-50 p-3 rounded">
                   <p className="font-semibold text-green-800 text-center">
-                    By clicking "I Agree," you confirm that you have read, understood, and accept all terms above, including the $5.00 platform fee per washout, withdrawal fee structure, and wallet payment services.
+                    By clicking "I Agree," you confirm that you have read, understood, and accept all terms above, including the platform fee structure, withdrawal fee structure, and wallet payment services.
                   </p>
                 </div>
               </div>

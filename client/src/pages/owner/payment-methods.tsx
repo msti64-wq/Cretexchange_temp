@@ -236,14 +236,14 @@ export default function PaymentMethods() {
       </header>
 
       <main className="p-4 space-y-6">
-        {/* Trial mode banner */}
+        {/* Billing summary banner */}
         <div className="bg-green-50 dark:bg-green-950/30 border border-green-300 dark:border-green-700 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
             <div className="text-sm">
-              <p className="font-semibold text-green-800 dark:text-green-200">Trial Period — No Signup or Monthly Fees</p>
+              <p className="font-semibold text-green-800 dark:text-green-200">Standard washout billing</p>
               <p className="text-green-700 dark:text-green-300 mt-1">
-                No signup fee. No monthly location fee. Owners are charged a minimum of <strong>$5.00 per completed washout</strong>, billed weekly to the card on file.
+                Owners are charged the platform fee per completed washout (default $5.00 unless overridden by the platform) plus any configured driver incentive tip.
               </p>
             </div>
           </div>
@@ -253,7 +253,7 @@ export default function PaymentMethods() {
         <div className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">Credit Card for Washout Billing</h2>
-            <p className="text-sm text-muted-foreground">Required — charged $5.00 per washout, billed weekly</p>
+            <p className="text-sm text-muted-foreground">Required — charged the platform fee per completed washout plus any configured driver incentive tip</p>
           </div>
           <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/20">
             <CardContent className="p-4">
@@ -266,7 +266,7 @@ export default function PaymentMethods() {
                         {(ownerData as any)?.paymentMethod?.brand || 'Card'} ****{(ownerData as any)?.paymentMethod?.last4 || '****'}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Active — charged weekly for completed washouts
+                        Active — charged weekly for completed washouts plus any configured driver incentive tips
                       </div>
                     </div>
                   </div>
@@ -284,7 +284,7 @@ export default function PaymentMethods() {
                   <CreditCard className="w-12 h-12 mx-auto mb-3 text-purple-600" />
                   <h3 className="font-medium mb-2">No Card on File</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    A credit card is required to add locations and receive washout requests. You will be charged $5.00 per completed washout, billed weekly.
+                    A credit card is required to add locations and receive washout requests. Owners are charged the platform fee per completed washout plus any configured driver incentive tip.
                   </p>
                   <Button
                     onClick={() => setShowCardSetup(true)}
@@ -307,7 +307,7 @@ export default function PaymentMethods() {
                 <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
                   <p className="font-medium">How weekly billing works</p>
                   <p>Each Sunday, all washouts completed during the past week are totaled and a single charge is made to your card on file.</p>
-                  <p>Example: 10 washouts in a week = <strong>$50.00</strong> charged on Sunday.</p>
+                  <p>Example: 10 washouts in a week = the total of the platform fee and any configured driver incentive tips charged on Sunday.</p>
                 </div>
               </div>
             </CardContent>

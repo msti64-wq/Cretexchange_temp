@@ -116,7 +116,7 @@ export default function DriverDashboard() {
   const weeklyEarnings = weeklyStats?.totalEarnings || 0;
   const weeklyNetEarnings = weeklyEarnings - rejectedTotal;
   const totalPaid = Array.isArray(paymentHistory) ? paymentHistory.reduce((sum: number, payment: any) => 
-    sum + Number(payment.amount || 0), 0
+    sum + Number(payment.amount || 0) + Number((payment.tipAmountCents || 0) / 100), 0
   ) : 0;
   const latestActivity = Array.isArray(recentActivities) && recentActivities.length > 0 ? recentActivities[0] : null;
   const latestLocationName = latestActivity?.washout_locations?.name || latestActivity?.location?.name || "Latest stop";
@@ -332,7 +332,7 @@ export default function DriverDashboard() {
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="mb-1 font-semibold text-amber-900 dark:text-amber-100">
-                  Payment setup needed
+                  Tip payout setup needed
                 </h3>
                 <p className="mb-3 text-sm text-amber-800 dark:text-amber-200">
                   {getDriverStripeSetupMessage()}
@@ -343,7 +343,7 @@ export default function DriverDashboard() {
                   className="h-10 bg-amber-600 text-white hover:bg-amber-700"
                   data-testid="button-complete-stripe-setup"
                 >
-                  Set Up Stripe Payments
+                  Set Up Tip Payouts
                 </Button>
                 <div className="mt-3 space-y-2">
                   {awaitingDriverStripePayments.slice(0, 3).map((payment: any) => (
@@ -352,10 +352,10 @@ export default function DriverDashboard() {
                         <span className="font-medium">
                           {payment.location?.name || payment.activity?.location?.name || "Washout"}
                         </span>
-                        <span>{formatCurrency(Number(payment.amount || 0) + Number(payment.processingFee || 0))}</span>
+                        <span>{formatCurrency(Number(payment.amount || 0) + Number((payment.tipAmountCents || 0) / 100))}</span>
                       </div>
                       <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                        Awaiting your payment setup before payout can be processed.
+                        Awaiting your tip payout setup before owner-funded tips can be processed.
                       </p>
                     </div>
                   ))}

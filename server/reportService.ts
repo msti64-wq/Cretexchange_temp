@@ -39,10 +39,12 @@ export interface ReportRow {
   quantity: string;
   unit: string;
   amountCharged: string;
+  platformFee: string;
   paymentStatus: string;
   paymentDate: string;
   paymentId: string;
   ticketNumber: string;
+  driverIncentiveTip: string;
   tipAmount: string;
   driverPaymentAmount: string;
   notes: string;
@@ -51,6 +53,7 @@ export interface ReportRow {
 export interface ReportSummary {
   totalWashouts: number;
   totalAmountCharged: string;
+  totalPlatformFees: string;
   totalPaid: string;
   totalUnpaidPending: string;
   totalTips: string;
@@ -143,6 +146,7 @@ function buildSummary(rows: ReportRow[], reportType: "owner" | "driver"): Report
   const summary = rows.reduce(
     (acc, row) => {
       const amountCharged = Number.parseFloat(row.amountCharged || "0");
+      const platformFee = Number.parseFloat(row.platformFee || "0");
       const paymentAmount = Number.parseFloat(row.driverPaymentAmount || "0");
       const tipAmount = Number.parseFloat(row.tipAmount || "0");
       const isPaid = row.paymentStatus === "paid";
@@ -150,6 +154,7 @@ function buildSummary(rows: ReportRow[], reportType: "owner" | "driver"): Report
 
       acc.totalWashouts += 1;
       acc.totalAmountCharged += amountCharged;
+      acc.totalPlatformFees += platformFee;
       if (isPaid) {
         acc.totalPaid += settlementAmount;
       } else {
@@ -164,6 +169,7 @@ function buildSummary(rows: ReportRow[], reportType: "owner" | "driver"): Report
     {
       totalWashouts: 0,
       totalAmountCharged: 0,
+      totalPlatformFees: 0,
       totalPaid: 0,
       totalUnpaidPending: 0,
       totalTips: 0,
@@ -174,6 +180,7 @@ function buildSummary(rows: ReportRow[], reportType: "owner" | "driver"): Report
   return {
     totalWashouts: summary.totalWashouts,
     totalAmountCharged: summary.totalAmountCharged.toFixed(2),
+    totalPlatformFees: summary.totalPlatformFees.toFixed(2),
     totalPaid: summary.totalPaid.toFixed(2),
     totalUnpaidPending: summary.totalUnpaidPending.toFixed(2),
     totalTips: summary.totalTips.toFixed(2),
@@ -242,6 +249,11 @@ function buildRowsFromActivities({
     const displayOwnerName = ownerEntry
       ? formatPersonName(ownerEntry.user)
       : "";
+    const driverTipCents = payment?.tipAmountCents ?? 0;
+    const baseAmount = payment ? Number.parseFloat(payment.amount || "0") : Number.parseFloat(activity.amount || "0");
+    const platformFeeAmount = payment ? Number.parseFloat(payment.processingFee || "0") : 0;
+    const driverPaymentAmount = baseAmount + (driverTipCents / 100);
+    const amountChargedAmount = baseAmount + platformFeeAmount + (driverTipCents / 100);
 
     const notes = [activity.notes, payment?.refundReason].filter(Boolean).join(" | ");
     const paymentStatus = normalizePaymentStatus(payment?.status, Boolean(payment));
@@ -269,15 +281,15 @@ function buildRowsFromActivities({
       serviceType: activity.serviceType || "washout",
       quantity: activity.qty ? String(activity.qty) : "",
       unit: activity.unit || "",
-      amountCharged: payment
-        ? formatMoney(Number.parseFloat(payment.amount || "0") + Number.parseFloat(payment.processingFee || "0"))
-        : formatMoney(activity.amount),
+      amountCharged: formatMoney(amountChargedAmount),
+      platformFee: formatMoney(platformFeeAmount),
       paymentStatus,
       paymentDate: formatDateTime(payment?.paidAt || payment?.createdAt),
       paymentId: payment?.id || "",
       ticketNumber,
-      tipAmount: payment?.tipAmountCents !== null && payment?.tipAmountCents !== undefined ? formatMoney(Number(payment.tipAmountCents) / 100) : "",
-      driverPaymentAmount: payment ? formatMoney(payment.amount) : "",
+      driverIncentiveTip: formatMoney(driverTipCents / 100),
+      tipAmount: formatMoney(driverTipCents / 100),
+      driverPaymentAmount: formatMoney(driverPaymentAmount),
       notes,
     };
   });

@@ -332,12 +332,12 @@ export default function AdminFeatureFlags() {
             <div className="border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="font-semibold">Platform Washout Fee</h3>
+                  <h3 className="font-semibold">Platform Fee per Washout</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Fee charged per washout transaction (blank/default can be overridden to $0.00; currently ${currentPlatformFee})
+                    Fee charged per completed washout (blank/default can be overridden by a superadmin to $0.00; currently ${currentPlatformFee})
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    💡 Leave blank to use the current default. Enter 0.00 to waive the fee.
+                    💡 Leave blank to use the current default. Enter 0.00 to waive the fee. Superadmins can override the default rate per owner or location.
                   </p>
                 </div>
               </div>

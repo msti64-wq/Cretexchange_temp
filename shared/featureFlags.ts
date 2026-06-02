@@ -33,6 +33,9 @@ export const FEATURE_FLAGS = {
 
   // Lottery Program: Enable lottery ticket earning for drivers on washout completion
   LOTTERY_ENABLED: 'lottery_enabled',
+
+  // Driver Tip Payouts - optional Stripe onboarding so drivers can receive owner-funded tips
+  DRIVER_STRIPE_PAYOUTS: 'driver_stripe_payouts',
 } as const;
 
 export type FeatureFlagKey = typeof FEATURE_FLAGS[keyof typeof FEATURE_FLAGS];
@@ -99,6 +102,12 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
     key: FEATURE_FLAGS.LOTTERY_ENABLED,
     description: 'Lottery Program: Allow drivers to earn lottery ticket entries on washout completion. This is enabled by default unless explicitly disabled by an admin or env override.',
     enabled: true, // Active by default unless explicitly disabled
+    allowedRoles: [],
+  },
+  {
+    key: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS,
+    description: 'Driver Tip Payouts: Allow drivers to optionally complete Stripe onboarding so they can receive owner-funded tips. This is not required for washout completion or lottery eligibility.',
+    enabled: false,
     allowedRoles: [],
   },
 ];

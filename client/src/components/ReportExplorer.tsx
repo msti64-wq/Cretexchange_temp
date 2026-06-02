@@ -319,14 +319,15 @@ export function ReportExplorer({
         </Card>
       ) : data ? (
         <>
-          <div className={`grid gap-4 ${data.reportType === "driver" ? "md:grid-cols-2 xl:grid-cols-6" : "md:grid-cols-2 xl:grid-cols-4"}`}>
+          <div className={`grid gap-4 ${data.reportType === "driver" ? "md:grid-cols-2 xl:grid-cols-7" : "md:grid-cols-2 xl:grid-cols-6"}`}>
             <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Washouts</div><div className="text-2xl font-semibold">{data.summary.totalWashouts}</div></CardContent></Card>
             <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Charged</div><div className="text-2xl font-semibold">{formatCurrency(Number(data.summary.totalAmountCharged))}</div></CardContent></Card>
+            <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Platform Fees</div><div className="text-2xl font-semibold">{formatCurrency(Number(data.summary.totalPlatformFees))}</div></CardContent></Card>
+            <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Tips</div><div className="text-2xl font-semibold">{formatCurrency(Number(data.summary.totalTips))}</div></CardContent></Card>
             <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Paid</div><div className="text-2xl font-semibold">{formatCurrency(Number(data.summary.totalPaid))}</div></CardContent></Card>
             <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Unpaid / Pending</div><div className="text-2xl font-semibold">{formatCurrency(Number(data.summary.totalUnpaidPending))}</div></CardContent></Card>
             {data.reportType === "driver" && (
               <>
-                <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Tips</div><div className="text-2xl font-semibold">{formatCurrency(Number(data.summary.totalTips))}</div></CardContent></Card>
                 <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Driver Payments</div><div className="text-2xl font-semibold">{formatCurrency(Number(data.summary.totalDriverPayments))}</div></CardContent></Card>
               </>
             )}

@@ -89,8 +89,8 @@ async function main() {
     await client.query(`
       UPDATE "washout_photos" wp
       SET
-        "driver_id" = COALESCE(wp."driver_id", wa."driver_id"),
-        "location_id" = COALESCE(wp."location_id", wa."location_id")
+        "driver_id" = COALESCE(wp."driver_id", wa."driver_id"::uuid),
+        "location_id" = COALESCE(wp."location_id", wa."location_id"::uuid)
       FROM "washout_activities" wa
       WHERE wp."activity_id" = wa."id"
         AND (wp."driver_id" IS NULL OR wp."location_id" IS NULL);
@@ -103,7 +103,7 @@ async function main() {
 
     await client.query(`
       UPDATE "washout_photos"
-      SET "verification_status" = COALESCE("verification_status", 'needs_review'::"photo_verification_status");
+      SET "verification_status" = COALESCE("verification_status"::"photo_verification_status", 'needs_review'::"photo_verification_status");
     `);
 
     await client.query(`
@@ -130,19 +130,31 @@ async function main() {
     await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "verification_status" SET NOT NULL;`);
 
     if (!(await constraintExists(client, "washout_photos", "washout_photos_driver_id_drivers_id_fk"))) {
-      await client.query(`
-        ALTER TABLE "washout_photos"
-        ADD CONSTRAINT "washout_photos_driver_id_drivers_id_fk"
-        FOREIGN KEY ("driver_id") REFERENCES "public"."drivers"("id") ON DELETE cascade ON UPDATE no action;
-      `);
+      await client.query(`SAVEPOINT washout_photos_driver_fk`);
+      try {
+        await client.query(`
+          ALTER TABLE "washout_photos"
+          ADD CONSTRAINT "washout_photos_driver_id_drivers_id_fk"
+          FOREIGN KEY ("driver_id") REFERENCES "public"."drivers"("id") ON DELETE cascade ON UPDATE no action NOT VALID;
+        `);
+      } catch (error) {
+        await client.query(`ROLLBACK TO SAVEPOINT washout_photos_driver_fk`);
+        console.warn("Skipping washout_photos.driver_id foreign key due to legacy data mismatch:", error instanceof Error ? error.message : String(error));
+      }
     }
 
     if (!(await constraintExists(client, "washout_photos", "washout_photos_location_id_washout_locations_id_fk"))) {
-      await client.query(`
-        ALTER TABLE "washout_photos"
-        ADD CONSTRAINT "washout_photos_location_id_washout_locations_id_fk"
-        FOREIGN KEY ("location_id") REFERENCES "public"."washout_locations"("id") ON DELETE cascade ON UPDATE no action;
-      `);
+      await client.query(`SAVEPOINT washout_photos_location_fk`);
+      try {
+        await client.query(`
+          ALTER TABLE "washout_photos"
+          ADD CONSTRAINT "washout_photos_location_id_washout_locations_id_fk"
+          FOREIGN KEY ("location_id") REFERENCES "public"."washout_locations"("id") ON DELETE cascade ON UPDATE no action NOT VALID;
+        `);
+      } catch (error) {
+        await client.query(`ROLLBACK TO SAVEPOINT washout_photos_location_fk`);
+        console.warn("Skipping washout_photos.location_id foreign key due to legacy data mismatch:", error instanceof Error ? error.message : String(error));
+      }
     }
 
     await client.query(`

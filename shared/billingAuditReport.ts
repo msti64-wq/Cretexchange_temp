@@ -51,6 +51,7 @@ export interface BillingAuditItem {
   checkInTime: string;
   amountCharged: string;
   platformFeeTotal: string;
+  driverIncentiveTip: string;
   paymentStatus: string;
   paymentId: string;
   paymentCreatedAt: string;
@@ -95,6 +96,7 @@ export interface BillingAuditRun {
   billingRunFailedAt: string;
   totalAmountCharged: string;
   totalPlatformFeeTotal: string;
+  totalDriverTips: string;
   washoutCount: number;
   driverCount: number;
   locationCount: number;
@@ -109,6 +111,7 @@ export interface BillingAuditReportSummary {
   totalWashouts: number;
   totalAmountCharged: string;
   totalPlatformFeeTotal: string;
+  totalDriverTips: string;
   totalPaid: string;
   totalPending: string;
   totalFailed: string;

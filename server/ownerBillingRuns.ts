@@ -196,8 +196,11 @@ async function processSingleOwnerBillingRun(
   console.log(`💳 [OWNER_BILLING] Candidate washouts for owner ${ownerId}: ${candidatePayments.length}`);
 
   const candidateAmountCents = candidatePayments.reduce((sum, payment) => {
-    return sum + toCents(payment.amount) + toCents(payment.processingFee) + toCents(payment.washoutServiceFee);
+    return sum + toCents(payment.amount) + toCents(payment.processingFee) + Number(payment.tipAmountCents || 0);
   }, 0);
+  const platformFeeTotalCents = candidatePayments.reduce((sum, payment) => sum + toCents(payment.processingFee), 0);
+  const driverTipTotalCents = candidatePayments.reduce((sum, payment) => sum + Number(payment.tipAmountCents || 0), 0);
+  const washoutActivityIds = candidatePayments.map((payment) => payment.activityId).filter(Boolean);
 
   const batchMetadata = {
     runType,
@@ -208,6 +211,9 @@ async function processSingleOwnerBillingRun(
     ownerUsername: ownerUser.username,
     ownerCompanyName: owner.companyName,
     reusedBatchId: existingBatch?.id || existingBatchId || null,
+    washoutActivityIds: washoutActivityIds.join(","),
+    platformFeeTotal: formatMoney(platformFeeTotalCents),
+    driverTipTotal: formatMoney(driverTipTotalCents),
   };
 
   const billingBatch =
@@ -266,11 +272,13 @@ async function processSingleOwnerBillingRun(
 
   const paymentsToBill = batchPayments.length > 0 ? batchPayments : candidatePayments;
   const totalAmountCents = paymentsToBill.reduce((sum, payment) => {
-    return sum + toCents(payment.amount) + toCents(payment.processingFee) + toCents(payment.washoutServiceFee);
+    return sum + toCents(payment.amount) + toCents(payment.processingFee) + Number(payment.tipAmountCents || 0);
   }, 0);
   const totalFeesCents = paymentsToBill.reduce((sum, payment) => {
-    return sum + toCents(payment.processingFee) + toCents(payment.washoutServiceFee);
+    return sum + toCents(payment.processingFee) + Number(payment.tipAmountCents || 0);
   }, 0);
+  const totalPlatformFeeCents = paymentsToBill.reduce((sum, payment) => sum + toCents(payment.processingFee), 0);
+  const totalDriverTipCents = paymentsToBill.reduce((sum, payment) => sum + Number(payment.tipAmountCents || 0), 0);
 
   await storage.updateBillingBatchProcessing(
     billingBatch.id,
@@ -315,6 +323,9 @@ async function processSingleOwnerBillingRun(
     endDate: endDate ? endDate.toISOString().split("T")[0] : "",
     washoutCount: String(paymentsToBill.length),
     amountCents: String(totalAmountCents),
+    washoutActivityIds: paymentsToBill.map((payment) => payment.activityId).join(","),
+    platformFeeTotal: formatMoney(totalPlatformFeeCents),
+    driverTipTotal: formatMoney(totalDriverTipCents),
   };
 
   try {

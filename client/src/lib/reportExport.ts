@@ -44,12 +44,13 @@ export function downloadReportPdf(
   const summaryLines = [
     `Washouts: ${report.summary.totalWashouts}`,
     `Charged: $${report.summary.totalAmountCharged}`,
+    `Platform fees: $${report.summary.totalPlatformFees}`,
+    `Tips: $${report.summary.totalTips}`,
     `Paid: $${report.summary.totalPaid}`,
     `Unpaid/Pending: $${report.summary.totalUnpaidPending}`,
   ];
 
   if (report.reportType === "driver") {
-    summaryLines.push(`Tips: $${report.summary.totalTips}`);
     summaryLines.push(`Driver Payments: $${report.summary.totalDriverPayments}`);
   }
 

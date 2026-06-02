@@ -1,6 +1,19 @@
 export const DEFAULT_ANNUAL_MEMBERSHIP_AMOUNT_CENTS = 1500;
 export const DEFAULT_MONTHLY_LOCATION_DUES_AMOUNT_CENTS = 100;
-export const DEFAULT_PER_WASHOUT_FEE_CENTS = 40;
+export const DEFAULT_PER_WASHOUT_FEE_CENTS = 500;
+
+function toNonNegativeCents(value: string | number | null | undefined, fallbackCents: number): number {
+  if (value === null || value === undefined || value === "") {
+    return fallbackCents;
+  }
+
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return fallbackCents;
+  }
+
+  return Math.round(parsed * 100);
+}
 
 export interface PlatformBillingSettingsInput {
   enableAnnualMembership?: boolean | null;
@@ -31,18 +44,26 @@ export interface ResolvedBillingPolicy {
 }
 
 export function toCents(value: string | number | null | undefined, fallbackCents: number): number {
-  if (value === null || value === undefined || value === "") {
-    return fallbackCents;
-  }
+  return toNonNegativeCents(value, fallbackCents);
+}
 
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) return fallbackCents;
-    return Math.round(value * 100);
-  }
+export function resolvePlatformFeeCents(value: string | number | null | undefined): number {
+  return toNonNegativeCents(value, DEFAULT_PER_WASHOUT_FEE_CENTS);
+}
 
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallbackCents;
-  return Math.round(parsed * 100);
+export function calculateOwnerWashoutChargeCents(
+  baseWashoutAmountCents: number,
+  platformFeeCents: number,
+  driverTipCents: number = 0,
+): number {
+  return Math.max(0, baseWashoutAmountCents) + Math.max(0, platformFeeCents) + Math.max(0, driverTipCents);
+}
+
+export function calculateDriverPayoutCents(
+  baseWashoutAmountCents: number,
+  driverTipCents: number = 0,
+): number {
+  return Math.max(0, baseWashoutAmountCents) + Math.max(0, driverTipCents);
 }
 
 export function resolveBillingPolicy(
@@ -89,7 +110,7 @@ export function getActiveBillingPolicyLabels(policy: ResolvedBillingPolicy): Arr
 
   items.push({
     key: "per-washout-fee",
-    label: "Per-washout fee",
+    label: "Platform fee per washout",
     amountCents: policy.perWashoutFeeCents,
   });
 

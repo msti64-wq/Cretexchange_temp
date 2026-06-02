@@ -20,10 +20,12 @@ export interface ReportRow {
   quantity: string;
   unit: string;
   amountCharged: string;
+  platformFee: string;
   paymentStatus: string;
   paymentDate: string;
   paymentId: string;
   ticketNumber: string;
+  driverIncentiveTip: string;
   tipAmount: string;
   driverPaymentAmount: string;
   notes: string;
@@ -32,6 +34,7 @@ export interface ReportRow {
 export interface ReportSummary {
   totalWashouts: number;
   totalAmountCharged: string;
+  totalPlatformFees: string;
   totalPaid: string;
   totalUnpaidPending: string;
   totalTips: string;
@@ -65,4 +68,3 @@ export interface ReportQueryInput {
   paymentStatus?: string;
   washoutStatus?: string;
 }
-

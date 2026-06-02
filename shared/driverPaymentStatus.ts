@@ -1,6 +1,7 @@
 const DRIVER_STRIPE_WAITING_PAYMENT_STATUSES = new Set([
   "awaiting_driver_stripe",
   "pending_driver_onboarding",
+  "held_for_onboarding",
 ]);
 
 export function isAwaitingDriverStripePaymentStatus(status: string | null | undefined): boolean {
@@ -13,6 +14,5 @@ export function getAwaitingDriverStripePaymentStatuses(): string[] {
 }
 
 export function getDriverStripeSetupMessage(): string {
-  return "You have approved washouts awaiting payment. Complete your payment setup to receive payouts.";
+  return "You have approved washouts with owner-funded tips waiting on your Stripe setup. Complete setup to receive tip payouts.";
 }
-

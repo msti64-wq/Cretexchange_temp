@@ -68,9 +68,11 @@ export default function OwnerPayments() {
   };
 
   const stats = {
-    totalPayments: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0),
+    totalPayments: filteredActivities.reduce((sum: number, activity: any) => {
+      const driverTip = Number(activity.location?.driverIncentiveTip || 0);
+      return sum + Number(activity.amount || 0) + driverTip;
+    }, 0),
     totalFees: filteredActivities.reduce((sum: number, activity: any) => {
-      // FLAT PLATFORM FEE: $5.00 per washout regardless of location rate
       const platformFee = 5.00;
       return sum + platformFee;
     }, 0),
@@ -121,14 +123,14 @@ export default function OwnerPayments() {
             <div className="text-2xl font-bold text-primary" data-testid="text-total-paid">
               {formatCurrency(stats.totalPayments)}
             </div>
-            <div className="text-xs text-muted-foreground">To Drivers</div>
+            <div className="text-xs text-muted-foreground">To Drivers + Tips</div>
           </StatCard>
 
           <StatCard title="Total Fees" className="text-center">
             <div className="text-2xl font-bold text-secondary" data-testid="text-total-fees">
               {formatCurrency(stats.totalFees)}
             </div>
-            <div className="text-xs text-muted-foreground">Platform Fees ($5.00/washout)</div>
+            <div className="text-xs text-muted-foreground">Platform fees per washout (default $5.00)</div>
           </StatCard>
         </div>
 
@@ -275,7 +277,10 @@ export default function OwnerPayments() {
                         {formatCurrency(Number(activity.amount || 0))}
                       </div>
                       <div className="text-xs text-muted-foreground mb-2" data-testid={`text-platform-fee-${index}`}>
-                        Platform Fee: {formatCurrency(5.00)}
+                        Platform Fee: {formatCurrency(5.00)} (default)
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-2" data-testid={`text-driver-tip-${index}`}>
+                        Driver Tip: {formatCurrency(Number(activity.location?.driverIncentiveTip || 0))}
                       </div>
                       <Badge 
                         variant={
@@ -309,7 +314,7 @@ export default function OwnerPayments() {
 
                   <div className="flex items-center justify-between pt-3 border-t border-border">
                     <div className="text-sm text-muted-foreground">
-                      Platform fee
+                      Platform fee per washout
                     </div>
                     <div className="text-sm">
                       <span className="font-semibold text-red-600" data-testid={`text-total-fees-${index}`}>
@@ -323,7 +328,7 @@ export default function OwnerPayments() {
                     </div>
                     <div className="text-sm">
                       <span className="font-semibold text-green-600" data-testid={`text-net-amount-${index}`}>
-                        {formatCurrency(Number(activity.amount || 0))} {/* Driver gets full location rate */}
+                        {formatCurrency(Number(activity.amount || 0) + Number(activity.location?.driverIncentiveTip || 0))}
                       </span>
                     </div>
                   </div>

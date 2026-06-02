@@ -362,7 +362,10 @@ export default function AdminLocations() {
                       <div className="text-xl font-bold text-accent mb-1" data-testid={`text-location-rate-${index}`}>
                         {formatCurrency(Number(location.rate))}
                       </div>
-                      <div className="text-xs text-muted-foreground mb-3">per washout</div>
+                      <div className="text-xs text-muted-foreground mb-1">driver payout per washout</div>
+                      <div className="text-xs text-muted-foreground mb-3">
+                        Driver tip: {formatCurrency(Number(location.driverIncentiveTip || 0))}
+                      </div>
 
                       <Button
                         size="sm"

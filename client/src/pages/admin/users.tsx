@@ -184,8 +184,8 @@ export default function AdminUsers() {
     },
     onSuccess: () => {
       toast({
-        title: "Custom Platform Fee Updated",
-        description: "The owner's platform fee has been updated successfully.",
+        title: "Platform Fee Updated",
+        description: "The owner's platform fee per washout has been updated successfully.",
       });
       setPlatformFeeDialogOpen(false);
       setSelectedOwner(null);
@@ -195,7 +195,7 @@ export default function AdminUsers() {
     onError: (error: any) => {
       toast({
         title: "Update Failed",
-        description: error.message || "Failed to update custom platform fee",
+        description: error.message || "Failed to update platform fee per washout",
         variant: "destructive",
       });
     },
@@ -655,7 +655,7 @@ export default function AdminUsers() {
                         )}
                         {user.role === 'owner' && (currentUser as any)?.role === 'super_admin' && (
                           <p className="text-sm text-muted-foreground mt-1" data-testid={`text-platform-fee-${index}`}>
-                            <strong>Platform Fee:</strong> {user.roleData?.customPlatformFee ? `$${user.roleData.customPlatformFee} (custom)` : 'Using global fee'}
+                            <strong>Platform Fee per Washout:</strong> {user.roleData?.customPlatformFee !== null && user.roleData?.customPlatformFee !== undefined ? `$${user.roleData.customPlatformFee} (custom)` : 'Using global fee'}
                           </p>
                         )}
                       </div>
@@ -726,12 +726,12 @@ export default function AdminUsers() {
                             variant="outline"
                             onClick={() => {
                               setSelectedOwner(user.roleData);
-                              customFeeForm.setValue('customPlatformFee', user.roleData?.customPlatformFee || '');
+                              customFeeForm.setValue('customPlatformFee', user.roleData?.customPlatformFee !== null && user.roleData?.customPlatformFee !== undefined ? String(user.roleData.customPlatformFee) : '');
                               setPlatformFeeDialogOpen(true);
                             }}
                             data-testid={`button-set-custom-fee-${index}`}
                           >
-                            Set Custom Fee
+                            Set Platform Fee
                           </Button>
                           <Button
                             size="sm"
@@ -739,7 +739,7 @@ export default function AdminUsers() {
                             onClick={() => {
                               setSelectedOwner(user.roleData);
                               customBillingForm.setValue('useCustomBillingModel', user.roleData?.useCustomBillingModel || false);
-                              customBillingForm.setValue('customWashoutRate', user.roleData?.customWashoutRate || '');
+                              customBillingForm.setValue('customWashoutRate', user.roleData?.customWashoutRate !== null && user.roleData?.customWashoutRate !== undefined ? String(user.roleData.customWashoutRate) : '');
                               setCustomBillingDialogOpen(true);
                             }}
                             data-testid={`button-custom-billing-${index}`}
@@ -874,7 +874,7 @@ export default function AdminUsers() {
       <Dialog open={platformFeeDialogOpen} onOpenChange={setPlatformFeeDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Set Custom Platform Fee</DialogTitle>
+            <DialogTitle>Set Platform Fee per Washout</DialogTitle>
           </DialogHeader>
           
           <div className="mb-4 text-sm text-muted-foreground">
@@ -886,7 +886,7 @@ export default function AdminUsers() {
                 <p className="mb-2">
                   <span className="font-medium">Months on Platform:</span> {selectedOwner.createdAt && calculateMonthsOnPlatform(selectedOwner.createdAt)}
                 </p>
-                <p>Set a custom platform fee for this owner. Leave blank to use the global platform fee. Enter 0.00 to waive the fee.</p>
+                <p>Set the platform fee per washout for this owner. Leave blank to use the platform default. A superadmin can override this owner rate at the location level. Enter 0.00 to waive the fee.</p>
               </>
             )}
           </div>
@@ -898,20 +898,20 @@ export default function AdminUsers() {
                 name="customPlatformFee"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Custom Platform Fee ($)</FormLabel>
+                    <FormLabel>Platform Fee per Washout ($)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         step="0.01"
                         min="0"
-                        placeholder="Leave blank to use global fee"
+                        placeholder="Leave blank to use default $5.00"
                         {...field}
                         data-testid="input-custom-platform-fee"
                       />
                     </FormControl>
                     <FormMessage />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Leave blank to use the global default fee. Enter 0.00 to waive the fee.
+                      Blank uses the platform default. Enter 0.00 to waive the platform fee. Superadmins can override the final rate at the owner or location level.
                     </p>
                   </FormItem>
                 )}
@@ -998,7 +998,7 @@ export default function AdminUsers() {
                     </FormControl>
                     <FormMessage />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Amount owner pays per washout. Leave blank to use the default rate. Enter 0.00 to waive the fee.
+                      Custom override for the platform rate. Leave blank to use the default rate of $5.00. Enter 0.00 to waive the fee. Superadmins can override the owner or location rate.
                     </p>
                   </FormItem>
                 )}

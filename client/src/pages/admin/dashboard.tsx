@@ -387,8 +387,8 @@ export default function AdminDashboard() {
 
         {awaitingDriverStripeCount > 0 && (
           <DashboardSectionCard
-            title="Approved Washouts Waiting on Driver Setup"
-            description="These washouts are approved, but payment will not be processed until the driver finishes Stripe onboarding."
+            title="Approved Washouts Waiting on Driver Tip Payout Setup"
+            description="These washouts are approved, but owner-funded tips will not be processed until the driver finishes optional tip payout onboarding."
             icon={<CreditCard className="h-4 w-4 text-primary" />}
           >
             <div className="space-y-2">
@@ -409,7 +409,11 @@ export default function AdminDashboard() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-foreground">
-                        {formatCurrency(Number(payment.amount || 0) + Number(payment.processingFee || 0))}
+                        {formatCurrency(
+                          Number(payment.amount || 0) +
+                          Number(payment.processingFee || 0) +
+                          Number((payment.tipAmountCents || 0) / 100)
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {payment.status}

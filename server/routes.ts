@@ -33,8 +33,14 @@ import {
   requireCurrentTerms,
 } from "./terms";
 import { TERMS_TYPES } from "@shared/terms";
-import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, resolveLocationMonthlyFeeCents } from "./locationBilling";
-import { resolveOwnerBillingPolicy, getActiveBillingPolicyLabels } from "./billingPolicy";
+import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, resolveLocationMonthlyFeeCents, resolveLocationDriverIncentiveTipCents } from "./locationBilling";
+import {
+  resolveOwnerBillingPolicy,
+  getActiveBillingPolicyLabels,
+  resolvePlatformFeeCents,
+  calculateOwnerWashoutChargeCents,
+  calculateDriverPayoutCents,
+} from "./billingPolicy";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { LOTTERY_FEATURE_FLAG_KEY, resolveLotteryEnabled } from "./lottery";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
@@ -174,6 +180,32 @@ async function resolveDriverStripeReadiness(driverUser: User): Promise<DriverStr
       reason: `Unable to verify driver Stripe readiness: ${error?.message || 'unknown error'}`,
     };
   }
+}
+
+function resolveWashoutChargeComponents(params: {
+  owner: Owner;
+  location: WashoutLocation | null | undefined;
+  systemSettings: { platformWashoutFee?: string | null } | null | undefined;
+  baseAmount: number;
+}) {
+  const { owner, location, systemSettings, baseAmount } = params;
+  const platformFee = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined
+    ? resolvePlatformFeeCents(owner.customPlatformFee)
+    : resolvePlatformFeeCents(systemSettings?.platformWashoutFee);
+  const driverTipCents = resolveLocationDriverIncentiveTipCents(location?.driverIncentiveTip);
+  const ownerChargeCents = calculateOwnerWashoutChargeCents(baseAmount * 100, platformFee, driverTipCents);
+  const driverPayoutCents = calculateDriverPayoutCents(baseAmount * 100, driverTipCents);
+
+  return {
+    platformFeeCents: platformFee,
+    driverTipCents,
+    ownerChargeCents,
+    driverPayoutCents,
+    platformFee: platformFee / 100,
+    driverTip: driverTipCents / 100,
+    ownerCharge: ownerChargeCents / 100,
+    driverPayout: driverPayoutCents / 100,
+  };
 }
 
 async function finalizeChargedWashoutPayment(params: {
@@ -1723,16 +1755,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('✅ Using fallback platform fee:', platformFee);
       }
       
-      // Payment structure: Platform fee per washout (configurable)
-      // Driver receives location rate (owner sets this per location)
+      // Payment structure: platform fee + optional owner-funded driver incentive tip
+      // Driver receives the location rate; tip is tracked separately when present
       const locationRate = parseFloat(location.rate);
+      const driverTip = resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100;
       const PLATFORM_FEE = platformFee; // Configurable via admin settings (global or per-owner)
       const DRIVER_PAYMENT = locationRate; // Set by location owner
-      const OWNER_CHARGE = locationRate + PLATFORM_FEE;
+      const OWNER_CHARGE = locationRate + PLATFORM_FEE + driverTip;
 
       // Convert to cents for Stripe
-      const driverPaymentCents = Math.round(DRIVER_PAYMENT * 100);
+      const driverPayoutCents = Math.round((DRIVER_PAYMENT + driverTip) * 100);
       const platformFeeCents = Math.round(PLATFORM_FEE * 100);
+      const driverTipCents = Math.round(driverTip * 100);
 
       // Check wallet funding feature flag to determine payment method
       const walletFundingFlag = await storage.getFeatureFlag('wallet_funding');
@@ -1742,6 +1776,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activityId,
         locationRate: DRIVER_PAYMENT,
         platformFee: PLATFORM_FEE,
+        driverTip,
+        driverPayoutCents,
+        platformFeeCents,
+        driverTipCents,
         totalCharge: OWNER_CHARGE,
         paymentMethod: isWalletFundingEnabled ? 'treasury_wallet' : 'credit_card',
       });
@@ -1773,7 +1811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createDriverWallet({ driverId: driver.id });
         }
 
-        await storage.adjustDriverWalletBalance(driver.id, DRIVER_PAYMENT, 0);
+        await storage.adjustDriverWalletBalance(driver.id, DRIVER_PAYMENT + driverTip, 0);
 
         const updatedWallet = await storage.getDriverWallet(driver.id);
         const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
@@ -1781,7 +1819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create driver wallet transaction
         await storage.createWalletTransaction({
           driverId: driver.id,
-          amount: DRIVER_PAYMENT.toString(),
+          amount: (DRIVER_PAYMENT + driverTip).toFixed(2),
           direction: "credit",
           balanceAfter: newBalance.toString(),
           currency: "USD",
@@ -1826,6 +1864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ownerUsername: ownerUser?.username || owner.id,
             driverUsername: driverUser?.username || driver.id,
             locationName: location.name,
+            driverTip: driverTip.toFixed(2),
           },
         });
 
@@ -1839,7 +1878,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activityId,
         amount: DRIVER_PAYMENT.toFixed(2),
         processingFee: PLATFORM_FEE.toFixed(2),
-        washoutServiceFee: OWNER_CHARGE.toFixed(2),
+        washoutServiceFee: driverTip.toFixed(2),
+        tipAmountCents: driverTipCents,
         status: "completed",
       });
 
@@ -1847,7 +1887,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         ownerCharge: OWNER_CHARGE,
         platformFee: PLATFORM_FEE,
-        driverPayment: DRIVER_PAYMENT,
+        driverPayment: DRIVER_PAYMENT + driverTip,
+        driverTip,
         paymentMethod: isWalletFundingEnabled ? 'wallet' : 'batched',
         message: isWalletFundingEnabled ? "Payment processed successfully" : "Payment queued for batch processing",
         batchProcessing: !isWalletFundingEnabled,
@@ -1936,7 +1977,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           // Calculate totals for this batch
-          const totalDriverPayments = ownerPayments.reduce((sum, p) => sum + parseFloat(p.driverAmount), 0);
+          const totalDriverPayments = ownerPayments.reduce((sum, p) => {
+            const driverTip = Number((p.metadata as { driverTip?: string | number } | null)?.driverTip || 0);
+            return sum + parseFloat(p.driverAmount) + driverTip;
+          }, 0);
           const totalPlatformFees = ownerPayments.reduce((sum, p) => sum + parseFloat(p.platformFee), 0);
           const totalOwnerCharge = ownerPayments.reduce((sum, p) => sum + parseFloat(p.totalAmount), 0);
 
@@ -2002,7 +2046,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   throw new Error(`Driver ${payment.driverId} has no Connect account`);
                 }
 
-                const driverAmountCents = Math.round(parseFloat(payment.driverAmount) * 100);
+                const driverTip = Number((payment.metadata as { driverTip?: string | number } | null)?.driverTip || 0);
+                const driverAmountCents = Math.round((parseFloat(payment.driverAmount) + driverTip) * 100);
 
                 // Create transfer to driver's Connect account
                 const transfer = await stripeService.stripe.transfers.create({
@@ -2015,11 +2060,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     paymentId: payment.id,
                     activityId: payment.activityId,
                     driverId: payment.driverId,
+                    driverTip: driverTip.toFixed(2),
                     type: 'driver_washout_payout',
                   },
                 });
 
-                console.log(`  ↳ Transferred $${payment.driverAmount} to driver ${payment.driverId}`);
+                console.log(`  ↳ Transferred $${(parseFloat(payment.driverAmount) + driverTip).toFixed(2)} to driver ${payment.driverId}`);
 
                 // Mark payment as processed
                 await storage.updatePendingPaymentStatus(payment.id, 'processed', batch.id);
@@ -3374,14 +3420,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const location = await storage.createWashoutLocation(locationData as any);
       console.log(`📍 Location created: ${location.id} - ${location.name}`);
 
-      // If trial mode is active, skip the monthly location fee
+      // If waiver mode is active, skip the monthly location fee
       if (waiveMonthlyFees) {
-        console.log(`⚡ Trial mode: monthly location fee waived for ${location.name}`);
+        console.log(`⚡ Monthly location fee waived for ${location.name}`);
         return res.status(201).json({
           location,
           feeCharged: false,
-          trialMode: true,
-          message: 'Location created. No signup or monthly fee during trial — you will be billed $5.00 per completed washout, charged to your card weekly.'
+          feeWaived: true,
+          message: 'Location created. Owners are charged $5.00 per completed washout unless a superadmin platform override is applied by the platform.'
         });
       }
 
@@ -3880,12 +3926,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Approval is persisted before payment processing so payment failures cannot block owner approval.
 
+      const systemSettings = await storage.getSystemSettings();
+
       // ========== CHECK FOR CUSTOM BILLING MODEL (LOTTERY PROGRAM) ==========
       // Custom billing model: Owner pays fixed custom rate, driver gets lottery entry (no payout)
       const useCustomBillingModel = owner.useCustomBillingModel === true;
       let defaultCustomWashoutRate = 5.00;
       try {
-        const systemSettings = await storage.getSystemSettings();
         defaultCustomWashoutRate = parseFloat(systemSettings?.platformWashoutFee || "5.00");
       } catch (error) {
         console.warn("⚠️ Unable to load system settings for custom billing fallback; using default rate", {
@@ -3904,6 +3951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let driverAmount: number;
       let platformFee: number;
       let ownerFee: number;
+      let driverTip = 0;
 
       if (useCustomBillingModel) {
         // CUSTOM BILLING MODEL: Owner pays flat custom rate, platform keeps it all
@@ -3914,8 +3962,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // STANDARD BILLING MODEL: Driver gets paid, platform takes fee
         driverAmount = Number(activityDetails.amount); // Driver gets exact location rate
-        platformFee = 5.00; // Platform keeps the minimum flat fee
-        ownerFee = driverAmount + platformFee; // Owner pays total: driver amount + platform fee
+        const billingComponents = resolveWashoutChargeComponents({
+          owner,
+          location: activityLocation,
+          systemSettings,
+          baseAmount: driverAmount,
+        });
+        platformFee = billingComponents.platformFee;
+        driverTip = billingComponents.driverTip;
+        ownerFee = billingComponents.ownerCharge; // Owner pays total: driver amount + platform fee + driver tip
       }
 
       // Get owner's billing settings for business date calculation
@@ -3968,14 +4023,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!driverStripeReadiness.ready) {
-        const deferredReason = driverStripeReadiness.reason || 'Driver Stripe account not ready';
+        const deferredReason = `${driverStripeReadiness.reason || 'Driver Stripe account not ready'} - owner-funded tip held for onboarding`;
         console.log(`⏸️ Deferring washout ${id} payment until driver Stripe setup is complete: ${deferredReason}`);
         approvalResponseMessage = "Washout approved. Payment will be processed once the driver completes payment setup.";
         approvalResponsePaymentStatus = "awaiting_driver_stripe";
-        approvalResponsePayoutStatus = "not_started";
+        approvalResponsePayoutStatus = "held_for_onboarding";
         approvalResponseDeferReason = deferredReason;
         approvalDebugContext.paymentStatus = "awaiting_driver_stripe";
-        approvalDebugContext.payoutStatus = "not_started";
+        approvalDebugContext.payoutStatus = "held_for_onboarding";
         approvalDebugContext.deferReason = deferredReason;
 
         const payment = await storage.createPayment({
@@ -3984,9 +4039,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerId: owner.id,
           amount: driverAmount.toString(),
           processingFee: platformFee.toFixed(2),
-          washoutServiceFee: (ownerFee - platformFee).toFixed(2),
+          washoutServiceFee: driverTip.toFixed(2),
+          tipAmountCents: Math.round(driverTip * 100),
           status: 'awaiting_driver_stripe',
-          payoutStatus: 'not_started',
+          payoutStatus: 'held_for_onboarding',
           deferReason: deferredReason,
           deferredAt: new Date(),
           businessDate,
@@ -4034,7 +4090,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerId: owner.id,
           amount: driverAmount.toString(),
           processingFee: platformFee.toFixed(2),
-          washoutServiceFee: (ownerFee - platformFee).toFixed(2),
+          washoutServiceFee: driverTip.toFixed(2),
+          tipAmountCents: Math.round(driverTip * 100),
           status: 'pending', // Will be processed by batch processor
           businessDate,
         });
@@ -4227,6 +4284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               driverId: driver.id,
               driverAmount: driverAmount.toFixed(2),
               platformFee: platformFee.toFixed(2),
+              driverTip: driverTip.toFixed(2),
               businessDate: businessDate,
             },
             transfer_data: {
@@ -4299,7 +4357,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerId: owner.id,
           amount: driverAmount.toString(),
           processingFee: platformFee.toFixed(2),
-          washoutServiceFee: (ownerFee - platformFee).toFixed(2),
+          washoutServiceFee: driverTip.toFixed(2),
+          tipAmountCents: Math.round(driverTip * 100),
           status: 'pending', // Will be processed by batch processor
           businessDate,
         });
@@ -4360,8 +4419,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverId: activityDetails.driverId,
         ownerId: owner.id,
         amount: driverAmount.toString(),
-        processingFee: platformFee.toFixed(2), // Platform fee ($5.00 minimum)
-        washoutServiceFee: (ownerFee - platformFee).toFixed(2), // Driver portion
+        processingFee: platformFee.toFixed(2), // Platform fee (default $5.00, configurable)
+        washoutServiceFee: driverTip.toFixed(2), // Driver incentive tip per washout
+        tipAmountCents: Math.round(driverTip * 100),
         status: 'completed', // Payment already succeeded via Stripe
         businessDate, // Set business date for reporting
       });
@@ -4617,10 +4677,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const readiness = await resolveDriverStripeReadiness(driverUser);
           if (!readiness.ready) {
+            const heldReason = `${readiness.reason || payment.deferReason || 'Driver Stripe not ready'} - owner-funded tip held for onboarding`;
             await db
               .update(payments)
               .set({
-                deferReason: readiness.reason || payment.deferReason,
+                deferReason: heldReason,
                 updatedAt: new Date(),
               })
               .where(eq(payments.id, payment.id));
@@ -4629,7 +4690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             results.push({
               paymentId: payment.id,
               status: 'skipped',
-              reason: readiness.reason || 'Driver Stripe not ready',
+              reason: heldReason,
               paymentStatus: payment.status,
               payoutStatus: payment.payoutStatus,
             });
@@ -4677,9 +4738,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          const ownerFee = Number(payment.amount) + Number(payment.processingFee);
           const driverAmount = Number(payment.amount);
           const platformFee = Number(payment.processingFee);
+          const driverTip = Number((payment as any).tipAmountCents || 0) / 100;
+          const ownerFee = calculateOwnerWashoutChargeCents(driverAmount * 100, Math.round(platformFee * 100), Math.round(driverTip * 100)) / 100;
 
           await db
             .update(payments)
@@ -4705,6 +4767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               driverId: driver.id,
               driverAmount: driverAmount.toFixed(2),
               platformFee: platformFee.toFixed(2),
+              driverTip: driverTip.toFixed(2),
               businessDate: payment.businessDate || '',
             },
             transfer_data: {
@@ -9556,7 +9619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { newRate } = req.body;
       
-      if (!newRate || isNaN(parseFloat(newRate)) || parseFloat(newRate) < 0) {
+      if (newRate === undefined || newRate === null || newRate === '' || isNaN(parseFloat(newRate)) || parseFloat(newRate) < 0) {
         return res.status(400).json({ message: "Valid rate required (e.g., '0.50' for testing, '5.00' for production)" });
       }
 
@@ -9587,7 +9650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { newAmount } = req.body;
       
-      if (!newAmount || isNaN(parseFloat(newAmount)) || parseFloat(newAmount) < 0) {
+      if (newAmount === undefined || newAmount === null || newAmount === '' || isNaN(parseFloat(newAmount)) || parseFloat(newAmount) < 0) {
         return res.status(400).json({ message: "Valid amount required (e.g., '0.50' for testing)" });
       }
 
@@ -12262,12 +12325,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timezone,
         cutoffTime: billingSettings?.billingCutoffTime || '23:59:00',
         pendingPayments: pendingPayments.length,
-        totalAmount: pendingPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0).toFixed(2),
-        totalFees: pendingPayments.reduce((sum, p) => sum + parseFloat(p.processingFee), 0).toFixed(2),
+        totalAmount: pendingPayments.reduce((sum, p) => sum + parseFloat(p.amount) + parseFloat(p.processingFee) + Number((p.tipAmountCents || 0) / 100), 0).toFixed(2),
+        totalFees: pendingPayments.reduce((sum, p) => sum + parseFloat(p.processingFee) + Number((p.tipAmountCents || 0) / 100), 0).toFixed(2),
         payments: pendingPayments.map((p) => ({
           id: p.id,
           amount: p.amount,
           processingFee: p.processingFee,
+          driverTip: Number((p.tipAmountCents || 0) / 100).toFixed(2),
           driver: `${p.driver.user.firstName} ${p.driver.user.lastName}`,
           activity: {
             checkInTime: p.activity.checkInTime,

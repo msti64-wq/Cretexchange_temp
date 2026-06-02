@@ -84,9 +84,9 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       
                       <p className="pt-2"><strong>1.3 Transaction Fees:</strong></p>
                       <div className="ml-4 space-y-1">
-                        <p>• CreteXchange retains a <strong>$5.00 flat fee per completed washout</strong></p>
-                        <p>• Fee is automatically deducted from washout payments through the wallet ledger</p>
-                        <p>• You receive the washout rate you set minus the $5.00 platform fee</p>
+                        <p>• CreteXchange applies a <strong>default platform fee per completed washout of $5.00 unless a superadmin platform override is applied</strong></p>
+                        <p>• The platform fee is billed separately from any owner-funded driver incentive tip configured for a location</p>
+                        <p>• You receive the washout rate you set, and any driver incentive tip you choose to fund is charged separately</p>
                       </div>
                     </div>
                   </div>
@@ -151,7 +151,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                         <p className="font-medium text-amber-800 dark:text-amber-400">• Pending washouts must be reviewed within 72 hours</p>
                         <p>• After 72 hours, unreviewed washouts are <strong>automatically approved</strong></p>
                         <p>• Auto-approved washouts trigger immediate payment processing</p>
-                        <p>• You will be charged the washout rate plus platform fee</p>
+                        <p>• You will be charged the washout rate, the platform fee, and any configured driver incentive tip</p>
                         <p>• This policy ensures drivers receive timely payment for completed work</p>
                       </div>
                       
@@ -214,7 +214,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                       <div className="ml-4 space-y-1">
                         <p>• Driver payments processed immediately when you approve washout</p>
                         <p>• Your wallet is credited through the platform ledger</p>
-                        <p>• Platform fee ($5.00) deducted automatically from each payment</p>
+                        <p>• Platform fee is charged separately from any owner-funded driver incentive tip</p>
                       </div>
                     </div>
                   </div>
@@ -280,7 +280,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                 
                 <div className="border-t pt-4 bg-green-50 p-3 rounded">
                   <p className="font-semibold text-green-800 text-center">
-                    By clicking "I Agree," you confirm that you have read, understood, and accept all terms above, including the $15.00 membership fee, $1.00/month location fees, and $5.00 per-washout platform fee structure.
+                    By clicking "I Agree," you confirm that you have read, understood, and accept all terms above, including any platform fee structure and any owner-funded driver incentive tips applied by the platform or your location settings.
                   </p>
                 </div>
               </div>

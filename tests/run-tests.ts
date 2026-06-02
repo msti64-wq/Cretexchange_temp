@@ -6,7 +6,9 @@ import Stripe from "stripe";
 import { ObjectStorageService } from "../server/objectStorage";
 import { processOwnerBillingRun } from "../server/ownerBillingRuns";
 import { resolveBillingPolicy } from "../shared/billingPolicy";
-import { updateSystemSettingsSchema } from "../shared/schema";
+import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
+import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
+import { insertWashoutLocationSchema, updateSystemSettingsSchema } from "../shared/schema";
 
 type TestCase = {
   name: string;
@@ -93,10 +95,42 @@ test("billing policy resolver treats blank and null as defaults and zero as an o
   assert.equal(positivePolicy.perWashoutFeeCents, 125);
 });
 
+test("driver incentive tip helper treats blank as zero and positive values as cents", () => {
+  assert.equal(resolveLocationDriverIncentiveTipCents(undefined), 0);
+  assert.equal(resolveLocationDriverIncentiveTipCents(null), 0);
+  assert.equal(resolveLocationDriverIncentiveTipCents("0.00"), 0);
+  assert.equal(resolveLocationDriverIncentiveTipCents("1.75"), 175);
+});
+
+test("driver Stripe payouts feature flag is defined and disabled by default", () => {
+  const definition = FEATURE_FLAG_DEFINITIONS.find((flag) => flag.key === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
+  assert.ok(definition);
+  assert.equal(definition?.enabled, false);
+});
+
 test("system settings schema allows zero and rejects negative platform fees", () => {
   assert.equal(updateSystemSettingsSchema.safeParse({ platformWashoutFee: "0.00" }).success, true);
   assert.equal(updateSystemSettingsSchema.safeParse({ platformWashoutFee: "7.25" }).success, true);
   assert.equal(updateSystemSettingsSchema.safeParse({ platformWashoutFee: "-1.00" }).success, false);
+});
+
+test("washout location schema rejects negative driver incentive tips", () => {
+  const baseLocation = {
+    ownerId: "owner_1",
+    name: "Site A",
+    street: "1 Main St",
+    city: "Austin",
+    state: "TX",
+    zip: "78701",
+    latitude: "30.2672",
+    longitude: "-97.7431",
+    rate: 5,
+    driverIncentiveTip: 0,
+  };
+
+  assert.equal(insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: 1.5 }).success, true);
+  assert.equal(insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: 0 }).success, true);
+  assert.equal(insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: -0.01 }).success, false);
 });
 
 test("admin custom billing route accepts zero and blank washout rates", async () => {
@@ -310,7 +344,8 @@ function createOwnerBillingRunFixture(params: {
     activityId: payment.activityId || `activity_${index + 1}`,
     amount: payment.amount || "10.00",
     processingFee: payment.processingFee || "5.00",
-    washoutServiceFee: payment.washoutServiceFee || "5.00",
+    washoutServiceFee: payment.washoutServiceFee || "0.00",
+    tipAmountCents: payment.tipAmountCents ?? Math.round(Number(payment.washoutServiceFee || 0) * 100),
     status: payment.status || "pending",
     batchId: payment.batchId ?? null,
     businessDate: payment.businessDate || "2026-05-28",
@@ -2235,7 +2270,7 @@ test("owner verify approves legacy pending washouts and falls back when driver S
               return {
                 id: "payment_1",
                 status: "awaiting_driver_stripe",
-                payoutStatus: "not_started",
+                payoutStatus: "held_for_onboarding",
               };
             },
       verifyWashoutActivity: async () => {
@@ -2270,7 +2305,7 @@ test("owner verify approves legacy pending washouts and falls back when driver S
       assert.equal(createdPayment, true);
       assert.equal((res.body as { status?: string }).status, "verified");
       assert.equal((res.body as { paymentStatus?: string }).paymentStatus, "awaiting_driver_stripe");
-      assert.equal((res.body as { payoutStatus?: string }).payoutStatus, "not_started");
+      assert.equal((res.body as { payoutStatus?: string }).payoutStatus, "held_for_onboarding");
       assert.match(String((res.body as { message?: string }).message || ""), /payment will be processed once the driver completes payment setup/i);
     },
   );
@@ -2471,7 +2506,7 @@ test("owner verify charges normally when driver Stripe is ready", async () => {
   });
 });
 
-test("driver dashboard shows approved washouts awaiting Stripe setup", async () => {
+test("driver dashboard shows approved washouts awaiting tip payout setup", async () => {
   const { app, gets } = createRouteRegistry();
 
   await withPatchedStorage(
@@ -2498,7 +2533,7 @@ test("driver dashboard shows approved washouts awaiting Stripe setup", async () 
           amount: "10.00",
           processingFee: "5.00",
           status: "awaiting_driver_stripe",
-          payoutStatus: "not_started",
+          payoutStatus: "held_for_onboarding",
           location: { name: "Site A" },
           activity: { locationId: "location_1" },
         },
@@ -2633,7 +2668,7 @@ test("weekly owner billing charges via the unified engine", async () => {
         id: "payment_1",
         amount: "10.00",
         processingFee: "5.00",
-        washoutServiceFee: "5.00",
+        washoutServiceFee: "0.00",
       },
     ],
     stripeMode: "succeeded",
@@ -2652,8 +2687,41 @@ test("weekly owner billing charges via the unified engine", async () => {
   assert.equal(result.runs[0].status, "paid");
   assert.equal(result.totalWashoutCount, 1);
   assert.equal(fixture.getChargeCount(), 1);
-  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 2000);
+  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 1500);
+  assert.equal((fixture.getLastIntent() as { metadata?: Record<string, string> } | null)?.metadata?.platformFeeTotal, "5.00");
+  assert.equal((fixture.getLastIntent() as { metadata?: Record<string, string> } | null)?.metadata?.driverTipTotal, "0.00");
+  assert.equal((fixture.getBatch() as { metadata?: Record<string, string> } | null)?.metadata?.platformFeeTotal, "5.00");
+  assert.equal((fixture.getBatch() as { metadata?: Record<string, string> } | null)?.metadata?.driverTipTotal, "0.00");
   assert.equal((fixture.getBatch() as { status?: string } | null)?.status, "completed");
+});
+
+test("owner billing charges platform fee plus driver tip separately", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    payments: [
+      {
+        id: "payment_1",
+        amount: "10.00",
+        processingFee: "5.00",
+        washoutServiceFee: "1.50",
+      },
+    ],
+    stripeMode: "succeeded",
+  });
+
+  const result = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "weekly_scheduled",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-28T23:59:59.999Z"),
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(result.runs[0].status, "paid");
+  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 1650);
+  assert.equal((fixture.getLastIntent() as { metadata?: Record<string, string> } | null)?.metadata?.platformFeeTotal, "5.00");
+  assert.equal((fixture.getLastIntent() as { metadata?: Record<string, string> } | null)?.metadata?.driverTipTotal, "1.50");
 });
 
 test("manual owner billing uses the same engine and sums fee overrides", async () => {
@@ -2689,8 +2757,11 @@ test("manual owner billing uses the same engine and sums fee overrides", async (
   assert.equal(result.runs[0].status, "paid");
   assert.equal(result.totalWashoutCount, 2);
   assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 3500);
-  assert.equal((fixture.getBatch() as { metadata?: { runType?: string; triggeredByAdminId?: string } } | null)?.metadata?.runType, "admin_manual");
-  assert.equal((fixture.getBatch() as { metadata?: { runType?: string; triggeredByAdminId?: string } } | null)?.metadata?.triggeredByAdminId, "admin_1");
+  assert.equal((fixture.getBatch() as { metadata?: { runType?: string; triggeredByAdminId?: string; platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.runType, "admin_manual");
+  assert.equal((fixture.getBatch() as { metadata?: { runType?: string; triggeredByAdminId?: string; platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.triggeredByAdminId, "admin_1");
+  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.platformFeeTotal, "5.00");
+  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.driverTipTotal, "10.00");
+  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.washoutActivityIds, "activity_1,activity_2");
 });
 
 test("duplicate owner billing run does not double charge", async () => {
@@ -2701,7 +2772,7 @@ test("duplicate owner billing run does not double charge", async () => {
         id: "payment_1",
         amount: "10.00",
         processingFee: "5.00",
-        washoutServiceFee: "5.00",
+        washoutServiceFee: "0.00",
       },
     ],
     stripeMode: "succeeded",
@@ -2737,7 +2808,7 @@ test("failed Stripe charge records failure without double charging", async () =>
         id: "payment_1",
         amount: "10.00",
         processingFee: "5.00",
-        washoutServiceFee: "5.00",
+        washoutServiceFee: "0.00",
       },
     ],
     stripeMode: "throw",
@@ -2861,7 +2932,7 @@ test("driver cannot access admin lottery overview", async () => {
   );
 });
 
-test("admin dashboard shows payments awaiting driver Stripe setup", async () => {
+test("admin dashboard shows payments awaiting driver tip payout setup", async () => {
   const { app, gets } = createRouteRegistry();
 
   await withPatchedStorage(
@@ -2878,7 +2949,7 @@ test("admin dashboard shows payments awaiting driver Stripe setup", async () => 
           amount: "10.00",
           processingFee: "5.00",
           status: "awaiting_driver_stripe",
-          payoutStatus: "not_started",
+          payoutStatus: "held_for_onboarding",
           driverUser: { username: "driver1" },
           activity: { location: { name: "Site A", street: "1 Main St" } },
           location: { name: "Site A", street: "1 Main St" },
@@ -2943,7 +3014,8 @@ test("deferred driver Stripe payment can be processed once the driver is ready",
               amount: "10.00",
               processingFee: "5.00",
               washoutServiceFee: "5.00",
-              payoutStatus: "not_started",
+              tipAmountCents: 500,
+              payoutStatus: "held_for_onboarding",
               status: "awaiting_driver_stripe",
               businessDate: "2026-05-28",
             }),
@@ -3036,6 +3108,102 @@ test("deferred driver Stripe payment can be processed once the driver is ready",
   });
 
   assert.ok(paymentStatusUpdates.length > 0);
+});
+
+test("deferred driver Stripe payment remains held when the driver is not ready", async () => {
+  const { app, posts } = createRouteRegistry();
+
+  await withMockedDb([[]], async () => {
+    await withPatchedStorage(
+      {
+        getPaymentById: async () => ({
+          id: "payment_held_1",
+          activityId: "activity_1",
+          driverId: "driver_row_1",
+          ownerId: "owner_1",
+          amount: "10.00",
+          processingFee: "5.00",
+          washoutServiceFee: "1.50",
+          tipAmountCents: 150,
+          payoutStatus: "held_for_onboarding",
+          status: "awaiting_driver_stripe",
+          businessDate: "2026-05-28",
+        }),
+        getWashoutActivity: async () => ({
+          id: "activity_1",
+          locationId: "location_1",
+          status: "verified",
+          amount: "10.00",
+          driverId: "driver_row_1",
+          serviceType: "washout",
+        }),
+        getWashoutLocation: async () => ({
+          id: "location_1",
+          ownerId: "owner_1",
+          name: "Site A",
+          street: "1 Main St",
+        }),
+        getOwnerById: async () => ({
+          id: "owner_1",
+          userId: "user_owner_1",
+          useCustomBillingModel: false,
+          customWashoutRate: null,
+          stripeCustomerId: "cus_owner_1",
+          stripePaymentMethodId: "pm_owner_1",
+        }),
+        getUser: async (id: string) => {
+          if (id === "admin_1") {
+            return {
+              id: "admin_1",
+              username: "admin1",
+              role: "admin",
+            };
+          }
+          if (id === "user_owner_1") {
+            return {
+              id: "user_owner_1",
+              username: "owner1",
+              firstName: "Owner",
+              lastName: "One",
+              stripeCustomerId: "cus_owner_1",
+              stripePaymentMethodId: "pm_owner_1",
+            };
+          }
+          return {
+            id: "driver_user_1",
+            username: "driver1",
+            firstName: "Driver",
+            lastName: "One",
+            stripeConnectAccountId: null,
+          };
+        },
+        getDriverById: async () => ({
+          id: "driver_row_1",
+          userId: "driver_user_1",
+        }),
+      },
+      async () => {
+        const { registerRoutes } = await import("../server/routes");
+        await registerRoutes(app as never);
+        const route = posts.get("/api/admin/payments/process-awaiting-driver-stripe");
+        assert.equal(typeof route, "function");
+
+        const res = createResponse();
+        await route!(
+          {
+            body: { paymentId: "payment_held_1" },
+            user: { id: "admin_1", role: "admin" },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 200);
+        assert.equal((res.body as { processed?: number }).processed, 0);
+        assert.equal((res.body as { skipped?: number }).skipped, 1);
+        assert.match(String(JSON.stringify(res.body)), /held for onboarding|Stripe not ready/i);
+      },
+    );
+  });
 });
 
 test("owner verify is idempotent for lottery entry creation on retry", async () => {
