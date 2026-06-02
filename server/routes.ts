@@ -3382,24 +3382,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      if (!owner.isApproved) {
-        return res.status(403).json({ message: "Owner not approved" });
-      }
-
-      // Check WAIVE_OWNER_PAYMENT flag — determines if signup/monthly fees are waived (trial mode)
-      const waiveOwnerPaymentFlag = await storage.getFeatureFlag('waive_owner_payment');
-      const waiveMonthlyFees = waiveOwnerPaymentFlag?.enabled ?? false;
-
-      // CC is always required — owners need it for the weekly $5/washout billing
-      if (!owner.stripePaymentMethodId) {
-        return res.status(400).json({ 
-          message: `Please add a credit card before adding locations. It is required for weekly washout billing ($5.00 per washout). Go to Payment Methods to add a card.` 
+      const membershipState = resolveOwnerMembershipState(owner);
+      if (!membershipState.dashboardAccessAllowed) {
+        return res.status(403).json({
+          message: membershipState.accountStatusMessage || "Your owner account is not yet approved.",
         });
       }
 
-      if (!owner.stripeCustomerId) {
-        return res.status(400).json({ 
-          message: `Stripe customer account not found. Please contact support.` 
+      const locationAccessState = resolveOwnerLocationAccessState(owner, user);
+      if (!locationAccessState.canManageLocations) {
+        return res.status(403).json({
+          message: locationAccessState.blockingMessage || "Please complete your owner profile and add a payment method before setting up washout locations.",
         });
       }
 
@@ -3409,119 +3402,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: owner.id,
       });
 
+      locationData.driverIncentiveTip = locationData.driverIncentiveTip ?? "0";
+
       if (!locationData.latitude || !locationData.longitude) {
-        console.warn("Owner location creation blocked: verified coordinates were not provided.");
-        return res.status(400).json({
-          message: "We could not verify this address. Please select a valid address from the dropdown suggestions or contact support."
-        });
+        try {
+          const geo = await geocodeAddress(locationData.street, locationData.city, locationData.state, locationData.zip);
+          locationData.latitude = geo.latitude;
+          locationData.longitude = geo.longitude;
+        } catch (geoError: any) {
+          console.error("Owner location geocoding failed:", {
+            userId,
+            ownerId: owner.id,
+            message: geoError?.message,
+          });
+          return res.status(400).json({
+            message: geoError?.message || "We could not verify this address. Please select a valid address from the dropdown suggestions or contact support."
+          });
+        }
       }
 
       // Create the location
       const location = await storage.createWashoutLocation(locationData as any);
       console.log(`📍 Location created: ${location.id} - ${location.name}`);
 
-      // If waiver mode is active, skip the monthly location fee
-      if (waiveMonthlyFees) {
-        console.log(`⚡ Monthly location fee waived for ${location.name}`);
-        return res.status(201).json({
-          location,
-          feeCharged: false,
-          feeWaived: true,
-          message: 'Location created. Owners are charged $5.00 per completed washout unless a superadmin platform override is applied by the platform.'
-        });
-      }
-
-      // Production mode: charge monthly location fee
-      const monthlyFeeCents = 100; // $1.00 in cents
-      const monthlyFee = (monthlyFeeCents / 100).toFixed(2);
-
-      // Calculate billing period (current month)
-      const now = new Date();
-      const periodStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const periodEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-
-      console.log(`💰 Processing Stripe charge: $${monthlyFee} for period ${periodStart} to ${periodEnd}`);
-
-      try {
-        // 1. Create fees_ledger record
-        const feeRecord = await storage.createFeeLedgerEntry({
-          ownerId: owner.id,
-          feeType: 'location_monthly',
-          locationId: location.id,
-          amountCents: monthlyFeeCents,
-          periodStart,
-          periodEnd,
-          status: 'pending',
-          metadata: {
-            locationName: location.name,
-            chargedOnCreation: true
-          }
-        });
-        console.log(`📝 Fee ledger entry created: ${feeRecord.id}`);
-
-        // 2. Charge monthly fee with PROPER LABELING
-        const paymentIntent = await stripeService.chargeMonthlyLocationFee({
-          amount: monthlyFeeCents,
-          customerId: owner.stripeCustomerId!,
-          paymentMethodId: owner.stripePaymentMethodId!,
-          userId: userId,
-          username: user.username,
-          locationId: location.id,
-          locationName: location.name,
-          metadata: {
-            feeRecordId: feeRecord.id,
-            periodStart,
-            periodEnd,
-          },
-        });
-
-        console.log(`💳 Stripe Payment Intent created: ${paymentIntent.id}, status: ${paymentIntent.status}`);
-
-        if (paymentIntent.status !== 'succeeded') {
-          throw new Error(`Stripe payment failed with status: ${paymentIntent.status}`);
-        }
-
-        console.log(`✅ Stripe charge successful: $${monthlyFee}`);
-
-        // 3. Mark fee as paid in ledger with Stripe payment intent ID
-        await storage.markFeeLedgerPaid(
-          feeRecord.id,
-          null,
-          paymentIntent.id
-        );
-        console.log(`✅ Fee marked as paid in ledger with Stripe ID: ${paymentIntent.id}`);
-
-        console.log(`🎉 Location created and $${monthlyFee} charged via Stripe successfully!`);
-
-      } catch (feeError: any) {
-        console.error('❌ Error processing Stripe charge:', feeError);
-        
-        // Roll back: delete the location
-        try {
-          await storage.deleteWashoutLocation(location.id, owner.id);
-          console.log(`🔄 Location ${location.id} deleted due to failed payment`);
-        } catch (rollbackError: any) {
-          console.error('❌ Error during rollback:', rollbackError);
-        }
-        
-        return res.status(400).json({
-          message: `Failed to charge monthly fee: ${feeError.message}. Please check your payment method.`,
-          error: feeError.message
-        });
-      }
-
-      // Success - return location with fee confirmation
       res.status(201).json({
         location,
-        feeCharged: true,
-        feeAmount: monthlyFee,
-        billingPeriod: { start: periodStart, end: periodEnd }
+        message: "Location created successfully."
       });
 
     } catch (error) {
-      console.error("Error creating location:", error);
-      res.status(400).json({ message: "Failed to create location" });
+      const dbError = summarizeDatabaseError(error, {
+        phase: "owner-location-create",
+        table: "washout_locations",
+      });
+      console.error("Error creating location:", {
+        userId: req.user?.id,
+        ownerId: (await storage.getOwner(req.user.id))?.id,
+        ...dbError,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      if (dbError.category === "schema_mismatch" || dbError.category === "enum_mismatch") {
+        return res.status(500).json({
+          message: "Location creation is missing a required database field. Please deploy the latest migration.",
+        });
+      }
+
+      if (dbError.category === "null_violation") {
+        return res.status(400).json({
+          message: "Location data is incomplete. Please check the required fields and try again.",
+        });
+      }
+
+      if (dbError.category === "foreign_key_violation") {
+        return res.status(400).json({
+          message: "The selected owner or location reference is invalid. Please try again.",
+        });
+      }
+
+      if (dbError.category === "unique_violation" || dbError.category === "constraint_violation") {
+        return res.status(400).json({
+          message: "Location could not be created because of a database constraint. Please try again.",
+        });
+      }
+
+      return res.status(500).json({
+        message: "Failed to create location. Please try again.",
+      });
     }
   });
 
@@ -8563,14 +8510,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/admin/settings', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Super admin access required" });
+      if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
       }
 
       // Validate platform fee if being updated
       if (req.body.platformWashoutFee !== undefined) {
-        const fee = parseFloat(req.body.platformWashoutFee);
-        if (isNaN(fee) || fee < 0) {
+        const feeRaw = typeof req.body.platformWashoutFee === "number"
+          ? req.body.platformWashoutFee.toString()
+          : String(req.body.platformWashoutFee).trim();
+        const fee = parseFloat(feeRaw);
+        if (!feeRaw || isNaN(fee) || fee < 0) {
           return res.status(400).json({ 
             message: "Platform washout fee must be zero or greater" 
           });
@@ -8583,8 +8533,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(settings);
     } catch (error: any) {
-      console.error("Error updating system settings:", error);
-      res.status(500).json({ message: "Failed to update system settings: " + error.message });
+      const dbError = summarizeDatabaseError(error, {
+        phase: "platform-fee-update",
+        table: "system_settings",
+      });
+      console.error("Error updating system settings:", {
+        ...dbError,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      if (dbError.category === "schema_mismatch" || dbError.category === "enum_mismatch") {
+        return res.status(500).json({
+          message: "Platform fee settings are missing a required database field. Please deploy the latest migration.",
+        });
+      }
+
+      if (dbError.category === "null_violation") {
+        return res.status(400).json({
+          message: "Platform fee settings are incomplete. Please enter zero or greater.",
+        });
+      }
+
+      return res.status(500).json({ message: "Failed to update system settings. Please try again." });
     }
   });
 

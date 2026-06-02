@@ -99,6 +99,8 @@ import { summarizeDatabaseError } from "./dbErrors";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
 import { resolvePlatformFeeCents } from "../shared/billingPolicy";
+import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
+import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
@@ -1058,20 +1060,40 @@ export class DatabaseStorage implements IStorage {
       .from(washoutLocations)
       .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
       .innerJoin(users, eq(owners.userId, users.id))
-      .where(and(
-        eq(washoutLocations.isActive, true),
-        eq(washoutLocations.isVisible, true),
-        eq(owners.isApproved, true)
-      ))
       .orderBy(washoutLocations.name);
-    
-    const mappedLocations: any = results.map((row: any) => ({
-      ...row.washout_locations,
-      owner: {
-        ...row.owners,
-        user: row.users
+
+    const mappedLocations: any[] = [];
+
+    for (const row of results as any[]) {
+      const location = row.washout_locations as WashoutLocation;
+      const owner = row.owners as Owner;
+      const user = row.users as User;
+      const visibilityState = resolveDriverLocationVisibilityState(location, owner);
+
+      if (!visibilityState.visibleToDrivers) {
+        console.info(
+          "[driver-locations] excluded location",
+          JSON.stringify({
+            locationId: location.id,
+            ownerId: owner?.id ?? null,
+            ownerMembershipStatus: visibilityState.ownerMembershipStatus ?? null,
+            isActive: location.isActive,
+            isVisible: location.isVisible,
+            reason: visibilityState.exclusionReason ?? "unknown",
+          }),
+        );
+        continue;
       }
-    })) as any;
+
+      mappedLocations.push({
+        ...location,
+        owner: {
+          ...owner,
+          user,
+        },
+      });
+    }
+
     return mappedLocations;
   }
 
@@ -1146,10 +1168,15 @@ export class DatabaseStorage implements IStorage {
     // Transform the nested structure to flat structure expected by frontend
     const mappedPayments: any = results.map((row: any) => ({
       ...row.washout_locations,
-      owner: {
-        ...row.owners,
-        user: row.users
-      }
+      owner: (() => {
+        const membershipState = resolveOwnerMembershipState(row.owners);
+        return {
+          ...row.owners,
+          user: row.users,
+          membershipStatus: membershipState.membershipStatus,
+          dashboardAccessAllowed: membershipState.dashboardAccessAllowed,
+        };
+      })(),
     })) as any;
     return mappedPayments;
   }

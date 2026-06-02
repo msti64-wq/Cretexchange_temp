@@ -158,8 +158,8 @@ export default function AdminLocations() {
       (filterStatus === "hidden" && (!location.isVisible || !location.isActive));
 
     const matchesOwnerStatus = filterOwnerStatus === "all" ||
-      (filterOwnerStatus === "approved" && location.owner?.isApproved) ||
-      (filterOwnerStatus === "pending" && !location.owner?.isApproved);
+      (filterOwnerStatus === "approved" && ["active", "waived"].includes(location.owner?.membershipStatus)) ||
+      (filterOwnerStatus === "pending" && !["active", "waived"].includes(location.owner?.membershipStatus));
 
     return matchesSearch && matchesStatus && matchesOwnerStatus;
   }) || [];
@@ -343,11 +343,11 @@ export default function AdminLocations() {
                           {location.owner?.companyName && ` (${location.owner.companyName})`}
                         </span>
                         <Badge
-                          variant={location.owner?.isApproved ? "default" : "secondary"}
+                          variant={["active", "waived"].includes(location.owner?.membershipStatus) ? "default" : "secondary"}
                           className="ml-2 text-xs"
                           data-testid={`badge-owner-status-${index}`}
                         >
-                          {location.owner?.isApproved ? 'Approved' : 'Pending'}
+                          {["active", "waived"].includes(location.owner?.membershipStatus) ? 'Approved' : 'Pending'}
                         </Badge>
                       </div>
 

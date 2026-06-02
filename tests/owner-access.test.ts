@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
-import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
+import { resolveDriverLocationVisibilityState, resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "../shared/washoutApproval";
 
 function makeOwner(overrides: Record<string, unknown> = {}) {
@@ -83,6 +83,41 @@ test("waived owner with profile complete and card on file can manage locations",
 
   assert.equal(membershipState.dashboardAccessAllowed, true);
   assert.equal(locationState.canManageLocations, true);
+});
+
+test("driver location visibility allows approved active owner locations", () => {
+  const owner = makeOwner({ membershipStatus: "active", isApproved: false });
+  const visibilityState = resolveDriverLocationVisibilityState(
+    {
+      id: "location_1",
+      ownerId: "owner_1",
+      name: "Site A",
+      isActive: true,
+      isVisible: true,
+    },
+    owner,
+  );
+
+  assert.equal(visibilityState.visibleToDrivers, true);
+  assert.equal(visibilityState.ownerMembershipStatus, "active");
+});
+
+test("driver location visibility logs hidden or inactive reasons", () => {
+  const owner = makeOwner({ membershipStatus: "active" });
+
+  const hiddenState = resolveDriverLocationVisibilityState(
+    { id: "location_2", ownerId: "owner_1", name: "Hidden Site", isActive: true, isVisible: false },
+    owner,
+  );
+  assert.equal(hiddenState.visibleToDrivers, false);
+  assert.equal(hiddenState.exclusionReason, "location_hidden");
+
+  const inactiveState = resolveDriverLocationVisibilityState(
+    { id: "location_3", ownerId: "owner_1", name: "Inactive Site", isActive: false, isVisible: true },
+    owner,
+  );
+  assert.equal(inactiveState.visibleToDrivers, false);
+  assert.equal(inactiveState.exclusionReason, "location_inactive");
 });
 
 test("washout approval helper keeps legacy pending records visible", () => {

@@ -197,6 +197,205 @@ test("admin custom billing route accepts zero and blank washout rates", async ()
   );
 });
 
+test("owner can create location with default driver tip and no monthly billing rollback", async () => {
+  const { app, posts } = createRouteRegistry();
+  const createdLocations: any[] = [];
+
+  await withPatchedStorage(
+    {
+      getOwner: async () => ({
+        id: "owner_1",
+        userId: "owner_user_1",
+        companyName: "Alpha Concrete",
+        membershipStatus: "active",
+        isApproved: false,
+        stripePaymentMethodId: "pm_123",
+        stripeCustomerId: "cus_123",
+        profileCompleted: true,
+        locationSetupOverride: false,
+        businessLicense: "BL-100",
+        taxId: "12-3456789",
+      }),
+      getUser: async () => ({
+        id: "owner_user_1",
+        role: "owner",
+        firstName: "Olivia",
+        lastName: "Owner",
+        email: "olivia@example.com",
+        phone: "555-0100",
+        street: "1 Main St",
+        city: "Austin",
+        state: "TX",
+        zip: "78701",
+      }),
+      createWashoutLocation: async (locationData: any) => {
+        createdLocations.push(locationData);
+        return { id: "location_1", ...locationData } as any;
+      },
+      createFeeLedgerEntry: async () => {
+        throw new Error("fee ledger should not be called during owner location creation");
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = posts.get("/api/owners/locations");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "owner_user_1" },
+          body: {
+            name: "Site A",
+            street: "1 Main St",
+            city: "Austin",
+            state: "TX",
+            zip: "78701",
+            latitude: "30.2672",
+            longitude: "-97.7431",
+            rate: 5,
+            description: "Test site",
+          },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 201);
+      assert.equal(createdLocations[0].driverIncentiveTip, "0");
+      assert.equal((res.body as { location?: { id?: string } }).location?.id, "location_1");
+    },
+  );
+});
+
+test("superadmin can see owner locations and membership status in admin list", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        role: "super_admin",
+      }),
+      getAllLocations: async () => ([
+        {
+          id: "location_1",
+          ownerId: "owner_1",
+          name: "Site A",
+          street: "1 Main St",
+          city: "Austin",
+          state: "TX",
+          zip: "78701",
+          rate: "5.00",
+          driverIncentiveTip: "0.00",
+          isActive: true,
+          isVisible: true,
+          owner: {
+            id: "owner_1",
+            userId: "owner_user_1",
+            companyName: "Alpha Concrete",
+            isApproved: false,
+            membershipStatus: "active",
+            dashboardAccessAllowed: true,
+            user: {
+              id: "owner_user_1",
+              firstName: "Olivia",
+              lastName: "Owner",
+              email: "olivia@example.com",
+            },
+          },
+        },
+      ]),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/locations");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const locations = res.body as Array<{ owner?: { membershipStatus?: string } }>;
+      assert.equal(locations.length, 1);
+      assert.equal(locations[0].owner?.membershipStatus, "active");
+    },
+  );
+});
+
+test("superadmin can update platform fee to five dollars, zero, and rejects negative values", async () => {
+  const { app, puts } = createRouteRegistry();
+  const updates: Array<string | undefined> = [];
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({ id: "admin_1", role: "super_admin" }),
+      getSystemSettings: async () => ({
+        id: "settings_1",
+        automaticTaxEnabled: false,
+        platformWashoutFee: "5.00",
+        updatedAt: new Date(),
+        updatedBy: "admin_1",
+      }),
+      updateSystemSettings: async (settings: any, updatedBy: string) => {
+        updates.push(settings.platformWashoutFee);
+        return {
+          id: "settings_1",
+          automaticTaxEnabled: settings.automaticTaxEnabled ?? false,
+          platformWashoutFee: settings.platformWashoutFee ?? "5.00",
+          updatedAt: new Date(),
+          updatedBy,
+        } as any;
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/admin/settings");
+      assert.equal(typeof route, "function");
+
+      const fiveRes = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+          body: { platformWashoutFee: "5.00" },
+        },
+        fiveRes,
+      );
+      assert.equal(fiveRes.statusCode, 200);
+      assert.equal(updates[0], "5.00");
+
+      const zeroRes = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+          body: { platformWashoutFee: "0.00" },
+        },
+        zeroRes,
+      );
+      assert.equal(zeroRes.statusCode, 200);
+      assert.equal(updates[1], "0.00");
+
+      const negativeRes = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+          body: { platformWashoutFee: "-1.00" },
+        },
+        negativeRes,
+      );
+      assert.equal(negativeRes.statusCode, 400);
+      assert.match(String((negativeRes.body as { message?: string }).message || ""), /zero or greater/i);
+    },
+  );
+});
+
 function createResponse() {
   return {
     statusCode: 200,
@@ -2610,6 +2809,67 @@ test("driver dashboard shows lottery as active by default", async () => {
       assert.equal((res.body as { lotteryActive?: boolean }).lotteryActive, true);
       assert.equal((res.body as { lotteryEntryCount?: number }).lotteryEntryCount, 7);
       assert.equal((res.body as { lotteryStatus?: { enabled?: boolean } }).lotteryStatus?.enabled, true);
+    },
+  );
+});
+
+test("driver locations endpoint returns active visible owner locations", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getActiveLocations: async () => ([
+        {
+          id: "location_1",
+          ownerId: "owner_1",
+          name: "Site A",
+          street: "1 Main St",
+          city: "Austin",
+          state: "TX",
+          zip: "78701",
+          latitude: "30.2672",
+          longitude: "-97.7431",
+          rate: "5.00",
+          driverIncentiveTip: "0.00",
+          isActive: true,
+          isVisible: true,
+          owner: {
+            id: "owner_1",
+            userId: "owner_user_1",
+            companyName: "Alpha Concrete",
+            isApproved: false,
+            membershipStatus: "active",
+            user: {
+              id: "owner_user_1",
+              firstName: "Olivia",
+              lastName: "Owner",
+              email: "olivia@example.com",
+            },
+          },
+        },
+      ]),
+      getLocationMaterialIntents: async () => [],
+      getMaterialBySlug: async () => null,
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/drivers/locations");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "driver_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const locations = res.body as Array<{ id?: string; owner?: { id?: string } }>;
+      assert.equal(locations.length, 1);
+      assert.equal(locations[0].id, "location_1");
+      assert.equal(locations[0].owner?.id, "owner_1");
     },
   );
 });

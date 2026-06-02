@@ -46,6 +46,10 @@ function toMoney(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+function toDollarString(amount: number): string {
+  return amount.toFixed(2);
+}
+
 function formatDateTime(value: unknown): string {
   if (!value) return "";
   const date = new Date(value as string | number | Date);
@@ -168,14 +172,14 @@ function buildSummary(rows: BillingAuditItem[], runs: BillingAuditRun[]): Billin
   return {
     totalRuns: summary.totalRuns,
     totalWashouts: summary.totalWashouts,
-    totalAmountCharged: toMoney(summary.totalAmountCharged),
-    totalPlatformFeeTotal: toMoney(summary.totalPlatformFeeTotal),
-    totalDriverTips: toMoney(summary.totalDriverTips),
-    totalPaid: toMoney(summary.totalPaid),
-    totalPending: toMoney(summary.totalPending),
-    totalFailed: toMoney(summary.totalFailed),
-    totalRefunded: toMoney(summary.totalRefunded),
-    totalDisputed: toMoney(summary.totalDisputed),
+    totalAmountCharged: toDollarString(summary.totalAmountCharged),
+    totalPlatformFeeTotal: toDollarString(summary.totalPlatformFeeTotal),
+    totalDriverTips: toDollarString(summary.totalDriverTips),
+    totalPaid: toDollarString(summary.totalPaid),
+    totalPending: toDollarString(summary.totalPending),
+    totalFailed: toDollarString(summary.totalFailed),
+    totalRefunded: toDollarString(summary.totalRefunded),
+    totalDisputed: toDollarString(summary.totalDisputed),
     totalLegacyUnlinked: summary.totalLegacyUnlinked,
   };
 }

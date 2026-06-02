@@ -1,9 +1,17 @@
+import { resolveOwnerMembershipState } from "./ownerMembership";
+
 export interface OwnerLocationAccessState {
   profileCompleted: boolean;
   paymentMethodOnFile: boolean;
   locationSetupOverride: boolean;
   canManageLocations: boolean;
   blockingMessage?: string;
+}
+
+export interface DriverLocationVisibilityState {
+  visibleToDrivers: boolean;
+  exclusionReason?: string;
+  ownerMembershipStatus?: string;
 }
 
 export function isOwnerProfileComplete(owner: {
@@ -109,5 +117,58 @@ export function resolveOwnerLocationAccessState(owner: {
     locationSetupOverride,
     canManageLocations: false,
     blockingMessage: "Please add a payment method before setting up washout locations.",
+  };
+}
+
+export function resolveDriverLocationVisibilityState(location: {
+  id?: string | null;
+  ownerId?: string | null;
+  name?: string | null;
+  isActive?: boolean | null;
+  isVisible?: boolean | null;
+}, owner: {
+  id?: string | null;
+  membershipStatus?: string | null;
+  isApproved?: boolean | null;
+  membershipPaymentMethod?: string | null;
+  subscriptionStatus?: string | null;
+  walletStatus?: string | null;
+} | null | undefined): DriverLocationVisibilityState {
+  if (!location.isActive) {
+    return {
+      visibleToDrivers: false,
+      exclusionReason: "location_inactive",
+      ownerMembershipStatus: owner?.membershipStatus || (owner?.isApproved ? "active" : "pending_review"),
+    };
+  }
+
+  if (!location.isVisible) {
+    return {
+      visibleToDrivers: false,
+      exclusionReason: "location_hidden",
+      ownerMembershipStatus: owner?.membershipStatus || (owner?.isApproved ? "active" : "pending_review"),
+    };
+  }
+
+  if (!owner) {
+    return {
+      visibleToDrivers: false,
+      exclusionReason: "owner_missing",
+    };
+  }
+
+  const ownerLocationAccess = resolveOwnerMembershipState(owner);
+
+  if (!ownerLocationAccess.dashboardAccessAllowed) {
+    return {
+      visibleToDrivers: false,
+      exclusionReason: `owner_${ownerLocationAccess.membershipStatus}`,
+      ownerMembershipStatus: ownerLocationAccess.membershipStatus,
+    };
+  }
+
+  return {
+    visibleToDrivers: true,
+    ownerMembershipStatus: ownerLocationAccess.membershipStatus,
   };
 }
