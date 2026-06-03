@@ -23,6 +23,7 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { useAuth } from "@/hooks/useAuth";
 import { resolveOwnerMembershipState } from "@shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "@shared/ownerLocationAccess";
+import { resolveLocationDriverIncentiveTipCents } from "@shared/locationBilling";
 
 export default function OwnerLocations() {
   const { toast } = useToast();
@@ -334,7 +335,7 @@ export default function OwnerLocations() {
       state: location.state || "",
       zip: location.zip || "",
       rate: location.rate?.toString() || "5.00",
-      driverIncentiveTip: location.driverIncentiveTip?.toString() || "0.00",
+      driverIncentiveTip: (resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100).toFixed(2),
       operatingHours: location.operatingHours || "",
       amenities: location.amenities?.join(", ") || "",
       description: location.description || "",
@@ -1058,7 +1059,7 @@ export default function OwnerLocations() {
                             </div>
                             <div className="text-xs text-muted-foreground">driver payout per washout (click to edit)</div>
                             <div className="text-xs text-muted-foreground">
-                              Driver tip: {formatCurrency(Number(location.driverIncentiveTip || 0))}
+                              Driver tip: {formatCurrency(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100)}
                             </div>
                           </div>
                         )}

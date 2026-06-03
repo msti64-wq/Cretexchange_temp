@@ -280,6 +280,7 @@ export const washoutLocations = pgTable("washout_locations", {
 	latitude: numeric({ precision: 9, scale:  6 }).notNull(),
 	longitude: numeric({ precision: 10, scale:  6 }).notNull(),
 	rate: numeric({ precision: 10, scale:  2 }).default('5.00').notNull(),
+	driverIncentiveTip: integer("driver_incentive_tip").default(0).notNull(),
 	isActive: boolean("is_active").default(true),
 	isVisible: boolean("is_visible").default(true),
 	description: text(),

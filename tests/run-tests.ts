@@ -100,6 +100,7 @@ test("driver incentive tip helper treats blank as zero and positive values as ce
   assert.equal(resolveLocationDriverIncentiveTipCents(null), 0);
   assert.equal(resolveLocationDriverIncentiveTipCents("0.00"), 0);
   assert.equal(resolveLocationDriverIncentiveTipCents("1.75"), 175);
+  assert.equal(resolveLocationDriverIncentiveTipCents(175), 175);
 });
 
 test("driver Stripe payouts feature flag is defined and disabled by default", () => {
@@ -128,8 +129,14 @@ test("washout location schema rejects negative driver incentive tips", () => {
     driverIncentiveTip: 0,
   };
 
-  assert.equal(insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: 1.5 }).success, true);
-  assert.equal(insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: 0 }).success, true);
+  const positive = insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: 1.5 });
+  assert.equal(positive.success, true);
+  assert.equal(positive.success && positive.data.driverIncentiveTip, 150);
+
+  const zero = insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: 0 });
+  assert.equal(zero.success, true);
+  assert.equal(zero.success && zero.data.driverIncentiveTip, 0);
+
   assert.equal(insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: -0.01 }).success, false);
 });
 
@@ -262,7 +269,7 @@ test("owner can create location with default driver tip and no monthly billing r
       );
 
       assert.equal(res.statusCode, 201);
-      assert.equal(createdLocations[0].driverIncentiveTip, "0");
+      assert.equal(createdLocations[0].driverIncentiveTip, 0);
       assert.equal((res.body as { location?: { id?: string } }).location?.id, "location_1");
     },
   );

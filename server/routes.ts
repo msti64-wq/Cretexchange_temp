@@ -3441,7 +3441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: owner.id,
       });
 
-      locationData.driverIncentiveTip = locationData.driverIncentiveTip ?? "0";
+      locationData.driverIncentiveTip = locationData.driverIncentiveTip ?? 0;
 
       if (!locationData.latitude || !locationData.longitude) {
         try {

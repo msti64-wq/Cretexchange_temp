@@ -25,6 +25,21 @@ async function columnExists(client: Client, tableName: string, columnName: strin
   return result.rowCount > 0;
 }
 
+async function columnDataType(client: Client, tableName: string, columnName: string) {
+  const result = await client.query(
+    `
+      SELECT data_type
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = $1
+        AND column_name = $2
+      LIMIT 1
+    `,
+    [tableName, columnName],
+  );
+  return (result.rows[0]?.data_type as string | undefined) || null;
+}
+
 async function constraintExists(client: Client, tableName: string, constraintName: string) {
   const result = await client.query(
     `
@@ -117,6 +132,35 @@ async function main() {
       SET "uploaded_at" = COALESCE("uploaded_at", NOW())
       WHERE "uploaded_at" IS NULL;
     `);
+
+    const driverTipColumnExists = await columnExists(client, "washout_locations", "driver_incentive_tip");
+    if (!driverTipColumnExists) {
+      await client.query(`
+        ALTER TABLE "washout_locations"
+          ADD COLUMN "driver_incentive_tip" integer NOT NULL DEFAULT 0;
+      `);
+    } else {
+      const driverTipType = await columnDataType(client, "washout_locations", "driver_incentive_tip");
+      if (driverTipType && driverTipType !== "integer") {
+        await client.query(`
+          ALTER TABLE "washout_locations"
+            ALTER COLUMN "driver_incentive_tip" TYPE integer
+            USING COALESCE(ROUND("driver_incentive_tip" * 100), 0)::integer;
+        `);
+      }
+
+      await client.query(`
+        UPDATE "washout_locations"
+        SET "driver_incentive_tip" = COALESCE("driver_incentive_tip", 0)
+        WHERE "driver_incentive_tip" IS NULL;
+      `);
+
+      await client.query(`
+        ALTER TABLE "washout_locations"
+          ALTER COLUMN "driver_incentive_tip" SET DEFAULT 0,
+          ALTER COLUMN "driver_incentive_tip" SET NOT NULL;
+      `);
+    }
 
     await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "photo_taken_at" SET DEFAULT now();`);
     await client.query(`ALTER TABLE "washout_photos" ALTER COLUMN "uploaded_at" SET DEFAULT now();`);
@@ -217,6 +261,7 @@ async function main() {
       tables: ["washout_photos", "lottery_drawings", "lottery_notifications"],
       columns: [
         ...columnsToEnsure.map(([column]) => column),
+        "driver_incentive_tip",
         "winner_notification_count",
         "winner_notifications_sent_at",
         "participant_notification_count",

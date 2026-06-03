@@ -19,5 +19,5 @@ export function resolveLocationDriverIncentiveTipCents(tipAmount: string | numbe
     return DEFAULT_LOCATION_DRIVER_INCENTIVE_TIP_CENTS;
   }
 
-  return Math.round(parsed * 100);
+  return typeof tipAmount === "number" ? Math.round(parsed) : Math.round(parsed * 100);
 }

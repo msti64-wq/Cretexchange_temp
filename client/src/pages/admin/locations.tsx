@@ -19,6 +19,7 @@ import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { formatAddress } from "@shared/addressUtils";
+import { resolveLocationDriverIncentiveTipCents } from "@shared/locationBilling";
 import { useAuth } from "@/hooks/useAuth";
 
 const addLocationSchema = z.object({
@@ -364,7 +365,7 @@ export default function AdminLocations() {
                       </div>
                       <div className="text-xs text-muted-foreground mb-1">driver payout per washout</div>
                       <div className="text-xs text-muted-foreground mb-3">
-                        Driver tip: {formatCurrency(Number(location.driverIncentiveTip || 0))}
+                        Driver tip: {formatCurrency(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100)}
                       </div>
 
                       <Button

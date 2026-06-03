@@ -11,6 +11,7 @@ import { DollarSign, Download, Calendar, Filter, TrendingUp } from "lucide-react
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { formatCurrency } from "@/lib/utils";
 import { formatAddress } from "@shared/addressUtils";
+import { resolveLocationDriverIncentiveTipCents } from "@shared/locationBilling";
 
 export default function OwnerPayments() {
   const [startDate, setStartDate] = useState("");
@@ -69,7 +70,7 @@ export default function OwnerPayments() {
 
   const stats = {
     totalPayments: filteredActivities.reduce((sum: number, activity: any) => {
-      const driverTip = Number(activity.location?.driverIncentiveTip || 0);
+      const driverTip = resolveLocationDriverIncentiveTipCents(activity.location?.driverIncentiveTip) / 100;
       return sum + Number(activity.amount || 0) + driverTip;
     }, 0),
     totalFees: filteredActivities.reduce((sum: number, activity: any) => {
@@ -280,7 +281,7 @@ export default function OwnerPayments() {
                         Platform Fee: {formatCurrency(5.00)} (default)
                       </div>
                       <div className="text-xs text-muted-foreground mb-2" data-testid={`text-driver-tip-${index}`}>
-                        Driver Tip: {formatCurrency(Number(activity.location?.driverIncentiveTip || 0))}
+                        Driver Tip: {formatCurrency(resolveLocationDriverIncentiveTipCents(activity.location?.driverIncentiveTip) / 100)}
                       </div>
                       <Badge 
                         variant={
@@ -328,7 +329,7 @@ export default function OwnerPayments() {
                     </div>
                     <div className="text-sm">
                       <span className="font-semibold text-green-600" data-testid={`text-net-amount-${index}`}>
-                        {formatCurrency(Number(activity.amount || 0) + Number(activity.location?.driverIncentiveTip || 0))}
+                        {formatCurrency(Number(activity.amount || 0) + (resolveLocationDriverIncentiveTipCents(activity.location?.driverIncentiveTip) / 100))}
                       </span>
                     </div>
                   </div>

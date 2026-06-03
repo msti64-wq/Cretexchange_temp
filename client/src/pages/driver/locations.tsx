@@ -16,6 +16,7 @@ import { getCurrentLocation } from "@/lib/gps";
 import { formatAddress } from "@shared/addressUtils";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
+import { resolveLocationDriverIncentiveTipCents } from "@shared/locationBilling";
 
 export default function DriverLocations() {
   const [, setLocation] = useLocation();
@@ -309,7 +310,7 @@ export default function DriverLocations() {
                       </div>
                       <div className="text-xs text-muted-foreground">driver payout per washout</div>
                       <div className="text-xs text-muted-foreground">
-                        Driver tip: {formatCurrency(Number(location.driverIncentiveTip || 0))}
+                        Driver tip: {formatCurrency(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100)}
                       </div>
                     </div>
                   </div>
