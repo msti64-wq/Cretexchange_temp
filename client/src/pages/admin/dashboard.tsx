@@ -161,7 +161,8 @@ export default function AdminDashboard() {
 
   const { weekStats, monthStats } = dashboardData || {};
   const dashboardErrors = dashboardData?.dashboardErrors || {};
-  const hasWidgetWarnings = Object.values(dashboardErrors).some(Boolean);
+  const hasCoreWidgetWarnings = Boolean(dashboardErrors.weekStats);
+  const hasOptionalWidgetWarnings = Boolean(dashboardErrors.monthStats || dashboardErrors.awaitingDriverStripePayments);
   const awaitingDriverStripePayments = Array.isArray(dashboardData?.awaitingDriverStripePayments)
     ? dashboardData.awaitingDriverStripePayments
     : [];
@@ -343,14 +344,14 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {hasWidgetWarnings && (
+        {hasCoreWidgetWarnings && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
             <div className="flex items-start gap-3">
               <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
               <div className="min-w-0">
-                <p className="font-semibold text-amber-900 dark:text-amber-100">Some dashboard widgets loaded with fallback data</p>
+                <p className="font-semibold text-amber-900 dark:text-amber-100">Core dashboard metrics loaded with fallback data</p>
                 <p className="mt-1 text-sm text-amber-800/90 dark:text-amber-200/80">
-                  One or more admin summary queries returned partial data. The dashboard stayed online and filled missing values with zeroes.
+                  One or more core admin summary queries returned partial data. The dashboard stayed online and filled missing core values with zeroes.
                 </p>
               </div>
             </div>
@@ -588,6 +589,17 @@ export default function AdminDashboard() {
                   </span>
                 )}
               </div>
+              {hasOptionalWidgetWarnings && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200">
+                  Optional widgets are using fallback data.
+                  {dashboardErrors.monthStats && (
+                    <span className="ml-1">Monthly payment volume is temporarily unavailable.</span>
+                  )}
+                  {dashboardErrors.awaitingDriverStripePayments && (
+                    <span className="ml-1">Driver tip payout queue is temporarily unavailable.</span>
+                  )}
+                </div>
+              )}
             </div>
           </DashboardSectionCard>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ import {
   FileText, Send, Medal, CheckCircle2, Package
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -59,6 +59,7 @@ const STORAGE_KEY = 'lottery_dashboard_reset_date';
 export default function SuperAdminLotteryDashboard() {
   const { toast } = useToast();
   const { user, isLoading } = useAuth();
+  const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   
   const now = new Date();
@@ -75,6 +76,7 @@ export default function SuperAdminLotteryDashboard() {
   const [selectedDriver, setSelectedDriver] = useState<{ driverId: string; driverName: string } | null>(null);
   const [prize, setPrize] = useState("");
   const [winnerMessage, setWinnerMessage] = useState("");
+  const [authTimedOut, setAuthTimedOut] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -83,16 +85,43 @@ export default function SuperAdminLotteryDashboard() {
     }
   }, []);
 
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/months'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/drawings'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/totals'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/entries'] });
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setAuthTimedOut(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setAuthTimedOut(true);
+    }, 8000);
+
+    return () => window.clearTimeout(timeout);
+  }, [isLoading]);
+
   const { data: months } = useQuery<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/months'],
+    enabled: !!user && user.role === 'super_admin',
+    refetchOnMount: "always",
   });
 
   const { data: allDrawings } = useQuery<any[]>({
     queryKey: ['/api/admin/lottery/drawings'],
+    enabled: !!user && user.role === 'super_admin',
+    refetchOnMount: "always",
   });
 
   const { data: lotteryOverview } = useQuery<any>({
     queryKey: ['/api/admin/lottery'],
+    enabled: !!user && user.role === 'super_admin',
     queryFn: async () => {
       const response = await fetch('/api/admin/lottery', {
         credentials: 'include',
@@ -100,10 +129,12 @@ export default function SuperAdminLotteryDashboard() {
       if (!response.ok) throw new Error('Failed to fetch lottery overview');
       return response.json();
     },
+    refetchOnMount: "always",
   });
 
   const { data: totals, isLoading: totalsLoading, refetch: refetchTotals } = useQuery<{ driverId: string; driverName: string; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/totals', selectedMonth, selectedYear],
+    enabled: !!user && user.role === 'super_admin',
     queryFn: async () => {
       const response = await fetch(`/api/admin/lottery/totals?month=${selectedMonth}&year=${selectedYear}`, {
         credentials: 'include',
@@ -111,10 +142,12 @@ export default function SuperAdminLotteryDashboard() {
       if (!response.ok) throw new Error('Failed to fetch totals');
       return response.json();
     },
+    refetchOnMount: "always",
   });
 
   const { data: entries, isLoading: entriesLoading } = useQuery<any[]>({
     queryKey: ['/api/admin/lottery/entries', selectedMonth, selectedYear],
+    enabled: !!user && user.role === 'super_admin',
     queryFn: async () => {
       const startDate = new Date(selectedYear, selectedMonth - 1, 1);
       const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
@@ -127,6 +160,7 @@ export default function SuperAdminLotteryDashboard() {
       if (!response.ok) throw new Error('Failed to fetch entries');
       return response.json();
     },
+    refetchOnMount: "always",
   });
 
   const notifyMutation = useMutation({
@@ -165,6 +199,11 @@ export default function SuperAdminLotteryDashboard() {
       title: "Dashboard Reset",
       description: "Lottery dashboard view has been reset. Historical data remains intact in the database.",
     });
+  };
+
+  const retryAuthLoad = () => {
+    setAuthTimedOut(false);
+    queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
   };
 
   const openNotifyDialog = (driver: { driverId: string; driverName: string }) => {
@@ -277,7 +316,30 @@ export default function SuperAdminLotteryDashboard() {
     });
   };
 
-  if (isLoading || !user) {
+  if (authTimedOut) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center space-y-3">
+            <p className="text-base font-semibold text-foreground">Lottery dashboard is still loading</p>
+            <p className="text-sm text-muted-foreground">
+              Authentication did not finish in time. Retry loading the page or return to the admin dashboard.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <Button onClick={retryAuthLoad} data-testid="button-retry-auth">
+                Retry
+              </Button>
+              <Button variant="outline" onClick={() => setLocation('/')} data-testid="button-return-dashboard">
+                Return to Dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/95 px-5 py-4 shadow-sm">
@@ -291,7 +353,7 @@ export default function SuperAdminLotteryDashboard() {
     );
   }
 
-  if (user?.role !== 'super_admin') {
+  if (!user || user.role !== 'super_admin') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="max-w-md">

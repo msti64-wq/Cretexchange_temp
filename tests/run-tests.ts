@@ -3574,6 +3574,86 @@ test("admin dashboard surfaces repaired washout fee and lottery metrics", async 
   );
 });
 
+test("admin dashboard keeps core metrics online when optional widgets fail", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getSystemStats: async (days: number) => {
+        if (days === 7) {
+          return {
+            totalEarnings: 0,
+            totalWashouts: 4,
+            totalDrivers: 2,
+            totalOwners: 1,
+            platformWashoutRevenue: 25,
+            platformWashoutRevenueCents: 2500,
+            platformFeeRecordCount: 5,
+            driverTipTotal: 3.5,
+            billedWashouts: 4,
+            pendingWashouts: 0,
+            failedWashouts: 0,
+            refundedWashouts: 0,
+            disputedWashouts: 0,
+            lotteryTicketCount: 5,
+            lotteryDriverCount: 3,
+            subscriptionRevenue: 0,
+            activeLicenses: 0,
+            licenseRenewals: 0,
+          };
+        }
+        throw new Error("monthly stats unavailable");
+      },
+      getPaymentsAwaitingDriverStripe: async () => {
+        throw new Error("stripe queue unavailable");
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/dashboard");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const body = res.body as {
+        weekStats?: {
+          platformWashoutRevenue?: number;
+          platformWashoutRevenueCents?: number;
+          platformFeeRecordCount?: number;
+          lotteryTicketCount?: number;
+          lotteryDriverCount?: number;
+        };
+        monthStats?: { totalWashouts?: number };
+        awaitingDriverStripeCount?: number;
+        dashboardErrors?: Record<string, string>;
+      };
+      assert.equal(body.weekStats?.platformWashoutRevenue, 25);
+      assert.equal(body.weekStats?.platformWashoutRevenueCents, 2500);
+      assert.equal(body.weekStats?.platformFeeRecordCount, 5);
+      assert.equal(body.weekStats?.lotteryTicketCount, 5);
+      assert.equal(body.weekStats?.lotteryDriverCount, 3);
+      assert.equal(body.monthStats?.totalWashouts, 0);
+      assert.equal(body.awaitingDriverStripeCount, 0);
+      assert.ok(!body.dashboardErrors?.weekStats);
+      assert.ok(body.dashboardErrors?.monthStats);
+      assert.ok(body.dashboardErrors?.awaitingDriverStripePayments);
+    },
+  );
+});
+
 test("admin dashboard returns partial data when one widget query fails", async () => {
   const { app, gets } = createRouteRegistry();
 
