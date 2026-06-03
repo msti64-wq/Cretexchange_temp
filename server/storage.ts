@@ -101,6 +101,7 @@ import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBillin
 import { resolvePlatformFeeCents } from "../shared/billingPolicy";
 import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
+import { summarizeWashoutRevenue } from "../shared/washoutRevenue";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
@@ -226,7 +227,22 @@ export interface IStorage {
   // Statistics operations
   getDriverStats(driverId: string, days: number): Promise<{ totalEarnings: number; totalWashouts: number; avgPerWashout: number }>;
   getOwnerStats(ownerId: string, days: number): Promise<{ totalPayments: number; totalWashouts: number; totalDrivers: number }>;
-  getSystemStats(days: number): Promise<{ totalEarnings: number; totalWashouts: number; totalDrivers: number; totalOwners: number }>;
+  getSystemStats(days: number): Promise<{
+    totalEarnings: number;
+    totalWashouts: number;
+    totalDrivers: number;
+    totalOwners: number;
+    platformWashoutRevenue: number;
+    driverTipTotal: number;
+    billedWashouts: number;
+    pendingWashouts: number;
+    failedWashouts: number;
+    refundedWashouts: number;
+    disputedWashouts: number;
+    subscriptionRevenue: number;
+    activeLicenses: number;
+    licenseRenewals: number;
+  }>;
 
   // Notification operations
   createNotification(notification: InsertNotification): Promise<Notification>;
@@ -1790,6 +1806,27 @@ export class DatabaseStorage implements IStorage {
 
         // Auto-verify the activity with system as verifier
         const verifiedActivity = await this.verifyWashoutActivity(activity.id, 'system-auto-approval');
+
+        try {
+          const lotteryFlag = await this.getFeatureFlag('lottery_enabled');
+          const lotteryEnabled = lotteryFlag?.enabled ?? false;
+          if (lotteryEnabled && activity.serviceType !== 'rubble_dropoff') {
+            const lotteryEntry = await this.createDriverLotteryEntry({
+              driverId: activity.driverId,
+              activityId: activity.id,
+              ownerId: owner.id,
+              entriesEarned: 1,
+            });
+            console.log(`🎰 Lottery entry created for auto-approved washout ${activity.id}, entry ID: ${lotteryEntry.id}`);
+          } else {
+            console.log(`🎰 Lottery skipped for auto-approved washout ${activity.id}`, {
+              lotteryEnabled,
+              serviceType: activity.serviceType,
+            });
+          }
+        } catch (lotteryError: any) {
+          console.error(`❌ Failed to create lottery entry for auto-approved washout ${activity.id}:`, lotteryError);
+        }
         
         // Create pending payment (will be processed in next batch)
         const payment = await this.createPayment({
@@ -2200,6 +2237,13 @@ export class DatabaseStorage implements IStorage {
     totalWashouts: number; 
     totalDrivers: number; 
     totalOwners: number;
+    platformWashoutRevenue: number;
+    driverTipTotal: number;
+    billedWashouts: number;
+    pendingWashouts: number;
+    failedWashouts: number;
+    refundedWashouts: number;
+    disputedWashouts: number;
     subscriptionRevenue: number;
     activeLicenses: number;
     licenseRenewals: number;
@@ -2219,6 +2263,15 @@ export class DatabaseStorage implements IStorage {
         gte(washoutActivities.checkInTime, startDate),
         ne(washoutActivities.status, 'rejected')
       ));
+
+    const paymentRows = await db
+      .select({
+        status: payments.status,
+        processingFee: payments.processingFee,
+        tipAmountCents: payments.tipAmountCents,
+      })
+      .from(payments)
+      .where(gte(payments.createdAt, startDate));
 
     // Get unique owners from locations used in activities
     const ownerStats = await db
@@ -2249,12 +2302,32 @@ export class DatabaseStorage implements IStorage {
     const stats = activityStats[0] || { totalEarnings: 0, totalWashouts: 0, totalDrivers: 0 };
     const ownerCount = ownerStats[0]?.totalOwners || 0;
     const subStats = subscriptionStats[0] || { activeLicenses: 0, licenseRenewals: 0 };
+    const paymentSummary = summarizeWashoutRevenue(paymentRows);
+
+    console.log(`[SYSTEM_STATS] washout revenue summary`, {
+      days,
+      startDate: startDate.toISOString(),
+      platformWashoutRevenue: paymentSummary.platformWashoutRevenue,
+      driverTipTotal: paymentSummary.driverTipTotal,
+      billedWashouts: paymentSummary.billedWashouts,
+      pendingWashouts: paymentSummary.pendingWashouts,
+      failedWashouts: paymentSummary.failedWashouts,
+      refundedWashouts: paymentSummary.refundedWashouts,
+      disputedWashouts: paymentSummary.disputedWashouts,
+    });
 
     return {
       totalEarnings: Number(stats.totalEarnings),
       totalWashouts: Number(stats.totalWashouts),
       totalDrivers: Number(stats.totalDrivers),
       totalOwners: Number(ownerCount),
+      platformWashoutRevenue: paymentSummary.platformWashoutRevenue,
+      driverTipTotal: paymentSummary.driverTipTotal,
+      billedWashouts: paymentSummary.billedWashouts,
+      pendingWashouts: paymentSummary.pendingWashouts,
+      failedWashouts: paymentSummary.failedWashouts,
+      refundedWashouts: paymentSummary.refundedWashouts,
+      disputedWashouts: paymentSummary.disputedWashouts,
       subscriptionRevenue: subscriptionRevenue,
       activeLicenses: Number(subStats.activeLicenses),
       licenseRenewals: Number(subStats.licenseRenewals),

@@ -174,9 +174,6 @@ export default function AdminDashboard() {
     { label: "Resolved", count: resolvedMessages },
   ];
   const supportSeverity = unreadMessages > 0 ? "Attention required" : activeMessages > 0 ? "Monitoring" : "Clear";
-  const activeLicenseRate = (weekStats?.activeLicenses || 0) > 0
-    ? Math.round(((weekStats?.licenseRenewals || 0) / Math.max(weekStats?.activeLicenses || 1, 1)) * 100)
-    : 0;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -302,25 +299,27 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Revenue signal</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-monthly-subscriptions">
-                {formatCurrency(weekStats?.subscriptionRevenue || 0)}
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-washout-revenue">
+                {formatCurrency(weekStats?.platformWashoutRevenue || 0)}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">Subscription revenue this period</p>
+              <p className="mt-1 text-sm text-muted-foreground">Platform fee revenue from completed washouts</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Support queue</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{activeMessages}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{unreadMessages} unread messages</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver incentives</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-driver-tip-total">
+                {formatCurrency(weekStats?.driverTipTotal || 0)}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Owner-funded tips in the selected period</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Renewal mix</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{activeLicenseRate}%</p>
-              <p className="mt-1 text-sm text-muted-foreground">renewals vs active licenses</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Billed washouts</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.billedWashouts || 0}</p>
+              <p className="mt-1 text-sm text-muted-foreground">completed and billed</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Prize follow-up</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{pendingDrawings?.length || 0}</p>
-              <p className="mt-1 text-sm text-muted-foreground">pending deliveries</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Pending washouts</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.pendingWashouts || 0}</p>
+              <p className="mt-1 text-sm text-muted-foreground">awaiting billing or approval</p>
             </div>
           </div>
         </section>
@@ -343,20 +342,36 @@ export default function AdminDashboard() {
         <section className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <DashboardMetricCard
-              title="Revenue"
-              value={formatCurrency(weekStats?.subscriptionRevenue || 0)}
-              helper="Subscription revenue"
+              title="Washout Revenue"
+              value={formatCurrency(weekStats?.platformWashoutRevenue || 0)}
+              helper="Platform fee revenue from completed washouts"
               icon={DollarSign}
               toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
-              dataTestId="text-monthly-subscriptions-summary"
+              dataTestId="text-washout-revenue-summary"
             />
             <DashboardMetricCard
-              title="Active Licenses"
-              value={weekStats?.activeLicenses || 0}
-              helper={`${weekStats?.licenseRenewals || 0} renewals this month`}
+              title="Driver Tips"
+              value={formatCurrency(weekStats?.driverTipTotal || 0)}
+              helper="Owner-funded tip total"
               icon={Building}
               toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
-              dataTestId="text-active-licenses-summary"
+              dataTestId="text-driver-tip-total-summary"
+            />
+            <DashboardMetricCard
+              title="Billed Washouts"
+              value={weekStats?.billedWashouts || 0}
+              helper={`${weekStats?.pendingWashouts || 0} pending`}
+              icon={CheckCircle}
+              toneClassName="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300"
+              dataTestId="text-billed-washouts-summary"
+            />
+            <DashboardMetricCard
+              title="Pending Washouts"
+              value={weekStats?.pendingWashouts || 0}
+              helper="Awaiting billing or approval"
+              icon={Clock}
+              toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
+              dataTestId="text-pending-washouts-summary"
             />
             <DashboardMetricCard
               title="Support Queue"
@@ -490,18 +505,18 @@ export default function AdminDashboard() {
         {/* Revenue and Support Overview */}
         <div className="grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
           <DashboardSectionCard
-            title="Subscription Revenue"
-            description="Revenue and license activity this period."
+            title="Washout Revenue"
+            description="Platform fee revenue and driver incentive totals for the selected period."
             icon={<DollarSign className="h-4 w-4 text-emerald-600" />}
             badge={<Badge variant="outline" data-testid="badge-stripe-status" className="rounded-full px-3 py-1 text-xs font-medium">{import.meta.env.VITE_STRIPE_PUBLIC_KEY ? "Connected" : "Development Mode"}</Badge>}
           >
             <div className="space-y-4">
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Monthly subscriptions</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Platform fee revenue</p>
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground" data-testid="text-monthly-subscriptions">
-                  {formatCurrency(weekStats?.subscriptionRevenue || 0)}
+                  {formatCurrency(weekStats?.platformWashoutRevenue || 0)}
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">Collected revenue for the selected window</p>
+                <p className="mt-1 text-sm text-muted-foreground">Completed and approved washouts only</p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
@@ -523,6 +538,16 @@ export default function AdminDashboard() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Renewals</p>
                   <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.licenseRenewals || 0}</p>
                   <p className="mt-1 text-xs text-muted-foreground">Due this month</p>
+                </button>
+                <button
+                  className="rounded-2xl border border-border/70 bg-background/80 p-4 text-left shadow-sm transition-colors hover:bg-muted/50"
+                  onClick={() => window.location.href = '/payments'}
+                  data-testid="button-driver-tips"
+                  title="Click to view driver incentive totals"
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Driver incentives</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{formatCurrency(weekStats?.driverTipTotal || 0)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Owner-funded tips in period</p>
                 </button>
               </div>
               <div className="rounded-2xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">

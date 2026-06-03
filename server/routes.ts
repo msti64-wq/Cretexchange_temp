@@ -42,7 +42,7 @@ import {
   calculateDriverPayoutCents,
 } from "./billingPolicy";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
-import { LOTTERY_FEATURE_FLAG_KEY, resolveLotteryEnabled } from "./lottery";
+import { resolveLotteryEnabled } from "./lottery";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
@@ -208,6 +208,101 @@ function resolveWashoutChargeComponents(params: {
   };
 }
 
+async function awardLotteryEntryForApprovedWashout(params: {
+  activityId: string;
+  ownerId: string;
+  driverId: string;
+  serviceType?: string | null;
+  source: string;
+}) {
+  const { activityId, ownerId, driverId, serviceType, source } = params;
+
+  if (serviceType === 'rubble_dropoff') {
+    console.log(`🎰 Lottery skipped for washout ${activityId} from ${source}: ineligible service type`, {
+      activityId,
+      ownerId,
+      driverId,
+      serviceType,
+      source,
+    });
+    return { created: false, reason: 'ineligible_service_type' as const };
+  }
+
+  let lotteryEnabled = true;
+  try {
+    const resolution = await resolveLotteryEnabled(storage);
+    lotteryEnabled = resolution.enabled;
+  } catch (error: any) {
+    console.warn(`🎰 Lottery flag lookup failed for washout ${activityId} from ${source}; defaulting to enabled`, {
+      activityId,
+      ownerId,
+      driverId,
+      source,
+      error: error?.message || String(error),
+    });
+    lotteryEnabled = true;
+  }
+
+  if (!lotteryEnabled) {
+    console.log(`🎰 Lottery skipped for washout ${activityId} from ${source}: lottery disabled`, {
+      activityId,
+      ownerId,
+      driverId,
+      source,
+    });
+    return { created: false, reason: 'lottery_disabled' as const };
+  }
+
+  try {
+    const lotteryEntry = await storage.createDriverLotteryEntry({
+      driverId,
+      activityId,
+      ownerId,
+      entriesEarned: 1,
+    });
+    console.log(`🎰 Lottery entry created for washout ${activityId} from ${source}`, {
+      activityId,
+      ownerId,
+      driverId,
+      source,
+      lotteryEntryId: lotteryEntry.id,
+    });
+    return { created: true, lotteryEntry };
+  } catch (lotteryError: any) {
+    try {
+      const existingEntry = await storage.getDriverLotteryEntryByActivity(activityId);
+      if (existingEntry) {
+        console.log(`🎰 Lottery entry already exists for washout ${activityId} from ${source}`, {
+          activityId,
+          ownerId,
+          driverId,
+          source,
+          lotteryEntryId: existingEntry.id,
+        });
+        return { created: false, reason: 'already_exists' as const, lotteryEntry: existingEntry };
+      }
+    } catch (lookupError: any) {
+      console.warn(`🎰 Lottery duplicate lookup failed for washout ${activityId} from ${source}; continuing without ticket creation`, {
+        activityId,
+        ownerId,
+        driverId,
+        source,
+        error: lookupError?.message || String(lookupError),
+      });
+      return { created: false, reason: 'lookup_failed' as const };
+    }
+
+    console.error(`❌ Failed to create lottery entry for washout ${activityId} from ${source}:`, {
+      activityId,
+      ownerId,
+      driverId,
+      source,
+      error: lotteryError?.message || String(lotteryError),
+    });
+    return { created: false, reason: 'error' as const };
+  }
+}
+
 async function finalizeChargedWashoutPayment(params: {
   paymentId: string;
   paymentIntentId: string;
@@ -272,26 +367,8 @@ async function finalizeChargedWashoutPayment(params: {
     console.error(`   Error message: ${txnError.message}`);
     console.error(`   Owner ID: ${owner.id}, Payment ID: ${paymentId}`);
   }
-  
-  if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
-    try {
-        const lotteryFlag = await storage.getFeatureFlag(LOTTERY_FEATURE_FLAG_KEY);
-      const lotteryEnabled = lotteryFlag?.enabled ?? false;
-      if (lotteryEnabled) {
-        const lotteryEntry = await storage.createDriverLotteryEntry({
-          driverId: driver.id,
-          activityId,
-          ownerId: owner.id,
-          entriesEarned: 1,
-        });
-        console.log(`🎰 Lottery entry created for driver ${driver.id}, entry ID: ${lotteryEntry.id}`);
-      } else {
-        console.log(`🎰 Lottery program disabled — no entry created for driver ${driver.id} on washout ${activityId}`);
-      }
-    } catch (lotteryError: any) {
-      console.error(`❌ Failed to create lottery entry for washout ${activityId}:`, lotteryError);
-    }
-  } else {
+
+  if (!useCustomBillingModel) {
     let driverWallet = await storage.getDriverWallet(driver.id);
     if (!driverWallet) {
       await storage.createDriverWallet({ driverId: driver.id });
@@ -4024,6 +4101,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         verifiedBy: approvedActivity?.verifiedBy || userId,
         verifiedAt: approvedActivity?.verifiedAt || new Date().toISOString(),
       });
+      await awardLotteryEntryForApprovedWashout({
+        activityId: id,
+        ownerId: owner.id,
+        driverId: activityDetails.driverId,
+        serviceType: activityDetails.serviceType,
+        source: 'owner approval',
+      });
 
       if (!driverStripeReadiness.ready) {
         const deferredReason = `${driverStripeReadiness.reason || 'Driver Stripe account not ready'} - owner-funded tip held for onboarding`;
@@ -4057,15 +4141,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerId: owner.id,
           activityId: id,
           driverId: driver.id,
-          paymentStatus: payment.status,
-          payoutStatus: payment.payoutStatus,
+          paymentStatus: approvalResponsePaymentStatus,
+          payoutStatus: approvalResponsePayoutStatus,
           deferReason: deferredReason,
           verifiedBy: (activity as any)?.verifiedBy || userId,
           verifiedAt: (activity as any)?.verifiedAt || new Date().toISOString(),
         });
         approvalResponseMessage = "Washout approved. Payment will be processed once the driver completes payment setup.";
-        approvalResponsePaymentStatus = payment.status;
-        approvalResponsePayoutStatus = payment.payoutStatus;
+        approvalResponsePaymentStatus = "awaiting_driver_stripe";
+        approvalResponsePayoutStatus = "held_for_onboarding";
         approvalResponseDeferReason = payment.deferReason;
 
         return res.json({
@@ -4131,32 +4215,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify activity immediately (payment will be processed later in batch)
         const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
 
-        // ========== DRIVER COMPENSATION FOR BATCH PROCESSING ==========
-        if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
-          // CUSTOM BILLING MODEL: Create lottery entry only if lottery program is enabled
-          try {
-            const lotteryEnabled = (await resolveLotteryEnabled(storage)).enabled;
-            if (lotteryEnabled) {
-              const lotteryEntry = await storage.createDriverLotteryEntry({
-                driverId: driver.id,
-                activityId: id,
-                ownerId: owner.id,
-                entriesEarned: 1,
-              });
-              console.log(`🎰 Lottery entry created for driver ${driver.id} (batch billing), entry ID: ${lotteryEntry.id}`);
-            } else {
-              console.log(`🎰 Lottery program disabled — no entry created for driver ${driver.id} on washout ${id}`);
-            }
-          } catch (lotteryError: any) {
-            console.error(`❌ Failed to create lottery entry for washout ${id}:`, lotteryError);
-          }
-        }
         // NOTE: For standard model, driver wallet credit happens when batch payment succeeds (in batch processor)
         
         const compensationType = useCustomBillingModel ? 'lottery entry' : 'pending payment';
         console.log(`✅ Washout ${id} approved with ${billingCadence} billing. Payment ${payment.id} pending batch processing. Driver receives: ${compensationType}`);
         approvalResponseMessage = "Washout approved. Payment will be processed in the next billing run.";
-        approvalResponsePaymentStatus = payment.status;
+        approvalResponsePaymentStatus = "pending";
         approvalResponsePayoutStatus = "not_started";
         
         return res.json({
@@ -4463,26 +4527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // ========== DRIVER COMPENSATION: CASH OR LOTTERY ENTRY ==========
-      if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
-        // CUSTOM BILLING MODEL: Create lottery entry instead of cash payment
-        try {
-          const lotteryEnabled = (await resolveLotteryEnabled(storage)).enabled;
-          if (lotteryEnabled) {
-            const lotteryEntry = await storage.createDriverLotteryEntry({
-              driverId: driver.id,
-              activityId: id,
-              ownerId: owner.id,
-              entriesEarned: 1, // 1 entry per washout
-            });
-            console.log(`🎰 Lottery entry created for driver ${driver.id}, entry ID: ${lotteryEntry.id}`);
-          } else {
-            console.log(`🎰 Lottery program disabled — no entry created for driver ${driver.id} on washout ${id}`);
-          }
-        } catch (lotteryError: any) {
-          console.error(`❌ Failed to create lottery entry for washout ${id}:`, lotteryError);
-          // Don't fail the transaction - lottery entry is nice-to-have
-        }
-      } else {
+      if (!useCustomBillingModel) {
         // STANDARD MODEL: Credit driver's wallet with cash
         // Ensure driver has a wallet
         let driverWallet = await storage.getDriverWallet(driver.id);
@@ -4515,26 +4560,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
       approvalDebugContext.currentStatus = activity?.status || "verified";
       approvalDebugContext.permissionCheckResult = true;
-      
-      if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
-        try {
-          const lotteryEnabled = (await resolveLotteryEnabled(storage)).enabled;
-          if (lotteryEnabled) {
-            const lotteryEntry = await storage.createDriverLotteryEntry({
-              driverId: driver.id,
-              activityId: id,
-              ownerId: owner.id,
-              entriesEarned: 1,
-            });
-            console.log(`🎰 Lottery entry created for driver ${driver.id}, entry ID: ${lotteryEntry.id}`);
-          } else {
-            console.log(`🎰 Lottery program disabled — no entry created for driver ${driver.id} on washout ${id}`);
-          }
-        } catch (lotteryError: any) {
-          console.error(`❌ Failed to create lottery entry for washout ${id}:`, lotteryError);
-          // Don't fail the transaction - lottery entry is nice-to-have
-        }
-      }
       
       const compensationType = useCustomBillingModel ? 'lottery entry' : `$${driverAmount}`;
       console.log(`✅ Washout ${id} fully processed: Payment completed, driver received ${compensationType}, activity verified`);

@@ -8,6 +8,7 @@ import { processOwnerBillingRun } from "../server/ownerBillingRuns";
 import { resolveBillingPolicy } from "../shared/billingPolicy";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
+import { summarizeWashoutRevenue } from "../shared/washoutRevenue";
 import { insertWashoutLocationSchema, updateSystemSettingsSchema } from "../shared/schema";
 
 type TestCase = {
@@ -138,6 +139,25 @@ test("washout location schema rejects negative driver incentive tips", () => {
   assert.equal(zero.success && zero.data.driverIncentiveTip, 0);
 
   assert.equal(insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: -0.01 }).success, false);
+});
+
+test("washout revenue summary separates platform revenue, driver tips, and pending washouts", () => {
+  const summary = summarizeWashoutRevenue([
+    { status: "completed", processingFee: "5.00", tipAmountCents: 200 },
+    { status: "posted", processingFee: "5.00", tipAmountCents: 0 },
+    { status: "pending", processingFee: "5.00", tipAmountCents: 500 },
+    { status: "failed", processingFee: "5.00", tipAmountCents: 100 },
+    { status: "refunded", processingFee: "5.00", tipAmountCents: 300 },
+    { status: "disputed", processingFee: "5.00", tipAmountCents: 300 },
+  ]);
+
+  assert.equal(summary.platformWashoutRevenue, 10);
+  assert.equal(summary.driverTipTotal, 2);
+  assert.equal(summary.billedWashouts, 2);
+  assert.equal(summary.pendingWashouts, 1);
+  assert.equal(summary.failedWashouts, 1);
+  assert.equal(summary.refundedWashouts, 1);
+  assert.equal(summary.disputedWashouts, 1);
 });
 
 test("admin custom billing route accepts zero and blank washout rates", async () => {
@@ -1937,6 +1957,7 @@ test("create-with-photos stores verification metadata from driver gps", async ()
 test("create-with-photos marks moderately stale photos for review", async () => {
   const { app, posts } = createRouteRegistry();
   let capturedPhotos: Array<Record<string, unknown>> = [];
+  let lotteryEntryCalls = 0;
   const originalTrySetObjectEntityAclPolicy = ObjectStorageService.prototype.trySetObjectEntityAclPolicy;
   ObjectStorageService.prototype.trySetObjectEntityAclPolicy = (async function (
     this: unknown,
@@ -1953,6 +1974,10 @@ test("create-with-photos marks moderately stale photos for review", async () => 
           ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
           : undefined,
       getRecentWashoutPhotoDuplicateCandidates: async () => [],
+      createDriverLotteryEntry: async () => {
+        lotteryEntryCalls += 1;
+        return { id: "lottery_1" };
+      },
       createWashoutActivityWithPhotos: async (_activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => {
         capturedPhotos = photos;
         return {
@@ -2015,6 +2040,7 @@ test("create-with-photos marks moderately stale photos for review", async () => 
         assert.equal(capturedPhotos.length, 1);
         assert.equal(capturedPhotos[0].verificationStatus, "needs_review");
         assert.match(String(capturedPhotos[0].verificationReason), /marked for review/i);
+        assert.equal(lotteryEntryCalls, 0);
       } finally {
         if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
         else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
@@ -3694,6 +3720,126 @@ test("owner verify is idempotent for lottery entry creation on retry", async () 
             );
 
             assert.equal(firstRes.statusCode, 200);
+            assert.equal(lotteryEntryCalls, 1);
+
+            const secondRes = createResponse();
+            await route!(
+              {
+                params: { id: "activity_1" },
+                user: { id: "user_1" },
+              },
+              secondRes,
+            );
+
+            assert.equal(secondRes.statusCode, 409);
+            assert.equal(lotteryEntryCalls, 1);
+          },
+        );
+      },
+    );
+  });
+});
+
+test("owner verify creates a lottery entry for standard weekly billing and remains idempotent on retry", async () => {
+  const { app, puts } = createRouteRegistry();
+  let activityStatus: "pending" | "verified" | "rejected" = "pending";
+  let lotteryEntryCalls = 0;
+
+  await withMockedDb([[]], async () => {
+    await withPatchedStripe(
+      {
+        accounts: {
+          retrieve: async () => ({
+            id: "acct_driver_1",
+            capabilities: { transfers: "active" },
+          }),
+        },
+      },
+      async () => {
+        await withPatchedStorage(
+          {
+            getOwner: async () => ({
+              id: "owner_1",
+              userId: "user_1",
+              useCustomBillingModel: false,
+              customWashoutRate: null,
+            }),
+            getWashoutActivity: async () => ({
+              id: "activity_1",
+              locationId: "location_1",
+              status: activityStatus,
+              amount: "10.00",
+              driverId: "driver_row_1",
+              serviceType: "washout",
+            }),
+            getWashoutLocation: async () => ({
+              id: "location_1",
+              ownerId: "owner_1",
+            }),
+            getOwnerBillingSettings: async () => ({
+              billingCadence: "weekly",
+              billingTimezone: "America/Chicago",
+              billingCutoffTime: "23:59:00",
+            }),
+            calculateBusinessDateForOwner: async () => "2026-05-22",
+            getDriverById: async () => ({
+              id: "driver_row_1",
+              userId: "driver_user_1",
+            }),
+            getUserById: async () => ({
+              id: "driver_user_1",
+              username: "driver1",
+              firstName: "Driver",
+              lastName: "One",
+              stripeConnectAccountId: "acct_driver_1",
+            }),
+            createPayment: async () => ({
+              id: "payment_1",
+            }),
+            verifyWashoutActivity: async () => {
+              activityStatus = "verified";
+              return {
+                id: "activity_1",
+                locationId: "location_1",
+                status: "verified",
+                amount: "10.00",
+                driverId: "driver_row_1",
+                serviceType: "washout",
+              };
+            },
+            createDriverLotteryEntry: async () => {
+              lotteryEntryCalls += 1;
+              return {
+                id: "lottery_entry_1",
+                driverId: "driver_row_1",
+                activityId: "activity_1",
+                ownerId: "owner_1",
+                ticketNumber: "CX-202605-0001",
+                entriesEarned: 1,
+                lotteryMonth: 5,
+                lotteryYear: 2026,
+                isArchived: false,
+              };
+            },
+          },
+          async () => {
+            const { registerRoutes } = await import("../server/routes");
+            await registerRoutes(app as never);
+            const route = puts.get("/api/owners/activities/:id/verify");
+            assert.equal(typeof route, "function");
+
+            const firstRes = createResponse();
+            await route!(
+              {
+                params: { id: "activity_1" },
+                user: { id: "user_1" },
+              },
+              firstRes,
+            );
+
+            assert.equal(firstRes.statusCode, 200);
+            assert.equal((firstRes.body as any).status, "verified");
+            assert.equal((firstRes.body as any).paymentStatus, "pending");
             assert.equal(lotteryEntryCalls, 1);
 
             const secondRes = createResponse();
