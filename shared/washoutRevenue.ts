@@ -9,7 +9,6 @@ export type WashoutActivityRevenueRow = {
   paymentStatus?: string | null;
   activityFeeCentsPlatform?: number | null;
   platformFeeCents?: number | null;
-  ownerCustomPlatformFeeCents?: string | number | null;
   locationDriverIncentiveTipCents?: number | null;
   paymentProcessingFee?: string | number | null;
   paymentTipAmountCents?: number | null;
@@ -18,6 +17,7 @@ export type WashoutActivityRevenueRow = {
 export type WashoutRevenueSummary = {
   platformWashoutRevenue: number;
   driverTipTotal: number;
+  approvedWashouts: number;
   billedWashouts: number;
   pendingWashouts: number;
   failedWashouts: number;
@@ -61,6 +61,7 @@ export function summarizeWashoutRevenue(rows: WashoutPaymentRevenueRow[]): Washo
   }, {
     platformWashoutRevenue: 0,
     driverTipTotal: 0,
+    approvedWashouts: 0,
     billedWashouts: 0,
     pendingWashouts: 0,
     failedWashouts: 0,
@@ -73,31 +74,18 @@ function normalizeActivityStatus(status?: string | null): string {
   return String(status || "").trim().toLowerCase();
 }
 
-function resolveActivityPlatformFeeCents(
-  row: WashoutActivityRevenueRow,
-  defaultPlatformFeeCents: number,
-): number {
+function resolveActivityPlatformFeeCents(row: WashoutActivityRevenueRow): number {
   const rowFee = Number(row.activityFeeCentsPlatform ?? row.platformFeeCents ?? 0);
-  if (Number.isFinite(rowFee) && rowFee > 0) {
-    return Math.round(rowFee);
-  }
-
-  const ownerOverride = Number(row.ownerCustomPlatformFeeCents ?? 0);
-  if (Number.isFinite(ownerOverride) && ownerOverride > 0) {
-    return Math.round(ownerOverride);
-  }
-
-  return Math.max(0, Math.round(defaultPlatformFeeCents));
+  return Number.isFinite(rowFee) ? Math.max(0, Math.round(rowFee)) : 0;
 }
 
 export function summarizeWashoutRevenueFromActivities(
   rows: WashoutActivityRevenueRow[],
-  defaultPlatformFeeCents = 500,
 ): WashoutRevenueSummary {
   return rows.reduce<WashoutRevenueSummary>((summary, row) => {
     const activityStatus = normalizeActivityStatus(row.activityStatus);
     const paymentStatus = normalizeActivityStatus(row.paymentStatus);
-    const platformFeeCents = resolveActivityPlatformFeeCents(row, defaultPlatformFeeCents);
+    const platformFeeCents = resolveActivityPlatformFeeCents(row);
     const driverTipCents = Math.max(0, Number(row.paymentTipAmountCents ?? row.locationDriverIncentiveTipCents ?? 0));
     const approved = ["verified", "approved", "completed", "paid", "settled"].includes(activityStatus);
     const billed = ["paid", "posted", "completed", "succeeded"].includes(paymentStatus);
@@ -119,6 +107,7 @@ export function summarizeWashoutRevenueFromActivities(
         summary.disputedWashouts += 1;
         return summary;
       }
+      summary.approvedWashouts += 1;
       summary.platformWashoutRevenue += platformFeeCents / 100;
       summary.driverTipTotal += driverTipCents / 100;
       if (billed) summary.billedWashouts += 1;
@@ -140,6 +129,7 @@ export function summarizeWashoutRevenueFromActivities(
   }, {
     platformWashoutRevenue: 0,
     driverTipTotal: 0,
+    approvedWashouts: 0,
     billedWashouts: 0,
     pendingWashouts: 0,
     failedWashouts: 0,

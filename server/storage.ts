@@ -234,6 +234,9 @@ export interface IStorage {
     totalDrivers: number;
     totalOwners: number;
     platformWashoutRevenue: number;
+    platformWashoutRevenueCents: number;
+    platformFeeRecordCount: number;
+    approvedWashouts: number;
     driverTipTotal: number;
     billedWashouts: number;
     pendingWashouts: number;
@@ -2554,6 +2557,7 @@ export class DatabaseStorage implements IStorage {
     platformWashoutRevenue: number;
     platformWashoutRevenueCents: number;
     platformFeeRecordCount: number;
+    approvedWashouts: number;
     driverTipTotal: number;
     billedWashouts: number;
     pendingWashouts: number;
@@ -2611,14 +2615,11 @@ export class DatabaseStorage implements IStorage {
     const stats = activityStats[0] || { totalEarnings: 0, totalWashouts: 0, totalDrivers: 0 };
     const ownerCount = ownerStats[0]?.totalOwners || 0;
     const subStats = subscriptionStats[0] || { activeLicenses: 0, licenseRenewals: 0 };
-    const systemSettings = await this.getSystemSettings();
-    const defaultPlatformFeeCents = resolvePlatformFeeCents(systemSettings?.platformWashoutFee);
     const revenueRows = await db
       .select({
         activityStatus: washoutActivities.status,
         paymentStatus: payments.status,
         activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
-        ownerCustomPlatformFeeCents: owners.customPlatformFee,
         locationDriverIncentiveTipCents: washoutLocations.driverIncentiveTip,
         paymentProcessingFee: payments.processingFee,
         paymentTipAmountCents: payments.tipAmountCents,
@@ -2631,10 +2632,11 @@ export class DatabaseStorage implements IStorage {
         gte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, startDate),
         ne(washoutActivities.status, 'rejected'),
       ));
-    const paymentSummary = summarizeWashoutRevenueFromActivities(revenueRows, defaultPlatformFeeCents);
+    const paymentSummary = summarizeWashoutRevenueFromActivities(revenueRows);
+    const approvedWashouts = revenueRows.filter((row) => isApprovedWashout(row.activityStatus)).length;
     const platformFeeRecordCount = revenueRows.filter((row) => {
       const approved = isApprovedWashout(row.activityStatus);
-      const platformFeeCents = Number(row.activityFeeCentsPlatform ?? row.ownerCustomPlatformFeeCents ?? defaultPlatformFeeCents);
+      const platformFeeCents = Number(row.activityFeeCentsPlatform ?? 0);
       return approved && Number.isFinite(platformFeeCents) && Math.round(platformFeeCents) > 0;
     }).length;
     const platformWashoutRevenueCents = Math.round(paymentSummary.platformWashoutRevenue * 100);
@@ -2652,8 +2654,8 @@ export class DatabaseStorage implements IStorage {
       days,
       startDate: startDate.toISOString(),
       platformFeeRecordCount,
+      approvedWashouts,
       platformWashoutRevenueCents,
-      approvedWashouts: revenueRows.filter((row) => isApprovedWashout(row.activityStatus)).length,
       platformWashoutRevenue: paymentSummary.platformWashoutRevenue,
       driverTipTotal: paymentSummary.driverTipTotal,
       billedWashouts: paymentSummary.billedWashouts,
@@ -2673,6 +2675,7 @@ export class DatabaseStorage implements IStorage {
       platformWashoutRevenue: paymentSummary.platformWashoutRevenue,
       platformWashoutRevenueCents,
       platformFeeRecordCount,
+      approvedWashouts,
       driverTipTotal: paymentSummary.driverTipTotal,
       billedWashouts: paymentSummary.billedWashouts,
       pendingWashouts: paymentSummary.pendingWashouts,

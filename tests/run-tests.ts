@@ -161,13 +161,12 @@ test("washout revenue summary separates platform revenue, driver tips, and pendi
   assert.equal(summary.disputedWashouts, 1);
 });
 
-test("approved washout revenue summary counts approved washouts and keeps pending rows separate", () => {
+test("approved washout revenue summary uses stored platform fee cents and excludes driver tips", () => {
   const summary = summarizeWashoutRevenueFromActivities([
     {
       activityStatus: "verified",
-      paymentStatus: "pending",
-      activityFeeCentsPlatform: 0,
-      ownerCustomPlatformFeeCents: 500,
+      paymentStatus: "completed",
+      activityFeeCentsPlatform: 500,
       locationDriverIncentiveTipCents: 0,
       paymentTipAmountCents: 0,
     },
@@ -175,33 +174,58 @@ test("approved washout revenue summary counts approved washouts and keeps pendin
       activityStatus: "approved",
       paymentStatus: "completed",
       activityFeeCentsPlatform: 500,
-      ownerCustomPlatformFeeCents: null,
       locationDriverIncentiveTipCents: 150,
       paymentTipAmountCents: 150,
+    },
+    {
+      activityStatus: "completed",
+      paymentStatus: "pending",
+      activityFeeCentsPlatform: 500,
+      locationDriverIncentiveTipCents: 0,
+      paymentTipAmountCents: 0,
+    },
+    {
+      activityStatus: "settled",
+      paymentStatus: "completed",
+      activityFeeCentsPlatform: 500,
+      locationDriverIncentiveTipCents: 0,
+      paymentTipAmountCents: 0,
     },
     {
       activityStatus: "pending",
       paymentStatus: "pending",
       activityFeeCentsPlatform: 500,
-      ownerCustomPlatformFeeCents: null,
       locationDriverIncentiveTipCents: 300,
       paymentTipAmountCents: 300,
     },
+  ]);
+
+  assert.equal(summary.platformWashoutRevenue, 20);
+  assert.equal(summary.driverTipTotal, 1.5);
+  assert.equal(summary.approvedWashouts, 4);
+  assert.equal(summary.billedWashouts, 3);
+  assert.equal(summary.pendingWashouts, 2);
+  assert.equal(summary.failedWashouts, 0);
+  assert.equal(summary.refundedWashouts, 0);
+  assert.equal(summary.disputedWashouts, 0);
+});
+
+test("approved washout revenue summary tolerates null platform fee rows", () => {
+  const summary = summarizeWashoutRevenueFromActivities([
     {
       activityStatus: "verified",
-      paymentStatus: "refunded",
-      activityFeeCentsPlatform: 0,
-      ownerCustomPlatformFeeCents: 0,
+      paymentStatus: "completed",
+      activityFeeCentsPlatform: null,
       locationDriverIncentiveTipCents: 0,
       paymentTipAmountCents: 0,
     },
-  ], 500);
+  ]);
 
-  assert.equal(summary.platformWashoutRevenue, 10);
-  assert.equal(summary.driverTipTotal, 1.5);
+  assert.equal(summary.platformWashoutRevenue, 0);
+  assert.equal(summary.driverTipTotal, 0);
+  assert.equal(summary.approvedWashouts, 1);
   assert.equal(summary.billedWashouts, 1);
-  assert.equal(summary.pendingWashouts, 2);
-  assert.equal(summary.refundedWashouts, 1);
+  assert.equal(summary.pendingWashouts, 0);
 });
 
 test("washout ledger repair plan backfills missing platform fees and lottery tickets idempotently", () => {

@@ -307,7 +307,7 @@ export default function AdminDashboard() {
               </p>
               <p className="mt-1 text-sm text-muted-foreground">Platform fee revenue from approved washouts</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {weekStats?.platformFeeRecordCount || 0} fee records • {weekStats?.platformWashoutRevenueCents || 0} cents
+                {weekStats?.approvedWashouts || 0} approved washouts • {weekStats?.platformFeeRecordCount || 0} fee records • {weekStats?.platformWashoutRevenueCents || 0} cents
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
@@ -318,14 +318,14 @@ export default function AdminDashboard() {
               <p className="mt-1 text-sm text-muted-foreground">Owner-funded tips in the selected period</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Billed washouts</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.billedWashouts || 0}</p>
-              <p className="mt-1 text-sm text-muted-foreground">approved and billed or collected</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Approved washouts</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.approvedWashouts || 0}</p>
+              <p className="mt-1 text-sm text-muted-foreground">eligible for platform fee and lottery entry</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Pending washouts</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Pending / unbilled</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.pendingWashouts || 0}</p>
-              <p className="mt-1 text-sm text-muted-foreground">awaiting billing or approval</p>
+              <p className="mt-1 text-sm text-muted-foreground">awaiting approval or billing</p>
             </div>
           </div>
         </section>
