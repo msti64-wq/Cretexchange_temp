@@ -302,7 +302,7 @@ export default function AdminDashboard() {
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-washout-revenue">
                 {formatCurrency(weekStats?.platformWashoutRevenue || 0)}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">Platform fee revenue from completed washouts</p>
+              <p className="mt-1 text-sm text-muted-foreground">Platform fee revenue from approved washouts</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver incentives</p>
@@ -314,7 +314,7 @@ export default function AdminDashboard() {
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Billed washouts</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.billedWashouts || 0}</p>
-              <p className="mt-1 text-sm text-muted-foreground">completed and billed</p>
+              <p className="mt-1 text-sm text-muted-foreground">approved and billed or collected</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Pending washouts</p>
@@ -344,7 +344,7 @@ export default function AdminDashboard() {
             <DashboardMetricCard
               title="Washout Revenue"
               value={formatCurrency(weekStats?.platformWashoutRevenue || 0)}
-              helper="Platform fee revenue from completed washouts"
+              helper="Platform fee revenue from approved washouts"
               icon={DollarSign}
               toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-washout-revenue-summary"
@@ -360,7 +360,7 @@ export default function AdminDashboard() {
             <DashboardMetricCard
               title="Billed Washouts"
               value={weekStats?.billedWashouts || 0}
-              helper={`${weekStats?.pendingWashouts || 0} pending`}
+              helper={`${weekStats?.pendingWashouts || 0} approved but not billed`}
               icon={CheckCircle}
               toneClassName="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300"
               dataTestId="text-billed-washouts-summary"
@@ -368,7 +368,7 @@ export default function AdminDashboard() {
             <DashboardMetricCard
               title="Pending Washouts"
               value={weekStats?.pendingWashouts || 0}
-              helper="Awaiting billing or approval"
+              helper="Awaiting approval or billing"
               icon={Clock}
               toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
               dataTestId="text-pending-washouts-summary"

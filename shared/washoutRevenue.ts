@@ -4,6 +4,17 @@ export type WashoutPaymentRevenueRow = {
   tipAmountCents?: number | null;
 };
 
+export type WashoutActivityRevenueRow = {
+  activityStatus?: string | null;
+  paymentStatus?: string | null;
+  activityFeeCentsPlatform?: number | null;
+  platformFeeCents?: number | null;
+  ownerCustomPlatformFeeCents?: string | number | null;
+  locationDriverIncentiveTipCents?: number | null;
+  paymentProcessingFee?: string | number | null;
+  paymentTipAmountCents?: number | null;
+};
+
 export type WashoutRevenueSummary = {
   platformWashoutRevenue: number;
   driverTipTotal: number;
@@ -43,6 +54,85 @@ export function summarizeWashoutRevenue(rows: WashoutPaymentRevenueRow[]): Washo
     } else if (REFUNDED_STATUSES.has(status)) {
       summary.refundedWashouts += 1;
     } else if (DISPUTED_STATUSES.has(status)) {
+      summary.disputedWashouts += 1;
+    }
+
+    return summary;
+  }, {
+    platformWashoutRevenue: 0,
+    driverTipTotal: 0,
+    billedWashouts: 0,
+    pendingWashouts: 0,
+    failedWashouts: 0,
+    refundedWashouts: 0,
+    disputedWashouts: 0,
+  });
+}
+
+function normalizeActivityStatus(status?: string | null): string {
+  return String(status || "").trim().toLowerCase();
+}
+
+function resolveActivityPlatformFeeCents(
+  row: WashoutActivityRevenueRow,
+  defaultPlatformFeeCents: number,
+): number {
+  const rowFee = Number(row.activityFeeCentsPlatform ?? row.platformFeeCents ?? 0);
+  if (Number.isFinite(rowFee) && rowFee > 0) {
+    return Math.round(rowFee);
+  }
+
+  const ownerOverride = Number(row.ownerCustomPlatformFeeCents ?? 0);
+  if (Number.isFinite(ownerOverride) && ownerOverride > 0) {
+    return Math.round(ownerOverride);
+  }
+
+  return Math.max(0, Math.round(defaultPlatformFeeCents));
+}
+
+export function summarizeWashoutRevenueFromActivities(
+  rows: WashoutActivityRevenueRow[],
+  defaultPlatformFeeCents = 500,
+): WashoutRevenueSummary {
+  return rows.reduce<WashoutRevenueSummary>((summary, row) => {
+    const activityStatus = normalizeActivityStatus(row.activityStatus);
+    const paymentStatus = normalizeActivityStatus(row.paymentStatus);
+    const platformFeeCents = resolveActivityPlatformFeeCents(row, defaultPlatformFeeCents);
+    const driverTipCents = Math.max(0, Number(row.paymentTipAmountCents ?? row.locationDriverIncentiveTipCents ?? 0));
+    const approved = ["verified", "approved", "completed", "paid", "settled"].includes(activityStatus);
+    const billed = ["paid", "posted", "completed", "succeeded"].includes(paymentStatus);
+    const pending = !paymentStatus || ["pending", "awaiting_driver_stripe", "pending_driver_onboarding"].includes(paymentStatus);
+    const failed = ["failed", "canceled", "cancelled"].includes(paymentStatus);
+    const refunded = ["refunded", "refund"].includes(paymentStatus);
+    const disputed = paymentStatus === "disputed";
+
+    if (approved) {
+      if (failed) {
+        summary.failedWashouts += 1;
+        return summary;
+      }
+      if (refunded) {
+        summary.refundedWashouts += 1;
+        return summary;
+      }
+      if (disputed) {
+        summary.disputedWashouts += 1;
+        return summary;
+      }
+      summary.platformWashoutRevenue += platformFeeCents / 100;
+      summary.driverTipTotal += driverTipCents / 100;
+      if (billed) summary.billedWashouts += 1;
+      else summary.pendingWashouts += 1;
+      return summary;
+    }
+
+    if (pending) {
+      summary.pendingWashouts += 1;
+    } else if (failed) {
+      summary.failedWashouts += 1;
+    } else if (refunded) {
+      summary.refundedWashouts += 1;
+    } else if (disputed) {
       summary.disputedWashouts += 1;
     }
 

@@ -101,7 +101,8 @@ import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBillin
 import { resolvePlatformFeeCents } from "../shared/billingPolicy";
 import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
-import { summarizeWashoutRevenue } from "../shared/washoutRevenue";
+import { summarizeWashoutRevenueFromActivities } from "../shared/washoutRevenue";
+import { isApprovedWashout } from "../shared/washoutApproval";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
@@ -2264,15 +2265,6 @@ export class DatabaseStorage implements IStorage {
         ne(washoutActivities.status, 'rejected')
       ));
 
-    const paymentRows = await db
-      .select({
-        status: payments.status,
-        processingFee: payments.processingFee,
-        tipAmountCents: payments.tipAmountCents,
-      })
-      .from(payments)
-      .where(gte(payments.createdAt, startDate));
-
     // Get unique owners from locations used in activities
     const ownerStats = await db
       .select({
@@ -2302,11 +2294,32 @@ export class DatabaseStorage implements IStorage {
     const stats = activityStats[0] || { totalEarnings: 0, totalWashouts: 0, totalDrivers: 0 };
     const ownerCount = ownerStats[0]?.totalOwners || 0;
     const subStats = subscriptionStats[0] || { activeLicenses: 0, licenseRenewals: 0 };
-    const paymentSummary = summarizeWashoutRevenue(paymentRows);
+    const systemSettings = await this.getSystemSettings();
+    const defaultPlatformFeeCents = resolvePlatformFeeCents(systemSettings?.platformWashoutFee);
+    const revenueRows = await db
+      .select({
+        activityStatus: washoutActivities.status,
+        paymentStatus: payments.status,
+        activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
+        ownerCustomPlatformFeeCents: owners.customPlatformFee,
+        locationDriverIncentiveTipCents: washoutLocations.driverIncentiveTip,
+        paymentProcessingFee: payments.processingFee,
+        paymentTipAmountCents: payments.tipAmountCents,
+      })
+      .from(washoutActivities)
+      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
+      .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
+      .where(and(
+        gte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, startDate),
+        ne(washoutActivities.status, 'rejected'),
+      ));
+    const paymentSummary = summarizeWashoutRevenueFromActivities(revenueRows, defaultPlatformFeeCents);
 
     console.log(`[SYSTEM_STATS] washout revenue summary`, {
       days,
       startDate: startDate.toISOString(),
+      approvedWashouts: revenueRows.filter((row) => isApprovedWashout(row.activityStatus)).length,
       platformWashoutRevenue: paymentSummary.platformWashoutRevenue,
       driverTipTotal: paymentSummary.driverTipTotal,
       billedWashouts: paymentSummary.billedWashouts,

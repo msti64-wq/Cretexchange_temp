@@ -8,7 +8,8 @@ import { processOwnerBillingRun } from "../server/ownerBillingRuns";
 import { resolveBillingPolicy } from "../shared/billingPolicy";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
-import { summarizeWashoutRevenue } from "../shared/washoutRevenue";
+import { buildWashoutLedgerRepairPlan } from "../shared/washoutLedgerRepair";
+import { summarizeWashoutRevenue, summarizeWashoutRevenueFromActivities } from "../shared/washoutRevenue";
 import { insertWashoutLocationSchema, updateSystemSettingsSchema } from "../shared/schema";
 
 type TestCase = {
@@ -158,6 +159,123 @@ test("washout revenue summary separates platform revenue, driver tips, and pendi
   assert.equal(summary.failedWashouts, 1);
   assert.equal(summary.refundedWashouts, 1);
   assert.equal(summary.disputedWashouts, 1);
+});
+
+test("approved washout revenue summary counts approved washouts and keeps pending rows separate", () => {
+  const summary = summarizeWashoutRevenueFromActivities([
+    {
+      activityStatus: "verified",
+      paymentStatus: "pending",
+      activityFeeCentsPlatform: 0,
+      ownerCustomPlatformFeeCents: 500,
+      locationDriverIncentiveTipCents: 0,
+      paymentTipAmountCents: 0,
+    },
+    {
+      activityStatus: "approved",
+      paymentStatus: "completed",
+      activityFeeCentsPlatform: 500,
+      ownerCustomPlatformFeeCents: null,
+      locationDriverIncentiveTipCents: 150,
+      paymentTipAmountCents: 150,
+    },
+    {
+      activityStatus: "pending",
+      paymentStatus: "pending",
+      activityFeeCentsPlatform: 500,
+      ownerCustomPlatformFeeCents: null,
+      locationDriverIncentiveTipCents: 300,
+      paymentTipAmountCents: 300,
+    },
+    {
+      activityStatus: "verified",
+      paymentStatus: "refunded",
+      activityFeeCentsPlatform: 0,
+      ownerCustomPlatformFeeCents: 0,
+      locationDriverIncentiveTipCents: 0,
+      paymentTipAmountCents: 0,
+    },
+  ], 500);
+
+  assert.equal(summary.platformWashoutRevenue, 10);
+  assert.equal(summary.driverTipTotal, 1.5);
+  assert.equal(summary.billedWashouts, 1);
+  assert.equal(summary.pendingWashouts, 2);
+  assert.equal(summary.refundedWashouts, 1);
+});
+
+test("washout ledger repair plan backfills missing platform fees and lottery tickets idempotently", () => {
+  const firstPlan = buildWashoutLedgerRepairPlan([
+    {
+      activityId: "activity-1",
+      driverId: "driver-1",
+      ownerId: "owner-1",
+      locationId: "location-1",
+      status: "verified",
+      serviceType: "washout",
+      feeCentsPlatform: 0,
+      platformFeeCents: null,
+      lotteryEntryExists: false,
+    },
+    {
+      activityId: "activity-2",
+      driverId: "driver-2",
+      ownerId: "owner-1",
+      locationId: "location-2",
+      status: "approved",
+      serviceType: "washout",
+      feeCentsPlatform: 500,
+      platformFeeCents: null,
+      lotteryEntryExists: true,
+    },
+    {
+      activityId: "activity-3",
+      driverId: "driver-3",
+      ownerId: "owner-1",
+      locationId: "location-3",
+      status: "pending",
+      serviceType: "washout",
+      feeCentsPlatform: 0,
+      platformFeeCents: null,
+      lotteryEntryExists: false,
+    },
+    {
+      activityId: "activity-4",
+      driverId: "driver-4",
+      ownerId: "owner-1",
+      locationId: "location-4",
+      status: "verified",
+      serviceType: "rubble_dropoff",
+      feeCentsPlatform: 200,
+      platformFeeCents: null,
+      lotteryEntryExists: false,
+    },
+  ], 500);
+
+  assert.equal(firstPlan.scanned, 4);
+  assert.deepEqual(firstPlan.platformFeeBackfills, [
+    { activityId: "activity-1", platformFeeCents: 500 },
+  ]);
+  assert.deepEqual(firstPlan.lotteryEntriesToCreate, [
+    { activityId: "activity-1", driverId: "driver-1", ownerId: "owner-1" },
+  ]);
+
+  const secondPlan = buildWashoutLedgerRepairPlan([
+    {
+      activityId: "activity-1",
+      driverId: "driver-1",
+      ownerId: "owner-1",
+      locationId: "location-1",
+      status: "verified",
+      serviceType: "washout",
+      feeCentsPlatform: 500,
+      platformFeeCents: null,
+      lotteryEntryExists: true,
+    },
+  ], 500);
+
+  assert.equal(secondPlan.platformFeeBackfills.length, 0);
+  assert.equal(secondPlan.lotteryEntriesToCreate.length, 0);
 });
 
 test("admin custom billing route accepts zero and blank washout rates", async () => {
