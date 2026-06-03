@@ -67,9 +67,6 @@ export default function OwnerLocations() {
     description: "",
   });
 
-  // Check if enhanced location creation is enabled
-  const { enabled: isEnhancedCreationEnabled, isLoading: isFlagLoading } = useFeatureFlag(FEATURE_FLAGS.ENHANCED_LOCATION_CREATION);
-  
   // Check if rubble service is enabled
   const { enabled: isRubbleServiceEnabled } = useFeatureFlag(FEATURE_FLAGS.RUBBLE_SERVICE);
   
@@ -308,7 +305,7 @@ export default function OwnerLocations() {
     if (!isAddressVerified || !formData.latitude || !formData.longitude) {
       toast({
         title: "Address Verification Required",
-        description: "Please select an address from the suggestions.",
+        description: "Please select a valid address from the suggestions.",
         variant: "destructive",
       });
       return;
@@ -504,138 +501,76 @@ export default function OwnerLocations() {
                 <DialogTitle>Add New Location</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Location Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                    data-testid="input-location-name"
-                  />
-                </div>
+                <AddressAutocomplete
+                  onPlaceSelected={handlePlaceSelected}
+                  onInputChange={handleAddressInputChange}
+                />
 
-                {/* Enhanced location creation with Mapbox */}
-                {isEnhancedCreationEnabled ? (
-                  <>
-                    <AddressAutocomplete
-                      onPlaceSelected={handlePlaceSelected}
-                      onInputChange={handleAddressInputChange}
+                <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                  <p className="text-sm font-medium">Location Details</p>
+                  {!canSubmitLocation && (
+                    <p className="text-xs text-muted-foreground">
+                      Please select a valid address from the suggestions.
+                    </p>
+                  )}
+                  <div>
+                    <Label htmlFor="name">Location Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      required
+                      data-testid="input-location-name"
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="street">Street Address</Label>
+                    <Input
+                      id="street"
+                      value={formData.street}
+                      onChange={(e) => updateAddressField("street", e.target.value)}
+                      placeholder="Auto-filled from search above"
+                      required
+                      data-testid="input-street"
+                    />
+                  </div>
 
-                    {/* Address fields auto-filled by autocomplete, coordinates must come from Places */}
-                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
-                      <p className="text-sm font-medium">Location Details</p>
-                      {!canSubmitLocation && (
-                        <p className="text-xs text-muted-foreground">
-                          Please select an address from the suggestions.
-                        </p>
-                      )}
-                      <div>
-                        <Label htmlFor="street">Street Address</Label>
-                        <Input
-                          id="street"
-                          value={formData.street}
-                          onChange={(e) => updateAddressField("street", e.target.value)}
-                          placeholder="Auto-filled from search above"
-                          required
-                          data-testid="input-street"
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="city">City</Label>
-                          <Input
-                            id="city"
-                            value={formData.city}
-                            onChange={(e) => updateAddressField("city", e.target.value)}
-                            required
-                            data-testid="input-city"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="state">State</Label>
-                          <Input
-                            id="state"
-                            value={formData.state}
-                            onChange={(e) => updateAddressField("state", e.target.value)}
-                            maxLength={2}
-                            required
-                            data-testid="input-state"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="zip">ZIP Code</Label>
-                        <Input
-                          id="zip"
-                          value={formData.zip}
-                          onChange={(e) => updateAddressField("zip", e.target.value)}
-                          maxLength={10}
-                          required
-                          data-testid="input-zip"
-                        />
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* Legacy manual entry */}
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="street">Street Address</Label>
+                      <Label htmlFor="city">City</Label>
                       <Input
-                        id="street"
-                        value={formData.street}
-                        onChange={(e) => updateAddressField("street", e.target.value)}
-                        placeholder="123 Main Street"
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) => updateAddressField("city", e.target.value)}
                         required
-                        data-testid="input-street"
+                        data-testid="input-city"
                       />
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                          <Label htmlFor="city">City</Label>
-                          <Input
-                            id="city"
-                            value={formData.city}
-                            onChange={(e) => updateAddressField("city", e.target.value)}
-                            placeholder="Austin"
-                            required
-                            data-testid="input-city"
-                          />
-                      </div>
-                      <div>
-                          <Label htmlFor="state">State</Label>
-                          <Input
-                            id="state"
-                            value={formData.state}
-                            onChange={(e) => updateAddressField("state", e.target.value)}
-                            placeholder="TX"
-                            maxLength={2}
-                            required
-                            data-testid="input-state"
-                        />
-                      </div>
-                    </div>
-                    
                     <div>
-                      <Label htmlFor="zip">ZIP Code</Label>
+                      <Label htmlFor="state">State</Label>
                       <Input
-                        id="zip"
-                        value={formData.zip}
-                        onChange={(e) => updateAddressField("zip", e.target.value)}
-                        placeholder="78701"
-                        maxLength={10}
+                        id="state"
+                        value={formData.state}
+                        onChange={(e) => updateAddressField("state", e.target.value)}
+                        maxLength={2}
                         required
-                        data-testid="input-zip"
+                        data-testid="input-state"
                       />
                     </div>
+                  </div>
 
-                  </>
-                )}
+                  <div>
+                    <Label htmlFor="zip">ZIP Code</Label>
+                    <Input
+                      id="zip"
+                      value={formData.zip}
+                      onChange={(e) => updateAddressField("zip", e.target.value)}
+                      maxLength={10}
+                      required
+                      data-testid="input-zip"
+                    />
+                  </div>
+                </div>
 
                 <div>
                   <Label htmlFor="rate">Driver payout per washout ($)</Label>

@@ -33,7 +33,7 @@ interface MapboxFeature {
   context?: MapboxContextEntry[];
 }
 
-const VERIFY_MESSAGE = "Please select an address from the suggestions.";
+const VERIFY_MESSAGE = "Please select a valid address from the suggestions.";
 
 function getContextEntry(feature: MapboxFeature, prefix: string) {
   return feature.context?.find((entry) => entry.id.startsWith(prefix));

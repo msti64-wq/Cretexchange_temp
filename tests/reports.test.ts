@@ -237,6 +237,13 @@ function makePhoto(id: string, activityId: string, driverId: string, locationId:
   } as any;
 }
 
+function fixtureDate(daysAgo = 0): Date {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  date.setHours(12, 0, 0, 0);
+  return date;
+}
+
 function makePayment(id: string, activity: WashoutActivity, driver: Driver & { user: User }, owner: Owner, amount: string, status: string, paidAt?: Date, tipAmountCents?: number | null): Payment & { activity: WashoutActivity } {
   const driverTip = tipAmountCents ?? 0;
   return {
@@ -281,29 +288,29 @@ function createStorageFixture() {
   const location2 = makeLocation("location-2", owner2.id, "South Yard");
   const location3 = makeLocation("location-3", owner1.id, "West Yard");
 
-  const activityToday = makeActivity("activity-today", { ...driver1, user: driverUser1 }, location1, "verified", "100.00", new Date());
-  const activityWeek = makeActivity("activity-week", { ...driver1, user: driverUser1 }, location1, "pending", "75.00", new Date(Date.now() - 3 * 24 * 60 * 60 * 1000));
-  const activityOld = makeActivity("activity-old", { ...driver1, user: driverUser1 }, location1, "pending", "50.00", new Date(Date.now() - 10 * 24 * 60 * 60 * 1000));
-  const activityOtherOwner = makeActivity("activity-other", { ...driver2, user: driverUser2 }, location2, "verified", "120.00", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000));
-  const activityMultiDriver = makeActivity("activity-multi-driver", { ...driver2, user: driverUser2 }, location3, "verified", "30.00", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000));
-  const activityRefunded = makeActivity("activity-refunded", { ...driver1, user: driverUser1 }, location3, "verified", "50.00", new Date(Date.now() - 1 * 24 * 60 * 60 * 1000));
-  const activityLegacy = makeActivity("activity-legacy", { ...driver1, user: driverUser1 }, location1, "verified", "55.00", new Date(Date.now() - 5 * 24 * 60 * 60 * 1000));
+  const activityToday = makeActivity("activity-today", { ...driver1, user: driverUser1 }, location1, "verified", "100.00", fixtureDate(0));
+  const activityWeek = makeActivity("activity-week", { ...driver1, user: driverUser1 }, location1, "pending", "75.00", fixtureDate(3));
+  const activityOld = makeActivity("activity-old", { ...driver1, user: driverUser1 }, location1, "pending", "50.00", fixtureDate(10));
+  const activityOtherOwner = makeActivity("activity-other", { ...driver2, user: driverUser2 }, location2, "verified", "120.00", fixtureDate(2));
+  const activityMultiDriver = makeActivity("activity-multi-driver", { ...driver2, user: driverUser2 }, location3, "verified", "30.00", fixtureDate(2));
+  const activityRefunded = makeActivity("activity-refunded", { ...driver1, user: driverUser1 }, location3, "verified", "50.00", fixtureDate(1));
+  const activityLegacy = makeActivity("activity-legacy", { ...driver1, user: driverUser1 }, location1, "verified", "55.00", fixtureDate(5));
 
-  const paymentToday = makePayment("payment-today", activityToday, { ...driver1, user: driverUser1 }, owner1, "100.00", "completed", new Date(), 0);
-  const paymentWeek = makePayment("payment-week", activityWeek, { ...driver1, user: driverUser1 }, owner1, "75.00", "completed", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 500);
-  const paymentMultiDriver = makePayment("payment-multi-driver", activityMultiDriver, { ...driver2, user: driverUser2 }, owner1, "30.00", "completed", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), 0);
-  const paymentRefunded = makePayment("payment-refunded", activityRefunded, { ...driver1, user: driverUser1 }, owner1, "50.00", "refunded", new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), 0);
-  paymentRefunded.refundedAt = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000);
+  const paymentToday = makePayment("payment-today", activityToday, { ...driver1, user: driverUser1 }, owner1, "100.00", "completed", fixtureDate(0), 0);
+  const paymentWeek = makePayment("payment-week", activityWeek, { ...driver1, user: driverUser1 }, owner1, "75.00", "completed", fixtureDate(2), 500);
+  const paymentMultiDriver = makePayment("payment-multi-driver", activityMultiDriver, { ...driver2, user: driverUser2 }, owner1, "30.00", "completed", fixtureDate(2), 0);
+  const paymentRefunded = makePayment("payment-refunded", activityRefunded, { ...driver1, user: driverUser1 }, owner1, "50.00", "refunded", fixtureDate(1), 0);
+  paymentRefunded.refundedAt = fixtureDate(1);
   paymentRefunded.refundAmount = "50.00";
   paymentRefunded.refundReason = "Owner dispute";
   paymentRefunded.stripePaymentIntentId = "pi_123";
   paymentRefunded.stripeChargeId = "ch_refund";
   paymentRefunded.batchId = "batch-1";
-  paymentRefunded.businessDate = new Date().toISOString().split("T")[0];
+  paymentRefunded.businessDate = fixtureDate(1).toISOString().split("T")[0];
   const paymentFailed = makePayment("payment-failed", activityOtherOwner, { ...driver2, user: driverUser2 }, owner2, "120.00", "failed", undefined, 0);
   paymentFailed.stripePaymentIntentId = "pi_fail";
   paymentFailed.batchId = "batch-2";
-  const paymentLegacy = makePayment("payment-legacy", activityLegacy, { ...driver1, user: driverUser1 }, owner1, "55.00", "pending", new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), 0);
+  const paymentLegacy = makePayment("payment-legacy", activityLegacy, { ...driver1, user: driverUser1 }, owner1, "55.00", "pending", fixtureDate(5), 0);
   paymentLegacy.batchId = null;
   paymentLegacy.businessDate = null;
   paymentLegacy.stripePaymentIntentId = null;
@@ -341,8 +348,8 @@ function createStorageFixture() {
   const activities = [activityToday, activityWeek, activityOld, activityOtherOwner, activityMultiDriver, activityRefunded, activityLegacy];
   const payments = [paymentToday, paymentWeek, paymentMultiDriver, paymentRefunded, paymentFailed, paymentLegacy];
   const billingBatches = [
-    makeBillingBatch("batch-1", owner1, new Date().toISOString().split("T")[0], "completed", "pi_123", "ch_123", "tr_123"),
-    makeBillingBatch("batch-2", owner2, new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], "failed", "pi_fail", null, null),
+    makeBillingBatch("batch-1", owner1, fixtureDate(1).toISOString().split("T")[0], "completed", "pi_123", "ch_123", "tr_123"),
+    makeBillingBatch("batch-2", owner2, fixtureDate(2).toISOString().split("T")[0], "failed", "pi_fail", null, null),
   ];
   const photosByActivity = new Map<string, WashoutPhoto[]>([
     [activityToday.id, [photoToday]],
