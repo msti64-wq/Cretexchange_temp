@@ -9266,16 +9266,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = new Date();
       const selectedMonth = month ? parseInt(month as string) : now.getMonth() + 1;
       const selectedYear = year ? parseInt(year as string) : now.getFullYear();
-      const status = await buildLotteryStatusSnapshot();
-      const [entries, totals, months, drawings, pendingDrawings] = await Promise.all([
-        storage.getAllDriverLotteryEntries(new Date(selectedYear, selectedMonth - 1, 1), new Date(selectedYear, selectedMonth, 0, 23, 59, 59)),
-        storage.getDriverLotteryEntryTotals(selectedMonth, selectedYear),
-        storage.getLotteryMonths(),
-        storage.getLotteryDrawings(),
-        storage.getPendingLotteryDrawings(),
-      ]);
+      let status: LotteryStatusSnapshot = {
+        enabled: true,
+        source: "default",
+        currentMonth: selectedMonth,
+        currentYear: selectedYear,
+        currentDrawing: null,
+        currentDrawingMessage: "Lottery data is temporarily unavailable.",
+      };
+      try {
+        status = await buildLotteryStatusSnapshot();
+      } catch (statusError) {
+        console.error("[ADMIN_LOTTERY] status snapshot failed", {
+          selectedMonth,
+          selectedYear,
+          error: statusError instanceof Error ? {
+            message: statusError.message,
+            stack: statusError.stack,
+          } : statusError,
+        });
+      }
+
+      const entriesStart = new Date(selectedYear, selectedMonth - 1, 1);
+      const entriesEnd = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
+
+      const entries = await Promise.resolve()
+        .then(() => storage.getAllDriverLotteryEntries(entriesStart, entriesEnd))
+        .catch((entriesError) => {
+          console.error("[ADMIN_LOTTERY] entries query failed", {
+            selectedMonth,
+            selectedYear,
+            startDate: entriesStart.toISOString(),
+            endDate: entriesEnd.toISOString(),
+            error: entriesError,
+          });
+          return [];
+        });
+
+      const totals = await Promise.resolve()
+        .then(() => storage.getDriverLotteryEntryTotals(selectedMonth, selectedYear))
+        .catch((totalsError) => {
+          console.error("[ADMIN_LOTTERY] totals query failed", {
+            selectedMonth,
+            selectedYear,
+            error: totalsError,
+          });
+          return [];
+        });
+
+      const months = await Promise.resolve()
+        .then(() => storage.getLotteryMonths())
+        .catch((monthsError) => {
+          console.error("[ADMIN_LOTTERY] months query failed", {
+            error: monthsError,
+          });
+          return [];
+        });
+
+      const drawings = await Promise.resolve()
+        .then(() => storage.getLotteryDrawings())
+        .catch((drawingsError) => {
+          console.error("[ADMIN_LOTTERY] drawings query failed", {
+            error: drawingsError,
+          });
+          return [];
+        });
+
+      const pendingDrawings = await Promise.resolve()
+        .then(() => storage.getPendingLotteryDrawings())
+        .catch((pendingError) => {
+          console.error("[ADMIN_LOTTERY] pending drawings query failed", {
+            error: pendingError,
+          });
+          return [];
+        });
 
       const totalTickets = totals.reduce((sum: number, row: { totalEntries?: number | string | null }) => sum + Number(row.totalEntries || 0), 0);
+
+      console.log("[ADMIN_LOTTERY] overview summary", {
+        selectedMonth,
+        selectedYear,
+        totalEligibleWashouts: entries.length,
+        totalTickets,
+        driversEntered: totals.length,
+        months: months.length,
+        drawings: drawings.length,
+        pendingDrawings: pendingDrawings.length,
+      });
 
       res.json({
         status,

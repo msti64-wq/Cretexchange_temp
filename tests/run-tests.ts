@@ -3459,6 +3459,58 @@ test("superadmin lottery endpoints return data and draw alias is registered", as
   );
 });
 
+test("superadmin lottery overview falls back when drawing status lookup fails", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getLotteryDrawingByMonthYear: async () => {
+        throw new Error("drawing lookup failed");
+      },
+      getDriverLotteryEntryTotals: async () => ([
+        { driverId: "driver_1", driverName: "Driver One", totalEntries: 3 },
+      ]),
+      getLotteryMonths: async () => ([
+        { month: 6, year: 2026, isArchived: false, totalEntries: 3 },
+      ]),
+      getLotteryDrawings: async () => ([
+        { id: "drawing_1", lotteryMonth: 6, lotteryYear: 2026 },
+      ]),
+      getPendingLotteryDrawings: async () => ([]),
+      getAllDriverLotteryEntries: async () => ([
+        { id: "entry_1" },
+        { id: "entry_2" },
+      ]),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/lottery");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+          query: { month: "6", year: "2026" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { totalEligibleWashouts?: number }).totalEligibleWashouts, 2);
+      assert.equal((res.body as { totalTickets?: number }).totalTickets, 3);
+      assert.equal((res.body as { driversEntered?: number }).driversEntered, 1);
+      assert.equal((res.body as { status?: { currentDrawing?: unknown } }).status?.currentDrawing, null);
+    },
+  );
+});
+
 test("driver and owner cannot access admin lottery endpoints", async () => {
   const { app, gets } = createRouteRegistry();
 
