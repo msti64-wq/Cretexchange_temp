@@ -12,7 +12,7 @@ import { StatCard } from "@/components/StatCard";
 import { DashboardMetricCard } from "@/components/DashboardMetricCard";
 import { DashboardSectionCard } from "@/components/DashboardSectionCard";
 import { DashboardEmptyState } from "@/components/DashboardEmptyState";
-import { Users, Building, DollarSign, Download, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck, CreditCard } from "lucide-react";
+import { Users, Building, DollarSign, Download, MessageCircle, Clock, CheckCircle, Search, X, Flag, Gift, PackageCheck, CreditCard, Ticket } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -305,6 +305,9 @@ export default function AdminDashboard() {
                 {formatCurrency(weekStats?.platformWashoutRevenue || 0)}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">Platform fee revenue from approved washouts</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {weekStats?.platformFeeRecordCount || 0} fee records • {weekStats?.platformWashoutRevenueCents || 0} cents
+              </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver incentives</p>
@@ -372,6 +375,14 @@ export default function AdminDashboard() {
               icon={Building}
               toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
               dataTestId="text-driver-tip-total-summary"
+            />
+            <DashboardMetricCard
+              title="Lottery Tickets"
+              value={weekStats?.lotteryTicketCount || 0}
+              helper={dashboardErrors.weekStats ? "Loaded with fallback data" : `${weekStats?.lotteryDriverCount || 0} drivers entered`}
+              icon={Ticket}
+              toneClassName="bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
+              dataTestId="text-lottery-ticket-count-summary"
             />
             <DashboardMetricCard
               title="Billed Washouts"

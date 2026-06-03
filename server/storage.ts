@@ -2552,12 +2552,16 @@ export class DatabaseStorage implements IStorage {
     totalDrivers: number; 
     totalOwners: number;
     platformWashoutRevenue: number;
+    platformWashoutRevenueCents: number;
+    platformFeeRecordCount: number;
     driverTipTotal: number;
     billedWashouts: number;
     pendingWashouts: number;
     failedWashouts: number;
     refundedWashouts: number;
     disputedWashouts: number;
+    lotteryTicketCount: number;
+    lotteryDriverCount: number;
     subscriptionRevenue: number;
     activeLicenses: number;
     licenseRenewals: number;
@@ -2628,10 +2632,27 @@ export class DatabaseStorage implements IStorage {
         ne(washoutActivities.status, 'rejected'),
       ));
     const paymentSummary = summarizeWashoutRevenueFromActivities(revenueRows, defaultPlatformFeeCents);
+    const platformFeeRecordCount = revenueRows.filter((row) => {
+      const approved = isApprovedWashout(row.activityStatus);
+      const platformFeeCents = Number(row.activityFeeCentsPlatform ?? row.ownerCustomPlatformFeeCents ?? defaultPlatformFeeCents);
+      return approved && Number.isFinite(platformFeeCents) && Math.round(platformFeeCents) > 0;
+    }).length;
+    const platformWashoutRevenueCents = Math.round(paymentSummary.platformWashoutRevenue * 100);
+    const lotteryStats = await db
+      .select({
+        lotteryTicketCount: sql<number>`COALESCE(COUNT(*), 0)::integer`,
+        lotteryDriverCount: sql<number>`COALESCE(COUNT(DISTINCT ${driverLotteryEntries.driverId}), 0)::integer`,
+      })
+      .from(driverLotteryEntries)
+      .where(gte(driverLotteryEntries.createdAt, startDate));
+    const lotteryTicketCount = Number(lotteryStats[0]?.lotteryTicketCount || 0);
+    const lotteryDriverCount = Number(lotteryStats[0]?.lotteryDriverCount || 0);
 
     console.log(`[SYSTEM_STATS] washout revenue summary`, {
       days,
       startDate: startDate.toISOString(),
+      platformFeeRecordCount,
+      platformWashoutRevenueCents,
       approvedWashouts: revenueRows.filter((row) => isApprovedWashout(row.activityStatus)).length,
       platformWashoutRevenue: paymentSummary.platformWashoutRevenue,
       driverTipTotal: paymentSummary.driverTipTotal,
@@ -2640,6 +2661,8 @@ export class DatabaseStorage implements IStorage {
       failedWashouts: paymentSummary.failedWashouts,
       refundedWashouts: paymentSummary.refundedWashouts,
       disputedWashouts: paymentSummary.disputedWashouts,
+      lotteryTicketCount,
+      lotteryDriverCount,
     });
 
     return {
@@ -2648,12 +2671,16 @@ export class DatabaseStorage implements IStorage {
       totalDrivers: Number(stats.totalDrivers),
       totalOwners: Number(ownerCount),
       platformWashoutRevenue: paymentSummary.platformWashoutRevenue,
+      platformWashoutRevenueCents,
+      platformFeeRecordCount,
       driverTipTotal: paymentSummary.driverTipTotal,
       billedWashouts: paymentSummary.billedWashouts,
       pendingWashouts: paymentSummary.pendingWashouts,
       failedWashouts: paymentSummary.failedWashouts,
       refundedWashouts: paymentSummary.refundedWashouts,
       disputedWashouts: paymentSummary.disputedWashouts,
+      lotteryTicketCount,
+      lotteryDriverCount,
       subscriptionRevenue: subscriptionRevenue,
       activeLicenses: Number(subStats.activeLicenses),
       licenseRenewals: Number(subStats.licenseRenewals),

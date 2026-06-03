@@ -3509,6 +3509,71 @@ test("admin dashboard shows payments awaiting driver tip payout setup", async ()
   );
 });
 
+test("admin dashboard surfaces repaired washout fee and lottery metrics", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getSystemStats: async (days: number) => ({
+        totalEarnings: 0,
+        totalWashouts: 6,
+        totalDrivers: 3,
+        totalOwners: 2,
+        platformWashoutRevenue: days === 7 ? 25 : 25,
+        platformWashoutRevenueCents: days === 7 ? 2500 : 2500,
+        platformFeeRecordCount: days === 7 ? 5 : 5,
+        driverTipTotal: 0,
+        billedWashouts: 5,
+        pendingWashouts: 1,
+        failedWashouts: 0,
+        refundedWashouts: 0,
+        disputedWashouts: 0,
+        lotteryTicketCount: days === 7 ? 5 : 5,
+        lotteryDriverCount: days === 7 ? 3 : 3,
+        subscriptionRevenue: 0,
+        activeLicenses: 0,
+        licenseRenewals: 0,
+      }),
+      getPaymentsAwaitingDriverStripe: async () => [],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/dashboard");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const body = res.body as {
+        weekStats?: {
+          platformWashoutRevenue?: number;
+          platformWashoutRevenueCents?: number;
+          platformFeeRecordCount?: number;
+          lotteryTicketCount?: number;
+          lotteryDriverCount?: number;
+        };
+      };
+      assert.equal(body.weekStats?.platformWashoutRevenue, 25);
+      assert.equal(body.weekStats?.platformWashoutRevenueCents, 2500);
+      assert.equal(body.weekStats?.platformFeeRecordCount, 5);
+      assert.equal(body.weekStats?.lotteryTicketCount, 5);
+      assert.equal(body.weekStats?.lotteryDriverCount, 3);
+    },
+  );
+});
+
 test("admin dashboard returns partial data when one widget query fails", async () => {
   const { app, gets } = createRouteRegistry();
 
