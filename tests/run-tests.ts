@@ -3509,6 +3509,71 @@ test("admin dashboard shows payments awaiting driver tip payout setup", async ()
   );
 });
 
+test("admin dashboard returns partial data when one widget query fails", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getSystemStats: async (days: number) => {
+        if (days === 7) {
+          throw new Error("weekly stats unavailable");
+        }
+        return {
+          totalEarnings: 0,
+          totalWashouts: 0,
+          totalDrivers: 0,
+          totalOwners: 0,
+          platformWashoutRevenue: 0,
+          driverTipTotal: 0,
+          billedWashouts: 0,
+          pendingWashouts: 0,
+          failedWashouts: 0,
+          refundedWashouts: 0,
+          disputedWashouts: 0,
+          subscriptionRevenue: 0,
+          activeLicenses: 0,
+          licenseRenewals: 0,
+        };
+      },
+      getPaymentsAwaitingDriverStripe: async () => {
+        throw new Error("stripe queue unavailable");
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/dashboard");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const body = res.body as {
+        weekStats?: { platformWashoutRevenue?: number };
+        monthStats?: { totalWashouts?: number };
+        awaitingDriverStripeCount?: number;
+        dashboardErrors?: Record<string, string>;
+      };
+      assert.equal(body.weekStats?.platformWashoutRevenue, 0);
+      assert.equal(body.monthStats?.totalWashouts, 0);
+      assert.equal(body.awaitingDriverStripeCount, 0);
+      assert.ok(body.dashboardErrors?.weekStats);
+      assert.ok(body.dashboardErrors?.awaitingDriverStripePayments);
+    },
+  );
+});
+
 test("deferred driver Stripe payment can be processed once the driver is ready", async () => {
   const { app, posts } = createRouteRegistry();
   let paymentStatusUpdates: Array<Record<string, unknown>> = [];

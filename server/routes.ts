@@ -8466,15 +8466,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const weekStats = await storage.getSystemStats(7);
-      const monthStats = await storage.getSystemStats(30);
-      const awaitingDriverStripePayments = await storage.getPaymentsAwaitingDriverStripe();
+      const emptyStats = {
+        totalEarnings: 0,
+        totalWashouts: 0,
+        totalDrivers: 0,
+        totalOwners: 0,
+        platformWashoutRevenue: 0,
+        driverTipTotal: 0,
+        billedWashouts: 0,
+        pendingWashouts: 0,
+        failedWashouts: 0,
+        refundedWashouts: 0,
+        disputedWashouts: 0,
+        subscriptionRevenue: 0,
+        activeLicenses: 0,
+        licenseRenewals: 0,
+      };
+      const dashboardErrors: Record<string, string> = {};
+
+      const weekResult = await Promise.resolve()
+        .then(() => storage.getSystemStats(7))
+        .catch((error) => {
+          console.error("[ADMIN_DASHBOARD] weekStats query failed", error);
+          dashboardErrors.weekStats = "Unable to load weekly admin metrics.";
+          return emptyStats;
+        });
+
+      const monthResult = await Promise.resolve()
+        .then(() => storage.getSystemStats(30))
+        .catch((error) => {
+          console.error("[ADMIN_DASHBOARD] monthStats query failed", error);
+          dashboardErrors.monthStats = "Unable to load monthly admin metrics.";
+          return emptyStats;
+        });
+
+      const awaitingResult = await Promise.resolve()
+        .then(() => storage.getPaymentsAwaitingDriverStripe())
+        .catch((error) => {
+          console.error("[ADMIN_DASHBOARD] awaitingDriverStripePayments query failed", error);
+          dashboardErrors.awaitingDriverStripePayments = "Unable to load driver setup queue.";
+          return [];
+        });
 
       res.json({
-        weekStats,
-        monthStats,
-        awaitingDriverStripePayments: awaitingDriverStripePayments.slice(0, 5),
-        awaitingDriverStripeCount: awaitingDriverStripePayments.length,
+        weekStats: weekResult,
+        monthStats: monthResult,
+        awaitingDriverStripePayments: awaitingResult.slice(0, 5),
+        awaitingDriverStripeCount: awaitingResult.length,
+        dashboardErrors: Object.keys(dashboardErrors).length > 0 ? dashboardErrors : undefined,
       });
     } catch (error) {
       console.error("Error fetching admin dashboard:", error);

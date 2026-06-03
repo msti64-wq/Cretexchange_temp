@@ -160,6 +160,8 @@ export default function AdminDashboard() {
   }
 
   const { weekStats, monthStats } = dashboardData || {};
+  const dashboardErrors = dashboardData?.dashboardErrors || {};
+  const hasWidgetWarnings = Object.values(dashboardErrors).some(Boolean);
   const awaitingDriverStripePayments = Array.isArray(dashboardData?.awaitingDriverStripePayments)
     ? dashboardData.awaitingDriverStripePayments
     : [];
@@ -338,13 +340,27 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {hasWidgetWarnings && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="min-w-0">
+                <p className="font-semibold text-amber-900 dark:text-amber-100">Some dashboard widgets loaded with fallback data</p>
+                <p className="mt-1 text-sm text-amber-800/90 dark:text-amber-200/80">
+                  One or more admin summary queries returned partial data. The dashboard stayed online and filled missing values with zeroes.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Operations Snapshot */}
         <section className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <DashboardMetricCard
               title="Washout Revenue"
               value={formatCurrency(weekStats?.platformWashoutRevenue || 0)}
-              helper="Platform fee revenue from approved washouts"
+              helper={dashboardErrors.weekStats ? "Loaded with fallback data" : "Platform fee revenue from approved washouts"}
               icon={DollarSign}
               toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-washout-revenue-summary"
@@ -352,7 +368,7 @@ export default function AdminDashboard() {
             <DashboardMetricCard
               title="Driver Tips"
               value={formatCurrency(weekStats?.driverTipTotal || 0)}
-              helper="Owner-funded tip total"
+              helper={dashboardErrors.weekStats ? "Loaded with fallback data" : "Owner-funded tip total"}
               icon={Building}
               toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
               dataTestId="text-driver-tip-total-summary"
@@ -360,7 +376,7 @@ export default function AdminDashboard() {
             <DashboardMetricCard
               title="Billed Washouts"
               value={weekStats?.billedWashouts || 0}
-              helper={`${weekStats?.pendingWashouts || 0} approved but not billed`}
+              helper={dashboardErrors.weekStats ? "Loaded with fallback data" : `${weekStats?.pendingWashouts || 0} approved but not billed`}
               icon={CheckCircle}
               toneClassName="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300"
               dataTestId="text-billed-washouts-summary"
@@ -368,7 +384,7 @@ export default function AdminDashboard() {
             <DashboardMetricCard
               title="Pending Washouts"
               value={weekStats?.pendingWashouts || 0}
-              helper="Awaiting approval or billing"
+              helper={dashboardErrors.weekStats ? "Loaded with fallback data" : "Awaiting approval or billing"}
               icon={Clock}
               toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
               dataTestId="text-pending-washouts-summary"
@@ -555,6 +571,11 @@ export default function AdminDashboard() {
                 <span className="ml-2 font-semibold text-foreground">
                   {formatCurrency(monthStats?.totalPayments || 0)}
                 </span>
+                {dashboardErrors.monthStats && (
+                  <span className="ml-2 text-xs text-amber-700 dark:text-amber-300">
+                    Loaded with fallback data
+                  </span>
+                )}
               </div>
             </div>
           </DashboardSectionCard>
