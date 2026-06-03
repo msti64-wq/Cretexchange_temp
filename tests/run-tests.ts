@@ -2630,6 +2630,8 @@ test("owner verify approves legacy pending washouts and falls back when driver S
       assert.equal((res.body as { status?: string }).status, "verified");
       assert.equal((res.body as { paymentStatus?: string }).paymentStatus, "awaiting_driver_stripe");
       assert.equal((res.body as { payoutStatus?: string }).payoutStatus, "held_for_onboarding");
+      assert.equal((res.body as { verifiedBy?: string }).verifiedBy, "user_1");
+      assert.ok((res.body as { verifiedAt?: string }).verifiedAt);
       assert.match(String((res.body as { message?: string }).message || ""), /payment will be processed once the driver completes payment setup/i);
     },
   );
@@ -2706,6 +2708,8 @@ test("owner verify still succeeds when deferred payment persistence fails after 
       assert.equal(res.statusCode, 200);
       assert.equal(verified, true);
       assert.equal((res.body as { status?: string }).status, "verified");
+      assert.equal((res.body as { verifiedBy?: string }).verifiedBy, "user_1");
+      assert.ok((res.body as { verifiedAt?: string }).verifiedAt);
       assert.match(String((res.body as { message?: string }).message || ""), /washout approved/i);
       assert.match(String((res.body as { warning?: string }).warning || ""), /deferred payment record failed/i);
     },

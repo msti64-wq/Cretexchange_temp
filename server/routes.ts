@@ -3846,6 +3846,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let approvalResponsePaymentStatus: string | null = null;
     let approvalResponsePayoutStatus: string | null = null;
     let approvalResponseDeferReason: string | null = null;
+    const buildApprovedActivityPayload = (activity: WashoutActivity | null | undefined) => ({
+      ...(activity || {}),
+      verifiedBy: (activity as any)?.verifiedBy || userId,
+      verifiedAt: (activity as any)?.verifiedAt || new Date().toISOString(),
+    });
     const approvalDebugContext: Record<string, unknown> = {
       route: '/api/owners/activities/:id/verify',
       activityId: id,
@@ -4007,6 +4012,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ========== CHECK BILLING CADENCE TO DETERMINE PAYMENT PROCESSING ==========
       // Approve the activity first so payment processing can never block owner approval.
       approvedActivity = await storage.verifyWashoutActivity(id, userId);
+      approvalDebugContext.currentStatus = approvedActivity?.status || "verified";
+      approvalDebugContext.permissionCheckResult = true;
       console.log(`✅ Washout ${id} approval persisted before payment processing`, {
         ownerId: owner.id,
         locationId: activityDetails.locationId,
@@ -4014,6 +4021,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authRole,
         currentStatus: activityDetails.status,
         approvalStatus: getWashoutApprovalDisplayStatus(activityDetails.status),
+        verifiedBy: approvedActivity?.verifiedBy || userId,
+        verifiedAt: approvedActivity?.verifiedAt || new Date().toISOString(),
       });
 
       if (!driverStripeReadiness.ready) {
@@ -4051,6 +4060,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentStatus: payment.status,
           payoutStatus: payment.payoutStatus,
           deferReason: deferredReason,
+          verifiedBy: (activity as any)?.verifiedBy || userId,
+          verifiedAt: (activity as any)?.verifiedAt || new Date().toISOString(),
         });
         approvalResponseMessage = "Washout approved. Payment will be processed once the driver completes payment setup.";
         approvalResponsePaymentStatus = payment.status;
@@ -4058,7 +4069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         approvalResponseDeferReason = payment.deferReason;
 
         return res.json({
-          ...activity,
+          ...buildApprovedActivityPayload(activity),
           message: approvalResponseMessage,
           paymentStatus: approvalResponsePaymentStatus,
           payoutStatus: approvalResponsePayoutStatus,
@@ -4149,7 +4160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         approvalResponsePayoutStatus = "not_started";
         
         return res.json({
-          ...activity,
+          ...buildApprovedActivityPayload(activity),
           message: approvalResponseMessage,
           paymentStatus: approvalResponsePaymentStatus,
           payoutStatus: approvalResponsePayoutStatus,
@@ -4367,7 +4378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         approvalResponseDeferReason = fallbackReason;
         
         return res.json({
-          ...activity,
+          ...buildApprovedActivityPayload(activity),
           message: approvalResponseMessage,
           paymentStatus: approvalResponsePaymentStatus,
           payoutStatus: approvalResponsePayoutStatus,
@@ -4502,6 +4513,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify activity as final step
       const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
+      approvalDebugContext.currentStatus = activity?.status || "verified";
+      approvalDebugContext.permissionCheckResult = true;
       
       if (useCustomBillingModel && activityDetails.serviceType !== 'rubble_dropoff') {
         try {
@@ -4528,9 +4541,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       approvalResponseMessage = "Washout approved and payment completed.";
       approvalResponsePaymentStatus = "completed";
       approvalResponsePayoutStatus = "completed";
+      console.log(`✅ Washout ${id} approval finalised`, {
+        ownerId: owner.id,
+        locationId: activityDetails.locationId,
+        driverId: activityDetails.driverId,
+        verifiedBy: (activity as any)?.verifiedBy || userId,
+        verifiedAt: (activity as any)?.verifiedAt || new Date().toISOString(),
+        status: activity?.status || "verified",
+        paymentStatus: approvalResponsePaymentStatus,
+        payoutStatus: approvalResponsePayoutStatus,
+      });
 
       res.json({
-        ...activity,
+        ...buildApprovedActivityPayload(activity),
         message: approvalResponseMessage,
         paymentStatus: approvalResponsePaymentStatus,
         payoutStatus: approvalResponsePayoutStatus,
@@ -4551,7 +4574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (approvedActivity) {
         return res.json({
-          ...approvedActivity,
+          ...buildApprovedActivityPayload(approvedActivity),
           message: approvalResponseMessage,
           paymentStatus: approvalResponsePaymentStatus || undefined,
           payoutStatus: approvalResponsePayoutStatus || undefined,

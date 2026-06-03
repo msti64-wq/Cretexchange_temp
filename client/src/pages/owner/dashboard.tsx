@@ -186,6 +186,28 @@ export default function OwnerDashboard() {
     },
     onSuccess: (data, activityId) => {
       console.log("Approval successful:", data);
+      const updatedActivity = {
+        ...data,
+        id: activityId,
+        status: data?.status || "verified",
+        verifiedBy: data?.verifiedBy || user?.id || null,
+        verifiedAt: data?.verifiedAt || new Date().toISOString(),
+      };
+
+      queryClient.setQueryData(['/api/owners/activities?dateRange=all'], (current: any) => {
+        if (!Array.isArray(current)) return current;
+        return current.map((activity) =>
+          String(activity.id) === String(activityId) ? { ...activity, ...updatedActivity } : activity,
+        );
+      });
+
+      queryClient.setQueryData([`/api/owners/activities?dateRange=${dateRange}`], (current: any) => {
+        if (!Array.isArray(current)) return current;
+        return current.map((activity) =>
+          String(activity.id) === String(activityId) ? { ...activity, ...updatedActivity } : activity,
+        );
+      });
+
       toast({
         title: data?.message || "Washout approved for payment",
         description: data?.paymentStatus === 'awaiting_driver_stripe'
@@ -194,6 +216,9 @@ export default function OwnerDashboard() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
       queryClient.invalidateQueries({ predicate: (query) => 
+        Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))
+      });
+      void queryClient.refetchQueries({ predicate: (query) => 
         Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))
       });
     },
