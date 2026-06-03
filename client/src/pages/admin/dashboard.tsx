@@ -167,6 +167,16 @@ export default function AdminDashboard() {
     ? dashboardData.awaitingDriverStripePayments
     : [];
   const awaitingDriverStripeCount = Number(dashboardData?.awaitingDriverStripeCount || 0);
+  const washoutRevenueError = weekStats?.washoutRevenueError;
+  const lotteryMetricsError = weekStats?.lotteryMetricsError;
+  const platformWashoutRevenueValue = washoutRevenueError ? "—" : formatCurrency(weekStats?.platformWashoutRevenue ?? 0);
+  const driverTipValue = washoutRevenueError ? "—" : formatCurrency(weekStats?.driverTipTotal ?? 0);
+  const approvedWashoutsValue = washoutRevenueError ? "—" : (weekStats?.approvedWashouts ?? 0);
+  const pendingWashoutsValue = washoutRevenueError ? "—" : (weekStats?.pendingWashouts ?? 0);
+  const platformFeeRecordCountValue = washoutRevenueError ? "—" : (weekStats?.platformFeeRecordCount ?? 0);
+  const platformWashoutRevenueCentsValue = washoutRevenueError ? "—" : (weekStats?.platformWashoutRevenueCents ?? 0);
+  const lotteryTicketValue = lotteryMetricsError ? "—" : (weekStats?.lotteryTicketCount ?? 0);
+  const lotteryDriverValue = lotteryMetricsError ? "—" : (weekStats?.lotteryDriverCount ?? 0);
   const allMessages = Array.isArray(messages) ? messages : [];
   const unreadMessages = allMessages.filter((message: any) => message.status === "unread").length;
   const activeMessages = allMessages.filter((message: any) => message.status !== "resolved").length;
@@ -301,31 +311,39 @@ export default function AdminDashboard() {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Revenue signal</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Platform Washout Revenue</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-washout-revenue">
-                {formatCurrency(weekStats?.platformWashoutRevenue || 0)}
+                {platformWashoutRevenueValue}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">Platform fee revenue from approved washouts</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {washoutRevenueError || "Platform fee revenue from approved washouts"}
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {weekStats?.approvedWashouts || 0} approved washouts • {weekStats?.platformFeeRecordCount || 0} fee records • {weekStats?.platformWashoutRevenueCents || 0} cents
+                {approvedWashoutsValue} approved washouts • {platformFeeRecordCountValue} fee records • {platformWashoutRevenueCentsValue} cents
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver incentives</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-driver-tip-total">
-                {formatCurrency(weekStats?.driverTipTotal || 0)}
+                {driverTipValue}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">Owner-funded tips in the selected period</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {washoutRevenueError || "Owner-funded tips in the selected period"}
+              </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Approved washouts</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.approvedWashouts || 0}</p>
-              <p className="mt-1 text-sm text-muted-foreground">eligible for platform fee and lottery entry</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{approvedWashoutsValue}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {washoutRevenueError || "eligible for platform fee and lottery entry"}
+              </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Pending / unbilled</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{weekStats?.pendingWashouts || 0}</p>
-              <p className="mt-1 text-sm text-muted-foreground">awaiting approval or billing</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{pendingWashoutsValue}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {washoutRevenueError || "awaiting approval or billing"}
+              </p>
             </div>
           </div>
         </section>
@@ -362,41 +380,41 @@ export default function AdminDashboard() {
         <section className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <DashboardMetricCard
-              title="Washout Revenue"
-              value={formatCurrency(weekStats?.platformWashoutRevenue || 0)}
-              helper={dashboardErrors.weekStats ? "Loaded with fallback data" : "Platform fee revenue from approved washouts"}
+              title="Platform Washout Revenue"
+              value={platformWashoutRevenueValue}
+              helper={washoutRevenueError || "Platform fee revenue from approved washouts"}
               icon={DollarSign}
               toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-washout-revenue-summary"
             />
             <DashboardMetricCard
               title="Driver Tips"
-              value={formatCurrency(weekStats?.driverTipTotal || 0)}
-              helper={dashboardErrors.weekStats ? "Loaded with fallback data" : "Owner-funded tip total"}
+              value={driverTipValue}
+              helper={washoutRevenueError || "Owner-funded tip total"}
               icon={Building}
               toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
               dataTestId="text-driver-tip-total-summary"
             />
             <DashboardMetricCard
               title="Lottery Tickets"
-              value={weekStats?.lotteryTicketCount || 0}
-              helper={dashboardErrors.weekStats ? "Loaded with fallback data" : `${weekStats?.lotteryDriverCount || 0} drivers entered`}
+              value={lotteryTicketValue}
+              helper={lotteryMetricsError || `${lotteryDriverValue} drivers entered`}
               icon={Ticket}
               toneClassName="bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
               dataTestId="text-lottery-ticket-count-summary"
             />
             <DashboardMetricCard
-              title="Billed Washouts"
-              value={weekStats?.billedWashouts || 0}
-              helper={dashboardErrors.weekStats ? "Loaded with fallback data" : `${weekStats?.pendingWashouts || 0} approved but not billed`}
+              title="Approved Washouts"
+              value={approvedWashoutsValue}
+              helper={washoutRevenueError || "Approved and eligible for billing"}
               icon={CheckCircle}
               toneClassName="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300"
-              dataTestId="text-billed-washouts-summary"
+              dataTestId="text-approved-washouts-summary"
             />
             <DashboardMetricCard
-              title="Pending Washouts"
-              value={weekStats?.pendingWashouts || 0}
-              helper={dashboardErrors.weekStats ? "Loaded with fallback data" : "Awaiting approval or billing"}
+              title="Pending / Unbilled"
+              value={pendingWashoutsValue}
+              helper={washoutRevenueError || "Awaiting approval or billing"}
               icon={Clock}
               toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
               dataTestId="text-pending-washouts-summary"
@@ -542,7 +560,7 @@ export default function AdminDashboard() {
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Platform fee revenue</p>
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground" data-testid="text-monthly-subscriptions">
-                  {formatCurrency(weekStats?.platformWashoutRevenue || 0)}
+                  {platformWashoutRevenueValue}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">Completed and approved washouts only</p>
               </div>
@@ -574,7 +592,7 @@ export default function AdminDashboard() {
                   title="Click to view driver incentive totals"
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Driver incentives</p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{formatCurrency(weekStats?.driverTipTotal || 0)}</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{driverTipValue}</p>
                   <p className="mt-1 text-xs text-muted-foreground">Owner-funded tips in period</p>
                 </button>
               </div>

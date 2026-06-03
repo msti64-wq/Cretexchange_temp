@@ -233,19 +233,21 @@ export interface IStorage {
     totalWashouts: number;
     totalDrivers: number;
     totalOwners: number;
-    platformWashoutRevenue: number;
-    platformWashoutRevenueCents: number;
-    platformFeeRecordCount: number;
-    approvedWashouts: number;
-    driverTipTotal: number;
-    billedWashouts: number;
-    pendingWashouts: number;
-    failedWashouts: number;
-    refundedWashouts: number;
-    disputedWashouts: number;
+    platformWashoutRevenue: number | null;
+    platformWashoutRevenueCents: number | null;
+    platformFeeRecordCount: number | null;
+    approvedWashouts: number | null;
+    driverTipTotal: number | null;
+    billedWashouts: number | null;
+    pendingWashouts: number | null;
+    failedWashouts: number | null;
+    refundedWashouts: number | null;
+    disputedWashouts: number | null;
     subscriptionRevenue: number;
     activeLicenses: number;
     licenseRenewals: number;
+    washoutRevenueError?: string;
+    lotteryMetricsError?: string;
   }>;
 
   // Notification operations
@@ -2554,21 +2556,23 @@ export class DatabaseStorage implements IStorage {
     totalWashouts: number; 
     totalDrivers: number; 
     totalOwners: number;
-    platformWashoutRevenue: number;
-    platformWashoutRevenueCents: number;
-    platformFeeRecordCount: number;
-    approvedWashouts: number;
-    driverTipTotal: number;
-    billedWashouts: number;
-    pendingWashouts: number;
-    failedWashouts: number;
-    refundedWashouts: number;
-    disputedWashouts: number;
+    platformWashoutRevenue: number | null;
+    platformWashoutRevenueCents: number | null;
+    platformFeeRecordCount: number | null;
+    approvedWashouts: number | null;
+    driverTipTotal: number | null;
+    billedWashouts: number | null;
+    pendingWashouts: number | null;
+    failedWashouts: number | null;
+    refundedWashouts: number | null;
+    disputedWashouts: number | null;
     lotteryTicketCount: number;
     lotteryDriverCount: number;
     subscriptionRevenue: number;
     activeLicenses: number;
     licenseRenewals: number;
+    washoutRevenueError?: string;
+    lotteryMetricsError?: string;
   }> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -2615,40 +2619,94 @@ export class DatabaseStorage implements IStorage {
     const stats = activityStats[0] || { totalEarnings: 0, totalWashouts: 0, totalDrivers: 0 };
     const ownerCount = ownerStats[0]?.totalOwners || 0;
     const subStats = subscriptionStats[0] || { activeLicenses: 0, licenseRenewals: 0 };
-    const revenueRows = await db
-      .select({
-        activityStatus: washoutActivities.status,
-        paymentStatus: payments.status,
-        activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
-        locationDriverIncentiveTipCents: washoutLocations.driverIncentiveTip,
-        paymentProcessingFee: payments.processingFee,
-        paymentTipAmountCents: payments.tipAmountCents,
-      })
-      .from(washoutActivities)
-      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
-      .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
-      .where(and(
-        gte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, startDate),
-        ne(washoutActivities.status, 'rejected'),
-      ));
-    const paymentSummary = summarizeWashoutRevenueFromActivities(revenueRows);
-    const approvedWashouts = revenueRows.filter((row) => isApprovedWashout(row.activityStatus)).length;
-    const platformFeeRecordCount = revenueRows.filter((row) => {
-      const approved = isApprovedWashout(row.activityStatus);
-      const platformFeeCents = Number(row.activityFeeCentsPlatform ?? 0);
-      return approved && Number.isFinite(platformFeeCents) && Math.round(platformFeeCents) > 0;
-    }).length;
-    const platformWashoutRevenueCents = Math.round(paymentSummary.platformWashoutRevenue * 100);
-    const lotteryStats = await db
-      .select({
-        lotteryTicketCount: sql<number>`COALESCE(COUNT(*), 0)::integer`,
-        lotteryDriverCount: sql<number>`COALESCE(COUNT(DISTINCT ${driverLotteryEntries.driverId}), 0)::integer`,
-      })
-      .from(driverLotteryEntries)
-      .where(gte(driverLotteryEntries.createdAt, startDate));
-    const lotteryTicketCount = Number(lotteryStats[0]?.lotteryTicketCount || 0);
-    const lotteryDriverCount = Number(lotteryStats[0]?.lotteryDriverCount || 0);
+    let revenueRows: Array<{
+      activityStatus?: string | null;
+      paymentStatus?: string | null;
+      activityFeeCentsPlatform?: number | null;
+      locationDriverIncentiveTipCents?: number | null;
+      paymentProcessingFee?: string | number | null;
+      paymentTipAmountCents?: number | null;
+    }> = [];
+    let platformWashoutRevenue: number | null = null;
+    let platformWashoutRevenueCents: number | null = null;
+    let platformFeeRecordCount: number | null = null;
+    let approvedWashouts: number | null = null;
+    let driverTipTotal: number | null = null;
+    let billedWashouts: number | null = null;
+    let pendingWashouts: number | null = null;
+    let failedWashouts: number | null = null;
+    let refundedWashouts: number | null = null;
+    let disputedWashouts: number | null = null;
+    let washoutRevenueError: string | undefined;
+
+    try {
+      revenueRows = await db
+        .select({
+          activityStatus: washoutActivities.status,
+          paymentStatus: payments.status,
+          activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
+          locationDriverIncentiveTipCents: washoutLocations.driverIncentiveTip,
+          paymentProcessingFee: payments.processingFee,
+          paymentTipAmountCents: payments.tipAmountCents,
+        })
+        .from(washoutActivities)
+        .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+        .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
+        .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
+        .where(and(
+          gte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, startDate),
+          ne(washoutActivities.status, 'rejected'),
+        ));
+
+      const paymentSummary = summarizeWashoutRevenueFromActivities(revenueRows);
+      approvedWashouts = revenueRows.filter((row) => isApprovedWashout(row.activityStatus)).length;
+      platformFeeRecordCount = revenueRows.filter((row) => {
+        const approved = isApprovedWashout(row.activityStatus);
+        const platformFeeCents = Number(row.activityFeeCentsPlatform ?? 0);
+        return approved && Number.isFinite(platformFeeCents) && Math.round(platformFeeCents) > 0;
+      }).length;
+      platformWashoutRevenue = paymentSummary.platformWashoutRevenue;
+      platformWashoutRevenueCents = Math.round(paymentSummary.platformWashoutRevenue * 100);
+      driverTipTotal = paymentSummary.driverTipTotal;
+      billedWashouts = paymentSummary.billedWashouts;
+      pendingWashouts = paymentSummary.pendingWashouts;
+      failedWashouts = paymentSummary.failedWashouts;
+      refundedWashouts = paymentSummary.refundedWashouts;
+      disputedWashouts = paymentSummary.disputedWashouts;
+    } catch (error) {
+      const safeError = summarizeDatabaseError(error);
+      washoutRevenueError = "Unable to load washout revenue metrics.";
+      console.error("[SYSTEM_STATS] washoutRevenue query failed", {
+        days,
+        startDate: startDate.toISOString(),
+        query: "washoutRevenue",
+        ...safeError,
+      });
+    }
+
+    let lotteryTicketCount = 0;
+    let lotteryDriverCount = 0;
+    let lotteryMetricsError: string | undefined;
+    try {
+      const lotteryStats = await db
+        .select({
+          lotteryTicketCount: sql<number>`COALESCE(COUNT(*), 0)::integer`,
+          lotteryDriverCount: sql<number>`COALESCE(COUNT(DISTINCT ${driverLotteryEntries.driverId}), 0)::integer`,
+        })
+        .from(driverLotteryEntries)
+        .where(gte(driverLotteryEntries.createdAt, startDate));
+      lotteryTicketCount = Number(lotteryStats[0]?.lotteryTicketCount || 0);
+      lotteryDriverCount = Number(lotteryStats[0]?.lotteryDriverCount || 0);
+    } catch (error) {
+      const safeError = summarizeDatabaseError(error);
+      lotteryMetricsError = "Unable to load lottery metrics.";
+      console.error("[SYSTEM_STATS] lotteryMetrics query failed", {
+        days,
+        startDate: startDate.toISOString(),
+        query: "lotteryMetrics",
+        ...safeError,
+      });
+    }
 
     console.log(`[SYSTEM_STATS] washout revenue summary`, {
       days,
@@ -2656,13 +2714,13 @@ export class DatabaseStorage implements IStorage {
       platformFeeRecordCount,
       approvedWashouts,
       platformWashoutRevenueCents,
-      platformWashoutRevenue: paymentSummary.platformWashoutRevenue,
-      driverTipTotal: paymentSummary.driverTipTotal,
-      billedWashouts: paymentSummary.billedWashouts,
-      pendingWashouts: paymentSummary.pendingWashouts,
-      failedWashouts: paymentSummary.failedWashouts,
-      refundedWashouts: paymentSummary.refundedWashouts,
-      disputedWashouts: paymentSummary.disputedWashouts,
+      platformWashoutRevenue,
+      driverTipTotal,
+      billedWashouts,
+      pendingWashouts,
+      failedWashouts,
+      refundedWashouts,
+      disputedWashouts,
       lotteryTicketCount,
       lotteryDriverCount,
     });
@@ -2672,21 +2730,23 @@ export class DatabaseStorage implements IStorage {
       totalWashouts: Number(stats.totalWashouts),
       totalDrivers: Number(stats.totalDrivers),
       totalOwners: Number(ownerCount),
-      platformWashoutRevenue: paymentSummary.platformWashoutRevenue,
+      platformWashoutRevenue,
       platformWashoutRevenueCents,
       platformFeeRecordCount,
       approvedWashouts,
-      driverTipTotal: paymentSummary.driverTipTotal,
-      billedWashouts: paymentSummary.billedWashouts,
-      pendingWashouts: paymentSummary.pendingWashouts,
-      failedWashouts: paymentSummary.failedWashouts,
-      refundedWashouts: paymentSummary.refundedWashouts,
-      disputedWashouts: paymentSummary.disputedWashouts,
+      driverTipTotal,
+      billedWashouts,
+      pendingWashouts,
+      failedWashouts,
+      refundedWashouts,
+      disputedWashouts,
       lotteryTicketCount,
       lotteryDriverCount,
       subscriptionRevenue: subscriptionRevenue,
       activeLicenses: Number(subStats.activeLicenses),
       licenseRenewals: Number(subStats.licenseRenewals),
+      washoutRevenueError,
+      lotteryMetricsError,
     };
   }
 

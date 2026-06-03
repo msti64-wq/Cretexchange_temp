@@ -3682,6 +3682,75 @@ test("admin dashboard surfaces repaired washout fee and lottery metrics", async 
   );
 });
 
+test("admin dashboard surfaces metric-specific errors for core stats without global fallback", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getSystemStats: async () => ({
+        totalEarnings: 0,
+        totalWashouts: 0,
+        totalDrivers: 0,
+        totalOwners: 0,
+        platformWashoutRevenue: null,
+        platformWashoutRevenueCents: null,
+        platformFeeRecordCount: null,
+        approvedWashouts: null,
+        driverTipTotal: null,
+        billedWashouts: null,
+        pendingWashouts: null,
+        failedWashouts: null,
+        refundedWashouts: null,
+        disputedWashouts: null,
+        lotteryTicketCount: 0,
+        lotteryDriverCount: 0,
+        subscriptionRevenue: 0,
+        activeLicenses: 0,
+        licenseRenewals: 0,
+        washoutRevenueError: "Unable to load washout revenue metrics.",
+      }),
+      getPaymentsAwaitingDriverStripe: async () => [],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/dashboard");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const body = res.body as {
+        weekStats?: {
+          platformWashoutRevenue?: number | null;
+          platformWashoutRevenueCents?: number | null;
+          platformFeeRecordCount?: number | null;
+          approvedWashouts?: number | null;
+          washoutRevenueError?: string;
+        };
+        dashboardErrors?: Record<string, string>;
+      };
+      assert.equal(body.weekStats?.platformWashoutRevenue, null);
+      assert.equal(body.weekStats?.platformWashoutRevenueCents, null);
+      assert.equal(body.weekStats?.platformFeeRecordCount, null);
+      assert.equal(body.weekStats?.approvedWashouts, null);
+      assert.equal(body.weekStats?.washoutRevenueError, "Unable to load washout revenue metrics.");
+      assert.ok(!body.dashboardErrors?.weekStats);
+    },
+  );
+});
+
 test("admin dashboard keeps core metrics online when optional widgets fail", async () => {
   const { app, gets } = createRouteRegistry();
 
