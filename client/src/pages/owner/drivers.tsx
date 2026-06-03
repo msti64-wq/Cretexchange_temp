@@ -54,14 +54,14 @@ export default function OwnerDrivers() {
       acc[driverId] = {
         driver: activity.driver?.user,
         totalWashouts: 0,
-        totalEarnings: 0,
+        totalPendingCharges: 0,
         locations: new Set(),
         lastActivity: null,
       };
     }
 
     acc[driverId].totalWashouts += 1;
-    acc[driverId].totalEarnings += Number(activity.amount);
+    acc[driverId].totalPendingCharges += Number(activity.amount);
     acc[driverId].locations.add(activity.location?.name);
     
     if (!acc[driverId].lastActivity || new Date(activity.checkInTime) > new Date(acc[driverId].lastActivity)) {
@@ -126,13 +126,13 @@ export default function OwnerDrivers() {
             <div className="text-xs text-muted-foreground">Completed</div>
           </StatCard>
 
-          <StatCard title="Revenue" className="text-center">
-            <div className="text-2xl font-bold text-accent" data-testid="text-total-revenue">
+          <StatCard title="Pending Charges" className="text-center">
+            <div className="text-2xl font-bold text-accent" data-testid="text-total-pending-charges">
               {formatCurrency(
                 filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0)
               )}
             </div>
-            <div className="text-xs text-muted-foreground">Generated</div>
+            <div className="text-xs text-muted-foreground">Owner obligation before billing</div>
           </StatCard>
         </div>
 
@@ -235,8 +235,8 @@ export default function OwnerDrivers() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xl font-bold text-accent mb-1" data-testid={`text-driver-earnings-${index}`}>
-                        {formatCurrency(driverStat.totalEarnings)}
+                      <div className="text-xl font-bold text-accent mb-1" data-testid={`text-driver-pending-charges-${index}`}>
+                        {formatCurrency(driverStat.totalPendingCharges)}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         <span data-testid={`text-driver-washouts-${index}`}>
@@ -260,7 +260,7 @@ export default function OwnerDrivers() {
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Avg: {formatCurrency(driverStat.totalEarnings / driverStat.totalWashouts)}
+                      Avg: {formatCurrency(driverStat.totalPendingCharges / driverStat.totalWashouts)}
                     </div>
                   </div>
                 </CardContent>
