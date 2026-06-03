@@ -3386,6 +3386,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const owner = await storage.getOwner(userId);
       const user = await storage.getUser(userId);
+      const authRole = req.user?.role || user?.role || null;
+
+      console.info("Owner location create route called:", {
+        userId,
+        authRole,
+        hasRequestBody: Boolean(req.body),
+        requestedName: req.body?.name || null,
+        requestedStreet: req.body?.street || null,
+        requestedCity: req.body?.city || null,
+        requestedState: req.body?.state || null,
+        requestedZip: req.body?.zip || null,
+        hasLatitude: req.body?.latitude !== undefined && req.body?.latitude !== null && req.body?.latitude !== "",
+        hasLongitude: req.body?.longitude !== undefined && req.body?.longitude !== null && req.body?.longitude !== "",
+      });
       
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
@@ -3403,6 +3417,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const locationAccessState = resolveOwnerLocationAccessState(owner, user);
+      console.info("Owner location access resolved:", {
+        userId,
+        ownerId: owner.id,
+        profileCompleted: locationAccessState.profileCompleted,
+        paymentMethodOnFile: locationAccessState.paymentMethodOnFile,
+        canManageLocations: locationAccessState.canManageLocations,
+        missingFields: locationAccessState.missingProfileFields,
+      });
       if (!locationAccessState.canManageLocations) {
         return res.status(403).json({
           message: locationAccessState.blockingMessage || "Please complete your owner profile and add a payment method before setting up washout locations.",
@@ -3461,25 +3483,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (dbError.category === "schema_mismatch" || dbError.category === "enum_mismatch") {
         return res.status(500).json({
-          message: "Location creation is missing a required database field. Please deploy the latest migration.",
+          message: dbError.column
+            ? `Location creation is missing the required database field '${dbError.column}'. Please deploy the latest migration.`
+            : "Location creation is missing a required database field. Please deploy the latest migration.",
         });
       }
 
       if (dbError.category === "null_violation") {
         return res.status(400).json({
-          message: "Location data is incomplete. Please check the required fields and try again.",
+          message: dbError.column
+            ? `Location data is incomplete. Missing required field '${dbError.column}'.`
+            : "Location data is incomplete. Please check the required fields and try again.",
         });
       }
 
       if (dbError.category === "foreign_key_violation") {
         return res.status(400).json({
-          message: "The selected owner or location reference is invalid. Please try again.",
+          message: dbError.constraint
+            ? `The location could not be saved because a related record is invalid (${dbError.constraint}).`
+            : "The selected owner or location reference is invalid. Please try again.",
         });
       }
 
       if (dbError.category === "unique_violation" || dbError.category === "constraint_violation") {
         return res.status(400).json({
-          message: "Location could not be created because of a database constraint. Please try again.",
+          message: dbError.constraint
+            ? `Location could not be created because of a database constraint (${dbError.constraint}).`
+            : "Location could not be created because of a database constraint. Please try again.",
         });
       }
 

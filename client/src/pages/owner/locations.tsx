@@ -482,14 +482,18 @@ export default function OwnerLocations() {
                 size="sm" 
                 data-testid="button-add-location" 
                 className="bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
-                disabled={!membershipState.dashboardAccessAllowed || !locationAccessState.canManageLocations}
+                disabled={!membershipState.dashboardAccessAllowed}
                 title={!membershipState.dashboardAccessAllowed
                   ? membershipState.accountStatusMessage || "Your account is pending review."
-                  : !locationAccessState.canManageLocations
-                  ? locationAccessState.blockingMessage || "Complete your owner profile and add a payment method before setting up locations."
                   : ""}
                 onClick={() => {
-                  console.log('Membership status:', membershipState, 'Location access:', locationAccessState);
+                  if (!membershipState.dashboardAccessAllowed) {
+                    toast({
+                      title: "Account Review Required",
+                      description: membershipState.accountStatusMessage || "Your account is pending review.",
+                      variant: "destructive",
+                    });
+                  }
                 }}
               >
                 <Plus className="w-4 h-4 mr-1" />
