@@ -3383,7 +3383,7 @@ test("owner billing skips cleanly when there are no billable washouts", async ()
   assert.equal(fixture.getChargeCount(), 0);
 });
 
-test("admin lottery overview and draw alias require admin access", async () => {
+test("superadmin lottery endpoints return data and draw alias is registered", async () => {
   const { app, gets, posts } = createRouteRegistry();
 
   await withPatchedStorage(
@@ -3420,6 +3420,30 @@ test("admin lottery overview and draw alias require admin access", async () => {
       assert.equal((overviewRes.body as { totalTickets?: number }).totalTickets, 3);
       assert.equal((overviewRes.body as { driversEntered?: number }).driversEntered, 1);
 
+      const totalsRoute = gets.get("/api/admin/lottery/totals");
+      assert.equal(typeof totalsRoute, "function");
+      const totalsRes = createResponse();
+      await totalsRoute!(
+        {
+          user: { id: "admin_1" },
+          query: { month: "5", year: "2026" },
+        },
+        totalsRes,
+      );
+      assert.equal(totalsRes.statusCode, 200);
+
+      const entriesRoute = gets.get("/api/admin/lottery/entries");
+      assert.equal(typeof entriesRoute, "function");
+      const entriesRes = createResponse();
+      await entriesRoute!(
+        {
+          user: { id: "admin_1" },
+          query: { startDate: "2026-05-01T00:00:00.000Z", endDate: "2026-05-31T23:59:59.999Z" },
+        },
+        entriesRes,
+      );
+      assert.equal(entriesRes.statusCode, 200);
+
       const drawRoute = posts.get("/api/admin/lottery/draw");
       assert.equal(typeof drawRoute, "function");
       const drawRes = createResponse();
@@ -3435,16 +3459,20 @@ test("admin lottery overview and draw alias require admin access", async () => {
   );
 });
 
-test("driver cannot access admin lottery overview", async () => {
+test("driver and owner cannot access admin lottery endpoints", async () => {
   const { app, gets } = createRouteRegistry();
 
   await withPatchedStorage(
     {
-      getUser: async () => ({
-        id: "driver_user_1",
-        username: "driver1",
-        role: "driver",
-      }),
+      getUser: async (id: string) => {
+        if (id === "admin_1") {
+          return { id, username: "admin1", role: "super_admin" } as any;
+        }
+        if (id === "owner_user_1") {
+          return { id, username: "owner1", role: "owner" } as any;
+        }
+        return { id, username: "driver1", role: "driver" } as any;
+      },
     },
     async () => {
       const { registerRoutes } = await import("../server/routes");
@@ -3452,15 +3480,19 @@ test("driver cannot access admin lottery overview", async () => {
       const route = gets.get("/api/admin/lottery");
       assert.equal(typeof route, "function");
 
-      const res = createResponse();
-      await route!(
-        {
-          user: { id: "driver_user_1" },
-        },
-        res,
-      );
-
-      assert.equal(res.statusCode, 403);
+      for (const user of [
+        { id: "driver_user_1", role: "driver" },
+        { id: "owner_user_1", role: "owner" },
+      ]) {
+        const res = createResponse();
+        await route!(
+          {
+            user: { id: user.id },
+          },
+          res,
+        );
+        assert.equal(res.statusCode, 403);
+      }
     },
   );
 });

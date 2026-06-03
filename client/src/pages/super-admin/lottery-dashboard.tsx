@@ -107,45 +107,47 @@ export default function SuperAdminLotteryDashboard() {
     return () => window.clearTimeout(timeout);
   }, [isLoading]);
 
-  const { data: months } = useQuery<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>({
+  const { data: months, error: monthsError } = useQuery<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/months'],
     enabled: !!user && user.role === 'super_admin',
     refetchOnMount: "always",
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/lottery/months');
+      return response.json();
+    },
   });
 
-  const { data: allDrawings } = useQuery<any[]>({
+  const { data: allDrawings, error: drawingsError } = useQuery<any[]>({
     queryKey: ['/api/admin/lottery/drawings'],
     enabled: !!user && user.role === 'super_admin',
     refetchOnMount: "always",
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/lottery/drawings');
+      return response.json();
+    },
   });
 
-  const { data: lotteryOverview } = useQuery<any>({
+  const { data: lotteryOverview, error: lotteryOverviewError } = useQuery<any>({
     queryKey: ['/api/admin/lottery'],
     enabled: !!user && user.role === 'super_admin',
     queryFn: async () => {
-      const response = await fetch('/api/admin/lottery', {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch lottery overview');
+      const response = await apiRequest('GET', '/api/admin/lottery');
       return response.json();
     },
     refetchOnMount: "always",
   });
 
-  const { data: totals, isLoading: totalsLoading, refetch: refetchTotals } = useQuery<{ driverId: string; driverName: string; totalEntries: number }[]>({
+  const { data: totals, isLoading: totalsLoading, refetch: refetchTotals, error: totalsError } = useQuery<{ driverId: string; driverName: string; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/totals', selectedMonth, selectedYear],
     enabled: !!user && user.role === 'super_admin',
     queryFn: async () => {
-      const response = await fetch(`/api/admin/lottery/totals?month=${selectedMonth}&year=${selectedYear}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch totals');
+      const response = await apiRequest('GET', `/api/admin/lottery/totals?month=${selectedMonth}&year=${selectedYear}`);
       return response.json();
     },
     refetchOnMount: "always",
   });
 
-  const { data: entries, isLoading: entriesLoading } = useQuery<any[]>({
+  const { data: entries, isLoading: entriesLoading, error: entriesError } = useQuery<any[]>({
     queryKey: ['/api/admin/lottery/entries', selectedMonth, selectedYear],
     enabled: !!user && user.role === 'super_admin',
     queryFn: async () => {
@@ -154,10 +156,7 @@ export default function SuperAdminLotteryDashboard() {
       const params = new URLSearchParams();
       params.append('startDate', startDate.toISOString());
       params.append('endDate', endDate.toISOString());
-      const response = await fetch(`/api/admin/lottery/entries?${params.toString()}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch entries');
+      const response = await apiRequest('GET', `/api/admin/lottery/entries?${params.toString()}`);
       return response.json();
     },
     refetchOnMount: "always",
@@ -252,6 +251,7 @@ export default function SuperAdminLotteryDashboard() {
   const selectedDrawing = allDrawings?.find(
     d => d.lotteryMonth === selectedMonth && d.lotteryYear === selectedYear
   ) ?? null;
+  const hasLotteryQueryError = Boolean(monthsError || drawingsError || lotteryOverviewError || totalsError || entriesError);
 
   const PAYOUT_LABEL: Record<string, string> = {
     gift_card: 'Prepaid Debit Card',
@@ -419,6 +419,17 @@ export default function SuperAdminLotteryDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto p-4 space-y-6">
+        {hasLotteryQueryError && (
+          <Card className="border-amber-200 bg-amber-50/80 dark:border-amber-900/30 dark:bg-amber-950/20">
+            <CardContent className="p-4">
+              <p className="font-semibold text-amber-900 dark:text-amber-100">Lottery data partially unavailable</p>
+              <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+                One or more lottery queries failed to load. Showing whatever data is available instead of an empty page.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {lotteryOverview && (
           <Card className={lotteryOverview.status?.enabled ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/30 dark:bg-emerald-950/20" : "border-amber-200 bg-amber-50/60 dark:border-amber-900/30 dark:bg-amber-950/20"}>
             <CardContent className="p-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
