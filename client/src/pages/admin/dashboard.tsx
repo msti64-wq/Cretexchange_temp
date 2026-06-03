@@ -64,6 +64,7 @@ export default function AdminDashboard() {
   const { data: dashboardData, isLoading, error } = useQuery<any>({
     queryKey: ['/api/admin/dashboard'],
     retry: false,
+    refetchInterval: 30000,
   });
 
   const { data: messages, isLoading: messagesLoading } = useQuery<any>({

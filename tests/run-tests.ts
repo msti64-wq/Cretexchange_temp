@@ -3672,12 +3672,28 @@ test("admin dashboard surfaces repaired washout fee and lottery metrics", async 
           lotteryTicketCount?: number;
           lotteryDriverCount?: number;
         };
+        dashboardMeta?: {
+          httpStatus?: number;
+          coreSources?: {
+            platformWashoutRevenue?: string;
+            lotteryTickets?: string;
+          };
+          readsFeeCentsPlatform?: boolean;
+          readsDriverLotteryEntries?: boolean;
+          weekStatsWindow?: { days?: number };
+        };
       };
       assert.equal(body.weekStats?.platformWashoutRevenue, 25);
       assert.equal(body.weekStats?.platformWashoutRevenueCents, 2500);
       assert.equal(body.weekStats?.platformFeeRecordCount, 5);
       assert.equal(body.weekStats?.lotteryTicketCount, 5);
       assert.equal(body.weekStats?.lotteryDriverCount, 3);
+      assert.equal(body.dashboardMeta?.httpStatus, 200);
+      assert.equal(body.dashboardMeta?.coreSources?.platformWashoutRevenue, "washout_activities.fee_cents_platform");
+      assert.equal(body.dashboardMeta?.coreSources?.lotteryTickets, "driver_lottery_entries");
+      assert.equal(body.dashboardMeta?.readsFeeCentsPlatform, true);
+      assert.equal(body.dashboardMeta?.readsDriverLotteryEntries, true);
+      assert.equal(body.dashboardMeta?.weekStatsWindow?.days, 7);
     },
   );
 });

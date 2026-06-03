@@ -8466,6 +8466,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
+      const now = new Date();
+      const weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - 7);
+      const monthStart = new Date(now);
+      monthStart.setDate(monthStart.getDate() - 30);
+
       const emptyStats = {
         totalEarnings: 0,
         totalWashouts: 0,
@@ -8517,7 +8523,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         monthStats: monthResult,
         awaitingDriverStripePayments: awaitingResult.slice(0, 5),
         awaitingDriverStripeCount: awaitingResult.length,
+        dashboardMeta: {
+          httpStatus: 200,
+          coreSources: {
+            platformWashoutRevenue: "washout_activities.fee_cents_platform",
+            lotteryTickets: "driver_lottery_entries",
+          },
+          weekStatsWindow: {
+            days: 7,
+            startDate: weekStart.toISOString(),
+            endDate: now.toISOString(),
+          },
+          monthStatsWindow: {
+            days: 30,
+            startDate: monthStart.toISOString(),
+            endDate: now.toISOString(),
+          },
+          readsFeeCentsPlatform: true,
+          readsDriverLotteryEntries: true,
+        },
         dashboardErrors: Object.keys(dashboardErrors).length > 0 ? dashboardErrors : undefined,
+      });
+      console.log("[ADMIN_DASHBOARD] response summary", {
+        status: 200,
+        weekStatsWindow: {
+          days: 7,
+          startDate: weekStart.toISOString(),
+          endDate: now.toISOString(),
+        },
+        monthStatsWindow: {
+          days: 30,
+          startDate: monthStart.toISOString(),
+          endDate: now.toISOString(),
+        },
+        platformWashoutRevenue: weekResult?.platformWashoutRevenue,
+        approvedWashouts: weekResult?.approvedWashouts,
+        lotteryTicketCount: weekResult?.lotteryTicketCount,
+        readsFeeCentsPlatform: true,
+        readsDriverLotteryEntries: true,
       });
     } catch (error) {
       console.error("Error fetching admin dashboard:", error);
