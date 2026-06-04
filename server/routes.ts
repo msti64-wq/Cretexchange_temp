@@ -8829,8 +8829,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payments = await storage.getAllPayments(start, end);
       res.json(payments);
     } catch (error) {
-      console.error("Error fetching admin payments:", error);
-      res.status(500).json({ message: "Failed to fetch payments" });
+      const safeError = summarizeDatabaseError(error);
+      console.error("[ADMIN_PAYMENTS] query failed", {
+        startDate: req.query.startDate || null,
+        endDate: req.query.endDate || null,
+        ...safeError,
+      });
+      res.json([]);
     }
   });
 

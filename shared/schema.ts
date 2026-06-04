@@ -394,7 +394,6 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   processingFee: decimal("processing_fee", { precision: 10, scale: 2 }).notNull(),
   washoutServiceFee: decimal("washout_service_fee", { precision: 10, scale: 2 }).notNull().default("8.00"),
-  tipAmountCents: integer("tip_amount_cents"), // Optional tip from owner to driver in cents
   payoutStatus: varchar("payout_status").notNull().default("not_started"),
   deferReason: text("defer_reason"),
   deferredAt: timestamp("deferred_at"),
@@ -1136,7 +1135,11 @@ export type Owner = typeof owners.$inferSelect;
 export type WashoutLocation = typeof washoutLocations.$inferSelect;
 export type WashoutActivity = typeof washoutActivities.$inferSelect;
 export type WashoutPhoto = typeof washoutPhotos.$inferSelect;
-export type Payment = typeof payments.$inferSelect;
+export type Payment = typeof payments.$inferSelect & {
+  tipAmountCents?: number | null;
+  washoutServiceFee?: string;
+  platformFee?: string;
+};
 export type Notification = typeof notifications.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 
@@ -1147,7 +1150,9 @@ export type InsertOwner = z.infer<typeof insertOwnerSchema>;
 export type InsertWashoutLocation = z.infer<typeof insertWashoutLocationSchema>;
 export type InsertWashoutActivity = z.infer<typeof insertWashoutActivitySchema>;
 export type InsertWashoutPhoto = z.infer<typeof insertWashoutPhotoSchema>;
-export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type InsertPayment = z.infer<typeof insertPaymentSchema> & {
+  tipAmountCents?: number | null;
+};
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;

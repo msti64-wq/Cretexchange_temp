@@ -1,3 +1,2 @@
-ALTER TABLE payments
-ADD COLUMN IF NOT EXISTS tip_amount_cents integer;
-
+-- Legacy payment-tip migration retired.
+-- Driver incentive tips are now sourced from washout_locations.driver_incentive_tip.

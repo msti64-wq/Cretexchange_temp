@@ -3868,6 +3868,163 @@ test("admin dashboard keeps core metrics online when optional widgets fail", asy
   );
 });
 
+test("admin payments endpoint stays online when the payments query fails", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getAllPayments: async () => {
+        throw new Error("payments query failed");
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/payments");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+          query: {},
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.deepEqual(res.body, []);
+    },
+  );
+});
+
+test("admin payments endpoint returns an empty array when there are no payment rows", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getAllPayments: async () => [],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/payments");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+          query: {},
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.deepEqual(res.body, []);
+    },
+  );
+});
+
+test("admin payments endpoint returns minimal payment rows without legacy fields", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getAllPayments: async () => [
+        {
+          id: "payment_1",
+          driverId: "driver_1",
+          ownerId: "owner_1",
+          activityId: "activity_1",
+          amount: "25.00",
+          processingFee: "5.00",
+          platformFee: "5.00",
+          tipAmountCents: 150,
+          status: "completed",
+          stripePaymentIntentId: "pi_123",
+          stripeChargeId: "ch_123",
+          createdAt: new Date("2025-06-01T12:00:00.000Z"),
+          paidAt: new Date("2025-06-01T12:05:00.000Z"),
+          driver: {
+            id: "driver_1",
+            userId: "driver_user_1",
+            truckNumber: "Truck 1",
+            user: {
+              id: "driver_user_1",
+              firstName: "Driver",
+              lastName: "One",
+              email: "driver@example.com",
+            },
+          },
+          owner: {
+            id: "owner_1",
+            userId: "owner_user_1",
+            companyName: "Alpha Concrete",
+            user: {
+              id: "owner_user_1",
+              firstName: "Owner",
+              lastName: "One",
+              email: "owner@example.com",
+            },
+          },
+          activity: {
+            id: "activity_1",
+            locationId: "location_1",
+            checkInTime: new Date("2025-06-01T11:00:00.000Z"),
+            status: "verified",
+            amount: "20.00",
+            notes: "approved washout",
+          },
+        } as any,
+      ],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/payments");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+          query: {},
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal(Array.isArray(res.body), true);
+      assert.equal((res.body as Array<{ id?: string }>).length, 1);
+      const payment = (res.body as Array<any>)[0];
+      assert.equal(payment.id, "payment_1");
+      assert.equal(payment.platformFee, "5.00");
+      assert.equal(payment.tipAmountCents, 150);
+      assert.equal(payment.washoutServiceFee, undefined);
+      assert.equal(payment.businessDate, undefined);
+      assert.equal(payment.driver?.user?.firstName, "Driver");
+      assert.equal(payment.owner?.companyName, "Alpha Concrete");
+      assert.equal(payment.activity?.id, "activity_1");
+    },
+  );
+});
+
 test("admin dashboard returns partial data when one widget query fails", async () => {
   const { app, gets } = createRouteRegistry();
 

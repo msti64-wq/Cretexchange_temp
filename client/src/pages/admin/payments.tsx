@@ -98,7 +98,7 @@ export default function AdminPayments() {
     );
   }
 
-  // Generate mock payment data for development when no real payments exist
+  // Generate mock payment data only in development when no real payments exist
   const generateMockPayments = () => {
     const mockPayments = [];
     const statuses = ['completed', 'pending', 'failed'];
@@ -138,7 +138,9 @@ export default function AdminPayments() {
   };
 
   const realPayments = payments || [];
-  const displayPayments = realPayments.length > 0 ? realPayments : generateMockPayments();
+  const displayPayments = realPayments.length > 0
+    ? realPayments
+    : (import.meta.env.DEV ? generateMockPayments() : []);
 
   const filteredPayments = displayPayments.filter((payment: any) => {
     const matchesStatus = filterStatus === "all" || payment.status === filterStatus;

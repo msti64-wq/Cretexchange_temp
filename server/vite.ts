@@ -41,7 +41,20 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
+  const isAssetOrApiRequest = (req: { path?: string; originalUrl?: string }) => {
+    const path = req.path || req.originalUrl || "";
+    if (!path) return false;
+    if (path.startsWith("/api/")) return true;
+    if (path.startsWith("/assets/") || path.startsWith("/icons/")) return true;
+    if (path === "/manifest.json" || path === "/sw.js") return true;
+    return /\.[a-z0-9]+$/i.test(path);
+  };
+
   app.use("*", async (req, res, next) => {
+    if (isAssetOrApiRequest(req)) {
+      return next();
+    }
+
     const url = req.originalUrl;
 
     try {
@@ -82,8 +95,20 @@ export function serveStatic(app: Express) {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  const isAssetOrApiRequest = (req: { path?: string; originalUrl?: string }) => {
+    const path = req.path || req.originalUrl || "";
+    if (!path) return false;
+    if (path.startsWith("/api/")) return true;
+    if (path.startsWith("/assets/") || path.startsWith("/icons/")) return true;
+    if (path === "/manifest.json" || path === "/sw.js") return true;
+    return /\.[a-z0-9]+$/i.test(path);
+  };
+
+  // fall through to index.html for SPA routes only
+  app.use("*", (req, res, next) => {
+    if (isAssetOrApiRequest(req)) {
+      return next();
+    }
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
