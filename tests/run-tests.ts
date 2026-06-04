@@ -3868,6 +3868,74 @@ test("admin dashboard keeps core metrics online when optional widgets fail", asy
   );
 });
 
+test("admin dashboard stays online when awaiting driver stripe query hits missing payout_status column", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getSystemStats: async () => ({
+        totalEarnings: 0,
+        totalWashouts: 0,
+        totalDrivers: 0,
+        totalOwners: 0,
+        platformWashoutRevenue: 25,
+        platformWashoutRevenueCents: 2500,
+        platformFeeRecordCount: 5,
+        approvedWashouts: 5,
+        driverTipTotal: 0,
+        billedWashouts: 5,
+        pendingWashouts: 0,
+        failedWashouts: 0,
+        refundedWashouts: 0,
+        disputedWashouts: 0,
+        lotteryTicketCount: 5,
+        lotteryDriverCount: 3,
+        subscriptionRevenue: 0,
+        activeLicenses: 0,
+        licenseRenewals: 0,
+      }),
+      getPaymentsAwaitingDriverStripe: async () => {
+        throw new Error("column payments.payout_status does not exist");
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/dashboard");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const body = res.body as {
+        weekStats?: {
+          platformWashoutRevenue?: number;
+          approvedWashouts?: number;
+          lotteryTicketCount?: number;
+        };
+        awaitingDriverStripeCount?: number;
+        dashboardErrors?: Record<string, string>;
+      };
+      assert.equal(body.weekStats?.platformWashoutRevenue, 25);
+      assert.equal(body.weekStats?.approvedWashouts, 5);
+      assert.equal(body.weekStats?.lotteryTicketCount, 5);
+      assert.equal(body.awaitingDriverStripeCount, 0);
+      assert.ok(body.dashboardErrors?.awaitingDriverStripePayments);
+    },
+  );
+});
+
 test("admin billing settings endpoint exposes daily weekly monthly cadence options", async () => {
   const { app, gets } = createRouteRegistry();
 
