@@ -4051,7 +4051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get owner's billing settings for business date calculation
       const billingSettings = await storage.getOwnerBillingSettings(owner.id);
-      let billingCadence: 'immediate' | 'daily' | 'weekly' = 'immediate';
+      let billingCadence: 'immediate' | 'daily' | 'weekly' | 'monthly' = 'weekly';
       let businessDate = new Date().toISOString().slice(0, 10);
       if (billingSettings) {
         billingCadence = billingSettings.billingCadence;
@@ -4162,7 +4162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // For daily/weekly batch processing, create pending payment and skip immediate processing
-      if (billingCadence === 'daily' || billingCadence === 'weekly') {
+      if (billingCadence === 'daily' || billingCadence === 'weekly' || billingCadence === 'monthly') {
         console.log(`📅 Owner ${owner.id} uses ${billingCadence} billing cadence - creating pending payment for batch processing`);
         approvalResponseMessage = "Washout approved. Payment will be processed in the next billing run.";
         approvalResponsePaymentStatus = "pending";
@@ -10087,9 +10087,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         owners: billingSettings,
         billingCadenceOptions: [
-          { value: 'immediate', label: 'Immediate (process each washout instantly)' },
+          { value: 'immediate', label: 'Immediate (real-time processing)' },
           { value: 'daily', label: 'Daily (batch at end of day)' },
-          { value: 'weekly', label: 'Weekly (batch at end of week)' }
+          { value: 'weekly', label: 'Weekly (batch at end of week)' },
+          { value: 'monthly', label: 'Monthly (batch at end of month)' }
         ],
         dayOfWeekOptions: [
           { value: 0, label: 'Sunday' },
@@ -10158,8 +10159,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { billingCadence, billingCutoffTime, billingTimezone, billingDayOfWeek } = req.body;
 
       // Validate billing cadence
-      if (billingCadence && !['immediate', 'daily', 'weekly'].includes(billingCadence)) {
-        return res.status(400).json({ message: "Invalid billing cadence. Must be 'immediate', 'daily', or 'weekly'" });
+      if (billingCadence && !['immediate', 'daily', 'weekly', 'monthly'].includes(billingCadence)) {
+        return res.status(400).json({ message: "Invalid billing cadence. Must be 'immediate', 'daily', 'weekly', or 'monthly'" });
       }
 
       // Validate day of week (0-6)
@@ -10216,8 +10217,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Billing cadence is required for bulk update" });
       }
 
-      if (!['immediate', 'daily', 'weekly'].includes(billingCadence)) {
-        return res.status(400).json({ message: "Invalid billing cadence. Must be 'immediate', 'daily', or 'weekly'" });
+      if (!['immediate', 'daily', 'weekly', 'monthly'].includes(billingCadence)) {
+        return res.status(400).json({ message: "Invalid billing cadence. Must be 'immediate', 'daily', 'weekly', or 'monthly'" });
       }
 
       // Get all owners

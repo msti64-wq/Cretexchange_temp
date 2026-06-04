@@ -3868,6 +3868,158 @@ test("admin dashboard keeps core metrics online when optional widgets fail", asy
   );
 });
 
+test("admin billing settings endpoint exposes daily weekly monthly cadence options", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getAllOwnersBillingSettings: async () => [
+        {
+          ownerId: "owner_1",
+          companyName: "Owner Co",
+          username: "owner1",
+          billingCadence: "weekly",
+          billingCutoffTime: "23:59:00",
+          billingTimezone: "America/Chicago",
+          billingDayOfWeek: 1,
+        },
+      ],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/billing/settings");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+          query: {},
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const body = res.body as {
+        owners?: Array<{ billingCadence?: string }>;
+        billingCadenceOptions?: Array<{ value?: string }>;
+      };
+      assert.equal(body.owners?.[0]?.billingCadence, "weekly");
+      assert.deepEqual(body.billingCadenceOptions?.map((option) => option.value), ["immediate", "daily", "weekly", "monthly"]);
+    },
+  );
+});
+
+test("admin billing settings update accepts daily weekly and monthly cadences", async () => {
+  const { app, puts } = createRouteRegistry();
+  const updates: Array<Record<string, unknown>> = [];
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getOwnerById: async () => ({
+        id: "owner_1",
+        userId: "owner_user_1",
+        companyName: "Owner Co",
+      }),
+      updateOwnerBillingSettings: async (_ownerId: string, settings: Record<string, unknown>) => {
+        updates.push(settings);
+        return {
+          id: "owner_1",
+          userId: "owner_user_1",
+          companyName: "Owner Co",
+          billingCadence: settings.billingCadence || "weekly",
+          billingCutoffTime: settings.billingCutoffTime || "23:59:00",
+          billingTimezone: settings.billingTimezone || "America/Chicago",
+          billingDayOfWeek: settings.billingDayOfWeek ?? 0,
+        } as any;
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/admin/billing/settings/:ownerId");
+      assert.equal(typeof route, "function");
+
+      for (const billingCadence of ["immediate", "daily", "weekly", "monthly"] as const) {
+        const res = createResponse();
+        await route!(
+          {
+            params: { ownerId: "owner_1" },
+            user: { id: "admin_1" },
+            body: {
+              billingCadence,
+              billingCutoffTime: "23:59",
+              billingTimezone: "America/Chicago",
+              billingDayOfWeek: 1,
+            },
+          },
+          res,
+        );
+
+        assert.equal(res.statusCode, 200);
+        const body = res.body as { settings?: { billingCadence?: string } };
+        assert.equal(body.settings?.billingCadence, billingCadence);
+      }
+
+      assert.deepEqual(
+        updates.map((entry) => entry.billingCadence),
+        ["immediate", "daily", "weekly", "monthly"],
+      );
+    },
+  );
+});
+
+test("admin billing settings rejects invalid cadence values", async () => {
+  const { app, puts } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getOwnerById: async () => ({
+        id: "owner_1",
+        userId: "owner_user_1",
+        companyName: "Owner Co",
+      }),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/admin/billing/settings/:ownerId");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { ownerId: "owner_1" },
+          user: { id: "admin_1" },
+          body: {
+            billingCadence: "hourly",
+          },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 400);
+      assert.match(String((res.body as { message?: string }).message || ""), /immediate.*daily.*weekly.*monthly/i);
+    },
+  );
+});
+
 test("admin payments endpoint stays online when the payments query fails", async () => {
   const { app, gets } = createRouteRegistry();
 

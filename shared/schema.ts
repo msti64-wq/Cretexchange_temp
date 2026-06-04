@@ -57,7 +57,7 @@ export const withdrawalStatusEnum = pgEnum("withdrawal_status", ["requested", "p
 export const debitCardStatusEnum = pgEnum("debit_card_status", ["requested", "processing", "issued", "active", "blocked", "cancelled"]);
 
 // Billing system enums
-export const billingCadenceEnum = pgEnum("billing_cadence", ["immediate", "daily", "weekly"]);
+export const billingCadenceEnum = pgEnum("billing_cadence", ["immediate", "daily", "weekly", "monthly"]);
 export const batchStatusEnum = pgEnum("batch_status", ["pending", "processing", "completed", "failed", "cancelled"]);
 export const feeTypeEnum = pgEnum("fee_type", ["location_monthly", "subscription_monthly", "subscription_annual"]);
 export const feeStatusEnum = pgEnum("fee_status", ["pending", "paid", "failed", "past_due", "waived"]);
@@ -242,7 +242,7 @@ export const owners = pgTable("owners", {
   autoTopupEnabled: boolean("auto_topup_enabled").default(false),
   autoTopupAmount: decimal("auto_topup_amount", { precision: 10, scale: 2 }).default("500.00"),
   // Billing configuration for batch processing
-  billingCadence: billingCadenceEnum("billing_cadence").default("weekly"), // immediate = process right away, daily = end of day, weekly = end of week
+  billingCadence: billingCadenceEnum("billing_cadence").default("weekly"), // daily = end of day, weekly = end of week, monthly = end of month; immediate retained only for legacy records
   billingCutoffTime: varchar("billing_cutoff_time").default("23:59:00"), // Time of day for billing cutoff (HH:MM:SS)
   billingTimezone: varchar("billing_timezone").default("America/Chicago"), // Owner's timezone for billing cutoff
   billingDayOfWeek: integer("billing_day_of_week").default(0), // Day of week for weekly billing (0=Sunday, 6=Saturday)

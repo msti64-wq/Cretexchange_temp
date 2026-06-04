@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm"
 export const auditAction = pgEnum("audit_action", ['create', 'update', 'delete', 'soft_delete', 'restore'])
 export const auditEntity = pgEnum("audit_entity", ['user', 'driver', 'owner', 'location', 'washout', 'payment', 'wallet', 'withdrawal', 'debit_card', 'billing'])
 export const batchStatus = pgEnum("batch_status", ['pending', 'processing', 'completed', 'failed', 'cancelled'])
-export const billingCadence = pgEnum("billing_cadence", ['daily'])
+export const billingCadence = pgEnum("billing_cadence", ['immediate', 'daily', 'weekly', 'monthly'])
 export const debitCardStatus = pgEnum("debit_card_status", ['requested', 'processing', 'issued', 'active', 'blocked', 'cancelled'])
 export const distributionFrequency = pgEnum("distribution_frequency", ['daily', 'weekly', 'biweekly', 'monthly'])
 export const feeStatus = pgEnum("fee_status", ['pending', 'paid', 'failed', 'past_due', 'waived'])
@@ -406,7 +406,7 @@ export const owners = pgTable("owners", {
 	lowBalanceThreshold: numeric("low_balance_threshold", { precision: 10, scale:  2 }).default('100.00'),
 	autoTopupEnabled: boolean("auto_topup_enabled").default(false),
 	autoTopupAmount: numeric("auto_topup_amount", { precision: 10, scale:  2 }).default('500.00'),
-	billingCadence: billingCadence("billing_cadence").default('daily'),
+	billingCadence: billingCadence("billing_cadence").default('weekly'),
 	billingCutoffTime: varchar("billing_cutoff_time").default('23:59:00'),
 	billingTimezone: varchar("billing_timezone").default('America/Chicago'),
 	subscriptionPlan: subscriptionPlan("subscription_plan").default('none'),

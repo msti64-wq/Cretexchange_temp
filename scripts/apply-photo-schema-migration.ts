@@ -66,6 +66,10 @@ async function main() {
   await client.connect();
 
   try {
+    await client.query(`
+      ALTER TYPE "billing_cadence" ADD VALUE IF NOT EXISTS 'monthly';
+    `);
+
     await client.query("BEGIN");
 
     await client.query(`

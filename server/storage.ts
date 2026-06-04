@@ -4837,7 +4837,7 @@ export class DatabaseStorage implements IStorage {
     if (!owner) return undefined;
     
     return {
-      billingCadence: owner.billingCadence || 'daily',
+      billingCadence: owner.billingCadence || 'weekly',
       billingCutoffTime: owner.billingCutoffTime || '23:59:00',
       billingTimezone: owner.billingTimezone || 'America/Chicago',
       billingDayOfWeek: owner.billingDayOfWeek ?? 0,
@@ -4890,7 +4890,7 @@ export class DatabaseStorage implements IStorage {
       ownerId: r.ownerId,
       companyName: r.companyName || r.username,
       username: r.username,
-      billingCadence: r.billingCadence || 'daily',
+      billingCadence: r.billingCadence || 'weekly',
       billingCutoffTime: r.billingCutoffTime || '23:59:00',
       billingTimezone: r.billingTimezone || 'America/Chicago',
       billingDayOfWeek: r.billingDayOfWeek ?? 0,
@@ -4966,6 +4966,27 @@ export class DatabaseStorage implements IStorage {
     return this.calculateBusinessDate(timezone, cutoffTime);
   }
 
+  private isLastDayOfMonthInTimezone(timezone: string, referenceTime: Date = new Date()): boolean {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    }).formatToParts(referenceTime);
+
+    const year = Number(parts.find((part) => part.type === "year")?.value || 0);
+    const month = Number(parts.find((part) => part.type === "month")?.value || 0);
+    const day = Number(parts.find((part) => part.type === "day")?.value || 0);
+    if (!year || !month || !day) {
+      return false;
+    }
+
+    const current = new Date(Date.UTC(year, month - 1, day));
+    const next = new Date(current);
+    next.setUTCDate(current.getUTCDate() + 1);
+    return next.getUTCMonth() !== current.getUTCMonth();
+  }
+
   // Daily batch processing implementation
   async processDailyBatches(cutoffDate?: string): Promise<{ processed: number; failed: number; errors: string[] }> {
     const results = {
@@ -5025,9 +5046,9 @@ export class DatabaseStorage implements IStorage {
           // Check billing cadence to determine if we should process this owner
           const { billingCadence, billingDayOfWeek, billingTimezone } = billingSettings;
 
-          // Skip immediate cadence - payments processed in real-time via Stripe Connect
+          // Skip legacy immediate cadence - payments are processed in real-time via Stripe Connect
           if (billingCadence === 'immediate') {
-            console.log(`⏭️  Skipping owner ${ownerId} - immediate cadence (processed in real-time)`);
+            console.log(`⏭️  Skipping owner ${ownerId} - legacy immediate cadence (processed in real-time)`);
             continue;
           }
 
@@ -5044,7 +5065,16 @@ export class DatabaseStorage implements IStorage {
             console.log(`📅 Owner ${ownerId} - weekly cadence, today is billing day (${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][billingDayOfWeek]})`);
           }
 
-          // Calculate business date for this owner (daily or weekly)
+          if (billingCadence === 'monthly') {
+            const dueThisMonth = this.isLastDayOfMonthInTimezone(billingTimezone);
+            if (!dueThisMonth) {
+              console.log(`⏭️  Skipping owner ${ownerId} - monthly cadence, today is not the last day of the month in ${billingTimezone}`);
+              continue;
+            }
+            console.log(`📅 Owner ${ownerId} - monthly cadence, today is the last day of the month (${billingTimezone})`);
+          }
+
+          // Calculate business date for this owner (daily, weekly, or monthly)
           const ownerBusinessDate = cutoffDate || this.calculateBusinessDate(
             billingSettings.billingTimezone,
             billingSettings.billingCutoffTime

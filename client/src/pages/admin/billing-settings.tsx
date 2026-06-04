@@ -66,12 +66,14 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 function getCadenceIcon(cadence: string) {
   switch (cadence) {
-    case 'immediate':
-      return <Zap className="w-4 h-4 text-yellow-500" />;
     case 'daily':
       return <CalendarDays className="w-4 h-4 text-blue-500" />;
     case 'weekly':
       return <CalendarRange className="w-4 h-4 text-purple-500" />;
+    case 'monthly':
+      return <Calendar className="w-4 h-4 text-indigo-500" />;
+    case 'immediate':
+      return <Zap className="w-4 h-4 text-yellow-500" />;
     default:
       return <Clock className="w-4 h-4" />;
   }
@@ -79,12 +81,14 @@ function getCadenceIcon(cadence: string) {
 
 function getCadenceBadge(cadence: string) {
   switch (cadence) {
-    case 'immediate':
-      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Immediate</Badge>;
     case 'daily':
       return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Daily</Badge>;
     case 'weekly':
       return <Badge variant="secondary" className="bg-purple-100 text-purple-800">Weekly</Badge>;
+    case 'monthly':
+      return <Badge variant="secondary" className="bg-indigo-100 text-indigo-800">Monthly</Badge>;
+    case 'immediate':
+      return <Badge variant="outline">Legacy Immediate</Badge>;
     default:
       return <Badge variant="outline">{cadence}</Badge>;
   }
@@ -98,14 +102,14 @@ export default function AdminBillingSettings() {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   
   const [editForm, setEditForm] = useState({
-    billingCadence: 'daily',
+    billingCadence: 'weekly',
     billingCutoffTime: '23:59',
     billingTimezone: 'America/Chicago',
     billingDayOfWeek: 0
   });
 
   const [bulkForm, setBulkForm] = useState({
-    billingCadence: 'daily',
+    billingCadence: 'weekly',
     billingCutoffTime: '23:59',
     billingTimezone: 'America/Chicago',
     billingDayOfWeek: 0
@@ -171,7 +175,7 @@ export default function AdminBillingSettings() {
   const handleEditOwner = (owner: OwnerBillingSettings) => {
     setSelectedOwner(owner);
     setEditForm({
-      billingCadence: owner.billingCadence,
+      billingCadence: ['immediate', 'daily', 'weekly', 'monthly'].includes(owner.billingCadence) ? owner.billingCadence : 'weekly',
       billingCutoffTime: owner.billingCutoffTime.substring(0, 5),
       billingTimezone: owner.billingTimezone,
       billingDayOfWeek: owner.billingDayOfWeek
@@ -217,33 +221,21 @@ export default function AdminBillingSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5" />
-              Processing Mode Overview
+              Billing Cadence Overview
             </CardTitle>
             <CardDescription>
-              Configure when washout payments are processed for each owner
+              Configure when owner charges are requested and processed for each owner
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="p-4 rounded-lg border bg-yellow-50 dark:bg-yellow-900/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="w-5 h-5 text-yellow-600" />
-                  <span className="font-medium">Immediate</span>
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Payments processed instantly when washout is approved
-                </p>
-                <p className="text-2xl font-bold">{cadenceStats['immediate'] || 0}</p>
-                <p className="text-xs text-muted-foreground">owners</p>
-              </div>
-              
               <div className="p-4 rounded-lg border bg-blue-50 dark:bg-blue-900/20">
                 <div className="flex items-center gap-2 mb-2">
                   <CalendarDays className="w-5 h-5 text-blue-600" />
                   <span className="font-medium">Daily</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Payments batched and processed at end of day
+                  Charges batched and processed at end of day
                 </p>
                 <p className="text-2xl font-bold">{cadenceStats['daily'] || 0}</p>
                 <p className="text-xs text-muted-foreground">owners</p>
@@ -255,9 +247,21 @@ export default function AdminBillingSettings() {
                   <span className="font-medium">Weekly</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Payments batched and processed at end of week
+                  Charges batched and processed at end of week
                 </p>
                 <p className="text-2xl font-bold">{cadenceStats['weekly'] || 0}</p>
+                <p className="text-xs text-muted-foreground">owners</p>
+              </div>
+              
+              <div className="p-4 rounded-lg border bg-indigo-50 dark:bg-indigo-900/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calendar className="w-5 h-5 text-indigo-600" />
+                  <span className="font-medium">Monthly</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Charges batched and processed at end of month
+                </p>
+                <p className="text-2xl font-bold">{cadenceStats['monthly'] || 0}</p>
                 <p className="text-xs text-muted-foreground">owners</p>
               </div>
             </div>
@@ -273,12 +277,12 @@ export default function AdminBillingSettings() {
                 <DialogHeader>
                   <DialogTitle>Bulk Update Billing Settings</DialogTitle>
                   <DialogDescription>
-                    Update billing settings for all owners at once. This is useful when switching between test and production modes.
+                    Update billing cadence for all owners at once.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>Processing Mode</Label>
+                    <Label>Billing Cadence</Label>
                     <Select 
                       value={bulkForm.billingCadence} 
                       onValueChange={(v) => setBulkForm(f => ({ ...f, billingCadence: v }))}
@@ -287,53 +291,50 @@ export default function AdminBillingSettings() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="immediate">Immediate (process instantly)</SelectItem>
+                        <SelectItem value="immediate">Immediate (real-time processing)</SelectItem>
                         <SelectItem value="daily">Daily (end of day batch)</SelectItem>
                         <SelectItem value="weekly">Weekly (end of week batch)</SelectItem>
+                        <SelectItem value="monthly">Monthly (end of month batch)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
-                  {bulkForm.billingCadence !== 'immediate' && (
-                    <>
-                      <div className="space-y-2">
-                        <Label>Cutoff Time</Label>
-                        <Select 
-                          value={bulkForm.billingCutoffTime} 
-                          onValueChange={(v) => setBulkForm(f => ({ ...f, billingCutoffTime: v }))}
-                        >
-                          <SelectTrigger data-testid="select-bulk-cutoff">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="18:00">6:00 PM</SelectItem>
-                            <SelectItem value="20:00">8:00 PM</SelectItem>
-                            <SelectItem value="22:00">10:00 PM</SelectItem>
-                            <SelectItem value="23:59">11:59 PM (End of Day)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Timezone</Label>
-                        <Select 
-                          value={bulkForm.billingTimezone} 
-                          onValueChange={(v) => setBulkForm(f => ({ ...f, billingTimezone: v }))}
-                        >
-                          <SelectTrigger data-testid="select-bulk-timezone">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                            <SelectItem value="America/Chicago">Central Time</SelectItem>
-                            <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                            <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                            <SelectItem value="America/Phoenix">Arizona (no DST)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  )}
+                  <div className="space-y-2">
+                    <Label>Cutoff Time</Label>
+                    <Select 
+                      value={bulkForm.billingCutoffTime} 
+                      onValueChange={(v) => setBulkForm(f => ({ ...f, billingCutoffTime: v }))}
+                    >
+                      <SelectTrigger data-testid="select-bulk-cutoff">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="18:00">6:00 PM</SelectItem>
+                        <SelectItem value="20:00">8:00 PM</SelectItem>
+                        <SelectItem value="22:00">10:00 PM</SelectItem>
+                        <SelectItem value="23:59">11:59 PM (End of Day)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Timezone</Label>
+                    <Select 
+                      value={bulkForm.billingTimezone} 
+                      onValueChange={(v) => setBulkForm(f => ({ ...f, billingTimezone: v }))}
+                    >
+                      <SelectTrigger data-testid="select-bulk-timezone">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                        <SelectItem value="America/Chicago">Central Time</SelectItem>
+                        <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                        <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                        <SelectItem value="America/Phoenix">Arizona (no DST)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   
                   {bulkForm.billingCadence === 'weekly' && (
                     <div className="space-y-2">
@@ -351,6 +352,14 @@ export default function AdminBillingSettings() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                  )}
+                  {bulkForm.billingCadence === 'monthly' && (
+                    <div className="space-y-2">
+                      <Label>Monthly Processing</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Monthly billing runs on the last day of each month in the owner's timezone.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -377,7 +386,7 @@ export default function AdminBillingSettings() {
               Owner Billing Settings
             </CardTitle>
             <CardDescription>
-              Individual billing configuration for each location owner
+              Individual billing cadence configuration for each location owner
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -391,7 +400,7 @@ export default function AdminBillingSettings() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Owner</TableHead>
-                      <TableHead>Processing Mode</TableHead>
+                      <TableHead>Billing Cadence</TableHead>
                       <TableHead className="hidden md:table-cell">Cutoff Time</TableHead>
                       <TableHead className="hidden md:table-cell">Timezone</TableHead>
                       <TableHead className="hidden lg:table-cell">Weekly Day</TableHead>
@@ -414,18 +423,10 @@ export default function AdminBillingSettings() {
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {owner.billingCadence === 'immediate' ? (
-                            <span className="text-muted-foreground">N/A</span>
-                          ) : (
-                            owner.billingCutoffTime.substring(0, 5)
-                          )}
+                          {owner.billingCutoffTime.substring(0, 5)}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {owner.billingCadence === 'immediate' ? (
-                            <span className="text-muted-foreground">N/A</span>
-                          ) : (
-                            owner.billingTimezone.replace('America/', '')
-                          )}
+                          {owner.billingTimezone.replace('America/', '')}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           {owner.billingCadence === 'weekly' ? (
@@ -470,7 +471,7 @@ export default function AdminBillingSettings() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Processing Mode</Label>
+                <Label>Billing Cadence</Label>
                 <Select 
                   value={editForm.billingCadence} 
                   onValueChange={(v) => setEditForm(f => ({ ...f, billingCadence: v }))}
@@ -479,61 +480,59 @@ export default function AdminBillingSettings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="immediate">Immediate (process instantly)</SelectItem>
+                    <SelectItem value="immediate">Immediate (real-time processing)</SelectItem>
                     <SelectItem value="daily">Daily (end of day batch)</SelectItem>
                     <SelectItem value="weekly">Weekly (end of week batch)</SelectItem>
+                    <SelectItem value="monthly">Monthly (end of month batch)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {editForm.billingCadence === 'immediate' && 'Payments will be processed immediately when a washout is approved.'}
+                  {editForm.billingCadence === 'immediate' && 'Payments are processed in real time when washouts are approved.'}
                   {editForm.billingCadence === 'daily' && 'All payments will be batched and processed together at the end of each day.'}
                   {editForm.billingCadence === 'weekly' && 'All payments will be batched and processed together at the end of each week.'}
+                  {editForm.billingCadence === 'monthly' && 'All payments will be batched and processed together at the end of each month.'}
                 </p>
               </div>
               
-              {editForm.billingCadence !== 'immediate' && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Cutoff Time</Label>
-                    <Select 
-                      value={editForm.billingCutoffTime} 
-                      onValueChange={(v) => setEditForm(f => ({ ...f, billingCutoffTime: v }))}
-                    >
-                      <SelectTrigger data-testid="select-edit-cutoff">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="18:00">6:00 PM</SelectItem>
-                        <SelectItem value="20:00">8:00 PM</SelectItem>
-                        <SelectItem value="22:00">10:00 PM</SelectItem>
-                        <SelectItem value="23:59">11:59 PM (End of Day)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Washouts completed before this time will be included in that day's batch.
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Timezone</Label>
-                    <Select 
-                      value={editForm.billingTimezone} 
-                      onValueChange={(v) => setEditForm(f => ({ ...f, billingTimezone: v }))}
-                    >
-                      <SelectTrigger data-testid="select-edit-timezone">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                        <SelectItem value="America/Chicago">Central Time</SelectItem>
-                        <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                        <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                        <SelectItem value="America/Phoenix">Arizona (no DST)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
+              <div className="space-y-2">
+                <Label>Cutoff Time</Label>
+                <Select 
+                  value={editForm.billingCutoffTime} 
+                  onValueChange={(v) => setEditForm(f => ({ ...f, billingCutoffTime: v }))}
+                >
+                  <SelectTrigger data-testid="select-edit-cutoff">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="18:00">6:00 PM</SelectItem>
+                    <SelectItem value="20:00">8:00 PM</SelectItem>
+                    <SelectItem value="22:00">10:00 PM</SelectItem>
+                    <SelectItem value="23:59">11:59 PM (End of Day)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Washouts completed before this time will be included in that day's batch.
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Timezone</Label>
+                <Select 
+                  value={editForm.billingTimezone} 
+                  onValueChange={(v) => setEditForm(f => ({ ...f, billingTimezone: v }))}
+                >
+                  <SelectTrigger data-testid="select-edit-timezone">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                    <SelectItem value="America/Chicago">Central Time</SelectItem>
+                    <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                    <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                    <SelectItem value="America/Phoenix">Arizona (no DST)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
               {editForm.billingCadence === 'weekly' && (
                 <div className="space-y-2">
@@ -553,6 +552,14 @@ export default function AdminBillingSettings() {
                   </Select>
                   <p className="text-xs text-muted-foreground">
                     Payments will be batched and processed on this day of the week.
+                  </p>
+                </div>
+              )}
+              {editForm.billingCadence === 'monthly' && (
+                <div className="space-y-2">
+                  <Label>Monthly Processing</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Payments will be batched and processed on the last day of the month in the owner's timezone.
                   </p>
                 </div>
               )}
@@ -581,15 +588,15 @@ export default function AdminBillingSettings() {
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5" />
-              <p><strong>Immediate mode</strong> is recommended for testing - payments process instantly when washouts are approved.</p>
+              <p><strong>Daily mode</strong> batches approved washouts once per day.</p>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5" />
-              <p><strong>Daily mode</strong> is recommended for production - payments are batched and processed together, reducing transaction fees.</p>
+              <p><strong>Weekly mode</strong> batches approved washouts once per week.</p>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5" />
-              <p><strong>Weekly mode</strong> is available for owners who prefer less frequent billing cycles.</p>
+              <p><strong>Monthly mode</strong> batches approved washouts on the last day of the month.</p>
             </div>
             <div className="flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5" />
