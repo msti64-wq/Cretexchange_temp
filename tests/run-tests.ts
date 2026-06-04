@@ -201,6 +201,7 @@ test("approved washout revenue summary uses stored platform fee cents and exclud
   ]);
 
   assert.equal(summary.platformWashoutRevenue, 20);
+  assert.equal(summary.platformWashoutPaidRevenue, 15);
   assert.equal(summary.driverTipTotal, 1.5);
   assert.equal(summary.approvedWashouts, 4);
   assert.equal(summary.billedWashouts, 3);
@@ -210,22 +211,42 @@ test("approved washout revenue summary uses stored platform fee cents and exclud
   assert.equal(summary.disputedWashouts, 0);
 });
 
-test("approved washout revenue summary tolerates null platform fee rows", () => {
+test("approved washout revenue summary defaults null platform fee rows to five dollars", () => {
   const summary = summarizeWashoutRevenueFromActivities([
-    {
+    ...Array.from({ length: 7 }, () => ({
       activityStatus: "verified",
-      paymentStatus: "completed",
+      paymentStatus: "pending",
       activityFeeCentsPlatform: null,
       locationDriverIncentiveTipCents: 0,
       paymentTipAmountCents: 0,
-    },
+    })),
   ]);
 
-  assert.equal(summary.platformWashoutRevenue, 0);
+  assert.equal(summary.platformWashoutRevenue, 35);
+  assert.equal(summary.platformWashoutPaidRevenue, 0);
   assert.equal(summary.driverTipTotal, 0);
-  assert.equal(summary.approvedWashouts, 1);
-  assert.equal(summary.billedWashouts, 1);
-  assert.equal(summary.pendingWashouts, 0);
+  assert.equal(summary.approvedWashouts, 7);
+  assert.equal(summary.billedWashouts, 0);
+  assert.equal(summary.pendingWashouts, 7);
+});
+
+test("approved washout revenue summary uses explicit five dollar platform fee on seven records", () => {
+  const summary = summarizeWashoutRevenueFromActivities([
+    ...Array.from({ length: 7 }, () => ({
+      activityStatus: "approved",
+      paymentStatus: "pending",
+      activityFeeCentsPlatform: 500,
+      locationDriverIncentiveTipCents: 0,
+      paymentTipAmountCents: 0,
+    })),
+  ]);
+
+  assert.equal(summary.platformWashoutRevenue, 35);
+  assert.equal(summary.platformWashoutPaidRevenue, 0);
+  assert.equal(summary.driverTipTotal, 0);
+  assert.equal(summary.approvedWashouts, 7);
+  assert.equal(summary.billedWashouts, 0);
+  assert.equal(summary.pendingWashouts, 7);
 });
 
 test("washout ledger repair plan backfills missing platform fees and lottery tickets idempotently", () => {

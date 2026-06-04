@@ -235,6 +235,8 @@ export interface IStorage {
     totalOwners: number;
     platformWashoutRevenue: number | null;
     platformWashoutRevenueCents: number | null;
+    platformWashoutPaidRevenue: number | null;
+    platformWashoutPaidRevenueCents: number | null;
     platformFeeRecordCount: number | null;
     approvedWashouts: number | null;
     driverTipTotal: number | null;
@@ -2558,6 +2560,8 @@ export class DatabaseStorage implements IStorage {
     totalOwners: number;
     platformWashoutRevenue: number | null;
     platformWashoutRevenueCents: number | null;
+    platformWashoutPaidRevenue: number | null;
+    platformWashoutPaidRevenueCents: number | null;
     platformFeeRecordCount: number | null;
     approvedWashouts: number | null;
     driverTipTotal: number | null;
@@ -2619,6 +2623,8 @@ export class DatabaseStorage implements IStorage {
     const stats = activityStats[0] || { totalEarnings: 0, totalWashouts: 0, totalDrivers: 0 };
     const ownerCount = ownerStats[0]?.totalOwners || 0;
     const subStats = subscriptionStats[0] || { activeLicenses: 0, licenseRenewals: 0 };
+    const systemSettings = await this.getSystemSettings();
+    const defaultPlatformFeeCents = resolvePlatformFeeCents(systemSettings?.platformWashoutFee);
     let revenueRows: Array<{
       activityStatus?: string | null;
       paymentStatus?: string | null;
@@ -2629,6 +2635,8 @@ export class DatabaseStorage implements IStorage {
     }> = [];
     let platformWashoutRevenue: number | null = null;
     let platformWashoutRevenueCents: number | null = null;
+    let platformWashoutPaidRevenue: number | null = null;
+    let platformWashoutPaidRevenueCents: number | null = null;
     let platformFeeRecordCount: number | null = null;
     let approvedWashouts: number | null = null;
     let driverTipTotal: number | null = null;
@@ -2658,15 +2666,17 @@ export class DatabaseStorage implements IStorage {
           ne(washoutActivities.status, 'rejected'),
         ));
 
-      const paymentSummary = summarizeWashoutRevenueFromActivities(revenueRows);
+      const paymentSummary = summarizeWashoutRevenueFromActivities(revenueRows, defaultPlatformFeeCents);
       approvedWashouts = revenueRows.filter((row) => isApprovedWashout(row.activityStatus)).length;
       platformFeeRecordCount = revenueRows.filter((row) => {
         const approved = isApprovedWashout(row.activityStatus);
-        const platformFeeCents = Number(row.activityFeeCentsPlatform ?? 0);
+        const platformFeeCents = Number(row.activityFeeCentsPlatform ?? defaultPlatformFeeCents);
         return approved && Number.isFinite(platformFeeCents) && Math.round(platformFeeCents) > 0;
       }).length;
       platformWashoutRevenue = paymentSummary.platformWashoutRevenue;
       platformWashoutRevenueCents = Math.round(paymentSummary.platformWashoutRevenue * 100);
+      platformWashoutPaidRevenue = paymentSummary.platformWashoutPaidRevenue;
+      platformWashoutPaidRevenueCents = Math.round(paymentSummary.platformWashoutPaidRevenue * 100);
       driverTipTotal = paymentSummary.driverTipTotal;
       billedWashouts = paymentSummary.billedWashouts;
       pendingWashouts = paymentSummary.pendingWashouts;
@@ -2714,6 +2724,8 @@ export class DatabaseStorage implements IStorage {
       platformFeeRecordCount,
       approvedWashouts,
       platformWashoutRevenueCents,
+      platformWashoutPaidRevenue,
+      platformWashoutPaidRevenueCents,
       platformWashoutRevenue,
       driverTipTotal,
       billedWashouts,
@@ -2732,6 +2744,8 @@ export class DatabaseStorage implements IStorage {
       totalOwners: Number(ownerCount),
       platformWashoutRevenue,
       platformWashoutRevenueCents,
+      platformWashoutPaidRevenue,
+      platformWashoutPaidRevenueCents,
       platformFeeRecordCount,
       approvedWashouts,
       driverTipTotal,

@@ -171,6 +171,7 @@ export default function AdminDashboard() {
   const washoutRevenueError = weekStats?.washoutRevenueError;
   const lotteryMetricsError = weekStats?.lotteryMetricsError;
   const platformWashoutRevenueValue = washoutRevenueError ? "—" : formatCurrency(weekStats?.platformWashoutRevenue ?? 0);
+  const platformWashoutPaidRevenueValue = washoutRevenueError ? "—" : formatCurrency(weekStats?.platformWashoutPaidRevenue ?? 0);
   const driverTipValue = washoutRevenueError ? "—" : formatCurrency(weekStats?.driverTipTotal ?? 0);
   const approvedWashoutsValue = washoutRevenueError ? "—" : (weekStats?.approvedWashouts ?? 0);
   const pendingWashoutsValue = washoutRevenueError ? "—" : (weekStats?.pendingWashouts ?? 0);
@@ -312,7 +313,7 @@ export default function AdminDashboard() {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Platform Washout Revenue</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Platform Fees Owed / Receivable</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-washout-revenue">
                 {platformWashoutRevenueValue}
               </p>
@@ -321,6 +322,15 @@ export default function AdminDashboard() {
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {approvedWashoutsValue} approved washouts • {platformFeeRecordCountValue} fee records • {platformWashoutRevenueCentsValue} cents
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Paid Platform Fees</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-paid-platform-fees">
+                {platformWashoutPaidRevenueValue}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {washoutRevenueError || "Approved washouts already collected through billing"}
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
@@ -381,12 +391,20 @@ export default function AdminDashboard() {
         <section className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <DashboardMetricCard
-              title="Platform Washout Revenue"
+              title="Platform Fees Owed / Receivable"
               value={platformWashoutRevenueValue}
-              helper={washoutRevenueError || "Platform fee revenue from approved washouts"}
+              helper={washoutRevenueError || "Platform fees owed / receivable from approved washouts"}
               icon={DollarSign}
               toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-washout-revenue-summary"
+            />
+            <DashboardMetricCard
+              title="Paid Platform Fees"
+              value={platformWashoutPaidRevenueValue}
+              helper={washoutRevenueError || "Approved washouts already collected"}
+              icon={CheckCircle}
+              toneClassName="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+              dataTestId="text-paid-platform-fees-summary"
             />
             <DashboardMetricCard
               title="Driver Tips"

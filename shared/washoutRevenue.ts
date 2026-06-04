@@ -16,6 +16,7 @@ export type WashoutActivityRevenueRow = {
 
 export type WashoutRevenueSummary = {
   platformWashoutRevenue: number;
+  platformWashoutPaidRevenue: number;
   driverTipTotal: number;
   approvedWashouts: number;
   billedWashouts: number;
@@ -45,6 +46,7 @@ export function summarizeWashoutRevenue(rows: WashoutPaymentRevenueRow[]): Washo
 
     if (BILLED_STATUSES.has(status)) {
       summary.platformWashoutRevenue += processingFee;
+      summary.platformWashoutPaidRevenue += processingFee;
       summary.driverTipTotal += tipTotal;
       summary.billedWashouts += 1;
     } else if (PENDING_STATUSES.has(status)) {
@@ -60,6 +62,7 @@ export function summarizeWashoutRevenue(rows: WashoutPaymentRevenueRow[]): Washo
     return summary;
   }, {
     platformWashoutRevenue: 0,
+    platformWashoutPaidRevenue: 0,
     driverTipTotal: 0,
     approvedWashouts: 0,
     billedWashouts: 0,
@@ -74,18 +77,31 @@ function normalizeActivityStatus(status?: string | null): string {
   return String(status || "").trim().toLowerCase();
 }
 
-function resolveActivityPlatformFeeCents(row: WashoutActivityRevenueRow): number {
-  const rowFee = Number(row.activityFeeCentsPlatform ?? row.platformFeeCents ?? 0);
-  return Number.isFinite(rowFee) ? Math.max(0, Math.round(rowFee)) : 0;
+function resolveActivityPlatformFeeCents(
+  row: WashoutActivityRevenueRow,
+  defaultPlatformFeeCents: number,
+): number {
+  if (row.activityFeeCentsPlatform !== null && row.activityFeeCentsPlatform !== undefined) {
+    const rowFee = Number(row.activityFeeCentsPlatform);
+    return Number.isFinite(rowFee) ? Math.max(0, Math.round(rowFee)) : Math.max(0, Math.round(defaultPlatformFeeCents));
+  }
+
+  if (row.platformFeeCents !== null && row.platformFeeCents !== undefined) {
+    const legacyFee = Number(row.platformFeeCents);
+    return Number.isFinite(legacyFee) ? Math.max(0, Math.round(legacyFee)) : Math.max(0, Math.round(defaultPlatformFeeCents));
+  }
+
+  return Math.max(0, Math.round(defaultPlatformFeeCents));
 }
 
 export function summarizeWashoutRevenueFromActivities(
   rows: WashoutActivityRevenueRow[],
+  defaultPlatformFeeCents = 500,
 ): WashoutRevenueSummary {
   return rows.reduce<WashoutRevenueSummary>((summary, row) => {
     const activityStatus = normalizeActivityStatus(row.activityStatus);
     const paymentStatus = normalizeActivityStatus(row.paymentStatus);
-    const platformFeeCents = resolveActivityPlatformFeeCents(row);
+    const platformFeeCents = resolveActivityPlatformFeeCents(row, defaultPlatformFeeCents);
     const driverTipCents = Math.max(0, Number(row.paymentTipAmountCents ?? row.locationDriverIncentiveTipCents ?? 0));
     const approved = ["verified", "approved", "completed", "paid", "settled"].includes(activityStatus);
     const billed = ["paid", "posted", "completed", "succeeded"].includes(paymentStatus);
@@ -110,7 +126,10 @@ export function summarizeWashoutRevenueFromActivities(
       summary.approvedWashouts += 1;
       summary.platformWashoutRevenue += platformFeeCents / 100;
       summary.driverTipTotal += driverTipCents / 100;
-      if (billed) summary.billedWashouts += 1;
+      if (billed) {
+        summary.billedWashouts += 1;
+        summary.platformWashoutPaidRevenue += platformFeeCents / 100;
+      }
       else summary.pendingWashouts += 1;
       return summary;
     }
@@ -128,6 +147,7 @@ export function summarizeWashoutRevenueFromActivities(
     return summary;
   }, {
     platformWashoutRevenue: 0,
+    platformWashoutPaidRevenue: 0,
     driverTipTotal: 0,
     approvedWashouts: 0,
     billedWashouts: 0,
