@@ -44,6 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatCurrency } from "@/lib/utils";
 
 interface OwnerBillingSettings {
   ownerId: string;
@@ -60,6 +61,49 @@ interface BillingSettingsResponse {
   billingCadenceOptions: { value: string; label: string }[];
   dayOfWeekOptions: { value: number; label: string }[];
   timezoneOptions: string[];
+  immediateBillingOwners?: ImmediateBillingOwner[];
+  immediateBillingHistory?: ImmediateBillingHistory[];
+  immediateBillingSummary?: {
+    ownerCount: number;
+    approvedWashoutCount: number;
+    platformFeesOwedCents: number;
+    paidBatchCount: number;
+    failedBatchCount: number;
+  };
+}
+
+interface ImmediateBillingOwner {
+  ownerId: string;
+  companyName: string;
+  username: string;
+  billingCadence: string;
+  approvedWashoutCount: number;
+  platformFeesOwedCents: number;
+  platformFeesOwed: string;
+  paymentMethodStatus: string;
+  hasStripeCustomer: boolean;
+  hasPaymentMethod: boolean;
+  lastBillingAttemptAt: string | null;
+  lastBillingStatus: string;
+  lastBillingWashoutCount: number;
+  lastBillingAmountCents: number;
+  lastStripePaymentIntentId: string | null;
+  lastStripeChargeId: string | null;
+}
+
+interface ImmediateBillingHistory {
+  batchId: string;
+  ownerId: string;
+  companyName: string;
+  username: string;
+  billingCadence: string;
+  date: string | null;
+  amountCents: number;
+  washoutCount: number;
+  status: string;
+  stripePaymentIntentId: string | null;
+  stripeChargeId: string | null;
+  failureReason: string | null;
 }
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -146,6 +190,30 @@ export default function AdminBillingSettings() {
     },
   });
 
+  const runImmediateBillingMutation = useMutation({
+    mutationFn: async (ownerId: string) => {
+      const response = await apiRequest("POST", "/api/admin/billing/process-batches", {
+        ownerId,
+        runType: "admin_manual",
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
+      toast({
+        title: "Billing Run Started",
+        description: data?.message || "Immediate billing was processed successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Billing Run Failed",
+        description: error.message || "Failed to run billing now",
+        variant: "destructive",
+      });
+    },
+  });
+
   const bulkUpdateMutation = useMutation({
     mutationFn: async (settings: any) => {
       const response = await apiRequest('/api/admin/billing/settings/bulk-update', {
@@ -199,6 +267,21 @@ export default function AdminBillingSettings() {
     acc[owner.billingCadence] = (acc[owner.billingCadence] || 0) + 1;
     return acc;
   }, {} as Record<string, number>) || {};
+  const immediateBillingOwners = billingData?.immediateBillingOwners || [];
+  const immediateBillingHistory = billingData?.immediateBillingHistory || [];
+  const immediateBillingSummary = billingData?.immediateBillingSummary || {
+    ownerCount: 0,
+    approvedWashoutCount: 0,
+    platformFeesOwedCents: 0,
+    paidBatchCount: 0,
+    failedBatchCount: 0,
+  };
+
+  const formatDateTime = (value: string | null) => {
+    if (!value) return "Never";
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? "Never" : parsed.toLocaleString();
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -376,6 +459,182 @@ export default function AdminBillingSettings() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5" />
+              Immediate Billing Owners
+            </CardTitle>
+            <CardDescription>
+              Owners configured for immediate billing can be charged now for approved washouts owed to the platform.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Immediate owners</p>
+                <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-owner-count">
+                  {immediateBillingSummary.ownerCount}
+                </p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Approved washouts</p>
+                <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-approved-count">
+                  {immediateBillingSummary.approvedWashoutCount}
+                </p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Platform fees owed</p>
+                <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-owed">
+                  {formatCurrency(immediateBillingSummary.platformFeesOwedCents / 100)}
+                </p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Billing outcomes</p>
+                <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-paid-count">
+                  {immediateBillingSummary.paidBatchCount}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {immediateBillingSummary.failedBatchCount} failed
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Cadence</TableHead>
+                    <TableHead className="hidden md:table-cell">Approved</TableHead>
+                    <TableHead>Fees Owed</TableHead>
+                    <TableHead>Card / Stripe</TableHead>
+                    <TableHead className="hidden lg:table-cell">Last Attempt</TableHead>
+                    <TableHead className="hidden lg:table-cell">Last Stripe IDs</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {immediateBillingOwners.length > 0 ? immediateBillingOwners.map((owner) => (
+                    <TableRow key={owner.ownerId} data-testid={`row-immediate-owner-${owner.ownerId}`}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{owner.companyName}</p>
+                          <p className="text-sm text-muted-foreground">@{owner.username}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-900">
+                          {owner.billingCadence}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {owner.approvedWashoutCount}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{formatCurrency(owner.platformFeesOwedCents / 100)}</div>
+                        <p className="text-xs text-muted-foreground">{owner.platformFeesOwed} owed</p>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={owner.hasStripeCustomer && owner.hasPaymentMethod ? "default" : "destructive"}>
+                          {owner.paymentMethodStatus === "configured"
+                            ? "Configured"
+                            : owner.paymentMethodStatus === "missing_payment_method"
+                              ? "Missing card"
+                              : "Missing customer"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="text-sm">
+                          <p>{formatDateTime(owner.lastBillingAttemptAt)}</p>
+                          <p className="text-xs text-muted-foreground">Status: {owner.lastBillingStatus}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="text-xs font-mono text-muted-foreground space-y-1">
+                          <p>{owner.lastStripePaymentIntentId || "—"}</p>
+                          <p>{owner.lastStripeChargeId || "—"}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          onClick={() => runImmediateBillingMutation.mutate(owner.ownerId)}
+                          disabled={runImmediateBillingMutation.isPending}
+                          data-testid={`button-run-billing-${owner.ownerId}`}
+                        >
+                          {runImmediateBillingMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Zap className="w-4 h-4 mr-2" />
+                          )}
+                          Run Billing Now
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                        No owners are currently configured for immediate billing.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="rounded-md border">
+              <div className="border-b px-4 py-3">
+                <h3 className="font-medium">Immediate Billing History</h3>
+                <p className="text-sm text-muted-foreground">
+                  Recent owner billing runs and Stripe transaction records.
+                </p>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Washouts</TableHead>
+                    <TableHead className="hidden md:table-cell">Stripe Intent</TableHead>
+                    <TableHead className="hidden lg:table-cell">Stripe Charge</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {immediateBillingHistory.length > 0 ? immediateBillingHistory.map((entry) => (
+                    <TableRow key={entry.batchId} data-testid={`row-billing-history-${entry.batchId}`}>
+                      <TableCell>{formatDateTime(entry.date)}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{entry.companyName}</p>
+                          <p className="text-sm text-muted-foreground">@{entry.username}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={entry.status === "completed" ? "default" : entry.status === "failed" ? "destructive" : "secondary"}>
+                          {entry.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatCurrency(entry.amountCents / 100)}</TableCell>
+                      <TableCell>{entry.washoutCount}</TableCell>
+                      <TableCell className="hidden md:table-cell font-mono text-xs">{entry.stripePaymentIntentId || "—"}</TableCell>
+                      <TableCell className="hidden lg:table-cell font-mono text-xs">{entry.stripeChargeId || "—"}</TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                        No immediate billing history is available yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 

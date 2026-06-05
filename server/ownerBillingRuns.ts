@@ -69,6 +69,7 @@ export interface OwnerBillingRunStorage {
   getPaymentsByBatchId(batchId: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
   updateBillingBatchStatus(batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string): Promise<BillingBatch>;
   updateBillingBatchProcessing(batchId: string, totalAmount: string, totalFees: string, paymentCount: number, stripePaymentIntentId?: string): Promise<BillingBatch>;
+  updateBillingBatchMetadata(batchId: string, metadataPatch: Record<string, unknown>): Promise<BillingBatch>;
   markBillingBatchCompleted(batchId: string): Promise<BillingBatch>;
   markBillingBatchFailed(batchId: string, failureReason: string): Promise<void>;
   completeBatchPayment(batchId: string, stripePaymentIntentId: string): Promise<void>;
@@ -131,6 +132,28 @@ function toCents(amount: string | number | null | undefined): number {
 
 function formatMoney(amountCents: number): string {
   return (amountCents / 100).toFixed(2);
+}
+
+function extractStripeChargeId(paymentIntent: StripePaymentIntentLike | null | undefined): string | null {
+  if (!paymentIntent) {
+    return null;
+  }
+
+  const latestCharge = (paymentIntent as any).latest_charge;
+  if (typeof latestCharge === "string" && latestCharge.trim()) {
+    return latestCharge;
+  }
+  if (latestCharge && typeof latestCharge === "object" && typeof latestCharge.id === "string" && latestCharge.id.trim()) {
+    return latestCharge.id;
+  }
+
+  const charges = (paymentIntent as any).charges;
+  const firstCharge = charges?.data?.[0];
+  if (firstCharge && typeof firstCharge.id === "string" && firstCharge.id.trim()) {
+    return firstCharge.id;
+  }
+
+  return null;
 }
 
 function toDateKey(value?: Date | null): string {
@@ -323,10 +346,19 @@ async function processSingleOwnerBillingRun(
       } as any, {
         idempotencyKey: `owner_platform_billing_${billingBatch.id}`,
       });
+      const stripeChargeId = extractStripeChargeId(paymentIntent);
+
+      if (typeof storage.updateBillingBatchMetadata === "function") {
+        await storage.updateBillingBatchMetadata(billingBatch.id, {
+          stripePaymentIntentId: paymentIntent.id,
+          stripeChargeId,
+        });
+      }
 
       console.log(`💳 [OWNER_BILLING] Stripe payment intent created for owner ${ownerId}`, {
         billingBatchId: billingBatch.id,
         paymentIntentId: paymentIntent.id,
+        stripeChargeId,
         amountCents: platformFeeTotalCents,
         washoutCount: approvedWashouts.length,
       });

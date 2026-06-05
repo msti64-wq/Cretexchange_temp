@@ -829,7 +829,9 @@ function createOwnerBillingRunFixture(params: {
     id: ownerId,
     userId: "user_owner_1",
     companyName: params.ownerCompanyName || "Owner Co",
-    stripePaymentMethodId: params.ownerStripePaymentMethodId ?? "pm_owner_1",
+    stripePaymentMethodId: Object.prototype.hasOwnProperty.call(params, "ownerStripePaymentMethodId")
+      ? params.ownerStripePaymentMethodId
+      : "pm_owner_1",
     billingCutoffTime: params.billingCutoffTime || "23:59:00",
     billingTimezone: params.billingTimezone || "America/Chicago",
     billingDayOfWeek: params.billingDayOfWeek ?? 1,
@@ -839,7 +841,9 @@ function createOwnerBillingRunFixture(params: {
     username: params.ownerUsername || "owner1",
     firstName: "Owner",
     lastName: "One",
-    stripeCustomerId: params.ownerStripeCustomerId ?? "cus_owner_1",
+    stripeCustomerId: Object.prototype.hasOwnProperty.call(params, "ownerStripeCustomerId")
+      ? params.ownerStripeCustomerId
+      : "cus_owner_1",
   };
 
   let batch: Record<string, unknown> | null = null;
@@ -989,6 +993,17 @@ function createOwnerBillingRunFixture(params: {
       };
       return batch as any;
     },
+    updateBillingBatchMetadata: async (batchId: string, metadataPatch: Record<string, unknown>) => {
+      batch = {
+        ...(batch || { id: batchId }),
+        id: batchId,
+        metadata: {
+          ...(typeof batch?.metadata === "object" && batch?.metadata ? batch.metadata : {}),
+          ...metadataPatch,
+        },
+      };
+      return batch as any;
+    },
     markBillingBatchCompleted: async (batchId: string) => {
       batch = {
         ...(batch || { id: batchId }),
@@ -1030,6 +1045,7 @@ function createOwnerBillingRunFixture(params: {
               id: `pi_${chargeCount}`,
               status: params.stripeMode,
               amount: intent.amount,
+              latest_charge: `ch_${chargeCount}`,
             };
           },
         },
@@ -3392,8 +3408,39 @@ test("manual owner billing charges seven approved washouts at the default five d
   assert.equal(result.runs[0].status, "paid");
   assert.equal(result.totalWashoutCount, 7);
   assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 3500);
+  assert.equal((fixture.getBatch() as { metadata?: { stripeChargeId?: string } } | null)?.metadata?.stripeChargeId, "ch_1");
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.platformFeeTotal, "35.00");
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.driverTipTotal, "5.00");
+});
+
+test("manual owner billing returns a clear error when the owner has no payment method", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    ownerStripePaymentMethodId: null,
+    approvedWashouts: [
+      {
+        activityId: "activity_1",
+        activityFeeCentsPlatform: 500,
+        activityStatus: "verified",
+      },
+    ],
+    payments: [],
+    stripeMode: "succeeded",
+  });
+
+  const result = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(result.runs[0].status, "failed");
+  assert.match(result.runs[0].message, /payment method/i);
+  assert.equal(fixture.getChargeCount(), 0);
 });
 
 test("manual owner billing excludes pending washouts and remains idempotent on retry", async () => {
@@ -4094,6 +4141,109 @@ test("admin billing settings endpoint exposes daily weekly monthly cadence optio
       };
       assert.equal(body.owners?.[0]?.billingCadence, "weekly");
       assert.deepEqual(body.billingCadenceOptions?.map((option) => option.value), ["immediate", "daily", "weekly", "monthly"]);
+    },
+  );
+});
+
+test("admin billing settings endpoint exposes immediate billing owners and history", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getAllOwnersBillingSettings: async () => [
+        {
+          ownerId: "owner_1",
+          companyName: "Immediate Co",
+          username: "immediate1",
+          billingCadence: "immediate",
+          billingCutoffTime: "23:59:00",
+          billingTimezone: "America/Chicago",
+          billingDayOfWeek: 1,
+        },
+      ],
+      getOwnerById: async () => ({
+        id: "owner_1",
+        userId: "owner_user_1",
+        companyName: "Immediate Co",
+        stripePaymentMethodId: "pm_owner_1",
+      }),
+      getApprovedWashoutsForOwnerBilling: async () => ([
+        {
+          activityId: "activity_1",
+          ownerId: "owner_1",
+          driverId: "driver_1",
+          locationId: "location_1",
+          activityStatus: "verified",
+          activityFeeCentsPlatform: null,
+          locationDriverIncentiveTip: 0,
+          verifiedAt: new Date("2026-05-28T12:00:00Z"),
+        },
+      ]),
+      getBillingBatchesByOwner: async () => ([
+        {
+          id: "batch_1",
+          ownerId: "owner_1",
+          businessDate: "2026-05-28",
+          status: "completed",
+          totalAmount: "5.00",
+          totalFees: "0.00",
+          paymentCount: 1,
+          stripePaymentIntentId: "pi_1",
+          failureReason: null,
+          metadata: {
+            stripeChargeId: "ch_1",
+          },
+          createdAt: new Date("2026-05-28T14:00:00Z"),
+          updatedAt: new Date("2026-05-28T14:05:00Z"),
+        } as any,
+      ]),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/billing/settings");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+          query: {},
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const body = res.body as {
+        immediateBillingOwners?: Array<{
+          ownerId?: string;
+          approvedWashoutCount?: number;
+          platformFeesOwedCents?: number;
+          lastStripePaymentIntentId?: string | null;
+          lastStripeChargeId?: string | null;
+          lastBillingStatus?: string;
+        }>;
+        immediateBillingHistory?: Array<{
+          batchId?: string;
+          stripePaymentIntentId?: string | null;
+          stripeChargeId?: string | null;
+        }>;
+      };
+      assert.equal(body.immediateBillingOwners?.length, 1);
+      assert.equal(body.immediateBillingOwners?.[0]?.ownerId, "owner_1");
+      assert.equal(body.immediateBillingOwners?.[0]?.approvedWashoutCount, 1);
+      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesOwedCents, 500);
+      assert.equal(body.immediateBillingOwners?.[0]?.lastStripePaymentIntentId, "pi_1");
+      assert.equal(body.immediateBillingOwners?.[0]?.lastStripeChargeId, "ch_1");
+      assert.equal(body.immediateBillingOwners?.[0]?.lastBillingStatus, "completed");
+      assert.equal(body.immediateBillingHistory?.[0]?.batchId, "batch_1");
+      assert.equal(body.immediateBillingHistory?.[0]?.stripePaymentIntentId, "pi_1");
+      assert.equal(body.immediateBillingHistory?.[0]?.stripeChargeId, "ch_1");
     },
   );
 });

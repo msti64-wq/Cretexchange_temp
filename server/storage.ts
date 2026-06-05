@@ -349,6 +349,7 @@ export interface IStorage {
   getBillingBatchesByStatus(status: string): Promise<(BillingBatch & { owner: Owner & { user: User } })[]>;
   updateBillingBatchStatus(batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string): Promise<BillingBatch>;
   updateBillingBatchProcessing(batchId: string, totalAmount: string, totalFees: string, paymentCount: number, stripePaymentIntentId?: string): Promise<BillingBatch>;
+  updateBillingBatchMetadata(batchId: string, metadataPatch: Record<string, unknown>): Promise<BillingBatch>;
   markBillingBatchCompleted(batchId: string): Promise<BillingBatch>;
   getPendingPaymentsForBatch(ownerId: string, businessDate: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
   getPendingPaymentsForOwnerBilling(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]>;
@@ -4139,6 +4140,19 @@ export class DatabaseStorage implements IStorage {
       .where(eq(billingBatches.id, batchId))
       .returning();
     
+    return batch;
+  }
+
+  async updateBillingBatchMetadata(batchId: string, metadataPatch: Record<string, unknown>): Promise<BillingBatch> {
+    const [batch] = await db
+      .update(billingBatches)
+      .set({
+        metadata: sql`coalesce(${billingBatches.metadata}, '{}'::jsonb) || ${JSON.stringify(metadataPatch)}::jsonb`,
+        updatedAt: new Date(),
+      })
+      .where(eq(billingBatches.id, batchId))
+      .returning();
+
     return batch;
   }
 
