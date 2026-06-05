@@ -1,4 +1,4 @@
-import { isApprovedWashout } from "./washoutApproval";
+import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
 
 export type WashoutBillingVerificationRow = {
   activityId: string;
@@ -136,13 +136,13 @@ export function buildWashoutBillingVerificationReport(
     const locationName = String(row.locationName || "").trim() || locationId;
     const platformFeeCents = resolvePlatformFeeCents(row, defaultPlatformFeeCents);
     const driverTipCents = Math.max(0, toFiniteCents(row.driverIncentiveTipCents) ?? 0);
-    const approved = isApprovedWashout(status);
+    const approved = isBillableWashoutForOwnerBilling({ status });
     const rejected = REJECTED_STATUSES.has(status);
     const declined = DECLINED_STATUSES.has(status);
     const cancelled = CANCELLED_STATUSES.has(status);
     const needsReview = NEEDS_REVIEW_STATUSES.has(status);
     const pending = !approved && !rejected && !declined && !cancelled && (
-      !paymentStatus || PENDING_PAYMENT_STATUSES.has(paymentStatus) || (!needsReview && !declined && !cancelled && !rejected)
+      !paymentStatus || PENDING_PAYMENT_STATUSES.has(paymentStatus) || needsReview
     );
     const billed = approved && BILLED_PAYMENT_STATUSES.has(paymentStatus);
 

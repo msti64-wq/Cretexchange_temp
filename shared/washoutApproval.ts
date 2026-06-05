@@ -24,6 +24,12 @@ export const WASHOUT_REJECTED_STATUSES = new Set([
   "canceled",
 ]);
 
+export const WASHOUT_OWNER_BILLING_STATUSES = new Set([
+  "verified",
+  "approved",
+  "completed",
+]);
+
 function normalizeStatusValue(status?: string | null): string {
   return String(status ?? "").trim().toLowerCase();
 }
@@ -38,6 +44,10 @@ export function isApprovedWashout(status?: string | null): boolean {
 
 export function isRejectedWashout(status?: string | null): boolean {
   return WASHOUT_REJECTED_STATUSES.has(normalizeStatusValue(status));
+}
+
+export function isBillableWashoutForOwnerBilling(activity: { status?: string | null }): boolean {
+  return WASHOUT_OWNER_BILLING_STATUSES.has(normalizeStatusValue(activity.status));
 }
 
 export function getWashoutApprovalDisplayStatus(status?: string | null): string {

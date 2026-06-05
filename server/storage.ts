@@ -102,7 +102,7 @@ import { resolvePlatformFeeCents } from "../shared/billingPolicy";
 import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { summarizeWashoutRevenueFromActivities } from "../shared/washoutRevenue";
-import { isApprovedWashout } from "../shared/washoutApproval";
+import { isBillableWashoutForOwnerBilling, WASHOUT_OWNER_BILLING_STATUSES } from "../shared/washoutApproval";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
@@ -2919,9 +2919,9 @@ export class DatabaseStorage implements IStorage {
         ));
 
       const paymentSummary = summarizeWashoutRevenueFromActivities(revenueRows, defaultPlatformFeeCents);
-      approvedWashouts = revenueRows.filter((row) => isApprovedWashout(row.activityStatus)).length;
+      approvedWashouts = revenueRows.filter((row) => isBillableWashoutForOwnerBilling({ status: row.activityStatus })).length;
       platformFeeRecordCount = revenueRows.filter((row) => {
-        const approved = isApprovedWashout(row.activityStatus);
+        const approved = isBillableWashoutForOwnerBilling({ status: row.activityStatus });
         const platformFeeCents = Number(row.activityFeeCentsPlatform ?? defaultPlatformFeeCents);
         return approved && Number.isFinite(platformFeeCents) && Math.round(platformFeeCents) > 0;
       }).length;
@@ -4692,7 +4692,7 @@ export class DatabaseStorage implements IStorage {
   }>> {
     const conditions = [
       eq(owners.id, ownerId),
-      eq(washoutActivities.status, "verified"),
+      inArray(washoutActivities.status, Array.from(WASHOUT_OWNER_BILLING_STATUSES) as any),
     ];
 
     if (startDate) {
@@ -4712,16 +4712,60 @@ export class DatabaseStorage implements IStorage {
         activityStatus: washoutActivities.status,
         activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
         locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        paymentStatus: payments.status,
+        paymentBatchId: payments.batchId,
         verifiedAt: washoutActivities.verifiedAt,
         createdAt: washoutActivities.createdAt,
       })
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
+      .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
       .where(and(...conditions))
       .orderBy(desc(washoutActivities.verifiedAt), desc(washoutActivities.createdAt));
 
-    return rows as any;
+    const billedActivityIds = new Set<string>();
+    const billedStatuses = new Set(["paid", "posted", "completed", "succeeded"]);
+    const batches = await this.getBillingBatchesByOwner(ownerId);
+    for (const batch of batches) {
+      const batchStatus = String(batch.status || "").toLowerCase();
+      if (!["completed", "paid", "processing"].includes(batchStatus)) {
+        continue;
+      }
+
+      const metadataSource = batch.metadata as unknown;
+      const metadata = metadataSource && typeof metadataSource === "object"
+        ? metadataSource as Record<string, unknown>
+        : {};
+      const rawIds = metadata.washoutActivityIds;
+      const ids = Array.isArray(rawIds)
+        ? rawIds.map((id) => String(id))
+        : typeof rawIds === "string"
+          ? rawIds.split(",")
+          : [];
+      for (const id of ids.map((id) => String(id).trim()).filter(Boolean)) {
+        billedActivityIds.add(id);
+      }
+    }
+
+    return rows.filter((row: any) => {
+      const activityId = String(row.activityId || "");
+      if (!isBillableWashoutForOwnerBilling({ status: row.activityStatus })) {
+        return false;
+      }
+      if (billedActivityIds.has(activityId)) {
+        return false;
+      }
+      const paymentStatus = String(row.paymentStatus || "").toLowerCase();
+      const paymentBatchId = String(row.paymentBatchId || "").trim();
+      if (paymentBatchId) {
+        return false;
+      }
+      if (billedStatuses.has(paymentStatus)) {
+        return false;
+      }
+      return true;
+    }) as any;
   }
 
   async assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void> {

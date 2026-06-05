@@ -1,3 +1,5 @@
+import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
+
 export type WashoutPaymentRevenueRow = {
   status?: string | null;
   processingFee?: string | number | null;
@@ -103,9 +105,11 @@ export function summarizeWashoutRevenueFromActivities(
     const paymentStatus = normalizeActivityStatus(row.paymentStatus);
     const platformFeeCents = resolveActivityPlatformFeeCents(row, defaultPlatformFeeCents);
     const driverTipCents = Math.max(0, Number(row.paymentTipAmountCents ?? row.locationDriverIncentiveTipCents ?? 0));
-    const approved = ["verified", "approved", "completed", "paid", "settled"].includes(activityStatus);
+    const approved = isBillableWashoutForOwnerBilling({ status: activityStatus });
     const billed = ["paid", "posted", "completed", "succeeded"].includes(paymentStatus);
-    const pending = !paymentStatus || ["pending", "awaiting_driver_stripe", "pending_driver_onboarding"].includes(paymentStatus);
+    const pending = !approved && (
+      !paymentStatus || ["pending", "awaiting_driver_stripe", "pending_driver_onboarding"].includes(paymentStatus)
+    );
     const failed = ["failed", "canceled", "cancelled"].includes(paymentStatus);
     const refunded = ["refunded", "refund"].includes(paymentStatus);
     const disputed = paymentStatus === "disputed";

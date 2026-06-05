@@ -64,6 +64,7 @@ import {
 import type { BillingAuditReportQueryInput } from "../shared/billingAuditReport";
 
 const JWT_SECRET = getJwtSecret();
+const formatCurrencyAmount = (amount: number) => `$${amount.toFixed(2)}`;
 const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
 const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
   "image/jpeg",
@@ -10138,6 +10139,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const lastStripeChargeId = typeof latestBatchMetadata.stripeChargeId === "string"
             ? latestBatchMetadata.stripeChargeId
             : null;
+          const lastBillingAmountCents = latestBatch ? Math.round(Number(latestBatch.totalAmount || 0) * 100) : 0;
+          const billingDeltaCents = lastBillingAmountCents - platformFeesOwedCents;
+          const billingReconciliationStatus = latestBatch?.status === "completed"
+            ? (billingDeltaCents > 0 ? "overcharged" : billingDeltaCents < 0 ? "undercharged" : "matched")
+            : null;
+          const billingReconciliationNote = billingReconciliationStatus === "overcharged"
+            ? `Expected ${formatCurrencyAmount(platformFeesOwedCents / 100)}, actual Stripe charge was ${formatCurrencyAmount(lastBillingAmountCents / 100)}.`
+            : billingReconciliationStatus === "undercharged"
+              ? `Expected ${formatCurrencyAmount(platformFeesOwedCents / 100)}, actual Stripe charge was ${formatCurrencyAmount(lastBillingAmountCents / 100)}.`
+              : null;
           const hasStripeCustomer = Boolean(ownerUser?.stripeCustomerId);
           const hasPaymentMethod = Boolean(owner?.stripePaymentMethodId || ownerUser?.stripePaymentMethodId);
 
@@ -10157,9 +10168,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lastBillingAttemptAt: latestBatch?.updatedAt || latestBatch?.createdAt || null,
             lastBillingStatus: latestBatch?.status || "never",
             lastBillingWashoutCount: latestBatch ? Number(latestBatch.paymentCount || 0) : 0,
-            lastBillingAmountCents: latestBatch ? Math.round(Number(latestBatch.totalAmount || 0) * 100) : 0,
+            lastBillingAmountCents,
             lastStripePaymentIntentId: latestBatch?.stripePaymentIntentId || null,
             lastStripeChargeId,
+            billingReconciliationStatus,
+            billingReconciliationDeltaCents: billingDeltaCents,
+            billingReconciliationNote,
           };
         })
       );

@@ -89,6 +89,9 @@ interface ImmediateBillingOwner {
   lastBillingAmountCents: number;
   lastStripePaymentIntentId: string | null;
   lastStripeChargeId: string | null;
+  billingReconciliationStatus?: string | null;
+  billingReconciliationDeltaCents?: number;
+  billingReconciliationNote?: string | null;
 }
 
 interface ImmediateBillingHistory {
@@ -537,6 +540,11 @@ export default function AdminBillingSettings() {
                       <TableCell>
                         <div className="font-medium">{formatCurrency(owner.platformFeesOwedCents / 100)}</div>
                         <p className="text-xs text-muted-foreground">{owner.platformFeesOwed} owed</p>
+                        {owner.billingReconciliationNote && (
+                          <p className={`mt-1 text-xs ${owner.billingReconciliationStatus === "overcharged" ? "text-red-600" : "text-amber-600"}`}>
+                            {owner.billingReconciliationNote}
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={owner.hasStripeCustomer && owner.hasPaymentMethod ? "default" : "destructive"}>

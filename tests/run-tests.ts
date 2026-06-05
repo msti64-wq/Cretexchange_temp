@@ -201,11 +201,11 @@ test("approved washout revenue summary uses stored platform fee cents and exclud
     },
   ]);
 
-  assert.equal(summary.platformWashoutRevenue, 20);
-  assert.equal(summary.platformWashoutPaidRevenue, 15);
+  assert.equal(summary.platformWashoutRevenue, 15);
+  assert.equal(summary.platformWashoutPaidRevenue, 10);
   assert.equal(summary.driverTipTotal, 1.5);
-  assert.equal(summary.approvedWashouts, 4);
-  assert.equal(summary.billedWashouts, 3);
+  assert.equal(summary.approvedWashouts, 3);
+  assert.equal(summary.billedWashouts, 2);
   assert.equal(summary.pendingWashouts, 2);
   assert.equal(summary.failedWashouts, 0);
   assert.equal(summary.refundedWashouts, 0);
@@ -1047,7 +1047,7 @@ function createOwnerBillingRunFixture(params: {
       const endKey = endDate ? endDate.toISOString().split("T")[0] : undefined;
       return approvedWashouts.filter((row) => {
         if (row.ownerId !== ownerId) return false;
-        if (!["verified", "approved", "completed", "paid", "settled"].includes(String(row.activityStatus || "").toLowerCase())) return false;
+        if (!["verified", "approved", "completed"].includes(String(row.activityStatus || "").toLowerCase())) return false;
         const rowDate = row.verifiedAt || row.createdAt;
         const rowKey = rowDate ? new Date(rowDate as string | Date).toISOString().split("T")[0] : "";
         if (startKey && rowKey < startKey) return false;
@@ -3529,15 +3529,18 @@ test("manual owner billing charges approved washout platform fees only", async (
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.washoutActivityIds, "activity_1,activity_2");
 });
 
-test("manual owner billing charges seven approved washouts at the default five dollars each", async () => {
+test("manual owner billing bills only approved washouts and excludes declined washouts", async () => {
   const fixture = createOwnerBillingRunFixture({
     billingCadence: "weekly",
-    approvedWashouts: Array.from({ length: 7 }, (_, index) => ({
-      activityId: `activity_${index + 1}`,
-      activityFeeCentsPlatform: null,
-      activityStatus: "verified",
-      locationDriverIncentiveTip: index === 0 ? 500 : 0,
-    })),
+    approvedWashouts: [
+      { activityId: "activity_1", activityFeeCentsPlatform: null, activityStatus: "verified" },
+      { activityId: "activity_2", activityFeeCentsPlatform: null, activityStatus: "verified" },
+      { activityId: "activity_3", activityFeeCentsPlatform: null, activityStatus: "verified" },
+      { activityId: "activity_4", activityFeeCentsPlatform: null, activityStatus: "verified" },
+      { activityId: "activity_5", activityFeeCentsPlatform: null, activityStatus: "approved" },
+      { activityId: "activity_6", activityFeeCentsPlatform: null, activityStatus: "declined" },
+      { activityId: "activity_7", activityFeeCentsPlatform: null, activityStatus: "rejected" },
+    ],
     payments: [],
     stripeMode: "succeeded",
   });
@@ -3553,13 +3556,16 @@ test("manual owner billing charges seven approved washouts at the default five d
   });
 
   assert.equal(result.runs[0].status, "paid");
-  assert.equal(result.totalWashoutCount, 7);
-  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 3500);
+  assert.equal(result.totalWashoutCount, 5);
+  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 2500);
   assert.equal((fixture.getLastIntent() as { off_session?: boolean } | null)?.off_session, true);
   assert.deepEqual((fixture.getLastIntent() as { payment_method_types?: string[] } | null)?.payment_method_types, ["card"]);
   assert.equal((fixture.getBatch() as { metadata?: { stripeChargeId?: string } } | null)?.metadata?.stripeChargeId, "ch_1");
-  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.platformFeeTotal, "35.00");
-  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.driverTipTotal, "5.00");
+  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.platformFeeTotal, "25.00");
+  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.driverTipTotal, "0.00");
+  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.washoutActivityIds, "activity_1,activity_2,activity_3,activity_4,activity_5");
+  assert.ok(!String((fixture.getBatch() as { metadata?: { washoutActivityIds?: string } } | null)?.metadata?.washoutActivityIds || "").includes("activity_6"));
+  assert.ok(!String((fixture.getBatch() as { metadata?: { washoutActivityIds?: string } } | null)?.metadata?.washoutActivityIds || "").includes("activity_7"));
 });
 
 test("manual owner billing changes idempotency key when the approved washout set changes", async () => {
@@ -4569,6 +4575,92 @@ test("admin billing settings endpoint exposes immediate billing owners and histo
       assert.equal(body.immediateBillingHistory?.[0]?.batchId, "batch_1");
       assert.equal(body.immediateBillingHistory?.[0]?.stripePaymentIntentId, "pi_1");
       assert.equal(body.immediateBillingHistory?.[0]?.stripeChargeId, "ch_1");
+    },
+  );
+});
+
+test("admin billing settings endpoint shows reconciliation notes for overcharged runs", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getAllOwnersBillingSettings: async () => [
+        {
+          ownerId: "owner_1",
+          companyName: "Immediate Co",
+          username: "immediate1",
+          billingCadence: "immediate",
+          billingCutoffTime: "23:59:00",
+          billingTimezone: "America/Chicago",
+          billingDayOfWeek: 1,
+        },
+      ],
+      getOwnerById: async () => ({
+        id: "owner_1",
+        userId: "owner_user_1",
+        companyName: "Immediate Co",
+        stripePaymentMethodId: "pm_owner_1",
+      }),
+      getApprovedWashoutsForOwnerBilling: async () => ([
+        { activityId: "activity_1", activityFeeCentsPlatform: null },
+        { activityId: "activity_2", activityFeeCentsPlatform: null },
+        { activityId: "activity_3", activityFeeCentsPlatform: null },
+        { activityId: "activity_4", activityFeeCentsPlatform: null },
+        { activityId: "activity_5", activityFeeCentsPlatform: null },
+      ]),
+      getBillingBatchesByOwner: async () => ([
+        {
+          id: "batch_1",
+          ownerId: "owner_1",
+          businessDate: "2026-05-28",
+          status: "completed",
+          totalAmount: "35.00",
+          totalFees: "0.00",
+          paymentCount: 7,
+          stripePaymentIntentId: "pi_1",
+          failureReason: null,
+          metadata: {
+            stripeChargeId: "ch_1",
+            washoutActivityIds: "activity_1,activity_2,activity_3,activity_4,activity_5,activity_6,activity_7",
+          },
+          createdAt: new Date("2026-05-28T14:00:00Z"),
+          updatedAt: new Date("2026-05-28T14:05:00Z"),
+        } as any,
+      ]),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/billing/settings");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+          query: {},
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const body = res.body as {
+        immediateBillingOwners?: Array<{
+          platformFeesOwedCents?: number;
+          lastBillingAmountCents?: number;
+          billingReconciliationStatus?: string | null;
+          billingReconciliationNote?: string | null;
+        }>;
+      };
+      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesOwedCents, 2500);
+      assert.equal(body.immediateBillingOwners?.[0]?.lastBillingAmountCents, 3500);
+      assert.equal(body.immediateBillingOwners?.[0]?.billingReconciliationStatus, "overcharged");
+      assert.match(body.immediateBillingOwners?.[0]?.billingReconciliationNote || "", /Expected \$25\.00, actual Stripe charge was \$35\.00\./);
     },
   );
 });

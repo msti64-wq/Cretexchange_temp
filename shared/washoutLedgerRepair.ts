@@ -1,4 +1,4 @@
-import { isApprovedWashout } from "./washoutApproval";
+import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
 
 export type WashoutLedgerRepairRow = {
   activityId: string;
@@ -47,7 +47,7 @@ export function buildWashoutLedgerRepairPlan(
   const lotteryEntriesToCreate: WashoutLedgerRepairPlan["lotteryEntriesToCreate"] = [];
 
   for (const row of rows) {
-    if (!isApprovedWashout(row.status)) {
+    if (!isBillableWashoutForOwnerBilling({ status: row.status })) {
       continue;
     }
 
