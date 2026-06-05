@@ -816,6 +816,9 @@ function createOwnerBillingRunFixture(params: {
   ownerUsername?: string;
   ownerStripeCustomerId?: string | null;
   ownerStripePaymentMethodId?: string | null;
+  ownerUserStripeCustomerId?: string | null;
+  ownerUserStripePaymentMethodId?: string | null;
+  ownerCustomPlatformFee?: string | number | null;
   billingCadence?: string;
   billingCutoffTime?: string;
   billingTimezone?: string;
@@ -829,6 +832,12 @@ function createOwnerBillingRunFixture(params: {
     id: ownerId,
     userId: "user_owner_1",
     companyName: params.ownerCompanyName || "Owner Co",
+    customPlatformFee: Object.prototype.hasOwnProperty.call(params, "ownerCustomPlatformFee")
+      ? params.ownerCustomPlatformFee
+      : null,
+    stripeCustomerId: Object.prototype.hasOwnProperty.call(params, "ownerStripeCustomerId")
+      ? params.ownerStripeCustomerId
+      : null,
     stripePaymentMethodId: Object.prototype.hasOwnProperty.call(params, "ownerStripePaymentMethodId")
       ? params.ownerStripePaymentMethodId
       : "pm_owner_1",
@@ -841,9 +850,16 @@ function createOwnerBillingRunFixture(params: {
     username: params.ownerUsername || "owner1",
     firstName: "Owner",
     lastName: "One",
-    stripeCustomerId: Object.prototype.hasOwnProperty.call(params, "ownerStripeCustomerId")
-      ? params.ownerStripeCustomerId
-      : "cus_owner_1",
+    stripePaymentMethodId: Object.prototype.hasOwnProperty.call(params, "ownerUserStripePaymentMethodId")
+      ? params.ownerUserStripePaymentMethodId
+      : (Object.prototype.hasOwnProperty.call(params, "ownerStripePaymentMethodId")
+        ? params.ownerStripePaymentMethodId
+        : "pm_owner_1"),
+    stripeCustomerId: Object.prototype.hasOwnProperty.call(params, "ownerUserStripeCustomerId")
+      ? params.ownerUserStripeCustomerId
+      : (Object.prototype.hasOwnProperty.call(params, "ownerStripeCustomerId")
+        ? params.ownerStripeCustomerId
+        : "cus_owner_1"),
   };
 
   let batch: Record<string, unknown> | null = null;
@@ -3413,6 +3429,66 @@ test("manual owner billing charges seven approved washouts at the default five d
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.driverTipTotal, "5.00");
 });
 
+test("manual owner billing accepts a Stripe customer stored on the user record", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    ownerStripeCustomerId: null,
+    ownerUserStripeCustomerId: "cus_owner_1",
+    approvedWashouts: [
+      {
+        activityId: "activity_1",
+        activityFeeCentsPlatform: null,
+        activityStatus: "verified",
+      },
+    ],
+    payments: [],
+    stripeMode: "succeeded",
+  });
+
+  const result = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(result.runs[0].status, "paid");
+  assert.equal((fixture.getLastIntent() as { customer?: string } | null)?.customer, "cus_owner_1");
+});
+
+test("manual owner billing accepts a Stripe customer stored on the owner record", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    ownerStripeCustomerId: "cus_owner_1",
+    ownerUserStripeCustomerId: null,
+    approvedWashouts: [
+      {
+        activityId: "activity_1",
+        activityFeeCentsPlatform: null,
+        activityStatus: "verified",
+      },
+    ],
+    payments: [],
+    stripeMode: "succeeded",
+  });
+
+  const result = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(result.runs[0].status, "paid");
+  assert.equal((fixture.getLastIntent() as { customer?: string } | null)?.customer, "cus_owner_1");
+});
+
 test("manual owner billing returns a clear error when the owner has no payment method", async () => {
   const fixture = createOwnerBillingRunFixture({
     billingCadence: "weekly",
@@ -3441,6 +3517,59 @@ test("manual owner billing returns a clear error when the owner has no payment m
   assert.equal(result.runs[0].status, "failed");
   assert.match(result.runs[0].message, /payment method/i);
   assert.equal(fixture.getChargeCount(), 0);
+});
+
+test("manual owner billing treats null fees as the default five dollars and explicit zero overrides as zero", async () => {
+  const defaultFixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    approvedWashouts: Array.from({ length: 7 }, (_, index) => ({
+      activityId: `activity_${index + 1}`,
+      activityFeeCentsPlatform: null,
+      activityStatus: "verified",
+    })),
+    payments: [],
+    stripeMode: "succeeded",
+  });
+
+  const defaultResult = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: defaultFixture.storage,
+    stripeClient: defaultFixture.stripeClient,
+  });
+
+  assert.equal(defaultResult.runs[0].status, "paid");
+  assert.equal((defaultFixture.getLastIntent() as { amount?: number } | null)?.amount, 3500);
+
+  const zeroFixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    ownerCustomPlatformFee: "0.00",
+    approvedWashouts: [
+      {
+        activityId: "activity_1",
+        activityFeeCentsPlatform: 0,
+        activityStatus: "verified",
+      },
+    ],
+    payments: [],
+    stripeMode: "succeeded",
+  });
+
+  const zeroResult = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: zeroFixture.storage,
+    stripeClient: zeroFixture.stripeClient,
+  });
+
+  assert.equal(zeroResult.runs[0].status, "skipped");
+  assert.equal((zeroFixture.getLastIntent() as Record<string, unknown> | null), null);
 });
 
 test("manual owner billing excludes pending washouts and remains idempotent on retry", async () => {

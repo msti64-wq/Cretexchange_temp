@@ -51,6 +51,33 @@ export function resolvePlatformFeeCents(value: string | number | null | undefine
   return toNonNegativeCents(value, DEFAULT_PER_WASHOUT_FEE_CENTS);
 }
 
+export function resolveApprovedWashoutPlatformFeeCents(
+  storedFeeCents: number | string | null | undefined,
+  explicitOverrideCents?: number | string | null,
+): number {
+  if (explicitOverrideCents !== null && explicitOverrideCents !== undefined && explicitOverrideCents !== "") {
+    const override = resolvePlatformFeeCents(explicitOverrideCents);
+    if (override >= 0) {
+      return override;
+    }
+  }
+
+  if (storedFeeCents === null || storedFeeCents === undefined || storedFeeCents === "") {
+    return DEFAULT_PER_WASHOUT_FEE_CENTS;
+  }
+
+  const parsed = typeof storedFeeCents === "number" ? storedFeeCents : Number(storedFeeCents);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_PER_WASHOUT_FEE_CENTS;
+  }
+
+  if (parsed === 0) {
+    return DEFAULT_PER_WASHOUT_FEE_CENTS;
+  }
+
+  return Math.round(parsed);
+}
+
 export function calculateOwnerWashoutChargeCents(
   baseWashoutAmountCents: number,
   platformFeeCents: number,

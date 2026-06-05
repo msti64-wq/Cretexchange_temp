@@ -20,6 +20,7 @@ type WashoutLocationLike = {
 import {
   getActiveBillingPolicyLabels,
   resolvePlatformFeeCents,
+  resolveApprovedWashoutPlatformFeeCents,
   calculateOwnerWashoutChargeCents,
   calculateDriverPayoutCents,
   resolveBillingPolicy,
@@ -36,4 +37,11 @@ export function resolveOwnerBillingPolicy(
   return resolveBillingPolicy(systemSettings, owner, location ?? undefined);
 }
 
-export { getActiveBillingPolicyLabels, resolveBillingPolicy, resolvePlatformFeeCents, calculateOwnerWashoutChargeCents, calculateDriverPayoutCents };
+export {
+  getActiveBillingPolicyLabels,
+  resolveBillingPolicy,
+  resolvePlatformFeeCents,
+  resolveApprovedWashoutPlatformFeeCents,
+  calculateOwnerWashoutChargeCents,
+  calculateDriverPayoutCents,
+};

@@ -38,6 +38,7 @@ import {
   resolveOwnerBillingPolicy,
   getActiveBillingPolicyLabels,
   resolvePlatformFeeCents,
+  resolveApprovedWashoutPlatformFeeCents,
   calculateOwnerWashoutChargeCents,
   calculateDriverPayoutCents,
 } from "./billingPolicy";
@@ -10119,11 +10120,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? await storage.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId)
             : [];
           const approvedWashoutCount = approvedWashouts.length;
+          const ownerCustomPlatformFeeCents = owner?.customPlatformFee !== null && owner?.customPlatformFee !== undefined && owner?.customPlatformFee !== ""
+            ? resolvePlatformFeeCents(owner.customPlatformFee)
+            : null;
           const platformFeesOwedCents = approvedWashouts.reduce((sum: number, row: ApprovedWashoutSummary) => {
-            const rowFee = row.activityFeeCentsPlatform === null || row.activityFeeCentsPlatform === undefined
-              ? 500
-              : Number(row.activityFeeCentsPlatform);
-            const normalizedFee = Number.isFinite(rowFee) ? Math.max(0, Math.round(rowFee)) : 500;
+            const normalizedFee = resolveApprovedWashoutPlatformFeeCents(
+              row.activityFeeCentsPlatform,
+              ownerCustomPlatformFeeCents
+            );
             return sum + normalizedFee;
           }, 0);
           const batches = await storage.getBillingBatchesByOwner(ownerSetting.ownerId);

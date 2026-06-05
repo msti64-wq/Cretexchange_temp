@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { DEFAULT_PER_WASHOUT_FEE_CENTS, resolveApprovedWashoutPlatformFeeCents, resolvePlatformFeeCents } from "../shared/billingPolicy";
 
 type BillingBatch = any;
 type Payment = any;
@@ -156,6 +157,14 @@ function extractStripeChargeId(paymentIntent: StripePaymentIntentLike | null | u
   return null;
 }
 
+function resolveOwnerStripeCustomerId(owner: Owner, ownerUser: User): string | null {
+  return owner.stripeCustomerId || ownerUser.stripeCustomerId || null;
+}
+
+function resolveOwnerStripePaymentMethodId(owner: Owner, ownerUser: User): string | null {
+  return owner.stripePaymentMethodId || ownerUser.stripePaymentMethodId || null;
+}
+
 function toDateKey(value?: Date | null): string {
   return value ? value.toISOString().split("T")[0] : new Date().toISOString().split("T")[0];
 }
@@ -225,12 +234,15 @@ async function processSingleOwnerBillingRun(
       };
     }
 
+    const ownerPlatformFeeOverrideCents = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined && owner.customPlatformFee !== ""
+      ? resolvePlatformFeeCents(owner.customPlatformFee)
+      : null;
     const approvedWashouts = await storage.getApprovedWashoutsForOwnerBilling(ownerId, startDate, endDate);
     const platformFeeTotalCents = approvedWashouts.reduce((sum, row) => {
-      const rowFee = row.activityFeeCentsPlatform === null || row.activityFeeCentsPlatform === undefined
-        ? 500
-        : Number(row.activityFeeCentsPlatform);
-      const normalizedFee = Number.isFinite(rowFee) ? Math.max(0, Math.round(rowFee)) : 500;
+      const normalizedFee = resolveApprovedWashoutPlatformFeeCents(
+        row.activityFeeCentsPlatform,
+        ownerPlatformFeeOverrideCents
+      );
       return sum + normalizedFee;
     }, 0);
     const driverTipTotalCents = approvedWashouts.reduce((sum, row) => {
@@ -289,7 +301,25 @@ async function processSingleOwnerBillingRun(
       };
     }
 
-    const ownerPaymentMethodId = owner.stripePaymentMethodId || ownerUser.stripePaymentMethodId;
+    if (platformFeeTotalCents <= 0) {
+      await storage.updateBillingBatchStatus(
+        billingBatch.id,
+        "skipped",
+        undefined,
+        "No platform fee amount owed"
+      );
+      return {
+        ownerId,
+        billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
+        status: "skipped",
+        message: "No platform fee amount was owed for the approved washouts.",
+        amountCents: 0,
+        washoutCount: approvedWashouts.length,
+      };
+    }
+
+    const ownerStripeCustomerId = resolveOwnerStripeCustomerId(owner, ownerUser);
+    const ownerPaymentMethodId = resolveOwnerStripePaymentMethodId(owner, ownerUser);
     if (!stripeClient) {
       const failureReason = "Stripe is not configured";
       await storage.updateBillingBatchStatus(billingBatch.id, "skipped", undefined, failureReason);
@@ -304,8 +334,9 @@ async function processSingleOwnerBillingRun(
       };
     }
 
-    if (!ownerUser.stripeCustomerId || !ownerPaymentMethodId) {
-      const failureReason = `Owner is missing ${!ownerUser.stripeCustomerId ? "Stripe customer" : "payment method"}`;
+    if (!ownerStripeCustomerId || !ownerPaymentMethodId) {
+      const missingField = !ownerStripeCustomerId ? "Stripe customer" : "payment method";
+      const failureReason = `Owner is missing ${missingField}`;
       await storage.markBillingBatchFailed(billingBatch.id, failureReason);
       console.warn(`⚠️  [OWNER_BILLING] Missing payment setup for owner ${ownerId}: ${failureReason}`);
       return {
@@ -335,7 +366,7 @@ async function processSingleOwnerBillingRun(
       const paymentIntent = await stripeClient.paymentIntents.create({
         amount: platformFeeTotalCents,
         currency: "usd",
-        customer: ownerUser.stripeCustomerId,
+        customer: ownerStripeCustomerId,
         payment_method: ownerPaymentMethodId,
         confirm: true,
         automatic_payment_methods: {
