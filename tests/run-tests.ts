@@ -3424,6 +3424,7 @@ test("manual owner billing charges seven approved washouts at the default five d
   assert.equal(result.runs[0].status, "paid");
   assert.equal(result.totalWashoutCount, 7);
   assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 3500);
+  assert.deepEqual((fixture.getLastIntent() as { payment_method_types?: string[] } | null)?.payment_method_types, ["card"]);
   assert.equal((fixture.getBatch() as { metadata?: { stripeChargeId?: string } } | null)?.metadata?.stripeChargeId, "ch_1");
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.platformFeeTotal, "35.00");
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.driverTipTotal, "5.00");
@@ -3457,6 +3458,7 @@ test("manual owner billing accepts a Stripe customer stored on the user record",
 
   assert.equal(result.runs[0].status, "paid");
   assert.equal((fixture.getLastIntent() as { customer?: string } | null)?.customer, "cus_owner_1");
+  assert.deepEqual((fixture.getLastIntent() as { payment_method_types?: string[] } | null)?.payment_method_types, ["card"]);
 });
 
 test("manual owner billing accepts a Stripe customer stored on the owner record", async () => {
@@ -3487,6 +3489,7 @@ test("manual owner billing accepts a Stripe customer stored on the owner record"
 
   assert.equal(result.runs[0].status, "paid");
   assert.equal((fixture.getLastIntent() as { customer?: string } | null)?.customer, "cus_owner_1");
+  assert.deepEqual((fixture.getLastIntent() as { payment_method_types?: string[] } | null)?.payment_method_types, ["card"]);
 });
 
 test("manual owner billing returns a clear error when the owner has no payment method", async () => {

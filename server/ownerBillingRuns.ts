@@ -369,9 +369,7 @@ async function processSingleOwnerBillingRun(
         customer: ownerStripeCustomerId,
         payment_method: ownerPaymentMethodId,
         confirm: true,
-        automatic_payment_methods: {
-          enabled: true,
-        },
+        payment_method_types: ["card"],
         description: `Owner platform billing - ${approvedWashouts.length} approved washouts`,
         metadata: paymentIntentMetadata,
       } as any, {
@@ -613,9 +611,7 @@ async function processSingleOwnerBillingRun(
       customer: ownerUser.stripeCustomerId,
       payment_method: owner.stripePaymentMethodId,
       confirm: true,
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      payment_method_types: ["card"],
       description: `Owner billing run - ${paymentsToBill.length} washouts`,
       metadata: paymentIntentMetadata,
     } as any, {
