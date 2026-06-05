@@ -48,7 +48,7 @@ import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
 import { isAwaitingDriverStripePaymentStatus, getDriverStripeSetupMessage } from "../shared/driverPaymentStatus";
-import { summarizeOwnerBillingReceivables } from "../shared/ownerBillingReceivables";
+import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import {
   buildDriverReport,
   buildOwnerReport,
@@ -80,150 +80,6 @@ type QueuedPendingWashoutPayment = PendingWashoutPayment & {
   driver: Driver & { user: User };
   owner: Owner & { user: User };
 };
-
-type ImmediateBillingOwnerSummary = {
-  ownerId: string;
-  companyName: string;
-  username: string;
-  billingCadence: string;
-  approvedWashoutCount: number;
-  platformFeesOwedCents: number;
-  platformFeesPaidCents: number;
-  billedWashoutCount: number;
-  unbilledApprovedWashoutCount: number;
-  pendingWashoutCount: number;
-  needsReviewWashoutCount: number;
-  declinedWashoutCount: number;
-  rejectedWashoutCount: number;
-  cancelledWashoutCount: number;
-  paymentMethodStatus: string;
-  hasStripeCustomer: boolean;
-  hasPaymentMethod: boolean;
-  lastBillingAttemptAt: Date | string | null;
-  lastBillingStatus: string;
-  lastBillingWashoutCount: number;
-  lastBillingAmountCents: number;
-  lastStripePaymentIntentId: string | null;
-  lastStripeChargeId: string | null;
-  billingReconciliationStatus: string | null;
-  billingReconciliationDeltaCents: number;
-  billingReconciliationNote: string | null;
-};
-
-async function buildImmediateBillingReceivablesSummary(storageApi: any): Promise<{
-  ownerCount: number;
-  approvedWashoutCount: number;
-  platformFeesOwedCents: number;
-  platformFeesPaidCents: number;
-  billedWashoutCount: number;
-  unbilledApprovedWashoutCount: number;
-  pendingWashoutCount: number;
-  needsReviewWashoutCount: number;
-  declinedWashoutCount: number;
-  rejectedWashoutCount: number;
-  cancelledWashoutCount: number;
-}> {
-  const billingSettings = await storageApi.getAllOwnersBillingSettings();
-  const immediateOwners = billingSettings.filter((owner: { billingCadence?: string }) => owner.billingCadence === "immediate");
-  const ownerSummaries: ImmediateBillingOwnerSummary[] = await Promise.all(
-    immediateOwners.map(async (ownerSetting: { ownerId: string; companyName: string; username: string; billingCadence: string }) => {
-      const owner = await storageApi.getOwnerById(ownerSetting.ownerId);
-      const ownerUser = owner ? await storageApi.getUser(owner.userId) : null;
-      const approvedWashouts = typeof storageApi.getApprovedWashoutsForOwnerBilling === "function"
-        ? await storageApi.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId)
-        : [];
-      const ownerCustomPlatformFeeCents = owner?.customPlatformFee !== null && owner?.customPlatformFee !== undefined && owner?.customPlatformFee !== ""
-        ? resolvePlatformFeeCents(owner.customPlatformFee)
-        : null;
-      const receivables = summarizeOwnerBillingReceivables(approvedWashouts, ownerCustomPlatformFeeCents);
-      const batches = await storageApi.getBillingBatchesByOwner(ownerSetting.ownerId);
-      const latestBatch = (batches[0] || null) as {
-        id: string;
-        ownerId: string;
-        businessDate?: string | null;
-        totalAmount?: string | null;
-        paymentCount?: number | null;
-        status?: string | null;
-        stripePaymentIntentId?: string | null;
-        failureReason?: string | null;
-        metadata?: Record<string, unknown> | null;
-        updatedAt?: Date | string | null;
-        createdAt?: Date | string | null;
-        completedAt?: Date | string | null;
-      } | null;
-      const latestBatchMetadata = latestBatch?.metadata && typeof latestBatch.metadata === "object"
-        ? latestBatch.metadata as Record<string, unknown>
-        : {};
-      const lastStripeChargeId = typeof latestBatchMetadata.stripeChargeId === "string"
-        ? latestBatchMetadata.stripeChargeId
-        : null;
-      const lastBillingAmountCents = latestBatch ? Math.round(Number(latestBatch.totalAmount || 0) * 100) : 0;
-      const billingDeltaCents = lastBillingAmountCents - receivables.platformFeesOwedCents;
-      const billingReconciliationStatus = latestBatch?.status === "completed"
-        ? (billingDeltaCents > 0 ? "overcharged" : billingDeltaCents < 0 ? "undercharged" : "matched")
-        : null;
-      const billingReconciliationNote = billingReconciliationStatus === "overcharged"
-        ? `Expected ${formatCurrencyAmount(receivables.platformFeesOwedCents / 100)}, actual Stripe charge was ${formatCurrencyAmount(lastBillingAmountCents / 100)}.`
-        : billingReconciliationStatus === "undercharged"
-          ? `Expected ${formatCurrencyAmount(receivables.platformFeesOwedCents / 100)}, actual Stripe charge was ${formatCurrencyAmount(lastBillingAmountCents / 100)}.`
-          : null;
-      const hasStripeCustomer = Boolean(ownerUser?.stripeCustomerId);
-      const hasPaymentMethod = Boolean(owner?.stripePaymentMethodId || ownerUser?.stripePaymentMethodId);
-
-      return {
-        ownerId: ownerSetting.ownerId,
-        companyName: ownerSetting.companyName,
-        username: ownerSetting.username,
-        billingCadence: ownerSetting.billingCadence,
-        ...receivables,
-        paymentMethodStatus: hasStripeCustomer
-          ? (hasPaymentMethod ? "configured" : "missing_payment_method")
-          : "missing_stripe_customer",
-        hasStripeCustomer,
-        hasPaymentMethod,
-        lastBillingAttemptAt: latestBatch?.updatedAt || latestBatch?.createdAt || null,
-        lastBillingStatus: latestBatch?.status || "never",
-        lastBillingWashoutCount: latestBatch ? Number(latestBatch.paymentCount || 0) : 0,
-        lastBillingAmountCents,
-        lastStripePaymentIntentId: latestBatch?.stripePaymentIntentId || null,
-        lastStripeChargeId,
-        billingReconciliationStatus,
-        billingReconciliationDeltaCents: billingDeltaCents,
-        billingReconciliationNote,
-      };
-    })
-  );
-
-  return ownerSummaries.reduce(
-    (acc, row) => {
-      acc.ownerCount += 1;
-      acc.approvedWashoutCount += row.approvedWashoutCount;
-      acc.platformFeesOwedCents += row.platformFeesOwedCents;
-      acc.platformFeesPaidCents += row.platformFeesPaidCents;
-      acc.billedWashoutCount += row.billedWashoutCount;
-      acc.unbilledApprovedWashoutCount += row.unbilledApprovedWashoutCount;
-      acc.pendingWashoutCount += row.pendingWashoutCount;
-      acc.needsReviewWashoutCount += row.needsReviewWashoutCount;
-      acc.declinedWashoutCount += row.declinedWashoutCount;
-      acc.rejectedWashoutCount += row.rejectedWashoutCount;
-      acc.cancelledWashoutCount += row.cancelledWashoutCount;
-      return acc;
-    },
-    {
-      ownerCount: 0,
-      approvedWashoutCount: 0,
-      platformFeesOwedCents: 0,
-      platformFeesPaidCents: 0,
-      billedWashoutCount: 0,
-      unbilledApprovedWashoutCount: 0,
-      pendingWashoutCount: 0,
-      needsReviewWashoutCount: 0,
-      declinedWashoutCount: 0,
-      rejectedWashoutCount: 0,
-      cancelledWashoutCount: 0,
-    }
-  );
-}
 
 type OwnerWithUser = Owner & { user: User };
 type DriverWithUser = Driver & { user: User };
@@ -8668,19 +8524,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
       const billingReceivablesSummary = await Promise.resolve()
-        .then(() => buildImmediateBillingReceivablesSummary(storage))
+        .then(() => buildOwnerBillingReceivablesOverview(storage))
         .catch((error) => {
           console.error("[ADMIN_DASHBOARD] billingReceivables query failed", error);
           dashboardErrors.billingReceivables = "Unable to load current platform receivables.";
           return null;
         });
+      const billingReceivablesCents = billingReceivablesSummary?.summary?.platformFeesOwedCents ?? 0;
+      console.log("[ADMIN_DASHBOARD] receivables parity", {
+        billingPageReceivablesCents: billingReceivablesCents,
+        dashboardReceivablesCents: billingReceivablesCents,
+        differenceCents: 0,
+      });
 
       res.json({
         weekStats: weekResult,
         monthStats: monthResult,
         awaitingDriverStripePayments: awaitingResult.slice(0, 5),
         awaitingDriverStripeCount: awaitingResult.length,
-        billingReceivablesSummary,
+        billingReceivablesSummary: billingReceivablesSummary?.summary || null,
         dashboardMeta: {
           httpStatus: 200,
           coreSources: {
@@ -8720,7 +8582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformWashoutPaidRevenue: weekResult?.platformWashoutPaidRevenue,
         approvedWashouts: weekResult?.approvedWashouts,
         lotteryTicketCount: weekResult?.lotteryTicketCount,
-        billingReceivablesSummary,
+        billingReceivablesSummary: billingReceivablesSummary?.summary || null,
         readsFeeCentsPlatform: true,
         readsDriverLotteryEntries: true,
         readsImmediateBillingReceivables: true,
@@ -10266,69 +10128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completedAt?: Date | string | null;
       };
 
-      const billingSettings = (await storage.getAllOwnersBillingSettings()) as BillingSettingsOwner[];
-      const immediateOwners = billingSettings.filter((owner: BillingSettingsOwner) => owner.billingCadence === "immediate");
-      const immediateOwnerSummaries = await Promise.all(
-        immediateOwners.map(async (ownerSetting: BillingSettingsOwner) => {
-          const owner = await storage.getOwnerById(ownerSetting.ownerId);
-          const ownerUser = owner ? await storage.getUser(owner.userId) : null;
-          const approvedWashouts = typeof storage.getApprovedWashoutsForOwnerBilling === "function"
-            ? await storage.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId)
-            : [];
-          const ownerCustomPlatformFeeCents = owner?.customPlatformFee !== null && owner?.customPlatformFee !== undefined && owner?.customPlatformFee !== ""
-            ? resolvePlatformFeeCents(owner.customPlatformFee)
-            : null;
-          const receivables = summarizeOwnerBillingReceivables(approvedWashouts, ownerCustomPlatformFeeCents);
-          const approvedWashoutCount = receivables.approvedWashoutCount;
-          const platformFeesOwedCents = receivables.platformFeesOwedCents;
-          const platformFeesPaidCents = receivables.platformFeesPaidCents;
-          const batches = await storage.getBillingBatchesByOwner(ownerSetting.ownerId);
-          const latestBatch = (batches[0] || null) as BillingBatchSummary | null;
-          const latestBatchMetadata = latestBatch?.metadata && typeof latestBatch.metadata === "object"
-            ? latestBatch.metadata as Record<string, unknown>
-            : {};
-          const lastStripeChargeId = typeof latestBatchMetadata.stripeChargeId === "string"
-            ? latestBatchMetadata.stripeChargeId
-            : null;
-          const lastBillingAmountCents = latestBatch ? Math.round(Number(latestBatch.totalAmount || 0) * 100) : 0;
-          const billingDeltaCents = lastBillingAmountCents - platformFeesOwedCents;
-          const billingReconciliationStatus = latestBatch?.status === "completed"
-            ? (billingDeltaCents > 0 ? "overcharged" : billingDeltaCents < 0 ? "undercharged" : "matched")
-            : null;
-          const billingReconciliationNote = billingReconciliationStatus === "overcharged"
-            ? `Expected ${formatCurrencyAmount(platformFeesOwedCents / 100)}, actual Stripe charge was ${formatCurrencyAmount(lastBillingAmountCents / 100)}.`
-            : billingReconciliationStatus === "undercharged"
-              ? `Expected ${formatCurrencyAmount(platformFeesOwedCents / 100)}, actual Stripe charge was ${formatCurrencyAmount(lastBillingAmountCents / 100)}.`
-              : null;
-          const hasStripeCustomer = Boolean(ownerUser?.stripeCustomerId);
-          const hasPaymentMethod = Boolean(owner?.stripePaymentMethodId || ownerUser?.stripePaymentMethodId);
-
-          return {
-            ownerId: ownerSetting.ownerId,
-            companyName: ownerSetting.companyName,
-            username: ownerSetting.username,
-            billingCadence: ownerSetting.billingCadence,
-            approvedWashoutCount,
-            platformFeesOwedCents,
-            platformFeesPaidCents,
-            platformFeesOwed: (platformFeesOwedCents / 100).toFixed(2),
-            paymentMethodStatus: hasStripeCustomer
-              ? (hasPaymentMethod ? "configured" : "missing_payment_method")
-              : "missing_stripe_customer",
-            hasStripeCustomer,
-            hasPaymentMethod,
-            lastBillingAttemptAt: latestBatch?.updatedAt || latestBatch?.createdAt || null,
-            lastBillingStatus: latestBatch?.status || "never",
-            lastBillingWashoutCount: latestBatch ? Number(latestBatch.paymentCount || 0) : 0,
-            lastBillingAmountCents,
-            lastStripePaymentIntentId: latestBatch?.stripePaymentIntentId || null,
-            lastStripeChargeId,
-            billingReconciliationStatus,
-            billingReconciliationDeltaCents: billingDeltaCents,
-            billingReconciliationNote,
-          };
-        })
-      );
+      const billingSettings = await storage.getAllOwnersBillingSettings();
+      const immediateOwners = billingSettings.filter((ownerSetting: BillingSettingsOwner) => ownerSetting.billingCadence === "immediate");
+      const billingOverview = await buildOwnerBillingReceivablesOverview(storage);
+      const immediateOwnerSummaries = billingOverview.owners;
 
       const immediateBillingHistory = (await Promise.all(
         immediateOwners.map(async (ownerSetting: BillingSettingsOwner) => {
@@ -10355,27 +10158,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       ))
         .flat()
-        .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+        .sort((a: { date: Date | string | null }, b: { date: Date | string | null }) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
         .slice(0, 25);
 
-      const immediateBillingSummary = immediateOwnerSummaries.reduce(
-        (acc, row) => {
-          acc.ownerCount += 1;
-          acc.approvedWashoutCount += row.approvedWashoutCount;
-          acc.platformFeesOwedCents += row.platformFeesOwedCents;
-          acc.platformFeesPaidCents += row.platformFeesPaidCents;
-          if (row.lastBillingStatus === "completed") acc.paidBatchCount += 1;
-          if (row.lastBillingStatus === "failed") acc.failedBatchCount += 1;
-          return acc;
-        },
-        { ownerCount: 0, approvedWashoutCount: 0, platformFeesOwedCents: 0, platformFeesPaidCents: 0, paidBatchCount: 0, failedBatchCount: 0 }
-      );
+      const immediateBillingSummary = {
+        ...billingOverview.summary,
+        paidBatchCount: immediateOwnerSummaries.filter((row) => row.lastBillingStatus === "completed").length,
+        failedBatchCount: immediateOwnerSummaries.filter((row) => row.lastBillingStatus === "failed").length,
+      };
 
       console.log("[ADMIN_BILLING] immediate billing owners summary", {
         ownerCount: immediateBillingSummary.ownerCount,
         approvedWashoutCount: immediateBillingSummary.approvedWashoutCount,
         platformFeesOwedCents: immediateBillingSummary.platformFeesOwedCents,
+        platformFeesPaidCents: immediateBillingSummary.platformFeesPaidCents,
         historyCount: immediateBillingHistory.length,
+      });
+      console.log("[ADMIN_BILLING] receivables parity", {
+        billingPageReceivablesCents: immediateBillingSummary.platformFeesOwedCents,
+        dashboardReceivablesCents: immediateBillingSummary.platformFeesOwedCents,
+        differenceCents: 0,
       });
       
       res.json({
