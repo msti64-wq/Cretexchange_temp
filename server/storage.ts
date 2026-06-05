@@ -102,7 +102,7 @@ import { resolvePlatformFeeCents } from "../shared/billingPolicy";
 import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { summarizeWashoutRevenueFromActivities } from "../shared/washoutRevenue";
-import { isBillableWashoutForOwnerBilling, WASHOUT_OWNER_BILLING_STATUSES } from "../shared/washoutApproval";
+import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
@@ -4692,7 +4692,10 @@ export class DatabaseStorage implements IStorage {
   }>> {
     const conditions = [
       eq(owners.id, ownerId),
-      inArray(washoutActivities.status, Array.from(WASHOUT_OWNER_BILLING_STATUSES) as any),
+      or(
+        eq(washoutActivities.status, "verified"),
+        sql<boolean>`${washoutActivities.status}::text = 'completed'`
+      ),
     ];
 
     if (startDate) {

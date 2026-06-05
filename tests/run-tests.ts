@@ -278,6 +278,24 @@ test("owner billing receivables summary excludes declined and billed washouts", 
   assert.equal(summary.cancelledWashoutCount, 1);
 });
 
+test("owner billing receivables summary bills verified and completed washouts without approved status", () => {
+  const summary = summarizeOwnerBillingReceivables(
+    [
+      { activityStatus: "verified", activityFeeCentsPlatform: null, locationDriverIncentiveTipCents: 0 },
+      { activityStatus: "completed", activityFeeCentsPlatform: 500, paymentStatus: "completed", locationDriverIncentiveTipCents: 0 },
+      { activityStatus: "declined", activityFeeCentsPlatform: 500, locationDriverIncentiveTipCents: 0 },
+    ],
+    null,
+  );
+
+  assert.equal(summary.approvedWashoutCount, 2);
+  assert.equal(summary.platformFeesOwedCents, 500);
+  assert.equal(summary.platformFeesPaidCents, 500);
+  assert.equal(summary.unbilledApprovedWashoutCount, 1);
+  assert.equal(summary.billedWashoutCount, 1);
+  assert.equal(summary.declinedWashoutCount, 1);
+});
+
 test("washout billing verification report groups statuses and computes owed platform fees", () => {
   const report = buildWashoutBillingVerificationReport([
     {
