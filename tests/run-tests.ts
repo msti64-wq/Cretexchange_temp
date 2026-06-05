@@ -821,6 +821,7 @@ function createOwnerBillingRunFixture(params: {
   billingTimezone?: string;
   billingDayOfWeek?: number;
   payments: Array<Record<string, unknown>>;
+  approvedWashouts?: Array<Record<string, unknown>>;
   stripeMode?: "succeeded" | "processing" | "throw";
 }) {
   const ownerId = params.ownerId || "owner_1";
@@ -869,6 +870,21 @@ function createOwnerBillingRunFixture(params: {
       },
     },
   }));
+  let approvedWashouts = (params.approvedWashouts || params.payments).map((row, index) => ({
+    activityId: String(row.activityId || `activity_${index + 1}`),
+    ownerId,
+    driverId: String(row.driverId || `driver_${index + 1}`),
+    locationId: String(row.locationId || `location_${index + 1}`),
+    activityStatus: String(row.activityStatus || "verified"),
+    activityFeeCentsPlatform: row.activityFeeCentsPlatform === undefined || row.activityFeeCentsPlatform === null
+      ? null
+      : Number(row.activityFeeCentsPlatform),
+    locationDriverIncentiveTip: row.locationDriverIncentiveTip === undefined || row.locationDriverIncentiveTip === null
+      ? 0
+      : Number(row.locationDriverIncentiveTip),
+    verifiedAt: row.verifiedAt || new Date("2026-05-28T12:00:00Z"),
+    createdAt: row.createdAt || new Date("2026-05-28T12:00:00Z"),
+  }));
 
   const storage = {
     getOwnerById: async (id: string) => (id === ownerId ? owner : undefined),
@@ -893,6 +909,19 @@ function createOwnerBillingRunFixture(params: {
         if (payment.batchId) return false;
         if (startKey && String(payment.businessDate) < startKey) return false;
         if (endKey && String(payment.businessDate) > endKey) return false;
+        return true;
+      }) as any;
+    },
+    getApprovedWashoutsForOwnerBilling: async (_ownerId: string, startDate?: Date, endDate?: Date) => {
+      const startKey = startDate ? startDate.toISOString().split("T")[0] : undefined;
+      const endKey = endDate ? endDate.toISOString().split("T")[0] : undefined;
+      return approvedWashouts.filter((row) => {
+        if (row.ownerId !== ownerId) return false;
+        if (!["verified", "approved", "completed", "paid", "settled"].includes(String(row.activityStatus || "").toLowerCase())) return false;
+        const rowDate = row.verifiedAt || row.createdAt;
+        const rowKey = rowDate ? new Date(rowDate as string | Date).toISOString().split("T")[0] : "";
+        if (startKey && rowKey < startKey) return false;
+        if (endKey && rowKey > endKey) return false;
         return true;
       }) as any;
     },
@@ -977,12 +1006,6 @@ function createOwnerBillingRunFixture(params: {
         stripePaymentIntentId,
         completedAt: new Date("2026-05-28T14:00:00Z"),
       };
-      payments = payments.map((payment) => payment.batchId === batchId ? {
-        ...payment,
-        status: "completed",
-        stripePaymentIntentId,
-        paidAt: new Date("2026-05-28T14:00:00Z"),
-      } : payment);
     },
     markBillingBatchFailed: async (batchId: string, failureReason: string) => {
       batch = {
@@ -3302,23 +3325,24 @@ test("owner billing charges platform fee plus driver tip separately", async () =
   assert.equal((fixture.getLastIntent() as { metadata?: Record<string, string> } | null)?.metadata?.driverTipTotal, "1.50");
 });
 
-test("manual owner billing uses the same engine and sums fee overrides", async () => {
+test("manual owner billing charges approved washout platform fees only", async () => {
   const fixture = createOwnerBillingRunFixture({
     billingCadence: "weekly",
-    payments: [
+    approvedWashouts: [
       {
-        id: "payment_1",
-        amount: "12.00",
-        processingFee: "3.00",
-        washoutServiceFee: "5.00",
+        activityId: "activity_1",
+        activityFeeCentsPlatform: 300,
+        activityStatus: "verified",
+        locationDriverIncentiveTip: 150,
       },
       {
-        id: "payment_2",
-        amount: "8.00",
-        processingFee: "2.00",
-        washoutServiceFee: "5.00",
+        activityId: "activity_2",
+        activityFeeCentsPlatform: 200,
+        activityStatus: "verified",
+        locationDriverIncentiveTip: 350,
       },
     ],
+    payments: [],
     stripeMode: "succeeded",
   });
 
@@ -3334,12 +3358,102 @@ test("manual owner billing uses the same engine and sums fee overrides", async (
 
   assert.equal(result.runs[0].status, "paid");
   assert.equal(result.totalWashoutCount, 2);
-  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 3500);
+  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 500);
   assert.equal((fixture.getBatch() as { metadata?: { runType?: string; triggeredByAdminId?: string; platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.runType, "admin_manual");
   assert.equal((fixture.getBatch() as { metadata?: { runType?: string; triggeredByAdminId?: string; platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.triggeredByAdminId, "admin_1");
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.platformFeeTotal, "5.00");
-  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.driverTipTotal, "10.00");
+  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.driverTipTotal, "5.00");
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.washoutActivityIds, "activity_1,activity_2");
+});
+
+test("manual owner billing charges seven approved washouts at the default five dollars each", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    approvedWashouts: Array.from({ length: 7 }, (_, index) => ({
+      activityId: `activity_${index + 1}`,
+      activityFeeCentsPlatform: null,
+      activityStatus: "verified",
+      locationDriverIncentiveTip: index === 0 ? 500 : 0,
+    })),
+    payments: [],
+    stripeMode: "succeeded",
+  });
+
+  const result = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(result.runs[0].status, "paid");
+  assert.equal(result.totalWashoutCount, 7);
+  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 3500);
+  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.platformFeeTotal, "35.00");
+  assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.driverTipTotal, "5.00");
+});
+
+test("manual owner billing excludes pending washouts and remains idempotent on retry", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    approvedWashouts: [
+      { activityId: "activity_1", activityFeeCentsPlatform: 500, activityStatus: "verified" },
+      { activityId: "activity_2", activityFeeCentsPlatform: 500, activityStatus: "pending" },
+    ],
+    payments: [],
+    stripeMode: "succeeded",
+  });
+
+  const first = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+  const second = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(first.runs[0].status, "paid");
+  assert.equal(first.runs[0].washoutCount, 1);
+  assert.equal(second.runs[0].status, "skipped");
+  assert.equal(fixture.getChargeCount(), 1);
+});
+
+test("manual owner billing succeeds without driver Stripe onboarding data", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    approvedWashouts: [
+      { activityId: "activity_1", activityFeeCentsPlatform: 500, activityStatus: "verified" },
+    ],
+    payments: [],
+    stripeMode: "succeeded",
+  });
+
+  const result = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-28T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  assert.equal(result.runs[0].status, "paid");
+  assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 500);
 });
 
 test("duplicate owner billing run does not double charge", async () => {

@@ -4665,6 +4665,51 @@ export class DatabaseStorage implements IStorage {
     })) as any;
   }
 
+  async getApprovedWashoutsForOwnerBilling(ownerId: string, startDate?: Date, endDate?: Date): Promise<Array<{
+    activityId: string;
+    ownerId: string;
+    driverId: string;
+    locationId: string;
+    activityStatus?: string | null;
+    activityFeeCentsPlatform?: number | null;
+    locationDriverIncentiveTip?: number | null;
+    verifiedAt?: Date | null;
+    createdAt?: Date | null;
+  }>> {
+    const conditions = [
+      eq(owners.id, ownerId),
+      eq(washoutActivities.status, "verified"),
+    ];
+
+    if (startDate) {
+      conditions.push(gte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, startDate));
+    }
+
+    if (endDate) {
+      conditions.push(lte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, endDate));
+    }
+
+    const rows = await db
+      .select({
+        activityId: washoutActivities.id,
+        ownerId: owners.id,
+        driverId: washoutActivities.driverId,
+        locationId: washoutActivities.locationId,
+        activityStatus: washoutActivities.status,
+        activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
+        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        verifiedAt: washoutActivities.verifiedAt,
+        createdAt: washoutActivities.createdAt,
+      })
+      .from(washoutActivities)
+      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
+      .where(and(...conditions))
+      .orderBy(desc(washoutActivities.verifiedAt), desc(washoutActivities.createdAt));
+
+    return rows as any;
+  }
+
   async assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void> {
     if (paymentIds.length === 0) return;
 
