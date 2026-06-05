@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type Stripe from "stripe";
 import { DEFAULT_PER_WASHOUT_FEE_CENTS, resolveApprovedWashoutPlatformFeeCents, resolvePlatformFeeCents } from "../shared/billingPolicy";
 
@@ -163,6 +164,31 @@ function resolveOwnerStripeCustomerId(owner: Owner, ownerUser: User): string | n
 
 function resolveOwnerStripePaymentMethodId(owner: Owner, ownerUser: User): string | null {
   return owner.stripePaymentMethodId || ownerUser.stripePaymentMethodId || null;
+}
+
+function buildStripeIdempotencyKey(
+  prefix: string,
+  ownerId: string,
+  billingBatchId: string,
+  amountCents: number,
+  washoutActivityIds: string[],
+  ownerStripeCustomerId: string | null,
+  ownerPaymentMethodId: string | null,
+  runType: OwnerBillingRunType,
+): string {
+  const normalizedIds = Array.from(new Set(washoutActivityIds.map((id) => String(id).trim()).filter(Boolean))).sort();
+  const source = [
+    prefix,
+    ownerId,
+    billingBatchId,
+    String(amountCents),
+    ownerStripeCustomerId || "",
+    ownerPaymentMethodId || "",
+    runType,
+    normalizedIds.join(","),
+  ].join("|");
+
+  return `${prefix}_${createHash("sha256").update(source).digest("hex")}`;
 }
 
 function toDateKey(value?: Date | null): string {
@@ -363,17 +389,28 @@ async function processSingleOwnerBillingRun(
     };
 
     try {
+      const idempotencyKey = buildStripeIdempotencyKey(
+        "owner_platform_billing",
+        ownerId,
+        billingBatch.id,
+        platformFeeTotalCents,
+        washoutActivityIds,
+        ownerStripeCustomerId,
+        ownerPaymentMethodId,
+        runType,
+      );
       const paymentIntent = await stripeClient.paymentIntents.create({
         amount: platformFeeTotalCents,
         currency: "usd",
         customer: ownerStripeCustomerId,
         payment_method: ownerPaymentMethodId,
         confirm: true,
+        off_session: true,
         payment_method_types: ["card"],
         description: `Owner platform billing - ${approvedWashouts.length} approved washouts`,
         metadata: paymentIntentMetadata,
       } as any, {
-        idempotencyKey: `owner_platform_billing_${billingBatch.id}`,
+        idempotencyKey,
       });
       const stripeChargeId = extractStripeChargeId(paymentIntent);
 
@@ -591,9 +628,9 @@ async function processSingleOwnerBillingRun(
     };
   }
 
-  const paymentIntentMetadata = {
-    batchId: billingBatch.id,
-    ownerId,
+    const paymentIntentMetadata = {
+      batchId: billingBatch.id,
+      ownerId,
     runType,
     startDate: startDate ? startDate.toISOString().split("T")[0] : "",
     endDate: endDate ? endDate.toISOString().split("T")[0] : "",
@@ -605,17 +642,31 @@ async function processSingleOwnerBillingRun(
   };
 
   try {
+    const paymentActivityIds = paymentsToBill
+      .map((payment) => payment.activityId)
+      .filter((activityId) => Boolean(activityId));
+    const idempotencyKey = buildStripeIdempotencyKey(
+      "owner_billing_run",
+      ownerId,
+      billingBatch.id,
+      totalAmountCents,
+      paymentActivityIds,
+      ownerUser.stripeCustomerId,
+      owner.stripePaymentMethodId,
+      runType,
+    );
     const paymentIntent = await stripeClient.paymentIntents.create({
       amount: totalAmountCents,
       currency: "usd",
       customer: ownerUser.stripeCustomerId,
       payment_method: owner.stripePaymentMethodId,
       confirm: true,
+      off_session: true,
       payment_method_types: ["card"],
       description: `Owner billing run - ${paymentsToBill.length} washouts`,
       metadata: paymentIntentMetadata,
     } as any, {
-      idempotencyKey: `owner_billing_run_${billingBatch.id}`,
+      idempotencyKey,
     });
 
     console.log(`💳 [OWNER_BILLING] Stripe payment intent created for owner ${ownerId}`, {

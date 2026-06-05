@@ -9,6 +9,7 @@ import { resolveBillingPolicy } from "../shared/billingPolicy";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
 import { buildWashoutLedgerRepairPlan } from "../shared/washoutLedgerRepair";
+import { buildWashoutBillingVerificationReport } from "../shared/washoutBillingVerification";
 import { summarizeWashoutRevenue, summarizeWashoutRevenueFromActivities } from "../shared/washoutRevenue";
 import { insertWashoutLocationSchema, updateSystemSettingsSchema } from "../shared/schema";
 
@@ -247,6 +248,114 @@ test("approved washout revenue summary uses explicit five dollar platform fee on
   assert.equal(summary.approvedWashouts, 7);
   assert.equal(summary.billedWashouts, 0);
   assert.equal(summary.pendingWashouts, 7);
+});
+
+test("washout billing verification report groups statuses and computes owed platform fees", () => {
+  const report = buildWashoutBillingVerificationReport([
+    {
+      activityId: "washout-1",
+      ownerId: "owner-1",
+      ownerCompanyName: "Alpha Washouts",
+      locationId: "location-1",
+      locationName: "North Site",
+      status: "verified",
+      paymentStatus: "pending",
+      feeCentsPlatform: null,
+      ownerCustomPlatformFeeCents: null,
+      driverIncentiveTipCents: 0,
+    },
+    {
+      activityId: "washout-2",
+      ownerId: "owner-1",
+      ownerCompanyName: "Alpha Washouts",
+      locationId: "location-1",
+      locationName: "North Site",
+      status: "approved",
+      paymentStatus: "paid",
+      feeCentsPlatform: 500,
+      ownerCustomPlatformFeeCents: null,
+      driverIncentiveTipCents: 200,
+    },
+    {
+      activityId: "washout-3",
+      ownerId: "owner-1",
+      ownerCompanyName: "Alpha Washouts",
+      locationId: "location-1",
+      locationName: "North Site",
+      status: "rejected",
+      paymentStatus: null,
+      feeCentsPlatform: null,
+      ownerCustomPlatformFeeCents: null,
+      driverIncentiveTipCents: 0,
+    },
+    {
+      activityId: "washout-4",
+      ownerId: "owner-1",
+      ownerCompanyName: "Alpha Washouts",
+      locationId: "location-2",
+      locationName: "South Site",
+      status: "declined",
+      paymentStatus: null,
+      feeCentsPlatform: null,
+      ownerCustomPlatformFeeCents: null,
+      driverIncentiveTipCents: 0,
+    },
+    {
+      activityId: "washout-5",
+      ownerId: "owner-2",
+      ownerCompanyName: "Bravo Washouts",
+      locationId: "location-3",
+      locationName: "West Site",
+      status: "cancelled",
+      paymentStatus: null,
+      feeCentsPlatform: null,
+      ownerCustomPlatformFeeCents: null,
+      driverIncentiveTipCents: 0,
+    },
+    {
+      activityId: "washout-6",
+      ownerId: "owner-2",
+      ownerCompanyName: "Bravo Washouts",
+      locationId: "location-3",
+      locationName: "West Site",
+      status: "pending_owner_approval",
+      paymentStatus: "pending",
+      feeCentsPlatform: null,
+      ownerCustomPlatformFeeCents: null,
+      driverIncentiveTipCents: 0,
+    },
+    {
+      activityId: "washout-7",
+      ownerId: "owner-2",
+      ownerCompanyName: "Bravo Washouts",
+      locationId: "location-4",
+      locationName: "East Site",
+      status: "photo_pending",
+      paymentStatus: "pending",
+      feeCentsPlatform: null,
+      ownerCustomPlatformFeeCents: null,
+      driverIncentiveTipCents: 0,
+    },
+  ]);
+
+  assert.equal(report.totalWashouts, 7);
+  assert.equal(report.approvedWashouts, 2);
+  assert.equal(report.alreadyBilledWashouts, 1);
+  assert.equal(report.unbilledApprovedWashouts, 1);
+  assert.equal(report.declinedWashouts, 1);
+  assert.equal(report.rejectedWashouts, 1);
+  assert.equal(report.cancelledWashouts, 1);
+  assert.equal(report.pendingWashouts, 1);
+  assert.equal(report.needsReviewWashouts, 1);
+  assert.equal(report.platformFeeReceivableCents, 1000);
+  assert.equal(report.platformFeeOwedCents, 500);
+  assert.equal(report.platformFeeBilledCents, 500);
+  assert.equal(report.driverIncentiveTipTotalCents, 200);
+  assert.deepEqual(report.washoutIdsByStatus.verified, ["washout-1"]);
+  assert.deepEqual(report.washoutIdsByStatus.approved, ["washout-2"]);
+  assert.equal(report.breakdownByOwnerLocation.length, 4);
+  assert.equal(report.breakdownByOwnerLocation[0].ownerCompanyName, "Alpha Washouts");
+  assert.equal(report.breakdownByOwnerLocation[0].platformFeeReceivableCents, 1000);
 });
 
 test("washout ledger repair plan backfills missing platform fees and lottery tickets idempotently", () => {
@@ -865,6 +974,7 @@ function createOwnerBillingRunFixture(params: {
   let batch: Record<string, unknown> | null = null;
   let chargeCount = 0;
   let lastIntent: Record<string, unknown> | null = null;
+  let lastIntentOptions: Record<string, unknown> | null = null;
   let payments = params.payments.map((payment, index) => ({
     id: payment.id || `payment_${index + 1}`,
     ownerId,
@@ -1051,9 +1161,10 @@ function createOwnerBillingRunFixture(params: {
   const stripeClient = params.stripeMode
     ? {
         paymentIntents: {
-          create: async (intent: Record<string, unknown>) => {
+          create: async (intent: Record<string, unknown>, options?: Record<string, unknown>) => {
             chargeCount++;
             lastIntent = intent;
+            lastIntentOptions = options || null;
             if (params.stripeMode === "throw") {
               throw new Error("Stripe charge failed");
             }
@@ -1074,6 +1185,24 @@ function createOwnerBillingRunFixture(params: {
     getBatch: () => batch,
     getChargeCount: () => chargeCount,
     getLastIntent: () => lastIntent,
+    getLastIntentOptions: () => lastIntentOptions,
+    setApprovedWashouts: (nextApprovedWashouts: typeof approvedWashouts) => {
+      approvedWashouts = nextApprovedWashouts.map((row, index) => ({
+        activityId: String(row.activityId || `activity_${index + 1}`),
+        ownerId,
+        driverId: String(row.driverId || `driver_${index + 1}`),
+        locationId: String(row.locationId || `location_${index + 1}`),
+        activityStatus: String(row.activityStatus || "verified"),
+        activityFeeCentsPlatform: row.activityFeeCentsPlatform === undefined || row.activityFeeCentsPlatform === null
+          ? null
+          : Number(row.activityFeeCentsPlatform),
+        locationDriverIncentiveTip: row.locationDriverIncentiveTip === undefined || row.locationDriverIncentiveTip === null
+          ? 0
+          : Number(row.locationDriverIncentiveTip),
+        verifiedAt: row.verifiedAt || new Date("2026-05-28T12:00:00Z"),
+        createdAt: row.createdAt || new Date("2026-05-28T12:00:00Z"),
+      })) as typeof approvedWashouts;
+    },
     setPaymentsStatus: (status: string) => {
       payments = payments.map((payment) => ({ ...payment, status }));
     },
@@ -3391,6 +3520,8 @@ test("manual owner billing charges approved washout platform fees only", async (
   assert.equal(result.runs[0].status, "paid");
   assert.equal(result.totalWashoutCount, 2);
   assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 500);
+  assert.equal((fixture.getLastIntent() as { off_session?: boolean } | null)?.off_session, true);
+  assert.deepEqual((fixture.getLastIntentOptions() as { idempotencyKey?: string } | null)?.idempotencyKey?.startsWith("owner_platform_billing_"), true);
   assert.equal((fixture.getBatch() as { metadata?: { runType?: string; triggeredByAdminId?: string; platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.runType, "admin_manual");
   assert.equal((fixture.getBatch() as { metadata?: { runType?: string; triggeredByAdminId?: string; platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.triggeredByAdminId, "admin_1");
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string; washoutActivityIds?: string } } | null)?.metadata?.platformFeeTotal, "5.00");
@@ -3424,10 +3555,70 @@ test("manual owner billing charges seven approved washouts at the default five d
   assert.equal(result.runs[0].status, "paid");
   assert.equal(result.totalWashoutCount, 7);
   assert.equal((fixture.getLastIntent() as { amount?: number } | null)?.amount, 3500);
+  assert.equal((fixture.getLastIntent() as { off_session?: boolean } | null)?.off_session, true);
   assert.deepEqual((fixture.getLastIntent() as { payment_method_types?: string[] } | null)?.payment_method_types, ["card"]);
   assert.equal((fixture.getBatch() as { metadata?: { stripeChargeId?: string } } | null)?.metadata?.stripeChargeId, "ch_1");
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.platformFeeTotal, "35.00");
   assert.equal((fixture.getBatch() as { metadata?: { platformFeeTotal?: string; driverTipTotal?: string } } | null)?.metadata?.driverTipTotal, "5.00");
+});
+
+test("manual owner billing changes idempotency key when the approved washout set changes", async () => {
+  const fixture = createOwnerBillingRunFixture({
+    billingCadence: "weekly",
+    approvedWashouts: [
+      { activityId: "activity_1", activityFeeCentsPlatform: 500, activityStatus: "verified" },
+    ],
+    payments: [],
+    stripeMode: "throw",
+  });
+
+  const first = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: fixture.storage,
+    stripeClient: fixture.stripeClient,
+  });
+
+  const firstOptions = fixture.getLastIntentOptions() as { idempotencyKey?: string } | null;
+  assert.equal(first.runs[0].status, "failed");
+  assert.ok(firstOptions?.idempotencyKey);
+
+  fixture.setApprovedWashouts([
+    { activityId: "activity_1", activityFeeCentsPlatform: 500, activityStatus: "verified" },
+    { activityId: "activity_2", activityFeeCentsPlatform: 500, activityStatus: "verified" },
+  ]);
+
+  let secondIntentOptions: { idempotencyKey?: string } | null = null;
+  const retryStripeClient = {
+    paymentIntents: {
+      create: async (intent: Record<string, unknown>, options?: Record<string, unknown>) => {
+        secondIntentOptions = (options || null) as { idempotencyKey?: string } | null;
+        return {
+          id: "pi_retry",
+          status: "succeeded",
+          amount: intent.amount,
+          latest_charge: "ch_retry",
+        };
+      },
+    },
+  };
+
+  const second = await processOwnerBillingRun({
+    ownerId: "owner_1",
+    runType: "admin_manual",
+    startDate: new Date("2026-05-28T00:00:00.000Z"),
+    endDate: new Date("2026-05-29T23:59:59.999Z"),
+    triggeredByAdminId: "admin_1",
+    storage: fixture.storage,
+    stripeClient: retryStripeClient as any,
+  });
+
+  assert.equal(second.runs[0].status, "paid");
+  assert.notEqual(firstOptions?.idempotencyKey, secondIntentOptions?.idempotencyKey);
+  assert.equal(second.runs[0].washoutCount, 2);
 });
 
 test("manual owner billing accepts a Stripe customer stored on the user record", async () => {
@@ -3458,6 +3649,7 @@ test("manual owner billing accepts a Stripe customer stored on the user record",
 
   assert.equal(result.runs[0].status, "paid");
   assert.equal((fixture.getLastIntent() as { customer?: string } | null)?.customer, "cus_owner_1");
+  assert.equal((fixture.getLastIntent() as { off_session?: boolean } | null)?.off_session, true);
   assert.deepEqual((fixture.getLastIntent() as { payment_method_types?: string[] } | null)?.payment_method_types, ["card"]);
 });
 
@@ -3489,6 +3681,7 @@ test("manual owner billing accepts a Stripe customer stored on the owner record"
 
   assert.equal(result.runs[0].status, "paid");
   assert.equal((fixture.getLastIntent() as { customer?: string } | null)?.customer, "cus_owner_1");
+  assert.equal((fixture.getLastIntent() as { off_session?: boolean } | null)?.off_session, true);
   assert.deepEqual((fixture.getLastIntent() as { payment_method_types?: string[] } | null)?.payment_method_types, ["card"]);
 });
 

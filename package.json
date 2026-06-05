@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "node --import tsx scripts/apply-photo-schema-migration.ts",
     "repair:washout-ledger": "node --import tsx scripts/repair-washout-ledger.ts",
+    "verify:washout-billing-counts": "node --import tsx scripts/verify-washout-billing-counts.ts",
     "create:superadmin": "node --import tsx scripts/create-superadmin.ts"
   },
   "dependencies": {
