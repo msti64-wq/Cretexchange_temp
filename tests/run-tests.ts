@@ -8,6 +8,7 @@ import { processOwnerBillingRun } from "../server/ownerBillingRuns";
 import { resolveBillingPolicy } from "../shared/billingPolicy";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
+import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import { buildWashoutLedgerRepairPlan } from "../shared/washoutLedgerRepair";
 import { buildWashoutBillingVerificationReport } from "../shared/washoutBillingVerification";
 import { summarizeOwnerBillingReceivables } from "../shared/ownerBillingReceivables";
@@ -112,6 +113,39 @@ test("driver Stripe payouts feature flag is defined and disabled by default", ()
   const definition = FEATURE_FLAG_DEFINITIONS.find((flag) => flag.key === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
   assert.ok(definition);
   assert.equal(definition?.enabled, false);
+});
+
+test("owner Stripe billing setup helper resolves owner and user level Stripe fields", () => {
+  const ownerReady = getOwnerStripeBillingSetup(
+    { stripeCustomerId: "cus_owner", stripePaymentMethodId: "pm_owner" },
+    {},
+  );
+  assert.equal(ownerReady.statusLabel, "ready_for_billing");
+  assert.equal(ownerReady.customerIdSource, "owner");
+  assert.equal(ownerReady.paymentMethodSource, "owner");
+  assert.equal(ownerReady.displayLabel, "Card on file / Ready for billing");
+
+  const userReady = getOwnerStripeBillingSetup(
+    { stripePaymentMethodId: "pm_owner" },
+    { stripeCustomerId: "cus_user", stripePaymentMethodId: "pm_user" },
+  );
+  assert.equal(userReady.statusLabel, "ready_for_billing");
+  assert.equal(userReady.customerIdSource, "user");
+  assert.equal(userReady.paymentMethodSource, "owner");
+
+  const missingCustomer = getOwnerStripeBillingSetup(
+    { stripePaymentMethodId: "pm_owner" },
+    { stripePaymentMethodId: "pm_user" },
+  );
+  assert.equal(missingCustomer.statusLabel, "missing_customer");
+  assert.equal(missingCustomer.displayLabel, "Missing customer identification");
+
+  const missingPaymentMethod = getOwnerStripeBillingSetup(
+    { stripeCustomerId: "cus_owner" },
+    { stripeCustomerId: "cus_user" },
+  );
+  assert.equal(missingPaymentMethod.statusLabel, "missing_payment_method");
+  assert.equal(missingPaymentMethod.displayLabel, "Card missing");
 });
 
 test("system settings schema allows zero and rejects negative platform fees", () => {

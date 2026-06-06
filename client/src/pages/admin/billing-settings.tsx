@@ -83,6 +83,9 @@ interface ImmediateBillingOwner {
   platformFeesOwedCents: number;
   platformFeesOwed: string;
   paymentMethodStatus: string;
+  paymentMethodStatusLabel?: string;
+  stripeCustomerIdSource?: "owner" | "user" | null;
+  stripePaymentMethodSource?: "owner" | "user" | null;
   hasStripeCustomer: boolean;
   hasPaymentMethod: boolean;
   lastBillingAttemptAt: string | null;
@@ -564,11 +567,11 @@ export default function AdminBillingSettings() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={owner.hasStripeCustomer && owner.hasPaymentMethod ? "default" : "destructive"}>
-                          {owner.paymentMethodStatus === "configured"
-                            ? "Configured"
-                            : owner.paymentMethodStatus === "missing_payment_method"
-                              ? "Missing card"
-                              : "Missing customer"}
+                          {owner.paymentMethodStatusLabel === "ready_for_billing"
+                            ? "Card on file / Ready for billing"
+                            : owner.paymentMethodStatusLabel === "missing_payment_method"
+                              ? "Card missing"
+                              : "Missing customer identification"}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type Stripe from "stripe";
 import { DEFAULT_PER_WASHOUT_FEE_CENTS, resolveApprovedWashoutPlatformFeeCents, resolvePlatformFeeCents } from "../shared/billingPolicy";
+import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 
 type BillingBatch = any;
 type Payment = any;
@@ -158,14 +159,6 @@ function extractStripeChargeId(paymentIntent: StripePaymentIntentLike | null | u
   return null;
 }
 
-function resolveOwnerStripeCustomerId(owner: Owner, ownerUser: User): string | null {
-  return owner.stripeCustomerId || ownerUser.stripeCustomerId || null;
-}
-
-function resolveOwnerStripePaymentMethodId(owner: Owner, ownerUser: User): string | null {
-  return owner.stripePaymentMethodId || ownerUser.stripePaymentMethodId || null;
-}
-
 function buildStripeIdempotencyKey(
   prefix: string,
   ownerId: string,
@@ -235,6 +228,9 @@ async function processSingleOwnerBillingRun(
   if (!ownerUser) {
     throw new Error(`Owner user ${owner.userId} not found`);
   }
+  const stripeSetup = getOwnerStripeBillingSetup(owner, ownerUser);
+  const ownerStripeCustomerId = stripeSetup.customerId;
+  const ownerPaymentMethodId = stripeSetup.paymentMethodId;
 
   console.log(`💳 [OWNER_BILLING] Starting ${runType} run for owner ${ownerId}`, {
     startDate: startDate ? startDate.toISOString() : null,
@@ -344,8 +340,6 @@ async function processSingleOwnerBillingRun(
       };
     }
 
-    const ownerStripeCustomerId = resolveOwnerStripeCustomerId(owner, ownerUser);
-    const ownerPaymentMethodId = resolveOwnerStripePaymentMethodId(owner, ownerUser);
     if (!stripeClient) {
       const failureReason = "Stripe is not configured";
       await storage.updateBillingBatchStatus(billingBatch.id, "skipped", undefined, failureReason);
@@ -614,8 +608,8 @@ async function processSingleOwnerBillingRun(
     };
   }
 
-  if (!ownerUser.stripeCustomerId || !owner.stripePaymentMethodId) {
-    const failureReason = `Owner is missing ${!ownerUser.stripeCustomerId ? "Stripe customer" : "payment method"}`;
+  if (!ownerStripeCustomerId || !ownerPaymentMethodId) {
+    const failureReason = `Owner is missing ${!ownerStripeCustomerId ? "Stripe customer" : "payment method"}`;
     await storage.markBillingBatchFailed(billingBatch.id, failureReason);
     console.warn(`⚠️  [OWNER_BILLING] Missing payment setup for owner ${ownerId}: ${failureReason}`);
     return {
@@ -651,15 +645,15 @@ async function processSingleOwnerBillingRun(
       billingBatch.id,
       totalAmountCents,
       paymentActivityIds,
-      ownerUser.stripeCustomerId,
-      owner.stripePaymentMethodId,
+      ownerStripeCustomerId,
+      ownerPaymentMethodId,
       runType,
     );
     const paymentIntent = await stripeClient.paymentIntents.create({
       amount: totalAmountCents,
       currency: "usd",
-      customer: ownerUser.stripeCustomerId,
-      payment_method: owner.stripePaymentMethodId,
+      customer: ownerStripeCustomerId,
+      payment_method: ownerPaymentMethodId,
       confirm: true,
       off_session: true,
       payment_method_types: ["card"],

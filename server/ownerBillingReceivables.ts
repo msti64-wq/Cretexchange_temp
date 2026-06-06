@@ -1,4 +1,5 @@
 import { resolvePlatformFeeCents } from "../shared/billingPolicy";
+import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import { summarizeOwnerBillingReceivables } from "../shared/ownerBillingReceivables";
 
 export type OwnerBillingReceivablesOwnerSummary = {
@@ -18,6 +19,9 @@ export type OwnerBillingReceivablesOwnerSummary = {
   rejectedWashoutCount: number;
   cancelledWashoutCount: number;
   paymentMethodStatus: string;
+  paymentMethodStatusLabel: "ready_for_billing" | "missing_customer" | "missing_payment_method";
+  stripeCustomerIdSource: "owner" | "user" | null;
+  stripePaymentMethodSource: "owner" | "user" | null;
   hasStripeCustomer: boolean;
   hasPaymentMethod: boolean;
   lastBillingAttemptAt: Date | string | null;
@@ -169,8 +173,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         : billingReconciliationStatus === "undercharged"
           ? `Expected $${(lastBillingExpectedPlatformFeeCents / 100).toFixed(2)}, actual Stripe charge was $${(lastBillingAmountCents / 100).toFixed(2)}.`
           : null;
-      const hasStripeCustomer = Boolean(ownerUser?.stripeCustomerId);
-      const hasPaymentMethod = Boolean(owner?.stripePaymentMethodId || ownerUser?.stripePaymentMethodId);
+      const stripeSetup = getOwnerStripeBillingSetup(owner, ownerUser);
 
       return {
         ownerId: ownerSetting.ownerId,
@@ -182,11 +185,12 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         platformFeesPaidCents: paidPlatformFeesCents,
         platformFeesTotalCents: totalPlatformFeesCents,
         billedWashoutCount,
-        paymentMethodStatus: hasStripeCustomer
-          ? (hasPaymentMethod ? "configured" : "missing_payment_method")
-          : "missing_stripe_customer",
-        hasStripeCustomer,
-        hasPaymentMethod,
+        paymentMethodStatus: stripeSetup.displayLabel,
+        paymentMethodStatusLabel: stripeSetup.statusLabel,
+        stripeCustomerIdSource: stripeSetup.customerIdSource,
+        stripePaymentMethodSource: stripeSetup.paymentMethodSource,
+        hasStripeCustomer: stripeSetup.hasStripeCustomer,
+        hasPaymentMethod: stripeSetup.hasPaymentMethod,
         lastBillingAttemptAt: latestBatch?.updatedAt || latestBatch?.createdAt || null,
         lastBillingStatus: latestBatch?.status || "never",
         lastBillingWashoutCount: latestBatch ? Number(latestBatch.paymentCount || 0) : 0,
