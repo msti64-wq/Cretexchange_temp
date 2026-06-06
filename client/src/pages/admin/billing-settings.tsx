@@ -68,6 +68,7 @@ interface BillingSettingsResponse {
     approvedWashoutCount: number;
     platformFeesOwedCents: number;
     platformFeesPaidCents: number;
+    platformFeesTotalCents: number;
     paidBatchCount: number;
     failedBatchCount: number;
   };
@@ -278,6 +279,7 @@ export default function AdminBillingSettings() {
     approvedWashoutCount: 0,
     platformFeesOwedCents: 0,
     platformFeesPaidCents: 0,
+    platformFeesTotalCents: 0,
     paidBatchCount: 0,
     failedBatchCount: 0,
   };
@@ -501,6 +503,12 @@ export default function AdminBillingSettings() {
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Paid platform fees</p>
                 <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-paid-amount">
                   {formatCurrency(immediateBillingSummary.platformFeesPaidCents / 100)}
+                </p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Total platform fees</p>
+                <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-total-amount">
+                  {formatCurrency(immediateBillingSummary.platformFeesTotalCents / 100)}
                 </p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-4">

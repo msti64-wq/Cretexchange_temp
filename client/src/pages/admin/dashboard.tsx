@@ -174,6 +174,7 @@ export default function AdminDashboard() {
   const lotteryMetricsError = weekStats?.lotteryMetricsError;
   const currentPlatformReceivablesValue = billingReceivablesError ? "—" : formatCurrency(billingReceivablesSummary?.platformFeesOwedCents ?? 0);
   const paidPlatformFeesValue = billingReceivablesError ? "—" : formatCurrency(billingReceivablesSummary?.platformFeesPaidCents ?? 0);
+  const totalPlatformFeesValue = billingReceivablesError ? "—" : formatCurrency(billingReceivablesSummary?.platformFeesTotalCents ?? 0);
   const platformWashoutRevenueValue = washoutRevenueError ? "—" : formatCurrency(weekStats?.platformWashoutRevenue ?? 0);
   const driverTipValue = washoutRevenueError ? "—" : formatCurrency(weekStats?.driverTipTotal ?? 0);
   const approvedWashoutsValue = washoutRevenueError ? "—" : (weekStats?.approvedWashouts ?? 0);
@@ -344,6 +345,15 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total Platform Fees</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-total-platform-fees">
+                {totalPlatformFeesValue}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {billingReceivablesError || "Collected plus current receivables"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver incentives</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-driver-tip-total">
                 {driverTipValue}
@@ -415,6 +425,14 @@ export default function AdminDashboard() {
               icon={CheckCircle}
               toneClassName="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-paid-platform-fees-summary"
+            />
+            <DashboardMetricCard
+              title="Total Platform Fees"
+              value={totalPlatformFeesValue}
+              helper={billingReceivablesError || "Collected plus current receivables"}
+              icon={DollarSign}
+              toneClassName="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+              dataTestId="text-total-platform-fees-summary"
             />
             <DashboardMetricCard
               title="Driver Tips"

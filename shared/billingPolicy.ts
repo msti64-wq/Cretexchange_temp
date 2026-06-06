@@ -72,7 +72,7 @@ export function resolveApprovedWashoutPlatformFeeCents(
   }
 
   if (parsed === 0) {
-    return DEFAULT_PER_WASHOUT_FEE_CENTS;
+    return 0;
   }
 
   return Math.round(parsed);

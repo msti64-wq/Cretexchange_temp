@@ -12,6 +12,7 @@ export type OwnerBillingReceivableRow = {
 export type OwnerBillingReceivablesSummary = {
   platformFeesOwedCents: number;
   platformFeesPaidCents: number;
+  platformFeesTotalCents: number;
   approvedWashoutCount: number;
   billedWashoutCount: number;
   unbilledApprovedWashoutCount: number;
@@ -68,8 +69,9 @@ export function summarizeOwnerBillingReceivables(
         summary.platformFeesPaidCents += platformFeeCents;
       } else {
         summary.unbilledApprovedWashoutCount += 1;
-        summary.platformFeesOwedCents += platformFeeCents || defaultPlatformFeeCents;
+        summary.platformFeesOwedCents += Number.isFinite(platformFeeCents) ? platformFeeCents : defaultPlatformFeeCents;
       }
+      summary.platformFeesTotalCents += Number.isFinite(platformFeeCents) ? platformFeeCents : defaultPlatformFeeCents;
       return summary;
     }
 
@@ -102,6 +104,7 @@ export function summarizeOwnerBillingReceivables(
   }, {
     platformFeesOwedCents: 0,
     platformFeesPaidCents: 0,
+    platformFeesTotalCents: 0,
     approvedWashoutCount: 0,
     billedWashoutCount: 0,
     unbilledApprovedWashoutCount: 0,

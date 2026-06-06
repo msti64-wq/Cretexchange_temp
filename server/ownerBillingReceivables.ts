@@ -9,6 +9,7 @@ export type OwnerBillingReceivablesOwnerSummary = {
   approvedWashoutCount: number;
   platformFeesOwedCents: number;
   platformFeesPaidCents: number;
+  platformFeesTotalCents: number;
   billedWashoutCount: number;
   unbilledApprovedWashoutCount: number;
   pendingWashoutCount: number;
@@ -35,6 +36,7 @@ export type OwnerBillingReceivablesSummary = {
   approvedWashoutCount: number;
   platformFeesOwedCents: number;
   platformFeesPaidCents: number;
+  platformFeesTotalCents: number;
   billedWashoutCount: number;
   unbilledApprovedWashoutCount: number;
   pendingWashoutCount: number;
@@ -121,6 +123,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
       acc.approvedWashoutCount += row.approvedWashoutCount;
       acc.platformFeesOwedCents += row.platformFeesOwedCents;
       acc.platformFeesPaidCents += row.platformFeesPaidCents;
+      acc.platformFeesTotalCents += row.platformFeesTotalCents;
       acc.billedWashoutCount += row.billedWashoutCount;
       acc.unbilledApprovedWashoutCount += row.unbilledApprovedWashoutCount;
       acc.pendingWashoutCount += row.pendingWashoutCount;
@@ -135,6 +138,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
       approvedWashoutCount: 0,
       platformFeesOwedCents: 0,
       platformFeesPaidCents: 0,
+      platformFeesTotalCents: 0,
       billedWashoutCount: 0,
       unbilledApprovedWashoutCount: 0,
       pendingWashoutCount: 0,

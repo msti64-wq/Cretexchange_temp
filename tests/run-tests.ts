@@ -269,6 +269,7 @@ test("owner billing receivables summary excludes declined and billed washouts", 
   assert.equal(summary.approvedWashoutCount, 3);
   assert.equal(summary.platformFeesOwedCents, 1000);
   assert.equal(summary.platformFeesPaidCents, 500);
+  assert.equal(summary.platformFeesTotalCents, 1500);
   assert.equal(summary.unbilledApprovedWashoutCount, 2);
   assert.equal(summary.billedWashoutCount, 1);
   assert.equal(summary.declinedWashoutCount, 1);
@@ -291,9 +292,38 @@ test("owner billing receivables summary bills verified and completed washouts wi
   assert.equal(summary.approvedWashoutCount, 2);
   assert.equal(summary.platformFeesOwedCents, 500);
   assert.equal(summary.platformFeesPaidCents, 500);
+  assert.equal(summary.platformFeesTotalCents, 1000);
   assert.equal(summary.unbilledApprovedWashoutCount, 1);
   assert.equal(summary.billedWashoutCount, 1);
   assert.equal(summary.declinedWashoutCount, 1);
+});
+
+test("owner billing receivables summary shows before and after payment totals correctly", () => {
+  const beforePayment = summarizeOwnerBillingReceivables([
+    ...Array.from({ length: 5 }, () => ({
+      activityStatus: "verified",
+      activityFeeCentsPlatform: null,
+      locationDriverIncentiveTipCents: 0,
+    })),
+  ]);
+
+  const afterPayment = summarizeOwnerBillingReceivables([
+    ...Array.from({ length: 5 }, () => ({
+      activityStatus: "verified",
+      activityFeeCentsPlatform: 500,
+      paymentStatus: "completed",
+      paymentBatchId: "batch_1",
+      locationDriverIncentiveTipCents: 0,
+    })),
+  ]);
+
+  assert.equal(beforePayment.platformFeesOwedCents, 2500);
+  assert.equal(beforePayment.platformFeesPaidCents, 0);
+  assert.equal(beforePayment.platformFeesTotalCents, 2500);
+
+  assert.equal(afterPayment.platformFeesOwedCents, 0);
+  assert.equal(afterPayment.platformFeesPaidCents, 2500);
+  assert.equal(afterPayment.platformFeesTotalCents, 2500);
 });
 
 test("washout billing verification report groups statuses and computes owed platform fees", () => {
@@ -4263,6 +4293,7 @@ test("admin dashboard surfaces repaired washout fee and lottery metrics", async 
           approvedWashoutCount?: number;
           platformFeesOwedCents?: number;
           platformFeesPaidCents?: number;
+          platformFeesTotalCents?: number;
         };
         dashboardMeta?: {
           httpStatus?: number;
@@ -4284,6 +4315,7 @@ test("admin dashboard surfaces repaired washout fee and lottery metrics", async 
       assert.equal(body.billingReceivablesSummary?.approvedWashoutCount, 5);
       assert.equal(body.billingReceivablesSummary?.platformFeesOwedCents, 2500);
       assert.equal(body.billingReceivablesSummary?.platformFeesPaidCents, 0);
+      assert.equal(body.billingReceivablesSummary?.platformFeesTotalCents, 2500);
       assert.equal(body.dashboardMeta?.httpStatus, 200);
       assert.equal(body.dashboardMeta?.coreSources?.platformWashoutRevenue, "washout_activities.fee_cents_platform");
       assert.equal(body.dashboardMeta?.coreSources?.lotteryTickets, "driver_lottery_entries");
@@ -4389,20 +4421,22 @@ test("admin dashboard current receivables match billing settings summary", async
       assert.equal(dashboardRes.statusCode, 200);
       assert.equal(billingRes.statusCode, 200);
       const dashboardBody = dashboardRes.body as {
-        billingReceivablesSummary?: { platformFeesOwedCents?: number; platformFeesPaidCents?: number };
+        billingReceivablesSummary?: { platformFeesOwedCents?: number; platformFeesPaidCents?: number; platformFeesTotalCents?: number };
         weekStats?: { platformWashoutRevenue?: number; platformWashoutRevenueCents?: number };
         monthStats?: { platformWashoutRevenue?: number; platformWashoutRevenueCents?: number };
       };
       const billingBody = billingRes.body as {
-        immediateBillingSummary?: { platformFeesOwedCents?: number; platformFeesPaidCents?: number };
+        immediateBillingSummary?: { platformFeesOwedCents?: number; platformFeesPaidCents?: number; platformFeesTotalCents?: number };
       };
 
       assert.equal(dashboardBody.billingReceivablesSummary?.platformFeesOwedCents, billingBody.immediateBillingSummary?.platformFeesOwedCents);
       assert.equal(dashboardBody.billingReceivablesSummary?.platformFeesPaidCents, billingBody.immediateBillingSummary?.platformFeesPaidCents);
+      assert.equal(dashboardBody.billingReceivablesSummary?.platformFeesTotalCents, billingBody.immediateBillingSummary?.platformFeesTotalCents);
       assert.equal(dashboardBody.weekStats?.platformWashoutRevenue, 20);
       assert.equal(dashboardBody.monthStats?.platformWashoutRevenue, 35);
       assert.equal(billingBody.immediateBillingSummary?.platformFeesOwedCents, 2500);
       assert.equal(billingBody.immediateBillingSummary?.platformFeesPaidCents, 0);
+      assert.equal(billingBody.immediateBillingSummary?.platformFeesTotalCents, 2500);
     },
   );
 });
@@ -4752,6 +4786,7 @@ test("admin billing settings endpoint exposes immediate billing owners and histo
           approvedWashoutCount?: number;
           platformFeesOwedCents?: number;
           platformFeesPaidCents?: number;
+          platformFeesTotalCents?: number;
           lastStripePaymentIntentId?: string | null;
           lastStripeChargeId?: string | null;
           lastBillingStatus?: string;
@@ -4767,6 +4802,7 @@ test("admin billing settings endpoint exposes immediate billing owners and histo
       assert.equal(body.immediateBillingOwners?.[0]?.approvedWashoutCount, 1);
       assert.equal(body.immediateBillingOwners?.[0]?.platformFeesOwedCents, 500);
       assert.equal(body.immediateBillingOwners?.[0]?.platformFeesPaidCents, 0);
+      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesTotalCents, 500);
       assert.equal(body.immediateBillingOwners?.[0]?.lastStripePaymentIntentId, "pi_1");
       assert.equal(body.immediateBillingOwners?.[0]?.lastStripeChargeId, "ch_1");
       assert.equal(body.immediateBillingOwners?.[0]?.lastBillingStatus, "completed");
@@ -4851,6 +4887,7 @@ test("admin billing settings endpoint shows reconciliation notes for overcharged
         immediateBillingOwners?: Array<{
           platformFeesOwedCents?: number;
           platformFeesPaidCents?: number;
+          platformFeesTotalCents?: number;
           lastBillingAmountCents?: number;
           billingReconciliationStatus?: string | null;
           billingReconciliationNote?: string | null;
@@ -4858,6 +4895,7 @@ test("admin billing settings endpoint shows reconciliation notes for overcharged
       };
       assert.equal(body.immediateBillingOwners?.[0]?.platformFeesOwedCents, 2500);
       assert.equal(body.immediateBillingOwners?.[0]?.platformFeesPaidCents, 0);
+      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesTotalCents, 2500);
       assert.equal(body.immediateBillingOwners?.[0]?.lastBillingAmountCents, 3500);
       assert.equal(body.immediateBillingOwners?.[0]?.billingReconciliationStatus, "overcharged");
       assert.match(body.immediateBillingOwners?.[0]?.billingReconciliationNote || "", /Expected \$25\.00, actual Stripe charge was \$35\.00\./);
