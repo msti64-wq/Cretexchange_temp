@@ -12,6 +12,10 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+export function formatCurrencyFromCents(amountCents: number): string {
+  return formatCurrency(Number(amountCents || 0) / 100);
+}
+
 export function formatDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return d.toLocaleDateString("en-US", {

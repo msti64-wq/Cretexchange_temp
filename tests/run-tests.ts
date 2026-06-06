@@ -13,6 +13,7 @@ import { buildWashoutBillingVerificationReport } from "../shared/washoutBillingV
 import { summarizeOwnerBillingReceivables } from "../shared/ownerBillingReceivables";
 import { summarizeWashoutRevenue, summarizeWashoutRevenueFromActivities } from "../shared/washoutRevenue";
 import { insertWashoutLocationSchema, updateSystemSettingsSchema } from "../shared/schema";
+import { formatCurrencyFromCents } from "../client/src/lib/utils";
 
 type TestCase = {
   name: string;
@@ -117,6 +118,12 @@ test("system settings schema allows zero and rejects negative platform fees", ()
   assert.equal(updateSystemSettingsSchema.safeParse({ platformWashoutFee: "0.00" }).success, true);
   assert.equal(updateSystemSettingsSchema.safeParse({ platformWashoutFee: "7.25" }).success, true);
   assert.equal(updateSystemSettingsSchema.safeParse({ platformWashoutFee: "-1.00" }).success, false);
+});
+
+test("currency helper formats cents as dollars", () => {
+  assert.equal(formatCurrencyFromCents(2500), "$25.00");
+  assert.equal(formatCurrencyFromCents(0), "$0.00");
+  assert.equal(formatCurrencyFromCents(35), "$0.35");
 });
 
 test("washout location schema rejects negative driver incentive tips", () => {

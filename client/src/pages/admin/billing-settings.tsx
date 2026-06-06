@@ -44,7 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatCurrencyFromCents } from "@/lib/utils";
 
 interface OwnerBillingSettings {
   ownerId: string;
@@ -496,19 +496,19 @@ export default function AdminBillingSettings() {
               <div className="rounded-lg border bg-muted/30 p-4">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Current platform receivables</p>
                 <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-owed">
-                  {formatCurrency(immediateBillingSummary.platformFeesOwedCents / 100)}
+                  {formatCurrencyFromCents(immediateBillingSummary.platformFeesOwedCents)}
                 </p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-4">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Paid platform fees</p>
                 <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-paid-amount">
-                  {formatCurrency(immediateBillingSummary.platformFeesPaidCents / 100)}
+                  {formatCurrencyFromCents(immediateBillingSummary.platformFeesPaidCents)}
                 </p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-4">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Total platform fees</p>
                 <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-total-amount">
-                  {formatCurrency(immediateBillingSummary.platformFeesTotalCents / 100)}
+                  {formatCurrencyFromCents(immediateBillingSummary.platformFeesTotalCents)}
                 </p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-4">
@@ -554,7 +554,7 @@ export default function AdminBillingSettings() {
                         {owner.approvedWashoutCount}
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{formatCurrency(owner.platformFeesOwedCents / 100)}</div>
+                        <div className="font-medium">{formatCurrencyFromCents(owner.platformFeesOwedCents)}</div>
                         <p className="text-xs text-muted-foreground">{owner.platformFeesOwed} owed</p>
                         {owner.billingReconciliationNote && (
                           <p className={`mt-1 text-xs ${owner.billingReconciliationStatus === "overcharged" ? "text-red-600" : "text-amber-600"}`}>
