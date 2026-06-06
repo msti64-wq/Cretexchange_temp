@@ -4734,16 +4734,7 @@ test("admin billing settings endpoint exposes immediate billing owners and histo
         stripePaymentMethodId: "pm_owner_1",
       }),
       getApprovedWashoutsForOwnerBilling: async () => ([
-        {
-          activityId: "activity_1",
-          ownerId: "owner_1",
-          driverId: "driver_1",
-          locationId: "location_1",
-          activityStatus: "verified",
-          activityFeeCentsPlatform: null,
-          locationDriverIncentiveTip: 0,
-          verifiedAt: new Date("2026-05-28T12:00:00Z"),
-        },
+        // After a successful completed billing batch, no approved washouts remain unbilled.
       ]),
       getBillingBatchesByOwner: async () => ([
         {
@@ -4751,13 +4742,16 @@ test("admin billing settings endpoint exposes immediate billing owners and histo
           ownerId: "owner_1",
           businessDate: "2026-05-28",
           status: "completed",
-          totalAmount: "5.00",
+          totalAmount: "25.00",
           totalFees: "0.00",
-          paymentCount: 1,
+          paymentCount: 5,
           stripePaymentIntentId: "pi_1",
           failureReason: null,
           metadata: {
             stripeChargeId: "ch_1",
+            platformFeeTotal: "25.00",
+            driverTipTotal: "0.00",
+            washoutActivityIds: "activity_1,activity_2,activity_3,activity_4,activity_5",
           },
           createdAt: new Date("2026-05-28T14:00:00Z"),
           updatedAt: new Date("2026-05-28T14:05:00Z"),
@@ -4799,16 +4793,139 @@ test("admin billing settings endpoint exposes immediate billing owners and histo
       };
       assert.equal(body.immediateBillingOwners?.length, 1);
       assert.equal(body.immediateBillingOwners?.[0]?.ownerId, "owner_1");
-      assert.equal(body.immediateBillingOwners?.[0]?.approvedWashoutCount, 1);
-      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesOwedCents, 500);
-      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesPaidCents, 0);
-      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesTotalCents, 500);
+      assert.equal(body.immediateBillingOwners?.[0]?.approvedWashoutCount, 0);
+      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesOwedCents, 0);
+      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesPaidCents, 2500);
+      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesTotalCents, 2500);
+      assert.equal(body.immediateBillingOwners?.[0]?.billedWashoutCount, 5);
       assert.equal(body.immediateBillingOwners?.[0]?.lastStripePaymentIntentId, "pi_1");
       assert.equal(body.immediateBillingOwners?.[0]?.lastStripeChargeId, "ch_1");
       assert.equal(body.immediateBillingOwners?.[0]?.lastBillingStatus, "completed");
       assert.equal(body.immediateBillingHistory?.[0]?.batchId, "batch_1");
       assert.equal(body.immediateBillingHistory?.[0]?.stripePaymentIntentId, "pi_1");
       assert.equal(body.immediateBillingHistory?.[0]?.stripeChargeId, "ch_1");
+    },
+  );
+});
+
+test("admin dashboard and billing settings show paid platform fees after completed billing batch", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  const billingSettingsOwners = [
+    {
+      ownerId: "owner_1",
+      companyName: "Immediate Co",
+      username: "immediate1",
+      billingCadence: "immediate",
+      billingCutoffTime: "23:59:00",
+      billingTimezone: "America/Chicago",
+      billingDayOfWeek: 1,
+    },
+  ];
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({
+        id: "admin_1",
+        username: "admin1",
+        role: "super_admin",
+      }),
+      getSystemStats: async (days: number) => ({
+        totalEarnings: 0,
+        totalWashouts: 0,
+        totalDrivers: 0,
+        totalOwners: 0,
+        platformWashoutRevenue: days === 7 ? 0 : 25,
+        platformWashoutRevenueCents: days === 7 ? 0 : 2500,
+        platformWashoutPaidRevenue: days === 7 ? 25 : 25,
+        platformWashoutPaidRevenueCents: days === 7 ? 2500 : 2500,
+        platformFeeRecordCount: days === 7 ? 0 : 5,
+        approvedWashouts: days === 7 ? 0 : 5,
+        driverTipTotal: 0,
+        billedWashouts: days === 7 ? 0 : 5,
+        pendingWashouts: 0,
+        failedWashouts: 0,
+        refundedWashouts: 0,
+        disputedWashouts: 0,
+        lotteryTicketCount: 5,
+        lotteryDriverCount: 3,
+        subscriptionRevenue: 0,
+        activeLicenses: 0,
+        licenseRenewals: 0,
+      }),
+      getPaymentsAwaitingDriverStripe: async () => [],
+      getAllOwnersBillingSettings: async () => billingSettingsOwners,
+      getOwnerById: async () => ({
+        id: "owner_1",
+        userId: "owner_user_1",
+        companyName: "Immediate Co",
+        stripePaymentMethodId: "pm_owner_1",
+      }),
+      getApprovedWashoutsForOwnerBilling: async () => [],
+      getBillingBatchesByOwner: async () => ([
+        {
+          id: "batch_1",
+          ownerId: "owner_1",
+          businessDate: "2026-05-28",
+          status: "completed",
+          totalAmount: "25.00",
+          totalFees: "0.00",
+          paymentCount: 5,
+          stripePaymentIntentId: "pi_1",
+          failureReason: null,
+          metadata: {
+            stripeChargeId: "ch_1",
+            platformFeeTotal: "25.00",
+            driverTipTotal: "0.00",
+            washoutActivityIds: "activity_1,activity_2,activity_3,activity_4,activity_5",
+          },
+          createdAt: new Date("2026-05-28T14:00:00Z"),
+          updatedAt: new Date("2026-05-28T14:05:00Z"),
+        } as any,
+      ]),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const dashboardRoute = gets.get("/api/admin/dashboard");
+      const billingRoute = gets.get("/api/admin/billing/settings");
+      assert.equal(typeof dashboardRoute, "function");
+      assert.equal(typeof billingRoute, "function");
+
+      const dashboardRes = createResponse();
+      await dashboardRoute!(
+        {
+          user: { id: "admin_1" },
+        },
+        dashboardRes,
+      );
+
+      const billingRes = createResponse();
+      await billingRoute!(
+        {
+          user: { id: "admin_1" },
+          query: {},
+        },
+        billingRes,
+      );
+
+      assert.equal(dashboardRes.statusCode, 200);
+      assert.equal(billingRes.statusCode, 200);
+      const dashboardBody = dashboardRes.body as {
+        billingReceivablesSummary?: { platformFeesOwedCents?: number; platformFeesPaidCents?: number; platformFeesTotalCents?: number; billedWashoutCount?: number };
+      };
+      const billingBody = billingRes.body as {
+        immediateBillingSummary?: { platformFeesOwedCents?: number; platformFeesPaidCents?: number; platformFeesTotalCents?: number; billedWashoutCount?: number };
+      };
+
+      assert.equal(dashboardBody.billingReceivablesSummary?.platformFeesOwedCents, 0);
+      assert.equal(dashboardBody.billingReceivablesSummary?.platformFeesPaidCents, 2500);
+      assert.equal(dashboardBody.billingReceivablesSummary?.platformFeesTotalCents, 2500);
+      assert.equal(dashboardBody.billingReceivablesSummary?.billedWashoutCount, 5);
+      assert.equal(billingBody.immediateBillingSummary?.platformFeesOwedCents, 0);
+      assert.equal(billingBody.immediateBillingSummary?.platformFeesPaidCents, 2500);
+      assert.equal(billingBody.immediateBillingSummary?.platformFeesTotalCents, 2500);
+      assert.equal(billingBody.immediateBillingSummary?.billedWashoutCount, 5);
     },
   );
 });
@@ -4840,13 +4957,7 @@ test("admin billing settings endpoint shows reconciliation notes for overcharged
         companyName: "Immediate Co",
         stripePaymentMethodId: "pm_owner_1",
       }),
-      getApprovedWashoutsForOwnerBilling: async () => ([
-        { activityId: "activity_1", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_2", activityFeeCentsPlatform: null, activityStatus: "approved", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_3", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_4", activityFeeCentsPlatform: null, activityStatus: "approved", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_5", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-      ]),
+      getApprovedWashoutsForOwnerBilling: async () => ([]),
       getBillingBatchesByOwner: async () => ([
         {
           id: "batch_1",
@@ -4855,12 +4966,14 @@ test("admin billing settings endpoint shows reconciliation notes for overcharged
           status: "completed",
           totalAmount: "35.00",
           totalFees: "0.00",
-          paymentCount: 7,
+          paymentCount: 5,
           stripePaymentIntentId: "pi_1",
           failureReason: null,
           metadata: {
             stripeChargeId: "ch_1",
-            washoutActivityIds: "activity_1,activity_2,activity_3,activity_4,activity_5,activity_6,activity_7",
+            platformFeeTotal: "25.00",
+            driverTipTotal: "10.00",
+            washoutActivityIds: "activity_1,activity_2,activity_3,activity_4,activity_5",
           },
           createdAt: new Date("2026-05-28T14:00:00Z"),
           updatedAt: new Date("2026-05-28T14:05:00Z"),
@@ -4893,8 +5006,8 @@ test("admin billing settings endpoint shows reconciliation notes for overcharged
           billingReconciliationNote?: string | null;
         }>;
       };
-      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesOwedCents, 2500);
-      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesPaidCents, 0);
+      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesOwedCents, 0);
+      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesPaidCents, 2500);
       assert.equal(body.immediateBillingOwners?.[0]?.platformFeesTotalCents, 2500);
       assert.equal(body.immediateBillingOwners?.[0]?.lastBillingAmountCents, 3500);
       assert.equal(body.immediateBillingOwners?.[0]?.billingReconciliationStatus, "overcharged");

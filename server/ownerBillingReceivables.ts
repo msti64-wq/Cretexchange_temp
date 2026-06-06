@@ -46,6 +46,38 @@ export type OwnerBillingReceivablesSummary = {
   cancelledWashoutCount: number;
 };
 
+function parseMoneyToCents(value: unknown): number {
+  if (value === null || value === undefined || value === "") {
+    return 0;
+  }
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+}
+
+function isPaidBillingBatch(batch: { status?: string | null; completedAt?: Date | string | null }): boolean {
+  const status = String(batch.status || "").toLowerCase();
+  if (batch.completedAt) {
+    return true;
+  }
+  return [
+    "completed",
+    "paid",
+    "succeeded",
+    "posted",
+    "settled",
+  ].includes(status);
+}
+
+function isPaidBillingPayment(payment: { status?: string | null }): boolean {
+  const status = String(payment.status || "").toLowerCase();
+  return [
+    "completed",
+    "paid",
+    "posted",
+    "succeeded",
+  ].includes(status);
+}
+
 export async function buildOwnerBillingReceivablesOverview(storageApi: any): Promise<{
   owners: OwnerBillingReceivablesOwnerSummary[];
   summary: OwnerBillingReceivablesSummary;
@@ -65,6 +97,50 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         : null;
       const receivables = summarizeOwnerBillingReceivables(approvedWashouts, ownerCustomPlatformFeeCents);
       const batches = await storageApi.getBillingBatchesByOwner(ownerSetting.ownerId);
+      const completedBatches = batches.filter((batch: { status?: string | null; completedAt?: Date | string | null }) => isPaidBillingBatch(batch));
+
+      const getBatchPlatformFeeTotalCents = (batch: {
+        totalAmount?: string | null;
+        metadata?: Record<string, unknown> | null;
+      }): number => {
+        const metadata = batch.metadata && typeof batch.metadata === "object"
+          ? batch.metadata as Record<string, unknown>
+          : {};
+        const metadataPlatformFeeTotal = metadata.platformFeeTotal ?? metadata.platformFeeTotalCents;
+        const value = metadataPlatformFeeTotal !== undefined && metadataPlatformFeeTotal !== null && metadataPlatformFeeTotal !== ""
+          ? metadataPlatformFeeTotal
+          : batch.totalAmount;
+        return parseMoneyToCents(value);
+      };
+
+      let paidPlatformFeesCents = completedBatches.reduce((sum: number, batch: any) => {
+        return sum + getBatchPlatformFeeTotalCents(batch);
+      }, 0);
+      let billedWashoutCount = completedBatches.reduce((sum: number, batch: any) => {
+        return sum + Number(batch.paymentCount || 0);
+      }, 0);
+
+      if (paidPlatformFeesCents === 0 && completedBatches.length > 0 && typeof storageApi.getPaymentsByBatchId === "function") {
+        const batchPayments = await Promise.all(
+          completedBatches.map(async (batch: any) => {
+            try {
+              return await storageApi.getPaymentsByBatchId(batch.id);
+            } catch {
+              return [];
+            }
+          })
+        );
+        const paidPayments = batchPayments.flat().filter((payment: { status?: string | null }) => isPaidBillingPayment(payment));
+        if (paidPayments.length > 0) {
+          paidPlatformFeesCents = paidPayments.reduce((sum: number, payment: any) => {
+            const paymentPlatformFee = payment.processingFee ?? payment.platformFee ?? payment.amount ?? 0;
+            return sum + parseMoneyToCents(paymentPlatformFee);
+          }, 0);
+          billedWashoutCount = paidPayments.length;
+        }
+      }
+
+      const totalPlatformFeesCents = receivables.platformFeesOwedCents + paidPlatformFeesCents;
       const latestBatch = (batches[0] || null) as {
         totalAmount?: string | null;
         paymentCount?: number | null;
@@ -81,14 +157,17 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         ? latestBatchMetadata.stripeChargeId
         : null;
       const lastBillingAmountCents = latestBatch ? Math.round(Number(latestBatch.totalAmount || 0) * 100) : 0;
-      const billingDeltaCents = lastBillingAmountCents - receivables.platformFeesOwedCents;
+      const lastBillingExpectedPlatformFeeCents = latestBatchMetadata.platformFeeTotal !== undefined || latestBatchMetadata.platformFeeTotalCents !== undefined
+        ? parseMoneyToCents(latestBatchMetadata.platformFeeTotal ?? latestBatchMetadata.platformFeeTotalCents)
+        : receivables.platformFeesOwedCents;
+      const billingDeltaCents = lastBillingAmountCents - lastBillingExpectedPlatformFeeCents;
       const billingReconciliationStatus = latestBatch?.status === "completed"
         ? (billingDeltaCents > 0 ? "overcharged" : billingDeltaCents < 0 ? "undercharged" : "matched")
         : null;
       const billingReconciliationNote = billingReconciliationStatus === "overcharged"
-        ? `Expected $${(receivables.platformFeesOwedCents / 100).toFixed(2)}, actual Stripe charge was $${(lastBillingAmountCents / 100).toFixed(2)}.`
+        ? `Expected $${(lastBillingExpectedPlatformFeeCents / 100).toFixed(2)}, actual Stripe charge was $${(lastBillingAmountCents / 100).toFixed(2)}.`
         : billingReconciliationStatus === "undercharged"
-          ? `Expected $${(receivables.platformFeesOwedCents / 100).toFixed(2)}, actual Stripe charge was $${(lastBillingAmountCents / 100).toFixed(2)}.`
+          ? `Expected $${(lastBillingExpectedPlatformFeeCents / 100).toFixed(2)}, actual Stripe charge was $${(lastBillingAmountCents / 100).toFixed(2)}.`
           : null;
       const hasStripeCustomer = Boolean(ownerUser?.stripeCustomerId);
       const hasPaymentMethod = Boolean(owner?.stripePaymentMethodId || ownerUser?.stripePaymentMethodId);
@@ -99,6 +178,10 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         username: ownerSetting.username,
         billingCadence: ownerSetting.billingCadence,
         ...receivables,
+        platformFeesOwedCents: receivables.platformFeesOwedCents,
+        platformFeesPaidCents: paidPlatformFeesCents,
+        platformFeesTotalCents: totalPlatformFeesCents,
+        billedWashoutCount,
         paymentMethodStatus: hasStripeCustomer
           ? (hasPaymentMethod ? "configured" : "missing_payment_method")
           : "missing_stripe_customer",
