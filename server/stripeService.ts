@@ -84,7 +84,7 @@ function buildAccountCapabilities(capabilities?: string[]): Stripe.AccountCreate
 
 export interface CreateConnectedAccountParams {
   username: string; // PRIMARY IDENTIFIER - Stripe accounts are based on username, NOT email
-  email: string;
+  email?: string;
   type: 'express' | 'custom'; // Express for marketplace (auto-activates capabilities), Custom for full control
   userId: string; // REQUIRED - User ID for metadata tracking (prevents duplicates)
   driverId?: string; // Optional driver profile ID for driver payout account metadata
@@ -149,18 +149,22 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
 
     console.log('✅ No duplicate found, creating new account...');
 
+    const businessProfile: Stripe.AccountCreateParams.BusinessProfile = {
+      mcc: params.businessProfile?.mcc || '7542', // Default to Car Washes (washout services)
+      url: params.businessProfile?.url || 'https://cretexchange.com',
+      name: params.username, // USERNAME as primary identifier in Stripe dashboard
+    };
+    const supportEmail = params.businessProfile?.supportEmail || params.email;
+    if (supportEmail) {
+      businessProfile.support_email = supportEmail;
+    }
+
     const accountParams: Stripe.AccountCreateParams = {
       type: params.type,
       country: 'US', // Required
-      email: params.email, // Email for notifications
       capabilities: buildAccountCapabilities(params.capabilities),
       business_type: params.businessType || 'individual',
-      business_profile: {
-        mcc: params.businessProfile?.mcc || '7542', // Default to Car Washes (washout services)
-        url: params.businessProfile?.url || 'https://cretexchange.com',
-        support_email: params.businessProfile?.supportEmail || params.email,
-        name: params.username, // USERNAME as primary identifier in Stripe dashboard
-      },
+      business_profile: businessProfile,
       // TOS ACCEPTANCE: Only for Custom accounts - Express accounts MUST use Account Links
       // Stripe will reject programmatic TOS acceptance for Express accounts
       ...(params.type === 'custom' && params.tosAcceptance ? {
@@ -177,6 +181,9 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
         created_at: new Date().toISOString(),
       },
     };
+    if (params.email) {
+      accountParams.email = params.email;
+    }
 
     // Add individual information if provided
     if (params.individual) {

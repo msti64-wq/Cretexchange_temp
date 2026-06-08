@@ -2,6 +2,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 export function formatApiErrorMessage(status: number, statusText: string, text: string) {
   let message = text || statusText;
+  let reason = "";
   let missingFields: string[] = [];
   let invalidFields: string[] = [];
 
@@ -9,6 +10,7 @@ export function formatApiErrorMessage(status: number, statusText: string, text: 
     const payload = JSON.parse(text || "{}") as {
       message?: unknown;
       error?: unknown;
+      reason?: unknown;
       missingFields?: unknown;
       invalidFields?: unknown;
     };
@@ -17,6 +19,10 @@ export function formatApiErrorMessage(status: number, statusText: string, text: 
       message = payload.message;
     } else if (typeof payload.error === "string" && payload.error.trim()) {
       message = payload.error;
+    }
+
+    if (typeof payload.reason === "string" && payload.reason.trim()) {
+      reason = payload.reason;
     }
 
     if (Array.isArray(payload.missingFields)) {
@@ -31,6 +37,7 @@ export function formatApiErrorMessage(status: number, statusText: string, text: 
   }
 
   const details = [
+    reason ? `Reason: ${reason}` : "",
     missingFields.length ? `Missing fields: ${missingFields.join(", ")}` : "",
     invalidFields.length ? `Invalid fields: ${invalidFields.join(", ")}` : "",
   ].filter(Boolean);

@@ -267,10 +267,6 @@ type DriverStripePayoutProfileValidation = {
 async function validateDriverStripePayoutProfile(user: User): Promise<DriverStripePayoutProfileValidation> {
   const missingFields: string[] = [];
 
-  if (!user.email?.trim()) {
-    missingFields.push('Email');
-  }
-
   return {
     isComplete: missingFields.length === 0,
     missingFields,
@@ -282,6 +278,7 @@ function buildDriverStripeProfileErrorResponse(validation: DriverStripePayoutPro
   return {
     message: 'Complete required Stripe payout profile fields before setting up Stripe payouts.',
     code: 'DRIVER_STRIPE_PROFILE_INCOMPLETE',
+    reason: 'missing_required_profile_fields',
     missingFields: validation.missingFields,
     invalidFields: validation.invalidFields,
   };
@@ -302,7 +299,7 @@ async function createDriverStripePayoutAccount(
   driver: Driver | null | undefined,
   profileValidation?: DriverStripePayoutProfileValidation,
 ) {
-  const { formatPhoneE164, formatSsnLast4, generateBusinessUrl, isValidStripeAddress, parseDateOfBirth } = await import('./stripeUtils');
+  const { generateBusinessUrl } = await import('./stripeUtils');
   const validation = profileValidation ?? await validateDriverStripePayoutProfile(user);
 
   if (!validation.isComplete) {
@@ -317,44 +314,8 @@ async function createDriverStripePayoutAccount(
     throw error;
   }
 
-  const dob = parseDateOfBirth(driver?.dateOfBirth);
-  if (driver?.dateOfBirth && !dob) {
-    console.warn('[DRIVER_PAYOUT_SETUP] Omitting invalid driver date of birth from Stripe account create payload', {
-      userId: user.id,
-      driverId: driver.id,
-    });
-  }
-
-  const ssn = formatSsnLast4(driver?.ssnLast4);
   const username = user.username?.trim() || user.id;
-  const email = user.email.trim();
-  const firstName = user.firstName?.trim() || undefined;
-  const lastName = user.lastName?.trim() || undefined;
-  const formattedPhone = user.phone?.trim() ? formatPhoneE164(user.phone) : undefined;
-  const street = user.street?.trim() || undefined;
-  const city = user.city?.trim() || undefined;
-  const state = user.state?.trim() || undefined;
-  const zip = user.zip?.trim() || undefined;
-  const hasCompleteAddress = Boolean(street && city && state && zip);
-  const addressIsUsable = hasCompleteAddress && isValidStripeAddress(street).isValid;
-
-  if (user.phone?.trim() && !formattedPhone) {
-    console.warn('[DRIVER_PAYOUT_SETUP] Omitting invalid optional driver phone from Stripe account create payload', {
-      userId: user.id,
-      driverId: driver?.id,
-    });
-  }
-
-  if ((street || city || state || zip) && !addressIsUsable) {
-    console.warn('[DRIVER_PAYOUT_SETUP] Omitting incomplete or invalid optional driver address from Stripe account create payload', {
-      userId: user.id,
-      driverId: driver?.id,
-      hasStreet: Boolean(street),
-      hasCity: Boolean(city),
-      hasState: Boolean(state),
-      hasZip: Boolean(zip),
-    });
-  }
+  const email = user.email?.trim() || undefined;
 
   return await stripeService.createConnectedAccount({
     type: 'express',
@@ -364,24 +325,10 @@ async function createDriverStripePayoutAccount(
     email,
     businessType: 'individual',
     capabilities: ['transfers'],
-    individual: {
-      firstName,
-      lastName,
-      email,
-      phone: formattedPhone,
-      address: addressIsUsable ? {
-        line1: street!,
-        city: city!,
-        state: state!,
-        postal_code: zip!,
-        country: 'US',
-      } : undefined,
-      dob,
-      ssn,
-    },
     businessProfile: {
       url: generateBusinessUrl(username, 'driver'),
       mcc: '7542',
+      supportEmail: email,
     },
   });
 }
@@ -3024,10 +2971,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (stripeError: any) {
           const statusCode = typeof stripeError?.statusCode === 'number' ? stripeError.statusCode : 502;
           const safeStripeError = getSafeStripeErrorDetails(stripeError);
-          console.error('[DRIVER_PAYOUT_SETUP] Error creating driver Stripe Connect account:', {
+          const reason = statusCode === 400
+            ? 'stripe_account_create_rejected'
+            : 'stripe_account_create_failed';
+          console.error(statusCode === 400
+            ? '[DRIVER_PAYOUT_SETUP] 400'
+            : '[DRIVER_PAYOUT_SETUP] Error creating driver Stripe Connect account:', {
             userId,
             statusCode,
-            ...(statusCode === 400 ? { reason: 'stripe_account_create_rejected' } : {}),
+            reason,
             message: stripeError?.message,
             stripeError: safeStripeError,
             missingFields: stripeError?.missingFields,
@@ -3040,10 +2992,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             code: stripeError.statusCode === 400
               ? 'DRIVER_STRIPE_ACCOUNT_CREATE_REJECTED'
               : 'DRIVER_STRIPE_ACCOUNT_CREATE_FAILED',
+            reason,
+            statusCode,
             error: stripeError.message || 'Stripe account creation failed',
             stripeError: safeStripeError,
-            missingFields: stripeError.missingFields,
-            invalidFields: stripeError.invalidFields,
+            missingFields: stripeError.missingFields || [],
+            invalidFields: stripeError.invalidFields || [],
           });
         }
 
@@ -3062,7 +3016,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Express onboarding collects payout/bank details for the connected account.
-      const accountLink = await createDriverStripeOnboardingLink(req, stripeConnectAccountId);
+      let accountLink: Awaited<ReturnType<typeof createDriverStripeOnboardingLink>>;
+      try {
+        accountLink = await createDriverStripeOnboardingLink(req, stripeConnectAccountId);
+      } catch (stripeError: any) {
+        const statusCode = typeof stripeError?.statusCode === 'number' ? stripeError.statusCode : 502;
+        const safeStripeError = getSafeStripeErrorDetails(stripeError);
+        const reason = statusCode === 400
+          ? 'stripe_account_link_create_rejected'
+          : 'stripe_account_link_create_failed';
+        console.error(statusCode === 400
+          ? '[DRIVER_PAYOUT_SETUP] 400'
+          : '[DRIVER_PAYOUT_SETUP] Error creating Stripe account link:', {
+          userId,
+          accountId: stripeConnectAccountId,
+          statusCode,
+          reason,
+          message: stripeError?.message,
+          stripeError: safeStripeError,
+        });
+        return res.status(statusCode).json({
+          message: statusCode === 400 && stripeError?.message
+            ? stripeError.message
+            : 'Failed to create Stripe onboarding link. Please try again.',
+          code: statusCode === 400
+            ? 'DRIVER_STRIPE_ACCOUNT_LINK_REJECTED'
+            : 'DRIVER_STRIPE_ACCOUNT_LINK_FAILED',
+          reason,
+          statusCode,
+          error: stripeError?.message || 'Stripe account link creation failed',
+          stripeError: safeStripeError,
+          missingFields: [],
+          invalidFields: [],
+          accountId: stripeConnectAccountId,
+        });
+      }
+
       if (!accountLink?.url) {
         console.error('[DRIVER_PAYOUT_SETUP] Stripe account link did not include a URL', {
           userId,
@@ -3072,6 +3061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(502).json({
           message: 'Stripe onboarding link was not returned. Please try again.',
           code: 'STRIPE_ACCOUNT_LINK_MISSING_URL',
+          reason: 'stripe_account_link_missing_url',
           accountId: stripeConnectAccountId,
         });
       }
@@ -3085,16 +3075,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       const safeStripeError = getSafeStripeErrorDetails(error);
-      console.error('[DRIVER_PAYOUT_SETUP] Error creating payout onboarding session:', {
+      const statusCode = typeof error?.statusCode === 'number' ? error.statusCode : 500;
+      const reason = statusCode === 400
+        ? 'driver_payout_setup_rejected'
+        : 'driver_payout_setup_session_failed';
+      console.error(statusCode === 400
+        ? '[DRIVER_PAYOUT_SETUP] 400'
+        : '[DRIVER_PAYOUT_SETUP] Error creating payout onboarding session:', {
         userId: req.user?.id,
+        statusCode,
+        reason,
         message: error?.message,
         stripeError: safeStripeError,
       });
-      res.status(500).json({
-        message: 'Failed to create Stripe payout setup session',
-        code: 'DRIVER_PAYOUT_SETUP_SESSION_FAILED',
+      res.status(statusCode).json({
+        message: statusCode === 400 && error?.message
+          ? error.message
+          : 'Failed to create Stripe payout setup session',
+        code: statusCode === 400
+          ? 'DRIVER_PAYOUT_SETUP_REJECTED'
+          : 'DRIVER_PAYOUT_SETUP_SESSION_FAILED',
+        reason,
+        statusCode,
         error: error.message,
         stripeError: safeStripeError,
+        missingFields: [],
+        invalidFields: [],
       });
     }
   });
