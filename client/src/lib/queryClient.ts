@@ -1,9 +1,47 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export function formatApiErrorMessage(status: number, statusText: string, text: string) {
+  let message = text || statusText;
+  let missingFields: string[] = [];
+  let invalidFields: string[] = [];
+
+  try {
+    const payload = JSON.parse(text || "{}") as {
+      message?: unknown;
+      error?: unknown;
+      missingFields?: unknown;
+      invalidFields?: unknown;
+    };
+
+    if (typeof payload.message === "string" && payload.message.trim()) {
+      message = payload.message;
+    } else if (typeof payload.error === "string" && payload.error.trim()) {
+      message = payload.error;
+    }
+
+    if (Array.isArray(payload.missingFields)) {
+      missingFields = payload.missingFields.filter((field): field is string => typeof field === "string" && field.trim().length > 0);
+    }
+
+    if (Array.isArray(payload.invalidFields)) {
+      invalidFields = payload.invalidFields.filter((field): field is string => typeof field === "string" && field.trim().length > 0);
+    }
+  } catch {
+    // Non-JSON errors should keep the original response text.
+  }
+
+  const details = [
+    missingFields.length ? `Missing fields: ${missingFields.join(", ")}` : "",
+    invalidFields.length ? `Invalid fields: ${invalidFields.join(", ")}` : "",
+  ].filter(Boolean);
+
+  return `${status}: ${[message, ...details].join(" ")}`;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    throw new Error(formatApiErrorMessage(res.status, res.statusText, text));
   }
 }
 
@@ -111,4 +149,3 @@ if (typeof window !== 'undefined') {
   queryClient.removeQueries();
   console.log('🔄 Query cache cleared once');
 }
-
