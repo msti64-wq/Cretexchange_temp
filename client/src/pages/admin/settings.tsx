@@ -294,12 +294,12 @@ export default function AdminSettings() {
               />
             </div>
 
-            {/* Waive Driver Payment */}
+            {/* Waive Driver Trial Setup */}
             <div className="flex items-start justify-between gap-4 border rounded-lg p-4">
               <div className="flex-1 space-y-1">
-                <Label className="text-base font-semibold">Waive Driver Trial Payment Requirement</Label>
+                <Label className="text-base font-semibold">Waive Driver Trial Setup Requirement</Label>
                 <p className="text-sm text-muted-foreground">
-                  Trial-only waiver for driver payment setup requirements. This does not enable Stripe payouts or control Connect Bank Account visibility.
+                  Trial-only waiver for legacy driver setup requirements. This does not enable Stripe payouts or control Connect Bank Account visibility.
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Status: {waiveDriverEnabled
@@ -315,7 +315,7 @@ export default function AdminSettings() {
                   enabled,
                 })}
                 disabled={toggleFlagMutation.isPending}
-                aria-label="Toggle driver payment waiver"
+                aria-label="Toggle driver setup waiver"
               />
             </div>
 

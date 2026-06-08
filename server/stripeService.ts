@@ -91,9 +91,9 @@ export interface CreateConnectedAccountParams {
   capabilities?: string[]; // e.g., ['card_payments', 'transfers', 'treasury']
   businessType?: 'individual' | 'company';
   individual?: {
-    firstName: string;
-    lastName: string;
-    email: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
     phone?: string;
     address?: ConnectedAccountAddressInput;
     dob?: {
@@ -180,16 +180,19 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
 
     // Add individual information if provided
     if (params.individual) {
-      accountParams.individual = {
-        first_name: params.individual.firstName,
-        last_name: params.individual.lastName,
-        email: params.individual.email,
-        phone: params.individual.phone,
-        address: toStripeAddress(params.individual.address),
-        dob: params.individual.dob,
-      };
+      const individual: Stripe.AccountCreateParams.Individual = {};
+      if (params.individual.firstName) individual.first_name = params.individual.firstName;
+      if (params.individual.lastName) individual.last_name = params.individual.lastName;
+      if (params.individual.email) individual.email = params.individual.email;
+      if (params.individual.phone) individual.phone = params.individual.phone;
+      const address = toStripeAddress(params.individual.address);
+      if (address) individual.address = address;
+      if (params.individual.dob) individual.dob = params.individual.dob;
       if (params.individual.ssn) {
-        accountParams.individual.ssn_last_4 = params.individual.ssn.slice(-4);
+        individual.ssn_last_4 = params.individual.ssn.slice(-4);
+      }
+      if (Object.keys(individual).length > 0) {
+        accountParams.individual = individual;
       }
     }
 

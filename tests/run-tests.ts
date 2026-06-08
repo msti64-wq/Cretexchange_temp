@@ -130,6 +130,14 @@ test("driver profile bank connect visibility uses driver_stripe_payouts only", (
   assert.match(driverPayoutSettingsSource, /if \(action === "connect_bank_account"\)[\s\S]*connectBankMutation\.mutate\(\)/);
 });
 
+test("driver dashboard profile reminder does not require a payment method", () => {
+  const driverDashboardSource = readFileSync(new URL("../client/src/pages/driver/dashboard.tsx", import.meta.url), "utf8");
+
+  assert.doesNotMatch(driverDashboardSource, /user\.paymentMethod/);
+  assert.doesNotMatch(driverDashboardSource, /set up your payment method/i);
+  assert.match(driverDashboardSource, /set up Stripe payouts/i);
+});
+
 test("disabled driver_stripe_payouts hides bank connection action", () => {
   const state = resolveDriverPayoutSettingsState({
     featureEnabled: false,
@@ -157,7 +165,7 @@ test("enabled driver_stripe_payouts with no Stripe account shows Connect Bank Ac
   assert.equal(state.primaryAction.label, "Connect Bank Account");
   assert.equal(state.primaryAction.disabled, false);
   assert.equal(state.primaryAction.visible, true);
-  assert.equal(state.message, "Stripe not connected.");
+  assert.equal(state.message, "Set up Stripe payouts to receive optional owner-funded tips.");
 });
 
 test("waive_driver_payment does not affect bank connection visibility", () => {
@@ -189,7 +197,7 @@ test("enabled driver_stripe_payouts with incomplete Stripe account shows Resume 
   assert.equal(state.statusLabel, "Setup Incomplete");
   assert.equal(state.primaryAction.action, "resume_stripe_onboarding");
   assert.equal(state.primaryAction.visible, true);
-  assert.equal(state.message, "Stripe setup incomplete.");
+  assert.equal(state.message, "Stripe payout setup is incomplete.");
   assert.equal(state.secondaryActions.some((action) => action.action === "view_stripe_status"), true);
 });
 
@@ -212,19 +220,19 @@ test("enabled driver_stripe_payouts with complete Stripe account shows connected
   assert.equal(state.primaryAction.label, "View Payout Status");
   assert.equal(state.primaryAction.disabled, false);
   assert.equal(state.primaryAction.visible, true);
-  assert.equal(state.message, "Stripe connected.");
+  assert.equal(state.message, "Stripe payouts are connected.");
 });
 
 test("driver bank-connect frontend error message shows exact missing profile fields", () => {
   const message = formatApiErrorMessage(400, "Bad Request", JSON.stringify({
-    message: "Complete required driver profile fields before connecting Stripe payouts.",
-    missingFields: ["First name", "Street", "ZIP/postal code"],
-    invalidFields: ["Phone"],
+    message: "Complete required Stripe payout profile fields before setting up Stripe payouts.",
+    missingFields: ["Email"],
+    invalidFields: [],
   }));
 
   assert.equal(
     message,
-    "400: Complete required driver profile fields before connecting Stripe payouts. Missing fields: First name, Street, ZIP/postal code Invalid fields: Phone",
+    "400: Complete required Stripe payout profile fields before setting up Stripe payouts. Missing fields: Email",
   );
 });
 
@@ -2109,18 +2117,11 @@ test("driver bank-connect session does not create Stripe account when payouts ar
   assert.equal(overrideLookups, 1);
 });
 
-test("driver bank-connect session returns exact missing profile fields before creating Stripe account", async () => {
+test("driver bank-connect session returns clear 400 when required payout profile fields are missing", async () => {
   const { app, posts } = createRouteRegistry();
   const user = makeUser({
     stripeConnectAccountId: null,
-    firstName: "",
-    lastName: " ",
     email: "",
-    phone: "",
-    street: "",
-    city: "",
-    state: "",
-    zip: "",
   });
   let stripeCreateCalls = 0;
   let driverLookups = 0;
@@ -2169,16 +2170,7 @@ test("driver bank-connect session returns exact missing profile fields before cr
 
           assert.equal(res.statusCode, 400);
           assert.equal((res.body as { code?: string }).code, "DRIVER_STRIPE_PROFILE_INCOMPLETE");
-          assert.deepEqual((res.body as { missingFields?: string[] }).missingFields, [
-            "First name",
-            "Last name",
-            "Email",
-            "Phone",
-            "Street",
-            "City",
-            "State",
-            "ZIP/postal code",
-          ]);
+          assert.deepEqual((res.body as { missingFields?: string[] }).missingFields, ["Email"]);
           assert.deepEqual((res.body as { invalidFields?: string[] }).invalidFields, []);
         },
       );
@@ -2188,6 +2180,130 @@ test("driver bank-connect session returns exact missing profile fields before cr
   assert.equal(stripeCreateCalls, 0);
   assert.equal(driverLookups, 0);
   assert.equal(updateStripeInfoCalls, 0);
+});
+
+test("driver can start payout onboarding without Stripe customer card or payment method", async () => {
+  const { app, posts } = createRouteRegistry();
+  const user = makeUser({
+    stripeConnectAccountId: null,
+    stripeCustomerId: null,
+    stripePaymentMethodId: null,
+    paymentMethod: null,
+    firstName: "",
+    lastName: "",
+    phone: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
+  });
+  const driver = makeDriver({ dateOfBirth: null, ssnLast4: null });
+  let createdPayload: Stripe.AccountCreateParams | undefined;
+  let customerCalls = 0;
+  let paymentMethodCalls = 0;
+  let financialConnectionCalls = 0;
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        list: async () => ({
+          data: [],
+          has_more: false,
+        }),
+        create: async (payload: Stripe.AccountCreateParams) => {
+          createdPayload = payload;
+          return {
+            id: "acct_driver_payout_only",
+            object: "account",
+          } as Stripe.Account;
+        },
+      },
+      accountLinks: {
+        create: async () => ({
+          object: "account_link",
+          created: 1,
+          expires_at: 2,
+          url: "https://connect.stripe.com/setup/payout-only",
+        } as Stripe.AccountLink),
+      },
+      customers: {
+        create: async () => {
+          customerCalls += 1;
+          throw new Error("driver payout onboarding should not create Stripe customers");
+        },
+        retrieve: async () => {
+          customerCalls += 1;
+          throw new Error("driver payout onboarding should not retrieve Stripe customers");
+        },
+      },
+      paymentMethods: {
+        retrieve: async () => {
+          paymentMethodCalls += 1;
+          throw new Error("driver payout onboarding should not retrieve card payment methods");
+        },
+      },
+      financialConnections: {
+        sessions: {
+          create: async () => {
+            financialConnectionCalls += 1;
+            throw new Error("driver payout onboarding should use Stripe account links, not Financial Connections sessions");
+          },
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async () => user,
+          getDriver: async () => driver,
+          getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+          getFeatureFlagOverride: async () => undefined,
+          updateUserStripeInfo: async (_userId: string, stripeData: { stripeConnectAccountId?: string }) => {
+            user.stripeConnectAccountId = stripeData.stripeConnectAccountId;
+            return user;
+          },
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = posts.get("/api/drivers/bank-connect/session");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+              body: {},
+              protocol: "https",
+              get: () => "example.com",
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { onboardingUrl?: string }).onboardingUrl, "https://connect.stripe.com/setup/payout-only");
+          assert.equal((res.body as { payoutOnly?: boolean }).payoutOnly, true);
+          assert.equal((res.body as { setupType?: string }).setupType, "stripe_connect_onboarding");
+        },
+      );
+    },
+  );
+
+  assert.equal(customerCalls, 0);
+  assert.equal(paymentMethodCalls, 0);
+  assert.equal(financialConnectionCalls, 0);
+  assert.ok(createdPayload);
+  assert.equal(createdPayload.type, "express");
+  assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
+  assert.deepEqual(createdPayload.capabilities, {
+    transfers: { requested: true },
+  });
+  assert.equal(createdPayload.business_type, "individual");
+  assert.equal(createdPayload.individual?.email, "test@example.com");
+  assert.equal(createdPayload.individual?.first_name, undefined);
+  assert.equal(createdPayload.individual?.last_name, undefined);
+  assert.equal(createdPayload.individual?.phone, undefined);
+  assert.equal(createdPayload.individual?.address, undefined);
 });
 
 test("driver bank-connect session creates Express account only when payouts are enabled and requested", async () => {
@@ -2211,16 +2327,6 @@ test("driver bank-connect session creates Express account only when payouts are 
             id: "acct_driver_bank_connect",
             object: "account",
           } as Stripe.Account;
-        },
-      },
-      financialConnections: {
-        sessions: {
-          create: async (payload: Stripe.FinancialConnections.SessionCreateParams) => ({
-            id: "fcsess_driver",
-            object: "financial_connections.session",
-            client_secret: "fcsess_secret",
-            account_holder: payload.account_holder,
-          } as Stripe.FinancialConnections.Session),
         },
       },
       accountLinks: {
@@ -2266,9 +2372,9 @@ test("driver bank-connect session creates Express account only when payouts are 
           );
 
           assert.equal(res.statusCode, 200);
-          assert.equal((res.body as { clientSecret?: string }).clientSecret, "fcsess_secret");
           assert.equal((res.body as { onboardingUrl?: string }).onboardingUrl, "https://connect.stripe.com/setup/bank-connect");
           assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_bank_connect");
+          assert.equal((res.body as { payoutOnly?: boolean }).payoutOnly, true);
         },
       );
     },
@@ -2298,15 +2404,6 @@ test("driver bank-connect session returns safe error when Stripe account link ha
 
   await withPatchedStripe(
     {
-      financialConnections: {
-        sessions: {
-          create: async () => ({
-            id: "fcsess_driver",
-            object: "financial_connections.session",
-            client_secret: "fcsess_secret",
-          } as Stripe.FinancialConnections.Session),
-        },
-      },
       accountLinks: {
         create: async () => ({
           object: "account_link",

@@ -293,8 +293,6 @@ export default function DriverDashboard() {
           !(dashboardData as any).user.city || 
           !(dashboardData as any).user.state || 
           !(dashboardData as any).user.zip || 
-          !(dashboardData as any).user.paymentMethod || 
-          (dashboardData as any).user.paymentMethod === 'check' ||
           !(dashboardData as any).user.roleData?.employerName ||
           !(dashboardData as any).user.roleData?.truckNumber ||
           !(dashboardData as any).user.roleData?.hasAgreedToTerms
@@ -309,7 +307,7 @@ export default function DriverDashboard() {
                   Complete Your Profile
                 </h3>
                 <p className="mb-3 text-sm text-amber-800 dark:text-amber-200">
-                  Please complete your profile and set up your payment method to receive earnings from washout activities.
+                  Please complete your profile and set up Stripe payouts to receive optional owner-funded tips.
                 </p>
                 <Button
                   size="sm"

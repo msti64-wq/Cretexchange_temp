@@ -57,7 +57,7 @@ export function DriverPayoutSettings({
     }
 
     toast({
-      title: "Stripe Setup Failed",
+      title: "Stripe payout setup failed",
       description: "Stripe onboarding link was not returned. Please try again.",
       variant: "destructive",
     });
@@ -78,7 +78,7 @@ export function DriverPayoutSettings({
     onSuccess: handleOnboardingResponse,
     onError: (error: Error) => {
       toast({
-        title: "Stripe Setup Failed",
+        title: "Stripe payout setup failed",
         description: error.message,
         variant: "destructive",
       });
@@ -93,7 +93,7 @@ export function DriverPayoutSettings({
     onSuccess: handleOnboardingResponse,
     onError: (error: Error) => {
       toast({
-        title: "Stripe Setup Failed",
+        title: "Stripe payout setup failed",
         description: error.message,
         variant: "destructive",
       });

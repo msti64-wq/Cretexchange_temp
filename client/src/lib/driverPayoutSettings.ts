@@ -106,7 +106,7 @@ export function resolveDriverPayoutSettingsState(params: {
         visible: true,
       },
       secondaryActions: [],
-      message: "Stripe connected.",
+      message: "Stripe payouts are connected.",
     };
   }
 
@@ -129,7 +129,7 @@ export function resolveDriverPayoutSettingsState(params: {
           visible: true,
         },
       ],
-      message: "Stripe setup incomplete.",
+      message: "Stripe payout setup is incomplete.",
     };
   }
 
@@ -144,6 +144,6 @@ export function resolveDriverPayoutSettingsState(params: {
       visible: true,
     },
     secondaryActions: [],
-    message: "Stripe not connected.",
+    message: "Set up Stripe payouts to receive optional owner-funded tips.",
   };
 }
