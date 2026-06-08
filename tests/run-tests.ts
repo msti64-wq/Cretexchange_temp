@@ -234,8 +234,14 @@ test("driver bank-connect frontend error message shows exact missing profile fie
 
   assert.equal(
     message,
-    "400: Complete required Stripe payout profile fields before setting up Stripe payouts. Reason: missing_required_profile_fields Missing fields: Email",
+    "Complete required Stripe payout profile fields before setting up Stripe payouts. Reason: missing_required_profile_fields Missing fields: Email",
   );
+});
+
+test("frontend error formatter keeps status for unstructured errors", () => {
+  const message = formatApiErrorMessage(400, "Bad Request", "Bad Request");
+
+  assert.equal(message, "400: Bad Request");
 });
 
 test("driver Stripe connected account payload uses postal_code address field", async () => {
@@ -2280,6 +2286,68 @@ test("driver bank-connect session returns exact Stripe 400 reason from account c
   assert.equal(updateStripeInfoCalls, 0);
 });
 
+test("driver bank-connect session returns exact 400 reason from unexpected setup rejection", async () => {
+  const { app, posts } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: null });
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        list: async () => ({
+          data: [],
+          has_more: false,
+        }),
+        create: async () => ({
+          id: "acct_driver_storage_reject",
+          object: "account",
+        } as Stripe.Account),
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async () => user,
+          getDriver: async () => makeDriver(),
+          getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+          getFeatureFlagOverride: async () => undefined,
+          updateUserStripeInfo: async () => {
+            const error = new Error("Driver Stripe account could not be saved") as Error & {
+              statusCode?: number;
+              missingFields?: string[];
+            };
+            error.statusCode = 400;
+            error.missingFields = [];
+            throw error;
+          },
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = posts.get("/api/drivers/bank-connect/session");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+              body: {},
+              protocol: "https",
+              get: () => "example.com",
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 400);
+          assert.equal((res.body as { code?: string }).code, "DRIVER_PAYOUT_SETUP_REJECTED");
+          assert.equal((res.body as { reason?: string }).reason, "driver_payout_setup_rejected");
+          assert.equal((res.body as { message?: string }).message, "Driver Stripe account could not be saved");
+          assert.deepEqual((res.body as { missingFields?: string[] }).missingFields, []);
+        },
+      );
+    },
+  );
+});
+
 test("driver can start payout onboarding without Stripe customer card or payment method", async () => {
   const { app, posts } = createRouteRegistry();
   const user = makeUser({
@@ -2591,6 +2659,7 @@ test("driver bank-connect session returns exact Stripe 400 reason from account l
           assert.equal((res.body as { code?: string }).code, "DRIVER_STRIPE_ACCOUNT_LINK_REJECTED");
           assert.equal((res.body as { reason?: string }).reason, "stripe_account_link_create_rejected");
           assert.equal((res.body as { message?: string }).message, "Account cannot create onboarding links in its current state.");
+          assert.deepEqual((res.body as { missingFields?: string[] }).missingFields, []);
           assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_existing");
           assert.equal((res.body as { stripeError?: { requestId?: string } }).stripeError?.requestId, "req_account_link");
         },

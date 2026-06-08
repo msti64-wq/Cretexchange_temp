@@ -5,6 +5,7 @@ export function formatApiErrorMessage(status: number, statusText: string, text: 
   let reason = "";
   let missingFields: string[] = [];
   let invalidFields: string[] = [];
+  let hasStructuredMessage = false;
 
   try {
     const payload = JSON.parse(text || "{}") as {
@@ -17,8 +18,10 @@ export function formatApiErrorMessage(status: number, statusText: string, text: 
 
     if (typeof payload.message === "string" && payload.message.trim()) {
       message = payload.message;
+      hasStructuredMessage = true;
     } else if (typeof payload.error === "string" && payload.error.trim()) {
       message = payload.error;
+      hasStructuredMessage = true;
     }
 
     if (typeof payload.reason === "string" && payload.reason.trim()) {
@@ -42,7 +45,8 @@ export function formatApiErrorMessage(status: number, statusText: string, text: 
     invalidFields.length ? `Invalid fields: ${invalidFields.join(", ")}` : "",
   ].filter(Boolean);
 
-  return `${status}: ${[message, ...details].join(" ")}`;
+  const formattedMessage = [message, ...details].join(" ");
+  return hasStructuredMessage ? formattedMessage : `${status}: ${formattedMessage}`;
 }
 
 async function throwIfResNotOk(res: Response) {

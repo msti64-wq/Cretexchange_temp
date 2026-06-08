@@ -294,6 +294,38 @@ function getSafeStripeErrorDetails(error: any) {
   };
 }
 
+type DriverBankConnect400Context = {
+  reason: string;
+  message: string;
+  missingFields?: string[];
+  userId?: string | null;
+  driverId?: string | null;
+  featureEnabled: boolean;
+  hasStripeAccount: boolean;
+  stripeError?: ReturnType<typeof getSafeStripeErrorDetails>;
+};
+
+function logDriverBankConnect400(context: DriverBankConnect400Context) {
+  console.warn('[DRIVER_BANK_CONNECT_400]', {
+    reason: context.reason,
+    missingFields: context.missingFields || [],
+    userId: context.userId || null,
+    driverId: context.driverId || null,
+    featureEnabled: context.featureEnabled,
+    hasStripeAccount: context.hasStripeAccount,
+    message: context.message,
+    stripeError: context.stripeError,
+  });
+}
+
+function buildDriverBankConnect400Response(context: DriverBankConnect400Context) {
+  return {
+    message: context.message,
+    reason: context.reason,
+    missingFields: context.missingFields || [],
+  };
+}
+
 async function createDriverStripePayoutAccount(
   user: User,
   driver: Driver | null | undefined,
@@ -2931,9 +2963,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // DRIVER PAYOUT SETUP: Create or resume Stripe Connect onboarding for payouts
   app.post('/api/drivers/bank-connect/session', isAuthenticated, async (req: any, res) => {
+    let userId: string | undefined;
+    let driverId: string | null = null;
+    let featureEnabled = false;
+    let hasStripeAccount = false;
+
     try {
-      const userId = req.user.id;
-      const user = await storage.getUser(userId);
+      const routeUserId = req.user.id as string;
+      userId = routeUserId;
+      const user = await storage.getUser(routeUserId);
 
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
@@ -2943,7 +2981,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Driver access required' });
       }
 
-      const driverPayoutsEnabled = await isDriverStripePayoutsEnabled(userId);
+      const driverPayoutsEnabled = await isDriverStripePayoutsEnabled(routeUserId);
+      featureEnabled = driverPayoutsEnabled;
+      hasStripeAccount = Boolean(user.stripeConnectAccountId);
       if (!driverPayoutsEnabled) {
         return res.status(403).json({
           message: 'Stripe driver payouts are currently disabled. You can continue using the platform without connecting a bank account.',
@@ -2955,16 +2995,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user.stripeConnectAccountId) {
         const profileValidation = await validateDriverStripePayoutProfile(user);
         if (!profileValidation.isComplete) {
-          console.warn('[DRIVER_PAYOUT_SETUP] 400', {
+          const context = {
             reason: 'missing_required_profile_fields',
+            message: 'Complete required Stripe payout profile fields before setting up Stripe payouts.',
             userId,
+            driverId,
+            featureEnabled,
+            hasStripeAccount,
             missingFields: profileValidation.missingFields,
-            invalidFields: profileValidation.invalidFields,
+          };
+          logDriverBankConnect400(context);
+          return res.status(400).json({
+            ...buildDriverStripeProfileErrorResponse(profileValidation),
+            ...buildDriverBankConnect400Response(context),
           });
-          return res.status(400).json(buildDriverStripeProfileErrorResponse(profileValidation));
         }
 
-        const driver = await storage.getDriver(userId);
+        const driver = await storage.getDriver(routeUserId);
+        driverId = driver?.id || null;
         let connectedAccount: Awaited<ReturnType<typeof stripeService.createConnectedAccount>>;
         try {
           connectedAccount = await createDriverStripePayoutAccount(user, driver, profileValidation);
@@ -2974,17 +3022,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const reason = statusCode === 400
             ? 'stripe_account_create_rejected'
             : 'stripe_account_create_failed';
-          console.error(statusCode === 400
-            ? '[DRIVER_PAYOUT_SETUP] 400'
-            : '[DRIVER_PAYOUT_SETUP] Error creating driver Stripe Connect account:', {
-            userId,
-            statusCode,
-            reason,
-            message: stripeError?.message,
-            stripeError: safeStripeError,
-            missingFields: stripeError?.missingFields,
-            invalidFields: stripeError?.invalidFields,
-          });
+          if (statusCode === 400) {
+            logDriverBankConnect400({
+              reason,
+              message: stripeError?.message || 'Stripe account creation failed',
+              missingFields: stripeError?.missingFields || [],
+              userId,
+              driverId,
+              featureEnabled,
+              hasStripeAccount,
+              stripeError: safeStripeError,
+            });
+          } else {
+            console.error('[DRIVER_PAYOUT_SETUP] Error creating driver Stripe Connect account:', {
+              userId,
+              driverId,
+              statusCode,
+              reason,
+              message: stripeError?.message,
+              stripeError: safeStripeError,
+              missingFields: stripeError?.missingFields,
+              invalidFields: stripeError?.invalidFields,
+            });
+          }
           return res.status(statusCode).json({
             message: stripeError.statusCode
               ? stripeError.message
@@ -3001,11 +3061,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        await storage.updateUserStripeInfo(userId, {
+        await storage.updateUserStripeInfo(routeUserId, {
           stripeConnectAccountId: connectedAccount.id
         });
         
         user.stripeConnectAccountId = connectedAccount.id;
+        hasStripeAccount = true;
       }
 
       const stripeConnectAccountId = user.stripeConnectAccountId;
@@ -3025,16 +3086,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const reason = statusCode === 400
           ? 'stripe_account_link_create_rejected'
           : 'stripe_account_link_create_failed';
-        console.error(statusCode === 400
-          ? '[DRIVER_PAYOUT_SETUP] 400'
-          : '[DRIVER_PAYOUT_SETUP] Error creating Stripe account link:', {
-          userId,
-          accountId: stripeConnectAccountId,
-          statusCode,
-          reason,
-          message: stripeError?.message,
-          stripeError: safeStripeError,
-        });
+        if (statusCode === 400) {
+          logDriverBankConnect400({
+            reason,
+            message: stripeError?.message || 'Stripe account link creation failed',
+            missingFields: [],
+            userId,
+            driverId,
+            featureEnabled,
+            hasStripeAccount: true,
+            stripeError: safeStripeError,
+          });
+        } else {
+          console.error('[DRIVER_PAYOUT_SETUP] Error creating Stripe account link:', {
+            userId,
+            driverId,
+            accountId: stripeConnectAccountId,
+            statusCode,
+            reason,
+            message: stripeError?.message,
+            stripeError: safeStripeError,
+          });
+        }
         return res.status(statusCode).json({
           message: statusCode === 400 && stripeError?.message
             ? stripeError.message
@@ -3079,15 +3152,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reason = statusCode === 400
         ? 'driver_payout_setup_rejected'
         : 'driver_payout_setup_session_failed';
-      console.error(statusCode === 400
-        ? '[DRIVER_PAYOUT_SETUP] 400'
-        : '[DRIVER_PAYOUT_SETUP] Error creating payout onboarding session:', {
-        userId: req.user?.id,
-        statusCode,
-        reason,
-        message: error?.message,
-        stripeError: safeStripeError,
-      });
+      if (statusCode === 400) {
+        logDriverBankConnect400({
+          reason,
+          message: error?.message || 'Failed to create Stripe payout setup session',
+          missingFields: error?.missingFields || [],
+          userId: userId || req.user?.id,
+          driverId,
+          featureEnabled,
+          hasStripeAccount,
+          stripeError: safeStripeError,
+        });
+      } else {
+        console.error('[DRIVER_PAYOUT_SETUP] Error creating payout onboarding session:', {
+          userId: userId || req.user?.id,
+          driverId,
+          statusCode,
+          reason,
+          message: error?.message,
+          stripeError: safeStripeError,
+        });
+      }
       res.status(statusCode).json({
         message: statusCode === 400 && error?.message
           ? error.message
@@ -3099,7 +3184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         statusCode,
         error: error.message,
         stripeError: safeStripeError,
-        missingFields: [],
+        missingFields: error?.missingFields || [],
         invalidFields: [],
       });
     }
