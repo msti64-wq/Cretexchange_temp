@@ -138,6 +138,30 @@ test("driver location visibility allows approved active owner locations", () => 
   assert.equal(visibilityState.ownerMembershipStatus, "active");
 });
 
+test("driver location visibility does not hide approved locations for billing or payment status", () => {
+  const owner = makeOwner({
+    membershipStatus: "active",
+    isApproved: true,
+    stripePaymentMethodId: null,
+    subscriptionStatus: "past_due",
+    walletStatus: "suspended",
+    membershipPaymentMethod: "waived",
+  });
+  const visibilityState = resolveDriverLocationVisibilityState(
+    {
+      id: "location_4",
+      ownerId: "owner_1",
+      name: "Billable Site",
+      isActive: true,
+      isVisible: true,
+    },
+    owner as any,
+  );
+
+  assert.equal(visibilityState.visibleToDrivers, true);
+  assert.equal(visibilityState.ownerMembershipStatus, "active");
+});
+
 test("driver location visibility logs hidden or inactive reasons", () => {
   const owner = makeOwner({ membershipStatus: "active" });
 

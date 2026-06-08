@@ -1,5 +1,3 @@
-import { resolveOwnerMembershipState } from "./ownerMembership";
-
 export interface OwnerLocationAccessState {
   profileCompleted: boolean;
   paymentMethodOnFile: boolean;
@@ -221,18 +219,21 @@ export function resolveDriverLocationVisibilityState(location: {
     };
   }
 
-  const ownerLocationAccess = resolveOwnerMembershipState(owner);
+  const ownerMembershipStatus = owner?.membershipStatus || (owner?.isApproved ? "active" : "pending_review");
+  const ownerApproved = owner?.isApproved === true
+    || ownerMembershipStatus === "active"
+    || ownerMembershipStatus === "waived";
 
-  if (!ownerLocationAccess.dashboardAccessAllowed) {
+  if (!ownerApproved) {
     return {
       visibleToDrivers: false,
-      exclusionReason: `owner_${ownerLocationAccess.membershipStatus}`,
-      ownerMembershipStatus: ownerLocationAccess.membershipStatus,
+      exclusionReason: `owner_${ownerMembershipStatus}`,
+      ownerMembershipStatus,
     };
   }
 
   return {
     visibleToDrivers: true,
-    ownerMembershipStatus: ownerLocationAccess.membershipStatus,
+    ownerMembershipStatus,
   };
 }
