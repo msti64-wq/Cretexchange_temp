@@ -125,6 +125,8 @@ test("driver profile bank connect visibility uses driver_stripe_payouts only", (
   assert.match(driverProfileSource, /FEATURE_FLAGS\.DRIVER_STRIPE_PAYOUTS/);
   assert.doesNotMatch(driverPayoutSource, /WAIVE_DRIVER_PAYMENT|waive_driver_payment/);
   assert.doesNotMatch(driverPayoutSource, /\/api\/feature-flags\/[^"']+\/toggle/);
+  assert.doesNotMatch(driverProfileSource, /\/api\/drivers\/bank-connect\/session/);
+  assert.match(driverPayoutSettingsSource, /if \(action === "connect_bank_account"\)[\s\S]*connectBankMutation\.mutate\(\)/);
 });
 
 test("disabled driver_stripe_payouts hides bank connection action", () => {
@@ -134,14 +136,15 @@ test("disabled driver_stripe_payouts hides bank connection action", () => {
   });
 
   assert.equal(state.featureAvailable, false);
-  assert.equal(state.statusLabel, "Not Connected");
+  assert.equal(state.statusLabel, "Payouts Disabled");
   assert.equal(state.primaryAction.action, "connect_bank_account");
   assert.equal(state.primaryAction.label, "Connect Bank Account");
   assert.equal(state.primaryAction.disabled, true);
+  assert.equal(state.primaryAction.visible, false);
   assert.equal(state.message, "Stripe payouts are not enabled yet.");
 });
 
-test("enabled driver_stripe_payouts shows Connect Bank Account", () => {
+test("enabled driver_stripe_payouts with no Stripe account shows Connect Bank Account", () => {
   const state = resolveDriverPayoutSettingsState({
     featureEnabled: true,
     requirements: { hasAccount: false },
@@ -152,20 +155,23 @@ test("enabled driver_stripe_payouts shows Connect Bank Account", () => {
   assert.equal(state.primaryAction.action, "connect_bank_account");
   assert.equal(state.primaryAction.label, "Connect Bank Account");
   assert.equal(state.primaryAction.disabled, false);
+  assert.equal(state.primaryAction.visible, true);
+  assert.equal(state.message, "Stripe not connected.");
 });
 
 test("waive_driver_payment does not affect bank connection visibility", () => {
   const state = resolveDriverPayoutSettingsState({
-    featureEnabled: false,
+    featureEnabled: true,
     requirements: { hasAccount: false },
   });
 
-  assert.equal(state.featureAvailable, false);
-  assert.equal(state.primaryAction.disabled, true);
-  assert.equal(state.message, "Stripe payouts are not enabled yet.");
+  assert.equal(state.featureAvailable, true);
+  assert.equal(state.primaryAction.action, "connect_bank_account");
+  assert.equal(state.primaryAction.disabled, false);
+  assert.equal(state.primaryAction.visible, true);
 });
 
-test("driver payout settings state resumes onboarding for existing pending account", () => {
+test("enabled driver_stripe_payouts with incomplete Stripe account shows Resume Stripe Onboarding", () => {
   const state = resolveDriverPayoutSettingsState({
     featureEnabled: true,
     requirements: {
@@ -179,12 +185,14 @@ test("driver payout settings state resumes onboarding for existing pending accou
     },
   });
 
-  assert.equal(state.statusLabel, "Pending Verification");
+  assert.equal(state.statusLabel, "Setup Incomplete");
   assert.equal(state.primaryAction.action, "resume_stripe_onboarding");
+  assert.equal(state.primaryAction.visible, true);
+  assert.equal(state.message, "Stripe setup incomplete.");
   assert.equal(state.secondaryActions.some((action) => action.action === "view_stripe_status"), true);
 });
 
-test("driver payout settings state shows active status for verified existing account", () => {
+test("enabled driver_stripe_payouts with complete Stripe account shows connected status", () => {
   const state = resolveDriverPayoutSettingsState({
     featureEnabled: true,
     requirements: {
@@ -198,9 +206,12 @@ test("driver payout settings state shows active status for verified existing acc
     },
   });
 
-  assert.equal(state.statusLabel, "Active");
+  assert.equal(state.statusLabel, "Connected");
   assert.equal(state.primaryAction.action, "view_stripe_status");
+  assert.equal(state.primaryAction.label, "View Payout Status");
   assert.equal(state.primaryAction.disabled, false);
+  assert.equal(state.primaryAction.visible, true);
+  assert.equal(state.message, "Stripe connected.");
 });
 
 test("driver Stripe connected account payload uses postal_code address field", async () => {
@@ -409,6 +420,87 @@ test("superadmin can override driver_stripe_payouts for a specific driver", asyn
     userId: "driver_user_1",
     enabled: true,
   });
+});
+
+test("driver_stripe_payouts check falls back to global enabled when driver override is disabled", async () => {
+  const { app, gets } = createRouteRegistry();
+  let genericCheckCalled = false;
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({ id: "driver_user_1", role: "driver" }),
+      getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+      getFeatureFlagOverride: async () => ({
+        id: "override_1",
+        flagId: "flag_driver_stripe_payouts",
+        userId: "driver_user_1",
+        enabled: false,
+        createdAt: null,
+        updatedAt: null,
+      }),
+      checkFeatureFlag: async () => {
+        genericCheckCalled = true;
+        return false;
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/feature-flags/:flagKey/check");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { flagKey: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS },
+          user: { id: "driver_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { enabled?: boolean }).enabled, true);
+    },
+  );
+
+  assert.equal(genericCheckCalled, false);
+});
+
+test("driver_stripe_payouts check enables driver when global disabled but driver override is enabled", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({ id: "driver_user_1", role: "driver" }),
+      getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: false }),
+      getFeatureFlagOverride: async () => ({
+        id: "override_1",
+        flagId: "flag_driver_stripe_payouts",
+        userId: "driver_user_1",
+        enabled: true,
+        createdAt: null,
+        updatedAt: null,
+      }),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/feature-flags/:flagKey/check");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { flagKey: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS },
+          user: { id: "driver_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { enabled?: boolean }).enabled, true);
+    },
+  );
 });
 
 test("driver cannot toggle feature flags", async () => {
@@ -1786,6 +1878,19 @@ function makeUser(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function makeFeatureFlag(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "flag_1",
+    flagKey: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS,
+    enabled: false,
+    description: "Driver Stripe payouts",
+    allowedRoles: [],
+    createdAt: null,
+    updatedAt: null,
+    ...overrides,
+  };
+}
+
 function makeDriver(overrides: Record<string, unknown> = {}) {
   return {
     id: "driver_1",
@@ -1887,7 +1992,7 @@ test("driver bank-connect session does not create Stripe account when payouts ar
   let stripeCreateCalls = 0;
   let driverLookups = 0;
   let checkedFlagKey: string | undefined;
-  let checkedRole: string | undefined;
+  let overrideLookups = 0;
 
   await withPatchedStripe(
     {
@@ -1906,10 +2011,13 @@ test("driver bank-connect session does not create Stripe account when payouts ar
             driverLookups += 1;
             return makeDriver();
           },
-          checkFeatureFlag: async (flagKey: string, _userId: string, userRole: string) => {
+          getFeatureFlag: async (flagKey: string) => {
             checkedFlagKey = flagKey;
-            checkedRole = userRole;
-            return false;
+            return makeFeatureFlag({ flagKey, enabled: false });
+          },
+          getFeatureFlagOverride: async () => {
+            overrideLookups += 1;
+            return undefined;
           },
         },
         async () => {
@@ -1939,7 +2047,7 @@ test("driver bank-connect session does not create Stripe account when payouts ar
   assert.equal(stripeCreateCalls, 0);
   assert.equal(driverLookups, 0);
   assert.equal(checkedFlagKey, FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
-  assert.equal(checkedRole, "driver");
+  assert.equal(overrideLookups, 1);
 });
 
 test("driver bank-connect session creates Express account only when payouts are enabled and requested", async () => {
@@ -1992,7 +2100,10 @@ test("driver bank-connect session creates Express account only when payouts are 
         {
           getUser: async () => user,
           getDriver: async () => driver,
-          checkFeatureFlag: async () => true,
+          getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+          getFeatureFlagOverride: async () => {
+            throw new Error("global driver_stripe_payouts should not require override lookup");
+          },
           updateUserStripeInfo: async (_userId: string, stripeData: { stripeConnectAccountId?: string }) => {
             updatedStripeAccountId = stripeData.stripeConnectAccountId;
             user.stripeConnectAccountId = stripeData.stripeConnectAccountId;
@@ -2079,7 +2190,10 @@ test("driver Stripe onboarding creates account link URL for existing account", a
       await withPatchedStorage(
         {
           getUser: async () => user,
-          checkFeatureFlag: async () => true,
+          getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+          getFeatureFlagOverride: async () => {
+            throw new Error("global driver_stripe_payouts should not require override lookup");
+          },
           updateUserStripeInfo: async () => {
             updateStripeInfoCalls += 1;
             return user;

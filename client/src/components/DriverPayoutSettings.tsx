@@ -19,8 +19,8 @@ interface DriverPayoutSettingsProps {
 }
 
 function getStatusBadgeVariant(status: string) {
-  if (status === "active") return "default";
-  if (status === "pending_verification") return "secondary";
+  if (status === "connected") return "default";
+  if (status === "setup_incomplete") return "secondary";
   return "outline";
 }
 
@@ -127,7 +127,7 @@ export function DriverPayoutSettings({
     refreshStatus();
   };
 
-  const statusIcon = state.status === "active"
+  const statusIcon = state.status === "connected"
     ? <CheckCircle2 className="h-5 w-5 text-green-600" />
     : <AlertCircle className="h-5 w-5 text-muted-foreground" />;
 
@@ -165,46 +165,50 @@ export function DriverPayoutSettings({
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            type="button"
-            onClick={() => runAction(state.primaryAction.action)}
-            disabled={state.primaryAction.disabled}
-            className="flex-1"
-            data-testid={primaryTestId}
-          >
-            {isBusy ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Redirecting to Stripe...
-              </>
-            ) : state.primaryAction.action === "view_stripe_status" ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                {state.primaryAction.label}
-              </>
-            ) : (
-              <>
-                <ExternalLink className="mr-2 h-4 w-4" />
-                {state.primaryAction.label}
-              </>
-            )}
-          </Button>
-
-          {state.secondaryActions.map((action) => (
+          {state.primaryAction.visible && (
             <Button
-              key={action.action}
               type="button"
-              variant="outline"
-              onClick={() => runAction(action.action)}
-              disabled={action.disabled}
-              data-testid={action.action === "view_stripe_status"
-                ? "button-driver-view-stripe-status"
-                : "button-driver-resume-stripe-onboarding"}
+              onClick={() => runAction(state.primaryAction.action)}
+              disabled={state.primaryAction.disabled}
+              className="flex-1"
+              data-testid={primaryTestId}
             >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              {action.label}
+              {isBusy ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Redirecting to Stripe...
+                </>
+              ) : state.primaryAction.action === "view_stripe_status" ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  {state.primaryAction.label}
+                </>
+              ) : (
+                <>
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  {state.primaryAction.label}
+                </>
+              )}
             </Button>
-          ))}
+          )}
+
+          {state.secondaryActions
+            .filter((action) => action.visible)
+            .map((action) => (
+              <Button
+                key={action.action}
+                type="button"
+                variant="outline"
+                onClick={() => runAction(action.action)}
+                disabled={action.disabled}
+                data-testid={action.action === "view_stripe_status"
+                  ? "button-driver-view-stripe-status"
+                  : "button-driver-resume-stripe-onboarding"}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {action.label}
+              </Button>
+            ))}
         </div>
       </CardContent>
     </Card>

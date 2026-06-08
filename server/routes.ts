@@ -151,9 +151,27 @@ async function buildLotteryStatusSnapshot(driverId?: string): Promise<LotterySta
   };
 }
 
+async function checkDriverStripePayoutsFeatureFlag(userId: string, userRole: string): Promise<boolean> {
+  const flag = await storage.getFeatureFlag(FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
+  if (!flag) {
+    return false;
+  }
+
+  if (flag.allowedRoles && flag.allowedRoles.length > 0 && !flag.allowedRoles.includes(userRole)) {
+    return false;
+  }
+
+  if (flag.enabled) {
+    return true;
+  }
+
+  const override = await storage.getFeatureFlagOverride(FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS, userId);
+  return override?.enabled === true;
+}
+
 async function isDriverStripePayoutsEnabled(userId: string): Promise<boolean> {
   try {
-    return await storage.checkFeatureFlag(FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS, userId, 'driver');
+    return await checkDriverStripePayoutsFeatureFlag(userId, 'driver');
   } catch (error: any) {
     console.error('Error checking driver Stripe payouts feature flag:', error?.message || error);
     return false;
@@ -13811,7 +13829,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      const enabled = await storage.checkFeatureFlag(flagKey, user.id, user.role);
+      const enabled = flagKey === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS
+        ? await checkDriverStripePayoutsFeatureFlag(user.id, user.role)
+        : await storage.checkFeatureFlag(flagKey, user.id, user.role);
       res.json({ enabled });
     } catch (error) {
       console.error('❌ Error checking feature flag:', error);
