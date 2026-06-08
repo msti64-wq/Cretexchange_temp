@@ -8,7 +8,7 @@
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
-    "test": "NODE_ENV=test JWT_SECRET=test-only-jwt-secret-32-characters-minimum SESSION_SECRET=test-only-session-secret node --import tsx tests/run-tests.ts",
+    "test": "NODE_ENV=test JWT_SECRET=test-only-jwt-secret-32-characters-minimum SESSION_SECRET=test-only-session-secret DATABASE_URL=postgres://user:pass@127.0.0.1:1/test node --import tsx tests/run-tests.ts",
     "db:push": "drizzle-kit push",
     "db:migrate": "node --import tsx scripts/apply-photo-schema-migration.ts",
     "repair:washout-ledger": "node --import tsx scripts/repair-washout-ledger.ts",

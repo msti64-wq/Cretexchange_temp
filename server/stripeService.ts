@@ -40,6 +40,31 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 // STRIPE CONNECT - Connected Accounts
 // ============================================================================
 
+type ConnectedAccountAddressInput = {
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postal_code?: string;
+  postalCode?: string;
+  country: string;
+};
+
+function toStripeAddress(address?: ConnectedAccountAddressInput): Stripe.AddressParam | undefined {
+  if (!address) {
+    return undefined;
+  }
+
+  return {
+    line1: address.line1,
+    line2: address.line2,
+    city: address.city,
+    state: address.state,
+    postal_code: address.postal_code ?? address.postalCode,
+    country: address.country,
+  };
+}
+
 export interface CreateConnectedAccountParams {
   username: string; // PRIMARY IDENTIFIER - Stripe accounts are based on username, NOT email
   email: string;
@@ -52,13 +77,7 @@ export interface CreateConnectedAccountParams {
     lastName: string;
     email: string;
     phone?: string;
-    address?: {
-      line1: string;
-      city: string;
-      state: string;
-      postalCode: string;
-      country: string;
-    };
+    address?: ConnectedAccountAddressInput;
     dob?: {
       day: number;
       month: number;
@@ -69,13 +88,7 @@ export interface CreateConnectedAccountParams {
   company?: {
     name: string;
     taxId?: string;
-    address?: {
-      line1: string;
-      city: string;
-      state: string;
-      postalCode: string;
-      country: string;
-    };
+    address?: ConnectedAccountAddressInput;
   };
   businessProfile?: {
     mcc?: string;
@@ -166,7 +179,7 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
         last_name: params.individual.lastName,
         email: params.individual.email,
         phone: params.individual.phone,
-        address: params.individual.address,
+        address: toStripeAddress(params.individual.address),
         dob: params.individual.dob,
       };
       if (params.individual.ssn) {
@@ -179,7 +192,7 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
       accountParams.company = {
         name: params.company.name,
         tax_id: params.company.taxId,
-        address: params.company.address,
+        address: toStripeAddress(params.company.address),
       };
     }
 

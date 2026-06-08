@@ -115,6 +115,68 @@ test("driver Stripe payouts feature flag is defined and disabled by default", ()
   assert.equal(definition?.enabled, false);
 });
 
+test("driver Stripe connected account payload uses postal_code address field", async () => {
+  const { createConnectedAccount } = await import("../server/stripeService");
+  let createdPayload: Stripe.AccountCreateParams | undefined;
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        list: async () => ({
+          data: [],
+          has_more: false,
+        }),
+        create: async (payload: Stripe.AccountCreateParams) => {
+          createdPayload = payload;
+          return {
+            id: "acct_driver_unit_test",
+            object: "account",
+          } as Stripe.Account;
+        },
+      },
+    },
+    async () => {
+      await createConnectedAccount({
+        type: "express",
+        userId: "driver_1",
+        username: "driver1",
+        email: "driver@example.com",
+        businessType: "individual",
+        capabilities: ["card_payments", "transfers"],
+        individual: {
+          firstName: "Driver",
+          lastName: "One",
+          email: "driver@example.com",
+          phone: "+15551234567",
+          address: {
+            line1: "123 Main St",
+            city: "Austin",
+            state: "TX",
+            postal_code: "78701",
+            country: "US",
+          },
+          dob: {
+            day: 1,
+            month: 1,
+            year: 1990,
+          },
+          ssn: "1234",
+        },
+      });
+    },
+  );
+
+  assert.ok(createdPayload);
+  const address = createdPayload.individual?.address as Record<string, unknown> | undefined;
+  assert.ok(address);
+  assert.equal(address.line1, "123 Main St");
+  assert.equal(address.city, "Austin");
+  assert.equal(address.state, "TX");
+  assert.equal(address.postal_code, "78701");
+  assert.equal(address.country, "US");
+  assert.equal(Object.prototype.hasOwnProperty.call(address, "postalCode"), false);
+});
+
 test("owner Stripe billing setup helper resolves owner and user level Stripe fields", () => {
   const ownerReady = getOwnerStripeBillingSetup(
     { stripeCustomerId: "cus_owner", stripePaymentMethodId: "pm_owner" },

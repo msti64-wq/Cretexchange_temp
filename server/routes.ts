@@ -1524,7 +1524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               line1: validatedData.address.line1,
               city: validatedData.address.city,
               state: validatedData.address.state,
-              postalCode: validatedData.address.postalCode,
+              postal_code: validatedData.address.postalCode,
               country: 'US',
             },
           },
@@ -2852,34 +2852,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // Create Connect account with REAL user data
-        const connectedAccount = await stripeService.createConnectedAccount({
-          type: 'express',
-          userId: userId,
-          username: user.username,
-          email: user.email,
-          businessType: 'individual',
-          capabilities: ['card_payments', 'transfers'],
-          individual: {
-            firstName: user.firstName!,
-            lastName: user.lastName!,
+        let connectedAccount: Awaited<ReturnType<typeof stripeService.createConnectedAccount>>;
+        try {
+          // Create Connect account with REAL user data
+          connectedAccount = await stripeService.createConnectedAccount({
+            type: 'express',
+            userId: userId,
+            username: user.username,
             email: user.email,
-            phone: formatPhoneE164(user.phone),
-            address: {
-              line1: user.street!,
-              city: user.city!,
-              state: user.state!,
-              postalCode: user.zip!,
-              country: 'US',
+            businessType: 'individual',
+            capabilities: ['card_payments', 'transfers'],
+            individual: {
+              firstName: user.firstName!,
+              lastName: user.lastName!,
+              email: user.email,
+              phone: formatPhoneE164(user.phone),
+              address: {
+                line1: user.street!,
+                city: user.city!,
+                state: user.state!,
+                postal_code: user.zip!,
+                country: 'US',
+              },
+              dob,
+              ssn: driver?.ssnLast4,
             },
-            dob,
-            ssn: driver?.ssnLast4,
-          },
-          businessProfile: {
-            url: generateBusinessUrl(user.username, 'driver'),
-            mcc: '7542',
-          },
-        });
+            businessProfile: {
+              url: generateBusinessUrl(user.username, 'driver'),
+              mcc: '7542',
+            },
+          });
+        } catch (stripeError: any) {
+          console.error('Error creating driver Stripe Connect account:', stripeError);
+          return res.status(502).json({
+            message: 'Failed to create Stripe connected account for bank linking. Please verify your profile details and try again.',
+            error: stripeError.message || 'Stripe account creation failed',
+          });
+        }
 
         await storage.updateUserStripeInfo(userId, {
           stripeConnectAccountId: connectedAccount.id
@@ -3068,7 +3077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               line1: user.street!,
               city: user.city!,
               state: user.state!,
-              postalCode: user.zip!,
+              postal_code: user.zip!,
               country: 'US',
             },
             dob,
@@ -5840,7 +5849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 line1: user.street!,
                 city: user.city!,
                 state: user.state!,
-                postalCode: user.zip!,
+                postal_code: user.zip!,
                 country: 'US',
               },
               dob,
@@ -6472,7 +6481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 line1: address.line1,
                 city: address.city,
                 state: address.state,
-                postalCode: address.postalCode,
+                postal_code: address.postalCode,
                 country: 'US',
               },
               dob,
