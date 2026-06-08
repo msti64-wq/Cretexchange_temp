@@ -12,11 +12,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
-import { BankAccountConnect } from "@/components/BankAccountConnect";
-import { User, Truck, CreditCard, Save, FileText, Eye, Smartphone, CheckCircle2, AlertCircle, Gift } from "lucide-react";
+import { DriverPayoutSettings } from "@/components/DriverPayoutSettings";
+import { User, Truck, Save, FileText, Eye, Smartphone, Gift } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InstallPrompt } from "@/components/InstallPrompt";
-import StripeVerificationStatus from "@/components/StripeVerificationStatus";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { hasHandledInstallPromptThisSession, markInstallPromptHandledThisSession } from "@/hooks/usePWAInstall";
@@ -36,8 +35,10 @@ export default function DriverProfile() {
     queryKey: ['/api/drivers/terms-status'],
   });
 
-  const { enabled: waiveDriverPayment } = useFeatureFlag(FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT);
-  const { enabled: driverStripePayoutsEnabled } = useFeatureFlag(FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
+  const {
+    enabled: driverStripePayoutsEnabled,
+    isLoading: driverStripePayoutsLoading,
+  } = useFeatureFlag(FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -212,21 +213,11 @@ export default function DriverProfile() {
           </CardContent>
         </Card>
 
-        {driverStripePayoutsEnabled && (
-          <section className="space-y-3">
-            <div className="space-y-1">
-              <h3 className="flex items-center gap-2 text-base font-semibold">
-                <CreditCard className="w-5 h-5" />
-                Optional Owner Payments
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Drivers can complete washouts and earn lottery entries without Stripe onboarding.
-                Set this up only if you want to receive owner-funded tips from participating locations.
-              </p>
-            </div>
-            <StripeVerificationStatus userRole="driver" purpose="driver-tip-payouts" />
-          </section>
-        )}
+        <DriverPayoutSettings
+          featureEnabled={driverStripePayoutsEnabled}
+          featureLoading={driverStripePayoutsLoading}
+          onStatusRefresh={() => refetch()}
+        />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Personal Information */}
@@ -539,107 +530,6 @@ export default function DriverProfile() {
               )}
             </CardContent>
           </Card>
-
-          {/* Payment Account Setup */}
-          {driverStripePayoutsEnabled && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CreditCard className="w-5 h-5 mr-2" />
-                Payment Account Setup
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-2">
-                Add your bank account to receive washout payments via ACH transfer
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Trial mode notice */}
-              {waiveDriverPayment && (
-                <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-lg">
-                  <div className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-white text-xs font-bold">T</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-amber-800 dark:text-amber-200">Trial Mode Active</p>
-                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
-                      Bank account setup is optional during the trial. You can connect it now or set it up later before payouts go live.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {user?.roleData?.hasAccountNumber && user?.roleData?.hasRoutingNumber ? (
-                <>
-                  <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-                    <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="font-medium text-green-900 dark:text-green-100">
-                        Bank Account Connected
-                      </p>
-                      <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                        {user?.roleData?.bankName || 'Your bank'} {user?.roleData?.accountNumberLast4 && `****${user?.roleData?.accountNumberLast4}`}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      <strong>Ready to Receive Payments:</strong> Washout payments will be transferred to your bank account automatically after each job. Visit your Wallet page to view payment history.
-                    </p>
-                  </div>
-                </>
-              ) : waiveDriverPayment ? (
-                <>
-                  <div className="flex items-center gap-3 p-4 bg-muted/50 border rounded-lg">
-                    <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground">
-                        Bank Account Not Connected
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Optional during trial — connect anytime to be ready when payouts go live
-                      </p>
-                    </div>
-                  </div>
-
-                  <BankAccountConnect
-                    userType="driver"
-                    onSuccess={() => refetch()}
-                    buttonText="Connect Bank Account (Optional)"
-                    className="w-full"
-                  />
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 p-4 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg">
-                    <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="font-medium text-orange-900 dark:text-orange-100">
-                        Bank Account Required
-                      </p>
-                      <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
-                        Connect your bank account to receive washout payments
-                      </p>
-                    </div>
-                  </div>
-
-                  <BankAccountConnect
-                    userType="driver"
-                    onSuccess={() => refetch()}
-                    buttonText="Connect Bank Account"
-                    className="w-full"
-                  />
-
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground">
-                      <strong>🔒 Instant & Secure:</strong> Connect your bank account securely in seconds using your online banking credentials. We use bank-level encryption and never store your banking passwords.
-                    </p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-          )}
 
           {/* App Settings Section */}
           <Card>

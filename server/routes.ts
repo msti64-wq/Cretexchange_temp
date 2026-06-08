@@ -233,6 +233,17 @@ async function createDriverStripePayoutAccount(user: User, driver: Driver | null
   });
 }
 
+async function createDriverStripeOnboardingLink(req: any, stripeConnectAccountId: string) {
+  const baseUrl = getRequestBaseUrl(req);
+
+  return await stripeService.createAccountLink({
+    accountId: stripeConnectAccountId,
+    refreshUrl: `${baseUrl}/driver/profile?stripe_refresh=true`,
+    returnUrl: `${baseUrl}/driver/profile?stripe_complete=true`,
+    type: 'account_onboarding',
+  });
+}
+
 async function resolveDriverStripeReadiness(driverUser: User): Promise<DriverStripeReadiness> {
   if (!stripe) {
     return { ready: false, reason: "Stripe not configured" };
@@ -2865,17 +2876,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user.stripeConnectAccountId = connectedAccount.id;
       }
 
+      const stripeConnectAccountId = user.stripeConnectAccountId;
+      if (!stripeConnectAccountId) {
+        return res.status(500).json({
+          message: 'Stripe connected account setup did not return an account ID. Please try again.',
+        });
+      }
+
       // Create Financial Connections session for driver
       // Force HTTPS for return URL (Stripe requirement) - always use HTTPS for production
       const session = await stripeService.createFinancialConnectionsSession({
         userType: 'driver',
-        connectedAccountId: user.stripeConnectAccountId,
+        connectedAccountId: stripeConnectAccountId,
         returnUrl: `${getRequestBaseUrl(req)}/driver/profile`,
       });
+
+      const accountLink = await createDriverStripeOnboardingLink(req, stripeConnectAccountId);
 
       res.json({
         clientSecret: session.client_secret,
         sessionId: session.id,
+        onboardingUrl: accountLink.url,
+        expiresAt: accountLink.expires_at,
+        accountId: stripeConnectAccountId,
       });
     } catch (error: any) {
       console.error('Error creating bank link session:', error);
@@ -3139,58 +3162,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      let stripeConnectAccountId = user.stripeConnectAccountId;
-      let createdAccount = false;
-      
+      const stripeConnectAccountId = user.stripeConnectAccountId;
       if (!stripeConnectAccountId) {
-        const driver = await storage.getDriver(userId);
-        try {
-          const connectedAccount = await createDriverStripePayoutAccount(user, driver);
-          stripeConnectAccountId = connectedAccount.id;
-          createdAccount = true;
-          await storage.updateUserStripeInfo(userId, { stripeConnectAccountId });
-        } catch (stripeError: any) {
-          console.error('Error creating driver Stripe Connect account for onboarding:', stripeError);
-          return res.status(stripeError.statusCode || 502).json({
-            message: stripeError.statusCode
-              ? stripeError.message
-              : 'Failed to create Stripe connected account for onboarding. Please verify your profile details and try again.',
-            error: stripeError.message || 'Stripe account creation failed',
-            missingFields: stripeError.missingFields,
-            warnings: stripeError.warnings,
-          });
-        }
-      }
-
-      if (!stripeConnectAccountId) {
-        return res.status(500).json({
-          message: 'Stripe connected account setup did not return an account ID. Please try again.',
+        return res.status(400).json({
+          message: 'Connect Bank Account first to start Stripe payout setup.',
+          hasAccount: false,
         });
       }
 
-      let account: Stripe.Account | null = null;
-      if (!createdAccount) {
-        account = await stripe.accounts.retrieve(stripeConnectAccountId);
-        
-        // If account is fully verified, return success
-        if (account.requirements?.currently_due?.length === 0) {
-          return res.json({
-            onboardingComplete: true,
-            message: 'Account onboarding is complete',
-            capabilities: account.capabilities,
-          });
-        }
+      const account = await stripe.accounts.retrieve(stripeConnectAccountId);
+      
+      // If account is fully verified, return success
+      if (account.requirements?.currently_due?.length === 0) {
+        return res.json({
+          onboardingComplete: true,
+          message: 'Account onboarding is complete',
+          capabilities: account.capabilities,
+        });
       }
 
       // Create Account Link for onboarding
-      const baseUrl = getRequestBaseUrl(req);
-      
-      const accountLink = await stripeService.createAccountLink({
-        accountId: stripeConnectAccountId,
-        refreshUrl: `${baseUrl}/driver/profile?stripe_refresh=true`,
-        returnUrl: `${baseUrl}/driver/profile?stripe_complete=true`,
-        type: 'account_onboarding',
-      });
+      const accountLink = await createDriverStripeOnboardingLink(req, stripeConnectAccountId);
 
       res.json({
         onboardingUrl: accountLink.url,
