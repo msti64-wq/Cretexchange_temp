@@ -48,7 +48,7 @@ import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
 import { isAwaitingDriverStripePaymentStatus, getDriverStripeSetupMessage } from "../shared/driverPaymentStatus";
-import { FEATURE_FLAGS } from "../shared/featureFlags";
+import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import {
   buildDriverReport,
@@ -158,6 +158,43 @@ async function isDriverStripePayoutsEnabled(userId: string): Promise<boolean> {
     console.error('Error checking driver Stripe payouts feature flag:', error?.message || error);
     return false;
   }
+}
+
+function withRequiredAdminFeatureFlags(flags: FeatureFlag[]): FeatureFlag[] {
+  const visibleFlags = [...flags];
+  const hasDriverStripePayouts = visibleFlags.some((flag) => flag.flagKey === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
+  const driverStripePayoutsDefinition = FEATURE_FLAG_DEFINITIONS.find(
+    (definition) => definition.key === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS,
+  );
+
+  if (!hasDriverStripePayouts && driverStripePayoutsDefinition) {
+    visibleFlags.push({
+      id: `definition:${driverStripePayoutsDefinition.key}`,
+      flagKey: driverStripePayoutsDefinition.key,
+      enabled: false,
+      description: driverStripePayoutsDefinition.description,
+      allowedRoles: driverStripePayoutsDefinition.allowedRoles || [],
+      createdAt: null,
+      updatedAt: null,
+    });
+  }
+
+  return visibleFlags.sort((a, b) => a.flagKey.localeCompare(b.flagKey));
+}
+
+async function ensureFeatureFlagRecord(flagKey: string): Promise<FeatureFlag> {
+  const existingFlag = await storage.getFeatureFlag(flagKey);
+  if (existingFlag) {
+    return existingFlag;
+  }
+
+  const definition = FEATURE_FLAG_DEFINITIONS.find((flag) => flag.key === flagKey);
+  return await storage.createFeatureFlag({
+    flagKey,
+    enabled: definition?.enabled ?? false,
+    description: definition?.description || flagKey,
+    allowedRoles: definition?.allowedRoles || [],
+  });
 }
 
 function getRequestBaseUrl(req: any): string {
@@ -13754,7 +13791,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
-      const flags = await storage.getAllFeatureFlags() as FeatureFlag[];
+      const storedFlags = await storage.getAllFeatureFlags() as FeatureFlag[];
+      const flags = withRequiredAdminFeatureFlags(storedFlags);
       console.log(`🚩 Feature flags retrieved: ${flags.length} flags`, flags.map((f) => f.flagKey));
       res.json(flags);
     } catch (error) {
@@ -13793,17 +13831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Auto-create the flag if it doesn't exist yet (upsert behavior)
-      let existingFlag = await storage.getFeatureFlag(flagKey);
-      if (!existingFlag) {
-        const { FEATURE_FLAG_DEFINITIONS } = await import('../shared/featureFlags');
-        const definition = FEATURE_FLAG_DEFINITIONS.find(d => d.key === flagKey);
-        existingFlag = await storage.createFeatureFlag({
-          flagKey,
-          enabled: definition?.enabled ?? false,
-          description: definition?.description || flagKey,
-          allowedRoles: definition?.allowedRoles || [],
-        });
-      }
+      const existingFlag = await ensureFeatureFlagRecord(flagKey);
 
       // Toggle: if enabled is explicitly provided use it, otherwise flip the current value
       const newEnabled = typeof enabled === 'boolean' ? enabled : !existingFlag.enabled;
@@ -13826,6 +13854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
+      await ensureFeatureFlagRecord(flagKey);
       const override = await storage.setFeatureFlagOverride(flagKey, userId, enabled);
       res.json(override);
     } catch (error) {
@@ -13845,6 +13874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
+      await ensureFeatureFlagRecord(flagKey);
       const flag = await storage.updateFeatureFlagRoles(flagKey, allowedRoles);
       res.json(flag);
     } catch (error) {

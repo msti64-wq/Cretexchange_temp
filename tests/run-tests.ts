@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
@@ -116,7 +117,17 @@ test("driver Stripe payouts feature flag is defined and disabled by default", ()
   assert.equal(definition?.enabled, false);
 });
 
-test("driver payout settings state disables setup when feature flag is disabled", () => {
+test("driver profile bank connect visibility uses driver_stripe_payouts only", () => {
+  const driverProfileSource = readFileSync(new URL("../client/src/pages/driver/profile.tsx", import.meta.url), "utf8");
+  const driverPayoutSettingsSource = readFileSync(new URL("../client/src/components/DriverPayoutSettings.tsx", import.meta.url), "utf8");
+  const driverPayoutSource = `${driverProfileSource}\n${driverPayoutSettingsSource}`;
+
+  assert.match(driverProfileSource, /FEATURE_FLAGS\.DRIVER_STRIPE_PAYOUTS/);
+  assert.doesNotMatch(driverPayoutSource, /WAIVE_DRIVER_PAYMENT|waive_driver_payment/);
+  assert.doesNotMatch(driverPayoutSource, /\/api\/feature-flags\/[^"']+\/toggle/);
+});
+
+test("disabled driver_stripe_payouts hides bank connection action", () => {
   const state = resolveDriverPayoutSettingsState({
     featureEnabled: false,
     requirements: { hasAccount: false },
@@ -125,10 +136,12 @@ test("driver payout settings state disables setup when feature flag is disabled"
   assert.equal(state.featureAvailable, false);
   assert.equal(state.statusLabel, "Not Connected");
   assert.equal(state.primaryAction.action, "connect_bank_account");
+  assert.equal(state.primaryAction.label, "Connect Bank Account");
   assert.equal(state.primaryAction.disabled, true);
+  assert.equal(state.message, "Stripe payouts are not enabled yet.");
 });
 
-test("driver payout settings state shows connect action with no Stripe account", () => {
+test("enabled driver_stripe_payouts shows Connect Bank Account", () => {
   const state = resolveDriverPayoutSettingsState({
     featureEnabled: true,
     requirements: { hasAccount: false },
@@ -137,7 +150,19 @@ test("driver payout settings state shows connect action with no Stripe account",
   assert.equal(state.featureAvailable, true);
   assert.equal(state.statusLabel, "Not Connected");
   assert.equal(state.primaryAction.action, "connect_bank_account");
+  assert.equal(state.primaryAction.label, "Connect Bank Account");
   assert.equal(state.primaryAction.disabled, false);
+});
+
+test("waive_driver_payment does not affect bank connection visibility", () => {
+  const state = resolveDriverPayoutSettingsState({
+    featureEnabled: false,
+    requirements: { hasAccount: false },
+  });
+
+  assert.equal(state.featureAvailable, false);
+  assert.equal(state.primaryAction.disabled, true);
+  assert.equal(state.message, "Stripe payouts are not enabled yet.");
 });
 
 test("driver payout settings state resumes onboarding for existing pending account", () => {
@@ -243,6 +268,191 @@ test("driver Stripe connected account payload uses postal_code address field", a
   assert.deepEqual(createdPayload.capabilities, {
     transfers: { requested: true },
   });
+});
+
+test("superadmin feature flag list exposes driver_stripe_payouts when missing", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({ id: "admin_1", role: "super_admin" }),
+      getAllFeatureFlags: async () => [],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/feature-flags");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      const flags = res.body as Array<{ flagKey: string; enabled: boolean; description?: string }>;
+      const driverStripePayoutsFlag = flags.find((flag) => flag.flagKey === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
+      assert.ok(driverStripePayoutsFlag);
+      assert.equal(driverStripePayoutsFlag.enabled, false);
+      assert.match(driverStripePayoutsFlag.description || "", /Driver Tip Payouts/);
+    },
+  );
+});
+
+test("superadmin can toggle driver_stripe_payouts", async () => {
+  const { app, puts } = createRouteRegistry();
+  let createdFlag: Record<string, unknown> | undefined;
+  let updatedFlag: Record<string, unknown> | undefined;
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({ id: "admin_1", role: "super_admin" }),
+      getFeatureFlag: async () => undefined,
+      createFeatureFlag: async (flag: Record<string, unknown>) => {
+        createdFlag = flag;
+        return {
+          id: "flag_driver_stripe_payouts",
+          ...flag,
+          createdAt: null,
+          updatedAt: null,
+        };
+      },
+      updateFeatureFlag: async (flagKey: string, enabled: boolean) => {
+        updatedFlag = { id: "flag_driver_stripe_payouts", flagKey, enabled };
+        return updatedFlag;
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/feature-flags/:flagKey/toggle");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { flagKey: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS },
+          body: { enabled: true },
+          user: { id: "admin_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { enabled?: boolean }).enabled, true);
+    },
+  );
+
+  assert.equal(createdFlag?.flagKey, FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
+  assert.equal(createdFlag?.enabled, false);
+  assert.equal(updatedFlag?.flagKey, FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
+  assert.equal(updatedFlag?.enabled, true);
+});
+
+test("superadmin can override driver_stripe_payouts for a specific driver", async () => {
+  const { app, puts } = createRouteRegistry();
+  let createdFlag: Record<string, unknown> | undefined;
+  let overrideRequest: Record<string, unknown> | undefined;
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({ id: "admin_1", role: "super_admin" }),
+      getFeatureFlag: async () => undefined,
+      createFeatureFlag: async (flag: Record<string, unknown>) => {
+        createdFlag = flag;
+        return {
+          id: "flag_driver_stripe_payouts",
+          ...flag,
+          createdAt: null,
+          updatedAt: null,
+        };
+      },
+      setFeatureFlagOverride: async (flagKey: string, userId: string, enabled: boolean) => {
+        overrideRequest = { flagKey, userId, enabled };
+        return {
+          id: "override_1",
+          flagId: "flag_driver_stripe_payouts",
+          userId,
+          enabled,
+          createdAt: null,
+          updatedAt: null,
+        };
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/feature-flags/:flagKey/override/:userId");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { flagKey: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS, userId: "driver_user_1" },
+          body: { enabled: true },
+          user: { id: "admin_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { enabled?: boolean }).enabled, true);
+    },
+  );
+
+  assert.equal(createdFlag?.flagKey, FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
+  assert.deepEqual(overrideRequest, {
+    flagKey: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS,
+    userId: "driver_user_1",
+    enabled: true,
+  });
+});
+
+test("driver cannot toggle feature flags", async () => {
+  const { app, puts } = createRouteRegistry();
+  let storageTouched = false;
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({ id: "driver_user_1", role: "driver" }),
+      getFeatureFlag: async () => {
+        storageTouched = true;
+        return undefined;
+      },
+      createFeatureFlag: async () => {
+        storageTouched = true;
+        return undefined;
+      },
+      updateFeatureFlag: async () => {
+        storageTouched = true;
+        return undefined;
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/feature-flags/:flagKey/toggle");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { flagKey: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS },
+          body: { enabled: true },
+          user: { id: "driver_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 403);
+      assert.match((res.body as { message: string }).message, /Admin access required/);
+    },
+  );
+
+  assert.equal(storageTouched, false);
 });
 
 test("owner Stripe billing setup helper resolves owner and user level Stripe fields", () => {
@@ -1676,6 +1886,8 @@ test("driver bank-connect session does not create Stripe account when payouts ar
   const user = makeUser({ stripeConnectAccountId: null });
   let stripeCreateCalls = 0;
   let driverLookups = 0;
+  let checkedFlagKey: string | undefined;
+  let checkedRole: string | undefined;
 
   await withPatchedStripe(
     {
@@ -1694,7 +1906,11 @@ test("driver bank-connect session does not create Stripe account when payouts ar
             driverLookups += 1;
             return makeDriver();
           },
-          checkFeatureFlag: async () => false,
+          checkFeatureFlag: async (flagKey: string, _userId: string, userRole: string) => {
+            checkedFlagKey = flagKey;
+            checkedRole = userRole;
+            return false;
+          },
         },
         async () => {
           const { registerRoutes } = await import("../server/routes");
@@ -1722,6 +1938,8 @@ test("driver bank-connect session does not create Stripe account when payouts ar
 
   assert.equal(stripeCreateCalls, 0);
   assert.equal(driverLookups, 0);
+  assert.equal(checkedFlagKey, FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
+  assert.equal(checkedRole, "driver");
 });
 
 test("driver bank-connect session creates Express account only when payouts are enabled and requested", async () => {

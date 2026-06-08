@@ -82,7 +82,7 @@ export function resolveDriverPayoutSettingsState(params: {
         disabled: true,
       },
       secondaryActions: [],
-      message: "Stripe driver payouts are currently disabled. No payout setup is required.",
+      message: "Stripe payouts are not enabled yet.",
     };
   }
 

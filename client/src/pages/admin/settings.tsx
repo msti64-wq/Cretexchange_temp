@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
-import { Settings, Database, AlertCircle, CheckCircle2, Loader2, FlaskConical } from "lucide-react";
+import { Settings, Database, AlertCircle, CheckCircle2, Loader2, FlaskConical, CreditCard } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
@@ -31,13 +31,19 @@ export default function AdminSettings() {
 
   const waiveOwnerFlag = allFlags?.find((f: any) => f.flagKey === FEATURE_FLAGS.WAIVE_OWNER_PAYMENT);
   const waiveDriverFlag = allFlags?.find((f: any) => f.flagKey === FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT);
+  const driverStripePayoutsFlag = allFlags?.find((f: any) => f.flagKey === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
   const waiveOwnerEnabled = waiveOwnerFlag?.enabled ?? false;
   const waiveDriverEnabled = waiveDriverFlag?.enabled ?? false;
+  const driverStripePayoutsEnabled = driverStripePayoutsFlag?.enabled ?? false;
   const trialModeActive = waiveOwnerEnabled || waiveDriverEnabled;
 
   const toggleFlagMutation = useMutation({
-    mutationFn: async (flagKey: string) => {
-      const response = await apiRequest(`/api/feature-flags/${flagKey}/toggle`, { method: "PUT" });
+    mutationFn: async ({ flagKey, enabled }: { flagKey: string; enabled: boolean }) => {
+      const response = await apiRequest(`/api/feature-flags/${flagKey}/toggle`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -279,7 +285,10 @@ export default function AdminSettings() {
               </div>
               <Switch
                 checked={waiveOwnerEnabled}
-                onCheckedChange={() => toggleFlagMutation.mutate(FEATURE_FLAGS.WAIVE_OWNER_PAYMENT)}
+                onCheckedChange={(enabled) => toggleFlagMutation.mutate({
+                  flagKey: FEATURE_FLAGS.WAIVE_OWNER_PAYMENT,
+                  enabled,
+                })}
                 disabled={toggleFlagMutation.isPending}
                 aria-label="Toggle owner payment waiver"
               />
@@ -288,27 +297,72 @@ export default function AdminSettings() {
             {/* Waive Driver Payment */}
             <div className="flex items-start justify-between gap-4 border rounded-lg p-4">
               <div className="flex-1 space-y-1">
-                <Label className="text-base font-semibold">Waive Driver Bank Account Requirement</Label>
+                <Label className="text-base font-semibold">Waive Driver Trial Payment Requirement</Label>
                 <p className="text-sm text-muted-foreground">
-                  Allows drivers to use the platform without connecting a bank account. Enable during trial to onboard drivers before payout processing goes live.
+                  Trial-only waiver for driver payment setup requirements. This does not enable Stripe payouts or control Connect Bank Account visibility.
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Status: {waiveDriverEnabled
-                    ? <span className="font-medium text-amber-600">Waived (payouts disabled)</span>
-                    : <span className="font-medium text-green-600">Normal (bank account required)</span>
+                    ? <span className="font-medium text-amber-600">Waived for trial</span>
+                    : <span className="font-medium text-green-600">Normal</span>
                   }
                 </p>
               </div>
               <Switch
                 checked={waiveDriverEnabled}
-                onCheckedChange={() => toggleFlagMutation.mutate(FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT)}
+                onCheckedChange={(enabled) => toggleFlagMutation.mutate({
+                  flagKey: FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT,
+                  enabled,
+                })}
                 disabled={toggleFlagMutation.isPending}
                 aria-label="Toggle driver payment waiver"
               />
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Note: If these flags don't appear yet, go to Feature Flags and click "Seed Predefined Flags" to initialize them first.
+              Bank connection setup is controlled by Driver Stripe Payouts, not by the trial waiver.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Driver Stripe Payout Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Driver Stripe Payouts
+            </CardTitle>
+            <CardDescription>
+              Control optional Stripe Connect onboarding for drivers who want to receive owner-funded tip payouts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start justify-between gap-4 border rounded-lg p-4">
+              <div className="flex-1 space-y-1">
+                <Label className="text-base font-semibold">Enable Driver Stripe Payouts</Label>
+                <p className="text-sm text-muted-foreground">
+                  Shows the Stripe Payouts section and Connect Bank Account action on driver profiles. Drivers still choose whether to onboard.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Status: {driverStripePayoutsEnabled
+                    ? <span className="font-medium text-green-600">Enabled (drivers can connect Stripe)</span>
+                    : <span className="font-medium text-muted-foreground">Disabled (bank connect hidden)</span>
+                  }
+                </p>
+              </div>
+              <Switch
+                checked={driverStripePayoutsEnabled}
+                onCheckedChange={(enabled) => toggleFlagMutation.mutate({
+                  flagKey: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS,
+                  enabled,
+                })}
+                disabled={toggleFlagMutation.isPending}
+                aria-label="Toggle driver Stripe payouts"
+                data-testid="switch-driver-stripe-payouts"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Per-driver overrides are managed from Feature Flags under driver_stripe_payouts.
             </p>
           </CardContent>
         </Card>
