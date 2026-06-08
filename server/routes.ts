@@ -151,27 +151,62 @@ async function buildLotteryStatusSnapshot(driverId?: string): Promise<LotterySta
   };
 }
 
-async function checkDriverStripePayoutsFeatureFlag(userId: string, userRole: string): Promise<boolean> {
+type DriverStripePayoutsFeatureFlagState = {
+  globalEnabled: boolean;
+  overrideEnabled: boolean | null;
+  effectiveEnabled: boolean;
+};
+
+async function getDriverStripePayoutsFeatureFlagState(
+  userId: string,
+  userRole: string,
+): Promise<DriverStripePayoutsFeatureFlagState> {
   const flag = await storage.getFeatureFlag(FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
   if (!flag) {
-    return false;
+    return {
+      globalEnabled: false,
+      overrideEnabled: null,
+      effectiveEnabled: false,
+    };
   }
 
   if (flag.allowedRoles && flag.allowedRoles.length > 0 && !flag.allowedRoles.includes(userRole)) {
-    return false;
-  }
-
-  if (flag.enabled) {
-    return true;
+    return {
+      globalEnabled: Boolean(flag.enabled),
+      overrideEnabled: null,
+      effectiveEnabled: false,
+    };
   }
 
   const override = await storage.getFeatureFlagOverride(FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS, userId);
-  return override?.enabled === true;
+  const globalEnabled = Boolean(flag.enabled);
+  const overrideEnabled = override?.enabled ?? null;
+  const effectiveEnabled = globalEnabled || overrideEnabled === true;
+
+  return {
+    globalEnabled,
+    overrideEnabled,
+    effectiveEnabled,
+  };
+}
+
+function logDriverStripePayoutsFeatureFlagState(
+  context: Record<string, unknown>,
+  state: DriverStripePayoutsFeatureFlagState,
+) {
+  console.log('[STRIPE_PAYOUTS]', {
+    ...context,
+    globalEnabled: state.globalEnabled,
+    overrideEnabled: state.overrideEnabled,
+    effectiveEnabled: state.effectiveEnabled,
+  });
 }
 
 async function isDriverStripePayoutsEnabled(userId: string): Promise<boolean> {
   try {
-    return await checkDriverStripePayoutsFeatureFlag(userId, 'driver');
+    const state = await getDriverStripePayoutsFeatureFlagState(userId, 'driver');
+    logDriverStripePayoutsFeatureFlagState({ userId, role: 'driver', source: 'server_gate' }, state);
+    return state.effectiveEnabled;
   } catch (error: any) {
     console.error('Error checking driver Stripe payouts feature flag:', error?.message || error);
     return false;
@@ -13829,9 +13864,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      const enabled = flagKey === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS
-        ? await checkDriverStripePayoutsFeatureFlag(user.id, user.role)
-        : await storage.checkFeatureFlag(flagKey, user.id, user.role);
+      if (flagKey === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS) {
+        const state = await getDriverStripePayoutsFeatureFlagState(user.id, user.role);
+        logDriverStripePayoutsFeatureFlagState(
+          { userId: user.id, role: user.role, source: 'feature_flag_check' },
+          state,
+        );
+        return res.json({
+          enabled: state.effectiveEnabled,
+          globalEnabled: state.globalEnabled,
+          overrideEnabled: state.overrideEnabled,
+          effectiveEnabled: state.effectiveEnabled,
+        });
+      }
+
+      const enabled = await storage.checkFeatureFlag(flagKey, user.id, user.role);
       res.json({ enabled });
     } catch (error) {
       console.error('❌ Error checking feature flag:', error);

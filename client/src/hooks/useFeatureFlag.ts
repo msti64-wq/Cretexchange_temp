@@ -3,6 +3,9 @@ import type { FeatureFlagKey } from "@shared/featureFlags";
 
 interface FeatureFlagCheckResponse {
   enabled: boolean;
+  globalEnabled?: boolean;
+  overrideEnabled?: boolean | null;
+  effectiveEnabled?: boolean;
 }
 
 interface FeatureFlag {
@@ -38,6 +41,9 @@ export function useFeatureFlag(flagKey: FeatureFlagKey) {
 
   return {
     enabled: data?.enabled ?? false,
+    globalEnabled: data?.globalEnabled,
+    overrideEnabled: data?.overrideEnabled,
+    effectiveEnabled: data?.effectiveEnabled,
     isLoading,
     error,
   };

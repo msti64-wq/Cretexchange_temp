@@ -429,9 +429,7 @@ test("driver_stripe_payouts check enables driver when global flag is enabled", a
     {
       getUser: async () => ({ id: "driver_user_1", role: "driver" }),
       getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
-      getFeatureFlagOverride: async () => {
-        throw new Error("global driver_stripe_payouts should not require override lookup");
-      },
+      getFeatureFlagOverride: async () => undefined,
     },
     async () => {
       const { registerRoutes } = await import("../server/routes");
@@ -449,7 +447,12 @@ test("driver_stripe_payouts check enables driver when global flag is enabled", a
       );
 
       assert.equal(res.statusCode, 200);
-      assert.equal((res.body as { enabled?: boolean }).enabled, true);
+      assert.deepEqual(res.body, {
+        enabled: true,
+        globalEnabled: true,
+        overrideEnabled: null,
+        effectiveEnabled: true,
+      });
     },
   );
 });
@@ -491,7 +494,12 @@ test("driver_stripe_payouts check falls back to global enabled when driver overr
       );
 
       assert.equal(res.statusCode, 200);
-      assert.equal((res.body as { enabled?: boolean }).enabled, true);
+      assert.deepEqual(res.body, {
+        enabled: true,
+        globalEnabled: true,
+        overrideEnabled: false,
+        effectiveEnabled: true,
+      });
     },
   );
 
@@ -530,7 +538,12 @@ test("driver_stripe_payouts check enables driver when global disabled but driver
       );
 
       assert.equal(res.statusCode, 200);
-      assert.equal((res.body as { enabled?: boolean }).enabled, true);
+      assert.deepEqual(res.body, {
+        enabled: true,
+        globalEnabled: false,
+        overrideEnabled: true,
+        effectiveEnabled: true,
+      });
     },
   );
 });
@@ -2133,9 +2146,7 @@ test("driver bank-connect session creates Express account only when payouts are 
           getUser: async () => user,
           getDriver: async () => driver,
           getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
-          getFeatureFlagOverride: async () => {
-            throw new Error("global driver_stripe_payouts should not require override lookup");
-          },
+          getFeatureFlagOverride: async () => undefined,
           updateUserStripeInfo: async (_userId: string, stripeData: { stripeConnectAccountId?: string }) => {
             updatedStripeAccountId = stripeData.stripeConnectAccountId;
             user.stripeConnectAccountId = stripeData.stripeConnectAccountId;
@@ -2223,9 +2234,7 @@ test("driver Stripe onboarding creates account link URL for existing account", a
         {
           getUser: async () => user,
           getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
-          getFeatureFlagOverride: async () => {
-            throw new Error("global driver_stripe_payouts should not require override lookup");
-          },
+          getFeatureFlagOverride: async () => undefined,
           updateUserStripeInfo: async () => {
             updateStripeInfoCalls += 1;
             return user;
