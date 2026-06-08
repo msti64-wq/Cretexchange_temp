@@ -191,6 +191,8 @@ export default function AdminUsers() {
       setSelectedOwner(null);
       customFeeForm.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
     },
     onError: (error: any) => {
       toast({

@@ -9160,17 +9160,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update owner's custom platform fee (super admin only)
-  app.put('/api/admin/owners/:id/platform-fee', isAuthenticated, async (req: any, res) => {
+  app.put('/api/admin/owners/:ownerId/platform-fee', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Super admin access required" });
       }
 
-      const ownerId = req.params.id;
+      const ownerId = req.params.ownerId;
       const { customPlatformFee } = req.body;
 
       const hasCustomPlatformFee = customPlatformFee !== null && customPlatformFee !== undefined && customPlatformFee !== '';
+      const normalizedCustomPlatformFee = hasCustomPlatformFee ? customPlatformFee : null;
       if (hasCustomPlatformFee) {
         const fee = parseFloat(customPlatformFee);
         if (isNaN(fee) || fee < 0) {
@@ -9180,18 +9181,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const owner = await storage.getOwner(ownerId);
+      const owner = await storage.getOwnerById(ownerId);
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
       }
 
       // Update custom fee
-      await storage.updateOwnerCustomPlatformFee(ownerId, customPlatformFee);
+      await storage.updateOwnerCustomPlatformFee(ownerId, normalizedCustomPlatformFee);
 
       const ownerUser = await storage.getUser(owner.userId);
-      console.log('✅ Custom platform fee updated for owner:', ownerUser?.username, 'New fee:', customPlatformFee || 'using global');
+      console.log('✅ Custom platform fee updated for owner:', ownerUser?.username, 'New fee:', normalizedCustomPlatformFee || 'using global');
 
-      res.json({ message: "Custom platform fee updated successfully", customPlatformFee });
+      res.json({
+        message: "Custom platform fee updated successfully",
+        ownerId,
+        customPlatformFee: normalizedCustomPlatformFee,
+      });
     } catch (error: any) {
       console.error("Error updating custom platform fee:", error);
       res.status(500).json({ message: error.message || "Failed to update custom platform fee" });

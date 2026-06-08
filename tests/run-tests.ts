@@ -930,6 +930,106 @@ test("superadmin can update platform fee to five dollars, zero, and rejects nega
   );
 });
 
+test("superadmin updates owner custom platform fee by ownerId and does not require userId", async () => {
+  const { app, puts } = createRouteRegistry();
+  const updates: Array<{ ownerId: string; fee: string | null }> = [];
+
+  await withPatchedStorage(
+    {
+      getUser: async (userId: string) => {
+        if (userId !== "admin_1") {
+          return undefined;
+        }
+        return {
+          id: "admin_1",
+          username: "admin1",
+          role: "super_admin",
+        };
+      },
+      getOwnerById: async (ownerId: string) => {
+        if (ownerId !== "owner_1") {
+          return undefined;
+        }
+        return {
+          id: "owner_1",
+          userId: "owner_user_1",
+          companyName: "Owner Co",
+        };
+      },
+      updateOwnerCustomPlatformFee: async (ownerId: string, customFee: string | null) => {
+        updates.push({ ownerId, fee: customFee });
+        return {
+          id: ownerId,
+          userId: "owner_user_1",
+          companyName: "Owner Co",
+          customPlatformFee: customFee,
+        } as any;
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/admin/owners/:ownerId/platform-fee");
+      assert.equal(typeof route, "function");
+
+      const successRes = createResponse();
+      await route!(
+        {
+          params: { ownerId: "owner_1" },
+          user: { id: "admin_1" },
+          body: { customPlatformFee: "0.00" },
+        },
+        successRes,
+      );
+
+      assert.equal(successRes.statusCode, 200);
+      assert.equal((successRes.body as { ownerId?: string }).ownerId, "owner_1");
+      assert.equal(updates[0]?.ownerId, "owner_1");
+      assert.equal(updates[0]?.fee, "0.00");
+
+      const blankRes = createResponse();
+      await route!(
+        {
+          params: { ownerId: "owner_1" },
+          user: { id: "admin_1" },
+          body: { customPlatformFee: "" },
+        },
+        blankRes,
+      );
+
+      assert.equal(blankRes.statusCode, 200);
+      assert.equal(updates[1]?.ownerId, "owner_1");
+      assert.equal(updates[1]?.fee, null);
+
+      const missingRes = createResponse();
+      await route!(
+        {
+          params: { ownerId: "missing_owner" },
+          user: { id: "admin_1" },
+          body: { customPlatformFee: "5.00" },
+        },
+        missingRes,
+      );
+
+      assert.equal(missingRes.statusCode, 404);
+      assert.match(String((missingRes.body as { message?: string }).message || ""), /owner not found/i);
+
+      const negativeRes = createResponse();
+      await route!(
+        {
+          params: { ownerId: "owner_1" },
+          user: { id: "admin_1" },
+          body: { customPlatformFee: "-1.00" },
+        },
+        negativeRes,
+      );
+
+      assert.equal(negativeRes.statusCode, 400);
+      assert.match(String((negativeRes.body as { message?: string }).message || ""), /zero or greater/i);
+    },
+  );
+});
+
 function createResponse() {
   return {
     statusCode: 200,
