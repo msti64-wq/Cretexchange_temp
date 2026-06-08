@@ -65,11 +65,29 @@ function toStripeAddress(address?: ConnectedAccountAddressInput): Stripe.Address
   };
 }
 
+function buildAccountCapabilities(capabilities?: string[]): Stripe.AccountCreateParams.Capabilities {
+  const requestedCapabilities = capabilities?.length
+    ? new Set(capabilities)
+    : new Set(['card_payments', 'transfers']);
+  const accountCapabilities: Stripe.AccountCreateParams.Capabilities = {};
+
+  if (requestedCapabilities.has('card_payments')) {
+    accountCapabilities.card_payments = { requested: true };
+  }
+
+  if (requestedCapabilities.has('transfers')) {
+    accountCapabilities.transfers = { requested: true };
+  }
+
+  return accountCapabilities;
+}
+
 export interface CreateConnectedAccountParams {
   username: string; // PRIMARY IDENTIFIER - Stripe accounts are based on username, NOT email
   email: string;
   type: 'express' | 'custom'; // Express for marketplace (auto-activates capabilities), Custom for full control
   userId: string; // REQUIRED - User ID for metadata tracking (prevents duplicates)
+  driverId?: string; // Optional driver profile ID for driver payout account metadata
   capabilities?: string[]; // e.g., ['card_payments', 'transfers', 'treasury']
   businessType?: 'individual' | 'company';
   individual?: {
@@ -135,20 +153,7 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
       type: params.type,
       country: 'US', // Required
       email: params.email, // Email for notifications
-      capabilities: {
-        transfers: { requested: true }, // Enable payouts and receiving transfers
-        card_payments: { requested: true }, // Required for Destination Charges
-      },
-      // CRITICAL: Controller configuration required for Express accounts to use Account Links
-      // Without this, Stripe rejects Account Link creation with "account.controller.missing"
-      ...(params.type === 'express' ? {
-        controller: {
-          fees: { payer: 'application' as const }, // Platform pays Stripe fees
-          losses: { payments: 'application' as const }, // Platform handles payment losses
-          stripe_dashboard: { type: 'express' as const }, // Express dashboard access
-          requirement_collection: 'stripe' as const, // Stripe collects requirements via Account Links
-        },
-      } : {}),
+      capabilities: buildAccountCapabilities(params.capabilities),
       business_type: params.businessType || 'individual',
       business_profile: {
         mcc: params.businessProfile?.mcc || '7542', // Default to Car Washes (washout services)
@@ -166,6 +171,7 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
       } : {}),
       metadata: {
         user_id: params.userId, // REQUIRED - Track user ID to prevent duplicates
+        ...(params.driverId ? { driver_id: params.driverId } : {}),
         username: params.username, // USERNAME - Primary identifier (not email)
         platform: 'cretexchange',
         created_at: new Date().toISOString(),

@@ -541,6 +541,7 @@ export default function DriverProfile() {
           </Card>
 
           {/* Payment Account Setup */}
+          {driverStripePayoutsEnabled && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -638,6 +639,7 @@ export default function DriverProfile() {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* App Settings Section */}
           <Card>

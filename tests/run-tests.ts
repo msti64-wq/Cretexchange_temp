@@ -142,7 +142,7 @@ test("driver Stripe connected account payload uses postal_code address field", a
         username: "driver1",
         email: "driver@example.com",
         businessType: "individual",
-        capabilities: ["card_payments", "transfers"],
+        capabilities: ["transfers"],
         individual: {
           firstName: "Driver",
           lastName: "One",
@@ -175,6 +175,11 @@ test("driver Stripe connected account payload uses postal_code address field", a
   assert.equal(address.postal_code, "78701");
   assert.equal(address.country, "US");
   assert.equal(Object.prototype.hasOwnProperty.call(address, "postalCode"), false);
+  assert.equal(createdPayload.type, "express");
+  assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
+  assert.deepEqual(createdPayload.capabilities, {
+    transfers: { requested: true },
+  });
 });
 
 test("owner Stripe billing setup helper resolves owner and user level Stripe fields", () => {
@@ -1507,6 +1512,305 @@ function makeUser(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+function makeDriver(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "driver_1",
+    userId: "user_1",
+    employerName: "Ready Mix Co",
+    employerStreet: "",
+    employerCity: "",
+    employerState: "",
+    employerZip: "",
+    employerPhone: "",
+    licenseNumber: "DL123",
+    truckNumber: "Truck 7",
+    dateOfBirth: "1990-01-01",
+    ssnLast4: "1234",
+    bankName: null,
+    routingNumber: null,
+    accountNumber: null,
+    accountHolderName: null,
+    payoutPreference: "bank_transfer",
+    payoutPreferenceNote: null,
+    stripeConnectAccountId: null,
+    ...overrides,
+  };
+}
+
+test("driver profile save does not create a Stripe account automatically", async () => {
+  const { app, puts } = createRouteRegistry();
+  const driver = makeDriver();
+  const user = makeUser({ stripeConnectAccountId: null });
+  let stripeCreateCalls = 0;
+  let updateStripeInfoCalls = 0;
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        create: async () => {
+          stripeCreateCalls += 1;
+          throw new Error("profile save should not create Stripe accounts");
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getDriver: async () => driver,
+          createDriver: async () => driver,
+          updateDriver: async (_driverId: string, update: Record<string, unknown>) => ({
+            ...driver,
+            ...update,
+          }),
+          getUser: async () => user,
+          upsertUser: async (nextUser: Record<string, unknown>) => ({
+            ...user,
+            ...nextUser,
+          }),
+          updateUserStripeInfo: async () => {
+            updateStripeInfoCalls += 1;
+            return user;
+          },
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = puts.get("/api/drivers/profile");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+              body: {
+                firstName: "Updated",
+                lastName: "Driver",
+                phone: "555-0199",
+                street: "99 Test Way",
+                city: "Austin",
+                state: "TX",
+                zip: "78701",
+                dateOfBirth: "1990-01-01",
+                ssnLast4: "1234",
+              },
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+        },
+      );
+    },
+  );
+
+  assert.equal(stripeCreateCalls, 0);
+  assert.equal(updateStripeInfoCalls, 0);
+});
+
+test("driver bank-connect session does not create Stripe account when payouts are disabled", async () => {
+  const { app, posts } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: null });
+  let stripeCreateCalls = 0;
+  let driverLookups = 0;
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        create: async () => {
+          stripeCreateCalls += 1;
+          throw new Error("disabled payouts should not create Stripe accounts");
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async () => user,
+          getDriver: async () => {
+            driverLookups += 1;
+            return makeDriver();
+          },
+          checkFeatureFlag: async () => false,
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = posts.get("/api/drivers/bank-connect/session");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+              body: {},
+              protocol: "https",
+              get: () => "example.com",
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 403);
+          assert.equal((res.body as { featureDisabled?: boolean }).featureDisabled, true);
+        },
+      );
+    },
+  );
+
+  assert.equal(stripeCreateCalls, 0);
+  assert.equal(driverLookups, 0);
+});
+
+test("driver bank-connect session creates Express account only when payouts are enabled and requested", async () => {
+  const { app, posts } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: null, phone: "512-555-0100" });
+  const driver = makeDriver();
+  let createdPayload: Stripe.AccountCreateParams | undefined;
+  let updatedStripeAccountId: string | undefined;
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        list: async () => ({
+          data: [],
+          has_more: false,
+        }),
+        create: async (payload: Stripe.AccountCreateParams) => {
+          createdPayload = payload;
+          return {
+            id: "acct_driver_bank_connect",
+            object: "account",
+          } as Stripe.Account;
+        },
+      },
+      financialConnections: {
+        sessions: {
+          create: async (payload: Stripe.FinancialConnections.SessionCreateParams) => ({
+            id: "fcsess_driver",
+            object: "financial_connections.session",
+            client_secret: "fcsess_secret",
+            account_holder: payload.account_holder,
+          } as Stripe.FinancialConnections.Session),
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async () => user,
+          getDriver: async () => driver,
+          checkFeatureFlag: async () => true,
+          updateUserStripeInfo: async (_userId: string, stripeData: { stripeConnectAccountId?: string }) => {
+            updatedStripeAccountId = stripeData.stripeConnectAccountId;
+            user.stripeConnectAccountId = stripeData.stripeConnectAccountId;
+            return user;
+          },
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = posts.get("/api/drivers/bank-connect/session");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+              body: {},
+              protocol: "https",
+              get: () => "example.com",
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { clientSecret?: string }).clientSecret, "fcsess_secret");
+        },
+      );
+    },
+  );
+
+  assert.equal(updatedStripeAccountId, "acct_driver_bank_connect");
+  assert.ok(createdPayload);
+  assert.equal(createdPayload.type, "express");
+  assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
+  assert.deepEqual(createdPayload.capabilities, {
+    transfers: { requested: true },
+  });
+  assert.equal(createdPayload.metadata?.user_id, user.id);
+  assert.equal(createdPayload.metadata?.driver_id, driver.id);
+});
+
+test("driver Stripe onboarding creates account link URL after creating account", async () => {
+  const { app, gets } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: null, phone: "512-555-0100" });
+  const driver = makeDriver();
+  let createdAccountLink: Stripe.AccountLinkCreateParams | undefined;
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        list: async () => ({
+          data: [],
+          has_more: false,
+        }),
+        create: async () => ({
+          id: "acct_driver_onboarding",
+          object: "account",
+        } as Stripe.Account),
+      },
+      accountLinks: {
+        create: async (payload: Stripe.AccountLinkCreateParams) => {
+          createdAccountLink = payload;
+          return {
+            object: "account_link",
+            created: 1,
+            expires_at: 2,
+            url: "https://connect.stripe.com/setup/test",
+          } as Stripe.AccountLink;
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async () => user,
+          getDriver: async () => driver,
+          checkFeatureFlag: async () => true,
+          updateUserStripeInfo: async (_userId: string, stripeData: { stripeConnectAccountId?: string }) => {
+            user.stripeConnectAccountId = stripeData.stripeConnectAccountId;
+            return user;
+          },
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = gets.get("/api/drivers/stripe-onboarding");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+              protocol: "https",
+              get: () => "example.com",
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { onboardingUrl?: string }).onboardingUrl, "https://connect.stripe.com/setup/test");
+          assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_onboarding");
+        },
+      );
+    },
+  );
+
+  assert.ok(createdAccountLink);
+  assert.equal(createdAccountLink.account, "acct_driver_onboarding");
+  assert.equal(createdAccountLink.type, "account_onboarding");
+  assert.equal(createdAccountLink.return_url, "https://example.com/driver/profile?stripe_complete=true");
+});
 
 test("public registration rejects privileged roles", async () => {
   const { setupAuth } = await import("../server/tokenAuth");

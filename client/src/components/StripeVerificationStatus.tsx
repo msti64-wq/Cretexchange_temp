@@ -37,6 +37,7 @@ interface StripeRequirements {
 
 export default function StripeVerificationStatus({ userRole, purpose = 'owner-payments' }: StripeVerificationStatusProps) {
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
   
   const endpoint = userRole === 'driver' 
     ? '/api/drivers/stripe-requirements' 
@@ -53,6 +54,7 @@ export default function StripeVerificationStatus({ userRole, purpose = 'owner-pa
 
   const startOnboardingMutation = useMutation({
     mutationFn: async () => {
+      setOnboardingError(null);
       const response = await apiRequest('GET', onboardingEndpoint);
       return response.json();
     },
@@ -60,7 +62,12 @@ export default function StripeVerificationStatus({ userRole, purpose = 'owner-pa
       if (data.onboardingUrl) {
         setIsRedirecting(true);
         window.location.href = data.onboardingUrl;
+      } else if (data.onboardingComplete) {
+        refetch();
       }
+    },
+    onError: (error: Error) => {
+      setOnboardingError(error.message || 'Failed to start Stripe setup');
     },
   });
 
@@ -88,6 +95,8 @@ export default function StripeVerificationStatus({ userRole, purpose = 'owner-pa
   }
 
   if (!requirements?.hasAccount) {
+    const canStartDriverPayoutSetup = purpose === 'driver-tip-payouts' && userRole === 'driver';
+
     return (
       <Alert>
         <Shield className="h-4 w-4" />
@@ -97,9 +106,37 @@ export default function StripeVerificationStatus({ userRole, purpose = 'owner-pa
             : 'Payment Account Not Set Up'}
         </AlertTitle>
         <AlertDescription>
-          {purpose === 'driver-tip-payouts' && userRole === 'driver'
-            ? "Your optional tip payout setup hasn't been created yet. Complete your profile only if you want to receive owner-funded tips."
-            : 'Your payment account hasn\'t been created yet. Complete your profile to set up payments.'}
+          <div className="space-y-3">
+            <p>
+              {canStartDriverPayoutSetup
+                ? "Your optional tip payout setup hasn't been created yet."
+                : 'Your payment account hasn\'t been created yet. Complete your profile to set up payments.'}
+            </p>
+            {canStartDriverPayoutSetup && (
+              <Button
+                onClick={() => startOnboardingMutation.mutate()}
+                disabled={startOnboardingMutation.isPending || isRedirecting}
+                data-testid="button-setup-driver-stripe-payments"
+              >
+                {(startOnboardingMutation.isPending || isRedirecting) ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Redirecting to Stripe...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Set Up Stripe Payments
+                  </>
+                )}
+              </Button>
+            )}
+            {onboardingError && (
+              <p className="text-sm text-destructive" data-testid="text-stripe-onboarding-error">
+                {onboardingError}
+              </p>
+            )}
+          </div>
         </AlertDescription>
       </Alert>
     );
