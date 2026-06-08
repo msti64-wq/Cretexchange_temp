@@ -206,7 +206,7 @@ test("enabled driver_stripe_payouts with complete Stripe account shows connected
     },
   });
 
-  assert.equal(state.statusLabel, "Connected");
+  assert.equal(state.statusLabel, "Stripe Connected");
   assert.equal(state.primaryAction.action, "view_stripe_status");
   assert.equal(state.primaryAction.label, "View Payout Status");
   assert.equal(state.primaryAction.disabled, false);
@@ -420,6 +420,38 @@ test("superadmin can override driver_stripe_payouts for a specific driver", asyn
     userId: "driver_user_1",
     enabled: true,
   });
+});
+
+test("driver_stripe_payouts check enables driver when global flag is enabled", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => ({ id: "driver_user_1", role: "driver" }),
+      getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+      getFeatureFlagOverride: async () => {
+        throw new Error("global driver_stripe_payouts should not require override lookup");
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/feature-flags/:flagKey/check");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          params: { flagKey: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS },
+          user: { id: "driver_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { enabled?: boolean }).enabled, true);
+    },
+  );
 });
 
 test("driver_stripe_payouts check falls back to global enabled when driver override is disabled", async () => {
