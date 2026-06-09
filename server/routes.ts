@@ -258,6 +258,163 @@ function getRequestBaseUrl(req: any): string {
   return `${protocol}://${host}`;
 }
 
+const DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_MESSAGE =
+  'Driver Stripe onboarding URL is not configured for production.';
+const DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_ADMIN_MESSAGE =
+  'Set PUBLIC_APP_URL or APP_BASE_URL to the public HTTPS app URL before enabling driver Stripe payouts.';
+
+type DriverStripeOnboardingUrlConfig = {
+  baseUrl: string;
+  refreshUrl: string;
+  returnUrl: string;
+  refreshUrlHost: string;
+  returnUrlHost: string;
+  isHttps: boolean;
+  source: string;
+};
+
+function getConfiguredPublicAppUrl() {
+  const publicAppUrl = process.env.PUBLIC_APP_URL?.trim();
+  if (publicAppUrl) {
+    return { value: publicAppUrl, source: 'PUBLIC_APP_URL' };
+  }
+
+  const appBaseUrl = process.env.APP_BASE_URL?.trim();
+  if (appBaseUrl) {
+    return { value: appBaseUrl, source: 'APP_BASE_URL' };
+  }
+
+  return null;
+}
+
+function isProductionOrStripeLiveMode() {
+  return process.env.NODE_ENV === 'production' || getStripeModeFromSecretKey() === 'live';
+}
+
+function isLocalOrInternalHost(hostname: string) {
+  const normalizedHost = hostname.toLowerCase();
+  return normalizedHost === 'localhost'
+    || normalizedHost === '0.0.0.0'
+    || normalizedHost === '127.0.0.1'
+    || normalizedHost === '::1'
+    || normalizedHost.endsWith('.localhost')
+    || normalizedHost.endsWith('.local')
+    || normalizedHost.endsWith('.internal')
+    || normalizedHost.endsWith('.railway.internal');
+}
+
+function createDriverStripeAccountLinkConfigError(
+  reason: string,
+  message: string,
+  details: Partial<DriverStripeOnboardingUrlConfig> = {},
+) {
+  console.warn('[DRIVER_STRIPE_ACCOUNT_LINK]', {
+    reason,
+    returnUrlHost: details.returnUrlHost || null,
+    refreshUrlHost: details.refreshUrlHost || null,
+    isHttps: details.isHttps ?? null,
+    source: details.source || null,
+    stripeMode: getStripeModeFromSecretKey(),
+    nodeEnv: process.env.NODE_ENV || 'development',
+  });
+
+  const error = new Error(message) as Error & {
+    statusCode?: number;
+    code?: string;
+    reason?: string;
+    adminMessage?: string;
+    urlConfig?: Partial<DriverStripeOnboardingUrlConfig>;
+  };
+  error.statusCode = 500;
+  error.code = 'DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID';
+  error.reason = reason;
+  error.adminMessage = DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_ADMIN_MESSAGE;
+  error.urlConfig = details;
+  return error;
+}
+
+export function buildDriverStripeOnboardingUrls(req?: any): DriverStripeOnboardingUrlConfig {
+  const configuredAppUrl = getConfiguredPublicAppUrl();
+  const requiresPublicHttps = isProductionOrStripeLiveMode();
+
+  if (!configuredAppUrl && requiresPublicHttps) {
+    throw createDriverStripeAccountLinkConfigError(
+      'driver_stripe_public_app_url_missing',
+      DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_MESSAGE,
+      { source: 'missing' },
+    );
+  }
+
+  const rawBaseUrl = configuredAppUrl?.value || (req ? getRequestBaseUrl(req) : '');
+  const source = configuredAppUrl?.source || 'request';
+  const baseUrl = rawBaseUrl.trim().replace(/\/+$/, '');
+
+  let parsedBaseUrl: URL;
+  try {
+    parsedBaseUrl = new URL(baseUrl);
+  } catch {
+    throw createDriverStripeAccountLinkConfigError(
+      'driver_stripe_public_app_url_invalid',
+      'Driver Stripe onboarding URL must be a valid absolute URL.',
+      { baseUrl, source },
+    );
+  }
+
+  const isHttps = parsedBaseUrl.protocol === 'https:';
+  const refreshUrl = `${baseUrl}/driver/profile?stripe_refresh=1`;
+  const returnUrl = `${baseUrl}/driver/profile?stripe_return=1`;
+  const commonDetails = {
+    baseUrl,
+    refreshUrl,
+    returnUrl,
+    source,
+    isHttps,
+    refreshUrlHost: parsedBaseUrl.host,
+    returnUrlHost: parsedBaseUrl.host,
+  };
+
+  if (requiresPublicHttps && !isHttps) {
+    throw createDriverStripeAccountLinkConfigError(
+      'driver_stripe_public_app_url_not_https',
+      'Driver Stripe onboarding URL must use HTTPS in production/live mode.',
+      commonDetails,
+    );
+  }
+
+  if (requiresPublicHttps && isLocalOrInternalHost(parsedBaseUrl.hostname)) {
+    throw createDriverStripeAccountLinkConfigError(
+      'driver_stripe_public_app_url_not_public',
+      'Driver Stripe onboarding URL must use the public HTTPS app host in production/live mode.',
+      commonDetails,
+    );
+  }
+
+  return {
+    baseUrl,
+    refreshUrl,
+    returnUrl,
+    refreshUrlHost: new URL(refreshUrl).host,
+    returnUrlHost: new URL(returnUrl).host,
+    isHttps,
+    source,
+  };
+}
+
+function logDriverStripeAccountLinkConfig(
+  stripeConnectAccountId: string,
+  urlConfig: DriverStripeOnboardingUrlConfig,
+) {
+  console.info('[DRIVER_STRIPE_ACCOUNT_LINK]', {
+    accountId: stripeConnectAccountId,
+    returnUrlHost: urlConfig.returnUrlHost,
+    refreshUrlHost: urlConfig.refreshUrlHost,
+    isHttps: urlConfig.isHttps,
+    source: urlConfig.source,
+    stripeMode: getStripeModeFromSecretKey(),
+    nodeEnv: process.env.NODE_ENV || 'development',
+  });
+}
+
 type DriverStripePayoutProfileValidation = {
   isComplete: boolean;
   missingFields: string[];
@@ -482,12 +639,13 @@ export async function createDriverStripePayoutAccount(
 }
 
 export async function createDriverStripeOnboardingLink(req: any, stripeConnectAccountId: string) {
-  const baseUrl = getRequestBaseUrl(req);
+  const urlConfig = buildDriverStripeOnboardingUrls(req);
+  logDriverStripeAccountLinkConfig(stripeConnectAccountId, urlConfig);
 
   return await stripe.accountLinks.create({
     account: stripeConnectAccountId,
-    refresh_url: `${baseUrl}/driver/profile?stripe_refresh=true`,
-    return_url: `${baseUrl}/driver/profile?stripe_complete=true`,
+    refresh_url: urlConfig.refreshUrl,
+    return_url: urlConfig.returnUrl,
     type: 'account_onboarding',
   });
 }
@@ -1545,12 +1703,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         baseUrl = 'http://localhost:5000';
       }
       const returnUrl = `${baseUrl}/${user.role === 'owner' ? 'owner' : 'driver'}/profile`;
+      const driverUrlConfig = user.role === 'driver'
+        ? buildDriverStripeOnboardingUrls(req)
+        : null;
+      if (driverUrlConfig) {
+        logDriverStripeAccountLinkConfig(connectAccountId, driverUrlConfig);
+      }
       
       // Generate fresh Account Link
       const accountLink = await stripe.accountLinks.create({
         account: connectAccountId,
-        refresh_url: returnUrl,
-        return_url: returnUrl,
+        refresh_url: driverUrlConfig?.refreshUrl || returnUrl,
+        return_url: driverUrlConfig?.returnUrl || returnUrl,
         type: 'account_onboarding',
       });
 
@@ -1657,6 +1821,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === 'owner') {
         returnUrl = `${baseUrl}/owner/profile`;
       }
+      const driverUrlConfig = user.role === 'driver'
+        ? buildDriverStripeOnboardingUrls(req)
+        : null;
+      if (driverUrlConfig) {
+        logDriverStripeAccountLinkConfig(connectAccountId, driverUrlConfig);
+      }
 
       console.log(`🔗 Account Link return URL: ${returnUrl} (host: ${requestHost}, isReplitHost: ${isReplitHost})`);
 
@@ -1666,8 +1836,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         accountLink = await stripe.accountLinks.create({
           account: connectAccountId,
-          refresh_url: returnUrl,
-          return_url: returnUrl,
+          refresh_url: driverUrlConfig?.refreshUrl || returnUrl,
+          return_url: driverUrlConfig?.returnUrl || returnUrl,
           type: 'account_onboarding',
         });
         console.log(`✅ Generated Account Link successfully`);
@@ -1868,11 +2038,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           onboardBaseUrl = 'http://localhost:5000';
         }
         const onboardReturnUrl = `${onboardBaseUrl}/${user.role === 'owner' ? 'owner' : 'driver'}/profile`;
+        const driverUrlConfig = user.role === 'driver'
+          ? buildDriverStripeOnboardingUrls(req)
+          : null;
+        if (driverUrlConfig) {
+          logDriverStripeAccountLinkConfig(connectAccountId, driverUrlConfig);
+        }
         
         const accountLink = await stripe.accountLinks.create({
           account: connectAccountId,
-          refresh_url: onboardReturnUrl,
-          return_url: onboardReturnUrl,
+          refresh_url: driverUrlConfig?.refreshUrl || onboardReturnUrl,
+          return_url: driverUrlConfig?.returnUrl || onboardReturnUrl,
           type: 'account_onboarding',
         });
         accountSetupLink = accountLink.url;
@@ -3215,7 +3391,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (stripeError: any) {
         const statusCode = typeof stripeError?.statusCode === 'number' ? stripeError.statusCode : 502;
         const safeStripeError = getSafeStripeErrorDetails(stripeError);
-        const reason = statusCode === 400
+        const isConfigError = stripeError?.code === 'DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID';
+        const reason = isConfigError
+          ? stripeError.reason || 'driver_stripe_public_app_url_invalid'
+          : statusCode === 400
           ? 'stripe_account_link_create_rejected'
           : 'stripe_account_link_create_failed';
         if (statusCode === 400) {
@@ -3229,6 +3408,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             hasStripeAccount: true,
             stripeError: safeStripeError,
           });
+        } else if (isConfigError) {
+          console.error('[DRIVER_PAYOUT_SETUP] Driver Stripe account link URL config invalid:', {
+            userId,
+            driverId,
+            accountId: stripeConnectAccountId,
+            statusCode,
+            reason,
+            message: stripeError?.message,
+            adminMessage: stripeError?.adminMessage,
+            urlConfig: stripeError?.urlConfig,
+            stripeMode: getStripeModeFromSecretKey(),
+          });
         } else {
           console.error('[DRIVER_PAYOUT_SETUP] Error creating Stripe account link:', {
             userId,
@@ -3241,15 +3432,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         return res.status(statusCode).json({
-          message: statusCode === 400 && stripeError?.message
+          message: isConfigError
+            ? 'Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.'
+            : statusCode === 400 && stripeError?.message
             ? stripeError.message
             : 'Failed to create Stripe onboarding link. Please try again.',
-          code: statusCode === 400
+          code: isConfigError
+            ? 'DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID'
+            : statusCode === 400
             ? 'DRIVER_STRIPE_ACCOUNT_LINK_REJECTED'
             : 'DRIVER_STRIPE_ACCOUNT_LINK_FAILED',
           reason,
           statusCode,
           error: stripeError?.message || 'Stripe account link creation failed',
+          adminMessage: stripeError?.adminMessage,
           stripeError: safeStripeError,
           missingFields: [],
           invalidFields: [],
@@ -12149,24 +12345,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!stripe) {
         // Development mode - return mock onboarding URL
-        // Use Replit's public URL or fallback to localhost
-        const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-          : process.env.BASE_URL || 'http://localhost:5000';
+        const urlConfig = buildDriverStripeOnboardingUrls(req);
           
         return res.json({
-          url: `${baseUrl}/api/stripe/connect/mock-onboarding?account=${driver.connectedAccountId}`,
+          url: `${urlConfig.baseUrl}/api/stripe/connect/mock-onboarding?account=${driver.connectedAccountId}`,
           message: "Development mode: Mock onboarding link generated"
         });
       }
 
-      // Create account link for onboarding
-      const accountLink = await stripe.accountLinks.create({
-        account: driver.connectedAccountId,
-        refresh_url: `${process.env.BASE_URL || 'http://localhost:5000'}/driver/profile`,
-        return_url: `${process.env.BASE_URL || 'http://localhost:5000'}/driver/profile?setup=complete`,
-        type: 'account_onboarding',
-      });
+      const accountLink = await createDriverStripeOnboardingLink(req, driver.connectedAccountId);
 
       console.log(`🔗 Generated onboarding link for driver ${user.username} account ${driver.connectedAccountId}`);
 
@@ -12177,8 +12364,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error: any) {
       console.error("Error creating onboarding link:", error);
-      res.status(500).json({ 
-        message: "Failed to create onboarding link",
+      const isConfigError = error?.code === 'DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID';
+      res.status(error.statusCode || 500).json({ 
+        message: isConfigError
+          ? "Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete."
+          : "Failed to create onboarding link",
+        code: error?.code,
+        reason: error?.reason,
+        adminMessage: error?.adminMessage,
         error: error.message 
       });
     }

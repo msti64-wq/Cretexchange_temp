@@ -61,12 +61,19 @@ const account = await createDriverStripePayoutAccount(
   },
 );
 
-const host = process.env.DRIVER_STRIPE_CONNECT_DIAGNOSTIC_HOST || "localhost:5000";
-const protocol = process.env.DRIVER_STRIPE_CONNECT_DIAGNOSTIC_PROTOCOL || "http";
+const diagnosticAppUrl =
+  process.env.PUBLIC_APP_URL ||
+  process.env.APP_BASE_URL ||
+  process.env.DRIVER_STRIPE_CONNECT_DIAGNOSTIC_APP_URL ||
+  "https://example.com";
+if (!process.env.PUBLIC_APP_URL && !process.env.APP_BASE_URL) {
+  process.env.APP_BASE_URL = diagnosticAppUrl;
+}
+const parsedDiagnosticAppUrl = new URL(diagnosticAppUrl);
 const req = {
-  protocol,
+  protocol: parsedDiagnosticAppUrl.protocol.replace(":", ""),
   get(header: string) {
-    return header.toLowerCase() === "host" ? host : undefined;
+    return header.toLowerCase() === "host" ? parsedDiagnosticAppUrl.host : undefined;
   },
 };
 

@@ -1700,6 +1700,34 @@ async function withPatchedStripe(
   }
 }
 
+async function withPatchedEnv(
+  patch: Record<string, string | undefined>,
+  run: () => Promise<void>,
+) {
+  const original = new Map<string, string | undefined>();
+
+  for (const [key, value] of Object.entries(patch)) {
+    original.set(key, process.env[key]);
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+
+  try {
+    await run();
+  } finally {
+    for (const [key, value] of original.entries()) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
 function createOwnerBillingRunFixture(params: {
   ownerId?: string;
   ownerCompanyName?: string;
@@ -2940,8 +2968,150 @@ test("driver bank-connect session creates Express account only when payouts are 
   assert.ok(createdAccountLink);
   assert.equal(createdAccountLink.account, "acct_driver_bank_connect");
   assert.equal(createdAccountLink.type, "account_onboarding");
-  assert.equal(createdAccountLink.refresh_url, "https://example.com/driver/profile?stripe_refresh=true");
-  assert.equal(createdAccountLink.return_url, "https://example.com/driver/profile?stripe_complete=true");
+  assert.equal(createdAccountLink.refresh_url, "https://example.com/driver/profile?stripe_refresh=1");
+  assert.equal(createdAccountLink.return_url, "https://example.com/driver/profile?stripe_return=1");
+});
+
+test("driver bank-connect session uses configured public HTTPS URLs in production", async () => {
+  const { app, posts } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: "acct_driver_existing_https" });
+  let createdAccountLink: Stripe.AccountLinkCreateParams | undefined;
+
+  await withPatchedEnv(
+    {
+      NODE_ENV: "production",
+      STRIPE_SECRET_KEY: "sk_test_unit_test_secret",
+      PUBLIC_APP_URL: "https://cretexchangetemp-production.up.railway.app/",
+      APP_BASE_URL: undefined,
+    },
+    async () => {
+      await withPatchedStripe(
+        {
+          accountLinks: {
+            create: async (payload: Stripe.AccountLinkCreateParams) => {
+              createdAccountLink = payload;
+              return {
+                object: "account_link",
+                created: 1,
+                expires_at: 2,
+                url: "https://connect.stripe.com/setup/public-https",
+              } as Stripe.AccountLink;
+            },
+          },
+        },
+        async () => {
+          await withPatchedStorage(
+            {
+              getUser: async () => user,
+              getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+              getFeatureFlagOverride: async () => undefined,
+            },
+            async () => {
+              const { registerRoutes } = await import("../server/routes");
+              await registerRoutes(app as never);
+              const route = posts.get("/api/drivers/bank-connect/session");
+              assert.equal(typeof route, "function");
+
+              const res = createResponse();
+              await route!(
+                {
+                  user: { id: user.id, role: "driver" },
+                  body: {},
+                  protocol: "http",
+                  get: () => "cretexchange.railway.internal:5000",
+                },
+                res,
+              );
+
+              assert.equal(res.statusCode, 200);
+              assert.equal((res.body as { url?: string }).url, "https://connect.stripe.com/setup/public-https");
+              assert.equal((res.body as { onboardingUrl?: string }).onboardingUrl, "https://connect.stripe.com/setup/public-https");
+              assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_existing_https");
+            },
+          );
+        },
+      );
+    },
+  );
+
+  assert.ok(createdAccountLink);
+  assert.equal(createdAccountLink.account, "acct_driver_existing_https");
+  assert.equal(
+    createdAccountLink.refresh_url,
+    "https://cretexchangetemp-production.up.railway.app/driver/profile?stripe_refresh=1",
+  );
+  assert.equal(
+    createdAccountLink.return_url,
+    "https://cretexchangetemp-production.up.railway.app/driver/profile?stripe_return=1",
+  );
+});
+
+test("driver bank-connect session rejects live-mode non-HTTPS app URL before Stripe account link call", async () => {
+  const { app, posts } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: "acct_driver_existing_live" });
+  let accountLinkCalls = 0;
+
+  await withPatchedEnv(
+    {
+      NODE_ENV: "test",
+      STRIPE_SECRET_KEY: "sk_live_unit_test_secret",
+      PUBLIC_APP_URL: "http://cretexchangetemp-production.up.railway.app",
+      APP_BASE_URL: undefined,
+    },
+    async () => {
+      await withPatchedStripe(
+        {
+          accountLinks: {
+            create: async () => {
+              accountLinkCalls += 1;
+              throw new Error("non-HTTPS live config should fail before Stripe account link creation");
+            },
+          },
+        },
+        async () => {
+          await withPatchedStorage(
+            {
+              getUser: async () => user,
+              getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+              getFeatureFlagOverride: async () => undefined,
+            },
+            async () => {
+              const { registerRoutes } = await import("../server/routes");
+              await registerRoutes(app as never);
+              const route = posts.get("/api/drivers/bank-connect/session");
+              assert.equal(typeof route, "function");
+
+              const res = createResponse();
+              await route!(
+                {
+                  user: { id: user.id, role: "driver" },
+                  body: {},
+                  protocol: "http",
+                  get: () => "cretexchange.railway.internal:5000",
+                },
+                res,
+              );
+
+              assert.equal(res.statusCode, 500);
+              assert.equal((res.body as { code?: string }).code, "DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID");
+              assert.equal((res.body as { reason?: string }).reason, "driver_stripe_public_app_url_not_https");
+              assert.equal(
+                (res.body as { message?: string }).message,
+                "Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.",
+              );
+              assert.match(
+                (res.body as { adminMessage?: string }).adminMessage || "",
+                /PUBLIC_APP_URL or APP_BASE_URL/,
+              );
+              assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_existing_live");
+            },
+          );
+        },
+      );
+    },
+  );
+
+  assert.equal(accountLinkCalls, 0);
 });
 
 test("driver bank-connect session returns safe error when Stripe account link has no URL", async () => {
@@ -3125,7 +3295,7 @@ test("driver Stripe onboarding creates account link URL for existing account", a
   assert.ok(createdAccountLink);
   assert.equal(createdAccountLink.account, "acct_driver_onboarding");
   assert.equal(createdAccountLink.type, "account_onboarding");
-  assert.equal(createdAccountLink.return_url, "https://example.com/driver/profile?stripe_complete=true");
+  assert.equal(createdAccountLink.return_url, "https://example.com/driver/profile?stripe_return=1");
   assert.equal(stripeCreateCalls, 0);
   assert.equal(updateStripeInfoCalls, 0);
 });
