@@ -415,7 +415,7 @@ export default function AdminSettings() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-md border p-3">
                 <p className="text-xs text-muted-foreground">Connect enabled</p>
                 <p className="text-sm font-semibold" data-testid="text-stripe-connect-enabled">
@@ -425,11 +425,19 @@ export default function AdminSettings() {
                 </p>
               </div>
               <div className="rounded-md border p-3">
-                <p className="text-xs text-muted-foreground">transfers capability supported</p>
+                <p className="text-xs text-muted-foreground">Express onboarding available</p>
+                <p className="text-sm font-semibold" data-testid="text-stripe-express-onboarding-available">
+                  {stripeConnectHealthLoading
+                    ? "Checking..."
+                    : formatHealthBoolean(stripeConnectHealth?.expressOnboardingAvailable)}
+                </p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">transfers capability creation supported</p>
                 <p className="text-sm font-semibold" data-testid="text-stripe-transfers-supported">
                   {stripeConnectHealthLoading
                     ? "Checking..."
-                    : formatHealthBoolean(stripeConnectHealth?.transfersCapabilitySupported, "Requires Stripe Dashboard confirmation")}
+                    : formatHealthBoolean(stripeConnectHealth?.transfersCapabilityCreationSupported, "Requires Stripe Dashboard confirmation")}
                 </p>
               </div>
               <div className="rounded-md border p-3">

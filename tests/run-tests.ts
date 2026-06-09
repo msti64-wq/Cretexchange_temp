@@ -251,7 +251,8 @@ test("admin settings exposes Stripe Connect setup health check", () => {
   assert.match(adminSettingsSource, /\/api\/admin\/stripe\/connect-health/);
   assert.match(adminSettingsSource, /Stripe Connect Setup Health/);
   assert.match(adminSettingsSource, /Connect enabled/);
-  assert.match(adminSettingsSource, /transfers capability supported/);
+  assert.match(adminSettingsSource, /Express onboarding available/);
+  assert.match(adminSettingsSource, /transfers capability creation supported/);
   assert.match(adminSettingsSource, /Stripe mode test\/live/);
   assert.doesNotMatch(adminSettingsSource, /`transfers` and `card_payments` capabilities/);
 });
@@ -2355,7 +2356,7 @@ test("driver bank-connect session returns platform setup error when Stripe trans
         accounts: {
           create: async (payload: Stripe.AccountCreateParams) => {
             createdPayload = payload;
-            const error = new Error("Your platform needs approval for accounts to have requested the transfers capability without the card_payments capability.") as Error & {
+            const error = new Error("Your platform needs approval for accounts to have requested the transfers capability.") as Error & {
               statusCode?: number;
               type?: string;
               code?: string;
@@ -2412,7 +2413,7 @@ test("driver bank-connect session returns platform setup error when Stripe trans
             );
             assert.equal(
               (res.body as { adminMessage?: string }).adminMessage,
-              "Stripe platform account must enable Connect transfers before driver payout onboarding can start. In Stripe Dashboard, go to Connect > Settings / Platform profile and enable Express connected accounts and transfers.",
+              "Stripe Connect platform setup is incomplete. Enable/approve connected account transfers before driver payout onboarding. Stripe Dashboard: Connect > Settings / Platform profile > Enable Express connected accounts / transfers.",
             );
             assert.equal((res.body as { reason?: string }).reason, "stripe_connect_transfers_not_enabled");
             assert.equal((res.body as { platformSetupIncomplete?: boolean }).platformSetupIncomplete, true);
@@ -2438,6 +2439,134 @@ test("driver bank-connect session returns platform setup error when Stripe trans
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload.capabilities as Record<string, unknown>, "card_payments"), false);
   assert.equal(accountLinkCalls, 0);
   assert.equal(updateStripeInfoCalls, 0);
+});
+
+test("driver bank-connect session retries with card_payments only when Stripe requires combined connected-account capabilities", async () => {
+  const { app, posts } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: null });
+  const driver = makeDriver();
+  const createdPayloads: Stripe.AccountCreateParams[] = [];
+  let createdAccountLink: Stripe.AccountLinkCreateParams | undefined;
+  let updatedStripeAccountId: string | undefined;
+  let customerCalls = 0;
+  let paymentIntentCalls = 0;
+  let setupIntentCalls = 0;
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        create: async (payload: Stripe.AccountCreateParams) => {
+          createdPayloads.push(payload);
+          if (createdPayloads.length === 1) {
+            const error = new Error("Your platform needs approval for accounts to have requested the transfers capability without the card_payments capability.") as Error & {
+              statusCode?: number;
+              type?: string;
+              code?: string;
+              requestId?: string;
+            };
+            error.statusCode = 400;
+            error.type = "StripeInvalidRequestError";
+            error.code = "account_capability_not_available";
+            error.requestId = "req_requires_combined_capabilities";
+            throw error;
+          }
+
+          return {
+            id: "acct_driver_combined_capabilities",
+            object: "account",
+          } as Stripe.Account;
+        },
+      },
+      accountLinks: {
+        create: async (payload: Stripe.AccountLinkCreateParams) => {
+          createdAccountLink = payload;
+          return {
+            object: "account_link",
+            created: 1,
+            expires_at: 2,
+            url: "https://connect.stripe.com/setup/combined-capabilities",
+          } as Stripe.AccountLink;
+        },
+      },
+      customers: {
+        create: async () => {
+          customerCalls += 1;
+          throw new Error("driver payout onboarding should not create Stripe customers");
+        },
+      },
+      paymentIntents: {
+        create: async () => {
+          paymentIntentCalls += 1;
+          throw new Error("driver payout onboarding should not create PaymentIntents");
+        },
+      },
+      setupIntents: {
+        create: async () => {
+          setupIntentCalls += 1;
+          throw new Error("driver payout onboarding should not create SetupIntents");
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async () => user,
+          getDriver: async () => driver,
+          getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+          getFeatureFlagOverride: async () => undefined,
+          updateUserStripeInfo: async (_userId: string, stripeData: { stripeConnectAccountId?: string }) => {
+            updatedStripeAccountId = stripeData.stripeConnectAccountId;
+            user.stripeConnectAccountId = stripeData.stripeConnectAccountId;
+            return user;
+          },
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = posts.get("/api/drivers/bank-connect/session");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+              body: {},
+              protocol: "https",
+              get: () => "example.com",
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { url?: string }).url, "https://connect.stripe.com/setup/combined-capabilities");
+          assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_combined_capabilities");
+          assert.equal((res.body as { payoutOnly?: boolean }).payoutOnly, true);
+        },
+      );
+    },
+  );
+
+  assert.equal(createdPayloads.length, 2);
+  assert.deepEqual(createdPayloads[0].capabilities, {
+    transfers: { requested: true },
+  });
+  assert.deepEqual(createdPayloads[1].capabilities, {
+    transfers: { requested: true },
+    card_payments: { requested: true },
+  });
+  assert.equal(createdPayloads[1].type, "express");
+  assert.equal(createdPayloads[1].business_type, "individual");
+  assert.equal(Object.prototype.hasOwnProperty.call(createdPayloads[1] as Record<string, unknown>, "controller"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(createdPayloads[1] as Record<string, unknown>, "individual"), false);
+  assert.equal(createdPayloads[1].metadata?.userId, user.id);
+  assert.equal(createdPayloads[1].metadata?.driverId, driver.id);
+  assert.ok(createdAccountLink);
+  assert.equal(createdAccountLink.account, "acct_driver_combined_capabilities");
+  assert.equal(createdAccountLink.type, "account_onboarding");
+  assert.equal(updatedStripeAccountId, "acct_driver_combined_capabilities");
+  assert.equal(customerCalls, 0);
+  assert.equal(paymentIntentCalls, 0);
+  assert.equal(setupIntentCalls, 0);
 });
 
 test("superadmin Stripe Connect health check reports mode and transfer setup state", async () => {
@@ -2485,7 +2614,9 @@ test("superadmin Stripe Connect health check reports mode and transfer setup sta
             assert.equal((res.body as { stripeConfigured?: boolean }).stripeConfigured, true);
             assert.equal((res.body as { stripeMode?: string }).stripeMode, "test");
             assert.equal((res.body as { connectEnabled?: boolean }).connectEnabled, true);
+            assert.equal((res.body as { expressOnboardingAvailable?: boolean }).expressOnboardingAvailable, true);
             assert.equal((res.body as { transfersCapabilitySupported?: boolean | null }).transfersCapabilitySupported, null);
+            assert.equal((res.body as { transfersCapabilityCreationSupported?: boolean | null }).transfersCapabilityCreationSupported, null);
             assert.equal((res.body as { requestedCapability?: string }).requestedCapability, "transfers");
             assert.equal((res.body as { platformAccountId?: string }).platformAccountId, "acct_platform_test");
             assert.match(
@@ -2586,6 +2717,8 @@ test("driver can start payout onboarding without Stripe customer card or payment
   let createdPayload: Stripe.AccountCreateParams | undefined;
   let customerCalls = 0;
   let paymentMethodCalls = 0;
+  let paymentIntentCalls = 0;
+  let setupIntentCalls = 0;
   let financialConnectionCalls = 0;
 
   await withPatchedStripe(
@@ -2625,6 +2758,18 @@ test("driver can start payout onboarding without Stripe customer card or payment
         retrieve: async () => {
           paymentMethodCalls += 1;
           throw new Error("driver payout onboarding should not retrieve card payment methods");
+        },
+      },
+      paymentIntents: {
+        create: async () => {
+          paymentIntentCalls += 1;
+          throw new Error("driver payout onboarding should not create PaymentIntents");
+        },
+      },
+      setupIntents: {
+        create: async () => {
+          setupIntentCalls += 1;
+          throw new Error("driver payout onboarding should not create SetupIntents");
         },
       },
       financialConnections: {
@@ -2677,6 +2822,8 @@ test("driver can start payout onboarding without Stripe customer card or payment
 
   assert.equal(customerCalls, 0);
   assert.equal(paymentMethodCalls, 0);
+  assert.equal(paymentIntentCalls, 0);
+  assert.equal(setupIntentCalls, 0);
   assert.equal(financialConnectionCalls, 0);
   assert.ok(createdPayload);
   assert.equal(createdPayload.type, "express");

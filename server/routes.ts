@@ -329,7 +329,7 @@ function buildDriverBankConnect400Response(context: DriverBankConnect400Context)
 const DRIVER_STRIPE_PLATFORM_SETUP_UNAVAILABLE_MESSAGE =
   'Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.';
 const ADMIN_STRIPE_CONNECT_TRANSFERS_SETUP_MESSAGE =
-  'Stripe platform account must enable Connect transfers before driver payout onboarding can start. In Stripe Dashboard, go to Connect > Settings / Platform profile and enable Express connected accounts and transfers.';
+  'Stripe Connect platform setup is incomplete. Enable/approve connected account transfers before driver payout onboarding. Stripe Dashboard: Connect > Settings / Platform profile > Enable Express connected accounts / transfers.';
 
 function getStripeModeFromSecretKey(): 'test' | 'live' | 'unknown' {
   const secretKey = process.env.STRIPE_SECRET_KEY || '';
@@ -341,6 +341,11 @@ function getStripeModeFromSecretKey(): 'test' | 'live' | 'unknown' {
 function isStripeConnectTransfersPlatformApprovalError(error: any): boolean {
   const message = String(error?.message || '').toLowerCase();
   return message.includes('platform needs approval') && message.includes('transfers capability');
+}
+
+function isStripeTransfersWithoutCardPaymentsRequirement(error: any): boolean {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('transfers capability') && message.includes('card_payments');
 }
 
 function buildDriverStripePlatformSetupErrorResponse(stripeError: any) {
@@ -365,7 +370,9 @@ async function getStripeConnectSetupHealth() {
     stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
     stripeMode,
     connectEnabled: false,
+    expressOnboardingAvailable: false as boolean | null,
     transfersCapabilitySupported: false as boolean | null,
+    transfersCapabilityCreationSupported: false as boolean | null,
     requestedCapability: 'transfers',
     status: 'action_required' as 'ok' | 'action_required' | 'unknown',
     message: 'Stripe Connect setup could not be verified.',
@@ -388,7 +395,9 @@ async function getStripeConnectSetupHealth() {
     return {
       ...baseHealth,
       connectEnabled: true,
+      expressOnboardingAvailable: true,
       transfersCapabilitySupported: null,
+      transfersCapabilityCreationSupported: null,
       status: 'unknown' as const,
       message: 'Stripe Connect API is reachable. Driver payout onboarding requests only the transfers capability.',
       adminMessage: 'Confirm in Stripe Dashboard > Connect > Settings / Platform profile that Express connected accounts and transfers are enabled before enabling driver payouts in live mode.',
@@ -400,7 +409,9 @@ async function getStripeConnectSetupHealth() {
     return {
       ...baseHealth,
       connectEnabled: false,
+      expressOnboardingAvailable: false,
       transfersCapabilitySupported: false,
+      transfersCapabilityCreationSupported: false,
       status: 'action_required' as const,
       reason: platformSetupRejected ? 'stripe_connect_transfers_not_enabled' : 'stripe_connect_health_check_failed',
       message: platformSetupRejected
@@ -412,6 +423,38 @@ async function getStripeConnectSetupHealth() {
       stripeError: getSafeStripeErrorDetails(error),
     };
   }
+}
+
+function buildDriverStripePayoutAccountParams(
+  user: User,
+  driver: Driver | null | undefined,
+  options: { includeCardPaymentsCapability?: boolean } = {},
+): Stripe.AccountCreateParams {
+  const email = user.email?.trim() || undefined;
+  const capabilities: Stripe.AccountCreateParams.Capabilities = {
+    transfers: { requested: true },
+  };
+
+  if (options.includeCardPaymentsCapability) {
+    // Stripe can require card_payments together with transfers for this connected
+    // account configuration. This is only a connected-account capability used by
+    // Stripe onboarding; it does not create a driver Customer, card, PaymentIntent,
+    // SetupIntent, or any flow that charges the driver.
+    capabilities.card_payments = { requested: true };
+  }
+
+  return {
+    type: 'express',
+    country: 'US',
+    ...(email ? { email } : {}),
+    business_type: 'individual',
+    capabilities,
+    metadata: {
+      userId: user.id,
+      driverId: driver?.id || '',
+      role: 'driver',
+    },
+  };
 }
 
 async function createDriverStripePayoutAccount(
@@ -433,23 +476,26 @@ async function createDriverStripePayoutAccount(
     throw error;
   }
 
-  const email = user.email?.trim() || undefined;
-  const accountParams: Stripe.AccountCreateParams = {
-    type: 'express',
-    country: 'US',
-    ...(email ? { email } : {}),
-    business_type: 'individual',
-    capabilities: {
-      transfers: { requested: true },
-    },
-    metadata: {
-      userId: user.id,
-      driverId: driver?.id || '',
-      role: 'driver',
-    },
-  };
+  const transfersOnlyParams = buildDriverStripePayoutAccountParams(user, driver);
 
-  return await stripe.accounts.create(accountParams);
+  try {
+    return await stripe.accounts.create(transfersOnlyParams);
+  } catch (error: any) {
+    if (!isStripeTransfersWithoutCardPaymentsRequirement(error)) {
+      throw error;
+    }
+
+    console.warn('[DRIVER_PAYOUT_SETUP] Stripe requires card_payments with transfers for driver Express account creation. Retrying with combined connected-account capabilities; this does not create driver billing setup.', {
+      userId: user.id,
+      driverId: driver?.id || null,
+      stripeError: getSafeStripeErrorDetails(error),
+    });
+
+    const combinedCapabilityParams = buildDriverStripePayoutAccountParams(user, driver, {
+      includeCardPaymentsCapability: true,
+    });
+    return await stripe.accounts.create(combinedCapabilityParams);
+  }
 }
 
 async function createDriverStripeOnboardingLink(req: any, stripeConnectAccountId: string) {
