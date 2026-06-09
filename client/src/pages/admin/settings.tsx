@@ -714,7 +714,7 @@ export default function AdminSettings() {
                   </p>
                   <p className="text-sm text-amber-800 dark:text-amber-200">
                     <strong>What this does:</strong> Deletes old Custom accounts and creates new Express accounts for all drivers. 
-                    Express accounts request the `card_payments` and `transfers` connected-account capabilities, and drivers 
+                    Express accounts request the `transfers` connected-account capability for payouts, and drivers 
                     can complete verification through Stripe's hosted onboarding UI.
                   </p>
                   <p className="text-sm text-amber-800 dark:text-amber-200">
@@ -819,11 +819,11 @@ export default function AdminSettings() {
                   </h3>
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>Why this is needed:</strong> Driver accounts need connected-account capabilities enabled to receive 
-                    payout transfers. Stripe can require `card_payments` with `transfers`; this does not create a driver card or charge the driver.
+                    payout transfers. This does not create a driver card, customer, or charge the driver.
                   </p>
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>What this does:</strong> Updates all existing driver Stripe Connect accounts to request the 
-                    `card_payments` and `transfers` capabilities. Drivers will then need to complete onboarding to activate payouts.
+                    `transfers` capability. Drivers will then need to complete onboarding to activate payouts.
                   </p>
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>After running:</strong> Ask drivers to complete their Stripe onboarding via the profile page to activate payouts.

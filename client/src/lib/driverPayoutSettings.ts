@@ -30,7 +30,7 @@ export interface DriverPayoutActionState {
 
 export interface DriverPayoutSettingsState {
   status: DriverPayoutStatus;
-  statusLabel: "Payouts Disabled" | "Not Connected" | "Setup Incomplete" | "Stripe Connected";
+  statusLabel: "Payouts Disabled" | "Not Connected" | "Setup Incomplete" | "Connected / Payouts Ready";
   primaryAction: DriverPayoutActionState;
   secondaryActions: DriverPayoutActionState[];
   featureAvailable: boolean;
@@ -58,7 +58,7 @@ export function getDriverPayoutStatus(requirements?: DriverStripeRequirements | 
 export function getDriverPayoutStatusLabel(status: DriverPayoutStatus): DriverPayoutSettingsState["statusLabel"] {
   switch (status) {
     case "connected":
-      return "Stripe Connected";
+      return "Connected / Payouts Ready";
     case "setup_incomplete":
       return "Setup Incomplete";
     case "payouts_disabled":
@@ -97,7 +97,7 @@ export function resolveDriverPayoutSettingsState(params: {
   if (status === "connected") {
     return {
       status,
-      statusLabel: "Stripe Connected",
+      statusLabel: "Connected / Payouts Ready",
       featureAvailable: true,
       primaryAction: {
         action: "view_stripe_status",
@@ -106,7 +106,7 @@ export function resolveDriverPayoutSettingsState(params: {
         visible: true,
       },
       secondaryActions: [],
-      message: "Stripe payouts are connected.",
+      message: "Stripe payouts are connected and ready.",
     };
   }
 

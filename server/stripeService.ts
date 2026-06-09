@@ -303,9 +303,8 @@ export async function updateConnectedAccount(
 }
 
 /**
- * Request the original driver connected-account capability set.
- * card_payments is a connected-account capability Stripe can require with
- * transfers; this does not create a driver Customer or charge the driver.
+ * Request the driver connected-account payout capability.
+ * This does not create a driver Customer, card, PaymentIntent, or SetupIntent.
  */
 export async function requestTransfersCapability(accountId: string): Promise<Stripe.Account> {
   try {
@@ -313,13 +312,11 @@ export async function requestTransfersCapability(accountId: string): Promise<Str
     
     const account = await stripe.accounts.update(accountId, {
       capabilities: {
-        card_payments: { requested: true },
         transfers: { requested: true },
       },
     });
     
     console.log(`✅ Updated capabilities for ${accountId}:`, {
-      card_payments: account.capabilities?.card_payments,
       transfers: account.capabilities?.transfers,
     });
     
@@ -371,11 +368,10 @@ export async function backfillExpressAccountController(accountId: string): Promi
     // 1. Ensure capabilities are requested
     // 2. Test if Account Link can be generated
     
-    // Update capabilities to ensure they're properly configured
+    // Update payout capability to ensure it's properly configured
     const updatedAccount = await stripe.accounts.update(accountId, {
       capabilities: {
         transfers: { requested: true },
-        card_payments: { requested: true },
       },
     });
     
@@ -511,16 +507,23 @@ export async function updateConnectedAccountWithCompleteInfo(
   tosAcceptance?: {
     timestamp: number;
     ip: string;
-  }
+  },
+  options: {
+    payoutOnly?: boolean;
+  } = {},
 ): Promise<Stripe.Account> {
   try {
     console.log(`🔄 Updating Stripe account ${accountId} with complete verification info`);
     
     const accountParams: Stripe.AccountUpdateParams = {
-      capabilities: {
-        transfers: { requested: true },
-        card_payments: { requested: true },
-      },
+      capabilities: options.payoutOnly
+        ? {
+            transfers: { requested: true },
+          }
+        : {
+            transfers: { requested: true },
+            card_payments: { requested: true },
+          },
     };
 
     // Build individual object with all available info

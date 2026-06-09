@@ -67,13 +67,6 @@ export function DriverPayoutSettings({
 
   const connectBankMutation = useMutation({
     mutationFn: async () => {
-      const sessionResponse = await apiRequest("POST", "/api/drivers/bank-connect/session", {});
-      const sessionData = await sessionResponse.json();
-
-      if (sessionData.url || sessionData.onboardingUrl || sessionData.onboardingComplete) {
-        return sessionData;
-      }
-
       const onboardingResponse = await apiRequest("GET", "/api/drivers/stripe-onboarding");
       return onboardingResponse.json();
     },
