@@ -245,6 +245,17 @@ test("frontend error formatter keeps status for unstructured errors", () => {
   assert.equal(message, "400: Bad Request");
 });
 
+test("admin settings exposes Stripe Connect setup health check", () => {
+  const adminSettingsSource = readFileSync(new URL("../client/src/pages/admin/settings.tsx", import.meta.url), "utf8");
+
+  assert.match(adminSettingsSource, /\/api\/admin\/stripe\/connect-health/);
+  assert.match(adminSettingsSource, /Stripe Connect Setup Health/);
+  assert.match(adminSettingsSource, /Connect enabled/);
+  assert.match(adminSettingsSource, /transfers capability supported/);
+  assert.match(adminSettingsSource, /Stripe mode test\/live/);
+  assert.doesNotMatch(adminSettingsSource, /`transfers` and `card_payments` capabilities/);
+});
+
 test("driver Stripe connected account payload uses postal_code address field", async () => {
   const { createConnectedAccount } = await import("../server/stripeService");
   let createdPayload: Stripe.AccountCreateParams | undefined;
@@ -310,6 +321,37 @@ test("driver Stripe connected account payload uses postal_code address field", a
   assert.deepEqual(createdPayload.capabilities, {
     transfers: { requested: true },
   });
+});
+
+test("driver capability backfill requests transfers only", async () => {
+  const { requestTransfersCapability } = await import("../server/stripeService");
+  let updatedPayload: Stripe.AccountUpdateParams | undefined;
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        update: async (_accountId: string, payload: Stripe.AccountUpdateParams) => {
+          updatedPayload = payload;
+          return {
+            id: "acct_driver_existing",
+            object: "account",
+            capabilities: {
+              transfers: "pending",
+            },
+          } as Stripe.Account;
+        },
+      },
+    },
+    async () => {
+      await requestTransfersCapability("acct_driver_existing");
+    },
+  );
+
+  assert.ok(updatedPayload);
+  assert.deepEqual(updatedPayload.capabilities, {
+    transfers: { requested: true },
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(updatedPayload.capabilities as Record<string, unknown>, "card_payments"), false);
 });
 
 test("superadmin feature flag list exposes driver_stripe_payouts when missing", async () => {
@@ -2296,6 +2338,171 @@ test("driver bank-connect session returns exact Stripe 400 reason from account c
   );
 
   assert.equal(updateStripeInfoCalls, 0);
+});
+
+test("driver bank-connect session returns platform setup error when Stripe transfers approval is missing", async () => {
+  const { app, posts } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: null });
+  let createdPayload: Stripe.AccountCreateParams | undefined;
+  let accountLinkCalls = 0;
+  let updateStripeInfoCalls = 0;
+  const originalStripeSecret = process.env.STRIPE_SECRET_KEY;
+  process.env.STRIPE_SECRET_KEY = "sk_live_platform_rejected";
+
+  try {
+    await withPatchedStripe(
+      {
+        accounts: {
+          create: async (payload: Stripe.AccountCreateParams) => {
+            createdPayload = payload;
+            const error = new Error("Your platform needs approval for accounts to have requested the transfers capability without the card_payments capability.") as Error & {
+              statusCode?: number;
+              type?: string;
+              code?: string;
+              requestId?: string;
+            };
+            error.statusCode = 400;
+            error.type = "StripeInvalidRequestError";
+            error.code = "account_capability_not_available";
+            error.requestId = "req_platform_transfers";
+            throw error;
+          },
+        },
+        accountLinks: {
+          create: async () => {
+            accountLinkCalls += 1;
+            throw new Error("platform rejection should not create account links");
+          },
+        },
+      },
+      async () => {
+        await withPatchedStorage(
+          {
+            getUser: async () => user,
+            getDriver: async () => makeDriver(),
+            getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+            getFeatureFlagOverride: async () => undefined,
+            updateUserStripeInfo: async () => {
+              updateStripeInfoCalls += 1;
+              return user;
+            },
+          },
+          async () => {
+            const { registerRoutes } = await import("../server/routes");
+            await registerRoutes(app as never);
+            const route = posts.get("/api/drivers/bank-connect/session");
+            assert.equal(typeof route, "function");
+
+            const res = createResponse();
+            await route!(
+              {
+                user: { id: user.id, role: "driver" },
+                body: {},
+                protocol: "https",
+                get: () => "example.com",
+              },
+              res,
+            );
+
+            assert.equal(res.statusCode, 503);
+            assert.equal((res.body as { code?: string }).code, "DRIVER_STRIPE_PLATFORM_CONNECT_INCOMPLETE");
+            assert.equal(
+              (res.body as { message?: string }).message,
+              "Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.",
+            );
+            assert.equal(
+              (res.body as { adminMessage?: string }).adminMessage,
+              "Stripe platform account must enable Connect transfers before driver payout onboarding can start. In Stripe Dashboard, go to Connect > Settings / Platform profile and enable Express connected accounts and transfers.",
+            );
+            assert.equal((res.body as { reason?: string }).reason, "stripe_connect_transfers_not_enabled");
+            assert.equal((res.body as { platformSetupIncomplete?: boolean }).platformSetupIncomplete, true);
+            assert.equal((res.body as { stripeMode?: string }).stripeMode, "live");
+            assert.deepEqual((res.body as { missingFields?: string[] }).missingFields, []);
+            assert.equal((res.body as { stripeError?: { requestId?: string } }).stripeError?.requestId, "req_platform_transfers");
+          },
+        );
+      },
+    );
+  } finally {
+    if (originalStripeSecret === undefined) {
+      delete process.env.STRIPE_SECRET_KEY;
+    } else {
+      process.env.STRIPE_SECRET_KEY = originalStripeSecret;
+    }
+  }
+
+  assert.ok(createdPayload);
+  assert.deepEqual(createdPayload.capabilities, {
+    transfers: { requested: true },
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(createdPayload.capabilities as Record<string, unknown>, "card_payments"), false);
+  assert.equal(accountLinkCalls, 0);
+  assert.equal(updateStripeInfoCalls, 0);
+});
+
+test("superadmin Stripe Connect health check reports mode and transfer setup state", async () => {
+  const { app, gets } = createRouteRegistry();
+  const superAdmin = makeUser({ id: "super_admin_1", role: "super_admin" });
+  const originalStripeSecret = process.env.STRIPE_SECRET_KEY;
+  process.env.STRIPE_SECRET_KEY = "sk_test_health_check";
+
+  try {
+    await withPatchedStripe(
+      {
+        accounts: {
+          retrieve: async () => ({
+            id: "acct_platform_test",
+            object: "account",
+            country: "US",
+          } as Stripe.Account),
+          list: async () => ({
+            data: [],
+            has_more: false,
+          }),
+        },
+      },
+      async () => {
+        await withPatchedStorage(
+          {
+            getUser: async () => superAdmin,
+          },
+          async () => {
+            const { registerRoutes } = await import("../server/routes");
+            await registerRoutes(app as never);
+            const route = gets.get("/api/admin/stripe/connect-health");
+            assert.equal(typeof route, "function");
+
+            const res = createResponse();
+            await route!(
+              {
+                user: { id: superAdmin.id, role: "super_admin" },
+                body: {},
+              },
+              res,
+            );
+
+            assert.equal(res.statusCode, 200);
+            assert.equal((res.body as { stripeConfigured?: boolean }).stripeConfigured, true);
+            assert.equal((res.body as { stripeMode?: string }).stripeMode, "test");
+            assert.equal((res.body as { connectEnabled?: boolean }).connectEnabled, true);
+            assert.equal((res.body as { transfersCapabilitySupported?: boolean | null }).transfersCapabilitySupported, null);
+            assert.equal((res.body as { requestedCapability?: string }).requestedCapability, "transfers");
+            assert.equal((res.body as { platformAccountId?: string }).platformAccountId, "acct_platform_test");
+            assert.match(
+              (res.body as { adminMessage?: string }).adminMessage || "",
+              /Stripe Dashboard > Connect > Settings \/ Platform profile/,
+            );
+          },
+        );
+      },
+    );
+  } finally {
+    if (originalStripeSecret === undefined) {
+      delete process.env.STRIPE_SECRET_KEY;
+    } else {
+      process.env.STRIPE_SECRET_KEY = originalStripeSecret;
+    }
+  }
 });
 
 test("driver bank-connect session returns exact 400 reason from unexpected setup rejection", async () => {

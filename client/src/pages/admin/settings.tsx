@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
-import { Settings, Database, AlertCircle, CheckCircle2, Loader2, FlaskConical, CreditCard } from "lucide-react";
+import { Settings, Database, AlertCircle, CheckCircle2, Loader2, FlaskConical, CreditCard, RefreshCw } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
@@ -29,6 +30,16 @@ export default function AdminSettings() {
     queryKey: ['/api/feature-flags'],
   });
 
+  const {
+    data: stripeConnectHealth,
+    isLoading: stripeConnectHealthLoading,
+    error: stripeConnectHealthError,
+    refetch: refetchStripeConnectHealth,
+  } = useQuery<any>({
+    queryKey: ['/api/admin/stripe/connect-health'],
+    retry: false,
+  });
+
   const waiveOwnerFlag = allFlags?.find((f: any) => f.flagKey === FEATURE_FLAGS.WAIVE_OWNER_PAYMENT);
   const waiveDriverFlag = allFlags?.find((f: any) => f.flagKey === FEATURE_FLAGS.WAIVE_DRIVER_PAYMENT);
   const driverStripePayoutsFlag = allFlags?.find((f: any) => f.flagKey === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
@@ -36,6 +47,24 @@ export default function AdminSettings() {
   const waiveDriverEnabled = waiveDriverFlag?.enabled ?? false;
   const driverStripePayoutsEnabled = driverStripePayoutsFlag?.enabled ?? false;
   const trialModeActive = waiveOwnerEnabled || waiveDriverEnabled;
+  const stripeConnectStatus = stripeConnectHealth?.status || "unknown";
+  const stripeConnectStatusLabel = stripeConnectHealthLoading
+    ? "Checking"
+    : stripeConnectStatus === "ok"
+      ? "Healthy"
+      : stripeConnectStatus === "action_required"
+        ? "Action Required"
+        : "Needs Review";
+  const stripeConnectStatusVariant = stripeConnectStatus === "ok"
+    ? "default"
+    : stripeConnectStatus === "action_required"
+      ? "destructive"
+      : "secondary";
+  const formatHealthBoolean = (value: unknown, unknownText = "Not verified") => {
+    if (value === true) return "Yes";
+    if (value === false) return "No";
+    return unknownText;
+  };
 
   const toggleFlagMutation = useMutation({
     mutationFn: async ({ flagKey, enabled }: { flagKey: string; enabled: boolean }) => {
@@ -367,6 +396,81 @@ export default function AdminSettings() {
           </CardContent>
         </Card>
 
+        {/* Stripe Connect Setup Health */}
+        <Card data-testid="card-stripe-connect-health">
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  Stripe Connect Setup Health
+                </CardTitle>
+                <CardDescription>
+                  Verify the platform Stripe setup required before drivers can start payout onboarding.
+                </CardDescription>
+              </div>
+              <Badge variant={stripeConnectStatusVariant} data-testid="badge-stripe-connect-health">
+                {stripeConnectStatusLabel}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">Connect enabled</p>
+                <p className="text-sm font-semibold" data-testid="text-stripe-connect-enabled">
+                  {stripeConnectHealthLoading
+                    ? "Checking..."
+                    : formatHealthBoolean(stripeConnectHealth?.connectEnabled)}
+                </p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">transfers capability supported</p>
+                <p className="text-sm font-semibold" data-testid="text-stripe-transfers-supported">
+                  {stripeConnectHealthLoading
+                    ? "Checking..."
+                    : formatHealthBoolean(stripeConnectHealth?.transfersCapabilitySupported, "Requires Stripe Dashboard confirmation")}
+                </p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-xs text-muted-foreground">Stripe mode test/live</p>
+                <p className="text-sm font-semibold uppercase" data-testid="text-stripe-mode">
+                  {stripeConnectHealthLoading ? "Checking..." : stripeConnectHealth?.stripeMode || "unknown"}
+                </p>
+              </div>
+            </div>
+
+            {(stripeConnectHealth?.message || stripeConnectHealthError) && (
+              <div className="flex items-start gap-3 rounded-md border bg-muted/40 p-3">
+                <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">
+                    {stripeConnectHealth?.message || "Stripe Connect health could not be loaded."}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {stripeConnectHealth?.adminMessage || (stripeConnectHealthError as Error)?.message}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => refetchStripeConnectHealth()}
+              disabled={stripeConnectHealthLoading}
+              data-testid="button-refresh-stripe-connect-health"
+            >
+              {stripeConnectHealthLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Refresh Stripe Setup Health
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* System Maintenance Section */}
         <Card>
           <CardHeader>
@@ -602,8 +706,8 @@ export default function AdminSettings() {
                   </p>
                   <p className="text-sm text-amber-800 dark:text-amber-200">
                     <strong>What this does:</strong> Deletes old Custom accounts and creates new Express accounts for all drivers. 
-                    Express accounts auto-activate the `transfers` capability needed for destination charges, and drivers 
-                    can complete TOS acceptance through Stripe's hosted onboarding UI.
+                    Express accounts request the `transfers` capability needed for payout transfers, and drivers 
+                    can complete verification through Stripe's hosted onboarding UI.
                   </p>
                   <p className="text-sm text-amber-800 dark:text-amber-200">
                     <strong>After migration:</strong> Drivers will need to complete onboarding via their profile page 
@@ -711,7 +815,7 @@ export default function AdminSettings() {
                   </p>
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>What this does:</strong> Updates all existing driver Stripe Connect accounts to request the 
-                    `transfers` and `card_payments` capabilities. Drivers will then need to complete onboarding to activate these capabilities.
+                    `transfers` capability. Drivers will then need to complete onboarding to activate payouts.
                   </p>
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>After running:</strong> Ask drivers to complete their Stripe onboarding via the profile page to activate the transfers capability.

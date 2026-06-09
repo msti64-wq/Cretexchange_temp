@@ -313,13 +313,11 @@ export async function requestTransfersCapability(accountId: string): Promise<Str
     const account = await stripe.accounts.update(accountId, {
       capabilities: {
         transfers: { requested: true },
-        card_payments: { requested: true },
       },
     });
     
     console.log(`✅ Updated capabilities for ${accountId}:`, {
       transfers: account.capabilities?.transfers,
-      card_payments: account.capabilities?.card_payments,
     });
     
     return account;

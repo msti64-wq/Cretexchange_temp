@@ -326,6 +326,94 @@ function buildDriverBankConnect400Response(context: DriverBankConnect400Context)
   };
 }
 
+const DRIVER_STRIPE_PLATFORM_SETUP_UNAVAILABLE_MESSAGE =
+  'Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.';
+const ADMIN_STRIPE_CONNECT_TRANSFERS_SETUP_MESSAGE =
+  'Stripe platform account must enable Connect transfers before driver payout onboarding can start. In Stripe Dashboard, go to Connect > Settings / Platform profile and enable Express connected accounts and transfers.';
+
+function getStripeModeFromSecretKey(): 'test' | 'live' | 'unknown' {
+  const secretKey = process.env.STRIPE_SECRET_KEY || '';
+  if (secretKey.startsWith('sk_test_')) return 'test';
+  if (secretKey.startsWith('sk_live_')) return 'live';
+  return 'unknown';
+}
+
+function isStripeConnectTransfersPlatformApprovalError(error: any): boolean {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('platform needs approval') && message.includes('transfers capability');
+}
+
+function buildDriverStripePlatformSetupErrorResponse(stripeError: any) {
+  return {
+    message: DRIVER_STRIPE_PLATFORM_SETUP_UNAVAILABLE_MESSAGE,
+    code: 'DRIVER_STRIPE_PLATFORM_CONNECT_INCOMPLETE',
+    reason: 'stripe_connect_transfers_not_enabled',
+    statusCode: 503,
+    error: DRIVER_STRIPE_PLATFORM_SETUP_UNAVAILABLE_MESSAGE,
+    adminMessage: ADMIN_STRIPE_CONNECT_TRANSFERS_SETUP_MESSAGE,
+    platformSetupIncomplete: true,
+    stripeMode: getStripeModeFromSecretKey(),
+    stripeError: getSafeStripeErrorDetails(stripeError),
+    missingFields: [],
+    invalidFields: [],
+  };
+}
+
+async function getStripeConnectSetupHealth() {
+  const stripeMode = getStripeModeFromSecretKey();
+  const baseHealth = {
+    stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+    stripeMode,
+    connectEnabled: false,
+    transfersCapabilitySupported: false as boolean | null,
+    requestedCapability: 'transfers',
+    status: 'action_required' as 'ok' | 'action_required' | 'unknown',
+    message: 'Stripe Connect setup could not be verified.',
+    adminMessage: ADMIN_STRIPE_CONNECT_TRANSFERS_SETUP_MESSAGE,
+    verificationMethod: 'non_mutating_connect_api_check',
+  };
+
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return {
+      ...baseHealth,
+      message: 'Stripe secret key is not configured.',
+      reason: 'stripe_secret_key_missing',
+    };
+  }
+
+  try {
+    const platformAccount = await stripe.accounts.retrieve();
+    await stripe.accounts.list({ limit: 1 });
+
+    return {
+      ...baseHealth,
+      connectEnabled: true,
+      transfersCapabilitySupported: null,
+      status: 'unknown' as const,
+      message: 'Stripe Connect API is reachable. Driver payout onboarding requests only the transfers capability.',
+      adminMessage: 'Confirm in Stripe Dashboard > Connect > Settings / Platform profile that Express connected accounts and transfers are enabled before enabling driver payouts in live mode.',
+      platformAccountId: platformAccount.id,
+      platformCountry: platformAccount.country,
+    };
+  } catch (error: any) {
+    const platformSetupRejected = isStripeConnectTransfersPlatformApprovalError(error);
+    return {
+      ...baseHealth,
+      connectEnabled: false,
+      transfersCapabilitySupported: false,
+      status: 'action_required' as const,
+      reason: platformSetupRejected ? 'stripe_connect_transfers_not_enabled' : 'stripe_connect_health_check_failed',
+      message: platformSetupRejected
+        ? DRIVER_STRIPE_PLATFORM_SETUP_UNAVAILABLE_MESSAGE
+        : 'Stripe Connect setup could not be verified.',
+      adminMessage: platformSetupRejected
+        ? ADMIN_STRIPE_CONNECT_TRANSFERS_SETUP_MESSAGE
+        : `Stripe Connect health check failed: ${error?.message || 'Unknown Stripe error'}`,
+      stripeError: getSafeStripeErrorDetails(error),
+    };
+  }
+}
+
 async function createDriverStripePayoutAccount(
   user: User,
   driver: Driver | null | undefined,
@@ -1681,7 +1769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let connectedAccount;
       try {
         connectedAccount = await stripeService.createConnectedAccount({
-          type: 'express', // Express accounts for marketplace - auto-activate capabilities
+          type: 'express',
           userId: userId, // Add user ID to metadata for deduplication
           username: user.username, // Use username as display name in Stripe
           email: validatedData.email,
@@ -3018,6 +3106,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (stripeError: any) {
           const statusCode = typeof stripeError?.statusCode === 'number' ? stripeError.statusCode : 502;
           const safeStripeError = getSafeStripeErrorDetails(stripeError);
+          if (isStripeConnectTransfersPlatformApprovalError(stripeError)) {
+            const platformSetupResponse = buildDriverStripePlatformSetupErrorResponse(stripeError);
+            console.error('[DRIVER_PAYOUT_SETUP] Stripe platform Connect transfers setup incomplete:', {
+              userId,
+              driverId,
+              statusCode,
+              reason: platformSetupResponse.reason,
+              message: stripeError?.message,
+              driverMessage: platformSetupResponse.message,
+              adminMessage: platformSetupResponse.adminMessage,
+              stripeMode: platformSetupResponse.stripeMode,
+              stripeError: safeStripeError,
+            });
+            return res.status(503).json(platformSetupResponse);
+          }
+
           const reason = statusCode === 400
             ? 'stripe_account_create_rejected'
             : 'stripe_account_create_failed';
@@ -6982,6 +7086,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/admin/stripe/connect-health - Non-mutating Stripe Connect setup health check
+  app.get('/api/admin/stripe/connect-health', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const health = await getStripeConnectSetupHealth();
+      res.json(health);
+    } catch (error: any) {
+      console.error("Error checking Stripe Connect setup health:", error);
+      res.status(500).json({
+        message: "Failed to check Stripe Connect setup health",
+        error: error.message,
+      });
+    }
+  });
+
   // POST /api/admin/backfill-owner-payment-methods - Backfill payment methods from Stripe for existing owners
   app.post('/api/admin/backfill-owner-payment-methods', isAuthenticated, async (req: any, res) => {
     try {
@@ -7123,7 +7246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               email: user.email,
               type: 'express',
               businessType: 'individual',
-              capabilities: ['card_payments', 'transfers'],
+              capabilities: ['transfers'],
               individual: {
                 firstName: user.firstName,
                 lastName: user.lastName,
@@ -7253,15 +7376,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               continue;
             }
             
-            // Create Stripe Connect account (Express type for marketplace)
-            // Express accounts auto-activate capabilities without manual verification
+            // Create Stripe Express account for driver payout onboarding.
             const stripeAccount = await stripeService.createConnectedAccount({
               userId: user.id,
               username: user.username,
               email: user.email,
-              type: 'express', // Express accounts for marketplace - auto-activate capabilities
+              type: 'express',
               businessType: 'individual',
-              capabilities: ['card_payments', 'transfers'],
+              capabilities: ['transfers'],
               individual: {
                 firstName: user.firstName,
                 lastName: user.lastName,
