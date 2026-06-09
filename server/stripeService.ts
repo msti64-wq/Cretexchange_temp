@@ -303,26 +303,29 @@ export async function updateConnectedAccount(
 }
 
 /**
- * Request transfers capability for existing driver accounts
- * This is needed for drivers created before transfers capability was added
+ * Request the original driver connected-account capability set.
+ * card_payments is a connected-account capability Stripe can require with
+ * transfers; this does not create a driver Customer or charge the driver.
  */
 export async function requestTransfersCapability(accountId: string): Promise<Stripe.Account> {
   try {
-    console.log(`🔄 Requesting transfers capability for account: ${accountId}`);
+    console.log(`🔄 Requesting driver payout capabilities for account: ${accountId}`);
     
     const account = await stripe.accounts.update(accountId, {
       capabilities: {
+        card_payments: { requested: true },
         transfers: { requested: true },
       },
     });
     
     console.log(`✅ Updated capabilities for ${accountId}:`, {
+      card_payments: account.capabilities?.card_payments,
       transfers: account.capabilities?.transfers,
     });
     
     return account;
   } catch (error: any) {
-    console.error(`❌ Error requesting transfers capability for ${accountId}:`, error.message);
+    console.error(`❌ Error requesting driver payout capabilities for ${accountId}:`, error.message);
     throw error;
   }
 }

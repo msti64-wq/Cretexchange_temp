@@ -343,11 +343,6 @@ function isStripeConnectTransfersPlatformApprovalError(error: any): boolean {
   return message.includes('platform needs approval') && message.includes('transfers capability');
 }
 
-function isStripeTransfersWithoutCardPaymentsRequirement(error: any): boolean {
-  const message = String(error?.message || '').toLowerCase();
-  return message.includes('transfers capability') && message.includes('card_payments');
-}
-
 function buildDriverStripePlatformSetupErrorResponse(stripeError: any) {
   return {
     message: DRIVER_STRIPE_PLATFORM_SETUP_UNAVAILABLE_MESSAGE,
@@ -374,6 +369,7 @@ async function getStripeConnectSetupHealth() {
     transfersCapabilitySupported: false as boolean | null,
     transfersCapabilityCreationSupported: false as boolean | null,
     requestedCapability: 'transfers',
+    requestedCapabilities: ['card_payments', 'transfers'],
     status: 'action_required' as 'ok' | 'action_required' | 'unknown',
     message: 'Stripe Connect setup could not be verified.',
     adminMessage: ADMIN_STRIPE_CONNECT_TRANSFERS_SETUP_MESSAGE,
@@ -399,8 +395,8 @@ async function getStripeConnectSetupHealth() {
       transfersCapabilitySupported: null,
       transfersCapabilityCreationSupported: null,
       status: 'unknown' as const,
-      message: 'Stripe Connect API is reachable. Driver payout onboarding requests only the transfers capability.',
-      adminMessage: 'Confirm in Stripe Dashboard > Connect > Settings / Platform profile that Express connected accounts and transfers are enabled before enabling driver payouts in live mode.',
+      message: 'Stripe Connect API is reachable. Driver payout onboarding requests the original Express connected-account capability pair: card_payments and transfers.',
+      adminMessage: 'Confirm in Stripe Dashboard > Connect > Settings / Platform profile that Express connected accounts, card_payments, and transfers are enabled before enabling driver payouts in live mode.',
       platformAccountId: platformAccount.id,
       platformCountry: platformAccount.country,
     };
@@ -425,23 +421,15 @@ async function getStripeConnectSetupHealth() {
   }
 }
 
-function buildDriverStripePayoutAccountParams(
+export function buildDriverStripePayoutAccountParams(
   user: User,
   driver: Driver | null | undefined,
-  options: { includeCardPaymentsCapability?: boolean } = {},
 ): Stripe.AccountCreateParams {
   const email = user.email?.trim() || undefined;
   const capabilities: Stripe.AccountCreateParams.Capabilities = {
+    card_payments: { requested: true },
     transfers: { requested: true },
   };
-
-  if (options.includeCardPaymentsCapability) {
-    // Stripe can require card_payments together with transfers for this connected
-    // account configuration. This is only a connected-account capability used by
-    // Stripe onboarding; it does not create a driver Customer, card, PaymentIntent,
-    // SetupIntent, or any flow that charges the driver.
-    capabilities.card_payments = { requested: true };
-  }
 
   return {
     type: 'express',
@@ -449,15 +437,25 @@ function buildDriverStripePayoutAccountParams(
     ...(email ? { email } : {}),
     business_type: 'individual',
     capabilities,
+    business_profile: {
+      mcc: '7542',
+      url: 'https://cretexchange.com',
+      ...(email ? { support_email: email } : {}),
+      name: user.username || 'CreteXchange Driver',
+    },
     metadata: {
       userId: user.id,
+      user_id: user.id,
       driverId: driver?.id || '',
+      ...(driver?.id ? { driver_id: driver.id } : {}),
+      username: user.username || '',
       role: 'driver',
+      platform: 'cretexchange',
     },
   };
 }
 
-async function createDriverStripePayoutAccount(
+export async function createDriverStripePayoutAccount(
   user: User,
   driver: Driver | null | undefined,
   profileValidation?: DriverStripePayoutProfileValidation,
@@ -476,29 +474,14 @@ async function createDriverStripePayoutAccount(
     throw error;
   }
 
-  const transfersOnlyParams = buildDriverStripePayoutAccountParams(user, driver);
-
-  try {
-    return await stripe.accounts.create(transfersOnlyParams);
-  } catch (error: any) {
-    if (!isStripeTransfersWithoutCardPaymentsRequirement(error)) {
-      throw error;
-    }
-
-    console.warn('[DRIVER_PAYOUT_SETUP] Stripe requires card_payments with transfers for driver Express account creation. Retrying with combined connected-account capabilities; this does not create driver billing setup.', {
-      userId: user.id,
-      driverId: driver?.id || null,
-      stripeError: getSafeStripeErrorDetails(error),
-    });
-
-    const combinedCapabilityParams = buildDriverStripePayoutAccountParams(user, driver, {
-      includeCardPaymentsCapability: true,
-    });
-    return await stripe.accounts.create(combinedCapabilityParams);
-  }
+  // This restores the original working Express connected-account model.
+  // card_payments is a connected-account capability that Stripe can require
+  // alongside transfers; it does not create a driver Customer, card,
+  // PaymentIntent, SetupIntent, or any flow that charges the driver.
+  return await stripe.accounts.create(buildDriverStripePayoutAccountParams(user, driver));
 }
 
-async function createDriverStripeOnboardingLink(req: any, stripeConnectAccountId: string) {
+export async function createDriverStripeOnboardingLink(req: any, stripeConnectAccountId: string) {
   const baseUrl = getRequestBaseUrl(req);
 
   return await stripe.accountLinks.create({
@@ -8961,7 +8944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Backfill driver accounts with transfers capability (super admin only)
+  // Backfill driver accounts with payout capabilities (super admin only)
   app.post('/api/admin/backfill-driver-capabilities', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
@@ -8991,11 +8974,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          // Update account to request transfers capability
+          // Update account to request the restored driver connected-account capability pair
           const account = await stripeService.requestTransfersCapability(driverUser.stripeConnectAccountId);
           results.updated++;
           
-          console.log(`✅ Updated driver ${driverUser.id} (${driverUser.username}) - transfers: ${account.capabilities?.transfers}`);
+          console.log(`✅ Updated driver ${driverUser.id} (${driverUser.username}) - card_payments: ${account.capabilities?.card_payments}, transfers: ${account.capabilities?.transfers}`);
         } catch (error: any) {
           const driverUser = driverData.user;
           results.errors.push({
@@ -12114,37 +12097,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create Stripe Express account
-      const account = await stripe.accounts.create({
-        type: 'express',
-        country: 'US',
-        email: user.email,
-        capabilities: {
-          card_payments: { requested: false }, // Not needed for payouts
-          transfers: { requested: true }, // Required for receiving transfers
-        },
-        business_type: 'individual',
-        individual: {
-          email: user.email,
-          first_name: user.firstName,
-          last_name: user.lastName,
-          phone: user.phone || undefined,
-        },
-        business_profile: {
-          mcc: '4214', // Motor Freight Transportation
-          product_description: 'Concrete washout services',
-        },
-        settings: {
-          payouts: {
-            schedule: {
-              interval: 'daily',
-            },
-          },
-        },
-      });
+      const account = await createDriverStripePayoutAccount(user, driver);
 
       // Store the connected account ID
-      await storage.updateDriver(driver.id, { connectedAccountId: account.id });
+      await storage.updateDriver(driver.id, {
+        connectedAccountId: account.id,
+        stripeConnectAccountId: account.id,
+      });
+      await storage.updateUserStripeInfo(userId, {
+        stripeConnectAccountId: account.id,
+      });
 
       console.log(`✅ Created Stripe Connect account ${account.id} for driver ${user.username}`);
 

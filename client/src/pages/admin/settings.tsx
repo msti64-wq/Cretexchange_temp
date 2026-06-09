@@ -171,7 +171,7 @@ export default function AdminSettings() {
       setCapabilityResult(data);
       toast({
         title: "Capability Update Complete",
-        description: `Updated ${data.updated} driver accounts with transfers capability.`,
+        description: `Updated ${data.updated} driver accounts with payout capabilities.`,
       });
     },
     onError: (error: any) => {
@@ -714,7 +714,7 @@ export default function AdminSettings() {
                   </p>
                   <p className="text-sm text-amber-800 dark:text-amber-200">
                     <strong>What this does:</strong> Deletes old Custom accounts and creates new Express accounts for all drivers. 
-                    Express accounts request the `transfers` capability needed for payout transfers, and drivers 
+                    Express accounts request the `card_payments` and `transfers` connected-account capabilities, and drivers 
                     can complete verification through Stripe's hosted onboarding UI.
                   </p>
                   <p className="text-sm text-amber-800 dark:text-amber-200">
@@ -815,18 +815,18 @@ export default function AdminSettings() {
                 <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 space-y-2">
                   <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-                    Enable Transfers Capability for Drivers
+                    Enable Payout Capabilities for Drivers
                   </h3>
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>Why this is needed:</strong> Driver accounts need the `transfers` capability enabled to receive 
-                    payments via Destination Charges. Existing accounts may not have this capability requested.
+                    <strong>Why this is needed:</strong> Driver accounts need connected-account capabilities enabled to receive 
+                    payout transfers. Stripe can require `card_payments` with `transfers`; this does not create a driver card or charge the driver.
                   </p>
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>What this does:</strong> Updates all existing driver Stripe Connect accounts to request the 
-                    `transfers` capability. Drivers will then need to complete onboarding to activate payouts.
+                    `card_payments` and `transfers` capabilities. Drivers will then need to complete onboarding to activate payouts.
                   </p>
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>After running:</strong> Ask drivers to complete their Stripe onboarding via the profile page to activate the transfers capability.
+                    <strong>After running:</strong> Ask drivers to complete their Stripe onboarding via the profile page to activate payouts.
                   </p>
                 </div>
               </div>

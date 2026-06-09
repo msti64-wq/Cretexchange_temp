@@ -254,7 +254,20 @@ test("admin settings exposes Stripe Connect setup health check", () => {
   assert.match(adminSettingsSource, /Express onboarding available/);
   assert.match(adminSettingsSource, /transfers capability creation supported/);
   assert.match(adminSettingsSource, /Stripe mode test\/live/);
-  assert.doesNotMatch(adminSettingsSource, /`transfers` and `card_payments` capabilities/);
+  assert.match(adminSettingsSource, /`card_payments` and `transfers` connected-account capabilities/);
+  assert.match(adminSettingsSource, /this does not create a driver card or charge the driver/);
+});
+
+test("driver Stripe Connect diagnostic script uses production payout onboarding helpers", () => {
+  const diagnosticSource = readFileSync(new URL("../scripts/verify-driver-stripe-connect.ts", import.meta.url), "utf8");
+
+  assert.match(diagnosticSource, /STRIPE_SECRET_KEY/);
+  assert.match(diagnosticSource, /sk_test_/);
+  assert.match(diagnosticSource, /ALLOW_LIVE_STRIPE_CONNECT_DIAGNOSTIC/);
+  assert.match(diagnosticSource, /buildDriverStripePayoutAccountParams/);
+  assert.match(diagnosticSource, /createDriverStripePayoutAccount/);
+  assert.match(diagnosticSource, /createDriverStripeOnboardingLink/);
+  assert.match(diagnosticSource, /does not read or write CreteXchange driver records/);
 });
 
 test("driver Stripe connected account payload uses postal_code address field", async () => {
@@ -324,7 +337,7 @@ test("driver Stripe connected account payload uses postal_code address field", a
   });
 });
 
-test("driver capability backfill requests transfers only", async () => {
+test("driver capability backfill restores connected account payout capabilities", async () => {
   const { requestTransfersCapability } = await import("../server/stripeService");
   let updatedPayload: Stripe.AccountUpdateParams | undefined;
 
@@ -350,9 +363,9 @@ test("driver capability backfill requests transfers only", async () => {
 
   assert.ok(updatedPayload);
   assert.deepEqual(updatedPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
-  assert.equal(Object.prototype.hasOwnProperty.call(updatedPayload.capabilities as Record<string, unknown>, "card_payments"), false);
 });
 
 test("superadmin feature flag list exposes driver_stripe_payouts when missing", async () => {
@@ -2258,13 +2271,16 @@ test("driver bank-connect session starts onboarding even when optional local pro
   assert.equal(createdPayload.country, "US");
   assert.equal(createdPayload.business_type, "individual");
   assert.deepEqual(createdPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "email"), false);
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "individual"), false);
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
   assert.equal(createdPayload.metadata?.userId, user.id);
+  assert.equal(createdPayload.metadata?.user_id, user.id);
   assert.equal(createdPayload.metadata?.driverId, driver.id);
+  assert.equal(createdPayload.metadata?.driver_id, driver.id);
   assert.equal(createdPayload.metadata?.role, "driver");
 });
 
@@ -2434,14 +2450,14 @@ test("driver bank-connect session returns platform setup error when Stripe trans
 
   assert.ok(createdPayload);
   assert.deepEqual(createdPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
-  assert.equal(Object.prototype.hasOwnProperty.call(createdPayload.capabilities as Record<string, unknown>, "card_payments"), false);
   assert.equal(accountLinkCalls, 0);
   assert.equal(updateStripeInfoCalls, 0);
 });
 
-test("driver bank-connect session retries with card_payments only when Stripe requires combined connected-account capabilities", async () => {
+test("driver bank-connect session uses restored Express recipient capability payload", async () => {
   const { app, posts } = createRouteRegistry();
   const user = makeUser({ stripeConnectAccountId: null });
   const driver = makeDriver();
@@ -2457,22 +2473,8 @@ test("driver bank-connect session retries with card_payments only when Stripe re
       accounts: {
         create: async (payload: Stripe.AccountCreateParams) => {
           createdPayloads.push(payload);
-          if (createdPayloads.length === 1) {
-            const error = new Error("Your platform needs approval for accounts to have requested the transfers capability without the card_payments capability.") as Error & {
-              statusCode?: number;
-              type?: string;
-              code?: string;
-              requestId?: string;
-            };
-            error.statusCode = 400;
-            error.type = "StripeInvalidRequestError";
-            error.code = "account_capability_not_available";
-            error.requestId = "req_requires_combined_capabilities";
-            throw error;
-          }
-
           return {
-            id: "acct_driver_combined_capabilities",
+            id: "acct_driver_restored_capabilities",
             object: "account",
           } as Stripe.Account;
         },
@@ -2484,7 +2486,7 @@ test("driver bank-connect session retries with card_payments only when Stripe re
             object: "account_link",
             created: 1,
             expires_at: 2,
-            url: "https://connect.stripe.com/setup/combined-capabilities",
+            url: "https://connect.stripe.com/setup/restored-capabilities",
           } as Stripe.AccountLink;
         },
       },
@@ -2538,32 +2540,31 @@ test("driver bank-connect session retries with card_payments only when Stripe re
           );
 
           assert.equal(res.statusCode, 200);
-          assert.equal((res.body as { url?: string }).url, "https://connect.stripe.com/setup/combined-capabilities");
-          assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_combined_capabilities");
+          assert.equal((res.body as { url?: string }).url, "https://connect.stripe.com/setup/restored-capabilities");
+          assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_restored_capabilities");
           assert.equal((res.body as { payoutOnly?: boolean }).payoutOnly, true);
         },
       );
     },
   );
 
-  assert.equal(createdPayloads.length, 2);
+  assert.equal(createdPayloads.length, 1);
   assert.deepEqual(createdPayloads[0].capabilities, {
-    transfers: { requested: true },
-  });
-  assert.deepEqual(createdPayloads[1].capabilities, {
-    transfers: { requested: true },
     card_payments: { requested: true },
+    transfers: { requested: true },
   });
-  assert.equal(createdPayloads[1].type, "express");
-  assert.equal(createdPayloads[1].business_type, "individual");
-  assert.equal(Object.prototype.hasOwnProperty.call(createdPayloads[1] as Record<string, unknown>, "controller"), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(createdPayloads[1] as Record<string, unknown>, "individual"), false);
-  assert.equal(createdPayloads[1].metadata?.userId, user.id);
-  assert.equal(createdPayloads[1].metadata?.driverId, driver.id);
+  assert.equal(createdPayloads[0].type, "express");
+  assert.equal(createdPayloads[0].business_type, "individual");
+  assert.equal(Object.prototype.hasOwnProperty.call(createdPayloads[0] as Record<string, unknown>, "controller"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(createdPayloads[0] as Record<string, unknown>, "individual"), false);
+  assert.equal(createdPayloads[0].metadata?.userId, user.id);
+  assert.equal(createdPayloads[0].metadata?.user_id, user.id);
+  assert.equal(createdPayloads[0].metadata?.driverId, driver.id);
+  assert.equal(createdPayloads[0].metadata?.driver_id, driver.id);
   assert.ok(createdAccountLink);
-  assert.equal(createdAccountLink.account, "acct_driver_combined_capabilities");
+  assert.equal(createdAccountLink.account, "acct_driver_restored_capabilities");
   assert.equal(createdAccountLink.type, "account_onboarding");
-  assert.equal(updatedStripeAccountId, "acct_driver_combined_capabilities");
+  assert.equal(updatedStripeAccountId, "acct_driver_restored_capabilities");
   assert.equal(customerCalls, 0);
   assert.equal(paymentIntentCalls, 0);
   assert.equal(setupIntentCalls, 0);
@@ -2618,6 +2619,7 @@ test("superadmin Stripe Connect health check reports mode and transfer setup sta
             assert.equal((res.body as { transfersCapabilitySupported?: boolean | null }).transfersCapabilitySupported, null);
             assert.equal((res.body as { transfersCapabilityCreationSupported?: boolean | null }).transfersCapabilityCreationSupported, null);
             assert.equal((res.body as { requestedCapability?: string }).requestedCapability, "transfers");
+            assert.deepEqual((res.body as { requestedCapabilities?: string[] }).requestedCapabilities, ["card_payments", "transfers"]);
             assert.equal((res.body as { platformAccountId?: string }).platformAccountId, "acct_platform_test");
             assert.match(
               (res.body as { adminMessage?: string }).adminMessage || "",
@@ -2830,13 +2832,16 @@ test("driver can start payout onboarding without Stripe customer card or payment
   assert.equal(createdPayload.country, "US");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
   assert.deepEqual(createdPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
   assert.equal(createdPayload.business_type, "individual");
   assert.equal(createdPayload.email, "test@example.com");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "individual"), false);
   assert.equal(createdPayload.metadata?.userId, user.id);
+  assert.equal(createdPayload.metadata?.user_id, user.id);
   assert.equal(createdPayload.metadata?.driverId, driver.id);
+  assert.equal(createdPayload.metadata?.driver_id, driver.id);
   assert.equal(createdPayload.metadata?.role, "driver");
 });
 
@@ -2921,13 +2926,16 @@ test("driver bank-connect session creates Express account only when payouts are 
   assert.equal(createdPayload.country, "US");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
   assert.deepEqual(createdPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
   assert.equal(createdPayload.email, "test@example.com");
   assert.equal(createdPayload.business_type, "individual");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "individual"), false);
   assert.equal(createdPayload.metadata?.userId, user.id);
+  assert.equal(createdPayload.metadata?.user_id, user.id);
   assert.equal(createdPayload.metadata?.driverId, driver.id);
+  assert.equal(createdPayload.metadata?.driver_id, driver.id);
   assert.equal(createdPayload.metadata?.role, "driver");
   assert.ok(createdAccountLink);
   assert.equal(createdAccountLink.account, "acct_driver_bank_connect");
@@ -7291,6 +7299,110 @@ test("deferred driver Stripe payment can be processed once the driver is ready",
   });
 
   assert.ok(paymentStatusUpdates.length > 0);
+});
+
+test("batch owner payment transfers driver tip to connected account", async () => {
+  const { app, posts } = createRouteRegistry();
+  let paymentIntentPayload: Stripe.PaymentIntentCreateParams | undefined;
+  let transferPayload: Stripe.TransferCreateParams | undefined;
+  const pendingStatusUpdates: Array<Record<string, unknown>> = [];
+  const batchStatusUpdates: Array<Record<string, unknown>> = [];
+
+  await withPatchedStripe(
+    {
+      paymentIntents: {
+        create: async (payload: Stripe.PaymentIntentCreateParams) => {
+          paymentIntentPayload = payload;
+          return {
+            id: "pi_owner_batch_1",
+            status: "succeeded",
+          } as Stripe.PaymentIntent;
+        },
+      },
+      transfers: {
+        create: async (payload: Stripe.TransferCreateParams) => {
+          transferPayload = payload;
+          return {
+            id: "tr_driver_tip_1",
+            object: "transfer",
+          } as Stripe.Transfer;
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getPendingWashoutPaymentsByStatus: async (status: string) => {
+            assert.equal(status, "queued");
+            return [
+              {
+                id: "pending_payment_1",
+                ownerId: "owner_1",
+                driverId: "driver_row_1",
+                activityId: "activity_1",
+                locationId: "location_1",
+                driverAmount: "10.00",
+                platformFee: "5.00",
+                totalAmount: "16.50",
+                metadata: { driverTip: "1.50" },
+              },
+            ];
+          },
+          getOwnerById: async () => ({
+            id: "owner_1",
+            stripeCustomerId: "cus_owner_1",
+            stripePaymentMethodId: "pm_owner_1",
+          }),
+          createWashoutPaymentBatch: async (payload: Record<string, unknown>) => ({
+            id: "batch_1",
+            ...payload,
+          }),
+          updatePendingPaymentStatus: async (paymentId: string, status: string, batchId?: string, failureReason?: string) => {
+            pendingStatusUpdates.push({ paymentId, status, batchId, failureReason });
+          },
+          updateWashoutPaymentBatchStatus: async (batchId: string, status: string, stripePaymentIntentId?: string, failureReason?: string) => {
+            batchStatusUpdates.push({ batchId, status, stripePaymentIntentId, failureReason });
+          },
+          getDriverById: async () => ({
+            id: "driver_row_1",
+            stripeConnectAccountId: "acct_driver_tip_recipient",
+          }),
+          markWashoutPaymentBatchCompleted: async (batchId: string) => {
+            batchStatusUpdates.push({ batchId, status: "completed" });
+          },
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = posts.get("/api/payments/process-batch");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: "admin_1", role: "admin" },
+              body: {},
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { batchesProcessed?: number }).batchesProcessed, 1);
+        },
+      );
+    },
+  );
+
+  assert.ok(paymentIntentPayload);
+  assert.equal(paymentIntentPayload.amount, 1650);
+  assert.equal(paymentIntentPayload.customer, "cus_owner_1");
+  assert.ok(transferPayload);
+  assert.equal(transferPayload.amount, 1150);
+  assert.equal(transferPayload.destination, "acct_driver_tip_recipient");
+  assert.equal(transferPayload.metadata?.driverTip, "1.50");
+  assert.equal(transferPayload.metadata?.type, "driver_washout_payout");
+  assert.deepEqual(pendingStatusUpdates.map((update) => update.status), ["processing", "processed"]);
+  assert.equal(batchStatusUpdates.some((update) => update.status === "completed"), true);
 });
 
 test("deferred driver Stripe payment remains held when the driver is not ready", async () => {
