@@ -872,7 +872,14 @@ export async function createDriverStripePayoutAccount(
   // Driver payout onboarding only needs the transfers capability so the
   // platform can transfer owner-funded tips to the driver's connected account.
   // Stripe onboarding collects bank, tax, and personal verification details.
-  return await stripe.accounts.create(buildDriverStripePayoutAccountParams(user, driver));
+  const accountParams = buildDriverStripePayoutAccountParams(user, driver);
+  console.log('[STRIPE_ACCOUNT_CREATE_PAYLOAD]', {
+    route: 'GET /api/drivers/stripe-onboarding',
+    userId: user.id,
+    driverId: driver?.id || null,
+    payload: accountParams,
+  });
+  return await stripe.accounts.create(accountParams);
 }
 
 export async function createDriverStripeOnboardingLink(
@@ -2232,6 +2239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let connectedAccount;
       try {
         connectedAccount = await stripeService.createConnectedAccount({
+          route: 'POST /api/column/onboard',
           type: 'express',
           userId: userId, // Add user ID to metadata for deduplication
           username: user.username, // Use username as display name in Stripe
@@ -5582,6 +5590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           console.log(`📝 No Stripe account found for owner ${currentUser.username}, creating one...`);
           const connectedAccount = await stripeService.createConnectedAccount({
+            route: 'PUT /api/owners/profile',
             type: 'express',
             userId: userId,
             username: currentUser.username,
@@ -6352,6 +6361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Create new Stripe Connect Account with REAL user data
           connectedAccount = await stripeService.createConnectedAccount({
+            route: 'POST /api/owners/subscribe',
             type: 'express',
             userId: userId,
             username: user.username,
@@ -6984,6 +6994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           connectedAccount = await stripeService.createConnectedAccount({
+            route: 'POST /api/owners/column/onboard',
             type: 'express',
             userId: userId,
             username: user.username,
@@ -7479,6 +7490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Create new Express account
             const newExpressAccount = await stripeService.createConnectedAccount({
+              route: 'POST /api/admin/migrate-custom-to-express',
               userId: user.id,
               username: user.username,
               email: user.email,
@@ -7616,6 +7628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Create Stripe Express account for driver payout onboarding.
             const stripeAccount = await stripeService.createConnectedAccount({
+              route: 'POST /api/admin/backfill-stripe-accounts',
               userId: user.id,
               username: user.username,
               email: user.email,

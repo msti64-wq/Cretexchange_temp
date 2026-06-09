@@ -83,6 +83,7 @@ function buildAccountCapabilities(capabilities?: string[]): Stripe.AccountCreate
 }
 
 export interface CreateConnectedAccountParams {
+  route?: string;
   username: string; // PRIMARY IDENTIFIER - Stripe accounts are based on username, NOT email
   email?: string;
   type: 'express' | 'custom'; // Express for marketplace (auto-activates capabilities), Custom for full control
@@ -159,10 +160,19 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
       businessProfile.support_email = supportEmail;
     }
 
+    const capabilities = buildAccountCapabilities(params.capabilities);
+    console.log('[STRIPE_ACCOUNT_CAPABILITIES]', {
+      route: params.route || 'stripeService.createConnectedAccount',
+      userId: params.userId,
+      driverId: params.driverId || null,
+      inputCapabilities: params.capabilities || null,
+      capabilities,
+    });
+
     const accountParams: Stripe.AccountCreateParams = {
       type: params.type,
       country: 'US', // Required
-      capabilities: buildAccountCapabilities(params.capabilities),
+      capabilities,
       business_type: params.businessType || 'individual',
       business_profile: businessProfile,
       // TOS ACCEPTANCE: Only for Custom accounts - Express accounts MUST use Account Links
@@ -211,6 +221,13 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
         address: toStripeAddress(params.company.address),
       };
     }
+
+    console.log('[STRIPE_ACCOUNT_CREATE_PAYLOAD]', {
+      route: params.route || 'stripeService.createConnectedAccount',
+      userId: params.userId,
+      driverId: params.driverId || null,
+      payload: accountParams,
+    });
 
     const account = await stripe.accounts.create(accountParams);
     
