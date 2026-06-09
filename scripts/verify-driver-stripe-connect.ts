@@ -61,12 +61,24 @@ const account = await createDriverStripePayoutAccount(
   },
 );
 
+function normalizeDiagnosticAppUrl(value: string, source: string) {
+  const trimmedValue = value.trim().replace(/\/+$/, "");
+  if (source === "RAILWAY_PUBLIC_DOMAIN" && !/^[a-z][a-z\d+.-]*:\/\//i.test(trimmedValue)) {
+    return `https://${trimmedValue}`;
+  }
+  return trimmedValue;
+}
+
+const railwayPublicDomain = process.env.RAILWAY_PUBLIC_DOMAIN
+  ? normalizeDiagnosticAppUrl(process.env.RAILWAY_PUBLIC_DOMAIN, "RAILWAY_PUBLIC_DOMAIN")
+  : undefined;
 const diagnosticAppUrl =
   process.env.PUBLIC_APP_URL ||
   process.env.APP_BASE_URL ||
+  railwayPublicDomain ||
   process.env.DRIVER_STRIPE_CONNECT_DIAGNOSTIC_APP_URL ||
   "https://example.com";
-if (!process.env.PUBLIC_APP_URL && !process.env.APP_BASE_URL) {
+if (!process.env.PUBLIC_APP_URL && !process.env.APP_BASE_URL && !process.env.RAILWAY_PUBLIC_DOMAIN) {
   process.env.APP_BASE_URL = diagnosticAppUrl;
 }
 const parsedDiagnosticAppUrl = new URL(diagnosticAppUrl);

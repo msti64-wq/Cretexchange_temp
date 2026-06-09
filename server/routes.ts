@@ -261,7 +261,7 @@ function getRequestBaseUrl(req: any): string {
 const DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_MESSAGE =
   'Driver Stripe onboarding URL is not configured for production.';
 const DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_ADMIN_MESSAGE =
-  'Set PUBLIC_APP_URL or APP_BASE_URL to the public HTTPS app URL before enabling driver Stripe payouts.';
+  'Set PUBLIC_APP_URL, APP_BASE_URL, or RAILWAY_PUBLIC_DOMAIN to the public HTTPS app URL before enabling driver Stripe payouts.';
 
 type DriverStripeOnboardingUrlConfig = {
   baseUrl: string;
@@ -273,15 +273,35 @@ type DriverStripeOnboardingUrlConfig = {
   source: string;
 };
 
+function hasUrlProtocol(value: string) {
+  return /^[a-z][a-z\d+.-]*:\/\//i.test(value);
+}
+
+function normalizeConfiguredAppUrl(value: string, source: string) {
+  const trimmedValue = value.trim().replace(/\/+$/, '');
+  if (source === 'RAILWAY_PUBLIC_DOMAIN' && !hasUrlProtocol(trimmedValue)) {
+    return `https://${trimmedValue}`;
+  }
+  return trimmedValue;
+}
+
 function getConfiguredPublicAppUrl() {
   const publicAppUrl = process.env.PUBLIC_APP_URL?.trim();
   if (publicAppUrl) {
-    return { value: publicAppUrl, source: 'PUBLIC_APP_URL' };
+    return { value: normalizeConfiguredAppUrl(publicAppUrl, 'PUBLIC_APP_URL'), source: 'PUBLIC_APP_URL' };
   }
 
   const appBaseUrl = process.env.APP_BASE_URL?.trim();
   if (appBaseUrl) {
-    return { value: appBaseUrl, source: 'APP_BASE_URL' };
+    return { value: normalizeConfiguredAppUrl(appBaseUrl, 'APP_BASE_URL'), source: 'APP_BASE_URL' };
+  }
+
+  const railwayPublicDomain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
+  if (railwayPublicDomain) {
+    return {
+      value: normalizeConfiguredAppUrl(railwayPublicDomain, 'RAILWAY_PUBLIC_DOMAIN'),
+      source: 'RAILWAY_PUBLIC_DOMAIN',
+    };
   }
 
   return null;
@@ -486,10 +506,124 @@ function buildDriverBankConnect400Response(context: DriverBankConnect400Context)
   };
 }
 
+const DRIVER_STRIPE_ACCOUNT_LINK_AFTER_ACCOUNT_CREATED_MESSAGE =
+  'Stripe account created, but onboarding link could not be generated.';
 const DRIVER_STRIPE_PLATFORM_SETUP_UNAVAILABLE_MESSAGE =
   'Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.';
 const ADMIN_STRIPE_CONNECT_TRANSFERS_SETUP_MESSAGE =
   'Stripe Connect platform setup is incomplete. Enable/approve connected account transfers before driver payout onboarding. Stripe Dashboard: Connect > Settings / Platform profile > Enable Express connected accounts / transfers.';
+
+function getDriverStripeAccountLinkFailureMessage(params: {
+  hasStripeAccount: boolean;
+  statusCode: number;
+  isConfigError: boolean;
+  stripeError?: any;
+}) {
+  if (params.hasStripeAccount) {
+    return DRIVER_STRIPE_ACCOUNT_LINK_AFTER_ACCOUNT_CREATED_MESSAGE;
+  }
+
+  if (params.isConfigError) {
+    return DRIVER_STRIPE_PLATFORM_SETUP_UNAVAILABLE_MESSAGE;
+  }
+
+  if (params.statusCode === 400 && params.stripeError?.message) {
+    return params.stripeError.message;
+  }
+
+  return 'Failed to create Stripe onboarding link. Please try again.';
+}
+
+type DriverStripeOnboardingStatus =
+  | 'not_started'
+  | 'setup_started'
+  | 'action_required'
+  | 'payouts_ready';
+
+function getDriverStripeOnboardingStatusLabel(status: DriverStripeOnboardingStatus) {
+  switch (status) {
+    case 'payouts_ready':
+      return 'Payouts Ready';
+    case 'action_required':
+      return 'Action Required';
+    case 'setup_started':
+      return 'Setup Started';
+    case 'not_started':
+    default:
+      return 'Not Started';
+  }
+}
+
+function getDriverStripeOnboardingStatus(params: {
+  hasAccount: boolean;
+  detailsSubmitted: boolean;
+  payoutsEnabled: boolean;
+  requirementsCurrentlyDue: string[];
+  requirementsPastDue: string[];
+}): DriverStripeOnboardingStatus {
+  if (!params.hasAccount) {
+    return 'not_started';
+  }
+
+  if (params.payoutsEnabled) {
+    return 'payouts_ready';
+  }
+
+  if (!params.detailsSubmitted) {
+    return 'setup_started';
+  }
+
+  return 'action_required';
+}
+
+function buildDriverStripeStatusResponse(
+  stripeConnectAccountId: string | null | undefined,
+  account?: Stripe.Account | null,
+) {
+  const accountId = account?.id || stripeConnectAccountId || null;
+  const hasAccount = Boolean(accountId);
+  const detailsSubmitted = Boolean(account?.details_submitted);
+  const payoutsEnabled = Boolean(account?.payouts_enabled);
+  const chargesEnabled = Boolean(account?.charges_enabled);
+  const requirementsCurrentlyDue = account?.requirements?.currently_due || [];
+  const requirementsPastDue = account?.requirements?.past_due || [];
+  const requirementsEventuallyDue = account?.requirements?.eventually_due || [];
+  const status = getDriverStripeOnboardingStatus({
+    hasAccount,
+    detailsSubmitted,
+    payoutsEnabled,
+    requirementsCurrentlyDue,
+    requirementsPastDue,
+  });
+  const onboardingComplete = payoutsEnabled;
+
+  return {
+    hasAccount,
+    connectedAccountIdExists: hasAccount,
+    stripeConnectAccountId: accountId,
+    accountId,
+    status,
+    statusLabel: getDriverStripeOnboardingStatusLabel(status),
+    detailsSubmitted,
+    details_submitted: detailsSubmitted,
+    payoutsEnabled,
+    payouts_enabled: payoutsEnabled,
+    chargesEnabled,
+    charges_enabled: chargesEnabled,
+    requirementsCurrentlyDue,
+    requirementsPastDue,
+    requirementsEventuallyDue,
+    requirements: {
+      currently_due: requirementsCurrentlyDue,
+      eventually_due: requirementsEventuallyDue,
+      past_due: requirementsPastDue,
+      current_deadline: account?.requirements?.current_deadline || null,
+    },
+    onboardingComplete,
+    isVerified: onboardingComplete,
+    hasBlockingRequirements: requirementsCurrentlyDue.length > 0 || requirementsPastDue.length > 0,
+  };
+}
 
 function getStripeModeFromSecretKey(): 'test' | 'live' | 'unknown' {
   const secretKey = process.env.STRIPE_SECRET_KEY || '';
@@ -1438,15 +1572,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === 'driver') {
         const driverData = await storage.getDriver(userId);
         if (driverData) {
-          // Sanitize sensitive bank account data - never send full account/routing numbers to frontend
-          const { accountNumber, routingNumber, ...safeDriverData } = driverData;
+          // Driver bank details are collected and stored by Stripe onboarding, not CreteXchange.
+          const safeDriverData = { ...driverData } as Record<string, unknown>;
+          delete safeDriverData.accountNumber;
+          delete safeDriverData.routingNumber;
+          delete safeDriverData.bankName;
+          delete safeDriverData.accountHolderName;
           roleData = {
             ...safeDriverData,
-            // Include only masked/last4 versions of sensitive data for display
-            // Note: bankName is intentionally included for UX (e.g., "Chase ****1234")
-            hasRoutingNumber: Boolean(routingNumber),
-            hasAccountNumber: Boolean(accountNumber),
-            accountNumberLast4: accountNumber ? accountNumber.slice(-4) : null,
+            stripeBankDetailsManagedBy: 'stripe',
           };
         }
       } else if (user.role === 'owner') {
@@ -3172,14 +3306,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentMethod: pick(body.paymentMethod, driver.paymentMethod),
           venmoHandle: pick(body.venmoUsername, driver.venmoHandle),
           zelleEmail: pick(body.zelleInfo, driver.zelleEmail),
-          bankName: pick(body.bankName, driver.bankName),
-          routingNumber: pick(body.routingNumber, driver.routingNumber),
-          accountNumber: pick(body.accountNumber, driver.accountNumber),
-          accountHolderName: pick(body.accountHolderName, driver.accountHolderName),
-          // Stripe verification fields
-          dateOfBirth: pick(body.dateOfBirth, driver.dateOfBirth),
-          ssnLast4: pick(body.ssnLast4, driver.ssnLast4),
-          businessWebsite: pick(body.businessWebsite, driver.businessWebsite),
           // Lottery prize payout preference
           payoutPreference: pick(body.payoutPreference, driver.payoutPreference),
           payoutPreferenceNote: body.payoutPreferenceNote !== undefined ? body.payoutPreferenceNote : driver.payoutPreferenceNote,
@@ -3210,53 +3336,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: currentUser.role, // Preserve existing role
       });
 
-      // Update Stripe account with complete verification info only if the driver explicitly set one up.
-      let stripeAccountId = currentUser.stripeConnectAccountId;
-      
-      // Now update the Stripe account with verification info
-      let stripeSyncStatus = { synced: false, error: null as string | null, requirements: [] as string[] };
-      
-      if (stripeAccountId && driver) {
-        try {
-          await stripeService.updateConnectedAccountWithCompleteInfo(
-            stripeAccountId,
-            {
-              firstName: pick(body.firstName, currentUser.firstName),
-              lastName: pick(body.lastName, currentUser.lastName),
-              email: pick(body.email, currentUser.email),
-              phone: pick(body.phone, currentUser.phone),
-              street: pick(body.street, currentUser.street),
-              city: pick(body.city, currentUser.city),
-              state: pick(body.state, currentUser.state),
-              zip: pick(body.zip, currentUser.zip),
-              dateOfBirth: pick(body.dateOfBirth, driver.dateOfBirth),
-              ssnLast4: pick(body.ssnLast4, driver.ssnLast4),
-              businessWebsite: pick(body.businessWebsite, driver.businessWebsite),
-            },
-            {
-              timestamp: Math.floor(Date.now() / 1000),
-              ip: extractIPv4(req) || '0.0.0.0'
-            },
-            { payoutOnly: true }
-          );
-          
-          // Fetch updated requirements after sync
-          const stripeAccount = await stripe.accounts.retrieve(stripeAccountId);
-          stripeSyncStatus = {
-            synced: true,
-            error: null,
-            requirements: stripeAccount.requirements?.currently_due || [],
-          };
-          console.log(`✅ Updated Stripe account ${stripeAccountId} with driver verification info`);
-        } catch (stripeError: any) {
-          console.error('Note: Could not update Stripe with verification info:', stripeError.message);
-          stripeSyncStatus = {
-            synced: false,
-            error: stripeError.message,
-            requirements: [],
-          };
-        }
-      }
+      const stripeSyncStatus = {
+        synced: false,
+        error: null as string | null,
+        requirements: [] as string[],
+        source: 'stripe_hosted_onboarding',
+      };
 
       res.json({ 
         message: "Profile updated successfully",
@@ -3447,11 +3532,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         return res.status(statusCode).json({
-          message: isConfigError
-            ? 'Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.'
-            : statusCode === 400 && stripeError?.message
-            ? stripeError.message
-            : 'Failed to create Stripe onboarding link. Please try again.',
+          message: getDriverStripeAccountLinkFailureMessage({
+            hasStripeAccount: true,
+            statusCode,
+            isConfigError,
+            stripeError,
+          }),
           code: isConfigError
             ? 'DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID'
             : statusCode === 400
@@ -3465,6 +3551,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           missingFields: [],
           invalidFields: [],
           accountId: stripeConnectAccountId,
+          connectedAccountIdExists: true,
+          setupStarted: true,
+          onboardingLinkGenerated: false,
         });
       }
 
@@ -3475,10 +3564,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expiresAt: accountLink?.expires_at,
         });
         return res.status(502).json({
-          message: 'Stripe onboarding link was not returned. Please try again.',
+          message: DRIVER_STRIPE_ACCOUNT_LINK_AFTER_ACCOUNT_CREATED_MESSAGE,
           code: 'STRIPE_ACCOUNT_LINK_MISSING_URL',
           reason: 'stripe_account_link_missing_url',
           accountId: stripeConnectAccountId,
+          connectedAccountIdExists: true,
+          setupStarted: true,
+          onboardingLinkGenerated: false,
         });
       }
 
@@ -3536,235 +3628,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // FINANCIAL CONNECTIONS: Complete bank linking (DRIVERS)
   app.post('/api/drivers/bank-connect/complete', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const { sessionId } = req.body;
-
-      if (!sessionId) {
-        return res.status(400).json({ message: 'Session ID required' });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user || !user.stripeConnectAccountId) {
-        return res.status(404).json({ message: 'Stripe Connect account not found' });
-      }
-
-      // Create external account from Financial Connections
-      const result = await stripeService.createExternalAccountFromFinancialConnections({
-        sessionId,
-        connectedAccountId: user.stripeConnectAccountId,
-      });
-
-      if (!result.success) {
-        return res.status(400).json({ message: result.error || 'Failed to link bank account' });
-      }
-
-      // Update driver record with bank info
-      const driver = await storage.getDriver(userId);
-      if (driver) {
-        await storage.updateDriver(driver.id, {
-          bankName: result.bankName || 'Bank Account',
-        });
-
-        // IMPORTANT: Sync all verification info to Stripe after Financial Connections succeeds
-        // This ensures DOB, SSN, business website and other verification details are sent to Stripe
-        try {
-          console.log('📤 Syncing verification info to Stripe Connect account (Financial Connections)...');
-          await stripeService.updateConnectedAccountWithCompleteInfo(
-            user.stripeConnectAccountId,
-            {
-              firstName: user.firstName,
-              lastName: user.lastName,
-              email: user.email,
-              phone: user.phone,
-              street: user.street,
-              city: user.city,
-              state: user.state,
-              zip: user.zip,
-              dateOfBirth: driver.dateOfBirth,
-              ssnLast4: driver.ssnLast4,
-              businessWebsite: driver.businessWebsite,
-            },
-            {
-              timestamp: Math.floor(Date.now() / 1000),
-              ip: extractIPv4(req) || '0.0.0.0'
-            },
-            { payoutOnly: true }
-          );
-          console.log('✅ Verification info synced to Stripe Connect account');
-        } catch (stripeError: any) {
-          console.error('⚠️  Warning: Could not sync verification info to Stripe:', stripeError.message);
-          // Continue - the bank account is linked, verification info will sync on next profile update
-        }
-      }
-
-      res.json({
-        message: 'Bank account linked successfully',
-        bankName: result.bankName,
-        last4: result.last4,
-      });
-    } catch (error: any) {
-      console.error('Error completing bank link:', error);
-      res.status(500).json({
-        message: 'Failed to complete bank link',
-        error: error.message
-      });
-    }
+    return res.status(410).json({
+      message: 'Driver bank account details are collected only through Stripe secure onboarding.',
+      reason: 'driver_bank_details_collected_by_stripe',
+    });
   });
 
   // MANUAL ENTRY FALLBACK: Driver bank account setup for ACH payouts via Stripe Connect
   app.post('/api/drivers/bank-account', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const { bankName, accountHolderName, routingNumber, accountNumber } = req.body;
-
-      // Validate required fields
-      if (!bankName || !accountHolderName || !routingNumber || !accountNumber) {
-        return res.status(400).json({ message: 'All bank account fields are required' });
-      }
-
-      // Validate routing number (9 digits)
-      if (!/^\d{9}$/.test(routingNumber)) {
-        return res.status(400).json({ message: 'Routing number must be exactly 9 digits' });
-      }
-
-      // Get or create driver profile
-      let driver = await storage.getDriver(userId);
-      if (!driver) {
-        driver = await storage.createDriver({
-          userId,
-          employerName: "",
-        });
-      }
-
-      // Get user for Stripe Connect account
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      const driverPayoutsEnabled = await isDriverStripePayoutsEnabled(userId);
-      if (!driverPayoutsEnabled) {
-        return res.status(403).json({
-          message: 'Stripe driver payouts are currently disabled. You can continue using the platform without adding a bank account.',
-          featureDisabled: true,
-        });
-      }
-
-      // Create Stripe Connect account if driver doesn't have one
-      if (!user.stripeConnectAccountId) {
-        let connectedAccount: Awaited<ReturnType<typeof createDriverStripePayoutAccount>>;
-        try {
-          connectedAccount = await createDriverStripePayoutAccount(user, driver);
-        } catch (stripeError: any) {
-          console.error('Error creating driver Stripe Connect account for manual bank setup:', stripeError);
-          return res.status(stripeError.statusCode || 502).json({
-            message: stripeError.statusCode
-              ? stripeError.message
-              : 'Failed to create Stripe connected account for bank setup. Please verify your profile details and try again.',
-            error: stripeError.message || 'Stripe account creation failed',
-            missingFields: stripeError.missingFields,
-            warnings: stripeError.warnings,
-          });
-        }
-
-        // Update user with Stripe Connect account ID
-        await storage.updateUserStripeInfo(userId, {
-          stripeConnectAccountId: connectedAccount.id
-        });
-
-        console.log(`✅ Created Stripe Connect account for driver ${userId}: ${connectedAccount.id}`);
-      }
-
-      // Attach bank account as external account to Stripe Connect account
-      const userUpdated = await storage.getUser(userId);
-      if (userUpdated?.stripeConnectAccountId) {
-        try {
-          // Check if Stripe account has blocking requirements before adding external account
-          const stripeAccount = await stripe.accounts.retrieve(userUpdated.stripeConnectAccountId);
-          const currentlyDue = stripeAccount.requirements?.currently_due || [];
-          const hasBlockingRequirements = currentlyDue.length > 0 && 
-            !currentlyDue.every(req => req.includes('external_account'));
-          
-          if (hasBlockingRequirements) {
-            console.log('⚠️  Stripe account has blocking requirements, may affect external account:', {
-              accountId: userUpdated.stripeConnectAccountId,
-              currentlyDue,
-            });
-          }
-          
-          await stripeService.createBankPaymentMethod({
-            connectedAccountId: userUpdated.stripeConnectAccountId,
-            bankAccount: {
-              country: 'US',
-              currency: 'usd',
-              accountHolderName,
-              accountHolderType: 'individual',
-              routingNumber,
-              accountNumber,
-            },
-          });
-
-          console.log(`✅ Attached bank account to Stripe Connect account ${userUpdated.stripeConnectAccountId}`);
-        } catch (stripeError: any) {
-          console.error('Failed to attach bank account to Stripe:', stripeError.message);
-          // Continue anyway - we'll store the info in database
-        }
-      }
-
-      // Update driver with bank account information (encrypted in database)
-      await storage.updateDriver(driver.id, {
-        bankName,
-        accountHolderName,
-        routingNumber,
-        accountNumber, // This will be encrypted by the database layer
-      });
-
-      // IMPORTANT: Sync all verification info to Stripe when bank account is added manually
-      // This ensures DOB, SSN, business website and other verification details are sent to Stripe
-      const driverUpdated = await storage.getDriver(userId);
-      if (user.stripeConnectAccountId && driverUpdated) {
-        try {
-          console.log('📤 Syncing verification info to Stripe Connect account...');
-          await stripeService.updateConnectedAccountWithCompleteInfo(
-            user.stripeConnectAccountId,
-            {
-              firstName: user.firstName,
-              lastName: user.lastName,
-              email: user.email,
-              phone: user.phone,
-              street: user.street,
-              city: user.city,
-              state: user.state,
-              zip: user.zip,
-              dateOfBirth: driverUpdated.dateOfBirth,
-              ssnLast4: driverUpdated.ssnLast4,
-              businessWebsite: driverUpdated.businessWebsite,
-            },
-            {
-              timestamp: Math.floor(Date.now() / 1000),
-              ip: extractIPv4(req) || '0.0.0.0'
-            },
-            { payoutOnly: true }
-          );
-          console.log('✅ Verification info synced to Stripe Connect account');
-        } catch (stripeError: any) {
-          console.error('⚠️  Warning: Could not sync verification info to Stripe:', stripeError.message);
-          // Continue - the bank account is still created, verification info will sync on next profile update
-        }
-      }
-
-      res.json({
-        message: 'Bank account added successfully',
-        accountLast4: accountNumber.slice(-4)
-      });
-    } catch (error: any) {
-      console.error('Error setting up bank account:', error.message);
-      res.status(500).json({
-        message: 'Failed to set up bank account',
-        error: error.message
-      });
-    }
+    return res.status(410).json({
+      message: 'Driver bank account details are collected only through Stripe secure onboarding.',
+      reason: 'driver_bank_details_collected_by_stripe',
+    });
   });
 
   // GET/POST /api/drivers/stripe-onboarding - Create or resume Stripe Express payout onboarding.
@@ -3929,9 +3804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // If account is fully verified, return success
-      const currentlyDue = account.requirements?.currently_due || [];
-      const pastDue = account.requirements?.past_due || [];
-      if (account.payouts_enabled && currentlyDue.length === 0 && pastDue.length === 0) {
+      if (account.payouts_enabled) {
         return res.json({
           onboardingComplete: true,
           message: 'Stripe payouts are ready.',
@@ -3991,11 +3864,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         return res.status(statusCode).json({
-          message: isConfigError
-            ? 'Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.'
-            : statusCode === 400 && stripeError?.message
-            ? stripeError.message
-            : 'Failed to create Stripe onboarding link. Please try again.',
+          message: getDriverStripeAccountLinkFailureMessage({
+            hasStripeAccount: true,
+            statusCode,
+            isConfigError,
+            stripeError,
+          }),
           code: isConfigError
             ? 'DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID'
             : statusCode === 400
@@ -4009,6 +3883,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           missingFields: [],
           invalidFields: [],
           accountId: stripeConnectAccountId,
+          connectedAccountIdExists: true,
+          setupStarted: true,
+          onboardingLinkGenerated: false,
         });
       }
 
@@ -4020,11 +3897,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expiresAt: accountLink?.expires_at,
         });
         return res.status(502).json({
-          message: 'Stripe onboarding link was not returned. Please try again.',
+          message: DRIVER_STRIPE_ACCOUNT_LINK_AFTER_ACCOUNT_CREATED_MESSAGE,
           code: 'STRIPE_ACCOUNT_LINK_MISSING_URL',
           reason: 'stripe_account_link_missing_url',
           accountId: stripeConnectAccountId,
           missingFields: [],
+          connectedAccountIdExists: true,
+          setupStarted: true,
+          onboardingLinkGenerated: false,
         });
       }
 
@@ -4061,6 +3941,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/drivers/stripe-onboarding', isAuthenticated, handleDriverStripeOnboarding);
   app.post('/api/drivers/stripe-onboarding', isAuthenticated, handleDriverStripeOnboarding);
 
+  // GET /api/drivers/stripe-status - Sync driver payout readiness from Stripe.
+  app.get('/api/drivers/stripe-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (user.role !== 'driver') {
+        return res.status(403).json({ message: 'Driver access required' });
+      }
+
+      if (!user.stripeConnectAccountId) {
+        return res.json({
+          ...buildDriverStripeStatusResponse(null),
+          message: 'Stripe payout onboarding has not been started.',
+        });
+      }
+
+      const account = await stripe.accounts.retrieve(user.stripeConnectAccountId);
+      return res.json({
+        ...buildDriverStripeStatusResponse(user.stripeConnectAccountId, account),
+        type: account.type,
+        capabilities: account.capabilities,
+        disabledReason: account.requirements?.disabled_reason || null,
+      });
+    } catch (error: any) {
+      console.error('[DRIVER_STRIPE_STATUS] Error syncing Stripe status:', {
+        userId: req.user?.id,
+        message: error?.message,
+        stripeError: getSafeStripeErrorDetails(error),
+      });
+      return res.status(502).json({
+        message: 'Failed to sync Stripe payout status.',
+        reason: 'driver_stripe_status_sync_failed',
+        error: error?.message,
+        stripeError: getSafeStripeErrorDetails(error),
+      });
+    }
+  });
+
   // GET /api/drivers/stripe-requirements - Check Stripe account requirements
   app.get('/api/drivers/stripe-requirements', isAuthenticated, async (req: any, res) => {
     try {
@@ -4077,7 +4000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!user.stripeConnectAccountId) {
         return res.json({
-          hasAccount: false,
+          ...buildDriverStripeStatusResponse(null),
           message: 'Stripe Connect account not created yet',
         });
       }
@@ -4091,17 +4014,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentlyDue = account.requirements?.currently_due || [];
       const pastDue = account.requirements?.past_due || [];
       const eventuallyDue = account.requirements?.eventually_due || [];
+      const stripeStatus = buildDriverStripeStatusResponse(user.stripeConnectAccountId, account);
       
       // Check if full SSN is required
       const needsFullSsn = currentlyDue.includes('individual.id_number') || pastDue.includes('individual.id_number');
       const needsIdDocument = currentlyDue.includes('individual.verification.document') || pastDue.includes('individual.verification.document');
       
       res.json({
-        hasAccount: true,
-        accountId: account.id,
+        ...stripeStatus,
         type: account.type,
         capabilities: account.capabilities,
         requirements: {
+          ...stripeStatus.requirements,
           currently_due: currentlyDue,
           currently_due_readable: formatStripeRequirements(currentlyDue),
           eventually_due: eventuallyDue,
@@ -4110,14 +4034,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           past_due_readable: formatStripeRequirements(pastDue),
           current_deadline: account.requirements?.current_deadline || null,
         },
-        charges_enabled: account.charges_enabled,
-        payouts_enabled: account.payouts_enabled,
-        details_submitted: account.details_submitted,
-        // Helper flags for UI
-        isVerified: account.payouts_enabled && currentlyDue.length === 0 && pastDue.length === 0,
         needsFullSsn,
         needsIdDocument,
-        hasBlockingRequirements: currentlyDue.length > 0 || pastDue.length > 0,
       });
     } catch (error: any) {
       console.error('Error checking Stripe requirements:', error);

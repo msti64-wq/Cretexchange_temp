@@ -1,8 +1,9 @@
 export type DriverPayoutStatus =
   | "payouts_disabled"
-  | "not_connected"
-  | "setup_incomplete"
-  | "connected";
+  | "not_started"
+  | "setup_started"
+  | "action_required"
+  | "payouts_ready";
 
 export type DriverPayoutAction =
   | "connect_bank_account"
@@ -11,10 +12,21 @@ export type DriverPayoutAction =
 
 export interface DriverStripeRequirements {
   hasAccount: boolean;
+  stripeConnectAccountId?: string | null;
+  accountId?: string;
+  connectedAccountIdExists?: boolean;
+  onboardingComplete?: boolean;
+  status?: "not_started" | "setup_started" | "action_required" | "payouts_ready";
   isVerified?: boolean;
+  payoutsEnabled?: boolean;
+  chargesEnabled?: boolean;
   payouts_enabled?: boolean;
+  charges_enabled?: boolean;
   details_submitted?: boolean;
+  detailsSubmitted?: boolean;
   hasBlockingRequirements?: boolean;
+  requirementsCurrentlyDue?: string[];
+  requirementsPastDue?: string[];
   requirements?: {
     currently_due?: string[];
     past_due?: string[];
@@ -30,7 +42,7 @@ export interface DriverPayoutActionState {
 
 export interface DriverPayoutSettingsState {
   status: DriverPayoutStatus;
-  statusLabel: "Payouts Disabled" | "Not Connected" | "Setup Incomplete" | "Connected / Payouts Ready";
+  statusLabel: "Payouts Disabled" | "Not Started" | "Setup Started" | "Action Required" | "Payouts Ready";
   primaryAction: DriverPayoutActionState;
   secondaryActions: DriverPayoutActionState[];
   featureAvailable: boolean;
@@ -38,34 +50,41 @@ export interface DriverPayoutSettingsState {
 }
 
 export function getDriverPayoutStatus(requirements?: DriverStripeRequirements | null): DriverPayoutStatus {
-  if (!requirements?.hasAccount) {
-    return "not_connected";
+  if (requirements?.status) {
+    return requirements.status;
   }
 
-  const currentlyDue = requirements.requirements?.currently_due ?? [];
-  const pastDue = requirements.requirements?.past_due ?? [];
-
-  if (
-    requirements.isVerified ||
-    (requirements.payouts_enabled && !requirements.hasBlockingRequirements && currentlyDue.length === 0 && pastDue.length === 0)
-  ) {
-    return "connected";
+  if (!requirements?.hasAccount && !requirements?.stripeConnectAccountId && !requirements?.accountId) {
+    return "not_started";
   }
 
-  return "setup_incomplete";
+  const payoutsEnabled = requirements.payoutsEnabled ?? requirements.payouts_enabled;
+
+  if (requirements.onboardingComplete || requirements.isVerified || payoutsEnabled) {
+    return "payouts_ready";
+  }
+
+  const detailsSubmitted = requirements.detailsSubmitted ?? requirements.details_submitted;
+  if (detailsSubmitted === false) {
+    return "setup_started";
+  }
+
+  return "action_required";
 }
 
 export function getDriverPayoutStatusLabel(status: DriverPayoutStatus): DriverPayoutSettingsState["statusLabel"] {
   switch (status) {
-    case "connected":
-      return "Connected / Payouts Ready";
-    case "setup_incomplete":
-      return "Setup Incomplete";
+    case "payouts_ready":
+      return "Payouts Ready";
+    case "action_required":
+      return "Action Required";
+    case "setup_started":
+      return "Setup Started";
     case "payouts_disabled":
       return "Payouts Disabled";
-    case "not_connected":
+    case "not_started":
     default:
-      return "Not Connected";
+      return "Not Started";
   }
 }
 
@@ -94,10 +113,10 @@ export function resolveDriverPayoutSettingsState(params: {
     };
   }
 
-  if (status === "connected") {
+  if (status === "payouts_ready") {
     return {
       status,
-      statusLabel: "Connected / Payouts Ready",
+      statusLabel: "Payouts Ready",
       featureAvailable: true,
       primaryAction: {
         action: "view_stripe_status",
@@ -106,14 +125,14 @@ export function resolveDriverPayoutSettingsState(params: {
         visible: true,
       },
       secondaryActions: [],
-      message: "Stripe payouts are connected and ready.",
+      message: "Stripe payouts are ready.",
     };
   }
 
-  if (status === "setup_incomplete") {
+  if (status === "setup_started" || status === "action_required") {
     return {
       status,
-      statusLabel: "Setup Incomplete",
+      statusLabel: getDriverPayoutStatusLabel(status),
       featureAvailable: true,
       primaryAction: {
         action: "resume_stripe_onboarding",
@@ -129,13 +148,15 @@ export function resolveDriverPayoutSettingsState(params: {
           visible: true,
         },
       ],
-      message: "Stripe payout setup is incomplete.",
+      message: status === "setup_started"
+        ? "Stripe account setup has started. Resume onboarding to add bank and verification details."
+        : "Stripe needs more information before payouts can be enabled.",
     };
   }
 
   return {
     status,
-    statusLabel: "Not Connected",
+    statusLabel: "Not Started",
     featureAvailable: true,
     primaryAction: {
       action: "connect_bank_account",

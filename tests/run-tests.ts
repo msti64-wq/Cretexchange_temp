@@ -127,9 +127,20 @@ test("driver profile bank connect visibility uses driver_stripe_payouts only", (
   assert.doesNotMatch(driverPayoutSource, /WAIVE_DRIVER_PAYMENT|waive_driver_payment/);
   assert.doesNotMatch(driverPayoutSource, /\/api\/feature-flags\/[^"']+\/toggle/);
   assert.doesNotMatch(driverProfileSource, /\/api\/drivers\/bank-connect\/session/);
+  assert.match(driverPayoutSettingsSource, /\/api\/drivers\/stripe-status/);
   assert.match(driverPayoutSettingsSource, /if \(action === "connect_bank_account"\)[\s\S]*connectBankMutation\.mutate\(\)/);
   assert.match(driverPayoutSettingsSource, /data\?\.url \|\| data\?\.onboardingUrl/);
   assert.match(driverPayoutSettingsSource, /window\.location\.href = onboardingUrl/);
+  assert.match(driverPayoutSettingsSource, /void refetch\(\)/);
+  assert.match(driverPayoutSettingsSource, /debug-driver-stripe-payouts/);
+  assert.match(driverPayoutSettingsSource, /connectedAccountIdExists/);
+  assert.match(driverPayoutSettingsSource, /onboardingComplete/);
+  assert.match(driverPayoutSettingsSource, /payoutsEnabled/);
+  assert.match(driverPayoutSettingsSource, /chargesEnabled/);
+  assert.match(driverPayoutSettingsSource, /currently_due/);
+  assert.doesNotMatch(driverProfileSource, /Required for Stripe/);
+  assert.doesNotMatch(driverProfileSource, /input-date-of-birth|input-ssn-last4|input-business-website/);
+  assert.doesNotMatch(driverProfileSource, /bankName|routingNumber|accountNumber|accountHolderName/);
 });
 
 test("driver dashboard profile reminder does not require a payment method", () => {
@@ -162,7 +173,7 @@ test("enabled driver_stripe_payouts with no Stripe account shows Connect Bank Ac
   });
 
   assert.equal(state.featureAvailable, true);
-  assert.equal(state.statusLabel, "Not Connected");
+  assert.equal(state.statusLabel, "Not Started");
   assert.equal(state.primaryAction.action, "connect_bank_account");
   assert.equal(state.primaryAction.label, "Connect Bank Account");
   assert.equal(state.primaryAction.disabled, false);
@@ -182,12 +193,38 @@ test("waive_driver_payment does not affect bank connection visibility", () => {
   assert.equal(state.primaryAction.visible, true);
 });
 
-test("enabled driver_stripe_payouts with incomplete Stripe account shows Resume Stripe Onboarding", () => {
+test("enabled driver_stripe_payouts with action-required Stripe account shows Resume Stripe Onboarding", () => {
   const state = resolveDriverPayoutSettingsState({
     featureEnabled: true,
     requirements: {
       hasAccount: true,
+      detailsSubmitted: true,
       payouts_enabled: false,
+      hasBlockingRequirements: true,
+      requirementsCurrentlyDue: ["external_account"],
+      requirements: {
+        currently_due: ["external_account"],
+        past_due: [],
+      },
+    },
+  });
+
+  assert.equal(state.statusLabel, "Action Required");
+  assert.equal(state.primaryAction.action, "resume_stripe_onboarding");
+  assert.equal(state.primaryAction.visible, true);
+  assert.equal(state.message, "Stripe needs more information before payouts can be enabled.");
+  assert.equal(state.secondaryActions.some((action) => action.action === "view_stripe_status"), true);
+});
+
+test("enabled driver_stripe_payouts with setup-started Stripe account shows Resume Stripe Onboarding", () => {
+  const state = resolveDriverPayoutSettingsState({
+    featureEnabled: true,
+    requirements: {
+      hasAccount: true,
+      connectedAccountIdExists: true,
+      details_submitted: false,
+      payouts_enabled: false,
+      charges_enabled: false,
       hasBlockingRequirements: true,
       requirements: {
         currently_due: ["external_account"],
@@ -196,14 +233,19 @@ test("enabled driver_stripe_payouts with incomplete Stripe account shows Resume 
     },
   });
 
-  assert.equal(state.statusLabel, "Setup Incomplete");
+  assert.equal(state.featureAvailable, true);
+  assert.equal(state.status, "setup_started");
+  assert.equal(state.statusLabel, "Setup Started");
   assert.equal(state.primaryAction.action, "resume_stripe_onboarding");
+  assert.equal(state.primaryAction.label, "Resume Stripe Onboarding");
   assert.equal(state.primaryAction.visible, true);
-  assert.equal(state.message, "Stripe payout setup is incomplete.");
-  assert.equal(state.secondaryActions.some((action) => action.action === "view_stripe_status"), true);
+  assert.equal(
+    state.message,
+    "Stripe account setup has started. Resume onboarding to add bank and verification details.",
+  );
 });
 
-test("enabled driver_stripe_payouts with complete Stripe account shows connected status", () => {
+test("enabled driver_stripe_payouts with complete Stripe account shows Payouts Ready", () => {
   const state = resolveDriverPayoutSettingsState({
     featureEnabled: true,
     requirements: {
@@ -217,12 +259,12 @@ test("enabled driver_stripe_payouts with complete Stripe account shows connected
     },
   });
 
-  assert.equal(state.statusLabel, "Connected / Payouts Ready");
+  assert.equal(state.statusLabel, "Payouts Ready");
   assert.equal(state.primaryAction.action, "view_stripe_status");
   assert.equal(state.primaryAction.label, "View Payout Status");
   assert.equal(state.primaryAction.disabled, false);
   assert.equal(state.primaryAction.visible, true);
-  assert.equal(state.message, "Stripe payouts are connected and ready.");
+  assert.equal(state.message, "Stripe payouts are ready.");
 });
 
 test("driver bank-connect frontend error message shows exact missing profile fields", () => {
@@ -267,6 +309,7 @@ test("driver Stripe Connect diagnostic script uses production payout onboarding 
   assert.match(diagnosticSource, /buildDriverStripePayoutAccountParams/);
   assert.match(diagnosticSource, /createDriverStripePayoutAccount/);
   assert.match(diagnosticSource, /createDriverStripeOnboardingLink/);
+  assert.match(diagnosticSource, /RAILWAY_PUBLIC_DOMAIN/);
   assert.match(diagnosticSource, /does not read or write CreteXchange driver records/);
 });
 
@@ -274,14 +317,22 @@ test("startup logs driver Stripe onboarding URL configuration without URL values
   const indexSource = readFileSync(new URL("../server/index.ts", import.meta.url), "utf8");
 
   assert.match(indexSource, /Driver Stripe onboarding URL configuration/);
+  assert.match(indexSource, /"PUBLIC_APP_URL configured"/);
+  assert.match(indexSource, /"APP_BASE_URL configured"/);
+  assert.match(indexSource, /"RAILWAY_PUBLIC_DOMAIN configured"/);
+  assert.match(indexSource, /"resolved source"/);
+  assert.match(indexSource, /"resolved host"/);
+  assert.match(indexSource, /isHttps/);
   assert.match(indexSource, /hasPublicAppUrl/);
   assert.match(indexSource, /hasAppBaseUrl/);
+  assert.match(indexSource, /hasRailwayPublicDomain/);
   assert.match(indexSource, /selectedSource/);
   assert.doesNotMatch(indexSource, /console\.log\([^)]*process\.env\.PUBLIC_APP_URL/);
   assert.doesNotMatch(indexSource, /console\.log\([^)]*process\.env\.APP_BASE_URL/);
+  assert.doesNotMatch(indexSource, /console\.log\([^)]*process\.env\.RAILWAY_PUBLIC_DOMAIN/);
 });
 
-test("driver Stripe onboarding URL config prefers PUBLIC_APP_URL and falls back to APP_BASE_URL", async () => {
+test("driver Stripe onboarding URL config prefers PUBLIC_APP_URL then APP_BASE_URL then RAILWAY_PUBLIC_DOMAIN", async () => {
   const { buildDriverStripeOnboardingUrls } = await import("../server/routes");
 
   await withPatchedEnv(
@@ -290,6 +341,7 @@ test("driver Stripe onboarding URL config prefers PUBLIC_APP_URL and falls back 
       STRIPE_SECRET_KEY: "sk_test_unit_test_secret",
       PUBLIC_APP_URL: "https://public.example.com/",
       APP_BASE_URL: "https://app-base.example.com/",
+      RAILWAY_PUBLIC_DOMAIN: "railway.example.com",
     },
     async () => {
       const urls = buildDriverStripeOnboardingUrls();
@@ -306,12 +358,32 @@ test("driver Stripe onboarding URL config prefers PUBLIC_APP_URL and falls back 
       STRIPE_SECRET_KEY: "sk_test_unit_test_secret",
       PUBLIC_APP_URL: undefined,
       APP_BASE_URL: "https://app-base.example.com/",
+      RAILWAY_PUBLIC_DOMAIN: "railway.example.com",
     },
     async () => {
       const urls = buildDriverStripeOnboardingUrls();
       assert.equal(urls.source, "APP_BASE_URL");
       assert.equal(urls.refreshUrl, "https://app-base.example.com/profile?stripe_refresh=1");
       assert.equal(urls.returnUrl, "https://app-base.example.com/profile?stripe_return=1");
+      assert.equal(urls.isHttps, true);
+    },
+  );
+
+  await withPatchedEnv(
+    {
+      NODE_ENV: "production",
+      STRIPE_SECRET_KEY: "sk_test_unit_test_secret",
+      PUBLIC_APP_URL: undefined,
+      APP_BASE_URL: undefined,
+      RAILWAY_PUBLIC_DOMAIN: "cretexchangetemp-production.up.railway.app",
+    },
+    async () => {
+      const urls = buildDriverStripeOnboardingUrls();
+      assert.equal(urls.source, "RAILWAY_PUBLIC_DOMAIN");
+      assert.equal(urls.refreshUrl, "https://cretexchangetemp-production.up.railway.app/profile?stripe_refresh=1");
+      assert.equal(urls.returnUrl, "https://cretexchangetemp-production.up.railway.app/profile?stripe_return=1");
+      assert.equal(urls.refreshUrlHost, "cretexchangetemp-production.up.railway.app");
+      assert.equal(urls.returnUrlHost, "cretexchangetemp-production.up.railway.app");
       assert.equal(urls.isHttps, true);
     },
   );
@@ -2128,6 +2200,7 @@ test("driver profile save does not create a Stripe account automatically", async
   const user = makeUser({ stripeConnectAccountId: null });
   let stripeCreateCalls = 0;
   let updateStripeInfoCalls = 0;
+  let driverProfileUpdate: Record<string, unknown> | undefined;
 
   await withPatchedStripe(
     {
@@ -2143,10 +2216,13 @@ test("driver profile save does not create a Stripe account automatically", async
         {
           getDriver: async () => driver,
           createDriver: async () => driver,
-          updateDriver: async (_driverId: string, update: Record<string, unknown>) => ({
-            ...driver,
-            ...update,
-          }),
+          updateDriver: async (_driverId: string, update: Record<string, unknown>) => {
+            driverProfileUpdate = update;
+            return {
+              ...driver,
+              ...update,
+            };
+          },
           getUser: async () => user,
           upsertUser: async (nextUser: Record<string, unknown>) => ({
             ...user,
@@ -2177,6 +2253,11 @@ test("driver profile save does not create a Stripe account automatically", async
                 zip: "78701",
                 dateOfBirth: "1990-01-01",
                 ssnLast4: "1234",
+                businessWebsite: "https://driver.example.com",
+                bankName: "Do Not Store Bank",
+                accountHolderName: "Do Not Store",
+                routingNumber: "111000025",
+                accountNumber: "000123456789",
               },
             },
             res,
@@ -2190,6 +2271,55 @@ test("driver profile save does not create a Stripe account automatically", async
 
   assert.equal(stripeCreateCalls, 0);
   assert.equal(updateStripeInfoCalls, 0);
+  assert.ok(driverProfileUpdate);
+  assert.equal(Object.prototype.hasOwnProperty.call(driverProfileUpdate, "bankName"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(driverProfileUpdate, "accountHolderName"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(driverProfileUpdate, "routingNumber"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(driverProfileUpdate, "accountNumber"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(driverProfileUpdate, "dateOfBirth"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(driverProfileUpdate, "ssnLast4"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(driverProfileUpdate, "businessWebsite"), false);
+});
+
+test("driver bank detail endpoints do not accept or store bank information", async () => {
+  const { app, posts } = createRouteRegistry();
+
+  const { registerRoutes } = await import("../server/routes");
+  await registerRoutes(app as never);
+
+  const bankAccountRoute = posts.get("/api/drivers/bank-account");
+  const bankCompleteRoute = posts.get("/api/drivers/bank-connect/complete");
+  assert.equal(typeof bankAccountRoute, "function");
+  assert.equal(typeof bankCompleteRoute, "function");
+
+  const manualRes = createResponse();
+  await bankAccountRoute!(
+    {
+      user: { id: "user_1", role: "driver" },
+      body: {
+        bankName: "Do Not Store Bank",
+        accountHolderName: "Do Not Store",
+        routingNumber: "111000025",
+        accountNumber: "000123456789",
+      },
+    },
+    manualRes,
+  );
+
+  assert.equal(manualRes.statusCode, 410);
+  assert.equal((manualRes.body as { reason?: string }).reason, "driver_bank_details_collected_by_stripe");
+
+  const completeRes = createResponse();
+  await bankCompleteRoute!(
+    {
+      user: { id: "user_1", role: "driver" },
+      body: { sessionId: "fcsess_123" },
+    },
+    completeRes,
+  );
+
+  assert.equal(completeRes.statusCode, 410);
+  assert.equal((completeRes.body as { reason?: string }).reason, "driver_bank_details_collected_by_stripe");
 });
 
 test("driver bank-connect session does not create Stripe account when payouts are disabled", async () => {
@@ -3319,13 +3449,16 @@ test("driver bank-connect session rejects live-mode non-HTTPS app URL before Str
               assert.equal((res.body as { reason?: string }).reason, "driver_stripe_public_app_url_not_https");
               assert.equal(
                 (res.body as { message?: string }).message,
-                "Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.",
+                "Stripe account created, but onboarding link could not be generated.",
               );
               assert.match(
                 (res.body as { adminMessage?: string }).adminMessage || "",
-                /PUBLIC_APP_URL or APP_BASE_URL/,
+                /PUBLIC_APP_URL, APP_BASE_URL, or RAILWAY_PUBLIC_DOMAIN/,
               );
               assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_existing_live");
+              assert.equal((res.body as { connectedAccountIdExists?: boolean }).connectedAccountIdExists, true);
+              assert.equal((res.body as { setupStarted?: boolean }).setupStarted, true);
+              assert.equal((res.body as { onboardingLinkGenerated?: boolean }).onboardingLinkGenerated, false);
             },
           );
         },
@@ -3376,7 +3509,14 @@ test("driver bank-connect session returns safe error when Stripe account link ha
 
           assert.equal(res.statusCode, 502);
           assert.equal((res.body as { code?: string }).code, "STRIPE_ACCOUNT_LINK_MISSING_URL");
+          assert.equal(
+            (res.body as { message?: string }).message,
+            "Stripe account created, but onboarding link could not be generated.",
+          );
           assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_existing");
+          assert.equal((res.body as { connectedAccountIdExists?: boolean }).connectedAccountIdExists, true);
+          assert.equal((res.body as { setupStarted?: boolean }).setupStarted, true);
+          assert.equal((res.body as { onboardingLinkGenerated?: boolean }).onboardingLinkGenerated, false);
         },
       );
     },
@@ -3432,9 +3572,16 @@ test("driver bank-connect session returns exact Stripe 400 reason from account l
           assert.equal(res.statusCode, 400);
           assert.equal((res.body as { code?: string }).code, "DRIVER_STRIPE_ACCOUNT_LINK_REJECTED");
           assert.equal((res.body as { reason?: string }).reason, "stripe_account_link_create_rejected");
-          assert.equal((res.body as { message?: string }).message, "Account cannot create onboarding links in its current state.");
+          assert.equal(
+            (res.body as { message?: string }).message,
+            "Stripe account created, but onboarding link could not be generated.",
+          );
+          assert.equal((res.body as { error?: string }).error, "Account cannot create onboarding links in its current state.");
           assert.deepEqual((res.body as { missingFields?: string[] }).missingFields, []);
           assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_existing");
+          assert.equal((res.body as { connectedAccountIdExists?: boolean }).connectedAccountIdExists, true);
+          assert.equal((res.body as { setupStarted?: boolean }).setupStarted, true);
+          assert.equal((res.body as { onboardingLinkGenerated?: boolean }).onboardingLinkGenerated, false);
           assert.equal((res.body as { stripeError?: { requestId?: string } }).stripeError?.requestId, "req_account_link");
         },
       );
@@ -3453,6 +3600,7 @@ test("driver Stripe onboarding returns admin setup error when live public app UR
       STRIPE_SECRET_KEY: "sk_live_unit_test_secret",
       PUBLIC_APP_URL: undefined,
       APP_BASE_URL: undefined,
+      RAILWAY_PUBLIC_DOMAIN: undefined,
     },
     async () => {
       await withPatchedStripe(
@@ -3504,12 +3652,16 @@ test("driver Stripe onboarding returns admin setup error when live public app UR
               assert.equal((res.body as { reason?: string }).reason, "driver_stripe_public_app_url_missing");
               assert.equal(
                 (res.body as { message?: string }).message,
-                "Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.",
+                "Stripe account created, but onboarding link could not be generated.",
               );
               assert.match(
                 (res.body as { adminMessage?: string }).adminMessage || "",
-                /Set PUBLIC_APP_URL or APP_BASE_URL to the public HTTPS app URL/,
+                /Set PUBLIC_APP_URL, APP_BASE_URL, or RAILWAY_PUBLIC_DOMAIN to the public HTTPS app URL/,
               );
+              assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_onboarding_missing_url");
+              assert.equal((res.body as { connectedAccountIdExists?: boolean }).connectedAccountIdExists, true);
+              assert.equal((res.body as { setupStarted?: boolean }).setupStarted, true);
+              assert.equal((res.body as { onboardingLinkGenerated?: boolean }).onboardingLinkGenerated, false);
             },
           );
         },
@@ -3518,6 +3670,114 @@ test("driver Stripe onboarding returns admin setup error when live public app UR
   );
 
   assert.equal(accountLinkCalls, 0);
+});
+
+test("driver Stripe onboarding persists created account ID when account link generation fails", async () => {
+  const { app, gets } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: null });
+  let stripeCreateCalls = 0;
+  let accountLinkCalls = 0;
+  let updatedStripeAccountId: string | undefined;
+  let retrievedAccountId: string | undefined;
+
+  await withPatchedEnv(
+    {
+      NODE_ENV: "production",
+      STRIPE_SECRET_KEY: "sk_live_unit_test_secret",
+      PUBLIC_APP_URL: undefined,
+      APP_BASE_URL: undefined,
+      RAILWAY_PUBLIC_DOMAIN: undefined,
+    },
+    async () => {
+      await withPatchedStripe(
+        {
+          accounts: {
+            list: async () => ({
+              data: [],
+              has_more: false,
+            }),
+            create: async () => {
+              stripeCreateCalls += 1;
+              return {
+                id: "acct_td1_created_before_link_failure",
+                object: "account",
+              } as Stripe.Account;
+            },
+            retrieve: async (accountId: string) => {
+              retrievedAccountId = accountId;
+              return {
+                id: accountId,
+                object: "account",
+                payouts_enabled: false,
+                charges_enabled: false,
+                details_submitted: false,
+                requirements: {
+                  currently_due: ["external_account"],
+                  past_due: [],
+                  eventually_due: [],
+                },
+              } as Stripe.Account;
+            },
+          },
+          accountLinks: {
+            create: async () => {
+              accountLinkCalls += 1;
+              throw new Error("missing public app URL should fail before Stripe account link creation");
+            },
+          },
+        },
+        async () => {
+          await withPatchedStorage(
+            {
+              getUser: async () => user,
+              getDriver: async () => makeDriver(),
+              getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+              getFeatureFlagOverride: async () => undefined,
+              updateUserStripeInfo: async (_userId: string, stripeData: { stripeConnectAccountId?: string }) => {
+                updatedStripeAccountId = stripeData.stripeConnectAccountId;
+                user.stripeConnectAccountId = stripeData.stripeConnectAccountId;
+                return user;
+              },
+            },
+            async () => {
+              const { registerRoutes } = await import("../server/routes");
+              await registerRoutes(app as never);
+              const route = gets.get("/api/drivers/stripe-onboarding");
+              assert.equal(typeof route, "function");
+
+              const res = createResponse();
+              await route!(
+                {
+                  user: { id: user.id, role: "driver" },
+                  protocol: "http",
+                  get: () => "cretexchange.railway.internal:5000",
+                },
+                res,
+              );
+
+              assert.equal(res.statusCode, 500);
+              assert.equal((res.body as { code?: string }).code, "DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID");
+              assert.equal((res.body as { reason?: string }).reason, "driver_stripe_public_app_url_missing");
+              assert.equal(
+                (res.body as { message?: string }).message,
+                "Stripe account created, but onboarding link could not be generated.",
+              );
+              assert.equal((res.body as { accountId?: string }).accountId, "acct_td1_created_before_link_failure");
+              assert.equal((res.body as { connectedAccountIdExists?: boolean }).connectedAccountIdExists, true);
+              assert.equal((res.body as { setupStarted?: boolean }).setupStarted, true);
+              assert.equal((res.body as { onboardingLinkGenerated?: boolean }).onboardingLinkGenerated, false);
+            },
+          );
+        },
+      );
+    },
+  );
+
+  assert.equal(stripeCreateCalls, 1);
+  assert.equal(accountLinkCalls, 0);
+  assert.equal(updatedStripeAccountId, "acct_td1_created_before_link_failure");
+  assert.equal(user.stripeConnectAccountId, "acct_td1_created_before_link_failure");
+  assert.equal(retrievedAccountId, "acct_td1_created_before_link_failure");
 });
 
 test("driver Stripe onboarding creates account link URL for existing account", async () => {
@@ -3600,6 +3860,175 @@ test("driver Stripe onboarding creates account link URL for existing account", a
   assert.equal(createdAccountLink.return_url, "https://example.com/profile?stripe_return=1");
   assert.equal(stripeCreateCalls, 0);
   assert.equal(updateStripeInfoCalls, 0);
+});
+
+test("driver Stripe status exposes setup-started connected account payout status", async () => {
+  const { app, gets } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: "acct_driver_debug_status" });
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        retrieve: async (accountId: string) => ({
+          id: accountId,
+          object: "account",
+          type: "express",
+          capabilities: {
+            transfers: "pending",
+          },
+          charges_enabled: false,
+          payouts_enabled: false,
+          details_submitted: false,
+          requirements: {
+            currently_due: ["external_account"],
+            eventually_due: ["individual.verification.document"],
+            past_due: [],
+            current_deadline: null,
+          },
+        } as Stripe.Account),
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async () => user,
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = gets.get("/api/drivers/stripe-status");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { hasAccount?: boolean }).hasAccount, true);
+          assert.equal((res.body as { connectedAccountIdExists?: boolean }).connectedAccountIdExists, true);
+          assert.equal((res.body as { stripeConnectAccountId?: string }).stripeConnectAccountId, "acct_driver_debug_status");
+          assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_debug_status");
+          assert.equal((res.body as { status?: string }).status, "setup_started");
+          assert.equal((res.body as { statusLabel?: string }).statusLabel, "Setup Started");
+          assert.equal((res.body as { detailsSubmitted?: boolean }).detailsSubmitted, false);
+          assert.equal((res.body as { onboardingComplete?: boolean }).onboardingComplete, false);
+          assert.equal((res.body as { payoutsEnabled?: boolean }).payoutsEnabled, false);
+          assert.equal((res.body as { chargesEnabled?: boolean }).chargesEnabled, false);
+          assert.deepEqual(
+            (res.body as { requirementsCurrentlyDue?: string[] }).requirementsCurrentlyDue,
+            ["external_account"],
+          );
+        },
+      );
+    },
+  );
+});
+
+test("driver Stripe status returns Not Started when no connected account exists", async () => {
+  const { app, gets } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: null });
+  let stripeRetrieveCalls = 0;
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        retrieve: async () => {
+          stripeRetrieveCalls += 1;
+          throw new Error("no account should not call Stripe retrieve");
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async () => user,
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = gets.get("/api/drivers/stripe-status");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { hasAccount?: boolean }).hasAccount, false);
+          assert.equal((res.body as { stripeConnectAccountId?: string | null }).stripeConnectAccountId, null);
+          assert.equal((res.body as { status?: string }).status, "not_started");
+          assert.equal((res.body as { statusLabel?: string }).statusLabel, "Not Started");
+          assert.equal((res.body as { onboardingComplete?: boolean }).onboardingComplete, false);
+          assert.deepEqual((res.body as { requirementsCurrentlyDue?: string[] }).requirementsCurrentlyDue, []);
+          assert.deepEqual((res.body as { requirementsPastDue?: string[] }).requirementsPastDue, []);
+        },
+      );
+    },
+  );
+
+  assert.equal(stripeRetrieveCalls, 0);
+});
+
+test("driver Stripe status returns Payouts Ready only when Stripe payouts are enabled", async () => {
+  const { app, gets } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: "acct_driver_payouts_ready" });
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        retrieve: async (accountId: string) => ({
+          id: accountId,
+          object: "account",
+          type: "express",
+          charges_enabled: false,
+          payouts_enabled: true,
+          details_submitted: true,
+          requirements: {
+            currently_due: [],
+            eventually_due: [],
+            past_due: [],
+            current_deadline: null,
+          },
+        } as Stripe.Account),
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async () => user,
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = gets.get("/api/drivers/stripe-status");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { status?: string }).status, "payouts_ready");
+          assert.equal((res.body as { statusLabel?: string }).statusLabel, "Payouts Ready");
+          assert.equal((res.body as { onboardingComplete?: boolean }).onboardingComplete, true);
+          assert.equal((res.body as { payoutsEnabled?: boolean }).payoutsEnabled, true);
+          assert.equal((res.body as { chargesEnabled?: boolean }).chargesEnabled, false);
+        },
+      );
+    },
+  );
 });
 
 test("public registration rejects privileged roles", async () => {

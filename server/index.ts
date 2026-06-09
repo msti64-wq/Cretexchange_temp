@@ -7,54 +7,84 @@ installConsoleRedaction();
 
 const app = express();
 
-function getConfiguredUrlState(value?: string) {
+function hasUrlProtocol(value: string) {
+  return /^[a-z][a-z\d+.-]*:\/\//i.test(value);
+}
+
+function normalizeDriverStripeUrlEnvValue(value: string, source: string) {
+  const trimmedValue = value.trim().replace(/\/+$/, "");
+  if (source === "RAILWAY_PUBLIC_DOMAIN" && !hasUrlProtocol(trimmedValue)) {
+    return `https://${trimmedValue}`;
+  }
+  return trimmedValue;
+}
+
+function getConfiguredUrlState(source: string, value?: string) {
   const trimmedValue = value?.trim();
   if (!trimmedValue) {
     return {
       configured: false,
       isHttps: null,
       isValidUrl: null,
+      host: null,
     };
   }
 
   try {
-    const parsedUrl = new URL(trimmedValue);
+    const parsedUrl = new URL(normalizeDriverStripeUrlEnvValue(trimmedValue, source));
     return {
       configured: true,
       isHttps: parsedUrl.protocol === "https:",
       isValidUrl: true,
+      host: parsedUrl.host,
     };
   } catch {
     return {
       configured: true,
       isHttps: false,
       isValidUrl: false,
+      host: null,
     };
   }
 }
 
 function logDriverStripeOnboardingUrlStartupState() {
-  const publicAppUrl = getConfiguredUrlState(process.env.PUBLIC_APP_URL);
-  const appBaseUrl = getConfiguredUrlState(process.env.APP_BASE_URL);
+  const publicAppUrl = getConfiguredUrlState("PUBLIC_APP_URL", process.env.PUBLIC_APP_URL);
+  const appBaseUrl = getConfiguredUrlState("APP_BASE_URL", process.env.APP_BASE_URL);
+  const railwayPublicDomain = getConfiguredUrlState("RAILWAY_PUBLIC_DOMAIN", process.env.RAILWAY_PUBLIC_DOMAIN);
   const selectedSource = publicAppUrl.configured
     ? "PUBLIC_APP_URL"
     : appBaseUrl.configured
       ? "APP_BASE_URL"
-      : "missing";
+      : railwayPublicDomain.configured
+        ? "RAILWAY_PUBLIC_DOMAIN"
+        : "missing";
   const selectedUrl = selectedSource === "PUBLIC_APP_URL"
     ? publicAppUrl
     : selectedSource === "APP_BASE_URL"
       ? appBaseUrl
-      : null;
+      : selectedSource === "RAILWAY_PUBLIC_DOMAIN"
+        ? railwayPublicDomain
+        : null;
 
   console.log("Driver Stripe onboarding URL configuration:", {
+    "PUBLIC_APP_URL configured": publicAppUrl.configured,
+    "APP_BASE_URL configured": appBaseUrl.configured,
+    "RAILWAY_PUBLIC_DOMAIN configured": railwayPublicDomain.configured,
+    "resolved source": selectedSource,
+    "resolved host": selectedUrl?.host ?? null,
+    isHttps: selectedUrl?.isHttps ?? null,
     hasPublicAppUrl: publicAppUrl.configured,
     publicAppUrlIsValid: publicAppUrl.isValidUrl,
     publicAppUrlIsHttps: publicAppUrl.isHttps,
     hasAppBaseUrl: appBaseUrl.configured,
     appBaseUrlIsValid: appBaseUrl.isValidUrl,
     appBaseUrlIsHttps: appBaseUrl.isHttps,
+    hasRailwayPublicDomain: railwayPublicDomain.configured,
+    railwayPublicDomainIsValid: railwayPublicDomain.isValidUrl,
+    railwayPublicDomainIsHttps: railwayPublicDomain.isHttps,
     selectedSource,
+    selectedHost: selectedUrl?.host ?? null,
     selectedUrlIsHttps: selectedUrl?.isHttps ?? null,
   });
 }

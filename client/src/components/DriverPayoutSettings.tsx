@@ -19,9 +19,13 @@ interface DriverPayoutSettingsProps {
 }
 
 function getStatusBadgeVariant(status: string) {
-  if (status === "connected") return "default";
-  if (status === "setup_incomplete") return "secondary";
+  if (status === "payouts_ready") return "default";
+  if (status === "setup_started" || status === "action_required") return "secondary";
   return "outline";
+}
+
+function formatDebugBoolean(value: boolean | undefined) {
+  return value ? "Yes" : "No";
 }
 
 export function DriverPayoutSettings({
@@ -38,7 +42,7 @@ export function DriverPayoutSettings({
     error: requirementsError,
     refetch,
   } = useQuery<DriverStripeRequirements>({
-    queryKey: ["/api/drivers/stripe-requirements"],
+    queryKey: ["/api/drivers/stripe-status"],
     enabled: featureEnabled,
     refetchInterval: featureEnabled ? 30000 : false,
   });
@@ -72,6 +76,8 @@ export function DriverPayoutSettings({
     },
     onSuccess: handleOnboardingResponse,
     onError: (error: Error) => {
+      void refetch();
+      onStatusRefresh?.();
       toast({
         title: "Stripe payout setup failed",
         description: error.message,
@@ -87,6 +93,8 @@ export function DriverPayoutSettings({
     },
     onSuccess: handleOnboardingResponse,
     onError: (error: Error) => {
+      void refetch();
+      onStatusRefresh?.();
       toast({
         title: "Stripe payout setup failed",
         description: error.message,
@@ -122,7 +130,7 @@ export function DriverPayoutSettings({
     refreshStatus();
   };
 
-  const statusIcon = state.status === "connected"
+  const statusIcon = state.status === "payouts_ready"
     ? <CheckCircle2 className="h-5 w-5 text-green-600" />
     : <AlertCircle className="h-5 w-5 text-muted-foreground" />;
 
@@ -131,6 +139,11 @@ export function DriverPayoutSettings({
     : state.primaryAction.action === "resume_stripe_onboarding"
       ? "button-driver-resume-stripe-onboarding"
       : "button-driver-view-stripe-status";
+  const currentlyDue = requirements?.requirementsCurrentlyDue ?? requirements?.requirements?.currently_due ?? [];
+  const connectedAccountIdExists = requirements?.connectedAccountIdExists ?? Boolean(requirements?.accountId);
+  const onboardingComplete = requirements?.onboardingComplete ?? requirements?.isVerified;
+  const payoutsEnabled = requirements?.payoutsEnabled ?? requirements?.payouts_enabled;
+  const chargesEnabled = requirements?.chargesEnabled ?? requirements?.charges_enabled;
 
   return (
     <Card data-testid="card-driver-payout-settings">
@@ -158,6 +171,44 @@ export function DriverPayoutSettings({
             )}
           </div>
         </div>
+
+        {requirements?.hasAccount && (
+          <div
+            className="grid gap-2 rounded-md border bg-background p-3 text-xs text-muted-foreground sm:grid-cols-2"
+            data-testid="debug-driver-stripe-payouts"
+          >
+            <div>
+              <span className="font-medium text-foreground">Connected account exists: </span>
+              <span data-testid="text-driver-stripe-connected-account-exists">
+                {formatDebugBoolean(connectedAccountIdExists)}
+              </span>
+            </div>
+            <div>
+              <span className="font-medium text-foreground">Onboarding complete: </span>
+              <span data-testid="text-driver-stripe-onboarding-complete">
+                {formatDebugBoolean(onboardingComplete)}
+              </span>
+            </div>
+            <div>
+              <span className="font-medium text-foreground">Payouts enabled: </span>
+              <span data-testid="text-driver-stripe-payouts-enabled">
+                {formatDebugBoolean(payoutsEnabled)}
+              </span>
+            </div>
+            <div>
+              <span className="font-medium text-foreground">Charges enabled: </span>
+              <span data-testid="text-driver-stripe-charges-enabled">
+                {formatDebugBoolean(chargesEnabled)}
+              </span>
+            </div>
+            <div className="sm:col-span-2">
+              <span className="font-medium text-foreground">Currently due: </span>
+              <span data-testid="text-driver-stripe-currently-due">
+                {currentlyDue.length > 0 ? currentlyDue.join(", ") : "None"}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-2 sm:flex-row">
           {state.primaryAction.visible && (

@@ -79,13 +79,6 @@ export default function DriverProfile() {
     employerZip: "",
     employerPhone: "",
     truckNumber: "",
-    bankName: "",
-    routingNumber: "",
-    accountNumber: "",
-    accountType: "checking",
-    dateOfBirth: "",
-    ssnLast4: "",
-    businessWebsite: "",
     payoutPreference: "bank_transfer",
     payoutPreferenceNote: "",
   });
@@ -110,13 +103,6 @@ export default function DriverProfile() {
         employerZip: userData.roleData.employerZip || "",
         employerPhone: userData.roleData.employerPhone || "",
         truckNumber: userData.roleData.truckNumber || "",
-        bankName: userData.roleData.bankName || "",
-        routingNumber: "", // Never populate from database for security
-        accountNumber: "", // Never populate from database for security
-        accountType: "checking",
-        dateOfBirth: userData.roleData.dateOfBirth || "",
-        ssnLast4: userData.roleData.ssnLast4 || "",
-        businessWebsite: userData.roleData.businessWebsite || "",
         payoutPreference: userData.roleData.payoutPreference || "bank_transfer",
         payoutPreferenceNote: userData.roleData.payoutPreferenceNote || "",
       });
@@ -322,53 +308,6 @@ export default function DriverProfile() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="dateOfBirth">Date of Birth (Required for Stripe)</Label>
-                <Input
-                  id="dateOfBirth"
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
-                  disabled={!isEditing}
-                  data-testid="input-date-of-birth"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Needed for Stripe verification (YYYY-MM-DD format)
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="ssnLast4">Last 4 Digits of SSN (Required for Stripe)</Label>
-                <Input
-                  id="ssnLast4"
-                  type="text"
-                  placeholder="1234"
-                  value={formData.ssnLast4}
-                  onChange={(e) => setFormData({...formData, ssnLast4: e.target.value.slice(0, 4)})}
-                  disabled={!isEditing}
-                  maxLength={4}
-                  data-testid="input-ssn-last4"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Only last 4 digits required for security
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="businessWebsite">Business Website (Required for Stripe)</Label>
-                <Input
-                  id="businessWebsite"
-                  type="url"
-                  placeholder="https://example.com"
-                  value={formData.businessWebsite}
-                  onChange={(e) => setFormData({...formData, businessWebsite: e.target.value})}
-                  disabled={!isEditing}
-                  data-testid="input-business-website"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your business website URL for Stripe verification
-                </p>
-              </div>
             </CardContent>
           </Card>
 
