@@ -270,6 +270,53 @@ test("driver Stripe Connect diagnostic script uses production payout onboarding 
   assert.match(diagnosticSource, /does not read or write CreteXchange driver records/);
 });
 
+test("startup logs driver Stripe onboarding URL configuration without URL values", () => {
+  const indexSource = readFileSync(new URL("../server/index.ts", import.meta.url), "utf8");
+
+  assert.match(indexSource, /Driver Stripe onboarding URL configuration/);
+  assert.match(indexSource, /hasPublicAppUrl/);
+  assert.match(indexSource, /hasAppBaseUrl/);
+  assert.match(indexSource, /selectedSource/);
+  assert.doesNotMatch(indexSource, /console\.log\([^)]*process\.env\.PUBLIC_APP_URL/);
+  assert.doesNotMatch(indexSource, /console\.log\([^)]*process\.env\.APP_BASE_URL/);
+});
+
+test("driver Stripe onboarding URL config prefers PUBLIC_APP_URL and falls back to APP_BASE_URL", async () => {
+  const { buildDriverStripeOnboardingUrls } = await import("../server/routes");
+
+  await withPatchedEnv(
+    {
+      NODE_ENV: "production",
+      STRIPE_SECRET_KEY: "sk_test_unit_test_secret",
+      PUBLIC_APP_URL: "https://public.example.com/",
+      APP_BASE_URL: "https://app-base.example.com/",
+    },
+    async () => {
+      const urls = buildDriverStripeOnboardingUrls();
+      assert.equal(urls.source, "PUBLIC_APP_URL");
+      assert.equal(urls.refreshUrl, "https://public.example.com/profile?stripe_refresh=1");
+      assert.equal(urls.returnUrl, "https://public.example.com/profile?stripe_return=1");
+      assert.equal(urls.isHttps, true);
+    },
+  );
+
+  await withPatchedEnv(
+    {
+      NODE_ENV: "production",
+      STRIPE_SECRET_KEY: "sk_test_unit_test_secret",
+      PUBLIC_APP_URL: undefined,
+      APP_BASE_URL: "https://app-base.example.com/",
+    },
+    async () => {
+      const urls = buildDriverStripeOnboardingUrls();
+      assert.equal(urls.source, "APP_BASE_URL");
+      assert.equal(urls.refreshUrl, "https://app-base.example.com/profile?stripe_refresh=1");
+      assert.equal(urls.returnUrl, "https://app-base.example.com/profile?stripe_return=1");
+      assert.equal(urls.isHttps, true);
+    },
+  );
+});
+
 test("driver Stripe connected account payload uses postal_code address field", async () => {
   const { createConnectedAccount } = await import("../server/stripeService");
   let createdPayload: Stripe.AccountCreateParams | undefined;
@@ -2968,8 +3015,8 @@ test("driver bank-connect session creates Express account only when payouts are 
   assert.ok(createdAccountLink);
   assert.equal(createdAccountLink.account, "acct_driver_bank_connect");
   assert.equal(createdAccountLink.type, "account_onboarding");
-  assert.equal(createdAccountLink.refresh_url, "https://example.com/driver/profile?stripe_refresh=1");
-  assert.equal(createdAccountLink.return_url, "https://example.com/driver/profile?stripe_return=1");
+  assert.equal(createdAccountLink.refresh_url, "https://example.com/profile?stripe_refresh=1");
+  assert.equal(createdAccountLink.return_url, "https://example.com/profile?stripe_return=1");
 });
 
 test("driver bank-connect session uses configured public HTTPS URLs in production", async () => {
@@ -3038,11 +3085,11 @@ test("driver bank-connect session uses configured public HTTPS URLs in productio
   assert.equal(createdAccountLink.account, "acct_driver_existing_https");
   assert.equal(
     createdAccountLink.refresh_url,
-    "https://cretexchangetemp-production.up.railway.app/driver/profile?stripe_refresh=1",
+    "https://cretexchangetemp-production.up.railway.app/profile?stripe_refresh=1",
   );
   assert.equal(
     createdAccountLink.return_url,
-    "https://cretexchangetemp-production.up.railway.app/driver/profile?stripe_return=1",
+    "https://cretexchangetemp-production.up.railway.app/profile?stripe_return=1",
   );
 });
 
@@ -3220,6 +3267,83 @@ test("driver bank-connect session returns exact Stripe 400 reason from account l
   );
 });
 
+test("driver Stripe onboarding returns admin setup error when live public app URL is missing", async () => {
+  const { app, gets } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: "acct_driver_onboarding_missing_url" });
+  let accountLinkCalls = 0;
+
+  await withPatchedEnv(
+    {
+      NODE_ENV: "production",
+      STRIPE_SECRET_KEY: "sk_live_unit_test_secret",
+      PUBLIC_APP_URL: undefined,
+      APP_BASE_URL: undefined,
+    },
+    async () => {
+      await withPatchedStripe(
+        {
+          accounts: {
+            retrieve: async () => ({
+              id: "acct_driver_onboarding_missing_url",
+              object: "account",
+              requirements: {
+                currently_due: ["external_account"],
+                past_due: [],
+                eventually_due: [],
+              },
+            } as Stripe.Account),
+          },
+          accountLinks: {
+            create: async () => {
+              accountLinkCalls += 1;
+              throw new Error("missing public app URL should fail before Stripe account link creation");
+            },
+          },
+        },
+        async () => {
+          await withPatchedStorage(
+            {
+              getUser: async () => user,
+              getFeatureFlag: async (flagKey: string) => makeFeatureFlag({ flagKey, enabled: true }),
+              getFeatureFlagOverride: async () => undefined,
+            },
+            async () => {
+              const { registerRoutes } = await import("../server/routes");
+              await registerRoutes(app as never);
+              const route = gets.get("/api/drivers/stripe-onboarding");
+              assert.equal(typeof route, "function");
+
+              const res = createResponse();
+              await route!(
+                {
+                  user: { id: user.id, role: "driver" },
+                  protocol: "http",
+                  get: () => "cretexchange.railway.internal:5000",
+                },
+                res,
+              );
+
+              assert.equal(res.statusCode, 500);
+              assert.equal((res.body as { code?: string }).code, "DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID");
+              assert.equal((res.body as { reason?: string }).reason, "driver_stripe_public_app_url_missing");
+              assert.equal(
+                (res.body as { message?: string }).message,
+                "Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.",
+              );
+              assert.match(
+                (res.body as { adminMessage?: string }).adminMessage || "",
+                /Set PUBLIC_APP_URL or APP_BASE_URL to the public HTTPS app URL/,
+              );
+            },
+          );
+        },
+      );
+    },
+  );
+
+  assert.equal(accountLinkCalls, 0);
+});
+
 test("driver Stripe onboarding creates account link URL for existing account", async () => {
   const { app, gets } = createRouteRegistry();
   const user = makeUser({ stripeConnectAccountId: "acct_driver_onboarding", phone: "512-555-0100" });
@@ -3295,7 +3419,8 @@ test("driver Stripe onboarding creates account link URL for existing account", a
   assert.ok(createdAccountLink);
   assert.equal(createdAccountLink.account, "acct_driver_onboarding");
   assert.equal(createdAccountLink.type, "account_onboarding");
-  assert.equal(createdAccountLink.return_url, "https://example.com/driver/profile?stripe_return=1");
+  assert.equal(createdAccountLink.refresh_url, "https://example.com/profile?stripe_refresh=1");
+  assert.equal(createdAccountLink.return_url, "https://example.com/profile?stripe_return=1");
   assert.equal(stripeCreateCalls, 0);
   assert.equal(updateStripeInfoCalls, 0);
 });

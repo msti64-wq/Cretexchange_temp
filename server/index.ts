@@ -7,11 +7,64 @@ installConsoleRedaction();
 
 const app = express();
 
+function getConfiguredUrlState(value?: string) {
+  const trimmedValue = value?.trim();
+  if (!trimmedValue) {
+    return {
+      configured: false,
+      isHttps: null,
+      isValidUrl: null,
+    };
+  }
+
+  try {
+    const parsedUrl = new URL(trimmedValue);
+    return {
+      configured: true,
+      isHttps: parsedUrl.protocol === "https:",
+      isValidUrl: true,
+    };
+  } catch {
+    return {
+      configured: true,
+      isHttps: false,
+      isValidUrl: false,
+    };
+  }
+}
+
+function logDriverStripeOnboardingUrlStartupState() {
+  const publicAppUrl = getConfiguredUrlState(process.env.PUBLIC_APP_URL);
+  const appBaseUrl = getConfiguredUrlState(process.env.APP_BASE_URL);
+  const selectedSource = publicAppUrl.configured
+    ? "PUBLIC_APP_URL"
+    : appBaseUrl.configured
+      ? "APP_BASE_URL"
+      : "missing";
+  const selectedUrl = selectedSource === "PUBLIC_APP_URL"
+    ? publicAppUrl
+    : selectedSource === "APP_BASE_URL"
+      ? appBaseUrl
+      : null;
+
+  console.log("Driver Stripe onboarding URL configuration:", {
+    hasPublicAppUrl: publicAppUrl.configured,
+    publicAppUrlIsValid: publicAppUrl.isValidUrl,
+    publicAppUrlIsHttps: publicAppUrl.isHttps,
+    hasAppBaseUrl: appBaseUrl.configured,
+    appBaseUrlIsValid: appBaseUrl.isValidUrl,
+    appBaseUrlIsHttps: appBaseUrl.isHttps,
+    selectedSource,
+    selectedUrlIsHttps: selectedUrl?.isHttps ?? null,
+  });
+}
+
 // Debug database connection
 console.log('Environment check:', {
   environment: process.env.REPLIT_DEPLOYMENT ? 'production' : 'development',
   hasDatabaseUrl: !!process.env.DATABASE_URL,
 });
+logDriverStripeOnboardingUrlStartupState();
 
 // Raw body parsing specifically for Stripe webhooks (must come before JSON parsing)
 app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }));

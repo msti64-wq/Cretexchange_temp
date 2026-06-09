@@ -361,8 +361,8 @@ export function buildDriverStripeOnboardingUrls(req?: any): DriverStripeOnboardi
   }
 
   const isHttps = parsedBaseUrl.protocol === 'https:';
-  const refreshUrl = `${baseUrl}/driver/profile?stripe_refresh=1`;
-  const returnUrl = `${baseUrl}/driver/profile?stripe_return=1`;
+  const refreshUrl = `${baseUrl}/profile?stripe_refresh=1`;
+  const returnUrl = `${baseUrl}/profile?stripe_return=1`;
   const commonDetails = {
     baseUrl,
     refreshUrl,
@@ -3803,8 +3803,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error creating Stripe onboarding link:', error);
-      res.status(500).json({
-        message: 'Failed to create onboarding link',
+      const isConfigError = error?.code === 'DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID';
+      res.status(error.statusCode || 500).json({
+        message: isConfigError
+          ? 'Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.'
+          : 'Failed to create onboarding link',
+        code: error?.code,
+        reason: error?.reason,
+        adminMessage: error?.adminMessage,
         error: error.message
       });
     }
