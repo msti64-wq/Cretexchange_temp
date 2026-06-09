@@ -2838,6 +2838,128 @@ test("superadmin Stripe Connect health check reports mode and transfer setup sta
   }
 });
 
+test("superadmin driver Stripe debug endpoint returns read-only account diagnostics", async () => {
+  const { app, gets } = createRouteRegistry();
+  const superAdmin = makeUser({ id: "super_admin_1", role: "super_admin" });
+  const driverUser = makeUser({ id: "driver_user_1", role: "driver", stripeConnectAccountId: "acct_driver_debug_td1" });
+  const driver = makeDriver({ id: "driver_td1", userId: driverUser.id });
+  let retrievedAccountId: string | undefined;
+  let stripeCreateCalls = 0;
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        retrieve: async (accountId: string) => {
+          retrievedAccountId = accountId;
+          return {
+            id: accountId,
+            object: "account",
+            details_submitted: true,
+            payouts_enabled: false,
+            charges_enabled: false,
+            requirements: {
+              currently_due: ["external_account"],
+              past_due: ["individual.verification.document"],
+              eventually_due: ["individual.id_number"],
+              disabled_reason: "requirements.past_due",
+            },
+            external_accounts: {
+              object: "list",
+              data: [
+                { id: "ba_1", object: "bank_account" },
+                { id: "card_1", object: "card" },
+                { id: "ba_2", object: "bank_account" },
+              ],
+              has_more: false,
+              total_count: 3,
+              url: "/v1/accounts/acct_driver_debug_td1/external_accounts",
+            },
+          } as unknown as Stripe.Account;
+        },
+        create: async () => {
+          stripeCreateCalls += 1;
+          throw new Error("diagnostic endpoint must not create Stripe accounts");
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async (id: string) => {
+            if (id === superAdmin.id) return superAdmin;
+            if (id === driverUser.id) return driverUser;
+            return undefined;
+          },
+          getDriver: async (userId: string) => userId === driverUser.id ? driver : undefined,
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = gets.get("/api/admin/debug/driver-stripe/:userId");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: superAdmin.id, role: "super_admin" },
+              params: { userId: driverUser.id },
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.deepEqual(res.body, {
+            userId: driverUser.id,
+            driverId: driver.id,
+            stripeAccountId: "acct_driver_debug_td1",
+            accountExists: true,
+            detailsSubmitted: true,
+            payoutsEnabled: false,
+            chargesEnabled: false,
+            requirementsCurrentlyDue: ["external_account"],
+            requirementsPastDue: ["individual.verification.document"],
+            requirementsEventuallyDue: ["individual.id_number"],
+            disabledReason: "requirements.past_due",
+            externalAccountsCount: 3,
+            bankAccountsCount: 2,
+            onboardingComplete: false,
+          });
+        },
+      );
+    },
+  );
+
+  assert.equal(retrievedAccountId, "acct_driver_debug_td1");
+  assert.equal(stripeCreateCalls, 0);
+});
+
+test("driver Stripe debug endpoint is super-admin only", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async () => makeUser({ id: "admin_1", role: "admin" }),
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/admin/debug/driver-stripe/:userId");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "admin_1", role: "admin" },
+          params: { userId: "driver_user_1" },
+        },
+        res,
+      );
+
+      assert.equal(res.statusCode, 403);
+    },
+  );
+});
+
 test("driver bank-connect session returns exact 400 reason from unexpected setup rejection", async () => {
   const { app, posts } = createRouteRegistry();
   const user = makeUser({ stripeConnectAccountId: null });
@@ -3778,6 +3900,82 @@ test("driver Stripe onboarding persists created account ID when account link gen
   assert.equal(updatedStripeAccountId, "acct_td1_created_before_link_failure");
   assert.equal(user.stripeConnectAccountId, "acct_td1_created_before_link_failure");
   assert.equal(retrievedAccountId, "acct_td1_created_before_link_failure");
+});
+
+test("driver Stripe onboarding link logs read-only account debug before creating link", async () => {
+  const { createDriverStripeOnboardingLink } = await import("../server/routes");
+  const debugAccount = {
+    id: "acct_driver_link_debug",
+    object: "account",
+    details_submitted: true,
+    payouts_enabled: false,
+    charges_enabled: false,
+    requirements: {
+      currently_due: ["external_account"],
+      past_due: [],
+      eventually_due: [],
+    },
+    external_accounts: {
+      object: "list",
+      data: [{ id: "ba_1", object: "bank_account" }],
+      has_more: false,
+      total_count: 1,
+      url: "/v1/accounts/acct_driver_link_debug/external_accounts",
+    },
+  } as unknown as Stripe.Account;
+  const logCalls: unknown[][] = [];
+  const originalLog = console.log;
+  let accountLinkPayload: Stripe.AccountLinkCreateParams | undefined;
+
+  console.log = (...args: unknown[]) => {
+    logCalls.push(args);
+  };
+
+  try {
+    await withPatchedStripe(
+      {
+        accountLinks: {
+          create: async (payload: Stripe.AccountLinkCreateParams) => {
+            accountLinkPayload = payload;
+            return {
+              object: "account_link",
+              created: 1,
+              expires_at: 2,
+              url: "https://connect.stripe.com/setup/debug-log",
+            } as Stripe.AccountLink;
+          },
+        },
+      },
+      async () => {
+        const link = await createDriverStripeOnboardingLink(
+          {
+            protocol: "https",
+            get: () => "example.com",
+          },
+          "acct_driver_link_debug",
+          debugAccount,
+        );
+
+        assert.equal(link.url, "https://connect.stripe.com/setup/debug-log");
+      },
+    );
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.ok(accountLinkPayload);
+  assert.equal(accountLinkPayload.account, "acct_driver_link_debug");
+  assert.equal(accountLinkPayload.type, "account_onboarding");
+  const debugLog = logCalls.find((args) => args[0] === "[DRIVER_STRIPE_DEBUG]");
+  assert.ok(debugLog);
+  assert.deepEqual(debugLog?.[1], {
+    stripeAccountId: "acct_driver_link_debug",
+    detailsSubmitted: true,
+    payoutsEnabled: false,
+    chargesEnabled: false,
+    currentlyDue: ["external_account"],
+    externalAccountsCount: 1,
+  });
 });
 
 test("driver Stripe onboarding creates account link URL for existing account", async () => {

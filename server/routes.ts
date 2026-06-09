@@ -625,6 +625,56 @@ function buildDriverStripeStatusResponse(
   };
 }
 
+function getStripeExternalAccounts(account: Stripe.Account): any[] {
+  return ((account.external_accounts as any)?.data || []) as any[];
+}
+
+function getStripeExternalAccountsCount(account: Stripe.Account): number {
+  const externalAccounts = account.external_accounts as any;
+  if (typeof externalAccounts?.total_count === 'number') {
+    return externalAccounts.total_count;
+  }
+  return getStripeExternalAccounts(account).length;
+}
+
+function getStripeBankAccountsCount(account: Stripe.Account): number {
+  return getStripeExternalAccounts(account).filter((externalAccount) => {
+    return externalAccount?.object === 'bank_account'
+      || externalAccount?.type === 'bank_account'
+      || externalAccount?.type === 'us_bank_account';
+  }).length;
+}
+
+function buildDriverStripeDebugAccountResponse(params: {
+  userId: string;
+  driverId: string | null;
+  stripeAccountId: string | null;
+  account?: Stripe.Account | null;
+}) {
+  const account = params.account || null;
+  const requirementsCurrentlyDue = account?.requirements?.currently_due || [];
+  const requirementsPastDue = account?.requirements?.past_due || [];
+  const requirementsEventuallyDue = account?.requirements?.eventually_due || [];
+  const payoutsEnabled = Boolean(account?.payouts_enabled);
+
+  return {
+    userId: params.userId,
+    driverId: params.driverId,
+    stripeAccountId: account?.id || params.stripeAccountId,
+    accountExists: Boolean(account),
+    detailsSubmitted: Boolean(account?.details_submitted),
+    payoutsEnabled,
+    chargesEnabled: Boolean(account?.charges_enabled),
+    requirementsCurrentlyDue,
+    requirementsPastDue,
+    requirementsEventuallyDue,
+    disabledReason: account?.requirements?.disabled_reason || null,
+    externalAccountsCount: account ? getStripeExternalAccountsCount(account) : 0,
+    bankAccountsCount: account ? getStripeBankAccountsCount(account) : 0,
+    onboardingComplete: payoutsEnabled,
+  };
+}
+
 function getStripeModeFromSecretKey(): 'test' | 'live' | 'unknown' {
   const secretKey = process.env.STRIPE_SECRET_KEY || '';
   if (secretKey.startsWith('sk_test_')) return 'test';
@@ -785,9 +835,36 @@ export async function createDriverStripePayoutAccount(
   return await stripe.accounts.create(buildDriverStripePayoutAccountParams(user, driver));
 }
 
-export async function createDriverStripeOnboardingLink(req: any, stripeConnectAccountId: string) {
+export async function createDriverStripeOnboardingLink(
+  req: any,
+  stripeConnectAccountId: string,
+  debugAccount?: Stripe.Account | null,
+) {
   const urlConfig = buildDriverStripeOnboardingUrls(req);
   logDriverStripeAccountLinkConfig(stripeConnectAccountId, urlConfig);
+
+  try {
+    const account = debugAccount
+      || (process.env.NODE_ENV === 'test' ? null : await stripe.accounts.retrieve(stripeConnectAccountId));
+
+    if (account) {
+      console.log('[DRIVER_STRIPE_DEBUG]', {
+        stripeAccountId: account.id,
+        detailsSubmitted: Boolean(account.details_submitted),
+        payoutsEnabled: Boolean(account.payouts_enabled),
+        chargesEnabled: Boolean(account.charges_enabled),
+        currentlyDue: account.requirements?.currently_due || [],
+        externalAccountsCount: getStripeExternalAccountsCount(account),
+      });
+    }
+  } catch (error: any) {
+    console.warn('[DRIVER_STRIPE_DEBUG]', {
+      stripeAccountId: stripeConnectAccountId,
+      reason: 'stripe_account_debug_retrieve_failed',
+      message: error?.message,
+      stripeError: getSafeStripeErrorDetails(error),
+    });
+  }
 
   return await stripe.accountLinks.create({
     account: stripeConnectAccountId,
@@ -3817,7 +3894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create Account Link for onboarding
       let accountLink: Awaited<ReturnType<typeof createDriverStripeOnboardingLink>>;
       try {
-        accountLink = await createDriverStripeOnboardingLink(req, stripeConnectAccountId);
+        accountLink = await createDriverStripeOnboardingLink(req, stripeConnectAccountId, account);
       } catch (stripeError: any) {
         const statusCode = typeof stripeError?.statusCode === 'number' ? stripeError.statusCode : 502;
         const safeStripeError = getSafeStripeErrorDetails(stripeError);
@@ -7878,6 +7955,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== ADMIN STRIPE DIAGNOSTIC & VERIFICATION TOOLS ====================
+
+  // GET /api/admin/debug/driver-stripe/:userId - Temporary read-only driver Connect diagnostics
+  app.get('/api/admin/debug/driver-stripe/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUser = await storage.getUser(req.user.id);
+      if (adminUser?.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required' });
+      }
+
+      const { userId } = req.params;
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: 'Driver user not found' });
+      }
+
+      if (targetUser.role !== 'driver') {
+        return res.status(400).json({ message: 'Target user is not a driver' });
+      }
+
+      const driver = await storage.getDriver(userId);
+      const stripeAccountId =
+        targetUser.stripeConnectAccountId
+        || driver?.stripeConnectAccountId
+        || driver?.connectedAccountId
+        || null;
+
+      if (!stripeAccountId) {
+        const response = buildDriverStripeDebugAccountResponse({
+          userId,
+          driverId: driver?.id || null,
+          stripeAccountId: null,
+          account: null,
+        });
+        console.log('[DRIVER_STRIPE_DEBUG]', response);
+        return res.json(response);
+      }
+
+      const account = await stripe.accounts.retrieve(stripeAccountId);
+      const response = buildDriverStripeDebugAccountResponse({
+        userId,
+        driverId: driver?.id || null,
+        stripeAccountId,
+        account,
+      });
+
+      console.log('[DRIVER_STRIPE_DEBUG]', response);
+      return res.json(response);
+    } catch (error: any) {
+      console.error('[DRIVER_STRIPE_DEBUG] Driver Stripe diagnostic failed:', {
+        requestedUserId: req.params?.userId,
+        message: error?.message,
+        stripeError: getSafeStripeErrorDetails(error),
+      });
+      return res.status(error?.statusCode || 500).json({
+        message: 'Failed to read driver Stripe diagnostic status',
+        reason: 'driver_stripe_debug_failed',
+        error: error?.message,
+        stripeError: getSafeStripeErrorDetails(error),
+      });
+    }
+  });
   
   // GET /api/admin/stripe/account/:userId - Get full Stripe account details for debugging
   app.get('/api/admin/stripe/account/:userId', isAuthenticated, async (req: any, res) => {

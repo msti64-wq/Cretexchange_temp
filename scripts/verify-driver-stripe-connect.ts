@@ -89,7 +89,7 @@ const req = {
   },
 };
 
-const accountLink = await createDriverStripeOnboardingLink(req, account.id);
+const accountLink = await createDriverStripeOnboardingLink(req, account.id, account);
 
 console.log("[DRIVER_STRIPE_CONNECT_DIAGNOSTIC] Created test connected account and onboarding link:");
 console.log(JSON.stringify({
