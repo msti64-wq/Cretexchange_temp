@@ -43,6 +43,71 @@ const customBillingModelSchema = z.object({
   customWashoutRate: z.string().optional(),
 });
 
+type DriverStripeDebugStatus = {
+  userId: string;
+  driverId: string | null;
+  stripeAccountId: string | null;
+  accountExists: boolean;
+  detailsSubmitted: boolean;
+  payoutsEnabled: boolean;
+  chargesEnabled: boolean;
+  requirementsCurrentlyDue: string[];
+  requirementsPastDue: string[];
+  requirementsEventuallyDue: string[];
+  disabledReason: string | null;
+  externalAccountsCount: number;
+  bankAccountsCount: number;
+  onboardingComplete: boolean;
+};
+
+function formatDriverStripeDebugArray(values?: string[]) {
+  return values?.length ? values.join(", ") : "None";
+}
+
+function getDriverStripeDebugSummary(status: DriverStripeDebugStatus) {
+  const currentlyDue = status.requirementsCurrentlyDue || [];
+  const pastDue = status.requirementsPastDue || [];
+  const requiresExternalAccount = currentlyDue.some((field) => field.includes("external_account"));
+
+  if (!status.accountExists) {
+    return {
+      label: "No Stripe account found",
+      message: "No saved Stripe Connect account ID exists for this driver.",
+      variant: "secondary" as const,
+    };
+  }
+
+  if (status.onboardingComplete && status.payoutsEnabled) {
+    return {
+      label: "Payouts ready",
+      message: "Stripe reports this driver can receive payouts.",
+      variant: "default" as const,
+    };
+  }
+
+  if (requiresExternalAccount || status.bankAccountsCount === 0) {
+    return {
+      label: "Bank account missing",
+      message: "Stripe still needs a bank account through secure onboarding.",
+      variant: "destructive" as const,
+    };
+  }
+
+  if (currentlyDue.length > 0 || pastDue.length > 0 || status.disabledReason) {
+    return {
+      label: "Action required",
+      message: "Stripe requires more information before payouts are ready.",
+      variant: "destructive" as const,
+    };
+  }
+
+  return {
+    label: "Account exists, onboarding incomplete",
+    message: "The connected account exists, but Stripe has not marked payouts ready.",
+    variant: "secondary" as const,
+  };
+}
+
 export default function AdminUsers() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -54,6 +119,9 @@ export default function AdminUsers() {
   const [platformFeeDialogOpen, setPlatformFeeDialogOpen] = useState(false);
   const [customBillingDialogOpen, setCustomBillingDialogOpen] = useState(false);
   const [selectedOwner, setSelectedOwner] = useState<any>(null);
+  const [stripeDebugDialogOpen, setStripeDebugDialogOpen] = useState(false);
+  const [selectedDriverStripeUser, setSelectedDriverStripeUser] = useState<any>(null);
+  const [driverStripeDebugStatus, setDriverStripeDebugStatus] = useState<DriverStripeDebugStatus | null>(null);
 
   const createAdminForm = useForm<z.infer<typeof createAdminSchema>>({
     resolver: zodResolver(createAdminSchema),
@@ -268,6 +336,31 @@ export default function AdminUsers() {
         customWashoutRate: hasCustomWashoutRate ? rateInput : null,
       });
     }
+  };
+
+  const driverStripeDebugMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("GET", `/api/admin/debug/driver-stripe/${encodeURIComponent(userId)}`);
+      return await response.json() as DriverStripeDebugStatus;
+    },
+    onSuccess: (data) => {
+      setDriverStripeDebugStatus(data);
+    },
+    onError: (error: any) => {
+      setDriverStripeDebugStatus(null);
+      toast({
+        title: "Stripe Status Check Failed",
+        description: error.message || "Unable to retrieve driver Stripe status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCheckDriverStripeStatus = (driverUser: any) => {
+    setSelectedDriverStripeUser(driverUser);
+    setDriverStripeDebugStatus(null);
+    setStripeDebugDialogOpen(true);
+    driverStripeDebugMutation.mutate(driverUser.id);
   };
 
   // Get current user to check if super admin
@@ -750,6 +843,20 @@ export default function AdminUsers() {
                           </Button>
                         </>
                       )}
+                      {user.role === 'driver' && (currentUser as any)?.role === 'super_admin' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleCheckDriverStripeStatus(user)}
+                          disabled={driverStripeDebugMutation.isPending && selectedDriverStripeUser?.id === user.id}
+                          data-testid={`button-check-driver-stripe-status-${index}`}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          {driverStripeDebugMutation.isPending && selectedDriverStripeUser?.id === user.id
+                            ? "Checking..."
+                            : "Check Driver Stripe Status"}
+                        </Button>
+                      )}
                       {user.role !== 'super_admin' && (
                         <Button
                           size="sm"
@@ -938,6 +1045,94 @@ export default function AdminUsers() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={stripeDebugDialogOpen}
+        onOpenChange={(open) => {
+          setStripeDebugDialogOpen(open);
+          if (!open) {
+            setSelectedDriverStripeUser(null);
+            setDriverStripeDebugStatus(null);
+            driverStripeDebugMutation.reset();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Driver Stripe Status</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {selectedDriverStripeUser && (
+              <div className="text-sm text-muted-foreground">
+                <p>
+                  <span className="font-medium text-foreground">Driver:</span>{" "}
+                  {selectedDriverStripeUser.firstName} {selectedDriverStripeUser.lastName}
+                </p>
+                <p>
+                  <span className="font-medium text-foreground">User ID:</span>{" "}
+                  <span data-testid="text-driver-stripe-debug-user-id">{selectedDriverStripeUser.id}</span>
+                </p>
+              </div>
+            )}
+
+            {driverStripeDebugMutation.isPending && (
+              <div className="rounded-lg border p-4 text-sm text-muted-foreground" data-testid="text-driver-stripe-debug-loading">
+                Checking Stripe status...
+              </div>
+            )}
+
+            {driverStripeDebugStatus && (() => {
+              const summary = getDriverStripeDebugSummary(driverStripeDebugStatus);
+              const rows = [
+                ["stripeAccountId", driverStripeDebugStatus.stripeAccountId || "None"],
+                ["accountExists", driverStripeDebugStatus.accountExists ? "Yes" : "No"],
+                ["detailsSubmitted", driverStripeDebugStatus.detailsSubmitted ? "Yes" : "No"],
+                ["payoutsEnabled", driverStripeDebugStatus.payoutsEnabled ? "Yes" : "No"],
+                ["chargesEnabled", driverStripeDebugStatus.chargesEnabled ? "Yes" : "No"],
+                ["externalAccountsCount", String(driverStripeDebugStatus.externalAccountsCount)],
+                ["bankAccountsCount", String(driverStripeDebugStatus.bankAccountsCount)],
+                ["requirementsCurrentlyDue", formatDriverStripeDebugArray(driverStripeDebugStatus.requirementsCurrentlyDue)],
+                ["requirementsPastDue", formatDriverStripeDebugArray(driverStripeDebugStatus.requirementsPastDue)],
+                ["disabledReason", driverStripeDebugStatus.disabledReason || "None"],
+                ["onboardingComplete", driverStripeDebugStatus.onboardingComplete ? "Yes" : "No"],
+              ];
+
+              return (
+                <div className="space-y-4" data-testid="panel-driver-stripe-debug-result">
+                  <div className="rounded-lg border p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">Diagnostic Status</p>
+                        <p className="text-sm text-muted-foreground" data-testid="text-driver-stripe-debug-summary">
+                          {summary.message}
+                        </p>
+                      </div>
+                      <Badge variant={summary.variant} data-testid="badge-driver-stripe-debug-status">
+                        {summary.label}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border">
+                    {rows.map(([label, value], rowIndex) => (
+                      <div
+                        key={label}
+                        className={`grid grid-cols-1 gap-1 px-4 py-3 text-sm sm:grid-cols-[220px_1fr] ${rowIndex > 0 ? "border-t" : ""}`}
+                      >
+                        <div className="font-medium text-muted-foreground">{label}</div>
+                        <div className="break-words font-mono text-xs sm:text-sm" data-testid={`text-driver-stripe-debug-${label}`}>
+                          {value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </DialogContent>
       </Dialog>
 

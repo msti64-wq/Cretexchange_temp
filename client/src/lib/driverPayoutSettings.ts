@@ -12,6 +12,7 @@ export type DriverPayoutAction =
 
 export interface DriverStripeRequirements {
   hasAccount: boolean;
+  stripeAccountId?: string | null;
   stripeConnectAccountId?: string | null;
   accountId?: string;
   connectedAccountIdExists?: boolean;
@@ -27,6 +28,9 @@ export interface DriverStripeRequirements {
   hasBlockingRequirements?: boolean;
   requirementsCurrentlyDue?: string[];
   requirementsPastDue?: string[];
+  currentlyDue?: string[];
+  pastDue?: string[];
+  externalAccountsCount?: number;
   requirements?: {
     currently_due?: string[];
     past_due?: string[];
@@ -42,7 +46,7 @@ export interface DriverPayoutActionState {
 
 export interface DriverPayoutSettingsState {
   status: DriverPayoutStatus;
-  statusLabel: "Payouts Disabled" | "Not Started" | "Setup Started" | "Action Required" | "Payouts Ready";
+  statusLabel: "Payouts Disabled" | "Not Started" | "Resume Onboarding" | "Action Required" | "Payouts Ready";
   primaryAction: DriverPayoutActionState;
   secondaryActions: DriverPayoutActionState[];
   featureAvailable: boolean;
@@ -79,7 +83,7 @@ export function getDriverPayoutStatusLabel(status: DriverPayoutStatus): DriverPa
     case "action_required":
       return "Action Required";
     case "setup_started":
-      return "Setup Started";
+      return "Resume Onboarding";
     case "payouts_disabled":
       return "Payouts Disabled";
     case "not_started":

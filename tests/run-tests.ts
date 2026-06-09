@@ -121,13 +121,16 @@ test("driver Stripe payouts feature flag is defined and disabled by default", ()
 test("driver profile bank connect visibility uses driver_stripe_payouts only", () => {
   const driverProfileSource = readFileSync(new URL("../client/src/pages/driver/profile.tsx", import.meta.url), "utf8");
   const driverPayoutSettingsSource = readFileSync(new URL("../client/src/components/DriverPayoutSettings.tsx", import.meta.url), "utf8");
-  const driverPayoutSource = `${driverProfileSource}\n${driverPayoutSettingsSource}`;
+  const bankAccountConnectSource = readFileSync(new URL("../client/src/components/BankAccountConnect.tsx", import.meta.url), "utf8");
+  const driverPayoutSource = `${driverProfileSource}\n${driverPayoutSettingsSource}\n${bankAccountConnectSource}`;
 
   assert.match(driverProfileSource, /FEATURE_FLAGS\.DRIVER_STRIPE_PAYOUTS/);
   assert.doesNotMatch(driverPayoutSource, /WAIVE_DRIVER_PAYMENT|waive_driver_payment/);
   assert.doesNotMatch(driverPayoutSource, /\/api\/feature-flags\/[^"']+\/toggle/);
   assert.doesNotMatch(driverProfileSource, /\/api\/drivers\/bank-connect\/session/);
+  assert.doesNotMatch(driverPayoutSource, /\/api\/drivers\/bank-connect\/session/);
   assert.match(driverPayoutSettingsSource, /\/api\/drivers\/stripe-status/);
+  assert.match(driverPayoutSource, /\/api\/drivers\/stripe-onboarding/);
   assert.match(driverPayoutSettingsSource, /if \(action === "connect_bank_account"\)[\s\S]*connectBankMutation\.mutate\(\)/);
   assert.match(driverPayoutSettingsSource, /data\?\.url \|\| data\?\.onboardingUrl/);
   assert.match(driverPayoutSettingsSource, /window\.location\.href = onboardingUrl/);
@@ -235,7 +238,7 @@ test("enabled driver_stripe_payouts with setup-started Stripe account shows Resu
 
   assert.equal(state.featureAvailable, true);
   assert.equal(state.status, "setup_started");
-  assert.equal(state.statusLabel, "Setup Started");
+  assert.equal(state.statusLabel, "Resume Onboarding");
   assert.equal(state.primaryAction.action, "resume_stripe_onboarding");
   assert.equal(state.primaryAction.label, "Resume Stripe Onboarding");
   assert.equal(state.primaryAction.visible, true);
@@ -298,6 +301,47 @@ test("admin settings exposes Stripe Connect setup health check", () => {
   assert.match(adminSettingsSource, /Stripe mode test\/live/);
   assert.match(adminSettingsSource, /`transfers` connected-account capability/);
   assert.match(adminSettingsSource, /does not create a driver card, customer, or charge the driver/);
+});
+
+test("superadmin users page exposes read-only driver Stripe diagnostic action", () => {
+  const adminUsersSource = readFileSync(new URL("../client/src/pages/admin/users.tsx", import.meta.url), "utf8");
+
+  assert.match(adminUsersSource, /Check Driver Stripe Status/);
+  assert.match(adminUsersSource, /user\.role === 'driver' && \(currentUser as any\)\?\.role === 'super_admin'/);
+  assert.match(adminUsersSource, /apiRequest\("GET", `\/api\/admin\/debug\/driver-stripe\/\$\{encodeURIComponent\(userId\)\}`\)/);
+  assert.doesNotMatch(adminUsersSource, /apiRequest\("(POST|PUT|DELETE)", `\/api\/admin\/debug\/driver-stripe/);
+
+  for (const field of [
+    "stripeAccountId",
+    "accountExists",
+    "detailsSubmitted",
+    "payoutsEnabled",
+    "chargesEnabled",
+    "externalAccountsCount",
+    "bankAccountsCount",
+    "requirementsCurrentlyDue",
+    "requirementsPastDue",
+    "disabledReason",
+    "onboardingComplete",
+  ]) {
+    assert.match(adminUsersSource, new RegExp(field));
+  }
+
+  assert.match(adminUsersSource, /Account exists, onboarding incomplete/);
+  assert.match(adminUsersSource, /Bank account missing/);
+  assert.match(adminUsersSource, /Payouts ready/);
+  assert.match(adminUsersSource, /Action required/);
+});
+
+test("driver Stripe onboarding uses canonical GET route with legacy bank-connect delegation", () => {
+  const routesSource = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
+
+  assert.match(routesSource, /app\.get\('\/api\/drivers\/stripe-onboarding', isAuthenticated, handleDriverStripeOnboarding\)/);
+  assert.doesNotMatch(routesSource, /app\.post\('\/api\/drivers\/stripe-onboarding'/);
+  assert.match(
+    routesSource,
+    /app\.post\('\/api\/drivers\/bank-connect\/session'[\s\S]*handleDriverStripeOnboarding\(req, res\)/,
+  );
 });
 
 test("driver Stripe Connect diagnostic script uses production payout onboarding helpers", () => {
@@ -387,6 +431,19 @@ test("driver Stripe onboarding URL config prefers PUBLIC_APP_URL then APP_BASE_U
       assert.equal(urls.isHttps, true);
     },
   );
+});
+
+test("driver Stripe onboarding URL diagnostics log exact public URL env keys read", () => {
+  const routesSource = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
+
+  assert.match(routesSource, /envKeysRead: \['PUBLIC_APP_URL', 'APP_BASE_URL', 'RAILWAY_PUBLIC_DOMAIN'\]/);
+  assert.match(routesSource, /publicAppUrlConfigured/);
+  assert.match(routesSource, /appBaseUrlConfigured/);
+  assert.match(routesSource, /railwayPublicDomainConfigured/);
+  assert.match(routesSource, /resolvedSource/);
+  assert.match(routesSource, /resolvedHost/);
+  assert.match(routesSource, /publicUrlEnv/);
+  assert.doesNotMatch(routesSource, /console\.(log|info|warn|error)\([^)]*process\.env\.STRIPE_SECRET_KEY/);
 });
 
 test("driver Stripe connected account payload uses postal_code address field", async () => {
@@ -3317,7 +3374,7 @@ test("driver Stripe onboarding reuses existing Stripe account found by user meta
           await registerRoutes(app as never);
           const route = gets.get("/api/drivers/stripe-onboarding");
           assert.equal(typeof route, "function");
-          assert.equal(typeof posts.get("/api/drivers/stripe-onboarding"), "function");
+          assert.equal(typeof posts.get("/api/drivers/stripe-onboarding"), "undefined");
 
           const res = createResponse();
           await route!(
@@ -3340,7 +3397,7 @@ test("driver Stripe onboarding reuses existing Stripe account found by user meta
 
   assert.equal(stripeCreateCalls, 0);
   assert.equal(updatedStripeAccountId, "acct_driver_metadata_reuse");
-  assert.equal(retrievedAccountId, "acct_driver_metadata_reuse");
+  assert.equal(retrievedAccountId, undefined);
   assert.ok(createdAccountLink);
   assert.equal(createdAccountLink.account, "acct_driver_metadata_reuse");
   assert.equal(createdAccountLink.type, "account_onboarding");
@@ -3899,7 +3956,7 @@ test("driver Stripe onboarding persists created account ID when account link gen
   assert.equal(accountLinkCalls, 0);
   assert.equal(updatedStripeAccountId, "acct_td1_created_before_link_failure");
   assert.equal(user.stripeConnectAccountId, "acct_td1_created_before_link_failure");
-  assert.equal(retrievedAccountId, "acct_td1_created_before_link_failure");
+  assert.equal(retrievedAccountId, undefined);
 });
 
 test("driver Stripe onboarding link logs read-only account debug before creating link", async () => {
@@ -4109,17 +4166,21 @@ test("driver Stripe status exposes setup-started connected account payout status
           assert.equal((res.body as { hasAccount?: boolean }).hasAccount, true);
           assert.equal((res.body as { connectedAccountIdExists?: boolean }).connectedAccountIdExists, true);
           assert.equal((res.body as { stripeConnectAccountId?: string }).stripeConnectAccountId, "acct_driver_debug_status");
+          assert.equal((res.body as { stripeAccountId?: string }).stripeAccountId, "acct_driver_debug_status");
           assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_debug_status");
           assert.equal((res.body as { status?: string }).status, "setup_started");
-          assert.equal((res.body as { statusLabel?: string }).statusLabel, "Setup Started");
+          assert.equal((res.body as { statusLabel?: string }).statusLabel, "Resume Onboarding");
           assert.equal((res.body as { detailsSubmitted?: boolean }).detailsSubmitted, false);
           assert.equal((res.body as { onboardingComplete?: boolean }).onboardingComplete, false);
           assert.equal((res.body as { payoutsEnabled?: boolean }).payoutsEnabled, false);
           assert.equal((res.body as { chargesEnabled?: boolean }).chargesEnabled, false);
+          assert.equal((res.body as { externalAccountsCount?: number }).externalAccountsCount, 0);
           assert.deepEqual(
             (res.body as { requirementsCurrentlyDue?: string[] }).requirementsCurrentlyDue,
             ["external_account"],
           );
+          assert.deepEqual((res.body as { currentlyDue?: string[] }).currentlyDue, ["external_account"]);
+          assert.deepEqual((res.body as { pastDue?: string[] }).pastDue, []);
         },
       );
     },

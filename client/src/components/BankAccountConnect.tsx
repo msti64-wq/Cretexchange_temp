@@ -33,12 +33,14 @@ export function BankAccountConnect({
     try {
       setIsConnecting(true);
 
-      // Step 1: Create Financial Connections session
-      const endpoint = userType === 'driver' 
-        ? '/api/drivers/bank-connect/session'
+      // Step 1: Create Financial Connections session or Stripe-hosted onboarding link.
+      const endpoint = userType === 'driver'
+        ? '/api/drivers/stripe-onboarding'
         : '/api/owners/bank-connect/session';
 
-      const sessionResponse = await apiRequest('POST', endpoint, {});
+      const sessionResponse = userType === 'driver'
+        ? await apiRequest('GET', endpoint)
+        : await apiRequest('POST', endpoint, {});
       const sessionData = await sessionResponse.json();
 
       if (userType === 'driver') {

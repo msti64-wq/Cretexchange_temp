@@ -139,8 +139,8 @@ export function DriverPayoutSettings({
     : state.primaryAction.action === "resume_stripe_onboarding"
       ? "button-driver-resume-stripe-onboarding"
       : "button-driver-view-stripe-status";
-  const currentlyDue = requirements?.requirementsCurrentlyDue ?? requirements?.requirements?.currently_due ?? [];
-  const connectedAccountIdExists = requirements?.connectedAccountIdExists ?? Boolean(requirements?.accountId);
+  const currentlyDue = requirements?.requirementsCurrentlyDue ?? requirements?.currentlyDue ?? requirements?.requirements?.currently_due ?? [];
+  const connectedAccountIdExists = requirements?.connectedAccountIdExists ?? Boolean(requirements?.stripeAccountId || requirements?.accountId);
   const onboardingComplete = requirements?.onboardingComplete ?? requirements?.isVerified;
   const payoutsEnabled = requirements?.payoutsEnabled ?? requirements?.payouts_enabled;
   const chargesEnabled = requirements?.chargesEnabled ?? requirements?.charges_enabled;
