@@ -89,12 +89,45 @@ function logDriverStripeOnboardingUrlStartupState() {
   });
 }
 
+function getDeploymentGitCommitState() {
+  const commitSources = [
+    ["RAILWAY_GIT_COMMIT_SHA", process.env.RAILWAY_GIT_COMMIT_SHA],
+    ["GIT_COMMIT_SHA", process.env.GIT_COMMIT_SHA],
+    ["GIT_SHA", process.env.GIT_SHA],
+    ["COMMIT_SHA", process.env.COMMIT_SHA],
+    ["SOURCE_VERSION", process.env.SOURCE_VERSION],
+    ["npm_package_gitHead", process.env.npm_package_gitHead],
+  ] as const;
+  const branchSources = [
+    ["RAILWAY_GIT_BRANCH", process.env.RAILWAY_GIT_BRANCH],
+    ["GIT_BRANCH", process.env.GIT_BRANCH],
+    ["BRANCH", process.env.BRANCH],
+  ] as const;
+  const commit = commitSources.find(([, value]) => Boolean(value?.trim()));
+  const branch = branchSources.find(([, value]) => Boolean(value?.trim()));
+
+  return {
+    commitConfigured: Boolean(commit),
+    commitSource: commit?.[0] ?? null,
+    gitCommitHash: commit?.[1]?.trim() ?? null,
+    gitCommitShort: commit?.[1]?.trim().slice(0, 7) ?? null,
+    branchConfigured: Boolean(branch),
+    branchSource: branch?.[0] ?? null,
+    gitBranch: branch?.[1]?.trim() ?? null,
+  };
+}
+
+function logDeploymentGitCommitStartupState() {
+  console.log("Deployment git commit:", getDeploymentGitCommitState());
+}
+
 // Debug database connection
 console.log('Environment check:', {
   environment: process.env.REPLIT_DEPLOYMENT ? 'production' : 'development',
   hasDatabaseUrl: !!process.env.DATABASE_URL,
 });
 logDriverStripeOnboardingUrlStartupState();
+logDeploymentGitCommitStartupState();
 
 // Raw body parsing specifically for Stripe webhooks (must come before JSON parsing)
 app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }));

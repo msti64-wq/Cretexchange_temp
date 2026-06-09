@@ -44,7 +44,7 @@ export function DriverPayoutSettings({
   } = useQuery<DriverStripeRequirements>({
     queryKey: ["/api/drivers/stripe-status"],
     enabled: featureEnabled,
-    refetchInterval: featureEnabled ? 30000 : false,
+    refetchInterval: (query) => featureEnabled && query.state.fetchFailureCount < 3 ? 30000 : false,
   });
 
   const handleOnboardingResponse = (data: any) => {

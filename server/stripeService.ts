@@ -161,6 +161,12 @@ export async function createConnectedAccount(params: CreateConnectedAccountParam
     }
 
     const capabilities = buildAccountCapabilities(params.capabilities);
+    if (params.type === 'express' && capabilities.transfers && !capabilities.card_payments) {
+      // Stripe live may reject transfers-only Express account creation.
+      // Requesting card_payments with transfers is a Connect account capability
+      // requirement and does not make the driver a payer.
+      capabilities.card_payments = { requested: true };
+    }
     console.log('[STRIPE_ACCOUNT_CAPABILITIES]', {
       route: params.route || 'stripeService.createConnectedAccount',
       userId: params.userId,
@@ -320,8 +326,10 @@ export async function updateConnectedAccount(
 }
 
 /**
- * Request the driver connected-account payout capability.
+ * Request the driver connected-account payout capabilities.
  * This does not create a driver Customer, card, PaymentIntent, or SetupIntent.
+ * Stripe live may require card_payments with transfers for Express Connect
+ * accounts; this does not mean the driver pays or accepts app payments.
  */
 export async function requestTransfersCapability(accountId: string): Promise<Stripe.Account> {
   try {
@@ -329,6 +337,7 @@ export async function requestTransfersCapability(accountId: string): Promise<Str
     
     const account = await stripe.accounts.update(accountId, {
       capabilities: {
+        card_payments: { requested: true },
         transfers: { requested: true },
       },
     });
@@ -388,6 +397,7 @@ export async function backfillExpressAccountController(accountId: string): Promi
     // Update payout capability to ensure it's properly configured
     const updatedAccount = await stripe.accounts.update(accountId, {
       capabilities: {
+        card_payments: { requested: true },
         transfers: { requested: true },
       },
     });
@@ -535,6 +545,7 @@ export async function updateConnectedAccountWithCompleteInfo(
     const accountParams: Stripe.AccountUpdateParams = {
       capabilities: options.payoutOnly
         ? {
+            card_payments: { requested: true },
             transfers: { requested: true },
           }
         : {

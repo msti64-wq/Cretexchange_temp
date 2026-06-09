@@ -811,6 +811,10 @@ export function buildDriverStripePayoutAccountParams(
 ): Stripe.AccountCreateParams {
   const email = user.email?.trim() || undefined;
   const capabilities: Stripe.AccountCreateParams.Capabilities = {
+    // Stripe live may reject transfers-only Express account creation.
+    // Requesting card_payments with transfers is a Connect account capability
+    // requirement and does not make the driver a payer.
+    card_payments: { requested: true },
     transfers: { requested: true },
   };
 
@@ -3838,8 +3842,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GET /api/drivers/stripe-requirements - Check Stripe account requirements
   app.get('/api/drivers/stripe-requirements', isAuthenticated, async (req: any, res) => {
+    let userId: string | undefined;
+    let stripeConnectAccountId: string | null = null;
+
     try {
-      const userId = req.user.id;
+      userId = req.user.id;
       const user = await storage.getUser(userId);
 
       if (!user) {
@@ -3850,7 +3857,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Driver access required' });
       }
 
-      if (!user.stripeConnectAccountId) {
+      stripeConnectAccountId = user.stripeConnectAccountId || null;
+
+      if (!stripeConnectAccountId) {
         return res.json({
           ...buildDriverStripeStatusResponse(null),
           message: 'Stripe Connect account not created yet',
@@ -3858,7 +3867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get account status from Stripe
-      const account = await stripe.accounts.retrieve(user.stripeConnectAccountId);
+      const account = await stripe.accounts.retrieve(stripeConnectAccountId);
       
       // Import utility functions for human-readable translations
       const { formatStripeRequirements } = await import('./stripeUtils');
@@ -3890,10 +3899,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         needsIdDocument,
       });
     } catch (error: any) {
-      console.error('Error checking Stripe requirements:', error);
-      res.status(500).json({
-        message: 'Failed to check account requirements',
-        error: error.message
+      const safeStripeError = getSafeStripeErrorDetails(error);
+      console.error('[DRIVER_STRIPE_REQUIREMENTS] Error checking Stripe requirements:', {
+        userId: userId || req.user?.id || null,
+        stripeConnectAccountId,
+        message: error?.message,
+        stripeError: safeStripeError,
+      });
+      return res.json({
+        ...buildDriverStripeStatusResponse(stripeConnectAccountId),
+        message: 'Stripe payout status is temporarily unavailable. Please retry from View Stripe Status.',
+        reason: 'driver_stripe_requirements_lookup_failed',
+        stripeStatusUnavailable: true,
+        pollingDisabled: true,
+        stripeError: safeStripeError,
       });
     }
   });
@@ -7496,7 +7515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               email: user.email,
               type: 'express',
               businessType: 'individual',
-              capabilities: ['transfers'],
+              capabilities: ['card_payments', 'transfers'],
               individual: {
                 firstName: user.firstName,
                 lastName: user.lastName,
@@ -7634,7 +7653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               email: user.email,
               type: 'express',
               businessType: 'individual',
-              capabilities: ['transfers'],
+              capabilities: ['card_payments', 'transfers'],
               individual: {
                 firstName: user.firstName,
                 lastName: user.lastName,

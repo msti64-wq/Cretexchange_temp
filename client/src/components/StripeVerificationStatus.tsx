@@ -49,7 +49,7 @@ export default function StripeVerificationStatus({ userRole, purpose = 'owner-pa
 
   const { data: requirements, isLoading, error, refetch } = useQuery<StripeRequirements>({
     queryKey: [endpoint],
-    refetchInterval: 30000,
+    refetchInterval: (query) => query.state.fetchFailureCount >= 3 ? false : 30000,
   });
 
   const startOnboardingMutation = useMutation({

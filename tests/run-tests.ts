@@ -122,6 +122,7 @@ test("driver profile bank connect visibility uses driver_stripe_payouts only", (
   const driverProfileSource = readFileSync(new URL("../client/src/pages/driver/profile.tsx", import.meta.url), "utf8");
   const driverPayoutSettingsSource = readFileSync(new URL("../client/src/components/DriverPayoutSettings.tsx", import.meta.url), "utf8");
   const bankAccountConnectSource = readFileSync(new URL("../client/src/components/BankAccountConnect.tsx", import.meta.url), "utf8");
+  const stripeVerificationStatusSource = readFileSync(new URL("../client/src/components/StripeVerificationStatus.tsx", import.meta.url), "utf8");
   const driverPayoutSource = `${driverProfileSource}\n${driverPayoutSettingsSource}\n${bankAccountConnectSource}`;
 
   assert.match(driverProfileSource, /FEATURE_FLAGS\.DRIVER_STRIPE_PAYOUTS/);
@@ -141,6 +142,8 @@ test("driver profile bank connect visibility uses driver_stripe_payouts only", (
   assert.match(driverPayoutSettingsSource, /payoutsEnabled/);
   assert.match(driverPayoutSettingsSource, /chargesEnabled/);
   assert.match(driverPayoutSettingsSource, /currently_due/);
+  assert.match(driverPayoutSettingsSource, /fetchFailureCount < 3/);
+  assert.match(stripeVerificationStatusSource, /fetchFailureCount >= 3/);
   assert.doesNotMatch(driverProfileSource, /Required for Stripe/);
   assert.doesNotMatch(driverProfileSource, /input-date-of-birth|input-ssn-last4|input-business-website/);
   assert.doesNotMatch(driverProfileSource, /bankName|routingNumber|accountNumber|accountHolderName/);
@@ -361,6 +364,9 @@ test("startup logs driver Stripe onboarding URL configuration without URL values
   const indexSource = readFileSync(new URL("../server/index.ts", import.meta.url), "utf8");
 
   assert.match(indexSource, /Driver Stripe onboarding URL configuration/);
+  assert.match(indexSource, /Deployment git commit/);
+  assert.match(indexSource, /RAILWAY_GIT_COMMIT_SHA/);
+  assert.match(indexSource, /gitCommitHash/);
   assert.match(indexSource, /"PUBLIC_APP_URL configured"/);
   assert.match(indexSource, /"APP_BASE_URL configured"/);
   assert.match(indexSource, /"RAILWAY_PUBLIC_DOMAIN configured"/);
@@ -509,6 +515,7 @@ test("driver Stripe connected account payload uses postal_code address field", a
   assert.equal(createdPayload.type, "express");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
   assert.deepEqual(createdPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
 });
@@ -539,6 +546,7 @@ test("driver capability backfill restores connected account payout capabilities"
 
   assert.ok(updatedPayload);
   assert.deepEqual(updatedPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
 });
@@ -2531,6 +2539,7 @@ test("driver bank-connect session starts onboarding even when optional non-email
   assert.equal(createdPayload.country, "US");
   assert.equal(createdPayload.business_type, "individual");
   assert.deepEqual(createdPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
   assert.equal(createdPayload.email, "test@example.com");
@@ -2709,6 +2718,7 @@ test("driver bank-connect session returns platform setup error when Stripe trans
 
   assert.ok(createdPayload);
   assert.deepEqual(createdPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
   assert.equal(accountLinkCalls, 0);
@@ -2808,6 +2818,7 @@ test("driver bank-connect session uses Express ACH payout recipient payload", as
 
   assert.equal(createdPayloads.length, 1);
   assert.deepEqual(createdPayloads[0].capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
   assert.equal(createdPayloads[0].type, "express");
@@ -3224,6 +3235,7 @@ test("driver can start payout onboarding without Stripe customer card or payment
   assert.equal(createdPayload.country, "US");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
   assert.deepEqual(createdPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
   assert.equal(createdPayload.business_type, "individual");
@@ -3484,6 +3496,7 @@ test("driver bank-connect session creates Express account only when payouts are 
   assert.equal(createdPayload.country, "US");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
   assert.deepEqual(createdPayload.capabilities, {
+    card_payments: { requested: true },
     transfers: { requested: true },
   });
   assert.equal(createdPayload.email, "test@example.com");
@@ -4234,6 +4247,70 @@ test("driver Stripe status returns Not Started when no connected account exists"
   );
 
   assert.equal(stripeRetrieveCalls, 0);
+});
+
+test("driver Stripe requirements returns safe JSON when Stripe lookup fails", async () => {
+  const { app, gets } = createRouteRegistry();
+  const user = makeUser({ stripeConnectAccountId: "acct_driver_requirements_error" });
+  let retrievedAccountId: string | undefined;
+  const stripeError = new Error("Stripe API unavailable") as Error & {
+    statusCode?: number;
+    type?: string;
+    code?: string;
+    requestId?: string;
+  };
+  stripeError.statusCode = 503;
+  stripeError.type = "StripeAPIError";
+  stripeError.code = "api_connection_error";
+  stripeError.requestId = "req_driver_requirements_error";
+
+  await withPatchedStripe(
+    {
+      accounts: {
+        retrieve: async (accountId: string) => {
+          retrievedAccountId = accountId;
+          throw stripeError;
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async () => user,
+        },
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = gets.get("/api/drivers/stripe-requirements");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: user.id, role: "driver" },
+            },
+            res,
+          );
+
+          assert.equal(res.statusCode, 200);
+          assert.equal(retrievedAccountId, "acct_driver_requirements_error");
+          assert.equal((res.body as { hasAccount?: boolean }).hasAccount, true);
+          assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_requirements_error");
+          assert.equal(
+            (res.body as { reason?: string }).reason,
+            "driver_stripe_requirements_lookup_failed",
+          );
+          assert.equal((res.body as { stripeStatusUnavailable?: boolean }).stripeStatusUnavailable, true);
+          assert.equal((res.body as { pollingDisabled?: boolean }).pollingDisabled, true);
+          assert.equal(
+            (res.body as { stripeError?: { statusCode?: number } }).stripeError?.statusCode,
+            503,
+          );
+          assert.equal((res.body as { error?: string }).error, undefined);
+        },
+      );
+    },
+  );
 });
 
 test("driver Stripe status returns Payouts Ready only when Stripe payouts are enabled", async () => {
