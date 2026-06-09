@@ -15,8 +15,8 @@ interface BankAccountConnectProps {
 
 /**
  * Standardized Bank Account Connection Component
- * Uses Stripe Financial Connections for instant, secure bank verification
- * Works for both drivers (payouts) and owners (wallet funding)
+ * Drivers are redirected to Stripe Connect onboarding for payouts.
+ * Owners use Stripe Financial Connections for wallet funding.
  */
 export function BankAccountConnect({
   userType,
@@ -40,6 +40,16 @@ export function BankAccountConnect({
 
       const sessionResponse = await apiRequest('POST', endpoint, {});
       const sessionData = await sessionResponse.json();
+
+      if (userType === 'driver') {
+        const onboardingUrl = sessionData.url || sessionData.onboardingUrl;
+        if (!onboardingUrl) {
+          throw new Error(sessionData.message || 'Stripe onboarding link was not returned. Please try again.');
+        }
+
+        window.location.href = onboardingUrl;
+        return;
+      }
 
       if (!sessionData.clientSecret) {
         throw new Error('Failed to create bank link session');
@@ -75,9 +85,7 @@ export function BankAccountConnect({
       }
 
       // Step 4: Complete the linking on backend
-      const completeEndpoint = userType === 'driver'
-        ? '/api/drivers/bank-connect/complete'
-        : '/api/owners/bank-connect/complete';
+      const completeEndpoint = '/api/owners/bank-connect/complete';
 
       const completeResponse = await apiRequest('POST', completeEndpoint, {
         sessionId: financialConnectionsSession.id,

@@ -44,9 +44,11 @@ export function DriverPayoutSettings({
   });
 
   const handleOnboardingResponse = (data: any) => {
-    if (data?.onboardingUrl) {
+    const onboardingUrl = data?.url || data?.onboardingUrl;
+
+    if (onboardingUrl) {
       setIsRedirecting(true);
-      window.location.href = data.onboardingUrl;
+      window.location.href = onboardingUrl;
       return;
     }
 
@@ -68,7 +70,7 @@ export function DriverPayoutSettings({
       const sessionResponse = await apiRequest("POST", "/api/drivers/bank-connect/session", {});
       const sessionData = await sessionResponse.json();
 
-      if (sessionData.onboardingUrl || sessionData.onboardingComplete) {
+      if (sessionData.url || sessionData.onboardingUrl || sessionData.onboardingComplete) {
         return sessionData;
       }
 

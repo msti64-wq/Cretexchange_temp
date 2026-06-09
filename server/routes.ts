@@ -331,7 +331,6 @@ async function createDriverStripePayoutAccount(
   driver: Driver | null | undefined,
   profileValidation?: DriverStripePayoutProfileValidation,
 ) {
-  const { generateBusinessUrl } = await import('./stripeUtils');
   const validation = profileValidation ?? await validateDriverStripePayoutProfile(user);
 
   if (!validation.isComplete) {
@@ -346,32 +345,32 @@ async function createDriverStripePayoutAccount(
     throw error;
   }
 
-  const username = user.username?.trim() || user.id;
   const email = user.email?.trim() || undefined;
-
-  return await stripeService.createConnectedAccount({
+  const accountParams: Stripe.AccountCreateParams = {
     type: 'express',
-    userId: user.id,
-    driverId: driver?.id,
-    username,
-    email,
-    businessType: 'individual',
-    capabilities: ['transfers'],
-    businessProfile: {
-      url: generateBusinessUrl(username, 'driver'),
-      mcc: '7542',
-      supportEmail: email,
+    country: 'US',
+    ...(email ? { email } : {}),
+    business_type: 'individual',
+    capabilities: {
+      transfers: { requested: true },
     },
-  });
+    metadata: {
+      userId: user.id,
+      driverId: driver?.id || '',
+      role: 'driver',
+    },
+  };
+
+  return await stripe.accounts.create(accountParams);
 }
 
 async function createDriverStripeOnboardingLink(req: any, stripeConnectAccountId: string) {
   const baseUrl = getRequestBaseUrl(req);
 
-  return await stripeService.createAccountLink({
-    accountId: stripeConnectAccountId,
-    refreshUrl: `${baseUrl}/driver/profile?stripe_refresh=true`,
-    returnUrl: `${baseUrl}/driver/profile?stripe_complete=true`,
+  return await stripe.accountLinks.create({
+    account: stripeConnectAccountId,
+    refresh_url: `${baseUrl}/driver/profile?stripe_refresh=true`,
+    return_url: `${baseUrl}/driver/profile?stripe_complete=true`,
     type: 'account_onboarding',
   });
 }
@@ -3013,7 +3012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const driver = await storage.getDriver(routeUserId);
         driverId = driver?.id || null;
-        let connectedAccount: Awaited<ReturnType<typeof stripeService.createConnectedAccount>>;
+        let connectedAccount: Awaited<ReturnType<typeof createDriverStripePayoutAccount>>;
         try {
           connectedAccount = await createDriverStripePayoutAccount(user, driver, profileValidation);
         } catch (stripeError: any) {
@@ -3140,6 +3139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({
+        url: accountLink.url,
         onboardingUrl: accountLink.url,
         expiresAt: accountLink.expires_at,
         accountId: stripeConnectAccountId,
@@ -3308,7 +3308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create Stripe Connect account if driver doesn't have one
       if (!user.stripeConnectAccountId) {
-        let connectedAccount: Awaited<ReturnType<typeof stripeService.createConnectedAccount>>;
+        let connectedAccount: Awaited<ReturnType<typeof createDriverStripePayoutAccount>>;
         try {
           connectedAccount = await createDriverStripePayoutAccount(user, driver);
         } catch (stripeError: any) {
@@ -3466,6 +3466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const accountLink = await createDriverStripeOnboardingLink(req, stripeConnectAccountId);
 
       res.json({
+        url: accountLink.url,
         onboardingUrl: accountLink.url,
         expiresAt: accountLink.expires_at,
         accountId: stripeConnectAccountId,

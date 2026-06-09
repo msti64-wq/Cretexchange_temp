@@ -128,7 +128,8 @@ test("driver profile bank connect visibility uses driver_stripe_payouts only", (
   assert.doesNotMatch(driverPayoutSource, /\/api\/feature-flags\/[^"']+\/toggle/);
   assert.doesNotMatch(driverProfileSource, /\/api\/drivers\/bank-connect\/session/);
   assert.match(driverPayoutSettingsSource, /if \(action === "connect_bank_account"\)[\s\S]*connectBankMutation\.mutate\(\)/);
-  assert.match(driverPayoutSettingsSource, /window\.location\.href = data\.onboardingUrl/);
+  assert.match(driverPayoutSettingsSource, /data\?\.url \|\| data\?\.onboardingUrl/);
+  assert.match(driverPayoutSettingsSource, /window\.location\.href = onboardingUrl/);
 });
 
 test("driver dashboard profile reminder does not require a payment method", () => {
@@ -2200,6 +2201,7 @@ test("driver bank-connect session starts onboarding even when optional local pro
           );
 
           assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { url?: string }).url, "https://connect.stripe.com/setup/no-local-email");
           assert.equal((res.body as { onboardingUrl?: string }).onboardingUrl, "https://connect.stripe.com/setup/no-local-email");
           assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_no_local_email");
           assert.equal((res.body as { payoutOnly?: boolean }).payoutOnly, true);
@@ -2209,8 +2211,18 @@ test("driver bank-connect session starts onboarding even when optional local pro
   );
 
   assert.ok(createdPayload);
+  assert.equal(createdPayload.type, "express");
+  assert.equal(createdPayload.country, "US");
+  assert.equal(createdPayload.business_type, "individual");
+  assert.deepEqual(createdPayload.capabilities, {
+    transfers: { requested: true },
+  });
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "email"), false);
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "individual"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
+  assert.equal(createdPayload.metadata?.userId, user.id);
+  assert.equal(createdPayload.metadata?.driverId, driver.id);
+  assert.equal(createdPayload.metadata?.role, "driver");
 });
 
 test("driver bank-connect session returns exact Stripe 400 reason from account creation", async () => {
@@ -2447,6 +2459,7 @@ test("driver can start payout onboarding without Stripe customer card or payment
           );
 
           assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { url?: string }).url, "https://connect.stripe.com/setup/payout-only");
           assert.equal((res.body as { onboardingUrl?: string }).onboardingUrl, "https://connect.stripe.com/setup/payout-only");
           assert.equal((res.body as { payoutOnly?: boolean }).payoutOnly, true);
           assert.equal((res.body as { setupType?: string }).setupType, "stripe_connect_onboarding");
@@ -2460,6 +2473,7 @@ test("driver can start payout onboarding without Stripe customer card or payment
   assert.equal(financialConnectionCalls, 0);
   assert.ok(createdPayload);
   assert.equal(createdPayload.type, "express");
+  assert.equal(createdPayload.country, "US");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
   assert.deepEqual(createdPayload.capabilities, {
     transfers: { requested: true },
@@ -2467,6 +2481,9 @@ test("driver can start payout onboarding without Stripe customer card or payment
   assert.equal(createdPayload.business_type, "individual");
   assert.equal(createdPayload.email, "test@example.com");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "individual"), false);
+  assert.equal(createdPayload.metadata?.userId, user.id);
+  assert.equal(createdPayload.metadata?.driverId, driver.id);
+  assert.equal(createdPayload.metadata?.role, "driver");
 });
 
 test("driver bank-connect session creates Express account only when payouts are enabled and requested", async () => {
@@ -2535,6 +2552,7 @@ test("driver bank-connect session creates Express account only when payouts are 
           );
 
           assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { url?: string }).url, "https://connect.stripe.com/setup/bank-connect");
           assert.equal((res.body as { onboardingUrl?: string }).onboardingUrl, "https://connect.stripe.com/setup/bank-connect");
           assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_bank_connect");
           assert.equal((res.body as { payoutOnly?: boolean }).payoutOnly, true);
@@ -2546,6 +2564,7 @@ test("driver bank-connect session creates Express account only when payouts are 
   assert.equal(updatedStripeAccountId, "acct_driver_bank_connect");
   assert.ok(createdPayload);
   assert.equal(createdPayload.type, "express");
+  assert.equal(createdPayload.country, "US");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "controller"), false);
   assert.deepEqual(createdPayload.capabilities, {
     transfers: { requested: true },
@@ -2553,8 +2572,9 @@ test("driver bank-connect session creates Express account only when payouts are 
   assert.equal(createdPayload.email, "test@example.com");
   assert.equal(createdPayload.business_type, "individual");
   assert.equal(Object.prototype.hasOwnProperty.call(createdPayload as Record<string, unknown>, "individual"), false);
-  assert.equal(createdPayload.metadata?.user_id, user.id);
-  assert.equal(createdPayload.metadata?.driver_id, driver.id);
+  assert.equal(createdPayload.metadata?.userId, user.id);
+  assert.equal(createdPayload.metadata?.driverId, driver.id);
+  assert.equal(createdPayload.metadata?.role, "driver");
   assert.ok(createdAccountLink);
   assert.equal(createdAccountLink.account, "acct_driver_bank_connect");
   assert.equal(createdAccountLink.type, "account_onboarding");
@@ -2732,6 +2752,7 @@ test("driver Stripe onboarding creates account link URL for existing account", a
           );
 
           assert.equal(res.statusCode, 200);
+          assert.equal((res.body as { url?: string }).url, "https://connect.stripe.com/setup/test");
           assert.equal((res.body as { onboardingUrl?: string }).onboardingUrl, "https://connect.stripe.com/setup/test");
           assert.equal((res.body as { accountId?: string }).accountId, "acct_driver_onboarding");
         },
