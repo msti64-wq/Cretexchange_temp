@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useLocation } from "wouter";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
@@ -15,9 +16,28 @@ import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2, RefreshCw, Navigation, CreditCard, Truck, Route, Loader2, ShieldAlert, ArrowRight, Activity, MapPinned } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { getDriverStripeSetupMessage } from "@shared/driverPaymentStatus";
+
+type DriverDashboardStatsRange = "today" | "week" | "month";
+
+const DRIVER_STATS_RANGE_OPTIONS: Array<{ value: DriverDashboardStatsRange; label: string }> = [
+  { value: "today", label: "Today" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+];
+
+function formatStatsRange(startDate?: string | Date, endDate?: string | Date) {
+  if (!startDate || !endDate) return "";
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const startText = formatDate(start);
+  const endText = formatDate(end);
+
+  return startText === endText ? startText : `${startText} - ${endText}`;
+}
 
 function DriverDashboardSkeleton() {
   return (
@@ -55,13 +75,14 @@ export default function DriverDashboard() {
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
   const [showLotteryEntries, setShowLotteryEntries] = useState(false);
+  const [statsRange, setStatsRange] = useState<DriverDashboardStatsRange>("today");
 
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
   const { data: dashboardData, isLoading, refetch } = useQuery({
-    queryKey: ['/api/drivers/dashboard'],
+    queryKey: [`/api/drivers/dashboard?statsRange=${statsRange}`],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -87,6 +108,7 @@ export default function DriverDashboard() {
   // Extract data with proper null checks and type annotation
   const dailyStats = (dashboardData as any)?.dailyStats || null;
   const weeklyStats = (dashboardData as any)?.weeklyStats || null;
+  const selectedStats = (dashboardData as any)?.selectedStats || null;
   const recentActivities = (dashboardData as any)?.recentActivities || null;
   const lotteryStatus = (dashboardData as any)?.lotteryStatus || null;
   const lotteryEntryCount = lotteryStatus?.driverEntryCount ?? ((dashboardData as any)?.lotteryEntryCount || 0);
@@ -123,9 +145,14 @@ export default function DriverDashboard() {
   const latestLocationAddress = latestActivity?.washout_locations?.address || latestActivity?.location?.address || "";
   const latestActivityAmount = Number(latestActivity?.washout_activities?.amount || latestActivity?.amount || 0);
   const latestActivityStatus = latestActivity ? (latestActivity.washout_activities?.status || latestActivity.status) : null;
+  const selectedStatsLabel = selectedStats?.label || DRIVER_STATS_RANGE_OPTIONS.find((option) => option.value === statsRange)?.label || "Today";
+  const selectedStatsDateRange = formatStatsRange(selectedStats?.startDate, selectedStats?.endDate);
+  const selectedStatsWashouts = Number(selectedStats?.totalWashouts ?? selectedStats?.visits ?? dailyStats?.visits ?? 0);
+  const selectedStatsEarnings = Number(selectedStats?.totalEarnings ?? selectedStats?.earnings ?? dailyStats?.earnings ?? 0);
+  const selectedStatsAverage = Number(selectedStats?.avgPerWashout ?? (selectedStatsWashouts > 0 ? selectedStatsEarnings / selectedStatsWashouts : 0));
   const driverChartData = [
-    { label: "Today", earnings: Math.max(adjustedDailyEarnings, 0), washouts: dailyStats?.visits || 0 },
-    { label: "7 days", earnings: Math.max(weeklyNetEarnings, 0), washouts: weeklyStats?.totalWashouts || 0 },
+    { label: selectedStatsLabel, earnings: Math.max(selectedStatsEarnings, 0), washouts: selectedStatsWashouts },
+    { label: "Avg each", earnings: Math.max(selectedStatsAverage, 0), washouts: 0 },
     { label: "Paid", earnings: Math.max(totalPaid, 0), washouts: 0 },
   ];
 
@@ -572,11 +599,62 @@ export default function DriverDashboard() {
         {/* Earnings Summary */}
         <div className="grid gap-4 md:grid-cols-[1.25fr_0.75fr]">
           <DashboardSectionCard
-            title="Earnings Snapshot"
-            description="Today, recent net earnings, and paid history."
+            title="Washout Stats Mix"
+            description={`${selectedStatsLabel} washout stats${selectedStatsDateRange ? ` · ${selectedStatsDateRange}` : ""}`}
             icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
+            action={
+              <ToggleGroup
+                type="single"
+                value={statsRange}
+                onValueChange={(value) => {
+                  if (value) setStatsRange(value as DriverDashboardStatsRange);
+                }}
+                className="rounded-lg border border-border/70 bg-muted/40 p-1"
+                data-testid="toggle-washout-stats-range"
+              >
+                {DRIVER_STATS_RANGE_OPTIONS.map((option) => (
+                  <ToggleGroupItem
+                    key={option.value}
+                    value={option.value}
+                    size="sm"
+                    className="h-8 rounded-md px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                    data-testid={`button-washout-stats-${option.value}`}
+                  >
+                    {option.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            }
           >
-            <div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Period</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground" data-testid="text-washout-stats-period">
+                    {selectedStatsLabel}
+                  </p>
+                  {selectedStatsDateRange && (
+                    <p className="mt-1 text-xs text-muted-foreground" data-testid="text-washout-stats-range-label">
+                      {selectedStatsDateRange}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Washouts</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground" data-testid="text-washout-stats-total">
+                    {selectedStatsWashouts}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Earned</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground" data-testid="text-washout-stats-earnings">
+                    {formatCurrency(selectedStatsEarnings)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground" data-testid="text-washout-stats-average">
+                    Avg {formatCurrency(selectedStatsAverage)}
+                  </p>
+                </div>
+              </div>
               <ChartContainer
                 config={{
                   earnings: { label: "Earnings", color: "var(--chart-1)" },

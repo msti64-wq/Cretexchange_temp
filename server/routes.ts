@@ -117,6 +117,62 @@ type LotteryStatusSnapshot = {
   currentDrawingMessage: string;
 };
 
+type DriverDashboardStatsRange = "today" | "week" | "month";
+
+function parseDriverDashboardStatsRange(value: unknown): DriverDashboardStatsRange {
+  return value === "week" || value === "month" ? value : "today";
+}
+
+function buildDriverDashboardStatsRange(range: DriverDashboardStatsRange, now = new Date()) {
+  const startDate = new Date(now);
+  startDate.setHours(0, 0, 0, 0);
+
+  if (range === "week") {
+    startDate.setDate(startDate.getDate() - startDate.getDay());
+  } else if (range === "month") {
+    startDate.setDate(1);
+  }
+
+  const endDate = new Date(startDate);
+  if (range === "today") {
+    endDate.setDate(endDate.getDate() + 1);
+  } else if (range === "week") {
+    endDate.setDate(endDate.getDate() + 7);
+  } else {
+    endDate.setMonth(endDate.getMonth() + 1);
+  }
+  endDate.setMilliseconds(endDate.getMilliseconds() - 1);
+
+  return {
+    range,
+    label: range === "today" ? "Today" : range === "week" ? "This week" : "This month",
+    startDate,
+    endDate,
+  };
+}
+
+function buildDriverDashboardWashoutStats(
+  rangeConfig: ReturnType<typeof buildDriverDashboardStatsRange>,
+  activities: Array<WashoutActivity & { washout_activities?: { amount?: string | number | null } }>,
+) {
+  const totalEarnings = activities.reduce((sum, activity) => {
+    return sum + Number(activity.washout_activities?.amount || activity.amount || 0);
+  }, 0);
+  const totalWashouts = activities.length;
+
+  return {
+    range: rangeConfig.range,
+    label: rangeConfig.label,
+    startDate: rangeConfig.startDate,
+    endDate: rangeConfig.endDate,
+    totalWashouts,
+    visits: totalWashouts,
+    totalEarnings,
+    earnings: totalEarnings,
+    avgPerWashout: totalWashouts > 0 ? Number((totalEarnings / totalWashouts).toFixed(2)) : 0,
+  };
+}
+
 function buildLotteryWinnerMessage(winner: LotteryWinnerSummary, monthName: string, year: number): { title: string; message: string } {
   const placeLabel = winner.place === 1 ? "1st Place" : winner.place === 2 ? "2nd Place" : "3rd Place";
   const prizeText = winner.prize ? ` Your prize: ${winner.prize}.` : "";
@@ -3127,13 +3183,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver not found" });
       }
 
+      const statsRange = parseDriverDashboardStatsRange(req.query?.statsRange);
+      const todayRange = buildDriverDashboardStatsRange("today");
+      const selectedRange = buildDriverDashboardStatsRange(statsRange);
+
       // Get today's activities
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      const todayActivities = await storage.getActivitiesByDriver(driver.id, today, tomorrow) as Array<WashoutActivity & { washout_activities?: { amount?: string | number | null } }>;
+      const todayActivities = await storage.getActivitiesByDriver(
+        driver.id,
+        todayRange.startDate,
+        todayRange.endDate,
+      ) as Array<WashoutActivity & { washout_activities?: { amount?: string | number | null } }>;
+      const selectedActivities = statsRange === "today"
+        ? todayActivities
+        : await storage.getActivitiesByDriver(
+            driver.id,
+            selectedRange.startDate,
+            selectedRange.endDate,
+          ) as Array<WashoutActivity & { washout_activities?: { amount?: string | number | null } }>;
       
       // Get 7-day stats
       const weekStats = await storage.getDriverStats(driver.id, 7);
@@ -3186,6 +3252,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       res.json({
+        statsRange,
+        statsRangeLabel: selectedRange.label,
+        selectedStats: buildDriverDashboardWashoutStats(selectedRange, selectedActivities),
         dailyStats: {
           visits: todayActivities.length,
           earnings: dailyEarnings,

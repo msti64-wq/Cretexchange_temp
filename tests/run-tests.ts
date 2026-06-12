@@ -157,6 +157,20 @@ test("driver dashboard profile reminder does not require a payment method", () =
   assert.match(driverDashboardSource, /set up Stripe payouts/i);
 });
 
+test("driver dashboard Washout Stats Mix defaults to today and supports range selector", () => {
+  const driverDashboardSource = readFileSync(new URL("../client/src/pages/driver/dashboard.tsx", import.meta.url), "utf8");
+
+  assert.match(driverDashboardSource, /title="Washout Stats Mix"/);
+  assert.match(driverDashboardSource, /useState<DriverDashboardStatsRange>\("today"\)/);
+  assert.match(driverDashboardSource, /statsRange=\$\{statsRange\}/);
+  assert.match(driverDashboardSource, /DRIVER_STATS_RANGE_OPTIONS/);
+  assert.match(driverDashboardSource, /value: "today", label: "Today"/);
+  assert.match(driverDashboardSource, /value: "week", label: "Week"/);
+  assert.match(driverDashboardSource, /value: "month", label: "Month"/);
+  assert.match(driverDashboardSource, /button-washout-stats-\$\{option\.value\}/);
+  assert.match(driverDashboardSource, /text-washout-stats-range-label/);
+});
+
 test("disabled driver_stripe_payouts hides bank connection action", () => {
   const state = resolveDriverPayoutSettingsState({
     featureEnabled: false,
@@ -6451,6 +6465,152 @@ test("driver dashboard shows lottery as active by default", async () => {
       assert.equal((res.body as { lotteryStatus?: { enabled?: boolean } }).lotteryStatus?.enabled, true);
     },
   );
+});
+
+async function runDriverDashboardStatsRangeCase(params: {
+  name: "today" | "week" | "month";
+  query?: Record<string, string>;
+  selectedActivities: Array<{ id: string; amount: string; checkInTime: Date }>;
+}) {
+  const { app, gets } = createRouteRegistry();
+  const activityRangeCalls: Array<{ startDate?: Date; endDate?: Date }> = [];
+  const todayActivities = [
+    { id: "today_1", amount: "4.00", checkInTime: new Date() },
+  ];
+
+  await withPatchedStorage(
+    {
+      getDriver: async () => ({
+        id: "driver_row_1",
+        userId: "driver_user_1",
+        truckNumber: "Truck 1",
+      }),
+      getActivitiesByDriver: async (_driverId: string, startDate?: Date, endDate?: Date) => {
+        activityRangeCalls.push({ startDate, endDate });
+        if (params.name === "today" || activityRangeCalls.length === 1) {
+          return todayActivities;
+        }
+        return params.selectedActivities;
+      },
+      getDriverStats: async () => ({ totalEarnings: 0, totalWashouts: 0, avgPerWashout: 0 }),
+      getRecentActivitiesByDriver: async () => [],
+      getUser: async () => ({
+        id: "driver_user_1",
+        username: "driver1",
+        firstName: "Driver",
+        lastName: "One",
+      }),
+      getFeatureFlag: async () => undefined,
+      getDriverLotteryEntryCount: async () => 0,
+      getLotteryDrawingByMonthYear: async () => null,
+      getPaymentsAwaitingDriverStripeByDriver: async () => [],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/drivers/dashboard");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      await route!(
+        {
+          user: { id: "driver_user_1" },
+          query: params.query || {},
+        },
+        res,
+      );
+
+      const expectedActivities = params.name === "today" ? todayActivities : params.selectedActivities;
+      const expectedEarnings = expectedActivities.reduce((sum, activity) => sum + Number(activity.amount), 0);
+      const expectedAverage = expectedActivities.length > 0
+        ? Number((expectedEarnings / expectedActivities.length).toFixed(2))
+        : 0;
+      const selectedCall = params.name === "today" ? activityRangeCalls[0] : activityRangeCalls[1];
+      const body = res.body as {
+        statsRange?: string;
+        statsRangeLabel?: string;
+        selectedStats?: {
+          range?: string;
+          label?: string;
+          startDate?: Date;
+          endDate?: Date;
+          totalWashouts?: number;
+          visits?: number;
+          totalEarnings?: number;
+          earnings?: number;
+          avgPerWashout?: number;
+        };
+      };
+
+      assert.equal(res.statusCode, 200);
+      assert.equal(body.statsRange, params.name);
+      assert.equal(body.selectedStats?.range, params.name);
+      assert.equal(body.selectedStats?.totalWashouts, expectedActivities.length);
+      assert.equal(body.selectedStats?.visits, expectedActivities.length);
+      assert.equal(body.selectedStats?.totalEarnings, expectedEarnings);
+      assert.equal(body.selectedStats?.earnings, expectedEarnings);
+      assert.equal(body.selectedStats?.avgPerWashout, expectedAverage);
+      assert.ok(selectedCall?.startDate);
+      assert.ok(selectedCall?.endDate);
+      assert.equal(body.selectedStats?.startDate?.getTime(), selectedCall.startDate.getTime());
+      assert.equal(body.selectedStats?.endDate?.getTime(), selectedCall.endDate.getTime());
+      assert.equal(selectedCall.startDate.getHours(), 0);
+      assert.equal(selectedCall.startDate.getMinutes(), 0);
+      assert.equal(selectedCall.startDate.getSeconds(), 0);
+      assert.equal(selectedCall.startDate.getMilliseconds(), 0);
+      assert.equal(selectedCall.endDate.getHours(), 23);
+      assert.equal(selectedCall.endDate.getMinutes(), 59);
+      assert.equal(selectedCall.endDate.getSeconds(), 59);
+      assert.equal(selectedCall.endDate.getMilliseconds(), 999);
+
+      if (params.name === "today") {
+        assert.equal(body.statsRangeLabel, "Today");
+        assert.equal(activityRangeCalls.length, 1);
+        assert.equal(selectedCall.startDate.toDateString(), new Date().toDateString());
+      } else if (params.name === "week") {
+        assert.equal(body.statsRangeLabel, "This week");
+        assert.equal(selectedCall.startDate.getDay(), 0);
+        assert.equal(selectedCall.endDate.getTime() - selectedCall.startDate.getTime(), (7 * 24 * 60 * 60 * 1000) - 1);
+      } else {
+        assert.equal(body.statsRangeLabel, "This month");
+        assert.equal(selectedCall.startDate.getDate(), 1);
+        const firstMomentAfterRange = new Date(selectedCall.endDate.getTime() + 1);
+        assert.equal(firstMomentAfterRange.getDate(), 1);
+        assert.equal(firstMomentAfterRange.getHours(), 0);
+        assert.equal(firstMomentAfterRange.getMinutes(), 0);
+      }
+    },
+  );
+}
+
+test("driver dashboard statsRange defaults to today", async () => {
+  await runDriverDashboardStatsRangeCase({
+    name: "today",
+    selectedActivities: [],
+  });
+});
+
+test("driver dashboard statsRange=week returns current week totals and range", async () => {
+  await runDriverDashboardStatsRangeCase({
+    name: "week",
+    query: { statsRange: "week" },
+    selectedActivities: [
+      { id: "week_1", amount: "12.50", checkInTime: new Date() },
+      { id: "week_2", amount: "7.50", checkInTime: new Date() },
+    ],
+  });
+});
+
+test("driver dashboard statsRange=month returns current month totals and range", async () => {
+  await runDriverDashboardStatsRangeCase({
+    name: "month",
+    query: { statsRange: "month" },
+    selectedActivities: [
+      { id: "month_1", amount: "10.00", checkInTime: new Date() },
+      { id: "month_2", amount: "15.00", checkInTime: new Date() },
+      { id: "month_3", amount: "5.00", checkInTime: new Date() },
+    ],
+  });
 });
 
 test("driver locations endpoint returns active visible owner locations", async () => {
