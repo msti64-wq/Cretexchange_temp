@@ -63,7 +63,7 @@ function translateWashoutApprovalStatus(status: string | null | undefined, t: (k
   }
 }
 
-class DriverHeaderFallbackBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+class DriverDashboardErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false };
@@ -74,15 +74,20 @@ class DriverHeaderFallbackBoundary extends Component<{ children: ReactNode }, { 
   }
 
   componentDidCatch(error: unknown) {
-    console.error("[DRIVER_DASHBOARD_HEADER_FALLBACK]", error);
+    console.error("[DRIVER_DASHBOARD_ERROR_BOUNDARY]", error);
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="w-full max-w-full border-b border-border/70 bg-card/95 px-3 py-3 shadow-sm sm:px-4">
-          <div className="mx-auto w-full max-w-6xl min-w-0 text-sm text-muted-foreground">
-            Driver dashboard
+        <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background">
+          <div className="w-full border-b border-border/70 bg-card/95 px-3 py-3 shadow-sm sm:px-4">
+            <div className="mx-auto w-full max-w-6xl min-w-0 text-sm text-muted-foreground">
+              Driver dashboard
+            </div>
+          </div>
+          <div className="mx-auto w-full max-w-6xl px-3 py-4 text-sm text-muted-foreground sm:px-4">
+            The dashboard hit a render error and was recovered with a safe fallback.
           </div>
         </div>
       );
@@ -253,27 +258,26 @@ export default function DriverDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20">
-      <DriverHeaderFallbackBoundary>
+    <DriverDashboardErrorBoundary>
+      <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20">
         <DriverHeader />
-      </DriverHeaderFallbackBoundary>
 
-      {/* GPS Status Bar */}
-      <div className="w-full max-w-full overflow-hidden border-b border-border/70 bg-card/95 px-3 py-3 shadow-sm sm:px-4">
-        <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)] animate-pulse" />
-            <span className="min-w-0 truncate text-sm font-semibold tracking-tight" data-testid="text-gps-status">{t("driver.dashboard.gpsActive")}</span>
-          </div>
-          <div className="flex max-w-full min-w-0 items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">
-            <MapPin className="h-4 w-4 shrink-0" />
-            <span className="min-w-0 truncate" data-testid="text-current-location">{t("driver.dashboard.locationEnabled")}</span>
+        {/* GPS Status Bar */}
+        <div className="w-full max-w-full overflow-hidden border-b border-border/70 bg-card/95 px-3 py-3 shadow-sm sm:px-4">
+          <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)] animate-pulse" />
+              <span className="min-w-0 truncate text-sm font-semibold tracking-tight" data-testid="text-gps-status">{t("driver.dashboard.gpsActive")}</span>
+            </div>
+            <div className="flex max-w-full min-w-0 items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">
+              <MapPin className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 truncate" data-testid="text-current-location">{t("driver.dashboard.locationEnabled")}</span>
+            </div>
           </div>
         </div>
-      </div>
-
-      <main className="mx-auto w-full max-w-6xl space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5">
-        <section className="grid w-full max-w-full min-w-0 grid-cols-1 gap-4 overflow-hidden rounded-3xl border border-border/70 bg-card/95 p-4 shadow-sm min-[430px]:p-5 md:grid-cols-[1.15fr_0.85fr] md:p-6">
+ 
+        <main className="mx-auto w-full max-w-6xl space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5">
+          <section className="grid w-full max-w-full min-w-0 grid-cols-1 gap-4 overflow-hidden rounded-3xl border border-border/70 bg-card/95 p-4 shadow-sm min-[430px]:p-5 md:grid-cols-[1.15fr_0.85fr] md:p-6">
           <div className="min-w-0 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="max-w-full break-words rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
@@ -1024,20 +1028,21 @@ export default function DriverDashboard() {
         </div>
       </main>
 
-      <MobileNav role="driver" />
-      
-      {/* Photo Modal */}
-      <PhotoModal
-        isOpen={isPhotoModalOpen}
-        onClose={() => setIsPhotoModalOpen(false)}
-        activity={selectedActivity}
-        canApprove={false}
-      />
+        <MobileNav role="driver" />
+        
+        {/* Photo Modal */}
+        <PhotoModal
+          isOpen={isPhotoModalOpen}
+          onClose={() => setIsPhotoModalOpen(false)}
+          activity={selectedActivity}
+          canApprove={false}
+        />
 
-      <SupportMessageDialog
-        isOpen={isSupportDialogOpen}
-        onClose={() => setIsSupportDialogOpen(false)}
-      />
-    </div>
+        <SupportMessageDialog
+          isOpen={isSupportDialogOpen}
+          onClose={() => setIsSupportDialogOpen(false)}
+        />
+      </div>
+    </DriverDashboardErrorBoundary>
   );
 }
