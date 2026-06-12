@@ -11,6 +11,7 @@ import {
   type DriverStripeRequirements,
   resolveDriverPayoutSettingsState,
 } from "@/lib/driverPayoutSettings";
+import { useLanguage } from "@/lib/i18n";
 
 interface DriverPayoutSettingsProps {
   featureEnabled: boolean;
@@ -24,8 +25,40 @@ function getStatusBadgeVariant(status: string) {
   return "outline";
 }
 
-function formatDebugBoolean(value: boolean | undefined) {
-  return value ? "Yes" : "No";
+function getTranslatedPayoutStatusLabel(status: string, t: (key: string) => string) {
+  switch (status) {
+    case "payouts_ready":
+      return t("driver.payout.payoutsReady");
+    case "action_required":
+      return t("driver.payout.actionRequired");
+    case "setup_started":
+      return t("driver.payout.resumeOnboarding");
+    case "payouts_disabled":
+      return t("driver.payout.payoutsDisabled");
+    case "not_started":
+    default:
+      return t("driver.payout.notStarted");
+  }
+}
+
+function getTranslatedPayoutMessage(status: string, featureEnabled: boolean, t: (key: string) => string) {
+  if (!featureEnabled) return t("driver.payout.disabledMessage");
+  if (status === "payouts_ready") return t("driver.payout.readyMessage");
+  if (status === "setup_started") return t("driver.payout.startedMessage");
+  if (status === "action_required") return t("driver.payout.actionRequiredMessage");
+  return t("driver.payout.notStartedMessage");
+}
+
+function getTranslatedPayoutActionLabel(action: DriverPayoutAction, t: (key: string) => string) {
+  switch (action) {
+    case "resume_stripe_onboarding":
+      return t("driver.payout.resumeStripeOnboarding");
+    case "view_stripe_status":
+      return t("driver.payout.viewPayoutStatus");
+    case "connect_bank_account":
+    default:
+      return t("driver.payout.connectBankAccount");
+  }
 }
 
 export function DriverPayoutSettings({
@@ -34,6 +67,7 @@ export function DriverPayoutSettings({
   onStatusRefresh,
 }: DriverPayoutSettingsProps) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const {
@@ -63,8 +97,8 @@ export function DriverPayoutSettings({
     }
 
     toast({
-      title: "Stripe payout setup failed",
-      description: "Stripe onboarding link was not returned. Please try again.",
+      title: t("driver.payout.setupFailed"),
+      description: t("driver.payout.linkMissing"),
       variant: "destructive",
     });
   };
@@ -79,7 +113,7 @@ export function DriverPayoutSettings({
       void refetch();
       onStatusRefresh?.();
       toast({
-        title: "Stripe payout setup failed",
+        title: t("driver.payout.setupFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -96,7 +130,7 @@ export function DriverPayoutSettings({
       void refetch();
       onStatusRefresh?.();
       toast({
-        title: "Stripe payout setup failed",
+        title: t("driver.payout.setupFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -144,6 +178,8 @@ export function DriverPayoutSettings({
   const onboardingComplete = requirements?.onboardingComplete ?? requirements?.isVerified;
   const payoutsEnabled = requirements?.payoutsEnabled ?? requirements?.payouts_enabled;
   const chargesEnabled = requirements?.chargesEnabled ?? requirements?.charges_enabled;
+  const statusLabel = getTranslatedPayoutStatusLabel(state.status, t);
+  const statusMessage = getTranslatedPayoutMessage(state.status, state.featureAvailable, t);
 
   return (
     <Card data-testid="card-driver-payout-settings">
@@ -151,10 +187,10 @@ export function DriverPayoutSettings({
         <div className="flex items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            Stripe Payouts
+            {t("driver.payout.stripePayouts")}
           </CardTitle>
           <Badge variant={getStatusBadgeVariant(state.status)} data-testid="text-driver-stripe-payout-status">
-            {state.statusLabel}
+            {statusLabel}
           </Badge>
         </div>
       </CardHeader>
@@ -162,11 +198,11 @@ export function DriverPayoutSettings({
         <div className="flex items-start gap-3 rounded-md border bg-muted/40 p-3">
           {statusIcon}
           <div className="space-y-1">
-            <p className="text-sm font-medium">{state.statusLabel}</p>
-            <p className="text-sm text-muted-foreground">{state.message}</p>
+            <p className="text-sm font-medium">{statusLabel}</p>
+            <p className="text-sm text-muted-foreground">{statusMessage}</p>
             {requirementsError && featureEnabled && (
               <p className="text-sm text-destructive">
-                Stripe status could not be loaded. Use View Stripe Status to retry.
+                {t("driver.payout.statusLoadFailed")}
               </p>
             )}
           </div>
@@ -178,33 +214,33 @@ export function DriverPayoutSettings({
             data-testid="debug-driver-stripe-payouts"
           >
             <div>
-              <span className="font-medium text-foreground">Connected account exists: </span>
+              <span className="font-medium text-foreground">{t("driver.payout.connectedAccountExists")} </span>
               <span data-testid="text-driver-stripe-connected-account-exists">
-                {formatDebugBoolean(connectedAccountIdExists)}
+                {connectedAccountIdExists ? t("common.yes") : t("common.no")}
               </span>
             </div>
             <div>
-              <span className="font-medium text-foreground">Onboarding complete: </span>
+              <span className="font-medium text-foreground">{t("driver.payout.onboardingComplete")} </span>
               <span data-testid="text-driver-stripe-onboarding-complete">
-                {formatDebugBoolean(onboardingComplete)}
+                {onboardingComplete ? t("common.yes") : t("common.no")}
               </span>
             </div>
             <div>
-              <span className="font-medium text-foreground">Payouts enabled: </span>
+              <span className="font-medium text-foreground">{t("driver.payout.payoutsEnabled")} </span>
               <span data-testid="text-driver-stripe-payouts-enabled">
-                {formatDebugBoolean(payoutsEnabled)}
+                {payoutsEnabled ? t("common.yes") : t("common.no")}
               </span>
             </div>
             <div>
-              <span className="font-medium text-foreground">Charges enabled: </span>
+              <span className="font-medium text-foreground">{t("driver.payout.chargesEnabled")} </span>
               <span data-testid="text-driver-stripe-charges-enabled">
-                {formatDebugBoolean(chargesEnabled)}
+                {chargesEnabled ? t("common.yes") : t("common.no")}
               </span>
             </div>
             <div className="sm:col-span-2">
-              <span className="font-medium text-foreground">Currently due: </span>
+              <span className="font-medium text-foreground">{t("driver.payout.currentlyDue")} </span>
               <span data-testid="text-driver-stripe-currently-due">
-                {currentlyDue.length > 0 ? currentlyDue.join(", ") : "None"}
+                {currentlyDue.length > 0 ? currentlyDue.join(", ") : t("common.none")}
               </span>
             </div>
           </div>
@@ -222,17 +258,17 @@ export function DriverPayoutSettings({
               {isBusy ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Redirecting to Stripe...
+                  {t("driver.payout.redirecting")}
                 </>
               ) : state.primaryAction.action === "view_stripe_status" ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  {state.primaryAction.label}
+                  {getTranslatedPayoutActionLabel(state.primaryAction.action, t)}
                 </>
               ) : (
                 <>
                   <ExternalLink className="mr-2 h-4 w-4" />
-                  {state.primaryAction.label}
+                  {getTranslatedPayoutActionLabel(state.primaryAction.action, t)}
                 </>
               )}
             </Button>
@@ -252,7 +288,7 @@ export function DriverPayoutSettings({
                   : "button-driver-resume-stripe-onboarding"}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
-                {action.label}
+                {getTranslatedPayoutActionLabel(action.action, t)}
               </Button>
             ))}
         </div>

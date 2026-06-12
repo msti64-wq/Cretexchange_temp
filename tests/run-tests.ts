@@ -18,6 +18,23 @@ import { insertWashoutLocationSchema, updateSystemSettingsSchema } from "../shar
 import { formatApiErrorMessage } from "../client/src/lib/queryClient";
 import { formatCurrencyFromCents } from "../client/src/lib/utils";
 import { resolveDriverPayoutSettingsState } from "../client/src/lib/driverPayoutSettings";
+import {
+  LEGAL_DOCUMENTS,
+  LEGAL_DOCUMENT_IDS,
+  getRequiredLegalDocumentsForRole,
+  resolveLegalDocument,
+} from "../shared/legalDocuments";
+import {
+  getTermsStateForUser,
+  recordCurrentTermsAcceptance,
+} from "../server/terms";
+import {
+  LANGUAGE_STORAGE_KEY,
+  readStoredLanguage,
+  translate,
+  writeStoredLanguage,
+  type LanguageStorage,
+} from "../client/src/lib/i18n";
 
 type TestCase = {
   name: string;
@@ -28,6 +45,18 @@ const tests: TestCase[] = [];
 
 function test(name: string, run: TestCase["run"]) {
   tests.push({ name, run });
+}
+
+function createLanguageStorage(initialValues: Record<string, string> = {}): LanguageStorage {
+  const values = new Map<string, string>(Object.entries(initialValues));
+  return {
+    getItem(key: string) {
+      return values.get(key) ?? null;
+    },
+    setItem(key: string, value: string) {
+      values.set(key, value);
+    },
+  };
 }
 
 process.env.NODE_ENV = process.env.NODE_ENV || "test";
@@ -118,6 +147,150 @@ test("driver Stripe payouts feature flag is defined and disabled by default", ()
   assert.equal(definition?.enabled, false);
 });
 
+test("i18n defaults to English", () => {
+  const storage = createLanguageStorage();
+
+  assert.equal(readStoredLanguage(storage), "en");
+  assert.equal(translate("driver.dashboard.title", "en"), "Driver Dashboard");
+});
+
+test("i18n switches to Spanish", () => {
+  const storage = createLanguageStorage();
+
+  writeStoredLanguage("es", storage);
+
+  assert.equal(readStoredLanguage(storage), "es");
+  assert.equal(translate("driver.dashboard.title", "es"), "Panel del conductor");
+  assert.equal(translate("language.spanish", "es"), "Español");
+});
+
+test("i18n browser preference persists after refresh", () => {
+  const storage = createLanguageStorage();
+
+  writeStoredLanguage("es", storage);
+
+  assert.equal(readStoredLanguage(storage), "es");
+  assert.equal(readStoredLanguage(storage), "es");
+});
+
+test("i18n missing keys fall back to English", () => {
+  assert.equal(translate("test.onlyEnglishFallback", "es"), "English fallback");
+  assert.equal(translate("missing.translation.key", "es"), "missing.translation.key");
+});
+
+test("legal documents render English versions", () => {
+  const terms = resolveLegalDocument(LEGAL_DOCUMENT_IDS.TERMS, "en").document;
+  const driverDocuments = getRequiredLegalDocumentsForRole("driver", "en").map(({ document }) => document);
+
+  assert.equal(terms.storageKey, "terms.en");
+  assert.equal(terms.title, "Terms & Conditions");
+  assert.equal(driverDocuments.map((document) => document.storageKey).join(","), "terms.en,privacy.en,driver_agreement.en");
+});
+
+test("legal documents render Spanish versions", () => {
+  const driverAgreement = resolveLegalDocument(LEGAL_DOCUMENT_IDS.DRIVER_AGREEMENT, "es").document;
+  const ownerDocuments = getRequiredLegalDocumentsForRole("owner", "es").map(({ document }) => document);
+
+  assert.equal(driverAgreement.storageKey, "driver_agreement.es");
+  assert.equal(driverAgreement.title, "Acuerdo del conductor");
+  assert.equal(ownerDocuments.map((document) => document.storageKey).join(","), "terms.es,privacy.es,owner_agreement.es");
+});
+
+test("legal documents fall back to English when Spanish is unavailable", () => {
+  const key = "owner_agreement.es";
+  const original = LEGAL_DOCUMENTS[key];
+  delete (LEGAL_DOCUMENTS as Record<string, unknown>)[key];
+
+  try {
+    const resolved = resolveLegalDocument(LEGAL_DOCUMENT_IDS.OWNER_AGREEMENT, "es");
+
+    assert.equal(resolved.document.storageKey, "owner_agreement.en");
+    assert.equal(resolved.fallbackToEnglish, true);
+    assert.match(resolved.fallbackNotice || "", /English version is shown/);
+  } finally {
+    LEGAL_DOCUMENTS[key] = original;
+  }
+});
+
+test("legal acceptance tracking records language version and timestamp", async () => {
+  const acceptances: any[] = [];
+  let driverUpdatedWith: Record<string, unknown> | null = null;
+
+  await withPatchedStorage(
+    {
+      getTermsAcceptancesForUser: async () => acceptances,
+      createTermsAcceptance: async (acceptance: Record<string, unknown>) => {
+        const row = {
+          id: `acceptance_${acceptances.length + 1}`,
+          createdAt: new Date(),
+          ...acceptance,
+        };
+        acceptances.push(row);
+        return row;
+      },
+      getDriver: async () => makeDriver(),
+      updateDriver: async (_driverId: string, update: Record<string, unknown>) => {
+        driverUpdatedWith = update;
+        return { ...makeDriver(), ...update };
+      },
+    },
+    async () => {
+      const state = await recordCurrentTermsAcceptance(
+        makeUser({ role: "driver" }),
+        {
+          get: (header: string) => header === "user-agent" ? "unit-test-agent" : undefined,
+          ip: "127.0.0.1",
+          headers: {},
+        },
+        undefined,
+        "es",
+      );
+
+      assert.equal(state.requiresAcceptance, false);
+      assert.equal(acceptances.length, 3);
+      assert.deepEqual(
+        acceptances.map((acceptance) => acceptance.storageKey),
+        ["terms.es", "privacy.es", "driver_agreement.es"],
+      );
+      assert.equal(acceptances.every((acceptance) => acceptance.language === "es"), true);
+      assert.equal(acceptances.every((acceptance) => typeof acceptance.version === "string"), true);
+      assert.equal(acceptances.every((acceptance) => acceptance.acceptedAt instanceof Date), true);
+      assert.equal(driverUpdatedWith?.hasAgreedToTerms, true);
+      assert.ok(driverUpdatedWith?.termsAgreedAt instanceof Date);
+    },
+  );
+});
+
+test("legal document version changes require re-acceptance", async () => {
+  const staleAcceptances = getRequiredLegalDocumentsForRole("driver", "en").map(({ document }) => ({
+    id: `stale_${document.storageKey}`,
+    userId: "user_1",
+    role: "driver",
+    termsType: document.id,
+    language: document.language,
+    storageKey: document.storageKey,
+    version: `${document.version}.old`,
+    contentHash: document.contentHash,
+    acceptedAt: new Date("2026-06-01T00:00:00.000Z"),
+    createdAt: new Date("2026-06-01T00:00:00.000Z"),
+  }));
+
+  await withPatchedStorage(
+    {
+      getTermsAcceptancesForUser: async () => staleAcceptances,
+    },
+    async () => {
+      const state = await getTermsStateForUser(makeUser({ role: "driver" }), undefined, "en");
+
+      assert.equal(state.requiresAcceptance, true);
+      assert.deepEqual(
+        state.missingDocuments.map((document) => document.storageKey),
+        ["terms.en", "privacy.en", "driver_agreement.en"],
+      );
+    },
+  );
+});
+
 test("driver profile bank connect visibility uses driver_stripe_payouts only", () => {
   const driverProfileSource = readFileSync(new URL("../client/src/pages/driver/profile.tsx", import.meta.url), "utf8");
   const driverPayoutSettingsSource = readFileSync(new URL("../client/src/components/DriverPayoutSettings.tsx", import.meta.url), "utf8");
@@ -151,24 +324,35 @@ test("driver profile bank connect visibility uses driver_stripe_payouts only", (
 
 test("driver dashboard profile reminder does not require a payment method", () => {
   const driverDashboardSource = readFileSync(new URL("../client/src/pages/driver/dashboard.tsx", import.meta.url), "utf8");
+  const i18nSource = readFileSync(new URL("../client/src/lib/i18n.ts", import.meta.url), "utf8");
 
   assert.doesNotMatch(driverDashboardSource, /user\.paymentMethod/);
   assert.doesNotMatch(driverDashboardSource, /set up your payment method/i);
-  assert.match(driverDashboardSource, /set up Stripe payouts/i);
+  assert.match(driverDashboardSource, /driver\.dashboard\.completeProfileDescription/);
+  assert.match(i18nSource, /set up Stripe payouts/i);
 });
 
 test("driver dashboard Washout Stats Mix defaults to today and supports range selector", () => {
   const driverDashboardSource = readFileSync(new URL("../client/src/pages/driver/dashboard.tsx", import.meta.url), "utf8");
 
-  assert.match(driverDashboardSource, /title="Washout Stats Mix"/);
+  assert.match(driverDashboardSource, /title=\{t\("driver\.dashboard\.washoutStatsMix"\)\}/);
   assert.match(driverDashboardSource, /useState<DriverDashboardStatsRange>\("today"\)/);
   assert.match(driverDashboardSource, /statsRange=\$\{statsRange\}/);
   assert.match(driverDashboardSource, /DRIVER_STATS_RANGE_OPTIONS/);
-  assert.match(driverDashboardSource, /value: "today", label: "Today"/);
-  assert.match(driverDashboardSource, /value: "week", label: "Week"/);
-  assert.match(driverDashboardSource, /value: "month", label: "Month"/);
+  assert.match(driverDashboardSource, /value: "today", labelKey: "driver\.dashboard\.rangeToday"/);
+  assert.match(driverDashboardSource, /value: "week", labelKey: "driver\.dashboard\.rangeWeek"/);
+  assert.match(driverDashboardSource, /value: "month", labelKey: "driver\.dashboard\.rangeMonth"/);
+  assert.match(driverDashboardSource, /\{t\(option\.labelKey\)\}/);
   assert.match(driverDashboardSource, /button-washout-stats-\$\{option\.value\}/);
   assert.match(driverDashboardSource, /text-washout-stats-range-label/);
+});
+
+test("driver and owner headers expose language toggle", () => {
+  const driverHeaderSource = readFileSync(new URL("../client/src/components/DriverHeader.tsx", import.meta.url), "utf8");
+  const ownerHeaderSource = readFileSync(new URL("../client/src/components/OwnerHeader.tsx", import.meta.url), "utf8");
+
+  assert.match(driverHeaderSource, /<LanguageToggle \/>/);
+  assert.match(ownerHeaderSource, /<LanguageToggle \/>/);
 });
 
 test("disabled driver_stripe_payouts hides bank connection action", () => {

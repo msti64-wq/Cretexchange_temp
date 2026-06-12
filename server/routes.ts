@@ -31,8 +31,9 @@ import {
   parseTermsTypes,
   recordCurrentTermsAcceptance,
   requireCurrentTerms,
+  type UserTermsState,
 } from "./terms";
-import { TERMS_TYPES } from "@shared/terms";
+import { normalizeLegalLanguage } from "@shared/legalDocuments";
 import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, resolveLocationMonthlyFeeCents, resolveLocationDriverIncentiveTipCents } from "./locationBilling";
 import {
   resolveOwnerBillingPolicy,
@@ -75,6 +76,35 @@ const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
   "image/heic",
   "image/heif",
 ]);
+
+function buildTermsStatusResponse(state: UserTermsState) {
+  const acceptedDocuments = state.requiredDocuments.filter((doc) => doc.accepted);
+  const toAcceptedAtTime = (value: Date | string) => (
+    value instanceof Date ? value.getTime() : new Date(value).getTime()
+  );
+  const agreedAt = acceptedDocuments
+    .map((doc) => doc.acceptedAt)
+    .filter((value): value is Date | string => Boolean(value))
+    .sort((a, b) => toAcceptedAtTime(b) - toAcceptedAtTime(a))[0] || null;
+
+  return {
+    hasAgreed: !state.requiresAcceptance,
+    agreedAt,
+    requiresAcceptance: state.requiresAcceptance,
+    role: state.role,
+    acceptedLanguage: acceptedDocuments[0]?.acceptedLanguage || null,
+    acceptedVersions: acceptedDocuments.map((doc) => ({
+      termsType: doc.termsType,
+      language: doc.acceptedLanguage,
+      storageKey: doc.acceptedStorageKey,
+      version: doc.acceptedVersion,
+      contentHash: doc.acceptedContentHash,
+      acceptedAt: doc.acceptedAt,
+    })),
+    requiredDocuments: state.requiredDocuments,
+    missingDocuments: state.missingDocuments,
+  };
+}
 
 type QueuedPendingWashoutPayment = PendingWashoutPayment & {
   activity: WashoutActivity;
@@ -5756,16 +5786,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/owners/terms-status', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const language = normalizeLegalLanguage(req.query?.language);
       const owner = await storage.getOwner(userId);
       
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      res.json({ 
-        hasAgreed: !!owner.hasAgreedToTerms,
-        agreedAt: owner.termsAgreedAt || null
-      });
+      await ensureCurrentTermsVersions();
+      const state = await getTermsStateForUser(
+        { id: userId, role: "owner" },
+        undefined,
+        language,
+      );
+
+      res.json(buildTermsStatusResponse(state));
     } catch (error) {
       console.error("Error checking terms status:", error);
       res.status(500).json({ message: "Failed to check terms status" });
@@ -5776,38 +5811,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/owners/agree-to-terms', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const language = normalizeLegalLanguage(req.body?.language);
       const owner = await storage.getOwner(userId);
       const user = await storage.getUser(userId);
       
       if (!owner || !user) {
         return res.status(404).json({ message: "Owner not found" });
       }
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      if (user.role !== "owner") {
+        return res.status(403).json({ message: "Owner access required" });
       }
 
-      // Record terms agreement with timestamp
+      await ensureCurrentTermsVersions();
+      const state = await recordCurrentTermsAcceptance(
+        { id: user.id, role: "owner" },
+        req,
+        parseTermsTypes(req.body?.termsTypes),
+        language,
+      );
+      const response = buildTermsStatusResponse(state);
+
       const agreementData = {
         ownerId: owner.id,
         ownerName: `${user.firstName} ${user.lastName}`,
         ownerEmail: user.email || '',
         ownerCompany: owner.companyName || 'N/A',
-        agreedAt: new Date(),
-        ipAddress: req.ip || req.connection.remoteAddress || 'unknown'
+        agreedAt: response.agreedAt ? new Date(response.agreedAt) : new Date(),
+        ipAddress: req.ip || req.connection.remoteAddress || 'unknown',
+        language,
+        versions: response.acceptedVersions,
       };
-
-      // Update owner with terms agreement info
-      await storage.updateOwner(owner.id, {
-        ...owner,
-        hasAgreedToTerms: true,
-        termsAgreedAt: new Date()
-      });
 
       // Create admin notification message
       const adminMessage = {
         userId: userId,
         subject: `Terms Agreement - ${agreementData.ownerName}`,
-        message: `Owner "${agreementData.ownerName}" (${agreementData.ownerEmail}) from company "${agreementData.ownerCompany}" has read and agreed to the Terms and Conditions on ${agreementData.agreedAt.toLocaleDateString()} at ${agreementData.agreedAt.toLocaleTimeString()}.\n\nIP Address: ${agreementData.ipAddress}`,
+        message: `Owner "${agreementData.ownerName}" (${agreementData.ownerEmail}) from company "${agreementData.ownerCompany}" accepted current legal documents in ${agreementData.language.toUpperCase()} on ${agreementData.agreedAt.toLocaleDateString()} at ${agreementData.agreedAt.toLocaleTimeString()}.\n\nVersions: ${agreementData.versions.map((doc) => `${doc.storageKey}:${doc.version}`).join(", ")}\n\nIP Address: ${agreementData.ipAddress}`,
         userRole: 'owner' as const,
         userPhone: user.phone || '',
         priority: 'normal'
@@ -5820,7 +5859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true, 
         message: "Terms agreement recorded successfully",
-        agreedAt: agreementData.agreedAt
+        ...response,
       });
     } catch (error) {
       console.error("Error recording terms agreement:", error);
@@ -5833,16 +5872,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/drivers/terms-status', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const language = normalizeLegalLanguage(req.query?.language);
       const driver = await storage.getDriver(userId);
       
       if (!driver) {
         return res.status(404).json({ message: "Driver not found" });
       }
 
-      res.json({ 
-        hasAgreed: !!driver.hasAgreedToTerms,
-        agreedAt: driver.termsAgreedAt || null
-      });
+      await ensureCurrentTermsVersions();
+      const state = await getTermsStateForUser(
+        { id: userId, role: "driver" },
+        undefined,
+        language,
+      );
+
+      res.json(buildTermsStatusResponse(state));
     } catch (error) {
       console.error("Error checking driver terms status:", error);
       res.status(500).json({ message: "Failed to check terms status" });
@@ -5853,6 +5897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/drivers/agree-to-terms', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const language = normalizeLegalLanguage(req.body?.language);
       const user = await storage.getUser(userId);
       
       // Verify user is a driver
@@ -5865,16 +5910,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver profile not found" });
       }
 
+      await ensureCurrentTermsVersions();
+      const existingState = await getTermsStateForUser(
+        { id: user.id, role: "driver" },
+        undefined,
+        language,
+      );
+
       // Check for idempotency
-      if (driver.hasAgreedToTerms) {
+      if (!existingState.requiresAcceptance) {
+        const response = buildTermsStatusResponse(existingState);
         return res.json({ 
           success: true, 
           message: "Terms already accepted",
-          agreedAt: driver.termsAgreedAt
+          ...response,
         });
       }
 
-      const now = new Date();
+      const state = await recordCurrentTermsAcceptance(
+        { id: user.id, role: "driver" },
+        req,
+        parseTermsTypes(req.body?.termsTypes),
+        language,
+      );
+      const response = buildTermsStatusResponse(state);
+      const now = response.agreedAt ? new Date(response.agreedAt) : new Date();
       const ipAddress = req.get('x-forwarded-for') || req.ip || req.connection.remoteAddress || 'unknown';
       
       // Record terms agreement with timestamp
@@ -5886,20 +5946,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverEmployer: driver.employerName || 'N/A',
         agreedAt: now,
         ipAddress,
-        userAgent: req.get('user-agent') || 'unknown'
+        userAgent: req.get('user-agent') || 'unknown',
+        language,
+        versions: response.acceptedVersions,
       };
-
-      // Safe partial update - only update the fields we need to change
-      await storage.updateDriver(driver.id, {
-        hasAgreedToTerms: true,
-        termsAgreedAt: now,
-      });
 
       // Create admin notification message (remove unsupported 'priority' field)
       const adminMessage = {
         userId: userId,
         subject: `Driver Wallet Terms Agreement - ${agreementData.driverName}`,
-        message: `Driver "${agreementData.driverName}" (${agreementData.driverEmail}) with license "${agreementData.driverLicense}" from "${agreementData.driverEmployer}" has read and agreed to the Wallet Terms and Conditions on ${agreementData.agreedAt.toLocaleDateString()} at ${agreementData.agreedAt.toLocaleTimeString()}.\n\nThis agreement enables wallet withdrawal functionality with the established fee structure (10% on withdrawals ≥$10, $1 flat fee <$10).\n\nIP Address: ${agreementData.ipAddress}\nUser Agent: ${agreementData.userAgent}`,
+        message: `Driver "${agreementData.driverName}" (${agreementData.driverEmail}) with license "${agreementData.driverLicense}" from "${agreementData.driverEmployer}" accepted current legal documents in ${agreementData.language.toUpperCase()} on ${agreementData.agreedAt.toLocaleDateString()} at ${agreementData.agreedAt.toLocaleTimeString()}.\n\nVersions: ${agreementData.versions.map((doc) => `${doc.storageKey}:${doc.version}`).join(", ")}\n\nIP Address: ${agreementData.ipAddress}\nUser Agent: ${agreementData.userAgent}`,
         userRole: 'driver' as const,
         userPhone: user.phone || ''
       };
@@ -5911,7 +5967,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true, 
         message: "Wallet terms agreement recorded successfully",
-        agreedAt: agreementData.agreedAt
+        ...response,
       });
     } catch (error) {
       console.error("Error recording driver terms agreement:", error);

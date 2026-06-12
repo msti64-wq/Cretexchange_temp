@@ -2,7 +2,6 @@ import type { RequestHandler } from "express";
 import { storage } from "./storage";
 import {
   CURRENT_REQUIRED_TERMS,
-  CURRENT_TERMS_DOCUMENTS,
   TERMS_TYPES,
   type CurrentTermsDocument,
   type TermsRole,
@@ -10,8 +9,9 @@ import {
   getRequiredTermsForRole,
   isTermsType,
 } from "@shared/terms";
+import { normalizeLegalLanguage, type LegalLanguage } from "@shared/legalDocuments";
+import type { TermsAcceptance } from "@shared/schema";
 
-type TermsAcceptance = any;
 type User = any;
 
 export interface TermsDocumentState extends CurrentTermsDocument {
@@ -19,6 +19,8 @@ export interface TermsDocumentState extends CurrentTermsDocument {
   acceptedAt: Date | string | null;
   acceptedVersion: string | null;
   acceptedContentHash: string | null;
+  acceptedLanguage: string | null;
+  acceptedStorageKey: string | null;
   legacyAcceptance: boolean;
 }
 
@@ -50,6 +52,7 @@ function findCurrentAcceptance(
 ): TermsAcceptance | undefined {
   return acceptances.find((acceptance) => (
     acceptance.termsType === doc.termsType &&
+    acceptance.language === doc.language &&
     acceptance.version === doc.version &&
     acceptance.contentHash === doc.contentHash
   ));
@@ -59,14 +62,22 @@ async function getLegacyAcceptance(
   user: Pick<User, "id" | "role">,
   termsType: TermsType,
 ): Promise<{ acceptedAt: Date | string | null } | null> {
-  if (user.role === "driver" && (termsType === TERMS_TYPES.DRIVER || termsType === TERMS_TYPES.PRIVACY)) {
+  if (user.role === "driver" && (
+    termsType === TERMS_TYPES.TERMS ||
+    termsType === TERMS_TYPES.PRIVACY ||
+    termsType === TERMS_TYPES.DRIVER_AGREEMENT
+  )) {
     const driver = await storage.getDriver(user.id);
     if (driver?.hasAgreedToTerms) {
       return { acceptedAt: driver.termsAgreedAt || null };
     }
   }
 
-  if (user.role === "owner" && (termsType === TERMS_TYPES.OWNER || termsType === TERMS_TYPES.PRIVACY)) {
+  if (user.role === "owner" && (
+    termsType === TERMS_TYPES.TERMS ||
+    termsType === TERMS_TYPES.PRIVACY ||
+    termsType === TERMS_TYPES.OWNER_AGREEMENT
+  )) {
     const owner = await storage.getOwner(user.id);
     if (owner?.hasAgreedToTerms) {
       return { acceptedAt: owner.termsAgreedAt || null };
@@ -80,6 +91,8 @@ export async function ensureCurrentTermsVersions(): Promise<void> {
   await Promise.all(
     CURRENT_REQUIRED_TERMS.map((doc) => storage.upsertTermsVersion({
       termsType: doc.termsType,
+      language: doc.language,
+      storageKey: doc.storageKey,
       version: doc.version,
       title: doc.title,
       contentHash: doc.contentHash,
@@ -93,9 +106,11 @@ export async function ensureCurrentTermsVersions(): Promise<void> {
 export async function getTermsStateForUser(
   user: Pick<User, "id" | "role">,
   limitedTermsTypes?: TermsType[],
+  languageInput: unknown = "en",
 ): Promise<UserTermsState> {
   const role = user.role as TermsRole | null;
-  const required = getRequiredTermsForRole(role);
+  const language = normalizeLegalLanguage(languageInput);
+  const required = getRequiredTermsForRole(role, language);
   const limited = limitedTermsTypes?.length
     ? required.filter((doc) => limitedTermsTypes.includes(doc.termsType))
     : required;
@@ -110,9 +125,11 @@ export async function getTermsStateForUser(
   }
 
   let acceptances: TermsAcceptance[] = [];
+  let ledgerAvailable = true;
   try {
     acceptances = await storage.getTermsAcceptancesForUser(user.id);
   } catch (error) {
+    ledgerAvailable = false;
     console.error("Terms acceptance ledger unavailable; falling back to legacy flags:", error);
   }
   const requiredDocuments: TermsDocumentState[] = [];
@@ -127,18 +144,22 @@ export async function getTermsStateForUser(
         acceptedAt: currentAcceptance.acceptedAt,
         acceptedVersion: currentAcceptance.version,
         acceptedContentHash: currentAcceptance.contentHash,
+        acceptedLanguage: currentAcceptance.language,
+        acceptedStorageKey: currentAcceptance.storageKey,
         legacyAcceptance: false,
       });
       continue;
     }
 
-    const legacyAcceptance = await getLegacyAcceptance(user, doc.termsType);
+    const legacyAcceptance = ledgerAvailable ? null : await getLegacyAcceptance(user, doc.termsType);
     requiredDocuments.push({
       ...doc,
       accepted: Boolean(legacyAcceptance),
       acceptedAt: legacyAcceptance?.acceptedAt || null,
       acceptedVersion: legacyAcceptance ? doc.version : null,
       acceptedContentHash: legacyAcceptance ? doc.contentHash : null,
+      acceptedLanguage: legacyAcceptance ? doc.language : null,
+      acceptedStorageKey: legacyAcceptance ? doc.storageKey : null,
       legacyAcceptance: Boolean(legacyAcceptance),
     });
   }
@@ -157,15 +178,17 @@ export async function recordCurrentTermsAcceptance(
   user: Pick<User, "id" | "role">,
   req: any,
   termsTypes?: TermsType[],
+  languageInput: unknown = "en",
 ): Promise<UserTermsState> {
   const role = user.role as TermsRole | null;
-  const required = getRequiredTermsForRole(role);
+  const language = normalizeLegalLanguage(languageInput);
+  const required = getRequiredTermsForRole(role, language);
   const targetDocs = termsTypes?.length
     ? required.filter((doc) => termsTypes.includes(doc.termsType))
     : required;
 
   if (!role || targetDocs.length === 0) {
-    return getTermsStateForUser(user);
+    return getTermsStateForUser(user, undefined, language);
   }
 
   const acceptedAt = new Date();
@@ -177,6 +200,8 @@ export async function recordCurrentTermsAcceptance(
       userId: user.id,
       role,
       termsType: doc.termsType,
+      language: doc.language,
+      storageKey: doc.storageKey,
       version: doc.version,
       contentHash: doc.contentHash,
       acceptedAt,
@@ -185,7 +210,7 @@ export async function recordCurrentTermsAcceptance(
     });
   }
 
-  if (role === "driver" && targetDocs.some((doc) => doc.termsType === TERMS_TYPES.DRIVER)) {
+  if (role === "driver" && targetDocs.some((doc) => doc.termsType === TERMS_TYPES.DRIVER_AGREEMENT)) {
     const driver = await storage.getDriver(user.id);
     if (driver) {
       await storage.updateDriver(driver.id, {
@@ -195,7 +220,7 @@ export async function recordCurrentTermsAcceptance(
     }
   }
 
-  if (role === "owner" && targetDocs.some((doc) => doc.termsType === TERMS_TYPES.OWNER)) {
+  if (role === "owner" && targetDocs.some((doc) => doc.termsType === TERMS_TYPES.OWNER_AGREEMENT)) {
     const owner = await storage.getOwner(user.id);
     if (owner) {
       await storage.updateOwner(owner.id, {
@@ -205,7 +230,7 @@ export async function recordCurrentTermsAcceptance(
     }
   }
 
-  return getTermsStateForUser(user);
+  return getTermsStateForUser(user, undefined, language);
 }
 
 export function requireCurrentTerms(termsTypes?: TermsType[]): RequestHandler {
@@ -240,7 +265,6 @@ export function parseTermsTypes(input: unknown): TermsType[] | undefined {
 
   return input.filter((value): value is TermsType => (
     typeof value === "string" &&
-    isTermsType(value) &&
-    Boolean(CURRENT_TERMS_DOCUMENTS[value])
+    isTermsType(value)
   ));
 }

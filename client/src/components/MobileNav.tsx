@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { useLanguage } from "@/lib/i18n";
 
 interface MobileNavProps {
   role?: "driver" | "owner" | "admin" | "super_admin";
@@ -11,6 +12,7 @@ interface MobileNavProps {
 export function MobileNav({ role }: MobileNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
+  const { t } = useLanguage();
   
   // Use the role prop if provided, otherwise get from auth context
   const userRole = role || (user as any)?.role;
@@ -24,24 +26,24 @@ export function MobileNav({ role }: MobileNavProps) {
 
   const unreadCount = (unreadData as any)?.count || 0;
 
-  const getNavItems = (): Array<{ path: string; icon: any; label: string }> => {
+  const getNavItems = (): Array<{ path: string; icon: any; label: string; testIdLabel?: string }> => {
     switch (userRole) {
       case "driver":
         return [
-          { path: "/", icon: Home, label: "Dashboard" },
-          { path: "/locations", icon: Map, label: "Locations" },
-          { path: "/activity", icon: List, label: "Activity" },
-          { path: "/wallet", icon: Wallet, label: "Wallet" },
-          { path: "/notifications", icon: Bell, label: "Messages" },
-          { path: "/profile", icon: User, label: "Profile" },
+          { path: "/", icon: Home, label: t("common.dashboard"), testIdLabel: "dashboard" },
+          { path: "/locations", icon: Map, label: t("common.locations"), testIdLabel: "locations" },
+          { path: "/activity", icon: List, label: t("nav.activity"), testIdLabel: "activity" },
+          { path: "/wallet", icon: Wallet, label: t("nav.wallet"), testIdLabel: "wallet" },
+          { path: "/notifications", icon: Bell, label: t("nav.messages"), testIdLabel: "messages" },
+          { path: "/profile", icon: User, label: t("nav.profile"), testIdLabel: "profile" },
         ];
       case "owner":
         return [
-          { path: "/", icon: Home, label: "Dashboard" },
-          { path: "/locations", icon: Building, label: "Locations" },
-          { path: "/drivers", icon: Users, label: "Drivers" },
-          { path: "/wallet", icon: Wallet, label: "Wallet" },
-          { path: "/notifications", icon: Bell, label: "Alerts" },
+          { path: "/", icon: Home, label: t("common.dashboard"), testIdLabel: "dashboard" },
+          { path: "/locations", icon: Building, label: t("common.locations"), testIdLabel: "locations" },
+          { path: "/drivers", icon: Users, label: t("common.drivers"), testIdLabel: "drivers" },
+          { path: "/wallet", icon: Wallet, label: t("nav.wallet"), testIdLabel: "wallet" },
+          { path: "/notifications", icon: Bell, label: t("nav.alerts"), testIdLabel: "alerts" },
         ];
       case "admin":
         // Regular admins only see Dashboard, Users, and Locations
@@ -93,11 +95,11 @@ export function MobileNav({ role }: MobileNavProps) {
                   ? "active"
                   : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
               )}
-              data-testid={`nav-${item.label.toLowerCase()}`}
+              data-testid={`nav-${item.testIdLabel || item.label.toLowerCase()}`}
             >
               <div className="relative">
                 <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                {(item.label === 'Alerts' || item.label === 'Messages') && unreadCount > 0 && (
+                {(item.testIdLabel === "alerts" || item.testIdLabel === "messages") && unreadCount > 0 && (
                   <span className="absolute -right-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-xs text-white" data-testid="badge-unread-count">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>

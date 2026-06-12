@@ -585,6 +585,49 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Legal document versions and user acceptance ledger
+export const termsVersions = pgTable("terms_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  termsType: varchar("terms_type").notNull(),
+  language: varchar("language").notNull().default("en"),
+  storageKey: varchar("storage_key").notNull(),
+  version: varchar("version").notNull(),
+  title: varchar("title").notNull(),
+  contentHash: varchar("content_hash").notNull(),
+  effectiveAt: timestamp("effective_at").notNull(),
+  requiresReacceptance: boolean("requires_reacceptance").default(true).notNull(),
+  isCurrent: boolean("is_current").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("uniq_terms_versions_storage_key_version").on(table.storageKey, table.version),
+  index("idx_terms_versions_type_language_current").on(table.termsType, table.language, table.isCurrent),
+]);
+
+export const termsAcceptances = pgTable("terms_acceptances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role").notNull(),
+  termsType: varchar("terms_type").notNull(),
+  language: varchar("language").notNull().default("en"),
+  storageKey: varchar("storage_key").notNull(),
+  version: varchar("version").notNull(),
+  contentHash: varchar("content_hash").notNull(),
+  acceptedAt: timestamp("accepted_at").notNull(),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("uniq_terms_acceptance_user_doc_version").on(
+    table.userId,
+    table.termsType,
+    table.language,
+    table.version,
+    table.contentHash,
+  ),
+  index("idx_terms_acceptances_user").on(table.userId),
+]);
+
 // Support messages from users to admin
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -944,6 +987,17 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   createdAt: true,
 });
 
+export const insertTermsVersionSchema = createInsertSchema(termsVersions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTermsAcceptanceSchema = createInsertSchema(termsAcceptances).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
   createdAt: true,
@@ -1141,6 +1195,8 @@ export type Payment = typeof payments.$inferSelect & {
   platformFee?: string;
 };
 export type Notification = typeof notifications.$inferSelect;
+export type TermsVersion = typeof termsVersions.$inferSelect;
+export type TermsAcceptance = typeof termsAcceptances.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 
 export type InsertDriver = z.infer<typeof insertDriverSchema>;
@@ -1154,6 +1210,8 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema> & {
   tipAmountCents?: number | null;
 };
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type InsertTermsVersion = z.infer<typeof insertTermsVersionSchema>;
+export type InsertTermsAcceptance = z.infer<typeof insertTermsAcceptanceSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

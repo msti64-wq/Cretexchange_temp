@@ -17,9 +17,11 @@ import { formatAddress } from "@shared/addressUtils";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { resolveLocationDriverIncentiveTipCents } from "@shared/locationBilling";
+import { useLanguage } from "@/lib/i18n";
 
 export default function DriverLocations() {
   const [, setLocation] = useLocation();
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -132,7 +134,7 @@ export default function DriverLocations() {
           <div className="relative">
             <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search locations..."
+              placeholder={t("driver.locations.searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -148,7 +150,7 @@ export default function DriverLocations() {
               data-testid="button-sort-distance"
             >
               <Navigation className="w-4 h-4 mr-1" />
-              Distance
+              {t("common.distance")}
             </Button>
             <Button 
               variant={sortBy === "rate" ? "default" : "outline"}
@@ -156,7 +158,7 @@ export default function DriverLocations() {
               onClick={() => setSortBy("rate")}
               data-testid="button-sort-rate"
             >
-              Rate
+              {t("common.rate")}
             </Button>
           </div>
         </div>
@@ -167,10 +169,10 @@ export default function DriverLocations() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Trash2 className="w-5 h-5 text-accent" />
-                <h3 className="font-semibold">What are you looking to drop off?</h3>
+                <h3 className="font-semibold">{t("driver.locations.dropOffQuestion")}</h3>
               </div>
               <p className="text-sm text-muted-foreground mb-4">
-                Select the materials you need to dispose of to find accepting locations
+                {t("driver.locations.dropOffHelp")}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {materials.map((material: any) => (
@@ -195,7 +197,7 @@ export default function DriverLocations() {
                         <div className="font-medium">{material.displayName || material.display_name}</div>
                         {material.synonyms && material.synonyms.length > 0 && (
                           <div className="text-xs text-muted-foreground mt-0.5">
-                            Examples: {material.synonyms.join(', ')}
+                            {t("driver.locations.examples", { examples: material.synonyms.join(', ') })}
                           </div>
                         )}
                       </div>
@@ -207,7 +209,9 @@ export default function DriverLocations() {
                 <div className="mt-3 pt-3 border-t">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">
-                      {selectedMaterials.length} material{selectedMaterials.length !== 1 ? 's' : ''} selected
+                      {selectedMaterials.length === 1
+                        ? t("driver.locations.materialSelected", { count: selectedMaterials.length })
+                        : t("driver.locations.materialsSelected", { count: selectedMaterials.length })}
                     </span>
                     <Button
                       variant="ghost"
@@ -215,7 +219,7 @@ export default function DriverLocations() {
                       onClick={() => setSelectedMaterials([])}
                       data-testid="button-clear-materials"
                     >
-                      Clear All
+                      {t("driver.locations.clearAll")}
                     </Button>
                   </div>
                 </div>
@@ -228,10 +232,10 @@ export default function DriverLocations() {
         {locationError && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-blue-800 text-sm">
-              📍 Using approximate location for distance calculations
+              {t("driver.locations.approxLocation")}
             </p>
             <p className="text-blue-600 text-xs mt-1">
-              For accurate distances, enable GPS on your device or deploy to mobile.
+              {t("driver.locations.enableGps")}
             </p>
           </div>
         )}
@@ -252,9 +256,9 @@ export default function DriverLocations() {
         {/* Location List */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Available Locations</h2>
+            <h2 className="text-lg font-semibold">{t("driver.locations.availableLocations")}</h2>
             <Badge variant="secondary" data-testid="text-location-count">
-              {filteredAndSortedLocations.length} locations
+              {t("driver.locations.locationCount", { count: filteredAndSortedLocations.length })}
             </Badge>
           </div>
 
@@ -262,7 +266,7 @@ export default function DriverLocations() {
             <Card>
               <CardContent className="text-center py-8">
                 <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No locations found</p>
+                <p className="text-muted-foreground">{t("driver.locations.noLocationsFound")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -286,7 +290,7 @@ export default function DriverLocations() {
                       </p>
                       {(item.owner?.user || location.owner?.user) && (
                         <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-name-${index}`}>
-                          👤 Owner: {(item.owner?.user?.firstName || location.owner?.user?.firstName)} {(item.owner?.user?.lastName || location.owner?.user?.lastName)}
+                          {t("driver.locations.ownerName", { name: `${item.owner?.user?.firstName || location.owner?.user?.firstName} ${item.owner?.user?.lastName || location.owner?.user?.lastName}` })}
                         </p>
                       )}
                       <div className="flex items-center gap-4 text-sm">
@@ -300,7 +304,7 @@ export default function DriverLocations() {
                         )}
                         <div className="flex items-center text-green-600">
                           <Clock className="w-4 h-4 mr-1" />
-                          <span>Open 24/7</span>
+                          <span>{t("driver.locations.open247")}</span>
                         </div>
                       </div>
                     </div>
@@ -308,9 +312,9 @@ export default function DriverLocations() {
                       <div className="text-2xl font-bold text-accent mb-1" data-testid={`text-location-rate-${index}`}>
                         {formatCurrency(Number(location.rate))}
                       </div>
-                      <div className="text-xs text-muted-foreground">driver payout per washout</div>
+                      <div className="text-xs text-muted-foreground">{t("driver.locations.driverPayoutPerWashout")}</div>
                       <div className="text-xs text-muted-foreground">
-                        Driver tip: {formatCurrency(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100)}
+                        {t("driver.locations.driverTip", { amount: formatCurrency(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100) })}
                       </div>
                     </div>
                   </div>
@@ -336,14 +340,14 @@ export default function DriverLocations() {
                     <div className="mb-3 p-3 border rounded-lg bg-muted/30">
                       <div className="flex items-center gap-2 mb-2">
                         <Package className="w-4 h-4 text-accent" />
-                        <h4 className="text-sm font-semibold">Materials Accepted</h4>
+                        <h4 className="text-sm font-semibold">{t("driver.locations.materialsAccepted")}</h4>
                       </div>
                       <div className="grid grid-cols-1 gap-2">
                         {location.materialIntents
                           .filter((intent: any) => intent.active !== false)
                           .map((intent: any, intentIndex: number) => {
                             const material = intent.material;
-                            const displayName = material?.displayName || material?.display_name || intent.customLabel || 'Custom Material';
+                            const displayName = material?.displayName || material?.display_name || intent.customLabel || t("driver.locations.customMaterial");
                             const rateCents = intent.rateCents || intent.rate_cents || 0;
                             const unit = intent.unit || 'per_load';
                             const unitDisplay = unit === 'per_load' ? 'per load' : unit === 'per_ton' ? 'per ton' : 'per cubic yard';
@@ -369,7 +373,7 @@ export default function DriverLocations() {
                       data-testid={`button-check-in-${index}`}
                     >
                       <MapPin className="w-4 h-4 mr-1" />
-                      Check In
+                      {t("driver.locations.checkIn")}
                     </Button>
                     <Button 
                       size="sm"

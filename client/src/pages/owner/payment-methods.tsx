@@ -15,10 +15,13 @@ import { OwnerWalletWizard } from "@/components/OwnerWalletWizard";
 import { BankAccountConnect } from "@/components/BankAccountConnect";
 import { apiRequest } from "@/lib/queryClient";
 import StripeCardSetup from "@/components/StripeCardSetup";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLanguage } from "@/lib/i18n";
 
 export default function PaymentMethods() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showWalletWizard, setShowWalletWizard] = useState(false);
   const [showCardSetup, setShowCardSetup] = useState(false);
@@ -54,8 +57,8 @@ export default function PaymentMethods() {
     },
     onSuccess: () => {
       toast({ 
-        title: "Funding source added successfully",
-        description: "Your new payment method is now available for wallet funding." 
+        title: t("owner.billing.fundingSourceAdded"),
+        description: t("owner.billing.fundingSourceAddedDescription"),
       });
       setShowAddForm(false);
       setFormData({
@@ -70,7 +73,7 @@ export default function PaymentMethods() {
     },
     onError: (error: any) => {
       toast({ 
-        title: "Failed to add funding source", 
+        title: t("owner.billing.failedToAddFunding"),
         description: error.message,
         variant: "destructive" 
       });
@@ -83,13 +86,13 @@ export default function PaymentMethods() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Funding source removed successfully" });
+      toast({ title: t("owner.billing.fundingSourceRemoved") });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/funding-sources'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/wallet'] });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Failed to remove funding source", 
+        title: t("owner.billing.failedToRemoveFunding"),
         description: error.message,
         variant: "destructive" 
       });
@@ -102,12 +105,12 @@ export default function PaymentMethods() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Primary funding source updated" });
+      toast({ title: t("owner.billing.primaryUpdated") });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/funding-sources'] });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Failed to update primary source", 
+        title: t("owner.billing.failedPrimary"),
         description: error.message,
         variant: "destructive" 
       });
@@ -167,10 +170,11 @@ export default function PaymentMethods() {
                 <Wallet className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="font-semibold text-lg">Wallet Setup Required</h1>
-                <p className="text-white/80 text-sm">Configure your wallet</p>
+                <h1 className="font-semibold text-lg">{t("owner.billing.walletSetupRequired")}</h1>
+                <p className="text-white/80 text-sm">{t("owner.billing.configureWallet")}</p>
               </div>
             </div>
+            <LanguageToggle />
           </div>
         </header>
 
@@ -178,10 +182,9 @@ export default function PaymentMethods() {
           <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
             <CardContent className="p-6 text-center">
               <Wallet className="w-16 h-16 mx-auto mb-4 text-blue-600" />
-              <h3 className="text-lg font-semibold mb-2">Wallet Setup Required</h3>
+              <h3 className="text-lg font-semibold mb-2">{t("owner.billing.walletSetupRequired")}</h3>
               <p className="text-muted-foreground mb-4">
-                Before you can manage funding sources, you need to set up your business wallet.
-                This enables secure payment processing and automatic driver payouts.
+                {t("owner.billing.walletSetupDescription")}
               </p>
               <Button 
                 onClick={() => setShowWalletWizard(true)}
@@ -189,7 +192,7 @@ export default function PaymentMethods() {
                 data-testid="button-setup-wallet"
               >
                 <Wallet className="w-4 h-4 mr-2" />
-                Set Up Wallet
+                {t("owner.billing.setUpWallet")}
               </Button>
             </CardContent>
           </Card>
@@ -228,10 +231,11 @@ export default function PaymentMethods() {
               <Wallet className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-lg">Payment Methods</h1>
-              <p className="text-white/80 text-sm">Manage fees, wallet funding & payouts</p>
+              <h1 className="font-semibold text-lg">{t("owner.billing.paymentMethods")}</h1>
+              <p className="text-white/80 text-sm">{t("owner.billing.manageFees")}</p>
             </div>
           </div>
+          <LanguageToggle />
         </div>
       </header>
 
@@ -241,9 +245,9 @@ export default function PaymentMethods() {
           <div className="flex items-start gap-3">
             <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
             <div className="text-sm">
-              <p className="font-semibold text-green-800 dark:text-green-200">Standard washout billing</p>
+              <p className="font-semibold text-green-800 dark:text-green-200">{t("owner.billing.standardWashoutBilling")}</p>
               <p className="text-green-700 dark:text-green-300 mt-1">
-                Owners are charged the platform fee per completed washout (default $5.00 unless overridden by the platform) plus any configured driver incentive tip.
+                {t("owner.billing.standardWashoutBillingDescription")}
               </p>
             </div>
           </div>
@@ -252,8 +256,8 @@ export default function PaymentMethods() {
         {/* 1. Credit Card for Weekly Washout Billing */}
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold">Credit Card for Washout Billing</h2>
-            <p className="text-sm text-muted-foreground">Required — charged the platform fee per completed washout plus any configured driver incentive tip</p>
+            <h2 className="text-lg font-semibold">{t("owner.billing.cardForWashoutBilling")}</h2>
+            <p className="text-sm text-muted-foreground">{t("owner.billing.cardRequired")}</p>
           </div>
           <Card className="border-purple-200 bg-purple-50 dark:bg-purple-950/20">
             <CardContent className="p-4">
@@ -263,10 +267,10 @@ export default function PaymentMethods() {
                     <CreditCard className="w-8 h-8 text-purple-600" />
                     <div>
                       <div className="font-medium">
-                        {(ownerData as any)?.paymentMethod?.brand || 'Card'} ****{(ownerData as any)?.paymentMethod?.last4 || '****'}
+                        {(ownerData as any)?.paymentMethod?.brand || t("common.card")} ****{(ownerData as any)?.paymentMethod?.last4 || '****'}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Active — charged weekly for completed washouts plus any configured driver incentive tips
+                        {t("owner.billing.activeCardDescription")}
                       </div>
                     </div>
                   </div>
@@ -276,15 +280,15 @@ export default function PaymentMethods() {
                     onClick={() => setShowCardSetup(true)}
                     data-testid="button-change-card"
                   >
-                    Update Card
+                    {t("owner.billing.updateCard")}
                   </Button>
                 </div>
               ) : (
                 <div className="text-center py-4">
                   <CreditCard className="w-12 h-12 mx-auto mb-3 text-purple-600" />
-                  <h3 className="font-medium mb-2">No Card on File</h3>
+                  <h3 className="font-medium mb-2">{t("owner.billing.noCard")}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    A credit card is required to add locations and receive washout requests. Owners are charged the platform fee per completed washout plus any configured driver incentive tip.
+                    {t("owner.billing.noCardDescription")}
                   </p>
                   <Button
                     onClick={() => setShowCardSetup(true)}
@@ -292,7 +296,7 @@ export default function PaymentMethods() {
                     data-testid="button-add-payment-method"
                   >
                     <CreditCard className="w-4 h-4 mr-2" />
-                    Add Credit Card
+                    {t("owner.billing.addCreditCard")}
                   </Button>
                 </div>
               )}
@@ -305,9 +309,9 @@ export default function PaymentMethods() {
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                  <p className="font-medium">How weekly billing works</p>
-                  <p>Each Sunday, all washouts completed during the past week are totaled and a single charge is made to your card on file.</p>
-                  <p>Example: 10 washouts in a week = the total of the platform fee and any configured driver incentive tips charged on Sunday.</p>
+                  <p className="font-medium">{t("owner.billing.weeklyHowTitle")}</p>
+                  <p>{t("owner.billing.weeklyHowDescription")}</p>
+                  <p>{t("owner.billing.weeklyExample")}</p>
                 </div>
               </div>
             </CardContent>
@@ -317,8 +321,8 @@ export default function PaymentMethods() {
         {/* 3. Owner Wallet Funding (ACH Only) */}
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold">Stripe Wallet Funding</h2>
-            <p className="text-sm text-muted-foreground">Add bank accounts (ACH only) to fund your wallet</p>
+            <h2 className="text-lg font-semibold">{t("owner.billing.walletFunding")}</h2>
+            <p className="text-sm text-muted-foreground">{t("owner.billing.walletFundingDescription")}</p>
           </div>
           
           {/* Wallet Status Card */}
@@ -329,15 +333,18 @@ export default function PaymentMethods() {
                   <Wallet className="w-5 h-5 text-green-600 mt-0.5" />
                   <div className="text-sm">
                     <h3 className="font-medium text-green-800 dark:text-green-200 mb-1">
-                      Stripe Wallet Status
+                      {t("owner.billing.walletStatus")}
                     </h3>
                     <p className="text-green-700 dark:text-green-300">
-                      Balance: ${(walletData as any)?.balance || '0.00'} • Status: {(walletData as any)?.status || 'Active'}
+                      {t("owner.billing.balanceStatus", {
+                        balance: `$${(walletData as any)?.balance || "0.00"}`,
+                        status: (walletData as any)?.status || t("common.active"),
+                      })}
                     </p>
                   </div>
                 </div>
                 <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  {(walletData as any)?.status || 'Active'}
+                  {(walletData as any)?.status || t("common.active")}
                 </Badge>
               </div>
             </CardContent>
@@ -350,14 +357,14 @@ export default function PaymentMethods() {
                 <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
                 <div className="text-sm">
                   <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1">
-                    What is Wallet Funding Used For?
+                    {t("owner.billing.walletFundingUsedFor")}
                   </h3>
                   <p className="text-blue-700 dark:text-blue-300 mb-2">
-                    Your Stripe wallet funds are used for:
+                    {t("owner.billing.walletFundsUsedFor")}
                   </p>
                   <ul className="text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
-                    <li>Paying drivers for washout services (via internal transfer)</li>
-                    <li>Monthly location fees ($1.00/location) when balance is available</li>
+                    <li>{t("owner.billing.driverPaymentsUse")}</li>
+                    <li>{t("owner.billing.locationFeesUse")}</li>
                   </ul>
                 </div>
               </div>
@@ -366,14 +373,14 @@ export default function PaymentMethods() {
 
           {/* Bank Accounts List */}
           <div className="flex items-center justify-between">
-            <h3 className="font-medium">Bank Accounts (ACH)</h3>
+            <h3 className="font-medium">{t("owner.billing.bankAccounts")}</h3>
             <Button
               onClick={() => setShowAddForm(true)}
               className="bg-green-600 hover:bg-green-700"
               data-testid="button-add-source"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Source
+              {t("owner.billing.addSource")}
             </Button>
           </div>
 
@@ -388,12 +395,12 @@ export default function PaymentMethods() {
                 <Card>
                   <CardContent className="p-8 text-center">
                     <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="font-medium mb-2">No Bank Accounts Added</h3>
+                    <h3 className="font-medium mb-2">{t("owner.billing.noBankAccounts")}</h3>
                     <p className="text-muted-foreground mb-4">
-                      Add a bank account (ACH) to fund your Stripe wallet
+                      {t("owner.billing.addBankAccountHelp")}
                     </p>
                     <Button onClick={() => setShowAddForm(true)} data-testid="button-add-first-source">
-                      Add Your First Bank Account
+                      {t("owner.billing.addFirstBankAccount")}
                     </Button>
                   </CardContent>
                 </Card>
@@ -411,9 +418,9 @@ export default function PaymentMethods() {
                           {source.bankName} ****{source.accountNumberLast4}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Bank Account (ACH)
+                          {t("owner.billing.bankAccountAch")}
                           {source.isVerified && (
-                            <span className="text-green-600 ml-2">• Verified</span>
+                            <span className="text-green-600 ml-2">• {t("owner.billing.verified")}</span>
                           )}
                         </div>
                       </div>
@@ -422,7 +429,7 @@ export default function PaymentMethods() {
                       {source.isPrimary && (
                         <Badge variant="secondary" data-testid={`badge-primary-${index}`}>
                           <Star className="w-3 h-3 mr-1" />
-                          Primary
+                          {t("owner.billing.primary")}
                         </Badge>
                       )}
                       {!source.isPrimary && (
@@ -433,7 +440,7 @@ export default function PaymentMethods() {
                           disabled={setPrimarySourceMutation.isPending}
                           data-testid={`button-set-primary-${index}`}
                         >
-                          Set Primary
+                          {t("owner.billing.setPrimary")}
                         </Button>
                       )}
                       <Button
@@ -459,10 +466,10 @@ export default function PaymentMethods() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Plus className="w-5 h-5 mr-2" />
-                Connect Bank Account
+                {t("owner.billing.connectBankAccount")}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                Instantly connect your bank account to fund your wallet. Secure bank-level encryption.
+                {t("owner.billing.connectBankDescription")}
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -472,13 +479,13 @@ export default function PaymentMethods() {
                   queryClient.invalidateQueries({ queryKey: ['/api/owners/funding-sources'] });
                   setShowAddForm(false);
                 }}
-                buttonText="Connect Bank Account"
+                buttonText={t("owner.billing.connectBankAccount")}
                 className="w-full"
               />
               
               <div className="bg-muted/50 rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">
-                  <strong>🔒 Instant & Secure:</strong> Connect your bank account securely in seconds using your online banking credentials. Bank-level encryption protects your data.
+                  <strong>{t("owner.billing.secureBank")}</strong> {t("owner.billing.secureBankDescription")}
                 </p>
               </div>
 
@@ -489,7 +496,7 @@ export default function PaymentMethods() {
                 className="w-full"
                 data-testid="button-cancel"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </CardContent>
           </Card>
@@ -501,28 +508,28 @@ export default function PaymentMethods() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Check className="w-5 h-5 mr-2" />
-                Wallet Management
+                {t("owner.billing.walletManagement")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium">Auto Top-up</div>
+                    <div className="font-medium">{t("owner.billing.autoTopup")}</div>
                     <div className="text-sm text-muted-foreground">
-                      {(walletData as any)?.autoTopupEnabled ? 'Enabled' : 'Disabled'} • 
-                      Threshold: ${(walletData as any)?.lowBalanceThreshold || '100'}
-                      {(walletData as any)?.autoTopupEnabled && ` • Amount: $${(walletData as any)?.autoTopupAmount || '500'}`}
+                      {(walletData as any)?.autoTopupEnabled ? t("owner.billing.enabled") : t("owner.billing.disabled")} - 
+                      {t("owner.billing.threshold")}: ${(walletData as any)?.lowBalanceThreshold || '100'}
+                      {(walletData as any)?.autoTopupEnabled && ` - ${t("owner.billing.amount")}: $${(walletData as any)?.autoTopupAmount || '500'}`}
                     </div>
                   </div>
                   <Badge variant={(walletData as any)?.autoTopupEnabled ? 'default' : 'secondary'}>
-                    {(walletData as any)?.autoTopupEnabled ? 'Active' : 'Inactive'}
+                    {(walletData as any)?.autoTopupEnabled ? t("common.active") : t("owner.billing.inactive")}
                   </Badge>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <p>• Automatic driver payouts are processed weekly</p>
-                  <p>• Low balance alerts keep your wallet funded</p>
-                  <p>• All transactions are logged for your records</p>
+                  <p>• {t("owner.billing.autoPayoutsWeekly")}</p>
+                  <p>• {t("owner.billing.lowBalanceAlerts")}</p>
+                  <p>• {t("owner.billing.transactionsLogged")}</p>
                 </div>
               </div>
             </CardContent>
@@ -532,8 +539,8 @@ export default function PaymentMethods() {
         {/* 4. Driver Payments & Payouts Info */}
         <div className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold">Driver Payments & Payouts</h2>
-            <p className="text-sm text-muted-foreground">How drivers receive payment for washout services</p>
+            <h2 className="text-lg font-semibold">{t("owner.billing.driverPaymentsPayouts")}</h2>
+            <p className="text-sm text-muted-foreground">{t("owner.billing.driverPaymentsDescription")}</p>
           </div>
           <Card className="border-teal-200 bg-teal-50 dark:bg-teal-950/20">
             <CardContent className="p-4">
@@ -541,15 +548,15 @@ export default function PaymentMethods() {
                 <AlertCircle className="w-5 h-5 text-teal-600 mt-0.5" />
                 <div className="text-sm">
                   <h3 className="font-medium text-teal-800 dark:text-teal-200 mb-2">
-                    Payment Flow
+                    {t("owner.billing.paymentFlow")}
                   </h3>
                   <ul className="text-teal-700 dark:text-teal-300 space-y-1 list-disc list-inside">
-                    <li>When you approve a washout, payment is transferred instantly from your Stripe wallet to the driver's Stripe wallet</li>
-                    <li>Drivers can request ACH transfer from their wallet to their bank account</li>
-                    <li>Drivers can also request a Stripe debit card linked to their wallet for instant access to funds</li>
+                    <li>{t("owner.billing.paymentFlow1")}</li>
+                    <li>{t("owner.billing.paymentFlow2")}</li>
+                    <li>{t("owner.billing.paymentFlow3")}</li>
                   </ul>
                   <p className="text-teal-700 dark:text-teal-300 mt-2 text-xs">
-                    Note: Driver payment settings are managed on the driver's account, not shown here.
+                    {t("owner.billing.driverSettingsNote")}
                   </p>
                 </div>
               </div>
@@ -563,9 +570,9 @@ export default function PaymentMethods() {
             <div className="flex items-center space-x-3">
               <Wallet className="w-5 h-5 text-muted-foreground" />
               <div>
-                <div className="font-medium">Powered by Stripe</div>
+                <div className="font-medium">{t("owner.billing.poweredByStripe")}</div>
                 <div className="text-sm text-muted-foreground">
-                  Secure payment processing and financial services
+                  {t("owner.billing.stripeDescription")}
                 </div>
               </div>
             </div>
@@ -587,7 +594,7 @@ export default function PaymentMethods() {
           e.preventDefault();
         }}>
           <DialogHeader>
-            <DialogTitle>Add Payment Method</DialogTitle>
+            <DialogTitle>{t("owner.billing.addPaymentMethod")}</DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto max-h-[calc(90vh-8rem)] pb-4">
             <StripeCardSetup

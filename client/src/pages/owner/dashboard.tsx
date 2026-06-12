@@ -27,6 +27,7 @@ import { formatAddress } from "@shared/addressUtils";
 import { LogoutButton } from "@/components/LogoutButton";
 import { resolveOwnerMembershipState } from "@shared/ownerMembership";
 import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
+import { useLanguage } from "@/lib/i18n";
 
 const AUTO_APPROVAL_HOURS = 72;
 
@@ -75,9 +76,37 @@ function getTimeUntilAutoApproval(createdAt: string | Date): { hours: number; mi
   return { hours, minutes, isExpired: false, isUrgent };
 }
 
+function translateOwnerWashoutStatus(status: string | null | undefined, t: (key: string) => string) {
+  switch (status) {
+    case "verified":
+    case "approved":
+    case "completed":
+    case "paid":
+    case "settled":
+      return t("common.approved");
+    case "rejected":
+    case "declined":
+    case "cancelled":
+    case "canceled":
+      return t("common.rejected");
+    case "pending":
+    case "submitted":
+    case "photo_pending":
+    case "pending_owner_approval":
+    case "pending_photo_approval":
+    case "awaiting_approval":
+    case "awaiting_owner_approval":
+    case "awaiting_photo_approval":
+      return t("common.pending");
+    default:
+      return getWashoutApprovalDisplayStatus(status);
+  }
+}
+
 export default function OwnerDashboard() {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
+  const { t, language } = useLanguage();
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
@@ -209,9 +238,9 @@ export default function OwnerDashboard() {
       });
 
       toast({
-        title: data?.message || "Washout approved for payment",
+        title: data?.message || t("owner.dashboard.approveSuccess"),
         description: data?.paymentStatus === 'awaiting_driver_stripe'
-          ? "Payment will be processed once the driver completes payment setup."
+          ? t("owner.dashboard.approveDeferred")
           : undefined,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
@@ -225,7 +254,7 @@ export default function OwnerDashboard() {
     onError: (error, activityId) => {
       const message = parseApiError(error);
       console.error("Approval failed:", { activityId, message, error });
-      toast({ title: "Failed to approve washout", description: message, variant: "destructive" });
+      toast({ title: t("owner.dashboard.approveFailed"), description: message, variant: "destructive" });
     },
   });
 
@@ -242,7 +271,7 @@ export default function OwnerDashboard() {
     },
     onSuccess: (data, activityId) => {
       console.log("Rejection successful:", data);
-      toast({ title: "Washout rejected" });
+      toast({ title: t("owner.dashboard.rejectSuccess") });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
       queryClient.invalidateQueries({ predicate: (query) => 
         Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))
@@ -250,7 +279,7 @@ export default function OwnerDashboard() {
     },
     onError: (error, activityId) => {
       console.error("Rejection failed:", error);
-      toast({ title: "Failed to reject washout", variant: "destructive" });
+      toast({ title: t("owner.dashboard.rejectFailed"), variant: "destructive" });
     },
   });
 
@@ -340,9 +369,9 @@ export default function OwnerDashboard() {
       .filter(Boolean)
   ).size : 0;
   const ownerStatusChartData = [
-    { label: "Pending", amount: pendingPayments, count: pendingCount },
-    { label: "Approved", amount: approvedPayments, count: approvedCount },
-    { label: "Rejected", amount: rejectedPayments, count: rejectedCount },
+    { label: t("common.pending"), amount: pendingPayments, count: pendingCount },
+    { label: t("common.approved"), amount: approvedPayments, count: approvedCount },
+    { label: t("common.rejected"), amount: rejectedPayments, count: rejectedCount },
   ];
 
   return (
@@ -361,7 +390,7 @@ export default function OwnerDashboard() {
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="mb-1 font-semibold text-amber-900 dark:text-amber-100">
-                  {membershipState.membershipStatus === "pending_review" ? "Account Pending Review" : "Account Status"}
+                  {membershipState.membershipStatus === "pending_review" ? t("owner.dashboard.accountPendingReview") : t("owner.dashboard.accountStatus")}
                 </h3>
                 <p className="text-sm text-amber-800 dark:text-amber-200">
                   {membershipState.accountStatusMessage}
@@ -377,89 +406,89 @@ export default function OwnerDashboard() {
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Portfolio overview
+                  {t("owner.dashboard.portfolioOverview")}
                 </span>
                 <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/25 dark:text-emerald-300">
-                  Live operations
+                  {t("owner.dashboard.liveOperations")}
                 </span>
               </div>
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight">Owner Dashboard</h2>
+                <h2 className="text-2xl font-semibold tracking-tight">{t("owner.dashboard.title")}</h2>
                 <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  Monitor washout flow, approve jobs, and track payout exposure across your active sites.
+                  {t("owner.dashboard.description")}
                 </p>
               </div>
               <div className="grid gap-2 sm:grid-cols-3">
                 <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-3 py-2.5">
                   <Gauge className="h-4 w-4 text-primary" />
                   <div>
-                    <p className="text-xs font-medium text-foreground">{pendingCount} open reviews</p>
-                    <p className="text-[11px] text-muted-foreground">requires your attention</p>
+                    <p className="text-xs font-medium text-foreground">{t("owner.dashboard.openReviews", { count: pendingCount })}</p>
+                    <p className="text-[11px] text-muted-foreground">{t("owner.dashboard.requiresAttention")}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-3 py-2.5">
                   <Building2 className="h-4 w-4 text-secondary" />
                   <div>
-                    <p className="text-xs font-medium text-foreground">{Number(locations) || 0} sites</p>
-                    <p className="text-[11px] text-muted-foreground">active washout locations</p>
+                    <p className="text-xs font-medium text-foreground">{t("owner.dashboard.sites", { count: Number(locations) || 0 })}</p>
+                    <p className="text-[11px] text-muted-foreground">{t("owner.dashboard.activeWashoutLocations")}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-3 py-2.5">
                   <Activity className="h-4 w-4 text-accent" />
                   <div>
-                    <p className="text-xs font-medium text-foreground">{recentActivities.length} jobs</p>
-                    <p className="text-[11px] text-muted-foreground">in selected range</p>
+                    <p className="text-xs font-medium text-foreground">{t("owner.dashboard.jobs", { count: recentActivities.length })}</p>
+                    <p className="text-[11px] text-muted-foreground">{t("owner.dashboard.selectedRange")}</p>
                   </div>
                 </div>
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Payment exposure</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.paymentExposure")}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight">{formatCurrency(pendingPayments)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">awaiting your review</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.awaitingReview")}</p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Approved for payout</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.approvedForPayout")}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{formatCurrency(approvedPayments)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">ready to settle</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.readyToSettle")}</p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Recycling network</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.recyclingNetwork")}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight text-amber-700 dark:text-amber-300">{Number(locations) || 0}</p>
-                <p className="mt-1 text-sm text-muted-foreground">active sites</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.activeSites")}</p>
               </div>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <DashboardMetricCard
-              title="Washouts"
+              title={t("common.washouts")}
               value={recentActivities?.length || 0}
-              helper={`${pendingCount} pending approval`}
+              helper={t("owner.dashboard.pendingApproval", { count: pendingCount })}
               icon={ClipboardCheck}
               toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
               dataTestId="text-daily-visits"
             />
             <DashboardMetricCard
-              title="Pending"
+              title={t("owner.dashboard.pending")}
               value={formatCurrency(pendingPayments)}
-              helper="Awaiting your review"
+              helper={t("owner.dashboard.awaitingReview")}
               icon={Clock}
               toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
               dataTestId="text-pending-payments"
             />
             <DashboardMetricCard
-              title="Ready"
+              title={t("owner.dashboard.ready")}
               value={formatCurrency(approvedPayments)}
-              helper="Approved for payout"
+              helper={t("owner.dashboard.approvedForPayout")}
               icon={WalletCards}
               toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-approved-payments"
             />
             <DashboardMetricCard
-              title="Active Sites"
+              title={t("owner.dashboard.activeSitesTitle")}
               value={Number(locations) || 0}
-              helper="Washout locations"
+              helper={t("owner.dashboard.activeWashoutLocations")}
               icon={MapPin}
               toneClassName="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
               dataTestId="text-total-locations"
@@ -470,15 +499,15 @@ export default function OwnerDashboard() {
         {/* Payment and Activity Analytics */}
         <div className="grid gap-4 md:grid-cols-[1.25fr_0.75fr]">
           <DashboardSectionCard
-            title="Washout Status Mix"
-            description="Dollar value currently pending, approved, and rejected."
+            title={t("owner.dashboard.washoutStatusMix")}
+            description={t("owner.dashboard.washoutStatusMixDescription")}
             icon={<Package className="h-4 w-4 text-secondary" />}
             badge={<Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">{dateRange}</Badge>}
           >
             <div className="pt-0">
               <ChartContainer
                 config={{
-                  amount: { label: "Amount", color: "var(--color-amount)" },
+                  amount: { label: t("common.amount"), color: "var(--color-amount)" },
                 }}
                 className="h-[240px] w-full"
               >
@@ -501,15 +530,15 @@ export default function OwnerDashboard() {
           </DashboardSectionCard>
 
           <DashboardSectionCard
-            title="30-Day Totals"
+            title={t("owner.dashboard.thirtyDayTotals")}
             icon={<Clock3 className="h-4 w-4 text-accent" />}
           >
             <div className="space-y-4">
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total payments</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Current month activity</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.totalPayments")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.currentMonthActivity")}</p>
                   </div>
                   <span className="text-2xl font-semibold tracking-tight text-foreground" data-testid="text-month-total">
                     {formatCurrency(monthStats?.totalPayments || 0)}
@@ -518,32 +547,32 @@ export default function OwnerDashboard() {
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Pending payments</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.pendingPayments")}</p>
                   <p className="mt-2 text-xl font-semibold tracking-tight text-secondary" data-testid="text-pending-total">
                     {formatCurrency(pendingPayments)}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">awaiting review</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.awaitingReview")}</p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Rejected</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.rejected")}</p>
                   <p className="mt-2 text-xl font-semibold tracking-tight text-red-600 dark:text-red-400" data-testid="text-rejected-count">
                     {rejectedCount}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">requires follow-up</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.requiresFollowUp")}</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-3">
                 <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-center">
                   <p className="text-lg font-semibold tracking-tight" data-testid="text-month-washouts">{totalWashouts}</p>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Washouts</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t("common.washouts")}</p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-center">
                   <p className="text-lg font-semibold tracking-tight" data-testid="text-month-drivers">{uniqueDrivers}</p>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Drivers</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t("common.drivers")}</p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-center">
                   <p className="text-lg font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{approvedCount}</p>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Approved</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t("common.approved")}</p>
                 </div>
               </div>
             </div>
@@ -552,7 +581,7 @@ export default function OwnerDashboard() {
 
         {/* Recent Activity */}
         <StatCard
-          title="Recent Activity"
+          title={t("owner.dashboard.recentActivity")}
           subtitle={
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
               <Select value={dateRange} onValueChange={(value) => setDateRange(value as typeof dateRange)}>
@@ -560,12 +589,12 @@ export default function OwnerDashboard() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="today" data-testid="option-today">Today</SelectItem>
-                  <SelectItem value="yesterday" data-testid="option-yesterday">Yesterday</SelectItem>
-                  <SelectItem value="7days" data-testid="option-7days">Last 7 Days</SelectItem>
-                  <SelectItem value="30days" data-testid="option-30days">Last 30 Days</SelectItem>
-                  <SelectItem value="90days" data-testid="option-90days">Last 90 Days</SelectItem>
-                  <SelectItem value="all" data-testid="option-all">All Time</SelectItem>
+                  <SelectItem value="today" data-testid="option-today">{t("owner.dashboard.today")}</SelectItem>
+                  <SelectItem value="yesterday" data-testid="option-yesterday">{t("owner.dashboard.yesterday")}</SelectItem>
+                  <SelectItem value="7days" data-testid="option-7days">{t("owner.dashboard.last7Days")}</SelectItem>
+                  <SelectItem value="30days" data-testid="option-30days">{t("owner.dashboard.last30Days")}</SelectItem>
+                  <SelectItem value="90days" data-testid="option-90days">{t("owner.dashboard.last90Days")}</SelectItem>
+                  <SelectItem value="all" data-testid="option-all">{t("owner.dashboard.allTime")}</SelectItem>
                 </SelectContent>
               </Select>
               <Button 
@@ -575,7 +604,7 @@ export default function OwnerDashboard() {
                 onClick={() => setLocation('/drivers')}
                 data-testid="button-view-all-activity"
               >
-                View All
+                {t("common.viewAll")}
                 <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
@@ -589,10 +618,10 @@ export default function OwnerDashboard() {
                   <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
                   <div className="text-sm">
                     <p className="font-semibold text-amber-900 dark:text-amber-200">
-                      Review Required Within 72 Hours
+                      {t("owner.dashboard.reviewRequiredTitle")}
                     </p>
                     <p className="mt-1 text-amber-800/90 text-xs dark:text-amber-200/80">
-                      Pending washouts must be approved or rejected within 72 hours. After this period, they will be automatically approved and charged to your account.
+                      {t("owner.dashboard.reviewRequiredDescription")}
                     </p>
                   </div>
                 </div>
@@ -625,7 +654,7 @@ export default function OwnerDashboard() {
               <div className="space-y-3 opacity-60 transition-opacity">
                 <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-4 py-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Updating activities...
+                  {t("owner.dashboard.updatingActivities")}
                 </div>
                 {approvalQueueActivities.map((activity: any, index: number) => (
                   <div key={activity.id} className="space-y-3 rounded-2xl border border-border/70 bg-muted/30 p-4" data-testid={`card-recent-activity-${index}`}>
@@ -645,7 +674,7 @@ export default function OwnerDashboard() {
                             </div>
                           )}
                           <div className="text-xs text-muted-foreground" data-testid={`text-activity-timestamp-${index}`}>
-                            {new Date(activity.checkInTime).toLocaleDateString()} at {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
+                            {new Date(activity.checkInTime).toLocaleDateString(language === "es" ? "es-US" : "en-US")} at {new Date(activity.checkInTime).toLocaleTimeString(language === "es" ? "es-US" : "en-US", {
                               hour: 'numeric',
                               minute: '2-digit',
                               hour12: true
@@ -673,8 +702,8 @@ export default function OwnerDashboard() {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
                   <X className="h-8 w-8 text-red-600 dark:text-red-400" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-red-700 dark:text-red-300">Authentication Required</h3>
-                <p className="mb-4 text-sm text-muted-foreground">Your session has expired. Please log in again to view your washout activities.</p>
+                <h3 className="mb-2 text-lg font-semibold text-red-700 dark:text-red-300">{t("owner.dashboard.authRequired")}</h3>
+                <p className="mb-4 text-sm text-muted-foreground">{t("owner.dashboard.sessionExpired")}</p>
                 <div className="space-y-2">
                   <Button
                     onClick={clearPhantomActivities}
@@ -682,12 +711,12 @@ export default function OwnerDashboard() {
                     className="mr-2 h-10"
                     data-testid="button-clear-cache"
                   >
-                    Clear Cache
+                    {t("common.clearCache")}
                   </Button>
                   <LogoutButton
                     onClick={logout}
                     tone="danger"
-                    label="Log In Again"
+                    label={t("owner.dashboard.logInAgain")}
                     iconOnlyOnMobile={false}
                     dataTestId="button-reauth"
                   />
@@ -695,8 +724,8 @@ export default function OwnerDashboard() {
               </div>
             ) : !approvalQueueActivities.length ? (
               <DashboardEmptyState
-                title="No activity found"
-                description="There are no washouts for the selected period. Change the date range or check back after a driver submits a washout."
+                title={t("owner.dashboard.noActivity")}
+                description={t("owner.dashboard.noActivityDescription")}
                 icon={Clock}
                 toneClassName="bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-300"
                 action={
@@ -707,7 +736,7 @@ export default function OwnerDashboard() {
                     onClick={() => setLocation('/locations')}
                     data-testid="button-view-locations-empty"
                   >
-                    View locations
+                    {t("owner.dashboard.viewLocations")}
                   </Button>
                 }
               />
@@ -730,7 +759,7 @@ export default function OwnerDashboard() {
                           </div>
                         )}
                         <div className="text-xs text-muted-foreground" data-testid={`text-activity-timestamp-${index}`}>
-                          {new Date(activity.checkInTime).toLocaleDateString()} at {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
+                          {new Date(activity.checkInTime).toLocaleDateString(language === "es" ? "es-US" : "en-US")} at {new Date(activity.checkInTime).toLocaleTimeString(language === "es" ? "es-US" : "en-US", {
                             hour: 'numeric',
                             minute: '2-digit',
                             hour12: true
@@ -783,7 +812,7 @@ export default function OwnerDashboard() {
                           className="text-xs w-fit"
                           data-testid={`badge-activity-status-${index}`}
                         >
-                          {getWashoutApprovalDisplayStatus(activity.status)}
+                          {translateOwnerWashoutStatus(activity.status, t)}
                         </Badge>
                         {isPendingWashoutApproval(activity.status) && activity.checkInTime && (() => {
                           const timeLeft = getTimeUntilAutoApproval(activity.checkInTime);
@@ -794,8 +823,8 @@ export default function OwnerDashboard() {
                             >
                               <Clock className="w-3 h-3 inline mr-1" />
                               {timeLeft.isExpired 
-                                ? 'Auto-approving soon' 
-                                : `${timeLeft.hours}h ${timeLeft.minutes}m left`}
+                                ? t("owner.dashboard.autoApprovingSoon")
+                                : t("owner.dashboard.timeLeft", { hours: timeLeft.hours, minutes: timeLeft.minutes })}
                             </span>
                           );
                         })()}
@@ -821,7 +850,7 @@ export default function OwnerDashboard() {
                           data-testid={`button-view-photos-${index}`}
                         >
                           <ImageIcon className="w-4 h-4 mr-1" />
-                          Photos
+                          {t("common.photos")}
                         </Button>
                         
                         {/* Approval buttons for pending washouts */}
@@ -836,7 +865,7 @@ export default function OwnerDashboard() {
                               data-testid={`button-reject-${index}`}
                             >
                               <X className="w-4 h-4 mr-1" />
-                              Reject
+                              {t("common.reject")}
                             </Button>
                             <Button
                               size="sm"
@@ -846,7 +875,7 @@ export default function OwnerDashboard() {
                               data-testid={`button-approve-${index}`}
                             >
                               <Check className="w-4 h-4 mr-1" />
-                              Approve
+                              {t("common.approve")}
                             </Button>
                           </>
                         )}
@@ -865,7 +894,7 @@ export default function OwnerDashboard() {
                           className="text-xs"
                           data-testid={`badge-activity-status-${index}`}
                         >
-                          {getWashoutApprovalDisplayStatus(activity.status)}
+                          {translateOwnerWashoutStatus(activity.status, t)}
                         </Badge>
                         {isPendingWashoutApproval(activity.status) && activity.checkInTime && (() => {
                           const timeLeft = getTimeUntilAutoApproval(activity.checkInTime);
@@ -875,8 +904,8 @@ export default function OwnerDashboard() {
                             >
                               <Clock className="w-3 h-3 inline mr-1" />
                               {timeLeft.isExpired 
-                                ? 'Auto-approving soon' 
-                                : `${timeLeft.hours}h ${timeLeft.minutes}m left`}
+                                ? t("owner.dashboard.autoApprovingSoon")
+                                : t("owner.dashboard.timeLeft", { hours: timeLeft.hours, minutes: timeLeft.minutes })}
                             </span>
                           );
                         })()}
@@ -902,7 +931,7 @@ export default function OwnerDashboard() {
                           data-testid={`button-view-photos-${index}`}
                         >
                           <ImageIcon className="w-4 h-4 mr-1" />
-                          Photos
+                          {t("common.photos")}
                         </Button>
                         
                         {/* Approval buttons for pending washouts */}
@@ -917,7 +946,7 @@ export default function OwnerDashboard() {
                               data-testid={`button-reject-${index}`}
                             >
                               <X className="w-4 h-4 mr-1" />
-                              Reject
+                              {t("common.reject")}
                             </Button>
                             <Button
                               size="sm"
@@ -927,7 +956,7 @@ export default function OwnerDashboard() {
                               data-testid={`button-approve-${index}`}
                             >
                               <Check className="w-4 h-4 mr-1" />
-                              Approve
+                              {t("common.approve")}
                             </Button>
                           </>
                         )}
@@ -950,8 +979,8 @@ export default function OwnerDashboard() {
           >
             <MapPin className="h-5 w-5 text-primary" />
             <div>
-              <div className="text-sm font-semibold">Locations</div>
-              <div className="text-xs text-muted-foreground">Manage active sites</div>
+              <div className="text-sm font-semibold">{t("common.locations")}</div>
+              <div className="text-xs text-muted-foreground">{t("owner.dashboard.manageActiveSites")}</div>
             </div>
           </Button>
           
@@ -963,17 +992,17 @@ export default function OwnerDashboard() {
           >
             <DollarSign className="h-5 w-5 text-secondary" />
             <div>
-              <div className="text-sm font-semibold">Payments</div>
-              <div className="text-xs text-muted-foreground">View payout history</div>
+              <div className="text-sm font-semibold">{t("common.payments")}</div>
+              <div className="text-xs text-muted-foreground">{t("owner.dashboard.viewPayoutHistory")}</div>
             </div>
           </Button>
         </div>
 
         {/* Support Section */}
-        <StatCard title="Need Help?" className="border-sky-200 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-slate-900">
+        <StatCard title={t("owner.dashboard.needHelp")} className="border-sky-200 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-slate-900">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1 space-y-2">
-              <p className="text-sm text-muted-foreground">Contact the operations team for onboarding, billing, or washout review questions.</p>
+              <p className="text-sm text-muted-foreground">{t("owner.dashboard.supportDescription")}</p>
               <div className="flex items-center gap-2 text-sm">
                 <Phone className="h-4 w-4 text-sky-600" />
                 <span className="font-medium text-sky-700 dark:text-sky-300" data-testid="text-support-phone">(469) 269-6709</span>
@@ -986,7 +1015,7 @@ export default function OwnerDashboard() {
               data-testid="button-contact-support"
             >
               <MessageCircle className="w-4 h-4 mr-2" />
-              Message Support
+              {t("owner.dashboard.messageSupport")}
             </Button>
           </div>
         </StatCard>

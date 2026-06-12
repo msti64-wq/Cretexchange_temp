@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useLanguage } from "@/lib/i18n";
 
 interface WalletBalance {
   availableBalance: number;
@@ -62,6 +63,7 @@ interface ColumnOnboardingStatus {
 
 export default function DriverWallet() {
   const { toast } = useToast();
+  const { language } = useLanguage();
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
@@ -79,7 +81,7 @@ export default function DriverWallet() {
 
   // Fetch driver terms status
   const { data: termsStatus, isLoading: termsLoading, isError: termsError } = useQuery<{hasAgreed: boolean; agreedAt: string | null}>({
-    queryKey: ['/api/drivers/terms-status'],
+    queryKey: [`/api/drivers/terms-status?language=${encodeURIComponent(language)}`],
   });
 
   // Fetch wallet transactions

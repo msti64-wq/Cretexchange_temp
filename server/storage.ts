@@ -7,6 +7,8 @@ import {
   washoutPhotos,
   payments,
   notifications,
+  termsVersions,
+  termsAcceptances,
   messages,
   passwordResetTokens,
   ownerFundingSources,
@@ -40,6 +42,8 @@ import {
   type WashoutPhoto,
   type Payment,
   type Notification,
+  type TermsVersion,
+  type TermsAcceptance,
   type Message,
   type PasswordResetToken,
   type OwnerFundingSource,
@@ -67,6 +71,8 @@ import {
   type InsertWashoutPhoto,
   type InsertPayment,
   type InsertNotification,
+  type InsertTermsVersion,
+  type InsertTermsAcceptance,
   type InsertMessage,
   type InsertPasswordResetToken,
   type InsertOwnerFundingSource,
@@ -259,6 +265,11 @@ export interface IStorage {
   markNotificationAsRead(notificationId: string): Promise<Notification>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
   clearNotificationsByType(userId: string, type: string): Promise<void>;
+
+  // Legal terms operations
+  upsertTermsVersion(version: InsertTermsVersion): Promise<TermsVersion>;
+  getTermsAcceptancesForUser(userId: string): Promise<TermsAcceptance[]>;
+  createTermsAcceptance(acceptance: InsertTermsAcceptance): Promise<TermsAcceptance>;
 
   // Message operations
   createMessage(message: InsertMessage): Promise<Message>;
@@ -3064,6 +3075,60 @@ export class DatabaseStorage implements IStorage {
         eq(notifications.userId, userId),
         eq(notifications.type, type)
       ));
+  }
+
+  // Legal terms operations
+  async upsertTermsVersion(version: InsertTermsVersion): Promise<TermsVersion> {
+    const [termsVersion] = await db
+      .insert(termsVersions)
+      .values(version)
+      .onConflictDoUpdate({
+        target: [termsVersions.storageKey, termsVersions.version],
+        set: {
+          termsType: version.termsType,
+          language: version.language,
+          title: version.title,
+          contentHash: version.contentHash,
+          effectiveAt: version.effectiveAt,
+          requiresReacceptance: version.requiresReacceptance,
+          isCurrent: version.isCurrent,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return termsVersion;
+  }
+
+  async getTermsAcceptancesForUser(userId: string): Promise<TermsAcceptance[]> {
+    return await db
+      .select()
+      .from(termsAcceptances)
+      .where(eq(termsAcceptances.userId, userId))
+      .orderBy(desc(termsAcceptances.acceptedAt));
+  }
+
+  async createTermsAcceptance(acceptance: InsertTermsAcceptance): Promise<TermsAcceptance> {
+    const [termsAcceptance] = await db
+      .insert(termsAcceptances)
+      .values(acceptance)
+      .onConflictDoUpdate({
+        target: [
+          termsAcceptances.userId,
+          termsAcceptances.termsType,
+          termsAcceptances.language,
+          termsAcceptances.version,
+          termsAcceptances.contentHash,
+        ],
+        set: {
+          role: acceptance.role,
+          storageKey: acceptance.storageKey,
+          acceptedAt: acceptance.acceptedAt,
+          ipAddress: acceptance.ipAddress,
+          userAgent: acceptance.userAgent,
+        },
+      })
+      .returning();
+    return termsAcceptance;
   }
 
   // Message operations

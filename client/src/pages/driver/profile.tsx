@@ -19,9 +19,11 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { hasHandledInstallPromptThisSession, markInstallPromptHandledThisSession } from "@/hooks/usePWAInstall";
+import { useLanguage } from "@/lib/i18n";
 
 export default function DriverProfile() {
   const { toast } = useToast();
+  const { language, t } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -32,7 +34,7 @@ export default function DriverProfile() {
 
   // Fetch driver terms status
   const { data: termsStatus } = useQuery<{hasAgreed: boolean; agreedAt: string | null}>({
-    queryKey: ['/api/drivers/terms-status'],
+    queryKey: [`/api/drivers/terms-status?language=${encodeURIComponent(language)}`],
   });
 
   const {
@@ -46,17 +48,17 @@ export default function DriverProfile() {
     },
     onSuccess: () => {
       toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
+        title: t("driver.profile.profileUpdated"),
+        description: t("driver.profile.profileUpdatedDescription"),
       });
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/drivers/terms-status'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/drivers/terms-status?language=${encodeURIComponent(language)}`] });
       refetch();
     },
     onError: (error) => {
       toast({
-        title: "Update Failed",
+        title: t("driver.profile.updateFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -185,7 +187,7 @@ export default function DriverProfile() {
             <h2 className="text-xl font-semibold mb-1" data-testid="text-user-name">
               {(user as any)?.firstName} {(user as any)?.lastName}
             </h2>
-            <p className="text-muted-foreground" data-testid="text-user-role">Concrete Truck Driver</p>
+            <p className="text-muted-foreground" data-testid="text-user-role">{t("driver.profile.concreteTruckDriver")}</p>
             <div className="flex justify-center gap-2 mt-4 flex-wrap">
               <Button 
                 variant={isEditing ? "default" : "outline"}
@@ -193,7 +195,7 @@ export default function DriverProfile() {
                 onClick={() => setIsEditing(!isEditing)}
                 data-testid="button-edit-profile"
               >
-                {isEditing ? "Cancel" : "Edit Profile"}
+                {isEditing ? t("driver.profile.cancel") : t("driver.profile.editProfile")}
               </Button>
             </div>
           </CardContent>
@@ -211,13 +213,13 @@ export default function DriverProfile() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <User className="w-5 h-5 mr-2" />
-                Personal Information
+                {t("driver.profile.personalInformation")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">{t("driver.profile.firstName")}</Label>
                   <Input
                     id="firstName"
                     value={formData.firstName}
@@ -227,7 +229,7 @@ export default function DriverProfile() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">{t("driver.profile.lastName")}</Label>
                   <Input
                     id="lastName"
                     value={formData.lastName}
@@ -239,7 +241,7 @@ export default function DriverProfile() {
               </div>
               
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("common.email")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -251,7 +253,7 @@ export default function DriverProfile() {
               </div>
               
               <div>
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">{t("driver.profile.phoneNumber")}</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
@@ -262,7 +264,7 @@ export default function DriverProfile() {
               </div>
               
               <div>
-                <Label htmlFor="street">Street Address</Label>
+                <Label htmlFor="street">{t("driver.profile.streetAddress")}</Label>
                 <Input
                   id="street"
                   value={formData.street}
@@ -274,7 +276,7 @@ export default function DriverProfile() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="city">City</Label>
+                      <Label htmlFor="city">{t("common.city")}</Label>
                   <Input
                     id="city"
                     value={formData.city}
@@ -285,7 +287,7 @@ export default function DriverProfile() {
                 </div>
 
                 <div>
-                  <Label htmlFor="state">State</Label>
+                      <Label htmlFor="state">{t("common.state")}</Label>
                   <Input
                     id="state"
                     value={formData.state}
@@ -298,7 +300,7 @@ export default function DriverProfile() {
               </div>
 
               <div>
-                <Label htmlFor="zip">ZIP Code</Label>
+                <Label htmlFor="zip">{t("common.zipCode")}</Label>
                 <Input
                   id="zip"
                   value={formData.zip}
@@ -316,12 +318,12 @@ export default function DriverProfile() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Truck className="w-5 h-5 mr-2" />
-                Employment Information
+                {t("driver.profile.employmentInformation")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="employerName">Employer Name</Label>
+                <Label htmlFor="employerName">{t("driver.profile.employerName")}</Label>
                 <Input
                   id="employerName"
                   value={formData.employerName}
@@ -332,7 +334,7 @@ export default function DriverProfile() {
               </div>
               
               <div>
-                <Label htmlFor="employerStreet">Employer Street Address</Label>
+                <Label htmlFor="employerStreet">{t("driver.profile.employerStreetAddress")}</Label>
                 <Input
                   id="employerStreet"
                   value={formData.employerStreet}
@@ -344,7 +346,7 @@ export default function DriverProfile() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="employerCity">Employer City</Label>
+                    <Label htmlFor="employerCity">{t("driver.profile.employerCity")}</Label>
                   <Input
                     id="employerCity"
                     value={formData.employerCity}
@@ -355,7 +357,7 @@ export default function DriverProfile() {
                 </div>
 
                 <div>
-                  <Label htmlFor="employerState">Employer State</Label>
+                    <Label htmlFor="employerState">{t("driver.profile.employerState")}</Label>
                   <Input
                     id="employerState"
                     value={formData.employerState}
@@ -368,7 +370,7 @@ export default function DriverProfile() {
               </div>
 
               <div>
-                <Label htmlFor="employerZip">Employer ZIP Code</Label>
+                <Label htmlFor="employerZip">{t("driver.profile.employerZipCode")}</Label>
                 <Input
                   id="employerZip"
                   value={formData.employerZip}
@@ -379,7 +381,7 @@ export default function DriverProfile() {
               </div>
               
               <div>
-                <Label htmlFor="employerPhone">Employer Phone</Label>
+                <Label htmlFor="employerPhone">{t("driver.profile.employerPhone")}</Label>
                 <Input
                   id="employerPhone"
                   value={formData.employerPhone}
@@ -390,7 +392,7 @@ export default function DriverProfile() {
               </div>
               
               <div>
-                <Label htmlFor="truckNumber">Truck Number</Label>
+                <Label htmlFor="truckNumber">{t("driver.profile.truckNumber")}</Label>
                 <Input
                   id="truckNumber"
                   placeholder="e.g., Truck #123, Unit A5"
@@ -400,7 +402,7 @@ export default function DriverProfile() {
                   data-testid="input-truck-number"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Enter your current truck number or unit identifier
+                  {t("driver.profile.truckNumberHelp")}
                 </p>
               </div>
             </CardContent>
@@ -411,29 +413,29 @@ export default function DriverProfile() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Gift className="w-5 h-5 mr-2" />
-                Lottery Prize Preference
+                {t("driver.profile.lotteryPrizePreference")}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                If you win a monthly drawing, how would you like to receive your prize?
+                {t("driver.profile.lotteryPrizePreferenceDescription")}
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Prize Delivery Method</Label>
+                <Label>{t("driver.profile.prizeDeliveryMethod")}</Label>
                 <Select
                   value={formData.payoutPreference}
                   onValueChange={(val) => setFormData({ ...formData, payoutPreference: val, payoutPreferenceNote: val !== "other_prize" ? "" : formData.payoutPreferenceNote })}
                   disabled={!isEditing}
                 >
                   <SelectTrigger data-testid="select-payout-preference">
-                    <SelectValue placeholder="Select your preference" />
+                    <SelectValue placeholder={t("driver.profile.selectPreference")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="gift_card">
-                      💳 Prepaid Debit Card — Mailed to your address on file
+                      {t("driver.profile.prepaidDebitCard")}
                     </SelectItem>
                     <SelectItem value="other_prize">
-                      🎉 Surprise Me — Other prize or experience
+                      {t("driver.profile.surpriseMe")}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -441,7 +443,7 @@ export default function DriverProfile() {
 
               {formData.payoutPreference === "other_prize" && (
                 <div className="space-y-2">
-                  <Label htmlFor="payoutPreferenceNote">Tell us more (optional)</Label>
+                  <Label htmlFor="payoutPreferenceNote">{t("driver.profile.tellUsMore")}</Label>
                   <Input
                     id="payoutPreferenceNote"
                     placeholder="e.g., merchandise, restaurant gift card, tool store credit..."
@@ -457,11 +459,11 @@ export default function DriverProfile() {
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
                   <Gift className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <p className="text-sm text-muted-foreground">
-                    Current preference: <span className="font-medium text-foreground">
-                      {formData.payoutPreference === "bank_transfer" ? "Direct Deposit (not currently available)" :
-                       formData.payoutPreference === "gift_card" ? "Prepaid Debit Card" :
-                       formData.payoutPreference === "other_prize" ? "Surprise Me / Other Prize" :
-                       "Not set"}
+                    {t("driver.profile.currentPreference")} <span className="font-medium text-foreground">
+                      {formData.payoutPreference === "bank_transfer" ? t("driver.profile.directDepositUnavailable") :
+                       formData.payoutPreference === "gift_card" ? t("driver.profile.prepaidDebitCard") :
+                       formData.payoutPreference === "other_prize" ? t("driver.profile.otherPrize") :
+                       t("common.notSet")}
                     </span>
                     {formData.payoutPreferenceNote && ` — ${formData.payoutPreferenceNote}`}
                   </p>
@@ -475,15 +477,15 @@ export default function DriverProfile() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Smartphone className="w-5 h-5" />
-                App Installation
+                {t("driver.profile.appInstallation")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">Install CreteXchange</p>
+                  <p className="text-sm font-medium">{t("driver.profile.installCreteXchange")}</p>
                   <p className="text-xs text-muted-foreground">
-                    Add to your home screen for quick access while on the road
+                    {t("driver.profile.installHelp")}
                   </p>
                 </div>
                 <Button
@@ -498,13 +500,13 @@ export default function DriverProfile() {
                   data-testid="button-install-app-manual"
                 >
                   <Smartphone className="w-4 h-4 mr-2" />
-                  Install App
+                  {t("driver.profile.installApp")}
                 </Button>
               </div>
               
               <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Installing the app provides offline access, faster loading, and a native app experience.
+                  {t("driver.profile.installBenefit")}
                 </p>
               </div>
             </CardContent>
@@ -515,23 +517,23 @@ export default function DriverProfile() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Terms & Conditions
+                {t("driver.profile.terms")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">Driver Terms Agreement</p>
+                  <p className="text-sm font-medium">{t("driver.profile.driverTermsAgreement")}</p>
                   <div className="flex items-center gap-2">
                     <Badge 
                       variant={termsStatus?.hasAgreed ? "default" : "secondary"}
                       data-testid="badge-terms-status"
                     >
-                      {termsStatus?.hasAgreed ? "Agreed" : "Not Agreed"}
+                      {termsStatus?.hasAgreed ? t("driver.profile.agreed") : t("driver.profile.notAgreed")}
                     </Badge>
                     {termsStatus?.hasAgreed && termsStatus?.agreedAt && (
                       <span className="text-xs text-muted-foreground">
-                        Agreed on {new Date(termsStatus.agreedAt).toLocaleDateString()}
+                        {t("driver.profile.agreedOn", { date: new Date(termsStatus.agreedAt).toLocaleDateString() })}
                       </span>
                     )}
                   </div>
@@ -544,13 +546,13 @@ export default function DriverProfile() {
                   className={!termsStatus?.hasAgreed ? "border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-400 dark:text-red-400 dark:hover:bg-red-900/20" : ""}
                 >
                   <Eye className="w-4 h-4 mr-2" />
-                  {!termsStatus?.hasAgreed ? "Must Read Terms" : "View Terms"}
+                  {!termsStatus?.hasAgreed ? t("driver.profile.mustReadTerms") : t("driver.profile.viewTerms")}
                 </Button>
               </div>
               
               <div className="bg-muted/50 rounded-lg p-4">
                 <p className="text-sm text-muted-foreground">
-                  Review the terms and conditions that govern your use of CreteXchange.
+                  {t("driver.profile.termsHelp")}
                 </p>
               </div>
             </CardContent>
@@ -564,7 +566,7 @@ export default function DriverProfile() {
               data-testid="button-save-profile"
             >
               <Save className="w-4 h-4 mr-2" />
-              {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+              {updateProfileMutation.isPending ? t("common.saving") : t("driver.profile.saveChanges")}
             </Button>
           )}
         </form>
@@ -577,7 +579,7 @@ export default function DriverProfile() {
         readOnly={termsStatus?.hasAgreed || false}
         onAccepted={() => {
           queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/drivers/terms-status'] });
+          queryClient.invalidateQueries({ queryKey: [`/api/drivers/terms-status?language=${encodeURIComponent(language)}`] });
           refetch();
         }}
       />

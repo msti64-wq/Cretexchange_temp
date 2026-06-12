@@ -5,6 +5,8 @@ import { Smartphone, RefreshCw, Share } from "lucide-react";
 import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/components/LogoutButton";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLanguage } from "@/lib/i18n";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +17,7 @@ import {
 
 export function DriverHeader() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const { canInstall, isIOS, isInstalled, updateAvailable, install, applyUpdate } = usePWAInstall();
   const [showIOSDialog, setShowIOSDialog] = useState(false);
 
@@ -31,7 +34,7 @@ export function DriverHeader() {
       {/* Update available banner */}
       {updateAvailable && (
         <div className="flex items-center justify-between gap-3 border-b border-amber-300/20 bg-amber-500 px-4 py-2 text-sm text-white">
-          <span className="font-medium">A new version of CreteXchange is ready.</span>
+          <span className="font-medium">{t("header.updateReady")}</span>
           <Button
             size="sm"
             variant="outline"
@@ -39,7 +42,7 @@ export function DriverHeader() {
             className="ml-auto h-8 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white text-xs"
           >
             <RefreshCw className="w-3 h-3 mr-1" />
-            Update Now
+            {t("header.updateNow")}
           </Button>
         </div>
       )}
@@ -57,13 +60,13 @@ export function DriverHeader() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <p className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70 sm:block">
-                  Driver portal
+                  {t("header.driverPortal")}
                 </p>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70 sm:hidden">
-                  Driver
+                  {t("header.driverShort")}
                 </p>
                 <span className="hidden dashboard-chip rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] sm:inline-flex">
-                  Concrete operations
+                  {t("header.concreteOperations")}
                 </span>
               </div>
               <h1 className="mt-0.5 truncate text-[15px] font-semibold leading-tight sm:mt-1 sm:text-xl" data-testid="text-driver-name">
@@ -71,11 +74,11 @@ export function DriverHeader() {
               </h1>
               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-white/80 sm:gap-2">
                 <span className="rounded-full border border-white/12 bg-white/8 px-2 py-0.5 text-[11px] sm:px-2.5 sm:text-sm">
-                  Concrete Driver
+                  {t("header.concreteDriver")}
                 </span>
                 {(user as any)?.roleData?.truckNumber && (
                   <span className="rounded-full border border-white/12 bg-white/8 px-2 py-0.5 text-[11px] sm:px-2.5 sm:text-sm">
-                    Truck #{(user as any).roleData.truckNumber}
+                    {t("header.truckNumber", { number: (user as any).roleData.truckNumber })}
                   </span>
                 )}
               </div>
@@ -83,17 +86,19 @@ export function DriverHeader() {
           </div>
 
           <div className="flex items-center gap-2 sm:flex-wrap">
+            <LanguageToggle />
+
             {!isInstalled && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleInstallClick}
                 className="h-9 border-white/20 bg-white/10 px-3 text-white hover:bg-white/20 hover:text-white sm:h-10 sm:px-4"
-                title="Add to Home Screen"
+                title={t("header.addToHomeScreen")}
                 data-testid="button-install-app"
               >
                 <Smartphone className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline text-xs">Add to Phone</span>
+                <span className="hidden sm:inline text-xs">{t("header.addToPhone")}</span>
               </Button>
             )}
 
@@ -108,32 +113,32 @@ export function DriverHeader() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Smartphone className="w-5 h-5 text-blue-600" />
-              Add to Home Screen
+              {t("header.addToHomeScreen")}
             </DialogTitle>
             <DialogDescription>
-              Install CreteXchange for one-tap access — no App Store needed.
+              {t("header.installDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-3 text-sm">
               <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
                 <span className="bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                <span>Tap the <Share className="w-4 h-4 inline text-blue-600 mx-0.5" /> <strong>Share</strong> button at the bottom of Safari</span>
+                <span>{t("header.installStep1")} <Share className="w-4 h-4 inline text-blue-600 mx-0.5" /></span>
               </div>
               <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
                 <span className="bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+                <span>{t("header.installStep2")}</span>
               </div>
               <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
                 <span className="bg-blue-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                <span>Tap <strong>"Add"</strong> to confirm — the app icon will appear on your home screen</span>
+                <span>{t("header.installStep3")}</span>
               </div>
             </div>
             <p className="text-xs text-muted-foreground text-center">
-              Works in Safari · No App Store download required
+              {t("header.installFootnote")}
             </p>
             <Button className="w-full" onClick={() => setShowIOSDialog(false)}>
-              Got it!
+              {t("header.gotIt")}
             </Button>
           </div>
         </DialogContent>

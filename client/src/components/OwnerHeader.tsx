@@ -4,10 +4,14 @@ import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { LogoutButton } from "@/components/LogoutButton";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLanguage } from "@/lib/i18n";
 
 export function OwnerHeader() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
+  const { t } = useLanguage();
+  const ownerName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
 
   return (
     <header className="sticky top-0 z-40 gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)] backdrop-blur supports-[backdrop-filter]:backdrop-blur-xl">
@@ -24,19 +28,22 @@ export function OwnerHeader() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                  Owner portal
+                  {t("header.ownerPortal")}
                 </p>
                 <span className="dashboard-chip rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
-                  Marketplace control
+                  {t("header.marketplaceControl")}
                 </span>
               </div>
               <h1 className="mt-1 truncate text-xl font-semibold leading-tight" data-testid="text-owner-name">
-                Welcome, {user?.firstName} {user?.lastName}
+                {t("header.welcomeUser", { name: ownerName })}
               </h1>
-              <p className="mt-1 text-sm text-white/80">Location management, approvals, and payouts.</p>
+              <p className="mt-1 text-sm text-white/80">{t("header.ownerSubtitle")}</p>
             </div>
           </div>
-          <LogoutButton onClick={logout} dataTestId="button-logout" tone="glass" className="self-start sm:self-auto" />
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <LanguageToggle />
+            <LogoutButton onClick={logout} dataTestId="button-logout" tone="glass" />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -48,7 +55,7 @@ export function OwnerHeader() {
             className="h-11 border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white sm:h-10"
           >
             <User className="mr-2 h-4 w-4" />
-            Profile
+            {t("common.profile")}
           </Button>
           <Button
             variant="secondary"
@@ -58,7 +65,7 @@ export function OwnerHeader() {
             className="h-11 border border-amber-300/20 bg-amber-500 text-white hover:bg-amber-500/90 sm:h-10"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Add Location
+            {t("header.addLocation")}
           </Button>
           <Button
             variant="outline"
@@ -68,7 +75,7 @@ export function OwnerHeader() {
             className="h-11 border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white sm:h-10"
           >
             <CreditCard className="mr-2 h-4 w-4" />
-            Payment Methods
+            {t("header.paymentMethods")}
           </Button>
         </div>
       </div>
