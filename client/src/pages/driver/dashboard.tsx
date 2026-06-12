@@ -160,6 +160,45 @@ export default function DriverDashboard() {
     enabled: showLotteryEntries,
   });
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    const scanOverflow = () => {
+      const viewportWidth = window.innerWidth;
+      const offenders = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-testid], header, main, section, article, .mobile-nav, .stat-card")
+      ).flatMap((el) => {
+        const rect = el.getBoundingClientRect();
+        const clientWidth = el.clientWidth;
+        const scrollWidth = el.scrollWidth;
+        const overflowRight = Math.ceil(rect.right) > viewportWidth + 1;
+        const overflowScroll = scrollWidth > clientWidth + 1;
+
+        if (!overflowRight && !overflowScroll) return [];
+
+        return [{
+          selector: el.getAttribute("data-testid") || el.tagName.toLowerCase(),
+          className: el.className,
+          scrollWidth,
+          clientWidth,
+          right: Math.round(rect.right),
+          viewportWidth,
+        }];
+      });
+
+      if (offenders.length > 0) {
+        console.warn("[DRIVER_DASHBOARD_OVERFLOW]", offenders);
+      }
+    };
+
+    const raf = window.requestAnimationFrame(scanOverflow);
+    window.addEventListener("resize", scanOverflow);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", scanOverflow);
+    };
+  }, []);
+
   if (isLoading) {
     return <DriverDashboardSkeleton />;
   }
@@ -217,45 +256,6 @@ export default function DriverDashboard() {
     { label: t("driver.dashboard.avgEach"), earnings: Math.max(selectedStatsAverage, 0), washouts: 0 },
     { label: t("driver.dashboard.paid"), earnings: Math.max(totalPaid, 0), washouts: 0 },
   ];
-
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-
-    const scanOverflow = () => {
-      const viewportWidth = window.innerWidth;
-      const offenders = Array.from(
-        document.querySelectorAll<HTMLElement>("[data-testid], header, main, section, article, .mobile-nav, .stat-card")
-      ).flatMap((el) => {
-        const rect = el.getBoundingClientRect();
-        const clientWidth = el.clientWidth;
-        const scrollWidth = el.scrollWidth;
-        const overflowRight = Math.ceil(rect.right) > viewportWidth + 1;
-        const overflowScroll = scrollWidth > clientWidth + 1;
-
-        if (!overflowRight && !overflowScroll) return [];
-
-        return [{
-          selector: el.getAttribute("data-testid") || el.tagName.toLowerCase(),
-          className: el.className,
-          scrollWidth,
-          clientWidth,
-          right: Math.round(rect.right),
-          viewportWidth,
-        }];
-      });
-
-      if (offenders.length > 0) {
-        console.warn("[DRIVER_DASHBOARD_OVERFLOW]", offenders);
-      }
-    };
-
-    const raf = window.requestAnimationFrame(scanOverflow);
-    window.addEventListener("resize", scanOverflow);
-    return () => {
-      window.cancelAnimationFrame(raf);
-      window.removeEventListener("resize", scanOverflow);
-    };
-  }, []);
 
   return (
     <DriverDashboardErrorBoundary>
