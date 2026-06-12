@@ -351,8 +351,8 @@ test("driver and owner headers expose language toggle", () => {
   const driverHeaderSource = readFileSync(new URL("../client/src/components/DriverHeader.tsx", import.meta.url), "utf8");
   const ownerHeaderSource = readFileSync(new URL("../client/src/components/OwnerHeader.tsx", import.meta.url), "utf8");
 
-  assert.match(driverHeaderSource, /<LanguageToggle \/>/);
-  assert.match(ownerHeaderSource, /<LanguageToggle \/>/);
+  assert.match(driverHeaderSource, /<LanguageToggle(?:\s+[^>]*)?\s\/>/);
+  assert.match(ownerHeaderSource, /<LanguageToggle(?:\s+[^>]*)?\s\/>/);
 });
 
 test("disabled driver_stripe_payouts hides bank connection action", () => {
