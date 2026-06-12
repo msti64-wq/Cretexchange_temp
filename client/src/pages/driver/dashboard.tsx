@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
@@ -63,6 +63,35 @@ function translateWashoutApprovalStatus(status: string | null | undefined, t: (k
   }
 }
 
+class DriverHeaderFallbackBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("[DRIVER_DASHBOARD_HEADER_FALLBACK]", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full max-w-full border-b border-border/70 bg-card/95 px-3 py-3 shadow-sm sm:px-4">
+          <div className="mx-auto w-full max-w-6xl min-w-0 text-sm text-muted-foreground">
+            Driver dashboard
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function DriverDashboardSkeleton() {
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20">
@@ -96,7 +125,6 @@ function DriverDashboardSkeleton() {
 export default function DriverDashboard() {
   const [, setLocation] = useLocation();
   const { t, language } = useLanguage();
-  const [headerHeight, setHeaderHeight] = useState(0);
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
@@ -225,11 +253,10 @@ export default function DriverDashboard() {
   }, []);
 
   return (
-    <div
-      className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20"
-      style={{ ["--driver-dashboard-header-height" as any]: `${headerHeight}px` }}
-    >
-      <DriverHeader position="fixed" onHeightChange={setHeaderHeight} />
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20">
+      <DriverHeaderFallbackBoundary>
+        <DriverHeader />
+      </DriverHeaderFallbackBoundary>
 
       {/* GPS Status Bar */}
       <div className="w-full max-w-full overflow-hidden border-b border-border/70 bg-card/95 px-3 py-3 shadow-sm sm:px-4">
@@ -245,7 +272,7 @@ export default function DriverDashboard() {
         </div>
       </div>
 
-      <main className="mx-auto w-full max-w-6xl space-y-6 overflow-x-hidden px-3 pb-4 pt-[var(--driver-dashboard-header-height,0px)] sm:px-4 sm:pb-5">
+      <main className="mx-auto w-full max-w-6xl space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5">
         <section className="grid w-full max-w-full min-w-0 grid-cols-1 gap-4 overflow-hidden rounded-3xl border border-border/70 bg-card/95 p-4 shadow-sm min-[430px]:p-5 md:grid-cols-[1.15fr_0.85fr] md:p-6">
           <div className="min-w-0 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
