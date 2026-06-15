@@ -365,6 +365,17 @@ test("driver and owner headers expose language toggle", () => {
   assert.match(ownerHeaderSource, /<LanguageToggle(?:\s+[^>]*)?\s\/>/);
 });
 
+test("owner dashboard header does not use sticky positioning", () => {
+  const ownerHeaderSource = readFileSync(new URL("../client/src/components/OwnerHeader.tsx", import.meta.url), "utf8");
+  const ownerDashboardSource = readFileSync(new URL("../client/src/pages/owner/dashboard.tsx", import.meta.url), "utf8");
+
+  assert.doesNotMatch(ownerHeaderSource, /sticky top-0|position:\s*sticky/i);
+  assert.doesNotMatch(ownerHeaderSource, /fixed|position:\s*fixed/i);
+  assert.match(ownerHeaderSource, /className="w-full gradient-bg/);
+  assert.match(ownerDashboardSource, /min-h-screen w-full max-w-\[100vw\] overflow-x-hidden bg-background pb-20/);
+  assert.match(ownerDashboardSource, /mx-auto w-full max-w-6xl min-w-0 space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5/);
+});
+
 test("disabled driver_stripe_payouts hides bank connection action", () => {
   const state = resolveDriverPayoutSettingsState({
     featureEnabled: false,

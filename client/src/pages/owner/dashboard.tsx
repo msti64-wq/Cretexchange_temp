@@ -33,13 +33,13 @@ const AUTO_APPROVAL_HOURS = 72;
 
 function OwnerDashboardSkeleton() {
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20">
       <div className="gradient-bg text-white">
         <div className="mx-auto max-w-6xl px-4 py-4">
           <Skeleton className="h-14 w-full max-w-md bg-white/20" />
         </div>
       </div>
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
+      <main className="mx-auto w-full max-w-6xl min-w-0 space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
             <Card key={item} className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
@@ -366,10 +366,10 @@ export default function OwnerDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20">
       <OwnerHeader />
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-5">
+      <main className="mx-auto w-full max-w-6xl min-w-0 space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5">
         {/* Profile Completion Notice - Temporarily commented out for TypeScript fix */}
         {/* TODO: Re-enable after TypeScript configuration is resolved */}
 

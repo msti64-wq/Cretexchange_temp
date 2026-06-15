@@ -14,7 +14,7 @@ export function OwnerHeader() {
   const ownerName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
 
   return (
-    <header className="sticky top-0 z-40 gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)] backdrop-blur supports-[backdrop-filter]:backdrop-blur-xl">
+    <header className="w-full gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)] backdrop-blur supports-[backdrop-filter]:backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3 sm:py-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 min-w-0">
