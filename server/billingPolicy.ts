@@ -23,6 +23,9 @@ import {
   resolveApprovedWashoutPlatformFeeCents,
   calculateOwnerWashoutChargeCents,
   calculateDriverPayoutCents,
+  calculateOwnerWashoutBillingLedger,
+  buildOwnerBillingLedger,
+  validateOwnerBillingAmount,
   resolveBillingPolicy,
   type ResolvedBillingPolicy,
 } from "@shared/billingPolicy";
@@ -44,4 +47,7 @@ export {
   resolveApprovedWashoutPlatformFeeCents,
   calculateOwnerWashoutChargeCents,
   calculateDriverPayoutCents,
+  calculateOwnerWashoutBillingLedger,
+  buildOwnerBillingLedger,
+  validateOwnerBillingAmount,
 };

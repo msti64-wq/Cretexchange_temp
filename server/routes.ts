@@ -42,7 +42,9 @@ import {
   resolveApprovedWashoutPlatformFeeCents,
   calculateOwnerWashoutChargeCents,
   calculateDriverPayoutCents,
+  calculateOwnerWashoutBillingLedger,
 } from "./billingPolicy";
+import { buildOwnerWashoutBillingPreview } from "./billing/ownerWashoutLedger";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { resolveLotteryEnabled } from "./lottery";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
@@ -51,6 +53,7 @@ import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../sh
 import { isAwaitingDriverStripePaymentStatus, getDriverStripeSetupMessage } from "../shared/driverPaymentStatus";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
+import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import {
   buildDriverReport,
   buildOwnerReport,
@@ -1057,10 +1060,12 @@ function resolveWashoutChargeComponents(params: {
     ? resolvePlatformFeeCents(owner.customPlatformFee)
     : resolvePlatformFeeCents(systemSettings?.platformWashoutFee);
   const driverTipCents = resolveLocationDriverIncentiveTipCents(location?.driverIncentiveTip);
-  const ownerChargeCents = calculateOwnerWashoutChargeCents(baseAmount * 100, platformFee, driverTipCents);
-  const driverPayoutCents = calculateDriverPayoutCents(baseAmount * 100, driverTipCents);
+  const baseAmountCents = Math.round(Math.max(0, baseAmount) * 100);
+  const ownerChargeCents = calculateOwnerWashoutChargeCents(baseAmountCents, platformFee, driverTipCents);
+  const driverPayoutCents = calculateDriverPayoutCents(baseAmountCents, driverTipCents);
 
   return {
+    baseAmountCents,
     platformFeeCents: platformFee,
     driverTipCents,
     ownerChargeCents,
@@ -2686,12 +2691,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const driverTip = resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100;
       const PLATFORM_FEE = platformFee; // Configurable via admin settings (global or per-owner)
       const DRIVER_PAYMENT = locationRate; // Set by location owner
-      const OWNER_CHARGE = locationRate + PLATFORM_FEE + driverTip;
+      const OWNER_CHARGE = PLATFORM_FEE + driverTip;
 
       // Convert to cents for Stripe
-      const driverPayoutCents = Math.round((DRIVER_PAYMENT + driverTip) * 100);
+      const driverPayoutCents = Math.round(driverTip * 100);
       const platformFeeCents = Math.round(PLATFORM_FEE * 100);
       const driverTipCents = Math.round(driverTip * 100);
+      const ownerBillingLedger = calculateOwnerWashoutBillingLedger({
+        ownerId: owner.id,
+        billingBatchId: `immediate_${activityId}`,
+        washoutActivityIds: [activityId],
+        approvedWashoutCount: 1,
+        platformFeeCentsByWashout: [platformFeeCents],
+        platformFeeTotalCents: platformFeeCents,
+        driverTipCentsByWashout: [driverTipCents],
+        driverTipCentsByDriver: {
+          [driver.id]: driverTipCents,
+        },
+        driverTipTotalCents: driverTipCents,
+        ownerChargeAmountCents: Math.round(OWNER_CHARGE * 100),
+        platformRevenueCents: platformFeeCents,
+        driverTransfers: [{
+          driverId: driver.id,
+          connectedAccountId: driverUser?.stripeConnectAccountId || null,
+          amountCents: driverTipCents,
+          washoutActivityIds: [activityId],
+        }],
+        reconciliationStatus: "pending",
+        immediateBilling: true,
+        allowAdminOverride: false,
+      });
 
       // Check wallet funding feature flag to determine payment method
       const walletFundingFlag = await storage.getFeatureFlag('wallet_funding');
@@ -2708,6 +2737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalCharge: OWNER_CHARGE,
         paymentMethod: isWalletFundingEnabled ? 'treasury_wallet' : 'credit_card',
       });
+      console.log(`[OWNER_BILLING_LEDGER]`, ownerBillingLedger);
 
       if (isWalletFundingEnabled) {
         // ===== TREASURY WALLET PAYMENT (when approved) =====
@@ -2902,12 +2932,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           // Calculate totals for this batch
-          const totalDriverPayments = ownerPayments.reduce((sum, p) => {
-            const driverTip = Number((p.metadata as { driverTip?: string | number } | null)?.driverTip || 0);
-            return sum + parseFloat(p.driverAmount) + driverTip;
-          }, 0);
-          const totalPlatformFees = ownerPayments.reduce((sum, p) => sum + parseFloat(p.platformFee), 0);
-          const totalOwnerCharge = ownerPayments.reduce((sum, p) => sum + parseFloat(p.totalAmount), 0);
+          const platformFeeCentsPerWashout = ownerPayments.map((p) => Math.round(parseFloat(p.platformFee) * 100));
+          const driverTipCentsPerWashout = ownerPayments.map((p) => Math.round(Number((p.metadata as { driverTip?: string | number } | null)?.driverTip || 0) * 100));
+          const totalPlatformFeesCents = platformFeeCentsPerWashout.reduce((sum, feeCents) => sum + feeCents, 0);
+          const totalDriverTipsCents = driverTipCentsPerWashout.reduce((sum, tipCents) => sum + tipCents, 0);
+          const driverTipCentsByDriver = ownerPayments.reduce<Record<string, number>>((acc, payment, index) => {
+            const tipCents = driverTipCentsPerWashout[index] || 0;
+            acc[payment.driverId] = (acc[payment.driverId] || 0) + tipCents;
+            return acc;
+          }, {});
+          const ownerBillingLedger = calculateOwnerWashoutBillingLedger({
+            ownerId,
+            billingBatchId: `washout_batch_${ownerId}_${batchTime.toISOString()}`,
+            washoutActivityIds: ownerPayments.map((p) => p.activityId).filter(Boolean),
+            approvedWashoutCount: ownerPayments.length,
+            platformFeeCentsByWashout: platformFeeCentsPerWashout,
+            platformFeeTotalCents: totalPlatformFeesCents,
+            driverTipCentsByWashout: driverTipCentsPerWashout,
+            driverTipCentsByDriver,
+            driverTipTotalCents: totalDriverTipsCents,
+            ownerChargeAmountCents: totalPlatformFeesCents + totalDriverTipsCents,
+            platformRevenueCents: totalPlatformFeesCents,
+            driverTransfers: ownerPayments.map((payment, index) => ({
+              driverId: payment.driverId,
+              connectedAccountId: payment.driver?.stripeConnectAccountId || null,
+              amountCents: driverTipCentsPerWashout[index] || 0,
+              washoutActivityIds: [payment.activityId],
+            })),
+            stripeChargeAmountCents: totalPlatformFeesCents + totalDriverTipsCents,
+            platformFeeCentsPerWashout,
+            driverTipCentsPerWashout,
+            immediateBilling: false,
+            allowAdminOverride: false,
+          });
+          console.log(`[OWNER_BILLING_LEDGER]`, ownerBillingLedger);
+          const totalPlatformFees = totalPlatformFeesCents / 100;
+          const totalDriverTips = totalDriverTipsCents / 100;
+          const totalOwnerCharge = ownerBillingLedger.ownerChargeAmountCents / 100;
 
           console.log(`💰 Owner ${ownerId} batch: ${ownerPayments.length} payments, $${totalOwnerCharge.toFixed(2)} total`);
 
@@ -2916,7 +2977,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ownerId,
             batchTime,
             paymentCount: ownerPayments.length,
-            totalDriverPayments: totalDriverPayments.toFixed(2),
             totalPlatformFees: totalPlatformFees.toFixed(2),
             totalAmount: totalOwnerCharge.toFixed(2),
             status: 'pending',
@@ -2937,19 +2997,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           try {
             // Charge owner's card (single charge for all washouts)
-            const amountInCents = Math.round(totalOwnerCharge * 100);
+            console.log(`[STRIPE_PAYMENT_REQUEST]`, {
+              route: "POST /api/payments/process-batch",
+              ownerId,
+              batchId: batch.id,
+              amountCents: ownerBillingLedger.ownerChargeAmountCents,
+              platformRevenueCents: ownerBillingLedger.platformRevenueCents,
+              driverTipTotalCents: ownerBillingLedger.driverTipTotalCents,
+            });
+            const amountInCents = ownerBillingLedger.ownerChargeAmountCents;
             const paymentIntent = await stripeService.stripe.paymentIntents.create({
               amount: amountInCents,
               currency: 'usd',
               customer: owner.stripeCustomerId,
               payment_method: owner.stripePaymentMethodId || undefined,
-              description: `Batch payment - ${ownerPayments.length} washouts (Driver payouts: $${totalDriverPayments.toFixed(2)}, Platform fees: $${totalPlatformFees.toFixed(2)})`,
+              description: `Batch payment - ${ownerPayments.length} washouts (Driver tips: $${totalDriverTips.toFixed(2)}, Platform fees: $${totalPlatformFees.toFixed(2)})`,
               metadata: {
                 batchId: batch.id,
                 ownerId,
                 paymentCount: ownerPayments.length.toString(),
-                totalDriverPayments: totalDriverPayments.toFixed(2),
                 totalPlatformFees: totalPlatformFees.toFixed(2),
+                totalDriverTips: totalDriverTips.toFixed(2),
                 type: 'washout_batch_payment',
               },
               confirm: true,
@@ -2959,6 +3027,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             console.log(`✅ Charged owner card: ${paymentIntent.id}`);
+            console.log(`[OWNER_BILLING_RECONCILIATION]`, {
+              ownerId,
+              batchId: batch.id,
+              requestedChargeAmountCents: ownerBillingLedger.ownerChargeAmountCents,
+              platformRevenueCents: ownerBillingLedger.platformRevenueCents,
+              driverTransferAmountCents: ownerBillingLedger.driverTransfers.reduce((sum, transfer) => sum + transfer.amountCents, 0),
+              paymentIntentId: paymentIntent.id,
+            });
 
             // Update batch with payment intent ID
             await storage.updateWashoutPaymentBatchStatus(batch.id, 'processing', paymentIntent.id);
@@ -2971,12 +3047,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   throw new Error(`Driver ${payment.driverId} has no Connect account`);
                 }
 
-                const driverTip = Number((payment.metadata as { driverTip?: string | number } | null)?.driverTip || 0);
-                const driverAmountCents = Math.round((parseFloat(payment.driverAmount) + driverTip) * 100);
+                const plannedTransfer = ownerBillingLedger.driverTransfers.find(
+                  (transfer) => transfer.driverId === payment.driverId
+                    && (transfer.washoutActivityIds || []).includes(payment.activityId),
+                );
+                const driverTipCents = plannedTransfer?.amountCents ?? 0;
+                const driverTip = driverTipCents / 100;
 
+                console.log(`[DRIVER_TIP_TRANSFER_REQUEST]`, {
+                  route: "POST /api/payments/process-batch",
+                  ownerId,
+                  batchId: batch.id,
+                  driverId: payment.driverId,
+                  connectedAccountId: driver.stripeConnectAccountId,
+                  amountCents: driverTipCents,
+                });
                 // Create transfer to driver's Connect account
                 const transfer = await stripeService.stripe.transfers.create({
-                  amount: driverAmountCents,
+                  amount: driverTipCents,
                   currency: 'usd',
                   destination: driver.stripeConnectAccountId,
                   description: `Washout payment - ${payment.locationId}`,
@@ -2990,7 +3078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   },
                 });
 
-                console.log(`  ↳ Transferred $${(parseFloat(payment.driverAmount) + driverTip).toFixed(2)} to driver ${payment.driverId}`);
+                console.log(`  ↳ Transferred $${driverTip.toFixed(2)} to driver ${payment.driverId}`);
 
                 // Mark payment as processed
                 await storage.updatePendingPaymentStatus(payment.id, 'processed', batch.id);
@@ -5043,17 +5131,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const cardInfo = paymentMethod.type === 'card' && paymentMethod.card 
             ? `${paymentMethod.card.brand} ****${paymentMethod.card.last4}` 
             : 'Stripe Link';
-          console.log(`💳 Creating Stripe Destination Charge: $${ownerFee.toFixed(2)} (Driver: $${driverAmount}, Platform Fee: $${platformFee})`);
+          const ownerFeeCents = Math.round(ownerFee * 100);
+          const platformFeeCents = Math.round(platformFee * 100);
+          const driverTipCents = Math.round(driverTip * 100);
+          const ownerBillingLedger = calculateOwnerWashoutBillingLedger({
+            ownerId: owner.id,
+            billingBatchId: `immediate_${id}`,
+            washoutActivityIds: [id],
+            approvedWashoutCount: 1,
+            platformFeeCentsByWashout: [platformFeeCents],
+            platformFeeTotalCents: platformFeeCents,
+            driverTipCentsByWashout: [driverTipCents],
+            driverTipCentsByDriver: {
+              [driver.id]: driverTipCents,
+            },
+            driverTipTotalCents: driverTipCents,
+            ownerChargeAmountCents: ownerFeeCents,
+            platformRevenueCents: platformFeeCents,
+            driverTransfers: [{
+              driverId: driver.id,
+              connectedAccountId: driverUser?.stripeConnectAccountId || null,
+              amountCents: driverTipCents,
+              washoutActivityIds: [id],
+            }],
+            stripeChargeAmountCents: ownerFeeCents,
+            platformFeeCentsPerWashout: [platformFeeCents],
+            driverTipCentsPerWashout: [driverTipCents],
+            immediateBilling: true,
+            allowAdminOverride: false,
+          });
+          console.log(`[OWNER_BILLING_LEDGER]`, ownerBillingLedger);
+          if (ownerBillingLedger.ownerChargeAmountCents > 10000) {
+            const reviewMessage = "Immediate owner washout billing exceeds $100 and requires superadmin review.";
+            console.warn(`⚠️ ${reviewMessage}`, ownerBillingLedger);
+            return res.status(400).json({
+              message: reviewMessage,
+              reason: "owner_billing_amount_requires_superadmin_review",
+              ledger: ownerBillingLedger,
+            });
+          }
+          console.log(`💳 Creating Stripe Destination Charge: $${(ownerBillingLedger.ownerChargeAmountCents / 100).toFixed(2)} (Platform Fee: $${platformFee}, Driver Tip: $${driverTip})`);
           console.log(`   Owner Customer: ${owner.stripeCustomerId}`);
           console.log(`   Payment Method: ${owner.stripePaymentMethodId} (${cardInfo})`);
           console.log(`   Driver Connect Account: ${driverUser.stripeConnectAccountId}`);
+          console.log(`[STRIPE_PAYMENT_REQUEST]`, {
+            route: "POST /api/washouts/:id/approve",
+            ownerId: owner.id,
+            driverId: driver.id,
+            billingBatchId: ownerBillingLedger.billingBatchId,
+            amountCents: ownerBillingLedger.ownerChargeAmountCents,
+            platformFeeTotalCents: ownerBillingLedger.platformFeeTotalCents,
+            driverTipTotalCents: ownerBillingLedger.driverTipTotalCents,
+          });
           
           // Stripe Destination Charges: Use application_fee_amount ONLY (not transfer_data.amount)
           // Driver receives: total charge - application_fee_amount
           // Platform receives: application_fee_amount
           // Note: Accept both card and link payment types for flexibility
           const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(ownerFee * 100), // Convert to cents - total charged to owner
+            amount: ownerBillingLedger.ownerChargeAmountCents,
             currency: 'usd',
             customer: owner.stripeCustomerId,
             payment_method: owner.stripePaymentMethodId,
@@ -5074,7 +5210,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             transfer_data: {
               destination: driverUser.stripeConnectAccountId, // Driver's Connect account receives the rest
             },
-            application_fee_amount: Math.round(platformFee * 100), // Platform keeps fee, driver gets remainder
+            application_fee_amount: ownerBillingLedger.platformRevenueCents, // Platform keeps fee, driver gets tip
+          });
+          console.log(`[OWNER_BILLING_RECONCILIATION]`, {
+            ownerId: owner.id,
+            billingBatchId: ownerBillingLedger.billingBatchId,
+            requestedChargeAmountCents: ownerBillingLedger.ownerChargeAmountCents,
+            applicationFeeAmountCents: ownerBillingLedger.platformRevenueCents,
+            driverTransferAmountCents: ownerBillingLedger.driverTransfers.reduce((sum, transfer) => sum + transfer.amountCents, 0),
           });
           
           console.log(`✅ Stripe Payment Intent created: ${paymentIntent.id}, Status: ${paymentIntent.status}`);
@@ -5498,7 +5641,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const driverAmount = Number(payment.amount);
           const platformFee = Number(payment.processingFee);
           const driverTip = Number((payment as any).tipAmountCents || 0) / 100;
-          const ownerFee = calculateOwnerWashoutChargeCents(driverAmount * 100, Math.round(platformFee * 100), Math.round(driverTip * 100)) / 100;
+          const platformFeeCents = Math.round(platformFee * 100);
+          const driverTipCents = Math.round(driverTip * 100);
+          const ownerFeeCents = calculateOwnerWashoutChargeCents(0, platformFeeCents, driverTipCents);
+          const ownerFee = ownerFeeCents / 100;
+          const ownerBillingLedger = calculateOwnerWashoutBillingLedger({
+            ownerId: owner.id,
+            billingBatchId: payment.batchId || payment.id,
+            washoutActivityIds: [payment.activityId],
+            approvedWashoutCount: 1,
+            platformFeeCentsByWashout: [platformFeeCents],
+            platformFeeTotalCents: platformFeeCents,
+            driverTipCentsByWashout: [driverTipCents],
+            driverTipCentsByDriver: {
+              [driver.id]: driverTipCents,
+            },
+            driverTipTotalCents: driverTipCents,
+            ownerChargeAmountCents: ownerFeeCents,
+            platformRevenueCents: platformFeeCents,
+            driverTransfers: [{
+              driverId: driver.id,
+              connectedAccountId: driverUser.stripeConnectAccountId || null,
+              amountCents: driverTipCents,
+              washoutActivityIds: [payment.activityId],
+            }],
+            stripeChargeAmountCents: ownerFeeCents,
+            platformFeeCentsPerWashout: [platformFeeCents],
+            driverTipCentsPerWashout: [driverTipCents],
+            immediateBilling: false,
+            allowAdminOverride: false,
+          });
+          console.log(`[OWNER_BILLING_LEDGER]`, ownerBillingLedger);
 
           await db
             .update(payments)
@@ -5508,8 +5681,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
             .where(eq(payments.id, payment.id));
 
+          console.log(`[STRIPE_PAYMENT_REQUEST]`, {
+            route: "POST /api/payments/process-pending",
+            ownerId: owner.id,
+            driverId: driver.id,
+            billingBatchId: ownerBillingLedger.billingBatchId,
+            amountCents: ownerBillingLedger.ownerChargeAmountCents,
+            platformRevenueCents: ownerBillingLedger.platformRevenueCents,
+            driverTipTotalCents: ownerBillingLedger.driverTipTotalCents,
+          });
           const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(ownerFee * 100),
+            amount: ownerBillingLedger.ownerChargeAmountCents,
             currency: 'usd',
             customer: ownerUser.stripeCustomerId,
             payment_method: ownerUser.stripePaymentMethodId,
@@ -5530,7 +5712,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             transfer_data: {
               destination: driverUser.stripeConnectAccountId,
             },
-            application_fee_amount: Math.round(platformFee * 100),
+            application_fee_amount: ownerBillingLedger.platformRevenueCents,
+          });
+          console.log(`[OWNER_BILLING_RECONCILIATION]`, {
+            ownerId: owner.id,
+            driverId: driver.id,
+            billingBatchId: ownerBillingLedger.billingBatchId,
+            requestedChargeAmountCents: ownerBillingLedger.ownerChargeAmountCents,
+            platformRevenueCents: ownerBillingLedger.platformRevenueCents,
+            driverTransferAmountCents: ownerBillingLedger.driverTransfers.reduce((sum, transfer) => sum + transfer.amountCents, 0),
+            paymentIntentId: paymentIntent.id,
           });
 
           if (paymentIntent.status !== 'succeeded') {
@@ -10863,6 +11054,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== ADMIN BILLING SETTINGS MANAGEMENT ENDPOINTS ==========
+
+  app.post('/api/admin/billing/preview-owner-washout-charge', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const ownerId = typeof req.body?.ownerId === "string" ? req.body.ownerId.trim() : "";
+      const requestedWashoutActivityIds = Array.isArray(req.body?.washoutActivityIds)
+        ? req.body.washoutActivityIds.map((id: unknown) => String(id).trim()).filter(Boolean)
+        : [];
+
+      if (!ownerId) {
+        return res.status(400).json({ message: "ownerId is required", reason: "missing_owner_id" });
+      }
+      const owner = await storage.getOwnerById(ownerId);
+      if (!owner) {
+        return res.status(404).json({ message: "Owner not found", reason: "owner_not_found" });
+      }
+      const ownerUser = await storage.getUser(owner.userId);
+      if (!ownerUser) {
+        return res.status(404).json({ message: "Owner user not found", reason: "owner_user_not_found" });
+      }
+
+      type ApprovedWashoutPreviewRow = {
+        activityId: string;
+        ownerId: string;
+        driverId: string;
+        activityFeeCentsPlatform?: number | null;
+        locationDriverIncentiveTip?: number | null;
+      };
+      const approvedWashouts = (await storage.getApprovedWashoutsForOwnerBilling(ownerId)) as ApprovedWashoutPreviewRow[];
+      const approvedWashoutLookup = new Map<string, ApprovedWashoutPreviewRow>(approvedWashouts.map((washout) => [washout.activityId, washout]));
+      const selectedWashouts: ApprovedWashoutPreviewRow[] = requestedWashoutActivityIds.length > 0
+        ? requestedWashoutActivityIds
+            .map((activityId: string): ApprovedWashoutPreviewRow | undefined => approvedWashoutLookup.get(activityId))
+            .filter((washout: ApprovedWashoutPreviewRow | undefined): washout is ApprovedWashoutPreviewRow => Boolean(washout))
+        : approvedWashouts;
+      const missingWashoutActivityIds = requestedWashoutActivityIds.filter((activityId: string) => !approvedWashoutLookup.has(activityId));
+      if (requestedWashoutActivityIds.length > 0 && missingWashoutActivityIds.length > 0) {
+        return res.status(400).json({
+          message: "One or more washouts are not approved or already billed",
+          reason: "selected_washouts_not_billable",
+          missingWashoutActivityIds,
+        });
+      }
+
+      const ownerStripeSetup = getOwnerStripeBillingSetup(owner, ownerUser);
+      const driverAccounts = new Map<string, string>();
+      const selectedDriverIds = Array.from(new Set(selectedWashouts.map((washout: ApprovedWashoutPreviewRow) => washout.driverId)));
+      for (const driverId of selectedDriverIds) {
+        const driver = await storage.getDriverById(driverId);
+        const driverUser = driver ? await storage.getUser(driver.userId) : null;
+        const connectedAccountId = String(driver?.connectedAccountId || driver?.stripeConnectAccountId || driverUser?.stripeConnectAccountId || "");
+        if (!connectedAccountId) {
+          return res.status(400).json({
+            message: `Driver ${driverId} is missing a Stripe connected account`,
+            reason: "driver_missing_stripe_connected_account",
+            driverId,
+          });
+        }
+        driverAccounts.set(driverId, connectedAccountId);
+      }
+
+      const preview = buildOwnerWashoutBillingPreview({
+        ownerId,
+        billingBatchId: `preview:${ownerId}:${Date.now()}`,
+        washouts: selectedWashouts.map((washout: ApprovedWashoutPreviewRow) => ({
+          id: washout.activityId,
+          ownerId: washout.ownerId,
+          driverId: washout.driverId,
+          driverStripeAccountId: driverAccounts.get(washout.driverId) || null,
+          platformFeeCents: resolveApprovedWashoutPlatformFeeCents(
+            washout.activityFeeCentsPlatform,
+            owner.customPlatformFee !== null && owner.customPlatformFee !== undefined && owner.customPlatformFee !== ""
+              ? resolvePlatformFeeCents(owner.customPlatformFee)
+              : undefined
+          ),
+          driverTipCents: Math.max(0, Math.round(Number(washout.locationDriverIncentiveTip || 0))),
+        })),
+        customerId: ownerStripeSetup.customerId,
+        paymentMethodId: ownerStripeSetup.paymentMethodId,
+        ownerUsername: ownerUser.username,
+        ownerCompanyName: owner.companyName,
+      });
+
+      res.json(preview);
+    } catch (error: any) {
+      console.error("Error previewing owner washout billing charge:", error);
+      res.status(500).json({
+        message: error?.message || "Failed to preview owner washout billing charge",
+        reason: "owner_billing_preview_failed",
+      });
+    }
+  });
   
   // Get all owners' billing settings (for admin dashboard)
   app.get('/api/admin/billing/settings', isAuthenticated, async (req: any, res) => {
@@ -13413,8 +13700,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timezone,
         cutoffTime: billingSettings?.billingCutoffTime || '23:59:00',
         pendingPayments: pendingPayments.length,
-        totalAmount: pendingPayments.reduce((sum, p) => sum + parseFloat(p.amount) + parseFloat(p.processingFee) + Number((p.tipAmountCents || 0) / 100), 0).toFixed(2),
-        totalFees: pendingPayments.reduce((sum, p) => sum + parseFloat(p.processingFee) + Number((p.tipAmountCents || 0) / 100), 0).toFixed(2),
+        totalAmount: pendingPayments.reduce((sum, p) => sum + parseFloat(p.processingFee) + Number((p.tipAmountCents || 0) / 100), 0).toFixed(2),
+        totalFees: pendingPayments.reduce((sum, p) => sum + parseFloat(p.processingFee), 0).toFixed(2),
         payments: pendingPayments.map((p) => ({
           id: p.id,
           amount: p.amount,

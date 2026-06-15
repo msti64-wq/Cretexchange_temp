@@ -839,7 +839,7 @@ export default function AdminUsers() {
                             }}
                             data-testid={`button-custom-billing-${index}`}
                           >
-                            {user.roleData?.useCustomBillingModel ? 'Lottery Mode' : 'Lottery Settings'}
+                            {user.roleData?.useCustomBillingModel ? 'Custom Billing Mode' : 'Custom Billing Settings'}
                           </Button>
                         </>
                       )}
@@ -1139,7 +1139,7 @@ export default function AdminUsers() {
       <Dialog open={customBillingDialogOpen} onOpenChange={setCustomBillingDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Custom Billing / Lottery Settings</DialogTitle>
+            <DialogTitle>Custom Billing Settings</DialogTitle>
           </DialogHeader>
           
           <div className="mb-4 text-sm text-muted-foreground">
@@ -1148,7 +1148,7 @@ export default function AdminUsers() {
                 <p className="mb-1">
                   <span className="font-medium">Company:</span> {selectedOwner.companyName}
                 </p>
-                <p>Enable custom billing model for pilot program. When enabled, drivers receive lottery entries instead of cash payments.</p>
+                <p>Enable the custom billing pilot for an owner. This is an admin-controlled setting and does not change owner location tip settings.</p>
               </>
             )}
           </div>
@@ -1161,9 +1161,9 @@ export default function AdminUsers() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
-                      <FormLabel className="text-base">Enable Lottery Model</FormLabel>
+                      <FormLabel className="text-base">Enable Custom Billing Model</FormLabel>
                       <p className="text-sm text-muted-foreground">
-                        Drivers earn lottery entries instead of cash
+                        Drivers follow the custom billing model instead of cash payout handling
                       </p>
                     </div>
                     <FormControl>

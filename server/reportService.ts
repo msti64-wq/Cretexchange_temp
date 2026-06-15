@@ -151,14 +151,15 @@ function buildSummary(rows: ReportRow[], reportType: "owner" | "driver"): Report
       const tipAmount = Number.parseFloat(row.tipAmount || "0");
       const isPaid = row.paymentStatus === "paid";
       const settlementAmount = reportType === "owner" ? amountCharged : paymentAmount;
+      const chargedAmount = reportType === "owner" ? amountCharged : paymentAmount;
 
       acc.totalWashouts += 1;
-      acc.totalAmountCharged += amountCharged;
+      acc.totalAmountCharged += chargedAmount;
       acc.totalPlatformFees += platformFee;
       if (isPaid) {
         acc.totalPaid += settlementAmount;
       } else {
-        acc.totalUnpaidPending += settlementAmount || amountCharged;
+        acc.totalUnpaidPending += settlementAmount || chargedAmount;
       }
       acc.totalTips += tipAmount;
       if (reportType === "driver" && isPaid) {
@@ -249,11 +250,10 @@ function buildRowsFromActivities({
     const displayOwnerName = ownerEntry
       ? formatPersonName(ownerEntry.user)
       : "";
-    const driverTipCents = payment?.tipAmountCents ?? 0;
-    const baseAmount = payment ? Number.parseFloat(payment.amount || "0") : Number.parseFloat(activity.amount || "0");
-    const platformFeeAmount = payment ? Number.parseFloat(payment.processingFee || "0") : 0;
-    const driverPaymentAmount = baseAmount + (driverTipCents / 100);
-    const amountChargedAmount = baseAmount + platformFeeAmount + (driverTipCents / 100);
+    const driverTipCents = Number(payment?.tipAmountCents ?? activity.location?.driverIncentiveTip ?? 0);
+    const platformFeeAmount = payment ? Number.parseFloat(payment.processingFee || "0") : Number(activity.feeCentsPlatform || 0) / 100;
+    const ownerChargeAmount = platformFeeAmount + (driverTipCents / 100);
+    const driverPaymentAmount = driverTipCents / 100;
 
     const notes = [activity.notes, payment?.refundReason].filter(Boolean).join(" | ");
     const paymentStatus = normalizePaymentStatus(payment?.status, Boolean(payment));
@@ -281,7 +281,7 @@ function buildRowsFromActivities({
       serviceType: activity.serviceType || "washout",
       quantity: activity.qty ? String(activity.qty) : "",
       unit: activity.unit || "",
-      amountCharged: formatMoney(amountChargedAmount),
+      amountCharged: formatMoney(ownerChargeAmount),
       platformFee: formatMoney(platformFeeAmount),
       paymentStatus,
       paymentDate: formatDateTime(payment?.paidAt || payment?.createdAt),

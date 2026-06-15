@@ -335,39 +335,30 @@ export default function OwnerDashboard() {
     ? [] 
     : Array.isArray(activitiesData) ? activitiesData : [];
 
-  const pendingPayments = approvalQueueActivities.reduce((total: number, activity: any) => {
-    return total + Number(activity.amount || 0);
-  }, 0);
-  const pendingCount = approvalQueueActivities.length;
-  const approvedPayments = recentActivities?.reduce((total: number, activity: any) => {
-    if (activity.status === 'verified') {
-      return total + Number(activity.amount || 0);
-    }
-    return total;
-  }, 0) || 0;
+  const pendingPayments = Number(weekStats?.platformFeesOwedCents || 0) / 100;
+  const pendingCount = Number(weekStats?.unbilledApprovedWashoutCount || approvalQueueActivities.length || 0);
+  const approvedPayments = Number(weekStats?.platformFeesPaidCents || 0) / 100;
   const rejectedPayments = recentActivities?.reduce((total: number, activity: any) => {
     if (activity.status === 'rejected') {
       return total + Number(activity.amount || 0);
     }
     return total;
   }, 0) || 0;
-  const approvedCount = recentActivities?.filter((activity: any) => activity.status === 'verified').length || 0;
+  const approvedCount = Number(weekStats?.billedWashoutCount || recentActivities?.filter((activity: any) => activity.status === 'verified').length || 0);
   const rejectedCount = recentActivities?.filter((activity: any) => activity.status === 'rejected').length || 0;
 
   // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
 
-  // Calculate total washouts from recent activities (exclude rejected washouts)
-  const totalWashouts = recentActivities?.filter((activity: any) => 
-    activity.status !== 'rejected'
-  ).length || 0;
+  // Calculate total washouts from the canonical billing summary when available
+  const totalWashouts = Number(weekStats?.totalWashouts || recentActivities?.filter((activity: any) => activity.status !== 'rejected').length || 0);
 
-  // Calculate unique drivers from recent activities (exclude rejected washouts)
-  const uniqueDrivers = recentActivities ? new Set(
+  // Calculate unique drivers from the canonical billing summary when available
+  const uniqueDrivers = Number(weekStats?.totalDrivers || (recentActivities ? new Set(
     recentActivities
       .filter((activity: any) => activity.status !== 'rejected')
       .map((activity: any) => activity.driver?.user?.id)
       .filter(Boolean)
-  ).size : 0;
+  ).size : 0));
   const ownerStatusChartData = [
     { label: t("common.pending"), amount: pendingPayments, count: pendingCount },
     { label: t("common.approved"), amount: approvedPayments, count: approvedCount },

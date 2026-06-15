@@ -104,10 +104,17 @@ import { db } from "./db";
 import { summarizeDatabaseError } from "./dbErrors";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
-import { resolvePlatformFeeCents } from "../shared/billingPolicy";
+import { resolvePlatformFeeCents, type OwnerBillingLedger } from "../shared/billingPolicy";
 import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
-import { summarizeWashoutRevenueFromActivities } from "../shared/washoutRevenue";
+import {
+  buildOwnerWashoutBillingLedgerFromBillableWashouts,
+  buildOwnerWashoutBillingLedgerFromPayments,
+  getReportingBillingStatus,
+  summarizeReportingLedgerCollection,
+  type ReportingLedgerPayment,
+  type ReportingLedgerBatch,
+} from "./billing/ownerWashoutLedger";
 import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
 import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -232,13 +239,40 @@ export interface IStorage {
   getAllPayments(startDate?: Date, endDate?: Date): Promise<(Payment & { driver: Driver & { user: User }; owner: Owner & { user: User }; activity: WashoutActivity })[]>;
 
   // Statistics operations
-  getDriverStats(driverId: string, days: number): Promise<{ totalEarnings: number; totalWashouts: number; avgPerWashout: number }>;
-  getOwnerStats(ownerId: string, days: number): Promise<{ totalPayments: number; totalWashouts: number; totalDrivers: number }>;
+  getDriverStats(driverId: string, days: number): Promise<{
+    totalEarnings: number;
+    totalWashouts: number;
+    avgPerWashout: number;
+    tipTotalCents?: number;
+    transferTotalCents?: number;
+    pendingTransferCents?: number;
+    paidTransferCents?: number;
+    transferCount?: number;
+  }>;
+  getOwnerStats(ownerId: string, days: number): Promise<{
+    totalPayments: number;
+    totalWashouts: number;
+    totalDrivers: number;
+    platformFeesOwedCents?: number;
+    platformFeesPaidCents?: number;
+    driverTipTotalCents?: number;
+    ownerChargeTotalCents?: number;
+    paidBillingCount?: number;
+    needsReviewBillingCount?: number;
+    unpaidBillingCount?: number;
+  }>;
   getSystemStats(days: number): Promise<{
     totalEarnings: number;
     totalWashouts: number;
     totalDrivers: number;
     totalOwners: number;
+    platformRevenueCents?: number | null;
+    ownerChargeTotalCents?: number | null;
+    driverTipTotalCents?: number | null;
+    driverTransferTotalCents?: number | null;
+    unpaidReceivablesCents?: number | null;
+    paidReceivablesCents?: number | null;
+    needsReviewCents?: number | null;
     platformWashoutRevenue: number | null;
     platformWashoutRevenueCents: number | null;
     platformWashoutPaidRevenue: number | null;
@@ -1642,6 +1676,7 @@ export class DatabaseStorage implements IStorage {
         activityCheckInTime: washoutActivities.checkInTime,
         activityStatus: washoutActivities.status,
         activityAmount: washoutActivities.amount,
+        activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
         activityNotes: washoutActivities.notes,
         activityPhotoUrls: washoutActivities.photoUrls,
         locationId: washoutLocations.id,
@@ -1683,6 +1718,7 @@ export class DatabaseStorage implements IStorage {
       checkInTime: row.activityCheckInTime,
       status: row.activityStatus,
       amount: row.activityAmount,
+      feeCentsPlatform: row.activityFeeCentsPlatform,
       notes: row.activityNotes,
       photoUrls: row.activityPhotoUrls,
       createdAt: row.activityCheckInTime,
@@ -1696,6 +1732,7 @@ export class DatabaseStorage implements IStorage {
         state: row.locationState,
         zip: row.locationZip,
         rate: row.locationRate,
+        driverIncentiveTip: row.locationDriverIncentiveTip,
         monthlyFeeCents: row.locationMonthlyFeeCents,
       },
       driver: {
@@ -2768,53 +2805,123 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Statistics operations
-  async getDriverStats(driverId: string, days: number): Promise<{ totalEarnings: number; totalWashouts: number; avgPerWashout: number }> {
+  async getDriverStats(driverId: string, days: number): Promise<{
+    totalEarnings: number;
+    totalWashouts: number;
+    avgPerWashout: number;
+    tipTotalCents?: number;
+    transferTotalCents?: number;
+    pendingTransferCents?: number;
+    paidTransferCents?: number;
+    transferCount?: number;
+  }> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const result = await db
-      .select({
-        totalEarnings: sql<number>`COALESCE(SUM(CAST(${washoutActivities.amount} AS DECIMAL)), 0)`,
-        totalWashouts: count(washoutActivities.id),
-      })
-      .from(washoutActivities)
-      .where(and(
-        eq(washoutActivities.driverId, driverId),
-        gte(washoutActivities.checkInTime, startDate)
-      ));
-
-    const stats = result[0] || { totalEarnings: 0, totalWashouts: 0 };
-    const avgPerWashout = stats.totalWashouts > 0 ? stats.totalEarnings / stats.totalWashouts : 0;
+    const payments = await this.getPaymentsByDriver(driverId, startDate, new Date());
+    const totalEarningsCents = payments.reduce((sum, payment) => {
+      return sum + Math.max(0, Math.round(Number(payment.tipAmountCents || 0)));
+    }, 0);
+    const totalWashouts = payments.length;
+    const paidTransferCents = payments.reduce((sum, payment) => {
+      const status = String(payment.status || "").toLowerCase();
+      const hasTransfer = Boolean(payment.stripeTransferId) || ["paid", "posted", "completed", "succeeded"].includes(status);
+      return sum + (hasTransfer ? Math.max(0, Math.round(Number(payment.tipAmountCents || 0))) : 0);
+    }, 0);
+    const pendingTransferCents = Math.max(0, totalEarningsCents - paidTransferCents);
+    const transferCount = payments.reduce((count, payment) => count + (payment.stripeTransferId ? 1 : 0), 0);
+    const avgPerWashout = totalWashouts > 0 ? (totalEarningsCents / 100) / totalWashouts : 0;
 
     return {
-      totalEarnings: Number(stats.totalEarnings),
-      totalWashouts: Number(stats.totalWashouts),
+      totalEarnings: Number((totalEarningsCents / 100).toFixed(2)),
+      totalWashouts,
       avgPerWashout: Number(avgPerWashout.toFixed(2)),
+      tipTotalCents: totalEarningsCents,
+      transferTotalCents: totalEarningsCents,
+      pendingTransferCents,
+      paidTransferCents,
+      transferCount,
     };
   }
 
-  async getOwnerStats(ownerId: string, days: number): Promise<{ totalPayments: number; totalWashouts: number; totalDrivers: number }> {
+  async getOwnerStats(ownerId: string, days: number): Promise<{
+    totalPayments: number;
+    totalWashouts: number;
+    totalDrivers: number;
+    platformFeesOwedCents?: number;
+    platformFeesPaidCents?: number;
+    driverTipTotalCents?: number;
+    ownerChargeTotalCents?: number;
+    paidBillingCount?: number;
+    needsReviewBillingCount?: number;
+    unpaidBillingCount?: number;
+  }> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const paymentStats = await db
-      .select({
-        totalPayments: sql<number>`COALESCE(SUM(CAST(${payments.amount} AS DECIMAL)), 0)`,
-        totalWashouts: count(payments.id),
-        totalDrivers: sql<number>`COUNT(DISTINCT ${payments.driverId})`,
+    const approvedWashouts = await this.getApprovedWashoutsForOwnerBilling(ownerId, startDate, new Date());
+    const batches = await this.getBillingBatchesByOwner(ownerId, startDate, new Date());
+    const pendingLedger = approvedWashouts.length > 0
+      ? buildOwnerWashoutBillingLedgerFromBillableWashouts({
+          ownerId,
+          billingBatchId: `${ownerId}:pending:${startDate.toISOString().split("T")[0]}`,
+          washouts: approvedWashouts.map((row) => ({
+            id: row.activityId,
+            ownerId: row.ownerId,
+            driverId: row.driverId,
+            driverStripeAccountId: null,
+            platformFeeCents: Math.max(0, Math.round(Number(row.activityFeeCentsPlatform ?? 0))),
+            driverTipCents: Math.max(0, Math.round(Number(row.locationDriverIncentiveTip || 0))),
+          })),
+          immediateBilling: true,
+        })
+      : null;
+    const batchLedgers = await Promise.all(
+      batches.map(async (batch) => {
+        const batchPayments = await this.getPaymentsByBatchId(batch.id);
+        const ledger = buildOwnerWashoutBillingLedgerFromPayments({
+          ownerId,
+          billingBatchId: batch.id,
+          payments: batchPayments.map((payment) => ({
+            id: payment.id,
+            ownerId: payment.ownerId,
+            driverId: payment.driverId,
+            activityId: payment.activityId,
+            processingFee: payment.processingFee,
+            tipAmountCents: payment.tipAmountCents,
+            status: payment.status,
+            batchId: payment.batchId,
+            stripePaymentIntentId: payment.stripePaymentIntentId,
+            stripeTransferId: payment.stripeTransferId,
+            stripeChargeId: payment.stripeChargeId,
+          })),
+        });
+        return {
+          ...ledger,
+          billingStatus: getReportingBillingStatus(batch.status),
+        };
       })
-      .from(payments)
-      .where(and(
-        eq(payments.ownerId, ownerId),
-        gte(payments.createdAt, startDate)
-      ));
-
-    const stats = paymentStats[0] || { totalPayments: 0, totalWashouts: 0, totalDrivers: 0 };
+    );
+    const summary = summarizeReportingLedgerCollection([
+      ...(pendingLedger ? [{ ...pendingLedger, billingStatus: "pending" as const }] : []),
+      ...batchLedgers,
+    ]);
+    const totalDrivers = new Set([
+      ...approvedWashouts.map((row) => row.driverId),
+      ...batchLedgers.flatMap((ledger) => ledger.driverTransfers.map((transfer) => transfer.driverId)),
+    ]).size;
 
     return {
-      totalPayments: Number(stats.totalPayments),
-      totalWashouts: Number(stats.totalWashouts),
-      totalDrivers: Number(stats.totalDrivers),
+      totalPayments: Number((summary.ownerChargeTotalCents / 100).toFixed(2)),
+      totalWashouts: summary.approvedWashoutCount,
+      totalDrivers,
+      platformFeesOwedCents: summary.unpaidReceivablesCents,
+      platformFeesPaidCents: summary.paidReceivablesCents,
+      driverTipTotalCents: summary.driverTipTotalCents,
+      ownerChargeTotalCents: summary.ownerChargeTotalCents,
+      paidBillingCount: batchLedgers.filter((ledger) => ledger.billingStatus === "paid").length,
+      needsReviewBillingCount: batchLedgers.filter((ledger) => ledger.billingStatus === "needs_review").length,
+      unpaidBillingCount: batchLedgers.filter((ledger) => ledger.billingStatus === "pending").length,
     };
   }
 
@@ -2823,6 +2930,13 @@ export class DatabaseStorage implements IStorage {
     totalWashouts: number; 
     totalDrivers: number; 
     totalOwners: number;
+    platformRevenueCents?: number | null;
+    ownerChargeTotalCents?: number | null;
+    driverTipTotalCents?: number | null;
+    driverTransferTotalCents?: number | null;
+    unpaidReceivablesCents?: number | null;
+    paidReceivablesCents?: number | null;
+    needsReviewCents?: number | null;
     platformWashoutRevenue: number | null;
     platformWashoutRevenueCents: number | null;
     platformWashoutPaidRevenue: number | null;
@@ -2888,15 +3002,11 @@ export class DatabaseStorage implements IStorage {
     const stats = activityStats[0] || { totalEarnings: 0, totalWashouts: 0, totalDrivers: 0 };
     const ownerCount = ownerStats[0]?.totalOwners || 0;
     const subStats = subscriptionStats[0] || { activeLicenses: 0, licenseRenewals: 0 };
+    let totalEarnings = Number(stats.totalEarnings);
+    let totalWashouts = Number(stats.totalWashouts);
+    let totalDrivers = Number(stats.totalDrivers);
     const systemSettings = await this.getSystemSettings();
     const defaultPlatformFeeCents = resolvePlatformFeeCents(systemSettings?.platformWashoutFee);
-    let revenueRows: Array<{
-      activityStatus?: string | null;
-      paymentStatus?: string | null;
-      activityFeeCentsPlatform?: number | null;
-      locationDriverIncentiveTipCents?: number | null;
-      paymentProcessingFee?: string | number | null;
-    }> = [];
     let platformWashoutRevenue: number | null = null;
     let platformWashoutRevenueCents: number | null = null;
     let platformWashoutPaidRevenue: number | null = null;
@@ -2909,43 +3019,109 @@ export class DatabaseStorage implements IStorage {
     let failedWashouts: number | null = null;
     let refundedWashouts: number | null = null;
     let disputedWashouts: number | null = null;
+    let platformRevenueCents: number | null = null;
+    let ownerChargeTotalCents: number | null = null;
+    let driverTipTotalCents: number | null = null;
+    let driverTransferTotalCents: number | null = null;
+    let unpaidReceivablesCents: number | null = null;
+    let paidReceivablesCents: number | null = null;
+    let needsReviewCents: number | null = null;
     let washoutRevenueError: string | undefined;
 
     try {
-      revenueRows = await db
-        .select({
-          activityStatus: washoutActivities.status,
-          paymentStatus: payments.status,
-          activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
-          locationDriverIncentiveTipCents: washoutLocations.driverIncentiveTip,
-          paymentProcessingFee: payments.processingFee,
-        })
-        .from(washoutActivities)
-        .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-        .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
-        .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
-        .where(and(
-          gte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, startDate),
-          ne(washoutActivities.status, 'rejected'),
-        ));
+      const ownersWithBillingSettings = await this.getAllOwnersBillingSettings();
+      const ownerLedgers: Array<OwnerBillingLedger & { billingStatus?: "paid" | "pending" | "needs_review" }> = [];
+      const reportingDriverIds = new Set<string>();
 
-      const paymentSummary = summarizeWashoutRevenueFromActivities(revenueRows, defaultPlatformFeeCents);
-      approvedWashouts = revenueRows.filter((row) => isBillableWashoutForOwnerBilling({ status: row.activityStatus })).length;
-      platformFeeRecordCount = revenueRows.filter((row) => {
-        const approved = isBillableWashoutForOwnerBilling({ status: row.activityStatus });
-        const platformFeeCents = Number(row.activityFeeCentsPlatform ?? defaultPlatformFeeCents);
-        return approved && Number.isFinite(platformFeeCents) && Math.round(platformFeeCents) > 0;
-      }).length;
-      platformWashoutRevenue = paymentSummary.platformWashoutRevenue;
-      platformWashoutRevenueCents = Math.round(paymentSummary.platformWashoutRevenue * 100);
-      platformWashoutPaidRevenue = paymentSummary.platformWashoutPaidRevenue;
-      platformWashoutPaidRevenueCents = Math.round(paymentSummary.platformWashoutPaidRevenue * 100);
-      driverTipTotal = paymentSummary.driverTipTotal;
-      billedWashouts = paymentSummary.billedWashouts;
-      pendingWashouts = paymentSummary.pendingWashouts;
-      failedWashouts = paymentSummary.failedWashouts;
-      refundedWashouts = paymentSummary.refundedWashouts;
-      disputedWashouts = paymentSummary.disputedWashouts;
+      for (const ownerSetting of ownersWithBillingSettings) {
+        const owner = await this.getOwnerById(ownerSetting.ownerId);
+        if (!owner) continue;
+
+        const approvedOwnerWashouts = await this.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId, startDate, new Date());
+        if (approvedOwnerWashouts.length > 0) {
+          const pendingLedger = buildOwnerWashoutBillingLedgerFromBillableWashouts({
+            ownerId: ownerSetting.ownerId,
+            billingBatchId: `${ownerSetting.ownerId}:report:${startDate.toISOString().split("T")[0]}`,
+            washouts: approvedOwnerWashouts.map((row) => ({
+              id: row.activityId,
+              ownerId: row.ownerId,
+              driverId: row.driverId,
+              driverStripeAccountId: null,
+              platformFeeCents: Math.max(0, Math.round(Number(row.activityFeeCentsPlatform ?? defaultPlatformFeeCents))),
+              driverTipCents: Math.max(0, Math.round(Number(row.locationDriverIncentiveTip || 0))),
+            })),
+            immediateBilling: ownerSetting.billingCadence === "immediate",
+            allowAdminOverride: true,
+          });
+          ownerLedgers.push({
+            ...pendingLedger,
+            billingStatus: "pending",
+          });
+          Object.keys(pendingLedger.driverTipCentsByDriver || {}).forEach((driverId) => reportingDriverIds.add(driverId));
+        }
+
+        const ownerBatches = await this.getBillingBatchesByOwner(ownerSetting.ownerId, startDate, new Date());
+        for (const batch of ownerBatches) {
+          const batchPayments = await this.getPaymentsByBatchId(batch.id);
+          const ledger = buildOwnerWashoutBillingLedgerFromPayments({
+            ownerId: ownerSetting.ownerId,
+            billingBatchId: batch.id,
+            payments: batchPayments.map((payment) => ({
+              id: payment.id,
+              ownerId: payment.ownerId,
+              driverId: payment.driverId,
+              activityId: payment.activityId,
+              processingFee: payment.processingFee,
+              tipAmountCents: payment.tipAmountCents,
+              status: payment.status,
+              batchId: payment.batchId,
+              stripePaymentIntentId: payment.stripePaymentIntentId,
+              stripeTransferId: payment.stripeTransferId,
+              stripeChargeId: payment.stripeChargeId,
+            })),
+            immediateBilling: ownerSetting.billingCadence === "immediate",
+            allowAdminOverride: true,
+          });
+          ownerLedgers.push({
+            ...ledger,
+            billingStatus: getReportingBillingStatus(batch.status),
+          });
+          ledger.driverTransfers.forEach((transfer) => reportingDriverIds.add(transfer.driverId));
+        }
+      }
+
+      const paymentSummary = summarizeReportingLedgerCollection(ownerLedgers);
+      platformRevenueCents = paymentSummary.platformRevenueCents;
+      ownerChargeTotalCents = paymentSummary.ownerChargeTotalCents;
+      driverTipTotalCents = paymentSummary.driverTipTotalCents;
+      driverTransferTotalCents = paymentSummary.driverTransferTotalCents;
+      unpaidReceivablesCents = paymentSummary.unpaidReceivablesCents;
+      paidReceivablesCents = paymentSummary.paidReceivablesCents;
+      needsReviewCents = paymentSummary.needsReviewCents;
+      platformWashoutRevenueCents = paymentSummary.platformRevenueCents;
+      platformWashoutRevenue = platformWashoutRevenueCents / 100;
+      platformWashoutPaidRevenueCents = paymentSummary.paidReceivablesCents;
+      platformWashoutPaidRevenue = platformWashoutPaidRevenueCents / 100;
+      platformFeeRecordCount = paymentSummary.approvedWashoutCount;
+      approvedWashouts = paymentSummary.approvedWashoutCount;
+      driverTipTotal = paymentSummary.driverTipTotalCents / 100;
+      billedWashouts = paymentSummary.billedWashoutCount;
+      pendingWashouts = Math.max(0, paymentSummary.approvedWashoutCount - paymentSummary.billedWashoutCount);
+      failedWashouts = 0;
+      refundedWashouts = 0;
+      disputedWashouts = 0;
+      console.log("[REPORTING_RECONCILIATION]", {
+        platformRevenueCents,
+        ownerChargeTotalCents,
+        driverTipTotalCents,
+        driverTransferTotalCents,
+        unpaidReceivablesCents,
+        paidReceivablesCents,
+        needsReviewCents,
+      });
+      totalDrivers = reportingDriverIds.size;
+      totalWashouts = paymentSummary.approvedWashoutCount;
+      totalEarnings = Number(((ownerChargeTotalCents || 0) / 100).toFixed(2));
     } catch (error) {
       const safeError = summarizeDatabaseError(error);
       washoutRevenueError = "Unable to load washout revenue metrics.";
@@ -3001,10 +3177,17 @@ export class DatabaseStorage implements IStorage {
     });
 
     return {
-      totalEarnings: Number(stats.totalEarnings),
-      totalWashouts: Number(stats.totalWashouts),
-      totalDrivers: Number(stats.totalDrivers),
+      totalEarnings: Number((ownerChargeTotalCents ?? 0) / 100),
+      totalWashouts: Number(approvedWashouts ?? stats.totalWashouts),
+      totalDrivers: Number(totalDrivers),
       totalOwners: Number(ownerCount),
+      platformRevenueCents: platformRevenueCents ?? null,
+      ownerChargeTotalCents: ownerChargeTotalCents ?? null,
+      driverTipTotalCents: driverTipTotalCents ?? null,
+      driverTransferTotalCents: driverTransferTotalCents ?? null,
+      unpaidReceivablesCents: unpaidReceivablesCents ?? null,
+      paidReceivablesCents: paidReceivablesCents ?? null,
+      needsReviewCents: needsReviewCents ?? null,
       platformWashoutRevenue,
       platformWashoutRevenueCents,
       platformWashoutPaidRevenue,
@@ -4284,7 +4467,7 @@ export class DatabaseStorage implements IStorage {
     
     const owner = { ...ownerResult[0].owner, user: ownerResult[0].user };
 
-    // Convert to cents for Stripe - CRITICAL FIX: charge FULL amount (driver payouts + fees)
+    // Convert to cents for Stripe - charge platform fees plus driver tips only
     const fullChargeAmount = totalAmount + totalFees;
     const amountCents = Math.round(fullChargeAmount * 100);
     
@@ -4296,13 +4479,13 @@ export class DatabaseStorage implements IStorage {
       amount: amountCents,
       currency: 'usd',
       customer: stripeCustomerId,
-      description: `Daily batch payment - ${paymentCount} washouts (Driver payouts: $${totalAmount.toFixed(2)}, Fees: $${totalFees.toFixed(2)})`,
+      description: `Daily batch payment - ${paymentCount} washouts (Platform fees: $${totalAmount.toFixed(2)}, Driver tips: $${totalFees.toFixed(2)})`,
       metadata: {
         batchId,
         ownerId,
         paymentCount: paymentCount.toString(),
-        driverPayouts: totalAmount.toFixed(2),
-        totalFees: totalFees.toFixed(2),
+        platformFees: totalAmount.toFixed(2),
+        driverTips: totalFees.toFixed(2),
         fullChargeAmount: fullChargeAmount.toFixed(2),
         timezone: billingSettings.billingTimezone,
         cutoffTime: billingSettings.billingCutoffTime,
@@ -4465,8 +4648,8 @@ export class DatabaseStorage implements IStorage {
       const ownerUser = await this.getUser(owner.userId);
 
       // Calculate totals
-      const batchTotal = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.amount) + parseFloat(payment.processingFee) + Number((payment.tipAmountCents || 0) / 100), 0);
-      const batchFees = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee) + Number((payment.tipAmountCents || 0) / 100), 0);
+      const batchTotal = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee) + Number((payment.tipAmountCents || 0) / 100), 0);
+      const batchFees = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee), 0);
 
       ownerBatches.push({
         ownerId,

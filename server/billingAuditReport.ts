@@ -219,8 +219,8 @@ export async function buildBillingAuditReport(
     const paymentStatus = normalizePaymentStatus(payment);
     const groupKey = batch?.id || buildLegacyBillingRunId(payment.ownerId);
     const driverIncentiveTipCents = Number(payment.tipAmountCents || 0);
-    const amountChargedCents = toCents(payment.amount) + toCents(payment.processingFee) + driverIncentiveTipCents;
     const platformFeeCents = toCents(payment.processingFee);
+    const amountChargedCents = platformFeeCents + driverIncentiveTipCents;
     const paymentCreatedAtDate = new Date(payment.createdAt as unknown as string | number | Date);
     const paymentPaidAtDate = payment.paidAt ? new Date(payment.paidAt as unknown as string | number | Date) : null;
     const paymentFailedAtDate = payment.status === "failed" ? new Date(payment.updatedAt as unknown as string | number | Date) : null;

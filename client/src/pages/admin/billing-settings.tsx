@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
+import { StatCard } from "@/components/StatCard";
 import { 
   Settings, 
   Clock, 
@@ -16,7 +18,8 @@ import {
   AlertCircle,
   Zap,
   CalendarDays,
-  CalendarRange
+  CalendarRange,
+  ShieldAlert
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency, formatCurrencyFromCents } from "@/lib/utils";
+import { canViewOwnerBillingDryRunTool } from "@/lib/adminBilling";
 
 interface OwnerBillingSettings {
   ownerId: string;
@@ -114,6 +118,53 @@ interface ImmediateBillingHistory {
   failureReason: string | null;
 }
 
+interface DryRunValidation {
+  passed: boolean;
+  blockedForReview: boolean;
+  reviewThresholdCents: number;
+  reason: string | null;
+}
+
+interface DryRunOwnerBillingResult {
+  dryRun: true;
+  title: string;
+  ledger: {
+    approvedWashoutCount: number;
+    platformFeeTotalCents: number;
+    driverTipTotalCents: number;
+    ownerChargeAmountCents: number;
+    platformRevenueCents: number;
+    driverTransfers: Array<{
+      driverId: string;
+      connectedAccountId: string;
+      washoutActivityIds: string[];
+      tipAmountCents: number;
+      amountCents: number;
+      transferId?: string | null;
+      stripeChargeId?: string | null;
+    }>;
+  };
+  stripePaymentIntentPreview: {
+    amount: number;
+    currency: string;
+    customer: string | null;
+    payment_method: string | null;
+    confirm: boolean;
+    off_session: boolean;
+    payment_method_types: string[];
+    description: string;
+    metadata: Record<string, string>;
+  };
+  stripeTransferPreviews: Array<{
+    amount: number;
+    currency: string;
+    destination: string;
+    description: string;
+    metadata: Record<string, string>;
+  }>;
+  validation: DryRunValidation;
+}
+
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function getCadenceIcon(cadence: string) {
@@ -149,9 +200,15 @@ function getCadenceBadge(cadence: string) {
 export default function AdminBillingSettings() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const isSuperAdmin = canViewOwnerBillingDryRunTool((user as any)?.role);
   const [selectedOwner, setSelectedOwner] = useState<OwnerBillingSettings | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [previewOwnerId, setPreviewOwnerId] = useState("");
+  const [previewBillingMode, setPreviewBillingMode] = useState<"immediate" | "weekly">("immediate");
+  const [previewUseCurrentWashouts, setPreviewUseCurrentWashouts] = useState(true);
+  const [previewWashoutIds, setPreviewWashoutIds] = useState("");
+  const [previewResult, setPreviewResult] = useState<DryRunOwnerBillingResult | null>(null);
   
   const [editForm, setEditForm] = useState({
     billingCadence: 'weekly',
@@ -171,6 +228,12 @@ export default function AdminBillingSettings() {
     queryKey: ['/api/admin/billing/settings'],
     retry: false,
   });
+
+  useEffect(() => {
+    if (!previewOwnerId && billingData?.owners?.length) {
+      setPreviewOwnerId(billingData.owners[0].ownerId);
+    }
+  }, [billingData, previewOwnerId]);
 
   const updateMutation = useMutation({
     mutationFn: async ({ ownerId, settings }: { ownerId: string; settings: any }) => {
@@ -248,6 +311,41 @@ export default function AdminBillingSettings() {
     },
   });
 
+  const previewBillingMutation = useMutation({
+    mutationFn: async () => {
+      const ownerId = previewOwnerId.trim();
+      const washoutActivityIds = previewUseCurrentWashouts
+        ? []
+        : previewWashoutIds
+            .split(/[\n,]/)
+            .map((value) => value.trim())
+            .filter(Boolean);
+
+      const response = await apiRequest("POST", "/api/admin/billing/preview-owner-washout-charge", {
+        ownerId,
+        washoutActivityIds,
+        billingMode: previewBillingMode,
+      });
+
+      return response.json() as Promise<DryRunOwnerBillingResult>;
+    },
+    onSuccess: (data) => {
+      setPreviewResult(data);
+      toast({
+        title: "Dry run complete",
+        description: "Owner billing preview loaded without creating a Stripe charge.",
+      });
+    },
+    onError: (error: any) => {
+      setPreviewResult(null);
+      toast({
+        title: "Dry run failed",
+        description: error.message || "Unable to preview owner billing",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditOwner = (owner: OwnerBillingSettings) => {
     setSelectedOwner(owner);
     setEditForm({
@@ -291,6 +389,10 @@ export default function AdminBillingSettings() {
     if (!value) return "Never";
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? "Never" : parsed.toLocaleString();
+  };
+
+  const handlePreviewBilling = () => {
+    previewBillingMutation.mutate();
   };
 
   return (
@@ -471,6 +573,190 @@ export default function AdminBillingSettings() {
             </Dialog>
           </CardContent>
         </Card>
+
+        {isSuperAdmin && (
+          <Card data-testid="card-owner-billing-preview">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5" />
+                Dry-Run Owner Washout Charge
+              </CardTitle>
+              <CardDescription>
+                Dry run only - no Stripe charge created.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="preview-owner">Owner</Label>
+                  <Select value={previewOwnerId} onValueChange={setPreviewOwnerId}>
+                    <SelectTrigger id="preview-owner" data-testid="select-preview-owner">
+                      <SelectValue placeholder="Select owner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {billingData?.owners?.map((owner) => (
+                        <SelectItem key={owner.ownerId} value={owner.ownerId}>
+                          {owner.companyName} (@{owner.username})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="preview-mode">Billing mode</Label>
+                  <Select value={previewBillingMode} onValueChange={(value) => setPreviewBillingMode(value === "weekly" ? "weekly" : "immediate")}>
+                    <SelectTrigger id="preview-mode" data-testid="select-preview-mode">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="immediate">Immediate preview</SelectItem>
+                      <SelectItem value="weekly">Weekly preview</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="preview-washout-mode">Washout selection</Label>
+                  <Select
+                    value={previewUseCurrentWashouts ? "current" : "manual"}
+                    onValueChange={(value) => setPreviewUseCurrentWashouts(value === "current")}
+                  >
+                    <SelectTrigger id="preview-washout-mode" data-testid="select-preview-washout-mode">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="current">Use current unbilled approved washouts</SelectItem>
+                      <SelectItem value="manual">Enter washout IDs manually</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {!previewUseCurrentWashouts && (
+                <div className="space-y-2">
+                  <Label htmlFor="preview-washout-ids">Washout IDs</Label>
+                  <Textarea
+                    id="preview-washout-ids"
+                    value={previewWashoutIds}
+                    onChange={(event) => setPreviewWashoutIds(event.target.value)}
+                    placeholder="activity_1, activity_2, activity_3"
+                    className="min-h-28"
+                    data-testid="textarea-preview-washout-ids"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Separate IDs with commas or new lines. Leave this blank and keep the current option selected to preview all unbilled approved washouts.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  onClick={handlePreviewBilling}
+                  disabled={previewBillingMutation.isPending || !previewOwnerId}
+                  data-testid="button-preview-owner-billing"
+                >
+                  {previewBillingMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Preview Owner Billing
+                </Button>
+                <Badge variant="outline" data-testid="badge-preview-dry-run">
+                  Dry run only
+                </Badge>
+              </div>
+
+              {previewResult && (
+                <div className="space-y-5 rounded-xl border bg-muted/20 p-4" data-testid="panel-owner-billing-preview-result">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-semibold">{previewResult.title}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {previewBillingMode === "immediate" ? "Immediate preview" : "Weekly preview"}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={previewResult.validation.passed ? "default" : "destructive"}
+                      data-testid="badge-preview-validation"
+                    >
+                      {previewResult.validation.passed ? "Validation passed" : "Validation failed"}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <StatCard title="Approved Washouts" value={previewResult.ledger.approvedWashoutCount} />
+                    <StatCard title="Platform Fees Total" value={formatCurrencyFromCents(previewResult.ledger.platformFeeTotalCents)} />
+                    <StatCard title="Driver Tips Total" value={formatCurrencyFromCents(previewResult.ledger.driverTipTotalCents)} />
+                    <StatCard title="Owner Charge Total" value={formatCurrencyFromCents(previewResult.ledger.ownerChargeAmountCents)} />
+                    <StatCard title="Platform Revenue" value={formatCurrencyFromCents(previewResult.ledger.platformRevenueCents)} />
+                    <StatCard
+                      title="Review Threshold"
+                      value={previewResult.validation.blockedForReview ? "Blocked for review" : "Within threshold"}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h4 className="font-medium">Washout IDs</h4>
+                      <span className="text-xs text-muted-foreground">{previewResult.ledger.approvedWashoutCount} entries</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {previewResult.ledger.driverTransfers.flatMap((transfer) => transfer.washoutActivityIds).map((washoutId) => (
+                        <Badge key={washoutId} variant="secondary" className="max-w-full break-all">
+                          {washoutId}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Driver transfer previews</h4>
+                    <div className="space-y-3">
+                      {previewResult.stripeTransferPreviews.map((transfer, index) => (
+                        <div key={`${transfer.destination}-${index}`} className="rounded-lg border bg-background p-3">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="break-words font-medium">{transfer.destination}</p>
+                              <p className="break-words text-xs text-muted-foreground">{transfer.description}</p>
+                            </div>
+                            <Badge variant="outline">{formatCurrencyFromCents(transfer.amount)}</Badge>
+                          </div>
+                          <pre className="mt-3 overflow-x-auto rounded-md bg-muted p-3 text-xs">{JSON.stringify(transfer.metadata, null, 2)}</pre>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className="rounded-lg border bg-background p-4">
+                      <h4 className="font-medium">Stripe PaymentIntent preview</h4>
+                      <div className="mt-3 space-y-1 text-sm">
+                        <p><span className="font-medium">Amount:</span> {formatCurrencyFromCents(previewResult.stripePaymentIntentPreview.amount)}</p>
+                        <p><span className="font-medium">Currency:</span> {previewResult.stripePaymentIntentPreview.currency.toUpperCase()}</p>
+                        <p><span className="font-medium">Customer:</span> {previewResult.stripePaymentIntentPreview.customer || "None"}</p>
+                        <p><span className="font-medium">Payment method:</span> {previewResult.stripePaymentIntentPreview.payment_method || "None"}</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border bg-background p-4">
+                      <h4 className="font-medium">Validation</h4>
+                      <div className="mt-3 space-y-1 text-sm">
+                        <p><span className="font-medium">Status:</span> {previewResult.validation.passed ? "Passed" : "Failed"}</p>
+                        <p><span className="font-medium">Blocked for review:</span> {previewResult.validation.blockedForReview ? "Yes" : "No"}</p>
+                        <p><span className="font-medium">Reason:</span> {previewResult.validation.reason || "None"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border bg-background p-4">
+                    <h4 className="font-medium">Ledger JSON</h4>
+                    <pre className="mt-3 overflow-x-auto rounded-md bg-muted p-3 text-xs">
+                      {JSON.stringify(previewResult.ledger, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

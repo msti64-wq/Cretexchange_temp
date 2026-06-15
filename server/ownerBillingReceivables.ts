@@ -1,6 +1,12 @@
 import { resolvePlatformFeeCents } from "../shared/billingPolicy";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
-import { summarizeOwnerBillingReceivables } from "../shared/ownerBillingReceivables";
+import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
+import {
+  buildOwnerWashoutBillingLedgerFromBillableWashouts,
+  buildOwnerWashoutBillingLedgerFromPayments,
+  summarizeReportingLedgerCollection,
+  getReportingBillingStatus,
+} from "./billing/ownerWashoutLedger";
 
 export type OwnerBillingReceivablesOwnerSummary = {
   ownerId: string;
@@ -93,14 +99,90 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
     immediateOwners.map(async (ownerSetting: { ownerId: string; companyName: string; username: string; billingCadence: string }) => {
       const owner = await storageApi.getOwnerById(ownerSetting.ownerId);
       const ownerUser = owner ? await storageApi.getUser(owner.userId) : null;
-      const approvedWashouts = typeof storageApi.getApprovedWashoutsForOwnerBilling === "function"
-        ? await storageApi.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId)
-        : [];
+      let approvedWashouts: any[] = [];
+      if (typeof storageApi.getApprovedWashoutsForOwnerBilling === "function") {
+        try {
+          approvedWashouts = await storageApi.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId);
+        } catch (error) {
+          console.warn("[OWNER_BILLING_RECEIVABLES] approved washouts query failed, falling back to batch history only", {
+            ownerId: ownerSetting.ownerId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          approvedWashouts = [];
+        }
+      }
       const ownerCustomPlatformFeeCents = owner?.customPlatformFee !== null && owner?.customPlatformFee !== undefined && owner?.customPlatformFee !== ""
         ? resolvePlatformFeeCents(owner.customPlatformFee)
         : null;
-      const receivables = summarizeOwnerBillingReceivables(approvedWashouts, ownerCustomPlatformFeeCents);
-      const batches = await storageApi.getBillingBatchesByOwner(ownerSetting.ownerId);
+      let batches: any[] = [];
+      try {
+        batches = await storageApi.getBillingBatchesByOwner(ownerSetting.ownerId);
+      } catch (error) {
+        console.warn("[OWNER_BILLING_RECEIVABLES] billing batches query failed, falling back to zeroed batch summary", {
+          ownerId: ownerSetting.ownerId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        batches = [];
+      }
+      const billableApprovedWashouts = approvedWashouts.filter((row: any) => isBillableWashoutForOwnerBilling({ status: row.activityStatus }));
+      const approvedLedger = billableApprovedWashouts.length > 0
+        ? buildOwnerWashoutBillingLedgerFromBillableWashouts({
+            ownerId: ownerSetting.ownerId,
+            billingBatchId: `${ownerSetting.ownerId}:receivables:${Date.now()}`,
+            washouts: billableApprovedWashouts.map((row: any) => ({
+              id: row.activityId,
+              ownerId: row.ownerId,
+              driverId: row.driverId,
+              driverStripeAccountId: null,
+              platformFeeCents: ownerCustomPlatformFeeCents !== null ? ownerCustomPlatformFeeCents : resolvePlatformFeeCents(row.activityFeeCentsPlatform),
+              driverTipCents: Number(row.locationDriverIncentiveTip || 0),
+            })),
+            allowAdminOverride: true,
+          })
+        : null;
+      const batchLedgers = await Promise.all(
+        batches.map(async (batch: { id: string; status?: string | null }) => {
+          let payments: any[] = [];
+          if (typeof storageApi.getPaymentsByBatchId === "function") {
+            try {
+              payments = await storageApi.getPaymentsByBatchId(batch.id);
+            } catch (error) {
+              console.warn("[OWNER_BILLING_RECEIVABLES] payments by batch query failed, falling back to empty payments", {
+                ownerId: ownerSetting.ownerId,
+                batchId: batch.id,
+                error: error instanceof Error ? error.message : String(error),
+              });
+              payments = [];
+            }
+          }
+          const ledger = buildOwnerWashoutBillingLedgerFromPayments({
+            ownerId: ownerSetting.ownerId,
+            billingBatchId: batch.id,
+            payments: payments.map((payment: any) => ({
+              id: payment.id,
+              ownerId: payment.ownerId,
+              driverId: payment.driverId,
+              activityId: payment.activityId,
+              processingFee: payment.processingFee,
+              tipAmountCents: payment.tipAmountCents,
+              status: payment.status,
+              batchId: payment.batchId,
+              stripePaymentIntentId: payment.stripePaymentIntentId,
+              stripeTransferId: payment.stripeTransferId,
+              stripeChargeId: payment.stripeChargeId,
+            })),
+            allowAdminOverride: true,
+          });
+          return {
+            ...ledger,
+            billingStatus: getReportingBillingStatus(batch.status),
+          };
+        })
+      );
+      const receivables = summarizeReportingLedgerCollection([
+        ...(approvedLedger ? [{ ...approvedLedger, billingStatus: "pending" as const }] : []),
+        ...batchLedgers,
+      ]);
       const completedBatches = batches.filter((batch: { status?: string | null; completedAt?: Date | string | null }) => isPaidBillingBatch(batch));
 
       const getBatchPlatformFeeTotalCents = (batch: {
@@ -144,7 +226,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         }
       }
 
-      const totalPlatformFeesCents = receivables.platformFeesOwedCents + paidPlatformFeesCents;
+      const totalPlatformFeesCents = receivables.unpaidReceivablesCents + paidPlatformFeesCents;
       const latestBatch = (batches[0] || null) as {
         totalAmount?: string | null;
         paymentCount?: number | null;
@@ -163,7 +245,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
       const lastBillingAmountCents = latestBatch ? Math.round(Number(latestBatch.totalAmount || 0) * 100) : 0;
       const lastBillingExpectedPlatformFeeCents = latestBatchMetadata.platformFeeTotal !== undefined || latestBatchMetadata.platformFeeTotalCents !== undefined
         ? parseMoneyToCents(latestBatchMetadata.platformFeeTotal ?? latestBatchMetadata.platformFeeTotalCents)
-        : receivables.platformFeesOwedCents;
+        : receivables.unpaidReceivablesCents;
       const billingDeltaCents = lastBillingAmountCents - lastBillingExpectedPlatformFeeCents;
       const billingReconciliationStatus = latestBatch?.status === "completed"
         ? (billingDeltaCents > 0 ? "overcharged" : billingDeltaCents < 0 ? "undercharged" : "matched")
@@ -180,11 +262,18 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         companyName: ownerSetting.companyName,
         username: ownerSetting.username,
         billingCadence: ownerSetting.billingCadence,
-        ...receivables,
-        platformFeesOwedCents: receivables.platformFeesOwedCents,
+        approvedWashoutCount: receivables.approvedWashoutCount,
+        platformFeesOwedCents: receivables.unpaidReceivablesCents,
+        platformFeesOwed: (receivables.unpaidReceivablesCents / 100).toFixed(2),
         platformFeesPaidCents: paidPlatformFeesCents,
         platformFeesTotalCents: totalPlatformFeesCents,
         billedWashoutCount,
+        unbilledApprovedWashoutCount: Math.max(0, receivables.approvedWashoutCount - billedWashoutCount),
+        pendingWashoutCount: Math.max(0, receivables.approvedWashoutCount - billedWashoutCount),
+        needsReviewWashoutCount: 0,
+        declinedWashoutCount: 0,
+        rejectedWashoutCount: 0,
+        cancelledWashoutCount: 0,
         paymentMethodStatus: stripeSetup.displayLabel,
         paymentMethodStatusLabel: stripeSetup.statusLabel,
         stripeCustomerIdSource: stripeSetup.customerIdSource,

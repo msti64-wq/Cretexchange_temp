@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import type Stripe from "stripe";
-import { DEFAULT_PER_WASHOUT_FEE_CENTS, resolveApprovedWashoutPlatformFeeCents, resolvePlatformFeeCents } from "../shared/billingPolicy";
+import {
+  calculateOwnerWashoutBillingLedger,
+  resolveApprovedWashoutPlatformFeeCents,
+  resolvePlatformFeeCents,
+} from "../shared/billingPolicy";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 
 type BillingBatch = any;
@@ -260,23 +264,50 @@ async function processSingleOwnerBillingRun(
       ? resolvePlatformFeeCents(owner.customPlatformFee)
       : null;
     const approvedWashouts = await storage.getApprovedWashoutsForOwnerBilling(ownerId, startDate, endDate);
-    const platformFeeTotalCents = approvedWashouts.reduce((sum, row) => {
-      const normalizedFee = resolveApprovedWashoutPlatformFeeCents(
-        row.activityFeeCentsPlatform,
-        ownerPlatformFeeOverrideCents
-      );
-      return sum + normalizedFee;
-    }, 0);
-    const driverTipTotalCents = approvedWashouts.reduce((sum, row) => {
-      return sum + Math.max(0, Number(row.locationDriverIncentiveTip || 0));
-    }, 0);
+    const platformFeeCentsPerWashout = approvedWashouts.map((row) => resolveApprovedWashoutPlatformFeeCents(
+      row.activityFeeCentsPlatform,
+      ownerPlatformFeeOverrideCents
+    ));
+    const driverTipCentsPerWashout = approvedWashouts.map((row) => Math.max(0, Math.round(Number(row.locationDriverIncentiveTip || 0))));
+    const platformFeeTotalCents = platformFeeCentsPerWashout.reduce((sum, feeCents) => sum + feeCents, 0);
+    const driverTipTotalCents = driverTipCentsPerWashout.reduce((sum, tipCents) => sum + tipCents, 0);
     const washoutActivityIds = approvedWashouts.map((row) => row.activityId).filter(Boolean);
+    const approvedDriverTipCentsByDriver = approvedWashouts.reduce<Record<string, number>>((acc, row) => {
+      const tipCents = Math.max(0, Math.round(Number(row.locationDriverIncentiveTip || 0)));
+      acc[row.driverId] = (acc[row.driverId] || 0) + tipCents;
+      return acc;
+    }, {});
+    const ledger = calculateOwnerWashoutBillingLedger({
+      ownerId,
+      billingBatchId: existingBatch?.id || existingBatchId || `${ownerId}_${billingDateKey}`,
+      washoutActivityIds,
+      approvedWashoutCount: approvedWashouts.length,
+      platformFeeCentsByWashout: platformFeeCentsPerWashout,
+      platformFeeTotalCents,
+      driverTipCentsByWashout: driverTipCentsPerWashout,
+      driverTipCentsByDriver: approvedDriverTipCentsByDriver,
+      driverTipTotalCents,
+      ownerChargeAmountCents: platformFeeTotalCents + driverTipTotalCents,
+      platformRevenueCents: platformFeeTotalCents,
+      driverTransfers: approvedWashouts.map((row, index) => ({
+        driverId: row.driverId,
+        connectedAccountId: null,
+        amountCents: driverTipCentsPerWashout[index] || 0,
+        washoutActivityIds: [row.activityId],
+      })),
+      stripeChargeAmountCents: platformFeeTotalCents + driverTipTotalCents,
+      platformFeeCentsPerWashout,
+      driverTipCentsPerWashout,
+      immediateBilling: false,
+      allowAdminOverride: true,
+    });
 
     console.log(`💳 [OWNER_BILLING] Candidate approved washouts for owner ${ownerId}: ${approvedWashouts.length}`, {
       platformFeeTotalCents,
       driverTipTotalCents,
       washoutActivityIds,
     });
+    console.log(`[OWNER_BILLING_LEDGER]`, ledger);
 
     const batchMetadata = {
       runType,
@@ -290,6 +321,7 @@ async function processSingleOwnerBillingRun(
       washoutActivityIds: washoutActivityIds.join(","),
       platformFeeTotal: formatMoney(platformFeeTotalCents),
       driverTipTotal: formatMoney(driverTipTotalCents),
+      stripeChargeAmount: formatMoney(ledger.ownerChargeAmountCents),
     };
 
     const billingBatch =
@@ -300,8 +332,8 @@ async function processSingleOwnerBillingRun(
         cutoffTime: owner.billingCutoffTime || "23:59:00",
         timezone: owner.billingTimezone || "America/Chicago",
         status: "pending",
-        totalAmount: formatMoney(platformFeeTotalCents),
-        totalFees: "0.00",
+        totalAmount: formatMoney(ledger.ownerChargeAmountCents),
+        totalFees: formatMoney(platformFeeTotalCents),
         paymentCount: approvedWashouts.length,
         metadata: batchMetadata,
       } as any);
@@ -323,18 +355,18 @@ async function processSingleOwnerBillingRun(
       };
     }
 
-    if (platformFeeTotalCents <= 0) {
+    if (ledger.ownerChargeAmountCents <= 0) {
       await storage.updateBillingBatchStatus(
         billingBatch.id,
         "skipped",
         undefined,
-        "No platform fee amount owed"
+        "No platform fee or driver tip amount owed"
       );
       return {
         ownerId,
         billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
         status: "skipped",
-        message: "No platform fee amount was owed for the approved washouts.",
+        message: "No platform fee or driver tip amount was owed for the approved washouts.",
         amountCents: 0,
         washoutCount: approvedWashouts.length,
       };
@@ -349,7 +381,7 @@ async function processSingleOwnerBillingRun(
         billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
         status: "skipped",
         message: "Stripe is not configured. Billing was not attempted.",
-        amountCents: platformFeeTotalCents,
+        amountCents: ledger.ownerChargeAmountCents,
         washoutCount: approvedWashouts.length,
       };
     }
@@ -364,7 +396,7 @@ async function processSingleOwnerBillingRun(
         billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
         status: "failed",
         message: "Owner payment method is not configured.",
-        amountCents: platformFeeTotalCents,
+        amountCents: ledger.ownerChargeAmountCents,
         washoutCount: approvedWashouts.length,
       };
     }
@@ -376,7 +408,10 @@ async function processSingleOwnerBillingRun(
       startDate: startDate ? startDate.toISOString().split("T")[0] : "",
       endDate: endDate ? endDate.toISOString().split("T")[0] : "",
       washoutCount: String(approvedWashouts.length),
-      amountCents: String(platformFeeTotalCents),
+      amountCents: String(ledger.ownerChargeAmountCents),
+      platformFeeCentsPerWashout: ledger.platformFeeCentsByWashout.join(","),
+      driverTipCentsPerWashout: ledger.driverTipCentsByWashout.join(","),
+      stripeChargeAmountCents: String(ledger.ownerChargeAmountCents),
       washoutActivityIds: washoutActivityIds.join(","),
       platformFeeTotal: formatMoney(platformFeeTotalCents),
       driverTipTotal: formatMoney(driverTipTotalCents),
@@ -394,7 +429,7 @@ async function processSingleOwnerBillingRun(
         runType,
       );
       const paymentIntent = await stripeClient.paymentIntents.create({
-        amount: platformFeeTotalCents,
+        amount: ledger.ownerChargeAmountCents,
         currency: "usd",
         customer: ownerStripeCustomerId,
         payment_method: ownerPaymentMethodId,
@@ -419,7 +454,7 @@ async function processSingleOwnerBillingRun(
         billingBatchId: billingBatch.id,
         paymentIntentId: paymentIntent.id,
         stripeChargeId,
-        amountCents: platformFeeTotalCents,
+        amountCents: ledger.ownerChargeAmountCents,
         washoutCount: approvedWashouts.length,
       });
 
@@ -431,7 +466,7 @@ async function processSingleOwnerBillingRun(
             billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
             status: "processing",
             message: "Stripe accepted the charge and is still processing it.",
-            amountCents: platformFeeTotalCents,
+            amountCents: ledger.ownerChargeAmountCents,
             washoutCount: approvedWashouts.length,
             stripePaymentIntentId: paymentIntent.id,
           };
@@ -444,7 +479,7 @@ async function processSingleOwnerBillingRun(
           billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
           status: "failed",
           message: `Stripe charge did not complete (${paymentIntent.status}).`,
-          amountCents: platformFeeTotalCents,
+          amountCents: ledger.ownerChargeAmountCents,
           washoutCount: approvedWashouts.length,
           stripePaymentIntentId: paymentIntent.id,
         };
@@ -455,8 +490,8 @@ async function processSingleOwnerBillingRun(
         ownerId,
         billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
         status: "paid",
-        message: `Successfully charged $${(platformFeeTotalCents / 100).toFixed(2)} for ${approvedWashouts.length} approved washouts.`,
-        amountCents: platformFeeTotalCents,
+        message: `Successfully charged $${(ledger.ownerChargeAmountCents / 100).toFixed(2)} for ${approvedWashouts.length} approved washouts.`,
+        amountCents: ledger.ownerChargeAmountCents,
         washoutCount: approvedWashouts.length,
         stripePaymentIntentId: paymentIntent.id,
       };
@@ -469,7 +504,7 @@ async function processSingleOwnerBillingRun(
         billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
         status: "failed",
         message: failureReason,
-        amountCents: platformFeeTotalCents,
+        amountCents: ledger.ownerChargeAmountCents,
         washoutCount: approvedWashouts.length,
       };
     }
@@ -502,11 +537,40 @@ async function processSingleOwnerBillingRun(
 
   console.log(`💳 [OWNER_BILLING] Candidate washouts for owner ${ownerId}: ${candidatePayments.length}`);
 
-  const candidateAmountCents = candidatePayments.reduce((sum, payment) => {
-    return sum + toCents(payment.amount) + toCents(payment.processingFee) + Number(payment.tipAmountCents || 0);
-  }, 0);
-  const platformFeeTotalCents = candidatePayments.reduce((sum, payment) => sum + toCents(payment.processingFee), 0);
-  const driverTipTotalCents = candidatePayments.reduce((sum, payment) => sum + Number(payment.tipAmountCents || 0), 0);
+  const platformFeeCentsPerWashout = candidatePayments.map((payment) => toCents(payment.processingFee));
+  const driverTipCentsPerWashout = candidatePayments.map((payment) => Math.max(0, Math.round(Number(payment.tipAmountCents || 0))));
+  const platformFeeTotalCents = platformFeeCentsPerWashout.reduce((sum, feeCents) => sum + feeCents, 0);
+  const driverTipTotalCents = driverTipCentsPerWashout.reduce((sum, tipCents) => sum + tipCents, 0);
+  const candidateDriverTipCentsByDriver = candidatePayments.reduce<Record<string, number>>((acc, payment) => {
+    const tipCents = Math.max(0, Math.round(Number(payment.tipAmountCents || 0)));
+    acc[payment.driverId] = (acc[payment.driverId] || 0) + tipCents;
+    return acc;
+  }, {});
+  const ledger = calculateOwnerWashoutBillingLedger({
+    ownerId,
+    billingBatchId: existingBatch?.id || existingBatchId || `${ownerId}_${billingDateKey}`,
+    washoutActivityIds: candidatePayments.map((payment) => payment.activityId).filter(Boolean),
+    approvedWashoutCount: candidatePayments.length,
+    platformFeeCentsByWashout: platformFeeCentsPerWashout,
+    platformFeeTotalCents,
+    driverTipCentsByWashout: driverTipCentsPerWashout,
+    driverTipCentsByDriver: candidateDriverTipCentsByDriver,
+    driverTipTotalCents,
+    ownerChargeAmountCents: platformFeeTotalCents + driverTipTotalCents,
+    platformRevenueCents: platformFeeTotalCents,
+    driverTransfers: candidatePayments.map((payment) => ({
+      driverId: payment.driverId,
+      connectedAccountId: payment.driver?.stripeConnectAccountId || null,
+      amountCents: Math.max(0, Math.round(Number(payment.tipAmountCents || 0))),
+      washoutActivityIds: [payment.activityId],
+    })),
+    stripeChargeAmountCents: platformFeeTotalCents + driverTipTotalCents,
+    platformFeeCentsPerWashout,
+    driverTipCentsPerWashout,
+    immediateBilling: runType !== "admin_manual",
+    allowAdminOverride: runType === "admin_manual",
+  });
+  const candidateAmountCents = ledger.ownerChargeAmountCents;
   const washoutActivityIds = candidatePayments.map((payment) => payment.activityId).filter(Boolean);
 
   const batchMetadata = {
@@ -521,6 +585,7 @@ async function processSingleOwnerBillingRun(
     washoutActivityIds: washoutActivityIds.join(","),
     platformFeeTotal: formatMoney(platformFeeTotalCents),
     driverTipTotal: formatMoney(driverTipTotalCents),
+    stripeChargeAmount: formatMoney(ledger.ownerChargeAmountCents),
   };
 
   const billingBatch =
@@ -531,8 +596,8 @@ async function processSingleOwnerBillingRun(
       cutoffTime: owner.billingCutoffTime || "23:59:00",
       timezone: owner.billingTimezone || "America/Chicago",
       status: "pending",
-      totalAmount: formatMoney(candidateAmountCents),
-      totalFees: "0.00",
+      totalAmount: formatMoney(ledger.ownerChargeAmountCents),
+      totalFees: formatMoney(platformFeeTotalCents),
       paymentCount: candidatePayments.length,
       metadata: batchMetadata,
     } as any);
@@ -578,19 +643,43 @@ async function processSingleOwnerBillingRun(
   }
 
   const paymentsToBill = batchPayments.length > 0 ? batchPayments : candidatePayments;
-  const totalAmountCents = paymentsToBill.reduce((sum, payment) => {
-    return sum + toCents(payment.amount) + toCents(payment.processingFee) + Number(payment.tipAmountCents || 0);
-  }, 0);
-  const totalFeesCents = paymentsToBill.reduce((sum, payment) => {
-    return sum + toCents(payment.processingFee) + Number(payment.tipAmountCents || 0);
-  }, 0);
   const totalPlatformFeeCents = paymentsToBill.reduce((sum, payment) => sum + toCents(payment.processingFee), 0);
-  const totalDriverTipCents = paymentsToBill.reduce((sum, payment) => sum + Number(payment.tipAmountCents || 0), 0);
+  const totalDriverTipCents = paymentsToBill.reduce((sum, payment) => sum + Math.max(0, Math.round(Number(payment.tipAmountCents || 0))), 0);
+  const batchDriverTipCentsByDriver = paymentsToBill.reduce<Record<string, number>>((acc, payment) => {
+    const tipCents = Math.max(0, Math.round(Number(payment.tipAmountCents || 0)));
+    acc[payment.driverId] = (acc[payment.driverId] || 0) + tipCents;
+    return acc;
+  }, {});
+  const batchLedger = calculateOwnerWashoutBillingLedger({
+    ownerId,
+    billingBatchId: billingBatch.id,
+    washoutActivityIds: paymentsToBill.map((payment) => payment.activityId).filter(Boolean),
+    approvedWashoutCount: paymentsToBill.length,
+    platformFeeCentsByWashout: paymentsToBill.map((payment) => toCents(payment.processingFee)),
+    platformFeeTotalCents: totalPlatformFeeCents,
+    driverTipCentsByWashout: paymentsToBill.map((payment) => Math.max(0, Math.round(Number(payment.tipAmountCents || 0)))),
+    driverTipCentsByDriver: batchDriverTipCentsByDriver,
+    driverTipTotalCents: totalDriverTipCents,
+    ownerChargeAmountCents: totalPlatformFeeCents + totalDriverTipCents,
+    platformRevenueCents: totalPlatformFeeCents,
+    driverTransfers: paymentsToBill.map((payment) => ({
+      driverId: payment.driverId,
+      connectedAccountId: payment.driver?.stripeConnectAccountId || null,
+      amountCents: Math.max(0, Math.round(Number(payment.tipAmountCents || 0))),
+      washoutActivityIds: [payment.activityId],
+    })),
+    stripeChargeAmountCents: totalPlatformFeeCents + totalDriverTipCents,
+    platformFeeCentsPerWashout: paymentsToBill.map((payment) => toCents(payment.processingFee)),
+    driverTipCentsPerWashout: paymentsToBill.map((payment) => Math.max(0, Math.round(Number(payment.tipAmountCents || 0)))),
+    immediateBilling: false,
+    allowAdminOverride: runType === "admin_manual",
+  });
+  console.log(`[OWNER_BILLING_LEDGER]`, batchLedger);
 
   await storage.updateBillingBatchProcessing(
     billingBatch.id,
-    formatMoney(totalAmountCents),
-    formatMoney(totalFeesCents),
+    formatMoney(batchLedger.ownerChargeAmountCents),
+    formatMoney(totalPlatformFeeCents),
     paymentsToBill.length,
   );
 
@@ -603,7 +692,7 @@ async function processSingleOwnerBillingRun(
       billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
       status: "skipped",
       message: "Stripe is not configured. Billing was not attempted.",
-      amountCents: totalAmountCents,
+      amountCents: batchLedger.ownerChargeAmountCents,
       washoutCount: paymentsToBill.length,
     };
   }
@@ -617,25 +706,37 @@ async function processSingleOwnerBillingRun(
       billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
       status: "failed",
       message: "Owner payment method is not configured.",
-      amountCents: totalAmountCents,
+      amountCents: batchLedger.ownerChargeAmountCents,
       washoutCount: paymentsToBill.length,
     };
   }
 
-    const paymentIntentMetadata = {
-      batchId: billingBatch.id,
-      ownerId,
+  const paymentIntentMetadata = {
+    batchId: billingBatch.id,
+    ownerId,
     runType,
     startDate: startDate ? startDate.toISOString().split("T")[0] : "",
     endDate: endDate ? endDate.toISOString().split("T")[0] : "",
     washoutCount: String(paymentsToBill.length),
-    amountCents: String(totalAmountCents),
+    amountCents: String(batchLedger.ownerChargeAmountCents),
+    platformFeeCentsPerWashout: batchLedger.platformFeeCentsByWashout.join(","),
+    driverTipCentsPerWashout: batchLedger.driverTipCentsByWashout.join(","),
+    stripeChargeAmountCents: String(batchLedger.ownerChargeAmountCents),
     washoutActivityIds: paymentsToBill.map((payment) => payment.activityId).join(","),
     platformFeeTotal: formatMoney(totalPlatformFeeCents),
     driverTipTotal: formatMoney(totalDriverTipCents),
   };
 
   try {
+    console.log(`[STRIPE_PAYMENT_REQUEST]`, {
+      route: "processOwnerBillingRun",
+      ownerId,
+      billingBatchId: billingBatch.id,
+      amountCents: batchLedger.ownerChargeAmountCents,
+      platformRevenueCents: batchLedger.platformRevenueCents,
+      driverTipTotalCents: batchLedger.driverTipTotalCents,
+      washoutActivityIds: batchLedger.washoutActivityIds,
+    });
     const paymentActivityIds = paymentsToBill
       .map((payment) => payment.activityId)
       .filter((activityId) => Boolean(activityId));
@@ -643,14 +744,14 @@ async function processSingleOwnerBillingRun(
       "owner_billing_run",
       ownerId,
       billingBatch.id,
-      totalAmountCents,
+      batchLedger.ownerChargeAmountCents,
       paymentActivityIds,
       ownerStripeCustomerId,
       ownerPaymentMethodId,
       runType,
     );
     const paymentIntent = await stripeClient.paymentIntents.create({
-      amount: totalAmountCents,
+      amount: batchLedger.ownerChargeAmountCents,
       currency: "usd",
       customer: ownerStripeCustomerId,
       payment_method: ownerPaymentMethodId,
@@ -666,8 +767,16 @@ async function processSingleOwnerBillingRun(
     console.log(`💳 [OWNER_BILLING] Stripe payment intent created for owner ${ownerId}`, {
       billingBatchId: billingBatch.id,
       paymentIntentId: paymentIntent.id,
-      amountCents: totalAmountCents,
+      amountCents: batchLedger.ownerChargeAmountCents,
       washoutCount: paymentsToBill.length,
+    });
+    console.log(`[OWNER_BILLING_RECONCILIATION]`, {
+      ownerId,
+      billingBatchId: billingBatch.id,
+      requestedChargeAmountCents: batchLedger.ownerChargeAmountCents,
+      platformRevenueCents: batchLedger.platformRevenueCents,
+      driverTransferAmountCents: batchLedger.driverTransfers.reduce((sum, transfer) => sum + transfer.amountCents, 0),
+      paymentIntentId: paymentIntent.id,
     });
 
     if (paymentIntent.status && paymentIntent.status !== "succeeded") {
@@ -679,7 +788,7 @@ async function processSingleOwnerBillingRun(
           billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
           status: "processing",
           message: "Stripe accepted the charge and is still processing it.",
-          amountCents: totalAmountCents,
+          amountCents: batchLedger.ownerChargeAmountCents,
           washoutCount: paymentsToBill.length,
           stripePaymentIntentId: paymentIntent.id,
         };
@@ -693,7 +802,7 @@ async function processSingleOwnerBillingRun(
         billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
         status: "failed",
         message: `Stripe charge did not complete (${paymentIntent.status}).`,
-        amountCents: totalAmountCents,
+        amountCents: batchLedger.ownerChargeAmountCents,
         washoutCount: paymentsToBill.length,
         stripePaymentIntentId: paymentIntent.id,
       };
@@ -703,15 +812,15 @@ async function processSingleOwnerBillingRun(
     console.log(`✅ [OWNER_BILLING] Billing completed for owner ${ownerId}`, {
       billingBatchId: billingBatch.id,
       paymentIntentId: paymentIntent.id,
-      amountCents: totalAmountCents,
+      amountCents: batchLedger.ownerChargeAmountCents,
       washoutCount: paymentsToBill.length,
     });
     return {
       ownerId,
       billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
       status: "paid",
-      message: `Successfully charged $${(totalAmountCents / 100).toFixed(2)} for ${paymentsToBill.length} washouts.`,
-      amountCents: totalAmountCents,
+      message: `Successfully charged $${(batchLedger.ownerChargeAmountCents / 100).toFixed(2)} for ${paymentsToBill.length} washouts.`,
+      amountCents: batchLedger.ownerChargeAmountCents,
       washoutCount: paymentsToBill.length,
       stripePaymentIntentId: paymentIntent.id,
     };
@@ -724,7 +833,7 @@ async function processSingleOwnerBillingRun(
       billingBatch: await storage.getBillingBatch(billingBatch.id) as BillingBatch,
       status: "failed",
       message: failureReason,
-      amountCents: totalAmountCents,
+      amountCents: batchLedger.ownerChargeAmountCents,
       washoutCount: paymentsToBill.length,
     };
   }
