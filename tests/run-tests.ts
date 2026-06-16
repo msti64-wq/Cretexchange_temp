@@ -10,7 +10,7 @@ import { buildOwnerBillingReceivablesOverview } from "../server/ownerBillingRece
 import { buildOwnerWashoutBillingLedgerFromPayments, buildOwnerWashoutBillingPreview } from "../server/billing/ownerWashoutLedger";
 import { calculateOwnerWashoutBillingLedger, resolveBillingPolicy, validateOwnerBillingAmount } from "../shared/billingPolicy";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
-import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
+import { inspectLocationDriverIncentiveTipCents, resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import { buildWashoutLedgerRepairPlan } from "../shared/washoutLedgerRepair";
 import { buildWashoutBillingVerificationReport } from "../shared/washoutBillingVerification";
@@ -1256,6 +1256,22 @@ test("driver incentive tip helper normalizes decimal values to cents", () => {
   assert.equal(resolveLocationDriverIncentiveTipCents(0.01), 1);
   assert.equal(resolveLocationDriverIncentiveTipCents("1"), 1);
   assert.equal(resolveLocationDriverIncentiveTipCents(1), 1);
+});
+
+test("driver incentive tip inspection preserves enabled state and rejects sub-cent positive values", () => {
+  const disabled = inspectLocationDriverIncentiveTipCents(undefined);
+  assert.equal(disabled.driverTipEnabled, false);
+  assert.equal(disabled.normalizedDriverTipCents, 0);
+
+  const fromDecimal = inspectLocationDriverIncentiveTipCents(0.01);
+  assert.equal(fromDecimal.driverTipEnabled, true);
+  assert.equal(fromDecimal.normalizedDriverTipCents, 1);
+
+  const fromString = inspectLocationDriverIncentiveTipCents("0.01");
+  assert.equal(fromString.driverTipEnabled, true);
+  assert.equal(fromString.normalizedDriverTipCents, 1);
+
+  assert.throws(() => inspectLocationDriverIncentiveTipCents(0.0001), /at least \$0\.01/);
 });
 
 test("billing ledger parses payment processing fee dollars into cents exactly once", () => {

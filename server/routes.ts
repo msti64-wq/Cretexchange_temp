@@ -34,7 +34,7 @@ import {
   type UserTermsState,
 } from "./terms";
 import { normalizeLegalLanguage } from "@shared/legalDocuments";
-import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, resolveLocationMonthlyFeeCents, resolveLocationDriverIncentiveTipCents } from "./locationBilling";
+import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, inspectLocationDriverIncentiveTipCents, resolveLocationMonthlyFeeCents, resolveLocationDriverIncentiveTipCents } from "./locationBilling";
 import {
   resolveOwnerBillingPolicy,
   getActiveBillingPolicyLabels,
@@ -4346,6 +4346,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: owner.id,
       });
 
+      if (locationData.driverIncentiveTip !== undefined) {
+        locationData.driverIncentiveTip = normalizeMoneyToCents(locationData.driverIncentiveTip, "auto");
+      }
       locationData.driverIncentiveTip = locationData.driverIncentiveTip ?? 0;
 
       if (!locationData.latitude || !locationData.longitude) {
@@ -4501,6 +4504,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate request body using Zod schema
       const validatedData = updateLocationSchema.parse(req.body);
+
+      if (validatedData.driverIncentiveTip !== undefined) {
+        validatedData.driverIncentiveTip = normalizeMoneyToCents(validatedData.driverIncentiveTip, "auto");
+      }
 
       // Re-geocode if any address field changed and no lat/lng provided
       const addressChanged = req.body.street || req.body.city || req.body.state || req.body.zip;
@@ -4955,7 +4962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: driverAmount.toString(),
           processingFee: platformFee.toFixed(2),
           washoutServiceFee: driverTip.toFixed(2),
-          tipAmountCents: Math.round(driverTip * 100),
+          tipAmountCents: normalizeMoneyToCents(driverTip, "dollars"),
           status: 'awaiting_driver_stripe',
           payoutStatus: 'held_for_onboarding',
           deferReason: deferredReason,
@@ -5008,7 +5015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: driverAmount.toString(),
           processingFee: platformFee.toFixed(2),
           washoutServiceFee: driverTip.toFixed(2),
-          tipAmountCents: Math.round(driverTip * 100),
+          tipAmountCents: normalizeMoneyToCents(driverTip, "dollars"),
           status: 'pending', // Will be processed by batch processor
           businessDate,
         });
@@ -5157,7 +5164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `${paymentMethod.card.brand} ****${paymentMethod.card.last4}` 
             : 'Stripe Link';
           const platformFeeCents = Math.round(platformFee * 100);
-          const driverTipCents = Math.round(driverTip * 100);
+          const driverTipCents = normalizeMoneyToCents(driverTip, "dollars");
           const ownerFeeCents = platformFeeCents + driverTipCents;
           const ownerBillingLedger = calculateOwnerWashoutBillingLedger({
             ownerId: owner.id,
@@ -5310,7 +5317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: driverAmount.toString(),
           processingFee: platformFee.toFixed(2),
           washoutServiceFee: driverTip.toFixed(2),
-          tipAmountCents: Math.round(driverTip * 100),
+          tipAmountCents: normalizeMoneyToCents(driverTip, "dollars"),
           status: 'pending', // Will be processed by batch processor
           businessDate,
         });
@@ -5373,7 +5380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: driverAmount.toString(),
         processingFee: platformFee.toFixed(2), // Platform fee (default $5.00, configurable)
         washoutServiceFee: driverTip.toFixed(2), // Driver incentive tip per washout
-        tipAmountCents: Math.round(driverTip * 100),
+        tipAmountCents: normalizeMoneyToCents(driverTip, "dollars"),
         status: 'completed', // Payment already succeeded via Stripe
         businessDate, // Set business date for reporting
       });
@@ -11131,6 +11138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activityId: string;
         ownerId: string;
         driverId: string;
+        locationId: string;
         activityFeeCentsPlatform?: number | null;
         locationDriverIncentiveTip?: number | null;
       };
@@ -11185,7 +11193,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       for (const washout of selectedWashouts) {
-        const normalizedDriverTipCents = normalizeMoneyToCents(washout.locationDriverIncentiveTip, "auto");
+        const rawDriverTipValue = washout.locationDriverIncentiveTip;
+        const tipInspection = inspectLocationDriverIncentiveTipCents(rawDriverTipValue);
+
+        if (tipInspection.driverTipEnabled && tipInspection.normalizedDriverTipCents === 0) {
+          return res.status(400).json({
+            message: `Invalid driver tip configuration for washout ${washout.activityId}`,
+            reason: "driver_tip_invalid_for_preview",
+            washoutActivityId: washout.activityId,
+            locationId: washout.locationId,
+            ownerId,
+            driverId: washout.driverId,
+            rawDriverTipValue,
+            rawDriverTipField: "washout_locations.driver_incentive_tip",
+            normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+          });
+        }
+
         console.log("[WASHOUT_BILLING_INPUT]", {
           ownerId,
           washoutActivityId: washout.activityId,
@@ -11194,9 +11218,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rawOwnerPlatformFeeOverride: owner.customPlatformFee ?? null,
           rawSystemPlatformFee: systemSettings?.platformWashoutFee ?? null,
           normalizedPlatformFeeCents: configuredPlatformFeeCents,
-          rawDriverTipValue: washout.locationDriverIncentiveTip,
+          rawDriverTipValue,
           rawDriverTipField: "washout_locations.driver_incentive_tip",
-          normalizedDriverTipCents,
+          normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+        });
+        console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
+          washoutActivityId: washout.activityId,
+          locationId: washout.locationId,
+          ownerId,
+          driverId: washout.driverId,
+          rawDriverTipValue,
+          rawDriverTipField: "washout_locations.driver_incentive_tip",
+          driverTipEnabled: tipInspection.driverTipEnabled,
+          normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
         });
       }
 

@@ -1897,7 +1897,7 @@ export class DatabaseStorage implements IStorage {
           amount: driverAmount.toString(),
           processingFee: platformFee.toFixed(2),
           washoutServiceFee: driverTip.toFixed(2),
-          tipAmountCents: Math.round(driverTip * 100),
+          tipAmountCents: normalizeMoneyToCents(driverTip, "dollars"),
           status: 'pending',
           businessDate,
         });

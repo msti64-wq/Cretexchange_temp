@@ -19,3 +19,21 @@ export function resolveLocationDriverIncentiveTipCents(tipAmount: string | numbe
   const normalized = normalizeMoneyToCents(tipAmount, "auto");
   return Number.isFinite(normalized) && normalized >= 0 ? normalized : DEFAULT_LOCATION_DRIVER_INCENTIVE_TIP_CENTS;
 }
+
+export function inspectLocationDriverIncentiveTipCents(tipAmount: string | number | null | undefined) {
+  const rawNumber = tipAmount === null || tipAmount === undefined || tipAmount === ""
+    ? null
+    : Number(String(tipAmount).trim());
+  const normalizedDriverTipCents = resolveLocationDriverIncentiveTipCents(tipAmount);
+  const driverTipEnabled = rawNumber !== null ? rawNumber > 0 : false;
+
+  if (driverTipEnabled && normalizedDriverTipCents === 0) {
+    throw new Error("Driver incentive tip must be at least $0.01 when enabled");
+  }
+
+  return {
+    rawNumber,
+    normalizedDriverTipCents,
+    driverTipEnabled,
+  };
+}
