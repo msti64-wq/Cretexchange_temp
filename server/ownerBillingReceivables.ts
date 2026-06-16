@@ -17,6 +17,9 @@ export type OwnerBillingReceivablesOwnerSummary = {
   platformFeesOwedCents: number;
   platformFeesPaidCents: number;
   platformFeesTotalCents: number;
+  driverTipTotalCents: number;
+  driverTransferTotalCents: number;
+  needsReviewCents: number;
   billedWashoutCount: number;
   unbilledApprovedWashoutCount: number;
   pendingWashoutCount: number;
@@ -47,6 +50,9 @@ export type OwnerBillingReceivablesSummary = {
   platformFeesOwedCents: number;
   platformFeesPaidCents: number;
   platformFeesTotalCents: number;
+  driverTipTotalCents: number;
+  driverTransferTotalCents: number;
+  needsReviewCents: number;
   billedWashoutCount: number;
   unbilledApprovedWashoutCount: number;
   pendingWashoutCount: number;
@@ -62,30 +68,6 @@ function parseMoneyToCents(value: unknown): number {
   }
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-}
-
-function isPaidBillingBatch(batch: { status?: string | null; completedAt?: Date | string | null }): boolean {
-  const status = String(batch.status || "").toLowerCase();
-  if (batch.completedAt) {
-    return true;
-  }
-  return [
-    "completed",
-    "paid",
-    "succeeded",
-    "posted",
-    "settled",
-  ].includes(status);
-}
-
-function isPaidBillingPayment(payment: { status?: string | null }): boolean {
-  const status = String(payment.status || "").toLowerCase();
-  return [
-    "completed",
-    "paid",
-    "posted",
-    "succeeded",
-  ].includes(status);
 }
 
 export async function buildOwnerBillingReceivablesOverview(storageApi: any): Promise<{
@@ -183,50 +165,41 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         ...(approvedLedger ? [{ ...approvedLedger, billingStatus: "pending" as const }] : []),
         ...batchLedgers,
       ]);
-      const completedBatches = batches.filter((batch: { status?: string | null; completedAt?: Date | string | null }) => isPaidBillingBatch(batch));
-
-      const getBatchPlatformFeeTotalCents = (batch: {
-        totalAmount?: string | null;
-        metadata?: Record<string, unknown> | null;
-      }): number => {
-        const metadata = batch.metadata && typeof batch.metadata === "object"
+      const paidBatchLedgers = batchLedgers.filter((ledger) => ledger.billingStatus === "paid");
+      const paidPlatformFeesCents = paidBatchLedgers.reduce((sum: number, ledger: any) => {
+        return sum + Number(ledger.platformRevenueCents || 0);
+      }, 0);
+      const billedWashoutCount = paidBatchLedgers.reduce((sum: number, ledger: any) => {
+        return sum + Number(ledger.approvedWashoutCount || 0);
+      }, 0);
+      const completedBatches = batches.filter((batch: { status?: string | null; completedAt?: Date | string | null }) => {
+        const status = String(batch.status || "").toLowerCase();
+        return Boolean(batch.completedAt) || [
+          "completed",
+          "paid",
+          "succeeded",
+          "posted",
+          "settled",
+        ].includes(status);
+      });
+      const fallbackPaidPlatformFeesCents = completedBatches.reduce((sum: number, batch: any) => {
+        const batchMetadata = batch.metadata && typeof batch.metadata === "object"
           ? batch.metadata as Record<string, unknown>
           : {};
-        const metadataPlatformFeeTotal = metadata.platformFeeTotal ?? metadata.platformFeeTotalCents;
-        const value = metadataPlatformFeeTotal !== undefined && metadataPlatformFeeTotal !== null && metadataPlatformFeeTotal !== ""
-          ? metadataPlatformFeeTotal
-          : batch.totalAmount;
-        return parseMoneyToCents(value);
-      };
-
-      let paidPlatformFeesCents = completedBatches.reduce((sum: number, batch: any) => {
-        return sum + getBatchPlatformFeeTotalCents(batch);
+        const platformFeeTotalCents = batchMetadata.platformFeeTotalCents !== undefined && batchMetadata.platformFeeTotalCents !== null && batchMetadata.platformFeeTotalCents !== ""
+          ? Number(batchMetadata.platformFeeTotalCents)
+          : batchMetadata.platformFeeTotal !== undefined && batchMetadata.platformFeeTotal !== null && batchMetadata.platformFeeTotal !== ""
+            ? parseMoneyToCents(batchMetadata.platformFeeTotal)
+            : parseMoneyToCents(batch.totalAmount);
+        return sum + platformFeeTotalCents;
       }, 0);
-      let billedWashoutCount = completedBatches.reduce((sum: number, batch: any) => {
+      const fallbackBilledWashoutCount = completedBatches.reduce((sum: number, batch: any) => {
         return sum + Number(batch.paymentCount || 0);
       }, 0);
+      const effectivePaidPlatformFeesCents = paidPlatformFeesCents > 0 ? paidPlatformFeesCents : fallbackPaidPlatformFeesCents;
+      const effectiveBilledWashoutCount = billedWashoutCount > 0 ? billedWashoutCount : fallbackBilledWashoutCount;
 
-      if (paidPlatformFeesCents === 0 && completedBatches.length > 0 && typeof storageApi.getPaymentsByBatchId === "function") {
-        const batchPayments = await Promise.all(
-          completedBatches.map(async (batch: any) => {
-            try {
-              return await storageApi.getPaymentsByBatchId(batch.id);
-            } catch {
-              return [];
-            }
-          })
-        );
-        const paidPayments = batchPayments.flat().filter((payment: { status?: string | null }) => isPaidBillingPayment(payment));
-        if (paidPayments.length > 0) {
-          paidPlatformFeesCents = paidPayments.reduce((sum: number, payment: any) => {
-            const paymentPlatformFee = payment.processingFee ?? payment.platformFee ?? payment.amount ?? 0;
-            return sum + parseMoneyToCents(paymentPlatformFee);
-          }, 0);
-          billedWashoutCount = paidPayments.length;
-        }
-      }
-
-      const totalPlatformFeesCents = receivables.unpaidReceivablesCents + paidPlatformFeesCents;
+      const totalPlatformFeesCents = receivables.unpaidReceivablesCents + effectivePaidPlatformFeesCents;
       const latestBatch = (batches[0] || null) as {
         totalAmount?: string | null;
         paymentCount?: number | null;
@@ -243,9 +216,11 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         ? latestBatchMetadata.stripeChargeId
         : null;
       const lastBillingAmountCents = latestBatch ? Math.round(Number(latestBatch.totalAmount || 0) * 100) : 0;
-      const lastBillingExpectedPlatformFeeCents = latestBatchMetadata.platformFeeTotal !== undefined || latestBatchMetadata.platformFeeTotalCents !== undefined
-        ? parseMoneyToCents(latestBatchMetadata.platformFeeTotal ?? latestBatchMetadata.platformFeeTotalCents)
-        : receivables.unpaidReceivablesCents;
+      const lastBillingExpectedPlatformFeeCents = latestBatchMetadata.platformFeeTotalCents !== undefined && latestBatchMetadata.platformFeeTotalCents !== null && latestBatchMetadata.platformFeeTotalCents !== ""
+        ? Number(latestBatchMetadata.platformFeeTotalCents)
+        : latestBatchMetadata.platformFeeTotal !== undefined && latestBatchMetadata.platformFeeTotal !== null && latestBatchMetadata.platformFeeTotal !== ""
+          ? parseMoneyToCents(latestBatchMetadata.platformFeeTotal)
+          : receivables.unpaidReceivablesCents;
       const billingDeltaCents = lastBillingAmountCents - lastBillingExpectedPlatformFeeCents;
       const billingReconciliationStatus = latestBatch?.status === "completed"
         ? (billingDeltaCents > 0 ? "overcharged" : billingDeltaCents < 0 ? "undercharged" : "matched")
@@ -265,11 +240,14 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         approvedWashoutCount: receivables.approvedWashoutCount,
         platformFeesOwedCents: receivables.unpaidReceivablesCents,
         platformFeesOwed: (receivables.unpaidReceivablesCents / 100).toFixed(2),
-        platformFeesPaidCents: paidPlatformFeesCents,
+        platformFeesPaidCents: effectivePaidPlatformFeesCents,
         platformFeesTotalCents: totalPlatformFeesCents,
-        billedWashoutCount,
-        unbilledApprovedWashoutCount: Math.max(0, receivables.approvedWashoutCount - billedWashoutCount),
-        pendingWashoutCount: Math.max(0, receivables.approvedWashoutCount - billedWashoutCount),
+        driverTipTotalCents: receivables.driverTipTotalCents,
+        driverTransferTotalCents: receivables.driverTransferTotalCents,
+        needsReviewCents: receivables.needsReviewCents,
+        billedWashoutCount: effectiveBilledWashoutCount,
+        unbilledApprovedWashoutCount: Math.max(0, receivables.approvedWashoutCount - effectiveBilledWashoutCount),
+        pendingWashoutCount: Math.max(0, receivables.approvedWashoutCount - effectiveBilledWashoutCount),
         needsReviewWashoutCount: 0,
         declinedWashoutCount: 0,
         rejectedWashoutCount: 0,
@@ -300,6 +278,9 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
       acc.platformFeesOwedCents += row.platformFeesOwedCents;
       acc.platformFeesPaidCents += row.platformFeesPaidCents;
       acc.platformFeesTotalCents += row.platformFeesTotalCents;
+      acc.driverTipTotalCents += row.driverTipTotalCents;
+      acc.driverTransferTotalCents += row.driverTransferTotalCents;
+      acc.needsReviewCents += row.needsReviewCents;
       acc.billedWashoutCount += row.billedWashoutCount;
       acc.unbilledApprovedWashoutCount += row.unbilledApprovedWashoutCount;
       acc.pendingWashoutCount += row.pendingWashoutCount;
@@ -315,6 +296,9 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
       platformFeesOwedCents: 0,
       platformFeesPaidCents: 0,
       platformFeesTotalCents: 0,
+      driverTipTotalCents: 0,
+      driverTransferTotalCents: 0,
+      needsReviewCents: 0,
       billedWashoutCount: 0,
       unbilledApprovedWashoutCount: 0,
       pendingWashoutCount: 0,

@@ -17,9 +17,9 @@ export type WashoutActivityRevenueRow = {
 };
 
 export type WashoutRevenueSummary = {
-  platformWashoutRevenue: number;
-  platformWashoutPaidRevenue: number;
-  driverTipTotal: number;
+  platformWashoutRevenueCents: number;
+  platformWashoutPaidRevenueCents: number;
+  driverTipTotalCents: number;
   approvedWashouts: number;
   billedWashouts: number;
   pendingWashouts: number;
@@ -40,16 +40,22 @@ function toMoneyNumber(value: string | number | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function toCents(value: string | number | null | undefined): number {
+  if (value === null || value === undefined || value === "") return 0;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed * 100)) : 0;
+}
+
 export function summarizeWashoutRevenue(rows: WashoutPaymentRevenueRow[]): WashoutRevenueSummary {
   return rows.reduce<WashoutRevenueSummary>((summary, row) => {
     const status = String(row.status || "").toLowerCase();
-    const processingFee = toMoneyNumber(row.processingFee);
-    const tipTotal = Math.max(0, Number(row.tipAmountCents || 0)) / 100;
+    const processingFeeCents = toCents(row.processingFee);
+    const tipTotalCents = Math.max(0, Number(row.tipAmountCents || 0));
 
     if (BILLED_STATUSES.has(status)) {
-      summary.platformWashoutRevenue += processingFee;
-      summary.platformWashoutPaidRevenue += processingFee;
-      summary.driverTipTotal += tipTotal;
+      summary.platformWashoutRevenueCents += processingFeeCents;
+      summary.platformWashoutPaidRevenueCents += processingFeeCents;
+      summary.driverTipTotalCents += tipTotalCents;
       summary.billedWashouts += 1;
     } else if (PENDING_STATUSES.has(status)) {
       summary.pendingWashouts += 1;
@@ -63,9 +69,9 @@ export function summarizeWashoutRevenue(rows: WashoutPaymentRevenueRow[]): Washo
 
     return summary;
   }, {
-    platformWashoutRevenue: 0,
-    platformWashoutPaidRevenue: 0,
-    driverTipTotal: 0,
+    platformWashoutRevenueCents: 0,
+    platformWashoutPaidRevenueCents: 0,
+    driverTipTotalCents: 0,
     approvedWashouts: 0,
     billedWashouts: 0,
     pendingWashouts: 0,
@@ -128,11 +134,11 @@ export function summarizeWashoutRevenueFromActivities(
         return summary;
       }
       summary.approvedWashouts += 1;
-      summary.platformWashoutRevenue += platformFeeCents / 100;
-      summary.driverTipTotal += driverTipCents / 100;
+      summary.platformWashoutRevenueCents += platformFeeCents;
+      summary.driverTipTotalCents += driverTipCents;
       if (billed) {
         summary.billedWashouts += 1;
-        summary.platformWashoutPaidRevenue += platformFeeCents / 100;
+        summary.platformWashoutPaidRevenueCents += platformFeeCents;
       }
       else summary.pendingWashouts += 1;
       return summary;
@@ -150,9 +156,9 @@ export function summarizeWashoutRevenueFromActivities(
 
     return summary;
   }, {
-    platformWashoutRevenue: 0,
-    platformWashoutPaidRevenue: 0,
-    driverTipTotal: 0,
+    platformWashoutRevenueCents: 0,
+    platformWashoutPaidRevenueCents: 0,
+    driverTipTotalCents: 0,
     approvedWashouts: 0,
     billedWashouts: 0,
     pendingWashouts: 0,

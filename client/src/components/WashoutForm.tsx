@@ -139,6 +139,9 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/drivers/activities'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/activities'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/billing/pending-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
       
       toast({
         title: "Check-in Successful",

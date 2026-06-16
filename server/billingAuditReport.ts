@@ -139,9 +139,9 @@ function buildCounts<T extends string>(values: T[]): Array<{ key: T; count: numb
 function buildSummary(rows: BillingAuditItem[], runs: BillingAuditRun[]): BillingAuditReportSummary {
   const summary = rows.reduce(
     (acc, row) => {
-      const amount = Number.parseFloat(row.amountCharged || "0");
-      const platformFee = Number.parseFloat(row.platformFeeTotal || "0");
-      const driverTip = Number.parseFloat(row.driverIncentiveTip || "0");
+      const amount = toCents(row.amountCharged);
+      const platformFee = toCents(row.platformFeeTotal);
+      const driverTip = toCents(row.driverIncentiveTip);
       acc.totalWashouts += 1;
       acc.totalAmountCharged += amount;
       acc.totalPlatformFeeTotal += platformFee;
@@ -385,9 +385,9 @@ export async function buildBillingAuditReport(
     const driverCounts = buildCounts(items.map((item) => item.driverId));
     const locationCounts = buildCounts(items.map((item) => item.locationId));
     const locationsVisited = Array.from(new Set(items.map((item) => item.locationName).filter(Boolean))).sort();
-    const totalAmountCharged = items.reduce((sum, item) => sum + Number.parseFloat(item.amountCharged || "0"), 0);
-    const totalPlatformFeeTotal = items.reduce((sum, item) => sum + Number.parseFloat(item.platformFeeTotal || "0"), 0);
-    const totalDriverTips = items.reduce((sum, item) => sum + Number.parseFloat(item.driverIncentiveTip || "0"), 0);
+    const totalAmountCharged = items.reduce((sum, item) => sum + toCents(item.amountCharged), 0);
+    const totalPlatformFeeTotal = items.reduce((sum, item) => sum + toCents(item.platformFeeTotal), 0);
+    const totalDriverTips = items.reduce((sum, item) => sum + toCents(item.driverIncentiveTip), 0);
 
     const billingRunCreatedAt = batch?.createdAt ? formatDateTime(batch.createdAt) : items.reduce((earliest, item) => (earliest && earliest < item.paymentCreatedAt ? earliest : item.paymentCreatedAt), items[0]?.paymentCreatedAt || "");
     const billingRunPaidAt = batch?.completedAt ? formatDateTime(batch.completedAt) : items.find((item) => item.paymentPaidAt)?.paymentPaidAt || "";

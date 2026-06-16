@@ -44,7 +44,7 @@ import {
   calculateDriverPayoutCents,
   calculateOwnerWashoutBillingLedger,
 } from "./billingPolicy";
-import { buildOwnerWashoutBillingPreview } from "./billing/ownerWashoutLedger";
+import { buildOwnerWashoutBillingLedgerFromPayments, buildOwnerWashoutBillingPreview, getDriverTipSummaryFromPayments } from "./billing/ownerWashoutLedger";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { resolveLotteryEnabled } from "./lottery";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
@@ -79,6 +79,32 @@ const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
   "image/heic",
   "image/heif",
 ]);
+
+function setBillingNoCacheHeaders(res: any) {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+}
+
+function logReportingReconciliation(endpoint: string, summary: {
+  platformRevenueCents?: number | null;
+  ownerReceivablesCents?: number | null;
+  paidReceivablesCents?: number | null;
+  driverTipTotalCents?: number | null;
+  driverTransferredCents?: number | null;
+  needsReviewCents?: number | null;
+}) {
+  console.log("[REPORTING_RECONCILIATION]", {
+    endpoint,
+    platformRevenueCents: Number(summary.platformRevenueCents || 0),
+    ownerReceivablesCents: Number(summary.ownerReceivablesCents || 0),
+    paidReceivablesCents: Number(summary.paidReceivablesCents || 0),
+    driverTipTotalCents: Number(summary.driverTipTotalCents || 0),
+    driverTransferredCents: Number(summary.driverTransferredCents || 0),
+    needsReviewCents: Number(summary.needsReviewCents || 0),
+    source: "canonical_ledger",
+  });
+}
 
 function buildTermsStatusResponse(state: UserTermsState) {
   const acceptedDocuments = state.requiredDocuments.filter((doc) => doc.accepted);
@@ -3294,6 +3320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Driver endpoints
   app.get('/api/drivers/dashboard', isAuthenticated, async (req: any, res) => {
     try {
+      setBillingNoCacheHeaders(res);
       const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
@@ -3368,6 +3395,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastLocationUpdate: driver.lastLocationUpdate,
         }
       };
+
+      logReportingReconciliation("/api/drivers/dashboard", {
+        platformRevenueCents: 0,
+        ownerReceivablesCents: 0,
+        paidReceivablesCents: Number(weekStats.paidTransferCents || 0),
+        driverTipTotalCents: Number(weekStats.tipTotalCents || 0),
+        driverTransferredCents: Number(weekStats.paidTransferCents || 0),
+        needsReviewCents: 0,
+      });
 
       res.json({
         statsRange,
@@ -4233,6 +4269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Owner endpoints
   app.get('/api/owners/dashboard', isAuthenticated, async (req: any, res) => {
     try {
+      setBillingNoCacheHeaders(res);
       const userId = req.user.id;
       const owner = await storage.getOwner(userId);
       
@@ -4246,6 +4283,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user data for profile completion checks
       const user = await storage.getUser(userId);
+
+      logReportingReconciliation("/api/owners/dashboard", {
+        platformRevenueCents: Number(monthStats.platformFeesPaidCents || 0),
+        ownerReceivablesCents: Number(monthStats.platformFeesOwedCents || 0),
+        paidReceivablesCents: Number(monthStats.platformFeesPaidCents || 0),
+        driverTipTotalCents: Number(monthStats.driverTipTotalCents || 0),
+        driverTransferredCents: 0,
+        needsReviewCents: Number((monthStats as any).needsReviewBillingCents || 0),
+      });
 
       res.json({
         weekStats,
@@ -6907,6 +6953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get payment history for drivers
   app.get('/api/payments/driver-history', isAuthenticated, async (req: any, res) => {
     try {
+      setBillingNoCacheHeaders(res);
       const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
@@ -6915,6 +6962,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const payments = await storage.getPaymentsByDriver(driver.id);
+      const driverSummary = getDriverTipSummaryFromPayments(driver.id, payments as any);
+      logReportingReconciliation("/api/payments/driver-history", {
+        platformRevenueCents: 0,
+        ownerReceivablesCents: 0,
+        paidReceivablesCents: Number(driverSummary.driverTransferredCents || 0),
+        driverTipTotalCents: Number(driverSummary.driverTipTotalCents || 0),
+        driverTransferredCents: Number(driverSummary.driverTransferredCents || 0),
+        needsReviewCents: 0,
+      });
       res.json(payments);
     } catch (error) {
       console.error("Error getting payment history:", error);
@@ -9418,6 +9474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin endpoints
   app.get('/api/admin/dashboard', isAuthenticated, async (req: any, res) => {
     try {
+      setBillingNoCacheHeaders(res);
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -9489,6 +9546,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingPageReceivablesCents: billingReceivablesCents,
         dashboardReceivablesCents: billingReceivablesCents,
         differenceCents: 0,
+      });
+      logReportingReconciliation("/api/admin/dashboard", {
+        platformRevenueCents: Number(weekResult.platformWashoutRevenueCents || 0),
+        ownerReceivablesCents: Number(billingReceivablesCents || 0),
+        paidReceivablesCents: Number(weekResult.platformWashoutPaidRevenueCents || 0),
+        driverTipTotalCents: Number(weekResult.driverTipTotalCents || 0),
+        driverTransferredCents: Number(weekResult.driverTipTotalCents || 0),
+        needsReviewCents: Number((weekResult as any).needsReviewCents || 0),
       });
 
       res.json({
@@ -11154,6 +11219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all owners' billing settings (for admin dashboard)
   app.get('/api/admin/billing/settings', isAuthenticated, async (req: any, res) => {
     try {
+      setBillingNoCacheHeaders(res);
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'super_admin' && user?.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -11233,6 +11299,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingPageReceivablesCents: immediateBillingSummary.platformFeesOwedCents,
         dashboardReceivablesCents: immediateBillingSummary.platformFeesOwedCents,
         differenceCents: 0,
+      });
+      logReportingReconciliation("/api/admin/billing/settings", {
+        platformRevenueCents: Number(immediateBillingSummary.platformFeesPaidCents || 0),
+        ownerReceivablesCents: Number(immediateBillingSummary.platformFeesOwedCents || 0),
+        paidReceivablesCents: Number(immediateBillingSummary.platformFeesPaidCents || 0),
+        driverTipTotalCents: Number(immediateBillingSummary.driverTipTotalCents || 0),
+        driverTransferredCents: Number(immediateBillingSummary.driverTransferTotalCents || 0),
+        needsReviewCents: Number(immediateBillingSummary.needsReviewCents || 0),
       });
       
       res.json({
@@ -13680,6 +13754,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get pending payments summary for current business date
   app.get('/api/owners/billing/pending-summary', isAuthenticated, async (req: any, res) => {
     try {
+      setBillingNoCacheHeaders(res);
       const userId = req.user.id;
       const owner = await storage.getOwner(userId);
       
@@ -13694,19 +13769,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const businessDate = new Date(ownerTime).toISOString().split('T')[0];
 
       const pendingPayments = await storage.getPendingPaymentsForBatch(owner.id, businessDate) as BatchPayment[];
-      
+      const ledger = buildOwnerWashoutBillingLedgerFromPayments({
+        ownerId: owner.id,
+        billingBatchId: `pending-summary:${owner.id}:${businessDate}`,
+        payments: pendingPayments.map((payment) => ({
+          id: payment.id,
+          ownerId: payment.ownerId,
+          driverId: payment.driverId,
+          activityId: payment.activityId,
+          amount: payment.amount,
+          processingFee: payment.processingFee,
+          tipAmountCents: payment.tipAmountCents,
+          status: payment.status,
+          batchId: payment.batchId,
+          stripePaymentIntentId: payment.stripePaymentIntentId,
+          stripeTransferId: payment.stripeTransferId,
+          stripeChargeId: payment.stripeChargeId,
+        })),
+        immediateBilling: false,
+        allowAdminOverride: false,
+      });
+
       const summary = {
         businessDate,
         timezone,
         cutoffTime: billingSettings?.billingCutoffTime || '23:59:00',
         pendingPayments: pendingPayments.length,
-        totalAmount: pendingPayments.reduce((sum, p) => sum + parseFloat(p.processingFee) + Number((p.tipAmountCents || 0) / 100), 0).toFixed(2),
-        totalFees: pendingPayments.reduce((sum, p) => sum + parseFloat(p.processingFee), 0).toFixed(2),
+        totalAmount: (ledger.ownerChargeAmountCents / 100).toFixed(2),
+        totalFees: (ledger.platformFeeTotalCents / 100).toFixed(2),
         payments: pendingPayments.map((p) => ({
           id: p.id,
           amount: p.amount,
           processingFee: p.processingFee,
-          driverTip: Number((p.tipAmountCents || 0) / 100).toFixed(2),
+          driverTip: (Number(p.tipAmountCents || 0) / 100).toFixed(2),
           driver: `${p.driver.user.firstName} ${p.driver.user.lastName}`,
           activity: {
             checkInTime: p.activity.checkInTime,
@@ -13714,6 +13809,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }))
       };
+
+      logReportingReconciliation("/api/owners/billing/pending-summary", {
+        platformRevenueCents: Number(ledger.platformRevenueCents || 0),
+        ownerReceivablesCents: Number(ledger.ownerChargeAmountCents || 0),
+        paidReceivablesCents: 0,
+        driverTipTotalCents: Number(ledger.driverTipTotalCents || 0),
+        driverTransferredCents: 0,
+        needsReviewCents: 0,
+      });
 
       res.json(summary);
     } catch (error) {

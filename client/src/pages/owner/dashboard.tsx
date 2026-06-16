@@ -28,6 +28,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { resolveOwnerMembershipState } from "@shared/ownerMembership";
 import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { useLanguage } from "@/lib/i18n";
+import { formatCentsToDollars } from "@/lib/utils";
 
 const AUTO_APPROVAL_HOURS = 72;
 
@@ -244,6 +245,10 @@ export default function OwnerDashboard() {
           : undefined,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/billing/pending-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/drivers/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
       queryClient.invalidateQueries({ predicate: (query) => 
         Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))
       });
@@ -273,6 +278,10 @@ export default function OwnerDashboard() {
       console.log("Rejection successful:", data);
       toast({ title: t("owner.dashboard.rejectSuccess") });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owners/billing/pending-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/drivers/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
       queryClient.invalidateQueries({ predicate: (query) => 
         Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))
       });
@@ -335,9 +344,9 @@ export default function OwnerDashboard() {
     ? [] 
     : Array.isArray(activitiesData) ? activitiesData : [];
 
-  const pendingPayments = Number(weekStats?.platformFeesOwedCents || 0) / 100;
+  const pendingPaymentsCents = Number(weekStats?.platformFeesOwedCents || 0);
   const pendingCount = Number(weekStats?.unbilledApprovedWashoutCount || approvalQueueActivities.length || 0);
-  const approvedPayments = Number(weekStats?.platformFeesPaidCents || 0) / 100;
+  const approvedPaymentsCents = Number(weekStats?.platformFeesPaidCents || 0);
   const rejectedPayments = recentActivities?.reduce((total: number, activity: any) => {
     if (activity.status === 'rejected') {
       return total + Number(activity.amount || 0);
@@ -360,8 +369,8 @@ export default function OwnerDashboard() {
       .filter(Boolean)
   ).size : 0));
   const ownerStatusChartData = [
-    { label: t("common.pending"), amount: pendingPayments, count: pendingCount },
-    { label: t("common.approved"), amount: approvedPayments, count: approvedCount },
+    { label: t("common.pending"), amount: pendingPaymentsCents / 100, count: pendingCount },
+    { label: t("common.approved"), amount: approvedPaymentsCents / 100, count: approvedCount },
     { label: t("common.rejected"), amount: rejectedPayments, count: rejectedCount },
   ];
 
@@ -436,12 +445,12 @@ export default function OwnerDashboard() {
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.paymentExposure")}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight">{formatCurrency(pendingPayments)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight">{formatCentsToDollars(Number(weekStats?.platformFeesOwedCents || 0))}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.awaitingReview")}</p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.approvedForPayout")}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{formatCurrency(approvedPayments)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{formatCentsToDollars(Number(weekStats?.platformFeesPaidCents || 0))}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.readyToSettle")}</p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
@@ -462,7 +471,7 @@ export default function OwnerDashboard() {
             />
             <DashboardMetricCard
               title={t("owner.dashboard.pending")}
-              value={formatCurrency(pendingPayments)}
+              value={formatCentsToDollars(pendingPaymentsCents)}
               helper={t("owner.dashboard.awaitingReview")}
               icon={Clock}
               toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
@@ -470,7 +479,7 @@ export default function OwnerDashboard() {
             />
             <DashboardMetricCard
               title={t("owner.dashboard.ready")}
-              value={formatCurrency(approvedPayments)}
+              value={formatCentsToDollars(approvedPaymentsCents)}
               helper={t("owner.dashboard.approvedForPayout")}
               icon={WalletCards}
               toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
@@ -540,7 +549,7 @@ export default function OwnerDashboard() {
                 <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.pendingPayments")}</p>
                   <p className="mt-2 text-xl font-semibold tracking-tight text-secondary" data-testid="text-pending-total">
-                    {formatCurrency(pendingPayments)}
+                    {formatCentsToDollars(pendingPaymentsCents)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.awaitingReview")}</p>
                 </div>

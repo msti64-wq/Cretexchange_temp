@@ -12,8 +12,12 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function formatCurrencyFromCents(amountCents: number): string {
+export function formatCentsToDollars(amountCents: number): string {
   return formatCurrency(Number(amountCents || 0) / 100);
+}
+
+export function formatCurrencyFromCents(amountCents: number): string {
+  return formatCentsToDollars(amountCents);
 }
 
 export function formatDate(date: Date | string): string {

@@ -229,6 +229,15 @@ export default function AdminBillingSettings() {
     retry: false,
   });
 
+  const invalidateBillingReportingCaches = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/drivers/dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/drivers/stripe-status'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/payments/driver-history'] });
+  };
+
   useEffect(() => {
     if (!previewOwnerId && billingData?.owners?.length) {
       setPreviewOwnerId(billingData.owners[0].ownerId);
@@ -245,7 +254,7 @@ export default function AdminBillingSettings() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
+      invalidateBillingReportingCaches();
       setEditDialogOpen(false);
       toast({
         title: "Settings Updated",
@@ -270,7 +279,7 @@ export default function AdminBillingSettings() {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
+      invalidateBillingReportingCaches();
       toast({
         title: "Billing Run Started",
         description: data?.message || "Immediate billing was processed successfully.",
@@ -295,7 +304,7 @@ export default function AdminBillingSettings() {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
+      invalidateBillingReportingCaches();
       setBulkDialogOpen(false);
       toast({
         title: "Bulk Update Complete",

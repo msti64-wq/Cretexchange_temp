@@ -61,6 +61,18 @@ export type ReportingLedgerSummary = {
   ownerCount: number;
 };
 
+export type ReportingDriverTipSummary = {
+  driverId: string | null;
+  driverTipTotalCents: number;
+  driverTransferredCents: number;
+  pendingTransferCents: number;
+  transferCount: number;
+  pendingCount: number;
+  paidCount: number;
+  transferIds: string[];
+  washoutActivityIds: string[];
+};
+
 export type OwnerWashoutBillingPreview = {
   dryRun: true;
   title: string;
@@ -107,7 +119,18 @@ function toCents(value: unknown): number {
   }
 
   const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
+  if (!Number.isFinite(parsed)) {
+    return 0;
+  }
+
+  const interpretedAsCents = Math.max(0, Math.round(parsed * 100));
+  console.log("[MONETARY_RECONCILIATION]", {
+    source: "payment.processingFee",
+    rawValue: value,
+    interpretedAsCents,
+    displayedDollars: interpretedAsCents / 100,
+  });
+  return interpretedAsCents;
 }
 
 function normalizeBatchStatus(status?: string | null): ReportingBillingBatchStatus {
@@ -272,6 +295,104 @@ export function summarizeReportingLedgerCollection(ledgers: Array<OwnerBillingLe
 
   console.log("[REPORTING_RECONCILIATION]", summary);
   return summary;
+}
+
+export function getPlatformRevenueSummary(ledgers: Array<OwnerBillingLedger & { billingStatus?: ReportingBillingBatchStatus }>) {
+  const summary = summarizeReportingLedgerCollection(ledgers);
+  return {
+    platformRevenueCents: summary.platformRevenueCents,
+    ownerChargeTotalCents: summary.ownerChargeTotalCents,
+    unpaidReceivablesCents: summary.unpaidReceivablesCents,
+    paidReceivablesCents: summary.paidReceivablesCents,
+    needsReviewCents: summary.needsReviewCents,
+    billedWashoutCount: summary.billedWashoutCount,
+    approvedWashoutCount: summary.approvedWashoutCount,
+  };
+}
+
+export function getReceivablesSummary(ledgers: Array<OwnerBillingLedger & { billingStatus?: ReportingBillingBatchStatus }>) {
+  const summary = summarizeReportingLedgerCollection(ledgers);
+  return {
+    ownerCount: summary.ownerCount,
+    approvedWashoutCount: summary.approvedWashoutCount,
+    billedWashoutCount: summary.billedWashoutCount,
+    platformRevenueCents: summary.platformRevenueCents,
+    ownerChargeTotalCents: summary.ownerChargeTotalCents,
+    driverTipTotalCents: summary.driverTipTotalCents,
+    driverTransferTotalCents: summary.driverTransferTotalCents,
+    unpaidReceivablesCents: summary.unpaidReceivablesCents,
+    paidReceivablesCents: summary.paidReceivablesCents,
+    needsReviewCents: summary.needsReviewCents,
+  };
+}
+
+export function getOwnerBillingSummary(
+  ownerId: string,
+  ledgers: Array<OwnerBillingLedger & { billingStatus?: ReportingBillingBatchStatus }>,
+) {
+  const ownerLedgers = ledgers.filter((ledger) => ledger.ownerId === ownerId);
+  return summarizeReportingLedgerCollection(ownerLedgers);
+}
+
+export function getDriverTipSummary(
+  driverId: string,
+  ledgers: Array<OwnerBillingLedger & { billingStatus?: ReportingBillingBatchStatus }>,
+): ReportingDriverTipSummary {
+  const matchingTransfers = ledgers.flatMap((ledger) => (
+    ledger.driverTransfers
+      .filter((transfer) => transfer.driverId === driverId)
+      .map((transfer) => ({
+        ...transfer,
+        billingStatus: ledger.billingStatus || "pending",
+      }))
+  ));
+
+  const driverTipTotalCents = matchingTransfers.reduce((sum, transfer) => sum + Number(transfer.amountCents || 0), 0);
+  const paidTransfers = matchingTransfers.filter((transfer) => transfer.billingStatus === "paid");
+  const needsReviewTransfers = matchingTransfers.filter((transfer) => transfer.billingStatus === "needs_review");
+  const pendingTransfers = matchingTransfers.filter((transfer) => transfer.billingStatus === "pending");
+  const driverTransferredCents = paidTransfers.reduce((sum, transfer) => sum + Number(transfer.amountCents || 0), 0);
+  const pendingTransferCents = pendingTransfers.reduce((sum, transfer) => sum + Number(transfer.amountCents || 0), 0);
+
+  return {
+    driverId,
+    driverTipTotalCents,
+    driverTransferredCents,
+    pendingTransferCents,
+    transferCount: paidTransfers.length,
+    pendingCount: pendingTransfers.length,
+    paidCount: paidTransfers.length,
+    transferIds: matchingTransfers.map((transfer) => transfer.transferId).filter((value): value is string => Boolean(value)),
+    washoutActivityIds: Array.from(new Set(matchingTransfers.flatMap((transfer) => transfer.washoutActivityIds || []))),
+  };
+}
+
+export function getDriverTipSummaryFromPayments(
+  driverId: string,
+  payments: ReportingLedgerPayment[],
+): ReportingDriverTipSummary {
+  const matchingPayments = payments.filter((payment) => payment.driverId === driverId);
+  const driverTipTotalCents = matchingPayments.reduce((sum, payment) => sum + Math.max(0, Math.round(Number(payment.tipAmountCents || 0))), 0);
+  const paidPayments = matchingPayments.filter((payment) => {
+    const status = String(payment.status || "").toLowerCase();
+    return Boolean(payment.stripeTransferId) || ["paid", "posted", "completed", "succeeded"].includes(status);
+  });
+  const pendingPayments = matchingPayments.filter((payment) => {
+    const status = String(payment.status || "").toLowerCase();
+    return !payment.stripeTransferId && !["paid", "posted", "completed", "succeeded"].includes(status);
+  });
+
+  return {
+    driverId,
+    driverTipTotalCents,
+    driverTransferredCents: paidPayments.reduce((sum, payment) => sum + Math.max(0, Math.round(Number(payment.tipAmountCents || 0))), 0),
+    pendingTransferCents: pendingPayments.reduce((sum, payment) => sum + Math.max(0, Math.round(Number(payment.tipAmountCents || 0))), 0),
+    transferCount: paidPayments.length,
+    pendingCount: pendingPayments.length,
+    paidCount: paidPayments.length,
+    transferIds: paidPayments.map((payment) => payment.stripeTransferId).filter((value): value is string => Boolean(value)),
+    washoutActivityIds: Array.from(new Set(matchingPayments.map((payment) => payment.activityId))),
+  };
 }
 
 export function getReportingBillingStatus(status?: string | null): ReportingBillingBatchStatus {

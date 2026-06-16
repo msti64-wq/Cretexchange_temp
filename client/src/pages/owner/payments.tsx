@@ -9,7 +9,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { DollarSign, Download, Calendar, Filter, TrendingUp } from "lucide-react";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
-import { formatCurrency } from "@/lib/utils";
+import { formatCentsToDollars, formatCurrency } from "@/lib/utils";
 import { formatAddress } from "@shared/addressUtils";
 import { resolveLocationDriverIncentiveTipCents } from "@shared/locationBilling";
 
@@ -70,8 +70,8 @@ export default function OwnerPayments() {
 
   const stats = {
     totalPayments: filteredActivities.reduce((sum: number, activity: any) => {
-      const driverTip = resolveLocationDriverIncentiveTipCents(activity.location?.driverIncentiveTip) / 100;
-      return sum + Number(activity.amount || 0) + driverTip;
+      const driverTip = resolveLocationDriverIncentiveTipCents(activity.location?.driverIncentiveTip);
+      return sum + Number(activity.amount || 0) + (driverTip / 100);
     }, 0),
     totalFees: filteredActivities.reduce((sum: number, activity: any) => {
       const platformFee = 5.00;
@@ -281,7 +281,7 @@ export default function OwnerPayments() {
                         Platform Fee: {formatCurrency(5.00)} (default)
                       </div>
                       <div className="text-xs text-muted-foreground mb-2" data-testid={`text-driver-tip-${index}`}>
-                        Driver Tip: {formatCurrency(resolveLocationDriverIncentiveTipCents(activity.location?.driverIncentiveTip) / 100)}
+                        Driver Tip: {formatCentsToDollars(resolveLocationDriverIncentiveTipCents(activity.location?.driverIncentiveTip))}
                       </div>
                       <Badge 
                         variant={

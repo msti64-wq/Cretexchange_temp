@@ -122,11 +122,15 @@ function formatDateTime(value: unknown): string {
   return date.toISOString();
 }
 
-function formatMoney(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "0.00";
+function formatMoneyFromCents(valueCents: number): string {
+  return (Math.max(0, Math.round(Number(valueCents || 0))) / 100).toFixed(2);
+}
+
+function parseMoneyToCents(value: unknown): number {
+  if (value === null || value === undefined || value === "") return 0;
   const num = typeof value === "string" ? Number.parseFloat(value) : Number(value);
-  if (Number.isNaN(num)) return "0.00";
-  return num.toFixed(2);
+  if (Number.isNaN(num)) return 0;
+  return Math.max(0, Math.round(num * 100));
 }
 
 function toLower(value: unknown): string {
@@ -145,13 +149,12 @@ function normalizePaymentStatus(status: string | null | undefined, hasPayment: b
 function buildSummary(rows: ReportRow[], reportType: "owner" | "driver"): ReportSummary {
   const summary = rows.reduce(
     (acc, row) => {
-      const amountCharged = Number.parseFloat(row.amountCharged || "0");
-      const platformFee = Number.parseFloat(row.platformFee || "0");
-      const paymentAmount = Number.parseFloat(row.driverPaymentAmount || "0");
-      const tipAmount = Number.parseFloat(row.tipAmount || "0");
+      const platformFee = parseMoneyToCents(row.platformFee);
+      const paymentAmount = parseMoneyToCents(row.driverPaymentAmount);
+      const tipAmount = parseMoneyToCents(row.tipAmount);
       const isPaid = row.paymentStatus === "paid";
-      const settlementAmount = reportType === "owner" ? amountCharged : paymentAmount;
-      const chargedAmount = reportType === "owner" ? amountCharged : paymentAmount;
+      const chargedAmount = reportType === "owner" ? parseMoneyToCents(row.amountCharged) : paymentAmount;
+      const settlementAmount = reportType === "owner" ? chargedAmount : paymentAmount;
 
       acc.totalWashouts += 1;
       acc.totalAmountCharged += chargedAmount;
@@ -180,12 +183,12 @@ function buildSummary(rows: ReportRow[], reportType: "owner" | "driver"): Report
 
   return {
     totalWashouts: summary.totalWashouts,
-    totalAmountCharged: summary.totalAmountCharged.toFixed(2),
-    totalPlatformFees: summary.totalPlatformFees.toFixed(2),
-    totalPaid: summary.totalPaid.toFixed(2),
-    totalUnpaidPending: summary.totalUnpaidPending.toFixed(2),
-    totalTips: summary.totalTips.toFixed(2),
-    totalDriverPayments: summary.totalDriverPayments.toFixed(2),
+    totalAmountCharged: formatMoneyFromCents(summary.totalAmountCharged),
+    totalPlatformFees: formatMoneyFromCents(summary.totalPlatformFees),
+    totalPaid: formatMoneyFromCents(summary.totalPaid),
+    totalUnpaidPending: formatMoneyFromCents(summary.totalUnpaidPending),
+    totalTips: formatMoneyFromCents(summary.totalTips),
+    totalDriverPayments: formatMoneyFromCents(summary.totalDriverPayments),
   };
 }
 
@@ -251,9 +254,9 @@ function buildRowsFromActivities({
       ? formatPersonName(ownerEntry.user)
       : "";
     const driverTipCents = Number(payment?.tipAmountCents ?? activity.location?.driverIncentiveTip ?? 0);
-    const platformFeeAmount = payment ? Number.parseFloat(payment.processingFee || "0") : Number(activity.feeCentsPlatform || 0) / 100;
-    const ownerChargeAmount = platformFeeAmount + (driverTipCents / 100);
-    const driverPaymentAmount = driverTipCents / 100;
+    const platformFeeCents = payment ? parseMoneyToCents(payment.processingFee) : Number(activity.feeCentsPlatform || 0);
+    const ownerChargeAmountCents = platformFeeCents + driverTipCents;
+    const driverPaymentAmountCents = driverTipCents;
 
     const notes = [activity.notes, payment?.refundReason].filter(Boolean).join(" | ");
     const paymentStatus = normalizePaymentStatus(payment?.status, Boolean(payment));
@@ -281,15 +284,15 @@ function buildRowsFromActivities({
       serviceType: activity.serviceType || "washout",
       quantity: activity.qty ? String(activity.qty) : "",
       unit: activity.unit || "",
-      amountCharged: formatMoney(ownerChargeAmount),
-      platformFee: formatMoney(platformFeeAmount),
+      amountCharged: formatMoneyFromCents(ownerChargeAmountCents),
+      platformFee: formatMoneyFromCents(platformFeeCents),
       paymentStatus,
       paymentDate: formatDateTime(payment?.paidAt || payment?.createdAt),
       paymentId: payment?.id || "",
       ticketNumber,
-      driverIncentiveTip: formatMoney(driverTipCents / 100),
-      tipAmount: formatMoney(driverTipCents / 100),
-      driverPaymentAmount: formatMoney(driverPaymentAmount),
+      driverIncentiveTip: formatMoneyFromCents(driverTipCents),
+      tipAmount: formatMoneyFromCents(driverTipCents),
+      driverPaymentAmount: formatMoneyFromCents(driverPaymentAmountCents),
       notes,
     };
   });

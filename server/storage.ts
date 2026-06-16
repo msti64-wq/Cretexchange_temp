@@ -110,8 +110,11 @@ import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import {
   buildOwnerWashoutBillingLedgerFromBillableWashouts,
   buildOwnerWashoutBillingLedgerFromPayments,
+  getDriverTipSummaryFromPayments,
+  getOwnerBillingSummary,
+  getPlatformRevenueSummary,
+  getReceivablesSummary,
   getReportingBillingStatus,
-  summarizeReportingLedgerCollection,
   type ReportingLedgerPayment,
   type ReportingLedgerBatch,
 } from "./billing/ownerWashoutLedger";
@@ -2819,17 +2822,24 @@ export class DatabaseStorage implements IStorage {
     startDate.setDate(startDate.getDate() - days);
 
     const payments = await this.getPaymentsByDriver(driverId, startDate, new Date());
-    const totalEarningsCents = payments.reduce((sum, payment) => {
-      return sum + Math.max(0, Math.round(Number(payment.tipAmountCents || 0)));
-    }, 0);
+    const driverSummary = getDriverTipSummaryFromPayments(driverId, payments.map((payment) => ({
+      id: payment.id,
+      ownerId: payment.ownerId,
+      driverId: payment.driverId,
+      activityId: payment.activityId,
+      processingFee: payment.processingFee,
+      tipAmountCents: payment.tipAmountCents,
+      status: payment.status,
+      batchId: payment.batchId,
+      stripePaymentIntentId: payment.stripePaymentIntentId,
+      stripeTransferId: payment.stripeTransferId,
+      stripeChargeId: payment.stripeChargeId,
+    })));
+    const totalEarningsCents = driverSummary.driverTipTotalCents;
     const totalWashouts = payments.length;
-    const paidTransferCents = payments.reduce((sum, payment) => {
-      const status = String(payment.status || "").toLowerCase();
-      const hasTransfer = Boolean(payment.stripeTransferId) || ["paid", "posted", "completed", "succeeded"].includes(status);
-      return sum + (hasTransfer ? Math.max(0, Math.round(Number(payment.tipAmountCents || 0))) : 0);
-    }, 0);
-    const pendingTransferCents = Math.max(0, totalEarningsCents - paidTransferCents);
-    const transferCount = payments.reduce((count, payment) => count + (payment.stripeTransferId ? 1 : 0), 0);
+    const paidTransferCents = driverSummary.driverTransferredCents;
+    const pendingTransferCents = driverSummary.pendingTransferCents;
+    const transferCount = driverSummary.transferCount;
     const avgPerWashout = totalWashouts > 0 ? (totalEarningsCents / 100) / totalWashouts : 0;
 
     return {
@@ -2852,6 +2862,7 @@ export class DatabaseStorage implements IStorage {
     platformFeesPaidCents?: number;
     driverTipTotalCents?: number;
     ownerChargeTotalCents?: number;
+    needsReviewBillingCents?: number;
     paidBillingCount?: number;
     needsReviewBillingCount?: number;
     unpaidBillingCount?: number;
@@ -2902,7 +2913,7 @@ export class DatabaseStorage implements IStorage {
         };
       })
     );
-    const summary = summarizeReportingLedgerCollection([
+    const summary = getOwnerBillingSummary(ownerId, [
       ...(pendingLedger ? [{ ...pendingLedger, billingStatus: "pending" as const }] : []),
       ...batchLedgers,
     ]);
@@ -2919,6 +2930,7 @@ export class DatabaseStorage implements IStorage {
       platformFeesPaidCents: summary.paidReceivablesCents,
       driverTipTotalCents: summary.driverTipTotalCents,
       ownerChargeTotalCents: summary.ownerChargeTotalCents,
+      needsReviewBillingCents: summary.needsReviewCents,
       paidBillingCount: batchLedgers.filter((ledger) => ledger.billingStatus === "paid").length,
       needsReviewBillingCount: batchLedgers.filter((ledger) => ledger.billingStatus === "needs_review").length,
       unpaidBillingCount: batchLedgers.filter((ledger) => ledger.billingStatus === "pending").length,
@@ -3090,23 +3102,24 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      const paymentSummary = summarizeReportingLedgerCollection(ownerLedgers);
-      platformRevenueCents = paymentSummary.platformRevenueCents;
-      ownerChargeTotalCents = paymentSummary.ownerChargeTotalCents;
+      const platformSummary = getPlatformRevenueSummary(ownerLedgers);
+      const paymentSummary = getReceivablesSummary(ownerLedgers);
+      platformRevenueCents = platformSummary.platformRevenueCents;
+      ownerChargeTotalCents = platformSummary.ownerChargeTotalCents;
       driverTipTotalCents = paymentSummary.driverTipTotalCents;
       driverTransferTotalCents = paymentSummary.driverTransferTotalCents;
-      unpaidReceivablesCents = paymentSummary.unpaidReceivablesCents;
-      paidReceivablesCents = paymentSummary.paidReceivablesCents;
-      needsReviewCents = paymentSummary.needsReviewCents;
-      platformWashoutRevenueCents = paymentSummary.platformRevenueCents;
+      unpaidReceivablesCents = platformSummary.unpaidReceivablesCents;
+      paidReceivablesCents = platformSummary.paidReceivablesCents;
+      needsReviewCents = platformSummary.needsReviewCents;
+      platformWashoutRevenueCents = platformSummary.platformRevenueCents;
       platformWashoutRevenue = platformWashoutRevenueCents / 100;
-      platformWashoutPaidRevenueCents = paymentSummary.paidReceivablesCents;
+      platformWashoutPaidRevenueCents = platformSummary.paidReceivablesCents;
       platformWashoutPaidRevenue = platformWashoutPaidRevenueCents / 100;
-      platformFeeRecordCount = paymentSummary.approvedWashoutCount;
-      approvedWashouts = paymentSummary.approvedWashoutCount;
+      platformFeeRecordCount = platformSummary.approvedWashoutCount;
+      approvedWashouts = platformSummary.approvedWashoutCount;
       driverTipTotal = paymentSummary.driverTipTotalCents / 100;
-      billedWashouts = paymentSummary.billedWashoutCount;
-      pendingWashouts = Math.max(0, paymentSummary.approvedWashoutCount - paymentSummary.billedWashoutCount);
+      billedWashouts = platformSummary.billedWashoutCount;
+      pendingWashouts = Math.max(0, platformSummary.approvedWashoutCount - platformSummary.billedWashoutCount);
       failedWashouts = 0;
       refundedWashouts = 0;
       disputedWashouts = 0;

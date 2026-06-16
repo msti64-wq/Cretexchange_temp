@@ -14,7 +14,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, Package, DollarSign, Pencil, Check, X } from "lucide-react";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
-import { formatCurrency } from "@/lib/utils";
+import { formatCentsToDollars, formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatAddress } from "@shared/addressUtils";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
@@ -1065,7 +1065,7 @@ export default function OwnerLocations() {
                             </div>
                             <div className="text-xs text-muted-foreground">{t("owner.locations.driverPayoutClickEdit")}</div>
                             <div className="text-xs text-muted-foreground">
-                              {t("driver.locations.driverTip", { amount: formatCurrency(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100) })}
+                              {t("driver.locations.driverTip", { amount: formatCentsToDollars(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip)) })}
                             </div>
                           </div>
                         )}

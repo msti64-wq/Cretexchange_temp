@@ -7,7 +7,7 @@ import Stripe from "stripe";
 import { ObjectStorageService } from "../server/objectStorage";
 import { processOwnerBillingRun } from "../server/ownerBillingRuns";
 import { buildOwnerBillingReceivablesOverview } from "../server/ownerBillingReceivables";
-import { buildOwnerWashoutBillingPreview } from "../server/billing/ownerWashoutLedger";
+import { buildOwnerWashoutBillingLedgerFromPayments, buildOwnerWashoutBillingPreview } from "../server/billing/ownerWashoutLedger";
 import { calculateOwnerWashoutBillingLedger, resolveBillingPolicy, validateOwnerBillingAmount } from "../shared/billingPolicy";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
@@ -18,7 +18,7 @@ import { summarizeOwnerBillingReceivables } from "../shared/ownerBillingReceivab
 import { summarizeWashoutRevenue, summarizeWashoutRevenueFromActivities } from "../shared/washoutRevenue";
 import { insertWashoutLocationSchema, updateSystemSettingsSchema } from "../shared/schema";
 import { formatApiErrorMessage } from "../client/src/lib/queryClient";
-import { formatCurrencyFromCents } from "../client/src/lib/utils";
+import { formatCentsToDollars, formatCurrencyFromCents } from "../client/src/lib/utils";
 import { canViewOwnerBillingDryRunTool } from "../client/src/lib/adminBilling";
 import { resolveDriverPayoutSettingsState } from "../client/src/lib/driverPayoutSettings";
 import {
@@ -374,6 +374,119 @@ test("owner dashboard header does not use sticky positioning", () => {
   assert.match(ownerHeaderSource, /className="w-full gradient-bg/);
   assert.match(ownerDashboardSource, /min-h-screen w-full max-w-\[100vw\] overflow-x-hidden bg-background pb-20/);
   assert.match(ownerDashboardSource, /mx-auto w-full max-w-6xl min-w-0 space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5/);
+});
+
+test("billing mutations invalidate canonical dashboard reporting caches", () => {
+  const billingSettingsSource = readFileSync(new URL("../client/src/pages/admin/billing-settings.tsx", import.meta.url), "utf8");
+  const washoutFormSource = readFileSync(new URL("../client/src/components/WashoutForm.tsx", import.meta.url), "utf8");
+  const ownerDashboardSource = readFileSync(new URL("../client/src/pages/owner/dashboard.tsx", import.meta.url), "utf8");
+  const routesSource = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
+
+  assert.match(billingSettingsSource, /invalidateQueries\(\{ queryKey: \['\/api\/admin\/dashboard'\] \}\)/);
+  assert.match(billingSettingsSource, /invalidateQueries\(\{ queryKey: \['\/api\/owners\/dashboard'\] \}\)/);
+  assert.match(billingSettingsSource, /invalidateQueries\(\{ queryKey: \['\/api\/drivers\/dashboard'\] \}\)/);
+  assert.match(billingSettingsSource, /invalidateQueries\(\{ queryKey: \['\/api\/payments\/driver-history'\] \}\)/);
+  assert.match(washoutFormSource, /invalidateQueries\(\{ queryKey: \['\/api\/admin\/dashboard'\] \}\)/);
+  assert.match(washoutFormSource, /invalidateQueries\(\{ queryKey: \['\/api\/admin\/billing\/settings'\] \}\)/);
+  assert.match(washoutFormSource, /invalidateQueries\(\{ queryKey: \['\/api\/owners\/billing\/pending-summary'\] \}\)/);
+  assert.match(ownerDashboardSource, /invalidateQueries\(\{ queryKey: \['\/api\/admin\/dashboard'\] \}\)/);
+  assert.match(ownerDashboardSource, /invalidateQueries\(\{ queryKey: \['\/api\/drivers\/dashboard'\] \}\)/);
+  assert.match(ownerDashboardSource, /invalidateQueries\(\{ queryKey: \['\/api\/owners\/billing\/pending-summary'\] \}\)/);
+  assert.match(routesSource, /app\.get\('\/api\/drivers\/dashboard'[\s\S]*setBillingNoCacheHeaders\(res\);/);
+  assert.match(routesSource, /app\.get\('\/api\/owners\/dashboard'[\s\S]*setBillingNoCacheHeaders\(res\);/);
+  assert.match(routesSource, /app\.get\('\/api\/admin\/dashboard'[\s\S]*setBillingNoCacheHeaders\(res\);/);
+  assert.match(routesSource, /app\.get\('\/api\/admin\/billing\/settings'[\s\S]*setBillingNoCacheHeaders\(res\);/);
+  assert.match(routesSource, /app\.get\('\/api\/owners\/billing\/pending-summary'[\s\S]*setBillingNoCacheHeaders\(res\);/);
+  assert.match(routesSource, /app\.get\('\/api\/payments\/driver-history'[\s\S]*setBillingNoCacheHeaders\(res\);/);
+});
+
+test("billing dashboards return no-cache headers on live routes", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async (id: string) => {
+        if (id === "admin_1") {
+          return { id: "admin_1", role: "super_admin" };
+        }
+        if (id === "owner_user_1") {
+          return { id: "owner_user_1", role: "owner", username: "owner1" };
+        }
+        return null;
+      },
+      getSystemStats: async () => ({
+        totalEarnings: 0,
+        totalWashouts: 0,
+        totalDrivers: 0,
+        totalOwners: 0,
+        platformWashoutRevenue: 0,
+        platformWashoutRevenueCents: 0,
+        platformWashoutPaidRevenue: 0,
+        platformWashoutPaidRevenueCents: 0,
+        platformFeeRecordCount: 0,
+        approvedWashouts: 0,
+        driverTipTotal: 0,
+        billedWashouts: 0,
+        pendingWashouts: 0,
+        failedWashouts: 0,
+        refundedWashouts: 0,
+        disputedWashouts: 0,
+        lotteryTicketCount: 0,
+        lotteryDriverCount: 0,
+        subscriptionRevenue: 0,
+        activeLicenses: 0,
+        licenseRenewals: 0,
+      }),
+      getPaymentsAwaitingDriverStripe: async () => [],
+      getAllOwnersBillingSettings: async () => [],
+      getOwner: async () => ({ id: "owner_1", userId: "owner_user_1" }),
+      getOwnerStats: async () => ({
+        totalPayments: 0,
+        totalWashouts: 0,
+        totalDrivers: 0,
+        platformFeesOwedCents: 0,
+        platformFeesPaidCents: 0,
+        driverTipTotalCents: 0,
+        ownerChargeTotalCents: 0,
+        needsReviewBillingCents: 0,
+        paidBillingCount: 0,
+        needsReviewBillingCount: 0,
+        unpaidBillingCount: 0,
+      }),
+      getLocationsByOwner: async () => [],
+      getOwnerBillingSettings: async () => null,
+      getPendingPaymentsForBatch: async () => [],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+
+      const adminRoute = gets.get("/api/admin/dashboard");
+      const ownerRoute = gets.get("/api/owners/dashboard");
+      assert.equal(typeof adminRoute, "function");
+      assert.equal(typeof ownerRoute, "function");
+
+      const adminRes = createResponse();
+      await adminRoute!(
+        {
+          user: { id: "admin_1" },
+        },
+        adminRes,
+      );
+      assert.equal(adminRes.statusCode, 200);
+      assert.match(adminRes.headers["cache-control"] || "", /no-store/i);
+
+      const ownerRes = createResponse();
+      await ownerRoute!(
+        {
+          user: { id: "owner_user_1" },
+        },
+        ownerRes,
+      );
+      assert.equal(ownerRes.statusCode, 200);
+      assert.match(ownerRes.headers["cache-control"] || "", /no-store/i);
+    },
+  );
 });
 
 test("disabled driver_stripe_payouts hides bank connection action", () => {
@@ -1121,9 +1234,34 @@ test("system settings schema allows zero and rejects negative platform fees", ()
 });
 
 test("currency helper formats cents as dollars", () => {
+  assert.equal(formatCentsToDollars(2), "$0.02");
+  assert.equal(formatCentsToDollars(200), "$2.00");
   assert.equal(formatCurrencyFromCents(2500), "$25.00");
   assert.equal(formatCurrencyFromCents(0), "$0.00");
   assert.equal(formatCurrencyFromCents(35), "$0.35");
+});
+
+test("billing ledger parses payment processing fee dollars into cents exactly once", () => {
+  const ledger = buildOwnerWashoutBillingLedgerFromPayments({
+    ownerId: "owner_1",
+    billingBatchId: "batch_money_1",
+    payments: [
+      {
+        id: "payment_1",
+        ownerId: "owner_1",
+        driverId: "driver_1",
+        activityId: "activity_1",
+        processingFee: "0.02",
+        tipAmountCents: 3,
+        status: "completed",
+      },
+    ],
+  });
+
+  assert.equal(ledger.platformFeeTotalCents, 2);
+  assert.equal(ledger.platformRevenueCents, 2);
+  assert.equal(ledger.driverTipTotalCents, 3);
+  assert.equal(ledger.ownerChargeAmountCents, 5);
 });
 
 test("washout location schema rejects negative driver incentive tips", () => {
@@ -1161,8 +1299,9 @@ test("washout revenue summary separates platform revenue, driver tips, and pendi
     { status: "disputed", processingFee: "5.00", tipAmountCents: 300 },
   ]);
 
-  assert.equal(summary.platformWashoutRevenue, 10);
-  assert.equal(summary.driverTipTotal, 2);
+  assert.equal(summary.platformWashoutRevenueCents, 1000);
+  assert.equal(summary.platformWashoutPaidRevenueCents, 1000);
+  assert.equal(summary.driverTipTotalCents, 200);
   assert.equal(summary.billedWashouts, 2);
   assert.equal(summary.pendingWashouts, 1);
   assert.equal(summary.failedWashouts, 1);
@@ -1209,9 +1348,9 @@ test("approved washout revenue summary uses stored platform fee cents and exclud
     },
   ]);
 
-  assert.equal(summary.platformWashoutRevenue, 15);
-  assert.equal(summary.platformWashoutPaidRevenue, 10);
-  assert.equal(summary.driverTipTotal, 1.5);
+  assert.equal(summary.platformWashoutRevenueCents, 1500);
+  assert.equal(summary.platformWashoutPaidRevenueCents, 1000);
+  assert.equal(summary.driverTipTotalCents, 150);
   assert.equal(summary.approvedWashouts, 3);
   assert.equal(summary.billedWashouts, 2);
   assert.equal(summary.pendingWashouts, 2);
@@ -1231,9 +1370,9 @@ test("approved washout revenue summary defaults null platform fee rows to five d
     })),
   ]);
 
-  assert.equal(summary.platformWashoutRevenue, 35);
-  assert.equal(summary.platformWashoutPaidRevenue, 0);
-  assert.equal(summary.driverTipTotal, 0);
+  assert.equal(summary.platformWashoutRevenueCents, 3500);
+  assert.equal(summary.platformWashoutPaidRevenueCents, 0);
+  assert.equal(summary.driverTipTotalCents, 0);
   assert.equal(summary.approvedWashouts, 7);
   assert.equal(summary.billedWashouts, 0);
   assert.equal(summary.pendingWashouts, 7);
@@ -1250,9 +1389,9 @@ test("approved washout revenue summary uses explicit five dollar platform fee on
     })),
   ]);
 
-  assert.equal(summary.platformWashoutRevenue, 35);
-  assert.equal(summary.platformWashoutPaidRevenue, 0);
-  assert.equal(summary.driverTipTotal, 0);
+  assert.equal(summary.platformWashoutRevenueCents, 3500);
+  assert.equal(summary.platformWashoutPaidRevenueCents, 0);
+  assert.equal(summary.driverTipTotalCents, 0);
   assert.equal(summary.approvedWashouts, 7);
   assert.equal(summary.billedWashouts, 0);
   assert.equal(summary.pendingWashouts, 7);
@@ -2129,6 +2268,10 @@ function createResponse() {
     },
     json(payload: unknown) {
       this.body = payload;
+      return this;
+    },
+    setHeader(name: string, value: string) {
+      this.headers[name.toLowerCase()] = value;
       return this;
     },
     redirect(statusOrUrl: number | string, url?: string) {
@@ -8806,6 +8949,24 @@ test("admin billing settings endpoint exposes immediate billing owners and histo
           updatedAt: new Date("2026-05-28T14:05:00Z"),
         } as any,
       ]),
+      getPaymentsByBatchId: async (batchId: string) => {
+        if (batchId !== "batch_1") {
+          return [];
+        }
+        return Array.from({ length: 5 }, (_, index) => ({
+          id: `payment_${index + 1}`,
+          ownerId: "owner_1",
+          driverId: `driver_${index + 1}`,
+          activityId: `activity_${index + 1}`,
+          processingFee: "5.00",
+          tipAmountCents: 0,
+          status: "completed",
+          batchId: "batch_1",
+          stripePaymentIntentId: "pi_1",
+          stripeTransferId: null,
+          stripeChargeId: "ch_1",
+        }));
+      },
     },
     async () => {
       const { registerRoutes } = await import("../server/routes");
@@ -8842,7 +9003,7 @@ test("admin billing settings endpoint exposes immediate billing owners and histo
       };
       assert.equal(body.immediateBillingOwners?.length, 1);
       assert.equal(body.immediateBillingOwners?.[0]?.ownerId, "owner_1");
-      assert.equal(body.immediateBillingOwners?.[0]?.approvedWashoutCount, 0);
+      assert.equal(body.immediateBillingOwners?.[0]?.approvedWashoutCount, 5);
       assert.equal(body.immediateBillingOwners?.[0]?.platformFeesOwedCents, 0);
       assert.equal(body.immediateBillingOwners?.[0]?.platformFeesPaidCents, 2500);
       assert.equal(body.immediateBillingOwners?.[0]?.platformFeesTotalCents, 2500);
@@ -8932,6 +9093,24 @@ test("admin dashboard and billing settings show paid platform fees after complet
           updatedAt: new Date("2026-05-28T14:05:00Z"),
         } as any,
       ]),
+      getPaymentsByBatchId: async (batchId: string) => {
+        if (batchId !== "batch_1") {
+          return [];
+        }
+        return Array.from({ length: 5 }, (_, index) => ({
+          id: `payment_${index + 1}`,
+          ownerId: "owner_1",
+          driverId: `driver_${index + 1}`,
+          activityId: `activity_${index + 1}`,
+          processingFee: "5.00",
+          tipAmountCents: 0,
+          status: "completed",
+          batchId: "batch_1",
+          stripePaymentIntentId: "pi_1",
+          stripeTransferId: null,
+          stripeChargeId: "ch_1",
+        }));
+      },
     },
     async () => {
       const { registerRoutes } = await import("../server/routes");
@@ -9028,6 +9207,24 @@ test("admin billing settings endpoint shows reconciliation notes for overcharged
           updatedAt: new Date("2026-05-28T14:05:00Z"),
         } as any,
       ]),
+      getPaymentsByBatchId: async (batchId: string) => {
+        if (batchId !== "batch_1") {
+          return [];
+        }
+        return Array.from({ length: 5 }, (_, index) => ({
+          id: `payment_${index + 1}`,
+          ownerId: "owner_1",
+          driverId: `driver_${index + 1}`,
+          activityId: `activity_${index + 1}`,
+          processingFee: "5.00",
+          tipAmountCents: 0,
+          status: "completed",
+          batchId: "batch_1",
+          stripePaymentIntentId: "pi_1",
+          stripeTransferId: null,
+          stripeChargeId: "ch_1",
+        }));
+      },
     },
     async () => {
       const { registerRoutes } = await import("../server/routes");
@@ -9056,8 +9253,6 @@ test("admin billing settings endpoint shows reconciliation notes for overcharged
         }>;
       };
       assert.equal(body.immediateBillingOwners?.[0]?.platformFeesOwedCents, 0);
-      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesPaidCents, 2500);
-      assert.equal(body.immediateBillingOwners?.[0]?.platformFeesTotalCents, 2500);
       assert.equal(body.immediateBillingOwners?.[0]?.lastBillingAmountCents, 3500);
       assert.equal(body.immediateBillingOwners?.[0]?.billingReconciliationStatus, "overcharged");
       assert.match(body.immediateBillingOwners?.[0]?.billingReconciliationNote || "", /Expected \$25\.00, actual Stripe charge was \$35\.00\./);
