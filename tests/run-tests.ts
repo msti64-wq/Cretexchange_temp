@@ -17,6 +17,7 @@ import { buildWashoutBillingVerificationReport } from "../shared/washoutBillingV
 import { summarizeOwnerBillingReceivables } from "../shared/ownerBillingReceivables";
 import { summarizeWashoutRevenue, summarizeWashoutRevenueFromActivities } from "../shared/washoutRevenue";
 import { insertWashoutLocationSchema, updateSystemSettingsSchema } from "../shared/schema";
+import { normalizeMoneyToCents } from "../shared/money";
 import { formatApiErrorMessage } from "../client/src/lib/queryClient";
 import { formatCentsToDollars, formatCurrencyFromCents } from "../client/src/lib/utils";
 import { canViewOwnerBillingDryRunTool } from "../client/src/lib/adminBilling";
@@ -1239,6 +1240,15 @@ test("currency helper formats cents as dollars", () => {
   assert.equal(formatCurrencyFromCents(2500), "$25.00");
   assert.equal(formatCurrencyFromCents(0), "$0.00");
   assert.equal(formatCurrencyFromCents(35), "$0.35");
+});
+
+test("money normalization converts dollars and cents exactly once", () => {
+  assert.equal(normalizeMoneyToCents("0.01", "dollars"), 1);
+  assert.equal(normalizeMoneyToCents(0.01, "dollars"), 1);
+  assert.equal(normalizeMoneyToCents(5, "dollars"), 500);
+  assert.equal(normalizeMoneyToCents(1, "cents"), 1);
+  assert.equal(normalizeMoneyToCents("5.00", "dollars"), 500);
+  assert.equal(normalizeMoneyToCents(500, "cents"), 500);
 });
 
 test("billing ledger parses payment processing fee dollars into cents exactly once", () => {
@@ -7427,8 +7437,30 @@ test("owner billing dry-run preview returns exact payment and transfer payloads"
   assert.equal(preview.stripeTransferPreviews.length, 1);
   assert.equal(preview.stripeTransferPreviews[0].amount, 3);
   assert.equal(preview.stripeTransferPreviews[0].destination, "acct_1");
+  assert.equal(preview.stripeTransferPreviews[0].metadata.driverTipCents, "3");
   assert.equal(preview.validation.passed, true);
   assert.equal(preview.validation.blockedForReview, false);
+});
+
+test("owner billing dry-run preview normalizes decimal-dollar washout values to cents", () => {
+  const preview = buildOwnerWashoutBillingPreview({
+    ownerId: "owner_1",
+    billingBatchId: "preview_batch_decimal",
+    washouts: [
+      { id: "057351bf-c480-4b55-a6cb-635037655561", ownerId: "owner_1", driverId: "driver_1", driverStripeAccountId: "acct_1TgHLRLpQOyKFyJs", platformFeeCents: "5.00", driverTipCents: "0.01" },
+      { id: "5ca7dc66-1c34-4530-919e-c17ea43237f8", ownerId: "owner_1", driverId: "driver_1", driverStripeAccountId: "acct_1TgHLRLpQOyKFyJs", platformFeeCents: "5.00", driverTipCents: "0.01" },
+      { id: "77323db3-be40-4923-aa70-615d2f70b871", ownerId: "owner_1", driverId: "driver_1", driverStripeAccountId: "acct_1TgHLRLpQOyKFyJs", platformFeeCents: "5.00", driverTipCents: "0.01" },
+    ],
+    customerId: "cus_123",
+    paymentMethodId: "pm_123",
+  });
+
+  assert.equal(preview.ledger.platformFeeTotalCents, 1500);
+  assert.equal(preview.ledger.driverTipTotalCents, 3);
+  assert.equal(preview.ledger.ownerChargeAmountCents, 1503);
+  assert.equal(preview.ledger.platformRevenueCents, 1500);
+  assert.equal(preview.stripeTransferPreviews[0].amount, 3);
+  assert.equal(preview.stripeTransferPreviews[0].metadata.driverTipCents, "3");
 });
 
 test("owner billing dry-run preview marks oversized charges for review", () => {

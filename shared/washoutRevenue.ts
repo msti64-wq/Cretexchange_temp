@@ -1,4 +1,5 @@
 import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
+import { normalizeMoneyToCents } from "./money";
 
 export type WashoutPaymentRevenueRow = {
   status?: string | null;
@@ -50,7 +51,7 @@ export function summarizeWashoutRevenue(rows: WashoutPaymentRevenueRow[]): Washo
   return rows.reduce<WashoutRevenueSummary>((summary, row) => {
     const status = String(row.status || "").toLowerCase();
     const processingFeeCents = toCents(row.processingFee);
-    const tipTotalCents = Math.max(0, Number(row.tipAmountCents || 0));
+    const tipTotalCents = normalizeMoneyToCents(row.tipAmountCents, "auto");
 
     if (BILLED_STATUSES.has(status)) {
       summary.platformWashoutRevenueCents += processingFeeCents;
@@ -90,13 +91,13 @@ function resolveActivityPlatformFeeCents(
   defaultPlatformFeeCents: number,
 ): number {
   if (row.activityFeeCentsPlatform !== null && row.activityFeeCentsPlatform !== undefined) {
-    const rowFee = Number(row.activityFeeCentsPlatform);
-    return Number.isFinite(rowFee) ? Math.max(0, Math.round(rowFee)) : Math.max(0, Math.round(defaultPlatformFeeCents));
+    const rowFee = normalizeMoneyToCents(row.activityFeeCentsPlatform, "auto");
+    return Number.isFinite(rowFee) ? rowFee : Math.max(0, Math.round(defaultPlatformFeeCents));
   }
 
   if (row.platformFeeCents !== null && row.platformFeeCents !== undefined) {
-    const legacyFee = Number(row.platformFeeCents);
-    return Number.isFinite(legacyFee) ? Math.max(0, Math.round(legacyFee)) : Math.max(0, Math.round(defaultPlatformFeeCents));
+    const legacyFee = normalizeMoneyToCents(row.platformFeeCents, "auto");
+    return Number.isFinite(legacyFee) ? legacyFee : Math.max(0, Math.round(defaultPlatformFeeCents));
   }
 
   return Math.max(0, Math.round(defaultPlatformFeeCents));
@@ -110,7 +111,7 @@ export function summarizeWashoutRevenueFromActivities(
     const activityStatus = normalizeActivityStatus(row.activityStatus);
     const paymentStatus = normalizeActivityStatus(row.paymentStatus);
     const platformFeeCents = resolveActivityPlatformFeeCents(row, defaultPlatformFeeCents);
-    const driverTipCents = Math.max(0, Number(row.paymentTipAmountCents ?? row.locationDriverIncentiveTipCents ?? 0));
+    const driverTipCents = normalizeMoneyToCents(row.paymentTipAmountCents ?? row.locationDriverIncentiveTipCents ?? 0, "auto");
     const approved = isBillableWashoutForOwnerBilling({ status: activityStatus });
     const billed = ["paid", "posted", "completed", "succeeded"].includes(paymentStatus);
     const pending = !approved && (

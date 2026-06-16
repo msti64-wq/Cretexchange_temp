@@ -1,19 +1,8 @@
+import { normalizeMoneyToCents } from "./money";
+
 export const DEFAULT_ANNUAL_MEMBERSHIP_AMOUNT_CENTS = 1500;
 export const DEFAULT_MONTHLY_LOCATION_DUES_AMOUNT_CENTS = 100;
 export const DEFAULT_PER_WASHOUT_FEE_CENTS = 500;
-
-function toNonNegativeCents(value: string | number | null | undefined, fallbackCents: number): number {
-  if (value === null || value === undefined || value === "") {
-    return fallbackCents;
-  }
-
-  const parsed = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return fallbackCents;
-  }
-
-  return Math.round(parsed * 100);
-}
 
 export interface PlatformBillingSettingsInput {
   enableAnnualMembership?: boolean | null;
@@ -75,11 +64,19 @@ export interface OwnerBillingLedger {
 }
 
 export function toCents(value: string | number | null | undefined, fallbackCents: number): number {
-  return toNonNegativeCents(value, fallbackCents);
+  if (value === null || value === undefined || value === "") {
+    return fallbackCents;
+  }
+  const normalized = normalizeMoneyToCents(value, "dollars");
+  return Number.isFinite(normalized) && normalized >= 0 ? normalized : fallbackCents;
 }
 
 export function resolvePlatformFeeCents(value: string | number | null | undefined): number {
-  return toNonNegativeCents(value, DEFAULT_PER_WASHOUT_FEE_CENTS);
+  if (value === null || value === undefined || value === "") {
+    return DEFAULT_PER_WASHOUT_FEE_CENTS;
+  }
+  const parsed = normalizeMoneyToCents(value, "dollars");
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_PER_WASHOUT_FEE_CENTS;
 }
 
 export function resolveApprovedWashoutPlatformFeeCents(
@@ -97,7 +94,7 @@ export function resolveApprovedWashoutPlatformFeeCents(
     return DEFAULT_PER_WASHOUT_FEE_CENTS;
   }
 
-  const parsed = typeof storedFeeCents === "number" ? storedFeeCents : Number(storedFeeCents);
+  const parsed = normalizeMoneyToCents(storedFeeCents, "auto");
   if (!Number.isFinite(parsed) || parsed < 0) {
     return DEFAULT_PER_WASHOUT_FEE_CENTS;
   }

@@ -2,6 +2,7 @@ import type { Driver, Owner, Payment, WashoutActivity, WashoutLocation, User } f
 import { OWNER_REPORT_COLUMNS, DRIVER_REPORT_COLUMNS, type ReportColumn } from "../shared/reportColumns";
 import { resolveReportDateRange, type ResolvedReportDateRange } from "../shared/reportFilters";
 import { formatAddress } from "../shared/addressUtils";
+import { normalizeMoneyToCents } from "../shared/money";
 
 type ActivityRow = WashoutActivity & {
   location: WashoutLocation & { ownerId?: string };
@@ -253,8 +254,8 @@ function buildRowsFromActivities({
     const displayOwnerName = ownerEntry
       ? formatPersonName(ownerEntry.user)
       : "";
-    const driverTipCents = Number(payment?.tipAmountCents ?? activity.location?.driverIncentiveTip ?? 0);
-    const platformFeeCents = payment ? parseMoneyToCents(payment.processingFee) : Number(activity.feeCentsPlatform || 0);
+    const driverTipCents = normalizeMoneyToCents(payment?.tipAmountCents ?? activity.location?.driverIncentiveTip ?? 0, "auto");
+    const platformFeeCents = payment ? parseMoneyToCents(payment.processingFee) : normalizeMoneyToCents(activity.feeCentsPlatform || 0, "auto");
     const ownerChargeAmountCents = platformFeeCents + driverTipCents;
     const driverPaymentAmountCents = driverTipCents;
 

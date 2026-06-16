@@ -1,4 +1,5 @@
 import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
+import { normalizeMoneyToCents } from "./money";
 
 export type WashoutLedgerRepairRow = {
   activityId: string;
@@ -26,14 +27,14 @@ export type WashoutLedgerRepairPlan = {
 };
 
 function resolvePlatformFeeCents(row: WashoutLedgerRepairRow, defaultPlatformFeeCents: number): number {
-  const rowFee = Number(row.feeCentsPlatform ?? 0);
-  if (Number.isFinite(rowFee) && rowFee > 0) {
-    return Math.round(rowFee);
+  const rowFee = normalizeMoneyToCents(row.feeCentsPlatform, "auto");
+  if (rowFee > 0) {
+    return rowFee;
   }
 
-  const ownerFee = Number(row.platformFeeCents ?? 0);
-  if (Number.isFinite(ownerFee) && ownerFee > 0) {
-    return Math.round(ownerFee);
+  const ownerFee = normalizeMoneyToCents(row.platformFeeCents, "auto");
+  if (ownerFee > 0) {
+    return ownerFee;
   }
 
   return Math.max(0, Math.round(defaultPlatformFeeCents));
@@ -57,7 +58,7 @@ export function buildWashoutLedgerRepairPlan(
     }
 
     const platformFeeCents = resolvePlatformFeeCents(row, defaultPlatformFeeCents);
-    if (platformFeeCents > 0 && Number(row.feeCentsPlatform || 0) <= 0) {
+    if (platformFeeCents > 0 && normalizeMoneyToCents(row.feeCentsPlatform, "auto") <= 0) {
       platformFeeBackfills.push({
         activityId: row.activityId,
         platformFeeCents,

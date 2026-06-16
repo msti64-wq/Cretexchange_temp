@@ -1,12 +1,13 @@
 import { calculateOwnerWashoutBillingLedger, type OwnerBillingLedger, type OwnerBillingTransferEntry } from "../../shared/billingPolicy";
+import { normalizeMoneyToCents } from "../../shared/money";
 
 export type BillableWashout = {
   id: string;
   ownerId: string;
   driverId: string;
   driverStripeAccountId?: string | null;
-  platformFeeCents: number;
-  driverTipCents: number;
+  platformFeeCents: number | string | null;
+  driverTipCents: number | string | null;
   alreadyBilled?: boolean;
 };
 
@@ -40,7 +41,7 @@ export type ReportingLedgerPayment = {
   activityId: string;
   amount?: string | number | null;
   processingFee?: string | number | null;
-  tipAmountCents?: number | null;
+  tipAmountCents?: number | string | null;
   status?: string | null;
   batchId?: string | null;
   stripePaymentIntentId?: string | null;
@@ -114,16 +115,7 @@ const PAID_STATUSES = new Set(["paid", "posted", "completed", "succeeded"]);
 const NEEDS_REVIEW_STATUSES = new Set(["needs_review", "photo_review", "failed", "rejected", "disputed"]);
 
 function toCents(value: unknown): number {
-  if (value === null || value === undefined || value === "") {
-    return 0;
-  }
-
-  const parsed = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(parsed)) {
-    return 0;
-  }
-
-  const interpretedAsCents = Math.max(0, Math.round(parsed * 100));
+  const interpretedAsCents = normalizeMoneyToCents(value, "dollars");
   console.log("[MONETARY_RECONCILIATION]", {
     source: "payment.processingFee",
     rawValue: value,
@@ -149,8 +141,8 @@ function normalizeTransfer(transfer: OwnerBillingTransferEntry): DriverTransferL
     driverId: transfer.driverId,
     connectedAccountId: transfer.connectedAccountId || "",
     washoutActivityIds: transfer.washoutActivityIds || [],
-    tipAmountCents: Math.max(0, Math.round(Number(transfer.amountCents || 0))),
-    amountCents: Math.max(0, Math.round(Number(transfer.amountCents || 0))),
+    tipAmountCents: normalizeMoneyToCents(transfer.amountCents, "auto"),
+    amountCents: normalizeMoneyToCents(transfer.amountCents, "auto"),
     transferId: transfer.transferId || null,
     stripeChargeId: null,
   };
@@ -165,10 +157,10 @@ export function buildOwnerWashoutBillingLedgerFromBillableWashouts(params: {
 }): OwnerBillingLedger {
   const billable = params.washouts.filter((washout) => washout.ownerId === params.ownerId && !washout.alreadyBilled);
   const washoutActivityIds = billable.map((washout) => washout.id);
-  const platformFeeCentsByWashout = billable.map((washout) => Math.max(0, Math.round(Number(washout.platformFeeCents || 0))));
-  const driverTipCentsByWashout = billable.map((washout) => Math.max(0, Math.round(Number(washout.driverTipCents || 0))));
+  const platformFeeCentsByWashout = billable.map((washout) => normalizeMoneyToCents(washout.platformFeeCents, "auto"));
+  const driverTipCentsByWashout = billable.map((washout) => normalizeMoneyToCents(washout.driverTipCents, "auto"));
   const driverTipCentsByDriver = billable.reduce<Record<string, number>>((acc, washout) => {
-    acc[washout.driverId] = (acc[washout.driverId] || 0) + Math.max(0, Math.round(Number(washout.driverTipCents || 0)));
+    acc[washout.driverId] = (acc[washout.driverId] || 0) + normalizeMoneyToCents(washout.driverTipCents, "auto");
     return acc;
   }, {});
   const driverTransfers = Object.entries(driverTipCentsByDriver).map(([driverId, tipAmountCents]) => {
@@ -212,13 +204,13 @@ export function buildOwnerWashoutBillingLedgerFromPayments(params: {
   const billablePayments = params.payments.filter((payment) => payment.ownerId === params.ownerId);
   const washoutActivityIds = billablePayments.map((payment) => payment.activityId);
   const platformFeeCentsByWashout = billablePayments.map((payment) => toCents(payment.processingFee));
-  const driverTipCentsByWashout = billablePayments.map((payment) => Math.max(0, Math.round(Number(payment.tipAmountCents || 0))));
+  const driverTipCentsByWashout = billablePayments.map((payment) => normalizeMoneyToCents(payment.tipAmountCents, "auto"));
   const driverTipCentsByDriver = billablePayments.reduce<Record<string, number>>((acc, payment) => {
-    acc[payment.driverId] = (acc[payment.driverId] || 0) + Math.max(0, Math.round(Number(payment.tipAmountCents || 0)));
+    acc[payment.driverId] = (acc[payment.driverId] || 0) + normalizeMoneyToCents(payment.tipAmountCents, "auto");
     return acc;
   }, {});
   const driverTransfers = billablePayments.reduce<DriverTransferLedger[]>((acc, payment) => {
-    const tipAmountCents = Math.max(0, Math.round(Number(payment.tipAmountCents || 0)));
+    const tipAmountCents = normalizeMoneyToCents(payment.tipAmountCents, "auto");
     const existing = acc.find((entry) => entry.driverId === payment.driverId);
     if (existing) {
       existing.tipAmountCents += tipAmountCents;
@@ -372,7 +364,7 @@ export function getDriverTipSummaryFromPayments(
   payments: ReportingLedgerPayment[],
 ): ReportingDriverTipSummary {
   const matchingPayments = payments.filter((payment) => payment.driverId === driverId);
-  const driverTipTotalCents = matchingPayments.reduce((sum, payment) => sum + Math.max(0, Math.round(Number(payment.tipAmountCents || 0))), 0);
+  const driverTipTotalCents = matchingPayments.reduce((sum, payment) => sum + normalizeMoneyToCents(payment.tipAmountCents, "auto"), 0);
   const paidPayments = matchingPayments.filter((payment) => {
     const status = String(payment.status || "").toLowerCase();
     return Boolean(payment.stripeTransferId) || ["paid", "posted", "completed", "succeeded"].includes(status);
@@ -385,8 +377,8 @@ export function getDriverTipSummaryFromPayments(
   return {
     driverId,
     driverTipTotalCents,
-    driverTransferredCents: paidPayments.reduce((sum, payment) => sum + Math.max(0, Math.round(Number(payment.tipAmountCents || 0))), 0),
-    pendingTransferCents: pendingPayments.reduce((sum, payment) => sum + Math.max(0, Math.round(Number(payment.tipAmountCents || 0))), 0),
+    driverTransferredCents: paidPayments.reduce((sum, payment) => sum + normalizeMoneyToCents(payment.tipAmountCents, "auto"), 0),
+    pendingTransferCents: pendingPayments.reduce((sum, payment) => sum + normalizeMoneyToCents(payment.tipAmountCents, "auto"), 0),
     transferCount: paidPayments.length,
     pendingCount: pendingPayments.length,
     paidCount: paidPayments.length,
@@ -453,7 +445,7 @@ export function buildOwnerWashoutBillingPreview(params: {
       batchId: ledger.billingBatchId,
       driverId: transfer.driverId,
       washoutActivityIds: (transfer.washoutActivityIds || []).join(","),
-      driverTip: (transfer.amountCents / 100).toFixed(2),
+      driverTipCents: String(transfer.amountCents),
       type: "driver_washout_payout",
     },
   }));
@@ -470,7 +462,7 @@ export function buildOwnerWashoutBillingPreview(params: {
   });
   console.log("[STRIPE_PAYMENT_REQUEST_PREVIEW]", stripePaymentIntentPreview);
   for (const transferPreview of stripeTransferPreviews) {
-  console.log("[DRIVER_TIP_TRANSFER_PREVIEW]", transferPreview);
+    console.log("[DRIVER_TIP_TRANSFER_PREVIEW]", transferPreview);
   }
 
   return {

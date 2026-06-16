@@ -105,6 +105,7 @@ import { summarizeDatabaseError } from "./dbErrors";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
 import { resolvePlatformFeeCents, type OwnerBillingLedger } from "../shared/billingPolicy";
+import { normalizeMoneyToCents } from "../shared/money";
 import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import {
@@ -2881,8 +2882,8 @@ export class DatabaseStorage implements IStorage {
             ownerId: row.ownerId,
             driverId: row.driverId,
             driverStripeAccountId: null,
-            platformFeeCents: Math.max(0, Math.round(Number(row.activityFeeCentsPlatform ?? 0))),
-            driverTipCents: Math.max(0, Math.round(Number(row.locationDriverIncentiveTip || 0))),
+            platformFeeCents: normalizeMoneyToCents(row.activityFeeCentsPlatform ?? 0, "auto"),
+            driverTipCents: normalizeMoneyToCents(row.locationDriverIncentiveTip || 0, "auto"),
           })),
           immediateBilling: true,
         })
@@ -3059,8 +3060,8 @@ export class DatabaseStorage implements IStorage {
               ownerId: row.ownerId,
               driverId: row.driverId,
               driverStripeAccountId: null,
-              platformFeeCents: Math.max(0, Math.round(Number(row.activityFeeCentsPlatform ?? defaultPlatformFeeCents))),
-              driverTipCents: Math.max(0, Math.round(Number(row.locationDriverIncentiveTip || 0))),
+              platformFeeCents: normalizeMoneyToCents(row.activityFeeCentsPlatform ?? defaultPlatformFeeCents, "auto"),
+              driverTipCents: normalizeMoneyToCents(row.locationDriverIncentiveTip || 0, "auto"),
             })),
             immediateBilling: ownerSetting.billingCadence === "immediate",
             allowAdminOverride: true,
@@ -4661,8 +4662,8 @@ export class DatabaseStorage implements IStorage {
       const ownerUser = await this.getUser(owner.userId);
 
       // Calculate totals
-      const batchTotal = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee) + Number((payment.tipAmountCents || 0) / 100), 0);
-      const batchFees = pendingPayments.reduce((sum, payment) => sum + parseFloat(payment.processingFee), 0);
+      const batchTotal = pendingPayments.reduce((sum, payment) => sum + normalizeMoneyToCents(payment.processingFee, "dollars") + normalizeMoneyToCents(payment.tipAmountCents, "auto"), 0) / 100;
+      const batchFees = pendingPayments.reduce((sum, payment) => sum + normalizeMoneyToCents(payment.processingFee, "dollars"), 0) / 100;
 
       ownerBatches.push({
         ownerId,

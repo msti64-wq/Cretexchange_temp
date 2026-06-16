@@ -1,4 +1,5 @@
 import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
+import { normalizeMoneyToCents } from "./money";
 
 export type WashoutBillingVerificationRow = {
   activityId: string;
@@ -90,12 +91,12 @@ function resolvePlatformFeeCents(
   }
 
   if (stored > 0) {
-    return stored;
+    return normalizeMoneyToCents(stored, "auto");
   }
 
   const ownerOverride = toFiniteCents(row.ownerCustomPlatformFeeCents);
   if (ownerOverride !== null) {
-    return Math.max(0, ownerOverride);
+    return normalizeMoneyToCents(ownerOverride, "auto");
   }
 
   return Math.max(0, Math.round(defaultPlatformFeeCents));
@@ -135,7 +136,7 @@ export function buildWashoutBillingVerificationReport(
     const locationId = String(row.locationId);
     const locationName = String(row.locationName || "").trim() || locationId;
     const platformFeeCents = resolvePlatformFeeCents(row, defaultPlatformFeeCents);
-    const driverTipCents = Math.max(0, toFiniteCents(row.driverIncentiveTipCents) ?? 0);
+    const driverTipCents = normalizeMoneyToCents(row.driverIncentiveTipCents, "auto");
     const approved = isBillableWashoutForOwnerBilling({ status });
     const rejected = REJECTED_STATUSES.has(status);
     const declined = DECLINED_STATUSES.has(status);

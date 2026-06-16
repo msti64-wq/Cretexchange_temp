@@ -51,6 +51,7 @@ import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
 import { isAwaitingDriverStripePaymentStatus, getDriverStripeSetupMessage } from "../shared/driverPaymentStatus";
+import { normalizeMoneyToCents } from "../shared/money";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
@@ -2958,8 +2959,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           // Calculate totals for this batch
-          const platformFeeCentsPerWashout = ownerPayments.map((p) => Math.round(parseFloat(p.platformFee) * 100));
-          const driverTipCentsPerWashout = ownerPayments.map((p) => Math.round(Number((p.metadata as { driverTip?: string | number } | null)?.driverTip || 0) * 100));
+          const platformFeeCentsPerWashout = ownerPayments.map((p) => normalizeMoneyToCents(p.platformFee, "dollars"));
+          const driverTipCentsPerWashout = ownerPayments.map((p) => normalizeMoneyToCents((p.metadata as { driverTipCents?: string | number; driverTip?: string | number } | null)?.driverTipCents ?? (p.metadata as { driverTip?: string | number } | null)?.driverTip ?? 0, "auto"));
           const totalPlatformFeesCents = platformFeeCentsPerWashout.reduce((sum, feeCents) => sum + feeCents, 0);
           const totalDriverTipsCents = driverTipCentsPerWashout.reduce((sum, tipCents) => sum + tipCents, 0);
           const driverTipCentsByDriver = ownerPayments.reduce<Record<string, number>>((acc, payment, index) => {
@@ -5685,10 +5686,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           const driverAmount = Number(payment.amount);
-          const platformFee = Number(payment.processingFee);
-          const driverTip = Number((payment as any).tipAmountCents || 0) / 100;
-          const platformFeeCents = Math.round(platformFee * 100);
-          const driverTipCents = Math.round(driverTip * 100);
+          const platformFeeCents = normalizeMoneyToCents(payment.processingFee, "dollars");
+          const driverTipCents = normalizeMoneyToCents((payment as any).tipAmountCents ?? (payment as any).tipAmount ?? 0, "auto");
           const ownerFeeCents = calculateOwnerWashoutChargeCents(0, platformFeeCents, driverTipCents);
           const ownerFee = ownerFeeCents / 100;
           const ownerBillingLedger = calculateOwnerWashoutBillingLedger({
@@ -5751,8 +5750,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ownerId: owner.id,
               driverId: driver.id,
               driverAmount: driverAmount.toFixed(2),
-              platformFee: platformFee.toFixed(2),
-              driverTip: driverTip.toFixed(2),
+              platformFeeCents: String(platformFeeCents),
+              driverTipCents: String(driverTipCents),
               businessDate: payment.businessDate || '',
             },
             transfer_data: {
@@ -5800,7 +5799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             activityLocation: activityDetails.locationId ? await storage.getWashoutLocation(activityDetails.locationId) : null,
             ownerFee,
             driverAmount,
-            platformFee,
+            platformFee: platformFeeCents / 100,
             useCustomBillingModel: owner.useCustomBillingModel === true,
             activityDetails,
             businessDate: payment.businessDate || '',
@@ -11198,13 +11197,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? resolvePlatformFeeCents(owner.customPlatformFee)
               : undefined
           ),
-          driverTipCents: Math.max(0, Math.round(Number(washout.locationDriverIncentiveTip || 0))),
+          driverTipCents: normalizeMoneyToCents(washout.locationDriverIncentiveTip, "auto"),
         })),
         customerId: ownerStripeSetup.customerId,
         paymentMethodId: ownerStripeSetup.paymentMethodId,
         ownerUsername: ownerUser.username,
         ownerCompanyName: owner.companyName,
       });
+
+      for (const washout of selectedWashouts) {
+        const normalizedPlatformFeeCents = resolveApprovedWashoutPlatformFeeCents(
+          washout.activityFeeCentsPlatform,
+          owner.customPlatformFee !== null && owner.customPlatformFee !== undefined && owner.customPlatformFee !== ""
+            ? resolvePlatformFeeCents(owner.customPlatformFee)
+            : undefined
+        );
+        const normalizedDriverTipCents = normalizeMoneyToCents(washout.locationDriverIncentiveTip, "auto");
+        console.log("[OWNER_BILLING_DRY_RUN_WASHOUT]", {
+          ownerId,
+          washoutActivityId: washout.activityId,
+          rawPlatformFeeCentsPlatform: washout.activityFeeCentsPlatform,
+          rawDriverIncentiveTip: washout.locationDriverIncentiveTip,
+          rawOwnerPlatformFeeOverride: owner.customPlatformFee ?? null,
+          normalizedPlatformFeeCents,
+          normalizedDriverTipCents,
+        });
+      }
 
       res.json(preview);
     } catch (error: any) {
@@ -13801,7 +13819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: p.id,
           amount: p.amount,
           processingFee: p.processingFee,
-          driverTip: (Number(p.tipAmountCents || 0) / 100).toFixed(2),
+          driverTipCents: String(normalizeMoneyToCents(p.tipAmountCents, "auto")),
           driver: `${p.driver.user.firstName} ${p.driver.user.lastName}`,
           activity: {
             checkInTime: p.activity.checkInTime,

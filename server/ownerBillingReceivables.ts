@@ -1,4 +1,5 @@
 import { resolvePlatformFeeCents } from "../shared/billingPolicy";
+import { normalizeMoneyToCents } from "../shared/money";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
 import {
@@ -61,14 +62,6 @@ export type OwnerBillingReceivablesSummary = {
   rejectedWashoutCount: number;
   cancelledWashoutCount: number;
 };
-
-function parseMoneyToCents(value: unknown): number {
-  if (value === null || value === undefined || value === "") {
-    return 0;
-  }
-  const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-}
 
 export async function buildOwnerBillingReceivablesOverview(storageApi: any): Promise<{
   owners: OwnerBillingReceivablesOwnerSummary[];
@@ -189,8 +182,8 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
         const platformFeeTotalCents = batchMetadata.platformFeeTotalCents !== undefined && batchMetadata.platformFeeTotalCents !== null && batchMetadata.platformFeeTotalCents !== ""
           ? Number(batchMetadata.platformFeeTotalCents)
           : batchMetadata.platformFeeTotal !== undefined && batchMetadata.platformFeeTotal !== null && batchMetadata.platformFeeTotal !== ""
-            ? parseMoneyToCents(batchMetadata.platformFeeTotal)
-            : parseMoneyToCents(batch.totalAmount);
+            ? normalizeMoneyToCents(batchMetadata.platformFeeTotal, "dollars")
+            : normalizeMoneyToCents(batch.totalAmount, "dollars");
         return sum + platformFeeTotalCents;
       }, 0);
       const fallbackBilledWashoutCount = completedBatches.reduce((sum: number, batch: any) => {
@@ -215,11 +208,11 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
       const lastStripeChargeId = typeof latestBatchMetadata.stripeChargeId === "string"
         ? latestBatchMetadata.stripeChargeId
         : null;
-      const lastBillingAmountCents = latestBatch ? Math.round(Number(latestBatch.totalAmount || 0) * 100) : 0;
+      const lastBillingAmountCents = latestBatch ? normalizeMoneyToCents(latestBatch.totalAmount, "dollars") : 0;
       const lastBillingExpectedPlatformFeeCents = latestBatchMetadata.platformFeeTotalCents !== undefined && latestBatchMetadata.platformFeeTotalCents !== null && latestBatchMetadata.platformFeeTotalCents !== ""
         ? Number(latestBatchMetadata.platformFeeTotalCents)
         : latestBatchMetadata.platformFeeTotal !== undefined && latestBatchMetadata.platformFeeTotal !== null && latestBatchMetadata.platformFeeTotal !== ""
-          ? parseMoneyToCents(latestBatchMetadata.platformFeeTotal)
+          ? normalizeMoneyToCents(latestBatchMetadata.platformFeeTotal, "dollars")
           : receivables.unpaidReceivablesCents;
       const billingDeltaCents = lastBillingAmountCents - lastBillingExpectedPlatformFeeCents;
       const billingReconciliationStatus = latestBatch?.status === "completed"

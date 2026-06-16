@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import type { BillingBatch, Driver, Owner, Payment, User, WashoutActivity, WashoutLocation, WashoutPhoto } from "../shared/schema";
 import { formatAddress } from "../shared/addressUtils";
 import { resolveReportDateRange } from "../shared/reportFilters";
+import { normalizeMoneyToCents } from "../shared/money";
 import {
   type BillingAuditItem,
   type BillingAuditReportResponse,
@@ -218,7 +219,7 @@ export async function buildBillingAuditReport(
     const batch = payment.batchId ? batchById.get(payment.batchId) : undefined;
     const paymentStatus = normalizePaymentStatus(payment);
     const groupKey = batch?.id || buildLegacyBillingRunId(payment.ownerId);
-    const driverIncentiveTipCents = Number(payment.tipAmountCents || 0);
+    const driverIncentiveTipCents = normalizeMoneyToCents(payment.tipAmountCents, "auto");
     const platformFeeCents = toCents(payment.processingFee);
     const amountChargedCents = platformFeeCents + driverIncentiveTipCents;
     const paymentCreatedAtDate = new Date(payment.createdAt as unknown as string | number | Date);

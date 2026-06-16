@@ -1,3 +1,4 @@
+import { normalizeMoneyToCents } from "./money";
 import { resolveApprovedWashoutPlatformFeeCents } from "./billingPolicy";
 import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
 
@@ -59,7 +60,7 @@ export function summarizeOwnerBillingReceivables(
         ? ownerPlatformFeeCents
         : undefined
     );
-    const driverTipCents = toCents(row.locationDriverIncentiveTipCents);
+  const driverTipCents = normalizeMoneyToCents(row.locationDriverIncentiveTipCents, "auto");
 
     if (approved) {
       summary.approvedWashoutCount += 1;
