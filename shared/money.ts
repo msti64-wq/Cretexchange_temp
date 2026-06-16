@@ -35,3 +35,8 @@ export function normalizeMoneyToCents(value: unknown, sourceUnit: MoneySourceUni
       return cents();
   }
 }
+
+export function formatCentsToDollars(cents: number): string {
+  const normalized = Number.isFinite(cents) ? Math.round(cents) : 0;
+  return (normalized / 100).toFixed(2);
+}

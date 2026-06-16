@@ -20,6 +20,7 @@ type WashoutLocationLike = {
 import {
   getActiveBillingPolicyLabels,
   resolvePlatformFeeCents,
+  resolveConfiguredWashoutPlatformFeeCents,
   resolveApprovedWashoutPlatformFeeCents,
   calculateOwnerWashoutChargeCents,
   calculateDriverPayoutCents,
@@ -44,6 +45,7 @@ export {
   getActiveBillingPolicyLabels,
   resolveBillingPolicy,
   resolvePlatformFeeCents,
+  resolveConfiguredWashoutPlatformFeeCents,
   resolveApprovedWashoutPlatformFeeCents,
   calculateOwnerWashoutChargeCents,
   calculateDriverPayoutCents,

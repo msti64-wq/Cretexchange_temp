@@ -1251,6 +1251,13 @@ test("money normalization converts dollars and cents exactly once", () => {
   assert.equal(normalizeMoneyToCents(500, "cents"), 500);
 });
 
+test("driver incentive tip helper normalizes decimal values to cents", () => {
+  assert.equal(resolveLocationDriverIncentiveTipCents("0.01"), 1);
+  assert.equal(resolveLocationDriverIncentiveTipCents(0.01), 1);
+  assert.equal(resolveLocationDriverIncentiveTipCents("1"), 1);
+  assert.equal(resolveLocationDriverIncentiveTipCents(1), 1);
+});
+
 test("billing ledger parses payment processing fee dollars into cents exactly once", () => {
   const ledger = buildOwnerWashoutBillingLedgerFromPayments({
     ownerId: "owner_1",
@@ -1433,6 +1440,19 @@ test("owner billing receivables summary excludes declined and billed washouts", 
   assert.equal(summary.pendingWashoutCount, 1);
   assert.equal(summary.needsReviewWashoutCount, 1);
   assert.equal(summary.cancelledWashoutCount, 1);
+});
+
+test("owner billing receivables summary uses configured platform fee instead of legacy activity fee values", () => {
+  const summary = summarizeOwnerBillingReceivables(
+    [
+      { activityStatus: "verified", activityFeeCentsPlatform: 10000, locationDriverIncentiveTipCents: 0 },
+      { activityStatus: "verified", activityFeeCentsPlatform: 10000, locationDriverIncentiveTipCents: 0 },
+    ],
+    500,
+  );
+
+  assert.equal(summary.platformFeesOwedCents, 1000);
+  assert.equal(summary.platformFeesTotalCents, 1000);
 });
 
 test("owner billing receivables summary bills verified and completed washouts without approved status", () => {

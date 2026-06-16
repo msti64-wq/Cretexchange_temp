@@ -257,7 +257,9 @@ function buildRowsFromActivities({
     const driverTipCents = normalizeMoneyToCents(payment?.tipAmountCents ?? activity.location?.driverIncentiveTip ?? 0, "auto");
     const platformFeeCents = payment ? parseMoneyToCents(payment.processingFee) : normalizeMoneyToCents(activity.feeCentsPlatform || 0, "auto");
     const ownerChargeAmountCents = platformFeeCents + driverTipCents;
-    const driverPaymentAmountCents = driverTipCents;
+    const driverPaymentAmountCents = payment
+      ? parseMoneyToCents(payment.amount)
+      : parseMoneyToCents(activity.amount);
 
     const notes = [activity.notes, payment?.refundReason].filter(Boolean).join(" | ");
     const paymentStatus = normalizePaymentStatus(payment?.status, Boolean(payment));

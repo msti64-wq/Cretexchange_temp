@@ -39,7 +39,7 @@ import {
   resolveOwnerBillingPolicy,
   getActiveBillingPolicyLabels,
   resolvePlatformFeeCents,
-  resolveApprovedWashoutPlatformFeeCents,
+  resolveConfiguredWashoutPlatformFeeCents,
   calculateOwnerWashoutChargeCents,
   calculateDriverPayoutCents,
   calculateOwnerWashoutBillingLedger,
@@ -2683,47 +2683,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerUser = await storage.getUser(owner.userId);
       const driverUser = await storage.getUser(driver.userId);
 
-      const MIN_PLATFORM_WASHOUT_FEE = 0.0;
-
-      // Get platform fee - check for owner-specific override first, then use global fee
       const systemSettings = await storage.getSystemSettings();
-      let platformFee: number;
-      
-      // Check if this owner has a custom platform fee
-      const customFeeValue = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined
-        ? parseFloat(owner.customPlatformFee)
-        : NaN;
-      if (!isNaN(customFeeValue)) {
-        platformFee = Math.max(customFeeValue, MIN_PLATFORM_WASHOUT_FEE);
-        console.log('💰 Using custom platform fee for owner:', ownerUser?.username, '- $' + platformFee);
-      } else {
-        // Use global platform fee from settings
-        platformFee = Math.max(
-          parseFloat(systemSettings.platformWashoutFee || '5.00'),
-          MIN_PLATFORM_WASHOUT_FEE
-        );
-        console.log('💰 Using global platform fee: $' + platformFee);
-      }
-      
-      // Validate platform fee (safety check)
-      if (isNaN(platformFee) || platformFee < MIN_PLATFORM_WASHOUT_FEE) {
-        console.error('⚠️ Invalid platform fee detected:', platformFee);
-        platformFee = MIN_PLATFORM_WASHOUT_FEE; // Fallback to minimum platform fee
-        console.log('✅ Using fallback platform fee:', platformFee);
-      }
-      
+      const platformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
+        ownerCustomPlatformFee: owner.customPlatformFee,
+        systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
+        requireExplicit: true,
+      });
+      const platformFee = platformFeeCents / 100;
+
       // Payment structure: platform fee + optional owner-funded driver incentive tip
       // Driver receives the location rate; tip is tracked separately when present
       const locationRate = parseFloat(location.rate);
-      const driverTip = resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100;
+      const driverTipCents = resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip);
+      const driverTip = driverTipCents / 100;
       const PLATFORM_FEE = platformFee; // Configurable via admin settings (global or per-owner)
       const DRIVER_PAYMENT = locationRate; // Set by location owner
       const OWNER_CHARGE = PLATFORM_FEE + driverTip;
 
       // Convert to cents for Stripe
-      const driverPayoutCents = Math.round(driverTip * 100);
-      const platformFeeCents = Math.round(PLATFORM_FEE * 100);
-      const driverTipCents = Math.round(driverTip * 100);
+      const driverPayoutCents = driverTipCents;
       const ownerBillingLedger = calculateOwnerWashoutBillingLedger({
         ownerId: owner.id,
         billingBatchId: `immediate_${activityId}`,
@@ -2736,7 +2714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           [driver.id]: driverTipCents,
         },
         driverTipTotalCents: driverTipCents,
-        ownerChargeAmountCents: Math.round(OWNER_CHARGE * 100),
+        ownerChargeAmountCents: platformFeeCents + driverTipCents,
         platformRevenueCents: platformFeeCents,
         driverTransfers: [{
           driverId: driver.id,
@@ -5178,9 +5156,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const cardInfo = paymentMethod.type === 'card' && paymentMethod.card 
             ? `${paymentMethod.card.brand} ****${paymentMethod.card.last4}` 
             : 'Stripe Link';
-          const ownerFeeCents = Math.round(ownerFee * 100);
           const platformFeeCents = Math.round(platformFee * 100);
           const driverTipCents = Math.round(driverTip * 100);
+          const ownerFeeCents = platformFeeCents + driverTipCents;
           const ownerBillingLedger = calculateOwnerWashoutBillingLedger({
             ownerId: owner.id,
             billingBatchId: `immediate_${id}`,
@@ -11142,6 +11120,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!ownerUser) {
         return res.status(404).json({ message: "Owner user not found", reason: "owner_user_not_found" });
       }
+      const systemSettings = await storage.getSystemSettings();
+      const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
+        ownerCustomPlatformFee: owner.customPlatformFee,
+        systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
+        requireExplicit: true,
+      });
 
       type ApprovedWashoutPreviewRow = {
         activityId: string;
@@ -11191,12 +11175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerId: washout.ownerId,
           driverId: washout.driverId,
           driverStripeAccountId: driverAccounts.get(washout.driverId) || null,
-          platformFeeCents: resolveApprovedWashoutPlatformFeeCents(
-            washout.activityFeeCentsPlatform,
-            owner.customPlatformFee !== null && owner.customPlatformFee !== undefined && owner.customPlatformFee !== ""
-              ? resolvePlatformFeeCents(owner.customPlatformFee)
-              : undefined
-          ),
+          platformFeeCents: configuredPlatformFeeCents,
           driverTipCents: normalizeMoneyToCents(washout.locationDriverIncentiveTip, "auto"),
         })),
         customerId: ownerStripeSetup.customerId,
@@ -11206,20 +11185,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       for (const washout of selectedWashouts) {
-        const normalizedPlatformFeeCents = resolveApprovedWashoutPlatformFeeCents(
-          washout.activityFeeCentsPlatform,
-          owner.customPlatformFee !== null && owner.customPlatformFee !== undefined && owner.customPlatformFee !== ""
-            ? resolvePlatformFeeCents(owner.customPlatformFee)
-            : undefined
-        );
         const normalizedDriverTipCents = normalizeMoneyToCents(washout.locationDriverIncentiveTip, "auto");
-        console.log("[OWNER_BILLING_DRY_RUN_WASHOUT]", {
+        console.log("[WASHOUT_BILLING_INPUT]", {
           ownerId,
           washoutActivityId: washout.activityId,
-          rawPlatformFeeCentsPlatform: washout.activityFeeCentsPlatform,
-          rawDriverIncentiveTip: washout.locationDriverIncentiveTip,
+          rawPlatformFeeValue: washout.activityFeeCentsPlatform,
+          rawPlatformFeeField: "washout_activities.fee_cents_platform",
           rawOwnerPlatformFeeOverride: owner.customPlatformFee ?? null,
-          normalizedPlatformFeeCents,
+          rawSystemPlatformFee: systemSettings?.platformWashoutFee ?? null,
+          normalizedPlatformFeeCents: configuredPlatformFeeCents,
+          rawDriverTipValue: washout.locationDriverIncentiveTip,
+          rawDriverTipField: "washout_locations.driver_incentive_tip",
           normalizedDriverTipCents,
         });
       }

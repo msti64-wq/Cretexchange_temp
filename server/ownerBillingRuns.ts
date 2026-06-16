@@ -2,8 +2,7 @@ import { createHash } from "node:crypto";
 import type Stripe from "stripe";
 import {
   calculateOwnerWashoutBillingLedger,
-  resolveApprovedWashoutPlatformFeeCents,
-  resolvePlatformFeeCents,
+  resolveConfiguredWashoutPlatformFeeCents,
 } from "../shared/billingPolicy";
 import { normalizeMoneyToCents } from "../shared/money";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
@@ -32,6 +31,7 @@ export type OwnerBillingRunStatus = "pending" | "processing" | "paid" | "failed"
 export interface OwnerBillingRunStorage {
   getUser(userId: string): Promise<User | undefined>;
   getOwnerById(ownerId: string): Promise<Owner | undefined>;
+  getSystemSettings?: () => Promise<{ platformWashoutFee?: string | null } | null>;
   getOwnerBillingSettings(ownerId: string): Promise<{
     billingCadence: string;
     billingCutoffTime: string;
@@ -233,6 +233,9 @@ async function processSingleOwnerBillingRun(
   if (!ownerUser) {
     throw new Error(`Owner user ${owner.userId} not found`);
   }
+  const systemSettings = typeof storage.getSystemSettings === "function"
+    ? await storage.getSystemSettings()
+    : null;
   const stripeSetup = getOwnerStripeBillingSetup(owner, ownerUser);
   const ownerStripeCustomerId = stripeSetup.customerId;
   const ownerPaymentMethodId = stripeSetup.paymentMethodId;
@@ -261,14 +264,13 @@ async function processSingleOwnerBillingRun(
       };
     }
 
-    const ownerPlatformFeeOverrideCents = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined && owner.customPlatformFee !== ""
-      ? resolvePlatformFeeCents(owner.customPlatformFee)
-      : null;
+    const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
+      ownerCustomPlatformFee: owner.customPlatformFee,
+      systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
+      requireExplicit: true,
+    });
     const approvedWashouts = await storage.getApprovedWashoutsForOwnerBilling(ownerId, startDate, endDate);
-    const platformFeeCentsPerWashout = approvedWashouts.map((row) => resolveApprovedWashoutPlatformFeeCents(
-      row.activityFeeCentsPlatform,
-      ownerPlatformFeeOverrideCents
-    ));
+    const platformFeeCentsPerWashout = approvedWashouts.map(() => configuredPlatformFeeCents);
     const driverTipCentsPerWashout = approvedWashouts.map((row) => normalizeMoneyToCents(row.locationDriverIncentiveTip, "auto"));
     const platformFeeTotalCents = platformFeeCentsPerWashout.reduce((sum, feeCents) => sum + feeCents, 0);
     const driverTipTotalCents = driverTipCentsPerWashout.reduce((sum, tipCents) => sum + tipCents, 0);

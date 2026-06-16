@@ -1,3 +1,5 @@
+import { normalizeMoneyToCents } from "./money";
+
 export const DEFAULT_LOCATION_MONTHLY_FEE_CENTS = 100;
 export const DEFAULT_LOCATION_DRIVER_INCENTIVE_TIP_CENTS = 0;
 
@@ -14,10 +16,6 @@ export function resolveLocationDriverIncentiveTipCents(tipAmount: string | numbe
     return DEFAULT_LOCATION_DRIVER_INCENTIVE_TIP_CENTS;
   }
 
-  const parsed = typeof tipAmount === "number" ? tipAmount : Number(tipAmount);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return DEFAULT_LOCATION_DRIVER_INCENTIVE_TIP_CENTS;
-  }
-
-  return typeof tipAmount === "number" ? Math.round(parsed) : Math.round(parsed * 100);
+  const normalized = normalizeMoneyToCents(tipAmount, "auto");
+  return Number.isFinite(normalized) && normalized >= 0 ? normalized : DEFAULT_LOCATION_DRIVER_INCENTIVE_TIP_CENTS;
 }

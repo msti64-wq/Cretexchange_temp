@@ -79,6 +79,30 @@ export function resolvePlatformFeeCents(value: string | number | null | undefine
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_PER_WASHOUT_FEE_CENTS;
 }
 
+export function resolveConfiguredWashoutPlatformFeeCents(params: {
+  ownerCustomPlatformFee?: string | number | null;
+  systemPlatformWashoutFee?: string | number | null;
+  requireExplicit?: boolean;
+}): number {
+  const { ownerCustomPlatformFee, systemPlatformWashoutFee, requireExplicit = false } = params;
+  const source = ownerCustomPlatformFee !== null && ownerCustomPlatformFee !== undefined && ownerCustomPlatformFee !== ""
+    ? ownerCustomPlatformFee
+    : systemPlatformWashoutFee;
+
+  if (source === null || source === undefined || source === "") {
+    if (requireExplicit) {
+      throw new Error("Platform fee configuration is missing");
+    }
+    return DEFAULT_PER_WASHOUT_FEE_CENTS;
+  }
+
+  const parsed = normalizeMoneyToCents(source, "dollars");
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error("Invalid platform fee configuration");
+  }
+  return parsed;
+}
+
 export function resolveApprovedWashoutPlatformFeeCents(
   storedFeeCents: number | string | null | undefined,
   explicitOverrideCents?: number | string | null,

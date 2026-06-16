@@ -1,5 +1,4 @@
 import { normalizeMoneyToCents } from "./money";
-import { resolveApprovedWashoutPlatformFeeCents } from "./billingPolicy";
 import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
 
 export type OwnerBillingReceivableRow = {
@@ -54,13 +53,10 @@ export function summarizeOwnerBillingReceivables(
     const paymentStatus = normalizeStatus(row.paymentStatus);
     const approved = isBillableWashoutForOwnerBilling({ status: activityStatus });
     const billed = BILLED_PAYMENT_STATUSES.has(paymentStatus) || Boolean(String(row.paymentBatchId || "").trim());
-    const platformFeeCents = resolveApprovedWashoutPlatformFeeCents(
-      row.activityFeeCentsPlatform,
-      ownerPlatformFeeCents !== null && ownerPlatformFeeCents !== undefined && ownerPlatformFeeCents !== ""
-        ? ownerPlatformFeeCents
-        : undefined
-    );
-  const driverTipCents = normalizeMoneyToCents(row.locationDriverIncentiveTipCents, "auto");
+    const platformFeeCents = ownerPlatformFeeCents !== null && ownerPlatformFeeCents !== undefined && ownerPlatformFeeCents !== ""
+      ? normalizeMoneyToCents(ownerPlatformFeeCents, "auto")
+      : defaultPlatformFeeCents;
+    const driverTipCents = normalizeMoneyToCents(row.locationDriverIncentiveTipCents, "auto");
 
     if (approved) {
       summary.approvedWashoutCount += 1;

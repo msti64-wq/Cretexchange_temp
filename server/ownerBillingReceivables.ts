@@ -1,7 +1,7 @@
-import { resolvePlatformFeeCents } from "../shared/billingPolicy";
 import { normalizeMoneyToCents } from "../shared/money";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
+import { resolveConfiguredWashoutPlatformFeeCents } from "../shared/billingPolicy";
 import {
   buildOwnerWashoutBillingLedgerFromBillableWashouts,
   buildOwnerWashoutBillingLedgerFromPayments,
@@ -68,6 +68,9 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
   summary: OwnerBillingReceivablesSummary;
 }> {
   const billingSettings = await storageApi.getAllOwnersBillingSettings();
+  const systemSettings = typeof storageApi.getSystemSettings === "function"
+    ? await storageApi.getSystemSettings()
+    : null;
   const immediateOwners = billingSettings.filter((owner: { billingCadence?: string }) => owner.billingCadence === "immediate");
 
   const owners: OwnerBillingReceivablesOwnerSummary[] = await Promise.all(
@@ -86,9 +89,10 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
           approvedWashouts = [];
         }
       }
-      const ownerCustomPlatformFeeCents = owner?.customPlatformFee !== null && owner?.customPlatformFee !== undefined && owner?.customPlatformFee !== ""
-        ? resolvePlatformFeeCents(owner.customPlatformFee)
-        : null;
+      const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
+        ownerCustomPlatformFee: owner?.customPlatformFee,
+        systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
+      });
       let batches: any[] = [];
       try {
         batches = await storageApi.getBillingBatchesByOwner(ownerSetting.ownerId);
@@ -109,8 +113,8 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
               ownerId: row.ownerId,
               driverId: row.driverId,
               driverStripeAccountId: null,
-              platformFeeCents: ownerCustomPlatformFeeCents !== null ? ownerCustomPlatformFeeCents : resolvePlatformFeeCents(row.activityFeeCentsPlatform),
-              driverTipCents: Number(row.locationDriverIncentiveTip || 0),
+              platformFeeCents: configuredPlatformFeeCents,
+              driverTipCents: normalizeMoneyToCents(row.locationDriverIncentiveTip || 0, "auto"),
             })),
             allowAdminOverride: true,
           })

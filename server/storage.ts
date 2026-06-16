@@ -104,7 +104,7 @@ import { db } from "./db";
 import { summarizeDatabaseError } from "./dbErrors";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
-import { resolvePlatformFeeCents, type OwnerBillingLedger } from "../shared/billingPolicy";
+import { resolvePlatformFeeCents, resolveConfiguredWashoutPlatformFeeCents, type OwnerBillingLedger } from "../shared/billingPolicy";
 import { normalizeMoneyToCents } from "../shared/money";
 import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
@@ -3019,7 +3019,6 @@ export class DatabaseStorage implements IStorage {
     let totalWashouts = Number(stats.totalWashouts);
     let totalDrivers = Number(stats.totalDrivers);
     const systemSettings = await this.getSystemSettings();
-    const defaultPlatformFeeCents = resolvePlatformFeeCents(systemSettings?.platformWashoutFee);
     let platformWashoutRevenue: number | null = null;
     let platformWashoutRevenueCents: number | null = null;
     let platformWashoutPaidRevenue: number | null = null;
@@ -3049,6 +3048,10 @@ export class DatabaseStorage implements IStorage {
       for (const ownerSetting of ownersWithBillingSettings) {
         const owner = await this.getOwnerById(ownerSetting.ownerId);
         if (!owner) continue;
+        const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
+          ownerCustomPlatformFee: owner.customPlatformFee,
+          systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
+        });
 
         const approvedOwnerWashouts = await this.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId, startDate, new Date());
         if (approvedOwnerWashouts.length > 0) {
@@ -3060,7 +3063,7 @@ export class DatabaseStorage implements IStorage {
               ownerId: row.ownerId,
               driverId: row.driverId,
               driverStripeAccountId: null,
-              platformFeeCents: normalizeMoneyToCents(row.activityFeeCentsPlatform ?? defaultPlatformFeeCents, "auto"),
+              platformFeeCents: configuredPlatformFeeCents,
               driverTipCents: normalizeMoneyToCents(row.locationDriverIncentiveTip || 0, "auto"),
             })),
             immediateBilling: ownerSetting.billingCadence === "immediate",
