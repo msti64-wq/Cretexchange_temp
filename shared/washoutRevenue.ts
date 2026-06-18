@@ -1,5 +1,6 @@
 import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
 import { normalizeMoneyToCents } from "./money";
+import { resolveApprovedWashoutDriverTipCents } from "./locationBilling";
 
 export type WashoutPaymentRevenueRow = {
   status?: string | null;
@@ -12,7 +13,10 @@ export type WashoutActivityRevenueRow = {
   paymentStatus?: string | null;
   activityFeeCentsPlatform?: number | null;
   platformFeeCents?: number | null;
-  locationDriverIncentiveTipCents?: number | null;
+  activityAmount?: string | number | null;
+  activityDriverTipCents?: number | null;
+  locationDriverTipRate?: string | number | null;
+  paymentDriverTipCents?: number | null;
   paymentProcessingFee?: string | number | null;
   paymentTipAmountCents?: number | null;
 };
@@ -111,7 +115,9 @@ export function summarizeWashoutRevenueFromActivities(
     const activityStatus = normalizeActivityStatus(row.activityStatus);
     const paymentStatus = normalizeActivityStatus(row.paymentStatus);
     const platformFeeCents = resolveActivityPlatformFeeCents(row, defaultPlatformFeeCents);
-    const driverTipCents = normalizeMoneyToCents(row.paymentTipAmountCents ?? row.locationDriverIncentiveTipCents ?? 0, "auto");
+    const activityAmount = row.activityAmount ?? row.activityDriverTipCents ?? null;
+    const locationDriverTipRate = row.locationDriverTipRate ?? null;
+    const driverTipCents = resolveApprovedWashoutDriverTipCents(activityAmount, row.paymentDriverTipCents ?? row.paymentTipAmountCents ?? null, locationDriverTipRate);
     const approved = isBillableWashoutForOwnerBilling({ status: activityStatus });
     const billed = ["paid", "posted", "completed", "succeeded"].includes(paymentStatus);
     const pending = !approved && (

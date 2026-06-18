@@ -137,32 +137,32 @@ async function main() {
       WHERE "uploaded_at" IS NULL;
     `);
 
-    const driverTipColumnExists = await columnExists(client, "washout_locations", "driver_incentive_tip");
+    const driverTipColumnExists = await columnExists(client, "washout_locations", "rate");
     if (!driverTipColumnExists) {
       await client.query(`
         ALTER TABLE "washout_locations"
-          ADD COLUMN "driver_incentive_tip" integer NOT NULL DEFAULT 0;
+          ADD COLUMN "rate" integer NOT NULL DEFAULT 0;
       `);
     } else {
-      const driverTipType = await columnDataType(client, "washout_locations", "driver_incentive_tip");
+      const driverTipType = await columnDataType(client, "washout_locations", "rate");
       if (driverTipType && driverTipType !== "integer") {
         await client.query(`
           ALTER TABLE "washout_locations"
-            ALTER COLUMN "driver_incentive_tip" TYPE integer
-            USING COALESCE(ROUND("driver_incentive_tip" * 100), 0)::integer;
+            ALTER COLUMN "rate" TYPE integer
+            USING COALESCE(ROUND("rate" * 100), 0)::integer;
         `);
       }
 
       await client.query(`
         UPDATE "washout_locations"
-        SET "driver_incentive_tip" = COALESCE("driver_incentive_tip", 0)
-        WHERE "driver_incentive_tip" IS NULL;
+        SET "rate" = COALESCE("rate", 0)
+        WHERE "rate" IS NULL;
       `);
 
       await client.query(`
         ALTER TABLE "washout_locations"
-          ALTER COLUMN "driver_incentive_tip" SET DEFAULT 0,
-          ALTER COLUMN "driver_incentive_tip" SET NOT NULL;
+          ALTER COLUMN "rate" SET DEFAULT 0,
+          ALTER COLUMN "rate" SET NOT NULL;
       `);
     }
 
@@ -265,7 +265,7 @@ async function main() {
       tables: ["washout_photos", "lottery_drawings", "lottery_notifications"],
       columns: [
         ...columnsToEnsure.map(([column]) => column),
-        "driver_incentive_tip",
+        "rate",
         "winner_notification_count",
         "winner_notifications_sent_at",
         "participant_notification_count",

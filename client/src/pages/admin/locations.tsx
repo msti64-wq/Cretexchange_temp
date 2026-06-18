@@ -19,7 +19,7 @@ import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { formatAddress } from "@shared/addressUtils";
-import { resolveLocationDriverIncentiveTipCents } from "@shared/locationBilling";
+import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { useAuth } from "@/hooks/useAuth";
 
 const addLocationSchema = z.object({
@@ -30,6 +30,7 @@ const addLocationSchema = z.object({
   state: z.string().min(2, "State is required").max(2, "Use 2-letter state code"),
   zip: z.string().min(5, "ZIP code is required"),
   rate: z.string().min(1, "Rate is required"),
+  driverTipRate: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -42,6 +43,9 @@ export default function AdminLocations() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterOwnerStatus, setFilterOwnerStatus] = useState("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditTipDialog, setShowEditTipDialog] = useState(false);
+  const [locationToEditTip, setLocationToEditTip] = useState<any | null>(null);
+  const [editTipValue, setEditTipValue] = useState("0.00");
 
   const { data: locations, isLoading, error } = useQuery<any[]>({
     queryKey: ['/api/admin/locations'],
@@ -77,6 +81,7 @@ export default function AdminLocations() {
       state: "",
       zip: "",
       rate: "0.50",
+      driverTipRate: "0.00",
       description: "",
     },
   });
@@ -119,6 +124,32 @@ export default function AdminLocations() {
     onError: (error: any) => {
       toast({
         title: "Failed to Create Location",
+        description: error.message || "Something went wrong.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateDriverTipMutation = useMutation({
+    mutationFn: async ({ locationId, driverTipRate }: { locationId: string; driverTipRate: string }) => {
+      const response = await apiRequest("POST", `/api/admin/locations/${locationId}/driver-tip`, {
+        driverTipCents: Math.round(Number(driverTipRate || "0") * 100),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Driver Tip Updated",
+        description: "The location driver tip has been updated successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/locations'] });
+      setShowEditTipDialog(false);
+      setLocationToEditTip(null);
+      setEditTipValue("0.00");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
         description: error.message || "Something went wrong.",
         variant: "destructive",
       });
@@ -365,31 +396,61 @@ export default function AdminLocations() {
                       </div>
                       <div className="text-xs text-muted-foreground mb-1">driver payout per washout</div>
                       <div className="text-xs text-muted-foreground mb-3">
-                        Driver tip: {formatCurrency(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100)}
+                        Driver tip: {formatCurrency(resolveLocationDriverTipRateCents(location.rate) / 100)}
                       </div>
 
-                      <Button
-                        size="sm"
-                        variant={location.isVisible ? "outline" : "default"}
-                        onClick={() => toggleVisibilityMutation.mutate({
-                          locationId: location.id,
-                          isVisible: !location.isVisible
-                        })}
-                        disabled={toggleVisibilityMutation.isPending}
-                        data-testid={`button-toggle-visibility-${index}`}
-                      >
-                        {location.isVisible ? (
-                          <>
-                            <EyeOff className="w-4 h-4 mr-1" />
-                            Hide
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="w-4 h-4 mr-1" />
-                            Show
-                          </>
-                        )}
-                      </Button>
+                      <div className="space-y-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => updateDriverTipMutation.mutate({
+                            locationId: location.id,
+                            driverTipRate: "0.01",
+                          })}
+                          disabled={updateDriverTipMutation.isPending}
+                          data-testid={`button-set-driver-tip-one-cent-${index}`}
+                        >
+                          Set $0.01
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setLocationToEditTip(location);
+                            setEditTipValue(
+                              (resolveLocationDriverTipRateCents(location.rate) / 100).toFixed(2)
+                            );
+                            setShowEditTipDialog(true);
+                          }}
+                          data-testid={`button-edit-driver-tip-${index}`}
+                        >
+                          Edit Driver Tip
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant={location.isVisible ? "outline" : "default"}
+                          onClick={() => toggleVisibilityMutation.mutate({
+                            locationId: location.id,
+                            isVisible: !location.isVisible
+                          })}
+                          disabled={toggleVisibilityMutation.isPending}
+                          data-testid={`button-toggle-visibility-${index}`}
+                        >
+                          {location.isVisible ? (
+                            <>
+                              <EyeOff className="w-4 h-4 mr-1" />
+                              Hide
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-4 h-4 mr-1" />
+                              Show
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -548,6 +609,23 @@ export default function AdminLocations() {
 
               <FormField
                 control={form.control}
+                name="driverTipRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Driver Tip Per Washout</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0" placeholder="0.01" {...field} />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Stored in `washout_locations.rate` as dollars and converted to cents during billing.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="description"
                 render={({ field }) => (
                   <FormItem>
@@ -577,6 +655,73 @@ export default function AdminLocations() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showEditTipDialog}
+        onOpenChange={(open) => {
+          setShowEditTipDialog(open);
+          if (!open) {
+            setLocationToEditTip(null);
+            setEditTipValue("0.00");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Driver Tip Per Washout</DialogTitle>
+            <DialogDescription>
+              Update the stored `washout_locations.rate` value for this location.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="text-sm font-medium">{locationToEditTip?.name || "Selected location"}</div>
+              <div className="text-xs text-muted-foreground">
+                Current value: {locationToEditTip ? formatCurrency(resolveLocationDriverTipRateCents(locationToEditTip.driverTipRate) / 100) : "$0.00"}
+              </div>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={editTipValue}
+                onChange={(e) => setEditTipValue(e.target.value)}
+                placeholder="0.01"
+                data-testid="input-admin-edit-driver-tip"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter dollars; billing converts this stored rate to cents when calculating driver tips.
+              </p>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowEditTipDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (!locationToEditTip) return;
+                  updateDriverTipMutation.mutate({
+                    locationId: locationToEditTip.id,
+                    driverTipRate: editTipValue,
+                  });
+                }}
+                disabled={!locationToEditTip || updateDriverTipMutation.isPending}
+              >
+                {updateDriverTipMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Driver Tip"
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

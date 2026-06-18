@@ -60,7 +60,7 @@ Important fields and their current meaning:
 
 - `owners.billingCadence`: `immediate`, `daily`, `weekly`, or `monthly`
 - `owners.stripeCustomerId` / `owners.stripePaymentMethodId`: owner billing setup
-- `washout_locations.driverIncentiveTip`: per-location driver tip, stored as integer cents
+- `washout_locations.rate`: per-location driver tip fallback, stored as dollars
 - `washout_activities.feeCentsPlatform`: platform fee receivable for a washout, stored as cents
 - `washout_activities.verifiedBy` / `verifiedAt`: who approved the washout and when
 - `billing_batches`: the owner billing batch record
@@ -98,7 +98,7 @@ The current billing model separates three things:
 
 2. Driver incentive tips
    - Separate from platform revenue.
-   - Stored per location in `washout_locations.driver_incentive_tip`.
+   - Stored per location in `washout_locations.rate`.
    - They should not be counted as platform revenue.
 
 3. Billing state
@@ -348,4 +348,3 @@ Useful scripts from `package.json`:
    - Check the route logs for query failures.
    - Verify the relevant query uses the shared summary helper.
    - Check whether the date window matches the data you expect.
-

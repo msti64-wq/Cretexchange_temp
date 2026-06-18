@@ -7,8 +7,23 @@ export type BillableWashout = {
   driverId: string;
   driverStripeAccountId?: string | null;
   platformFeeCents: number | string | null;
-  driverTipCents: number | string | null;
+  activityAmount?: number | string | null;
+  activityDriverTipCents?: number | string | null;
+  locationDriverTipRate?: number | string | null;
+  paymentTipAmountCents?: number | string | null;
+  driverTipCents?: number | string | null;
+  driverTipOverrideCents?: number | string | null;
   alreadyBilled?: boolean;
+};
+
+export type ResolvedDriverTipForWashout = {
+  washoutActivityId: string;
+  ownerId: string;
+  locationId?: string | null;
+  driverId: string;
+  driverStripeAccountId: string | null;
+  driverTipCents: number;
+  source: "washout_activities.amount" | "washout_locations.rate" | "request.forceDriverTipCents";
 };
 
 export type DriverTransferLedger = {
@@ -84,6 +99,7 @@ export type OwnerWashoutBillingPreview = {
     reason: string | null;
   };
   ledger: Pick<OwnerBillingLedger,
+    "washoutActivityIds" |
     "approvedWashoutCount" |
     "platformFeeTotalCents" |
     "driverTipTotalCents" |
@@ -148,6 +164,41 @@ function normalizeTransfer(transfer: OwnerBillingTransferEntry): DriverTransferL
   };
 }
 
+export function resolveDriverTipForWashout(washout: BillableWashout): ResolvedDriverTipForWashout {
+  const hasOverride = washout.driverTipOverrideCents !== null && washout.driverTipOverrideCents !== undefined && washout.driverTipOverrideCents !== "";
+  const hasActivityAmount = washout.activityAmount !== null && washout.activityAmount !== undefined && washout.activityAmount !== "";
+  const rawDriverTipValue = hasOverride ? washout.driverTipOverrideCents : hasActivityAmount ? washout.activityAmount : washout.locationDriverTipRate;
+  const rawDriverTipField = hasOverride
+    ? "request.forceDriverTipCents"
+    : hasActivityAmount
+      ? "washout_activities.amount"
+      : "washout_locations.rate";
+  const driverTipCents = normalizeMoneyToCents(rawDriverTipValue, hasOverride ? "cents" : "dollars");
+  console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
+    washoutActivityId: washout.id,
+    ownerId: washout.ownerId,
+    driverId: washout.driverId,
+    rawDriverTipField,
+    rawDriverTipValue: rawDriverTipValue ?? null,
+    rawLocationDriverTipRate: washout.locationDriverTipRate ?? null,
+    normalizedDriverTipCents: driverTipCents,
+    normalizedLocationDriverTipCents: normalizeMoneyToCents(washout.locationDriverTipRate, "dollars"),
+  });
+  return {
+    washoutActivityId: washout.id,
+    ownerId: washout.ownerId,
+    locationId: null,
+    driverId: washout.driverId,
+    driverStripeAccountId: washout.driverStripeAccountId || null,
+    driverTipCents,
+    source: rawDriverTipField,
+  };
+}
+
+function resolveBillableWashoutDriverTipCents(washout: BillableWashout): number {
+  return resolveDriverTipForWashout(washout).driverTipCents;
+}
+
 export function buildOwnerWashoutBillingLedgerFromBillableWashouts(params: {
   ownerId: string;
   billingBatchId: string;
@@ -158,9 +209,9 @@ export function buildOwnerWashoutBillingLedgerFromBillableWashouts(params: {
   const billable = params.washouts.filter((washout) => washout.ownerId === params.ownerId && !washout.alreadyBilled);
   const washoutActivityIds = billable.map((washout) => washout.id);
   const platformFeeCentsByWashout = billable.map((washout) => normalizeMoneyToCents(washout.platformFeeCents, "auto"));
-  const driverTipCentsByWashout = billable.map((washout) => normalizeMoneyToCents(washout.driverTipCents, "auto"));
+  const driverTipCentsByWashout = billable.map((washout) => resolveBillableWashoutDriverTipCents(washout));
   const driverTipCentsByDriver = billable.reduce<Record<string, number>>((acc, washout) => {
-    acc[washout.driverId] = (acc[washout.driverId] || 0) + normalizeMoneyToCents(washout.driverTipCents, "auto");
+    acc[washout.driverId] = (acc[washout.driverId] || 0) + resolveBillableWashoutDriverTipCents(washout);
     return acc;
   }, {});
   const driverTransfers = Object.entries(driverTipCentsByDriver).map(([driverId, tipAmountCents]) => {
@@ -453,6 +504,7 @@ export function buildOwnerWashoutBillingPreview(params: {
   console.log("[OWNER_BILLING_DRY_RUN]", {
     ownerId: params.ownerId,
     billingBatchId: ledger.billingBatchId,
+    washoutActivityIds: ledger.washoutActivityIds,
     approvedWashoutCount: ledger.approvedWashoutCount,
     platformFeeTotalCents: ledger.platformFeeTotalCents,
     driverTipTotalCents: ledger.driverTipTotalCents,
@@ -477,6 +529,7 @@ export function buildOwnerWashoutBillingPreview(params: {
         : null,
     },
     ledger: {
+      washoutActivityIds: ledger.washoutActivityIds,
       approvedWashoutCount: ledger.approvedWashoutCount,
       platformFeeTotalCents: ledger.platformFeeTotalCents,
       driverTipTotalCents: ledger.driverTipTotalCents,

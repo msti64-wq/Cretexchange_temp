@@ -23,7 +23,7 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { useAuth } from "@/hooks/useAuth";
 import { resolveOwnerMembershipState } from "@shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "@shared/ownerLocationAccess";
-import { resolveLocationDriverIncentiveTipCents } from "@shared/locationBilling";
+import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/lib/i18n";
 
@@ -53,7 +53,7 @@ export default function OwnerLocations() {
     latitude: "",
     longitude: "",
     rate: "5.00",
-    driverIncentiveTip: "0.00",
+    driverTipRate: "0.00",
     operatingHours: "",
     amenities: "",
   });
@@ -65,7 +65,7 @@ export default function OwnerLocations() {
     state: "",
     zip: "",
     rate: "5.00",
-    driverIncentiveTip: "0.00",
+    driverTipRate: "0.00",
     operatingHours: "",
     amenities: "",
     description: "",
@@ -172,7 +172,7 @@ export default function OwnerLocations() {
         latitude: "",
         longitude: "",
         rate: "5.00",
-        driverIncentiveTip: "0.00",
+        driverTipRate: "0.00",
         operatingHours: "",
         amenities: "",
       });
@@ -325,7 +325,7 @@ export default function OwnerLocations() {
     addLocationMutation.mutate({
       ...formData,
       rate: parseFloat(formData.rate),
-      driverIncentiveTip: parseFloat(formData.driverIncentiveTip || "0"),
+      driverTipRate: parseFloat(formData.driverTipRate || "0"),
       amenities: amenitiesArray,
     });
   };
@@ -340,7 +340,7 @@ export default function OwnerLocations() {
       state: location.state || "",
       zip: location.zip || "",
       rate: location.rate?.toString() || "5.00",
-      driverIncentiveTip: (resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100).toFixed(2),
+      driverTipRate: (resolveLocationDriverTipRateCents(location.rate) / 100).toFixed(2),
       operatingHours: location.operatingHours || "",
       amenities: location.amenities?.join(", ") || "",
       description: location.description || "",
@@ -390,7 +390,7 @@ export default function OwnerLocations() {
       locationData: {
         ...editFormData,
         rate: parseFloat(editFormData.rate),
-        driverIncentiveTip: parseFloat(editFormData.driverIncentiveTip || "0"),
+        driverTipRate: parseFloat(editFormData.driverTipRate || "0"),
         amenities: amenitiesArray,
       }
     });
@@ -601,18 +601,18 @@ export default function OwnerLocations() {
                 </div>
 
                 <div>
-                  <Label htmlFor="driverIncentiveTip">{t("owner.locations.driverTip")}</Label>
+                  <Label htmlFor="driverTipRate">Driver Tip Per Washout</Label>
                   <Input
-                    id="driverIncentiveTip"
+                    id="driverTipRate"
                     type="number"
                     step="0.01"
                     min="0"
-                    value={formData.driverIncentiveTip}
-                    onChange={(e) => setFormData({...formData, driverIncentiveTip: e.target.value})}
+                    value={formData.driverTipRate}
+                    onChange={(e) => setFormData({...formData, driverTipRate: e.target.value})}
                     data-testid="input-driver-incentive-tip"
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {t("owner.locations.driverTipHelp")}
+                    Stored in `washout_locations.rate` as dollars and converted to cents during billing.
                   </p>
                 </div>
 
@@ -734,18 +734,18 @@ export default function OwnerLocations() {
                 </div>
 
                 <div>
-                  <Label htmlFor="edit-driverIncentiveTip">{t("owner.locations.driverTip")}</Label>
+                  <Label htmlFor="edit-driverTipRate">Driver Tip Per Washout</Label>
                   <Input
-                    id="edit-driverIncentiveTip"
+                    id="edit-driverTipRate"
                     type="number"
                     step="0.01"
                     min="0"
-                    value={editFormData.driverIncentiveTip}
-                    onChange={(e) => setEditFormData({...editFormData, driverIncentiveTip: e.target.value})}
+                    value={editFormData.driverTipRate}
+                    onChange={(e) => setEditFormData({...editFormData, driverTipRate: e.target.value})}
                     data-testid="input-edit-driver-incentive-tip"
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {t("owner.locations.driverTipHelp")}
+                    Stored in `washout_locations.rate` as dollars and converted to cents during billing.
                   </p>
                 </div>
 
@@ -1065,7 +1065,7 @@ export default function OwnerLocations() {
                             </div>
                             <div className="text-xs text-muted-foreground">{t("owner.locations.driverPayoutClickEdit")}</div>
                             <div className="text-xs text-muted-foreground">
-                              {t("driver.locations.driverTip", { amount: formatCentsToDollars(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip)) })}
+                              {t("driver.locations.driverTip", { amount: formatCentsToDollars(resolveLocationDriverTipRateCents(location.rate)) })}
                             </div>
                           </div>
                         )}

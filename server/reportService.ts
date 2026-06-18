@@ -3,6 +3,7 @@ import { OWNER_REPORT_COLUMNS, DRIVER_REPORT_COLUMNS, type ReportColumn } from "
 import { resolveReportDateRange, type ResolvedReportDateRange } from "../shared/reportFilters";
 import { formatAddress } from "../shared/addressUtils";
 import { normalizeMoneyToCents } from "../shared/money";
+import { resolveApprovedWashoutDriverTipCents } from "../shared/locationBilling";
 
 type ActivityRow = WashoutActivity & {
   location: WashoutLocation & { ownerId?: string };
@@ -45,7 +46,7 @@ export interface ReportRow {
   paymentDate: string;
   paymentId: string;
   ticketNumber: string;
-  driverIncentiveTip: string;
+  driverTipRate: string;
   tipAmount: string;
   driverPaymentAmount: string;
   notes: string;
@@ -254,7 +255,7 @@ function buildRowsFromActivities({
     const displayOwnerName = ownerEntry
       ? formatPersonName(ownerEntry.user)
       : "";
-    const driverTipCents = normalizeMoneyToCents(payment?.tipAmountCents ?? activity.location?.driverIncentiveTip ?? 0, "auto");
+    const driverTipCents = resolveApprovedWashoutDriverTipCents(activity.amount, null, activity.location?.rate ?? 0);
     const platformFeeCents = payment ? parseMoneyToCents(payment.processingFee) : normalizeMoneyToCents(activity.feeCentsPlatform || 0, "auto");
     const ownerChargeAmountCents = platformFeeCents + driverTipCents;
     const driverPaymentAmountCents = payment
@@ -293,7 +294,7 @@ function buildRowsFromActivities({
       paymentDate: formatDateTime(payment?.paidAt || payment?.createdAt),
       paymentId: payment?.id || "",
       ticketNumber,
-      driverIncentiveTip: formatMoneyFromCents(driverTipCents),
+      driverTipRate: formatMoneyFromCents(driverTipCents),
       tipAmount: formatMoneyFromCents(driverTipCents),
       driverPaymentAmount: formatMoneyFromCents(driverPaymentAmountCents),
       notes,

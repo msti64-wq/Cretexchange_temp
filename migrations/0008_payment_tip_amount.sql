@@ -1,2 +1,2 @@
 -- Legacy payment-tip migration retired.
--- Driver incentive tips are now sourced from washout_locations.driver_incentive_tip.
+-- Driver incentive tips are now sourced from washout_locations.rate.

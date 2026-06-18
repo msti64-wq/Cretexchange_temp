@@ -25,7 +25,7 @@ export interface ReportRow {
   paymentDate: string;
   paymentId: string;
   ticketNumber: string;
-  driverIncentiveTip: string;
+  driverTipRate: string;
   tipAmount: string;
   driverPaymentAmount: string;
   notes: string;

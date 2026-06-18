@@ -163,6 +163,27 @@ interface DryRunOwnerBillingResult {
     metadata: Record<string, string>;
   }>;
   validation: DryRunValidation;
+  debugTipSources?: Array<{
+    washoutActivityId: string;
+    locationId: string;
+    locationName?: string | null;
+    driverId: string;
+    ownerId: string;
+    ownerPostedTipCents?: number;
+    billingReadTipCents?: number;
+    paymentWashoutServiceFee: number | string | null;
+    activityDriverTipCents?: number | null;
+    paymentDriverTipCents?: number | null;
+    locationDriverTipRate: number | null;
+    resolvedDriverTipCents: number;
+    sourceUsed: string;
+    driverProfileComplete?: boolean;
+    driverStripeAccountId?: string | null;
+    stripeDetailsSubmitted?: boolean | null;
+    stripePayoutsEnabled?: boolean | null;
+    driverPayoutReady?: boolean;
+    tipStatus?: string;
+  }>;
 }
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -761,6 +782,99 @@ export default function AdminBillingSettings() {
                       {JSON.stringify(previewResult.ledger, null, 2)}
                     </pre>
                   </div>
+
+                  {previewResult && (
+                    <details className="rounded-lg border bg-background p-4" open>
+                      <summary className="cursor-pointer font-medium">Tip Source Debug</summary>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Read-only diagnostics showing which driver tip source was resolved for each washout.
+                      </p>
+                      {!Array.isArray(previewResult.debugTipSources) ? (
+                        <p className="mt-4 text-sm text-muted-foreground">
+                          debugTipSources was not present in the preview response.
+                        </p>
+                      ) : previewResult.debugTipSources.length === 0 ? (
+                        <p className="mt-4 text-sm text-muted-foreground">No tip source rows returned for this preview.</p>
+                      ) : (
+                        <div className="mt-4 overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                            <TableRow>
+                              <TableHead>Washout</TableHead>
+                              <TableHead>Location</TableHead>
+                              <TableHead>Location Name</TableHead>
+                              <TableHead>Driver</TableHead>
+                              <TableHead>Owner</TableHead>
+                              <TableHead>Location Tip</TableHead>
+                              <TableHead>Owner Posted</TableHead>
+                              <TableHead>Activity Tip</TableHead>
+                              <TableHead>Payment Fee</TableHead>
+                              <TableHead>Payment Tip Cents</TableHead>
+                              <TableHead>Billing Read</TableHead>
+                              <TableHead>Resolved Cents</TableHead>
+                              <TableHead>Resolved Source</TableHead>
+                              <TableHead>Driver Ready</TableHead>
+                              <TableHead>Tip Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {previewResult.debugTipSources.map((row) => (
+                                <TableRow key={row.washoutActivityId}>
+                                  <TableCell className="font-mono text-xs">{row.washoutActivityId}</TableCell>
+                                  <TableCell className="font-mono text-xs">{row.locationId}</TableCell>
+                                  <TableCell className="text-xs">{row.locationName || "Unknown"}</TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {row.driverId}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {row.ownerId}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {row.locationDriverTipRate === null || row.locationDriverTipRate === undefined
+                                      ? "None"
+                                      : row.locationDriverTipRate}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {row.ownerPostedTipCents === null || row.ownerPostedTipCents === undefined
+                                      ? "None"
+                                      : row.ownerPostedTipCents}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {row.activityDriverTipCents === null || row.activityDriverTipCents === undefined
+                                      ? "None"
+                                      : row.activityDriverTipCents}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {row.paymentWashoutServiceFee === null || row.paymentWashoutServiceFee === undefined
+                                      ? "None"
+                                      : String(row.paymentWashoutServiceFee)}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {row.paymentDriverTipCents === null || row.paymentDriverTipCents === undefined
+                                      ? "None"
+                                      : row.paymentDriverTipCents}
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs">
+                                    {row.billingReadTipCents === null || row.billingReadTipCents === undefined
+                                      ? "None"
+                                      : row.billingReadTipCents}
+                                  </TableCell>
+                                  <TableCell className="font-medium">{row.resolvedDriverTipCents}</TableCell>
+                                  <TableCell className="text-xs">{row.sourceUsed || "unknown"}</TableCell>
+                                  <TableCell className="text-xs">
+                                    {row.driverPayoutReady ? "Yes" : "No"}
+                                  </TableCell>
+                                  <TableCell className="text-xs">
+                                    {row.tipStatus || "unknown"}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </details>
+                  )}
                 </div>
               )}
             </CardContent>

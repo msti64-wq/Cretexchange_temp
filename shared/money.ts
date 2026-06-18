@@ -36,6 +36,10 @@ export function normalizeMoneyToCents(value: unknown, sourceUnit: MoneySourceUni
   }
 }
 
+export function normalizeDollarInputToCents(value: unknown): number {
+  return normalizeMoneyToCents(value, "dollars");
+}
+
 export function formatCentsToDollars(cents: number): string {
   const normalized = Number.isFinite(cents) ? Math.round(cents) : 0;
   return (normalized / 100).toFixed(2);

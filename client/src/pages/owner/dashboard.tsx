@@ -4,6 +4,7 @@ import React from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -26,9 +27,11 @@ import { useToast } from "@/hooks/use-toast";
 import { formatAddress } from "@shared/addressUtils";
 import { LogoutButton } from "@/components/LogoutButton";
 import { resolveOwnerMembershipState } from "@shared/ownerMembership";
+import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { useLanguage } from "@/lib/i18n";
 import { formatCentsToDollars } from "@/lib/utils";
+import { normalizeDollarInputToCents } from "@shared/money";
 
 const AUTO_APPROVAL_HOURS = 72;
 
@@ -111,6 +114,7 @@ export default function OwnerDashboard() {
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
+  const [approvalDriverTipDrafts, setApprovalDriverTipDrafts] = useState<Record<string, string>>({});
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | '90days' | 'all'>('today');
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -204,9 +208,12 @@ export default function OwnerDashboard() {
 
 
   const approveMutation = useMutation({
-    mutationFn: async (activityId: string) => {
+    mutationFn: async ({ activityId, driverTipDisplay, driverTipCents }: { activityId: string; driverTipDisplay: string; driverTipCents: number }) => {
       try {
-        const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/verify`);
+        const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/verify`, {
+          driverTip: driverTipDisplay,
+          driverTipCents,
+        });
         const result = await response.json();
         return result;
       } catch (error) {
@@ -214,7 +221,8 @@ export default function OwnerDashboard() {
         throw error;
       }
     },
-    onSuccess: (data, activityId) => {
+    onSuccess: (data, variables) => {
+      const activityId = variables.activityId;
       console.log("Approval successful:", data);
       const updatedActivity = {
         ...data,
@@ -742,6 +750,10 @@ export default function OwnerDashboard() {
               />
             ) : (
               approvalQueueActivities.map((activity: any, index: number) => (
+                (() => {
+                  const driverTipDisplay = approvalDriverTipDrafts[activity.id] ?? (resolveLocationDriverTipRateCents(activity.location?.rate ?? 0) / 100).toFixed(2);
+                  const driverTipCents = normalizeDollarInputToCents(driverTipDisplay || 0);
+                  return (
                 <div key={activity.id} className="space-y-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm" data-testid={`card-recent-activity-${index}`}>
                   {/* Header Row - Driver and Amount */}
                   <div className="flex items-center justify-between gap-3">
@@ -830,7 +842,25 @@ export default function OwnerDashboard() {
                         })()}
                       </div>
                       
-                      <div className="flex items-center gap-2 justify-end">
+                      <div className="flex items-center gap-2 justify-end flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                            Driver Tip
+                          </span>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            step="0.01"
+                            className="h-9 w-24 text-right text-xs"
+                            value={driverTipDisplay}
+                            onChange={(event) => setApprovalDriverTipDrafts((current) => ({
+                              ...current,
+                              [activity.id]: event.target.value,
+                            }))}
+                            data-testid={`input-driver-tip-${index}`}
+                          />
+                        </div>
                         <Button
                           variant="outline"
                           size="sm"
@@ -870,7 +900,7 @@ export default function OwnerDashboard() {
                             <Button
                               size="sm"
                               className="text-xs px-3 h-9 min-w-[80px] bg-green-600 hover:bg-green-700"
-                              onClick={() => approveMutation.mutate(activity.id)}
+                              onClick={() => approveMutation.mutate({ activityId: activity.id, driverTipDisplay, driverTipCents })}
                               disabled={rejectMutation.isPending || approveMutation.isPending}
                               data-testid={`button-approve-${index}`}
                             >
@@ -911,7 +941,25 @@ export default function OwnerDashboard() {
                         })()}
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                            Driver Tip
+                          </span>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            min="0"
+                            step="0.01"
+                            className="h-8 w-24 text-right text-xs"
+                            value={driverTipDisplay}
+                            onChange={(event) => setApprovalDriverTipDrafts((current) => ({
+                              ...current,
+                              [activity.id]: event.target.value,
+                            }))}
+                            data-testid={`input-driver-tip-desktop-${index}`}
+                          />
+                        </div>
                         <Button
                           variant="outline"
                           size="sm"
@@ -951,7 +999,7 @@ export default function OwnerDashboard() {
                             <Button
                               size="sm"
                               className="text-xs px-3 h-8 bg-green-600 hover:bg-green-700"
-                              onClick={() => approveMutation.mutate(activity.id)}
+                              onClick={() => approveMutation.mutate({ activityId: activity.id, driverTipDisplay, driverTipCents })}
                               disabled={rejectMutation.isPending || approveMutation.isPending}
                               data-testid={`button-approve-${index}`}
                             >
@@ -964,6 +1012,8 @@ export default function OwnerDashboard() {
                     </div>
                   </div>
                 </div>
+                  );
+                })()
               ))
             )}
           </div>

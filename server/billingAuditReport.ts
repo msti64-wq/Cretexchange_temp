@@ -4,6 +4,7 @@ import type { BillingBatch, Driver, Owner, Payment, User, WashoutActivity, Washo
 import { formatAddress } from "../shared/addressUtils";
 import { resolveReportDateRange } from "../shared/reportFilters";
 import { normalizeMoneyToCents } from "../shared/money";
+import { resolveApprovedWashoutDriverTipCents } from "../shared/locationBilling";
 import {
   type BillingAuditItem,
   type BillingAuditReportResponse,
@@ -142,7 +143,7 @@ function buildSummary(rows: BillingAuditItem[], runs: BillingAuditRun[]): Billin
     (acc, row) => {
       const amount = toCents(row.amountCharged);
       const platformFee = toCents(row.platformFeeTotal);
-      const driverTip = toCents(row.driverIncentiveTip);
+      const driverTip = toCents(row.driverTipRate);
       acc.totalWashouts += 1;
       acc.totalAmountCharged += amount;
       acc.totalPlatformFeeTotal += platformFee;
@@ -173,14 +174,14 @@ function buildSummary(rows: BillingAuditItem[], runs: BillingAuditRun[]): Billin
   return {
     totalRuns: summary.totalRuns,
     totalWashouts: summary.totalWashouts,
-    totalAmountCharged: toDollarString(summary.totalAmountCharged),
-    totalPlatformFeeTotal: toDollarString(summary.totalPlatformFeeTotal),
-    totalDriverTips: toDollarString(summary.totalDriverTips),
-    totalPaid: toDollarString(summary.totalPaid),
-    totalPending: toDollarString(summary.totalPending),
-    totalFailed: toDollarString(summary.totalFailed),
-    totalRefunded: toDollarString(summary.totalRefunded),
-    totalDisputed: toDollarString(summary.totalDisputed),
+    totalAmountCharged: toMoney(summary.totalAmountCharged),
+    totalPlatformFeeTotal: toMoney(summary.totalPlatformFeeTotal),
+    totalDriverTips: toMoney(summary.totalDriverTips),
+    totalPaid: toMoney(summary.totalPaid),
+    totalPending: toMoney(summary.totalPending),
+    totalFailed: toMoney(summary.totalFailed),
+    totalRefunded: toMoney(summary.totalRefunded),
+    totalDisputed: toMoney(summary.totalDisputed),
     totalLegacyUnlinked: summary.totalLegacyUnlinked,
   };
 }
@@ -219,9 +220,9 @@ export async function buildBillingAuditReport(
     const batch = payment.batchId ? batchById.get(payment.batchId) : undefined;
     const paymentStatus = normalizePaymentStatus(payment);
     const groupKey = batch?.id || buildLegacyBillingRunId(payment.ownerId);
-    const driverIncentiveTipCents = normalizeMoneyToCents(payment.tipAmountCents, "auto");
+    const driverTipCents = resolveApprovedWashoutDriverTipCents(activity.amount, null, activity.location?.rate ?? 0);
     const platformFeeCents = toCents(payment.processingFee);
-    const amountChargedCents = platformFeeCents + driverIncentiveTipCents;
+    const amountChargedCents = platformFeeCents + driverTipCents;
     const paymentCreatedAtDate = new Date(payment.createdAt as unknown as string | number | Date);
     const paymentPaidAtDate = payment.paidAt ? new Date(payment.paidAt as unknown as string | number | Date) : null;
     const paymentFailedAtDate = payment.status === "failed" ? new Date(payment.updatedAt as unknown as string | number | Date) : null;
@@ -265,7 +266,7 @@ export async function buildBillingAuditReport(
       checkInTime: formatDateTime(activity.checkInTime),
       amountCharged: toMoney(amountChargedCents),
       platformFeeTotal: toMoney(platformFeeCents),
-      driverIncentiveTip: toMoney(driverIncentiveTipCents),
+      driverTipRate: toMoney(driverTipCents),
       paymentStatus,
       paymentId: payment.id,
       paymentCreatedAt: formatDateTime(paymentCreatedAtDate),
@@ -355,7 +356,7 @@ export async function buildBillingAuditReport(
       checkInTime: row.checkInTime,
       amountCharged: row.amountCharged,
       platformFeeTotal: row.platformFeeTotal,
-      driverIncentiveTip: row.driverIncentiveTip,
+      driverTipRate: row.driverTipRate,
       paymentStatus: row.paymentStatus,
       paymentId: row.paymentId,
       paymentCreatedAt: row.paymentCreatedAt,
@@ -388,7 +389,7 @@ export async function buildBillingAuditReport(
     const locationsVisited = Array.from(new Set(items.map((item) => item.locationName).filter(Boolean))).sort();
     const totalAmountCharged = items.reduce((sum, item) => sum + toCents(item.amountCharged), 0);
     const totalPlatformFeeTotal = items.reduce((sum, item) => sum + toCents(item.platformFeeTotal), 0);
-    const totalDriverTips = items.reduce((sum, item) => sum + toCents(item.driverIncentiveTip), 0);
+    const totalDriverTips = items.reduce((sum, item) => sum + toCents(item.driverTipRate), 0);
 
     const billingRunCreatedAt = batch?.createdAt ? formatDateTime(batch.createdAt) : items.reduce((earliest, item) => (earliest && earliest < item.paymentCreatedAt ? earliest : item.paymentCreatedAt), items[0]?.paymentCreatedAt || "");
     const billingRunPaidAt = batch?.completedAt ? formatDateTime(batch.completedAt) : items.find((item) => item.paymentPaidAt)?.paymentPaidAt || "";
@@ -484,7 +485,7 @@ const AUDIT_CSV_COLUMNS: Array<{ key: keyof BillingAuditItem; label: string }> =
   { key: "checkInTime", label: "Washout Date/Time" },
   { key: "amountCharged", label: "Amount Charged" },
   { key: "platformFeeTotal", label: "Platform Fee Total" },
-  { key: "driverIncentiveTip", label: "Driver Incentive Tip" },
+  { key: "driverTipRate", label: "Driver Incentive Tip" },
   { key: "paymentStatus", label: "Payment Status" },
   { key: "paymentId", label: "Payment ID" },
   { key: "paymentCreatedAt", label: "Payment Created At" },

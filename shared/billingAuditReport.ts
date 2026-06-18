@@ -51,7 +51,7 @@ export interface BillingAuditItem {
   checkInTime: string;
   amountCharged: string;
   platformFeeTotal: string;
-  driverIncentiveTip: string;
+  driverTipRate: string;
   paymentStatus: string;
   paymentId: string;
   paymentCreatedAt: string;

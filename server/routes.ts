@@ -34,7 +34,7 @@ import {
   type UserTermsState,
 } from "./terms";
 import { normalizeLegalLanguage } from "@shared/legalDocuments";
-import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, inspectLocationDriverIncentiveTipCents, resolveLocationMonthlyFeeCents, resolveLocationDriverIncentiveTipCents } from "./locationBilling";
+import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, resolveLocationMonthlyFeeCents, resolveLocationDriverTipRateCents } from "./locationBilling";
 import {
   resolveOwnerBillingPolicy,
   getActiveBillingPolicyLabels,
@@ -51,7 +51,7 @@ import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
 import { isAwaitingDriverStripePaymentStatus, getDriverStripeSetupMessage } from "../shared/driverPaymentStatus";
-import { normalizeMoneyToCents } from "../shared/money";
+import { normalizeDollarInputToCents, normalizeMoneyToCents } from "../shared/money";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
@@ -72,6 +72,22 @@ import type { BillingAuditReportQueryInput } from "../shared/billingAuditReport"
 
 const JWT_SECRET = getJwtSecret();
 const formatCurrencyAmount = (amount: number) => `$${amount.toFixed(2)}`;
+function applyDriverTipRateInputToLocationPayload(payload: Record<string, any>): Record<string, any> {
+  const next = { ...payload };
+  const rawDriverTipCents = next.driverTipCents;
+  const rawDriverTipRate = next.driverTipRate ?? next.driverTip;
+
+  if (rawDriverTipCents !== undefined && rawDriverTipCents !== null && rawDriverTipCents !== "") {
+    next.rate = normalizeMoneyToCents(rawDriverTipCents, "cents") / 100;
+  } else if (rawDriverTipRate !== undefined && rawDriverTipRate !== null && rawDriverTipRate !== "") {
+    next.rate = normalizeMoneyToCents(rawDriverTipRate, "dollars") / 100;
+  }
+
+  delete next.driverTipCents;
+  delete next.driverTipRate;
+  delete next.driverTip;
+  return next;
+}
 const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
 const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
   "image/jpeg",
@@ -85,6 +101,17 @@ function setBillingNoCacheHeaders(res: any) {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
+}
+
+function assertWashoutRevenueStatsLoaded(stats: any, label: string) {
+  const washoutRevenueError = typeof stats?.washoutRevenueError === "string" ? stats.washoutRevenueError.trim() : "";
+  if (
+    washoutRevenueError ||
+    stats?.platformWashoutRevenue === null ||
+    stats?.platformWashoutRevenueCents === null
+  ) {
+    throw new Error(`${label} washout revenue metrics failed to load${washoutRevenueError ? `: ${washoutRevenueError}` : ""}`);
+  }
 }
 
 function logReportingReconciliation(endpoint: string, summary: {
@@ -165,6 +192,13 @@ type DriverStripeReadiness = {
   ready: boolean;
   reason?: string;
   accountId?: string;
+  detailsSubmitted?: boolean;
+  payoutsEnabled?: boolean;
+  chargesEnabled?: boolean;
+  externalAccountsCount?: number;
+  bankAccountsCount?: number;
+  currentlyDue?: string[];
+  pastDue?: string[];
 };
 
 type LotteryStatusSnapshot = {
@@ -1052,17 +1086,49 @@ async function resolveDriverStripeReadiness(driverUser: User): Promise<DriverStr
 
   try {
     const driverAccount = await stripe.accounts.retrieve(driverUser.stripeConnectAccountId);
-    const transfersCapability = driverAccount.capabilities?.transfers;
+    const detailsSubmitted = Boolean(driverAccount.details_submitted);
+    const payoutsEnabled = Boolean(driverAccount.payouts_enabled);
+    const chargesEnabled = Boolean(driverAccount.charges_enabled);
+    const currentlyDue = driverAccount.requirements?.currently_due || [];
+    const pastDue = driverAccount.requirements?.past_due || [];
+    const externalAccountsCount = getStripeExternalAccountsCount(driverAccount);
+    const bankAccountsCount = getStripeBankAccountsCount(driverAccount);
+    const ready = payoutsEnabled && detailsSubmitted && bankAccountsCount > 0 && currentlyDue.length === 0 && pastDue.length === 0;
 
-    if (transfersCapability !== 'active') {
+    if (!ready) {
       return {
         ready: false,
-        reason: `Driver transfers capability ${transfersCapability || 'inactive'}`,
+        reason: !payoutsEnabled
+          ? "Driver Stripe payouts are not enabled"
+          : !detailsSubmitted
+            ? "Driver Stripe onboarding details are incomplete"
+            : bankAccountsCount <= 0
+              ? "Driver has no linked bank account"
+              : currentlyDue.length > 0 || pastDue.length > 0
+                ? "Driver Stripe requirements are still pending"
+                : "Driver Stripe payout setup is not ready",
         accountId: driverAccount.id,
+        detailsSubmitted,
+        payoutsEnabled,
+        chargesEnabled,
+        externalAccountsCount,
+        bankAccountsCount,
+        currentlyDue,
+        pastDue,
       };
     }
 
-    return { ready: true, accountId: driverAccount.id };
+    return {
+      ready: true,
+      accountId: driverAccount.id,
+      detailsSubmitted,
+      payoutsEnabled,
+      chargesEnabled,
+      externalAccountsCount,
+      bankAccountsCount,
+      currentlyDue,
+      pastDue,
+    };
   } catch (error: any) {
     console.error('❌ Failed to inspect driver Stripe account readiness:', {
       driverUserId: driverUser.id,
@@ -1086,7 +1152,7 @@ function resolveWashoutChargeComponents(params: {
   const platformFee = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined
     ? resolvePlatformFeeCents(owner.customPlatformFee)
     : resolvePlatformFeeCents(systemSettings?.platformWashoutFee);
-  const driverTipCents = resolveLocationDriverIncentiveTipCents(location?.driverIncentiveTip);
+  const driverTipCents = resolveLocationDriverTipRateCents(location?.rate);
   const baseAmountCents = Math.round(Math.max(0, baseAmount) * 100);
   const ownerChargeCents = calculateOwnerWashoutChargeCents(baseAmountCents, platformFee, driverTipCents);
   const driverPayoutCents = calculateDriverPayoutCents(baseAmountCents, driverTipCents);
@@ -2694,7 +2760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Payment structure: platform fee + optional owner-funded driver incentive tip
       // Driver receives the location rate; tip is tracked separately when present
       const locationRate = parseFloat(location.rate);
-      const driverTipCents = resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip);
+      const driverTipCents = resolveLocationDriverTipRateCents(location.rate);
       const driverTip = driverTipCents / 100;
       const PLATFORM_FEE = platformFee; // Configurable via admin settings (global or per-owner)
       const DRIVER_PAYMENT = locationRate; // Set by location owner
@@ -4341,15 +4407,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate location data. Owner creates must arrive with verified coordinates from Mapbox Places.
-      const locationData = insertWashoutLocationSchema.parse({
+      const locationData = insertWashoutLocationSchema.parse(applyDriverTipRateInputToLocationPayload({
         ...req.body,
         ownerId: owner.id,
-      });
-
-      if (locationData.driverIncentiveTip !== undefined) {
-        locationData.driverIncentiveTip = normalizeMoneyToCents(locationData.driverIncentiveTip, "auto");
-      }
-      locationData.driverIncentiveTip = locationData.driverIncentiveTip ?? 0;
+      }));
 
       if (!locationData.latitude || !locationData.longitude) {
         try {
@@ -4503,11 +4564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate request body using Zod schema
-      const validatedData = updateLocationSchema.parse(req.body);
-
-      if (validatedData.driverIncentiveTip !== undefined) {
-        validatedData.driverIncentiveTip = normalizeMoneyToCents(validatedData.driverIncentiveTip, "auto");
-      }
+      const validatedData = updateLocationSchema.parse(applyDriverTipRateInputToLocationPayload(req.body));
 
       // Re-geocode if any address field changed and no lat/lng provided
       const addressChanged = req.body.street || req.body.city || req.body.state || req.body.zip;
@@ -4862,7 +4919,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let driverAmount: number;
       let platformFee: number;
       let ownerFee: number;
-      let driverTip = 0;
+      const requestedDriverTipCents = normalizeDollarInputToCents(
+        req.body?.driverTipCents ?? req.body?.driverTip ?? activityLocation?.rate ?? 0,
+      );
+      let driverTip = requestedDriverTipCents / 100;
+      console.log("[OWNER_APPROVAL_TIP_REQUEST]", {
+        activityId: id,
+        ownerId: owner.id,
+        locationId: activityLocation?.id || activityDetails.locationId,
+        driverId: activityDetails.driverId,
+        rawTipInput: req.body?.driverTipCents ?? req.body?.driverTip ?? null,
+        requestedDriverTipCents,
+      });
+      console.log("[OWNER_TIP_SUBMITTED]", {
+        ownerId: owner.id,
+        washoutActivityId: id,
+        driverId: activityDetails.driverId,
+        rawTipInput: req.body?.driverTipCents ?? req.body?.driverTip ?? null,
+        normalizedTipCents: requestedDriverTipCents,
+      });
 
       if (useCustomBillingModel) {
         // CUSTOM BILLING MODEL: Owner pays flat custom rate, platform keeps it all
@@ -4880,8 +4955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           baseAmount: driverAmount,
         });
         platformFee = billingComponents.platformFee;
-        driverTip = billingComponents.driverTip;
-        ownerFee = billingComponents.ownerCharge; // Owner pays total: driver amount + platform fee + driver tip
+        ownerFee = platformFee + driverTip; // Owner pays total: driver amount + platform fee + driver tip
       }
 
       // Get owner's billing settings for business date calculation
@@ -4923,9 +4997,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // ========== CHECK BILLING CADENCE TO DETERMINE PAYMENT PROCESSING ==========
       // Approve the activity first so payment processing can never block owner approval.
-      approvedActivity = await storage.verifyWashoutActivity(id, userId);
+      approvedActivity = await storage.verifyWashoutActivity(id, userId, requestedDriverTipCents);
       approvalDebugContext.currentStatus = approvedActivity?.status || "verified";
       approvalDebugContext.permissionCheckResult = true;
+      const savedDriverTipCents = Number((approvedActivity as any)?.driverTipCents ?? 0);
+      console.log("[OWNER_APPROVAL_TIP_SAVED]", {
+        washoutActivityId: id,
+        storedDriverTipCents: savedDriverTipCents,
+      });
+      console.log("[OWNER_TIP_POSTED_TO_LEDGER]", {
+        ownerId: owner.id,
+        washoutActivityId: id,
+        driverId: activityDetails.driverId,
+        tipAmountCents: savedDriverTipCents,
+        source: "owner_approval",
+      });
+      if (requestedDriverTipCents > 0 && savedDriverTipCents === 0) {
+        console.error("❌ Owner approval tip failed to persist", {
+          washoutActivityId: id,
+          ownerId: owner.id,
+          driverId: activityDetails.driverId,
+          requestedDriverTipCents,
+          savedDriverTipCents,
+        });
+        return res.status(500).json({
+          message: "Owner driver tip could not be saved for this washout.",
+          reason: "owner_approval_tip_save_failed",
+          washoutActivityId: id,
+          driverTipCents: requestedDriverTipCents,
+        });
+      }
       console.log(`✅ Washout ${id} approval persisted before payment processing`, {
         ownerId: owner.id,
         locationId: activityDetails.locationId,
@@ -4944,10 +5045,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source: 'owner approval',
       });
 
-      if (!driverStripeReadiness.ready) {
+      if (billingCadence === 'immediate' && !driverStripeReadiness.ready) {
         const deferredReason = `${driverStripeReadiness.reason || 'Driver Stripe account not ready'} - owner-funded tip held for onboarding`;
         console.log(`⏸️ Deferring washout ${id} payment until driver Stripe setup is complete: ${deferredReason}`);
-        approvalResponseMessage = "Washout approved. Payment will be processed once the driver completes payment setup.";
+        approvalResponseMessage = "Washout approved. Payment will be processed once the driver's Stripe payout setup is ready.";
         approvalResponsePaymentStatus = "awaiting_driver_stripe";
         approvalResponsePayoutStatus = "held_for_onboarding";
         approvalResponseDeferReason = deferredReason;
@@ -4962,6 +5063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: driverAmount.toString(),
           processingFee: platformFee.toFixed(2),
           washoutServiceFee: driverTip.toFixed(2),
+          driverTipCents: requestedDriverTipCents,
           tipAmountCents: normalizeMoneyToCents(driverTip, "dollars"),
           status: 'awaiting_driver_stripe',
           payoutStatus: 'held_for_onboarding',
@@ -4970,7 +5072,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           businessDate,
         });
 
-        const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
+        const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId, requestedDriverTipCents);
 
         console.log(`✅ Washout ${id} approved with deferred payment ${payment.id} awaiting driver Stripe setup`, {
           ownerId: owner.id,
@@ -4982,7 +5084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           verifiedBy: (activity as any)?.verifiedBy || userId,
           verifiedAt: (activity as any)?.verifiedAt || new Date().toISOString(),
         });
-        approvalResponseMessage = "Washout approved. Payment will be processed once the driver completes payment setup.";
+        approvalResponseMessage = "Washout approved. Payment will be processed once the driver's Stripe payout setup is ready.";
         approvalResponsePaymentStatus = "awaiting_driver_stripe";
         approvalResponsePayoutStatus = "held_for_onboarding";
         approvalResponseDeferReason = payment.deferReason;
@@ -5015,6 +5117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: driverAmount.toString(),
           processingFee: platformFee.toFixed(2),
           washoutServiceFee: driverTip.toFixed(2),
+          driverTipCents: requestedDriverTipCents,
           tipAmountCents: normalizeMoneyToCents(driverTip, "dollars"),
           status: 'pending', // Will be processed by batch processor
           businessDate,
@@ -5048,7 +5151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Verify activity immediately (payment will be processed later in batch)
-        const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
+        const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId, requestedDriverTipCents);
 
         // NOTE: For standard model, driver wallet credit happens when batch payment succeeds (in batch processor)
         
@@ -5323,7 +5426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Verify activity (payment will be processed later in batch)
-        const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
+        const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId, requestedDriverTipCents);
         
         console.log(`✅ Washout ${id} approved with pending payment ${payment.id} (fallback: ${fallbackReason})`, fallbackDetails || {});
         approvalResponseMessage = "Washout approved. Payment will be processed later.";
@@ -5380,6 +5483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: driverAmount.toString(),
         processingFee: platformFee.toFixed(2), // Platform fee (default $5.00, configurable)
         washoutServiceFee: driverTip.toFixed(2), // Driver incentive tip per washout
+        driverTipCents: requestedDriverTipCents,
         tipAmountCents: normalizeMoneyToCents(driverTip, "dollars"),
         status: 'completed', // Payment already succeeded via Stripe
         businessDate, // Set business date for reporting
@@ -5447,7 +5551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify activity as final step
-      const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
+      const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId, requestedDriverTipCents);
       approvalDebugContext.currentStatus = activity?.status || "verified";
       approvalDebugContext.permissionCheckResult = true;
       
@@ -5607,9 +5711,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          const readiness = await resolveDriverStripeReadiness(driverUser);
-          if (!readiness.ready) {
-            const heldReason = `${readiness.reason || payment.deferReason || 'Driver Stripe not ready'} - owner-funded tip held for onboarding`;
+          if (!driverUser.stripeConnectAccountId) {
+            const heldReason = `Driver missing Stripe connected account - owner-funded tip held for onboarding`;
+            await db
+              .update(payments)
+              .set({
+                deferReason: heldReason,
+                updatedAt: new Date(),
+              })
+              .where(eq(payments.id, payment.id));
+
+            skipped += 1;
+            results.push({
+              paymentId: payment.id,
+              status: 'skipped',
+              reason: heldReason,
+              paymentStatus: payment.status,
+              payoutStatus: payment.payoutStatus,
+            });
+            continue;
+          }
+
+          const driverAccount = await stripe.accounts.retrieve(driverUser.stripeConnectAccountId);
+          const transfersCapability = driverAccount.capabilities?.transfers;
+          if (transfersCapability !== 'active') {
+            const heldReason = `Driver transfers capability ${transfersCapability || 'inactive'} - owner-funded tip held for onboarding`;
             await db
               .update(payments)
               .set({
@@ -9494,21 +9620,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const dashboardErrors: Record<string, string> = {};
 
-      const weekResult = await Promise.resolve()
-        .then(() => storage.getSystemStats(7))
-        .catch((error) => {
-          console.error("[ADMIN_DASHBOARD] weekStats query failed", error);
-          dashboardErrors.weekStats = "Unable to load weekly admin metrics.";
-          return emptyStats;
-        });
+      const weekResult = await storage.getSystemStats(7);
+      assertWashoutRevenueStatsLoaded(weekResult, "weekStats");
 
-      const monthResult = await Promise.resolve()
-        .then(() => storage.getSystemStats(30))
-        .catch((error) => {
-          console.error("[ADMIN_DASHBOARD] monthStats query failed", error);
-          dashboardErrors.monthStats = "Unable to load monthly admin metrics.";
-          return emptyStats;
-        });
+      const monthResult = await storage.getSystemStats(30);
+      assertWashoutRevenueStatsLoaded(monthResult, "monthStats");
 
       const awaitingResult = await Promise.resolve()
         .then(() => storage.getPaymentsAwaitingDriverStripe())
@@ -9518,13 +9634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return [];
         });
 
-      const billingReceivablesSummary = await Promise.resolve()
-        .then(() => buildOwnerBillingReceivablesOverview(storage))
-        .catch((error) => {
-          console.error("[ADMIN_DASHBOARD] billingReceivables query failed", error);
-          dashboardErrors.billingReceivables = "Unable to load current platform receivables.";
-          return null;
-        });
+      const billingReceivablesSummary = await buildOwnerBillingReceivablesOverview(storage);
       const billingReceivablesCents = billingReceivablesSummary?.summary?.platformFeesOwedCents ?? 0;
       console.log("[ADMIN_DASHBOARD] receivables parity", {
         billingPageReceivablesCents: billingReceivablesCents,
@@ -10093,10 +10203,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate core location fields (lat/lng optional — will be geocoded)
-      const locationData = insertWashoutLocationSchema.parse({
+      const locationData = insertWashoutLocationSchema.parse(applyDriverTipRateInputToLocationPayload({
         ...rest,
         ownerId: owner.id,
-      });
+      }));
 
       // Auto-geocode lat/lng from address
       if (!locationData.latitude || !locationData.longitude) {
@@ -10118,6 +10228,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message || "Failed to create location" });
     }
   });
+
+  const handleAdminLocationDriverTip = async (req: any, res: any) => {
+    try {
+      const adminUser = await storage.getUser(req.user.id);
+      if (adminUser?.role !== 'admin' && adminUser?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { id } = req.params;
+      const location = await storage.getWashoutLocation(id);
+      if (!location) {
+        return res.status(404).json({ message: "Location not found" });
+      }
+
+      const rawDriverTipCents = req.body?.driverTipCents;
+      const rawDriverTipRate = req.body?.driverTipRate;
+      const rawTipValue = rawDriverTipCents !== undefined ? rawDriverTipCents : rawDriverTipRate;
+      const validatedTip = rawTipValue === null || rawTipValue === undefined || rawTipValue === ""
+        ? 0
+        : normalizeMoneyToCents(rawTipValue, "auto");
+
+      if (!Number.isInteger(validatedTip) || validatedTip < 0) {
+        return res.status(400).json({
+          message: "Driver tip must be a non-negative integer number of cents",
+          reason: "invalid_driver_tip",
+        });
+      }
+
+      const updatedLocation = await storage.updateLocation(location.id, location.ownerId, {
+        rate: (validatedTip / 100).toFixed(2),
+      } as any);
+
+      console.log("[ADMIN_LOCATION_DRIVER_TIP_UPDATED]", {
+        adminUserId: adminUser.id,
+        locationId: location.id,
+        ownerId: location.ownerId,
+        rawDriverTipCents,
+        rawDriverTipRate,
+        normalizedDriverTipRate: validatedTip,
+      });
+
+      res.json({
+        location: updatedLocation,
+        message: "Driver tip updated successfully.",
+      });
+    } catch (error: any) {
+      console.error("Error updating admin location driver tip:", error);
+      res.status(500).json({ message: error?.message || "Failed to update driver tip" });
+    }
+  };
+
+  app.put('/api/admin/locations/:id/driver-tip', isAuthenticated, handleAdminLocationDriverTip);
+  app.post('/api/admin/locations/:id/driver-tip', isAuthenticated, handleAdminLocationDriverTip);
 
   app.put('/api/admin/owners/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
@@ -11115,6 +11278,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestedWashoutActivityIds = Array.isArray(req.body?.washoutActivityIds)
         ? req.body.washoutActivityIds.map((id: unknown) => String(id).trim()).filter(Boolean)
         : [];
+      const forceDriverTipCentsRaw = req.body?.forceDriverTipCents;
+      const forceDriverTipCents = forceDriverTipCentsRaw !== null && forceDriverTipCentsRaw !== undefined && forceDriverTipCentsRaw !== ""
+        ? normalizeMoneyToCents(forceDriverTipCentsRaw, "auto")
+        : null;
 
       if (!ownerId) {
         return res.status(400).json({ message: "ownerId is required", reason: "missing_owner_id" });
@@ -11128,6 +11295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner user not found", reason: "owner_user_not_found" });
       }
       const systemSettings = await storage.getSystemSettings();
+      const ownerStripeSetup = getOwnerStripeBillingSetup(owner, ownerUser);
       const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
         ownerCustomPlatformFee: owner.customPlatformFee,
         systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
@@ -11139,8 +11307,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: string;
         driverId: string;
         locationId: string;
+        locationName?: string | null;
+        activityAmount?: string | number | null;
         activityFeeCentsPlatform?: number | null;
-        locationDriverIncentiveTip?: number | null;
+        activityDriverTipCents?: number | null;
+        paymentDriverTipCents?: number | null;
+        paymentTipAmountCents?: number | null;
+        locationDriverTipRate?: number | null;
       };
       const approvedWashouts = (await storage.getApprovedWashoutsForOwnerBilling(ownerId)) as ApprovedWashoutPreviewRow[];
       const approvedWashoutLookup = new Map<string, ApprovedWashoutPreviewRow>(approvedWashouts.map((washout) => [washout.activityId, washout]));
@@ -11158,8 +11331,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const ownerStripeSetup = getOwnerStripeBillingSetup(owner, ownerUser);
       const driverAccounts = new Map<string, string>();
+      const driverReadinessById = new Map<string, DriverStripeReadiness>();
+      const driverProfileCompleteById = new Map<string, boolean>();
       const selectedDriverIds = Array.from(new Set(selectedWashouts.map((washout: ApprovedWashoutPreviewRow) => washout.driverId)));
       for (const driverId of selectedDriverIds) {
         const driver = await storage.getDriverById(driverId);
@@ -11173,6 +11347,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         driverAccounts.set(driverId, connectedAccountId);
+        driverProfileCompleteById.set(driverId, Boolean(
+          driverUser?.phone &&
+          driverUser?.street &&
+          driverUser?.city &&
+          driverUser?.state &&
+          driverUser?.zip &&
+          driver?.employerName &&
+          driver?.truckNumber &&
+          driver?.hasAgreedToTerms
+        ));
+        if (driverUser) {
+          const readiness = await resolveDriverStripeReadiness(driverUser);
+          driverReadinessById.set(driverId, readiness);
+        }
       }
 
       const preview = buildOwnerWashoutBillingPreview({
@@ -11184,7 +11372,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           driverId: washout.driverId,
           driverStripeAccountId: driverAccounts.get(washout.driverId) || null,
           platformFeeCents: configuredPlatformFeeCents,
-          driverTipCents: normalizeMoneyToCents(washout.locationDriverIncentiveTip, "auto"),
+          activityAmount: washout.activityAmount ?? null,
+          locationDriverTipRate: washout.locationDriverTipRate ?? null,
+          paymentTipAmountCents: washout.paymentDriverTipCents ?? washout.paymentTipAmountCents ?? null,
+          activityDriverTipCents: washout.activityDriverTipCents ?? null,
+          driverTipOverrideCents: forceDriverTipCents,
         })),
         customerId: ownerStripeSetup.customerId,
         paymentMethodId: ownerStripeSetup.paymentMethodId,
@@ -11192,23 +11384,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerCompanyName: owner.companyName,
       });
 
-      for (const washout of selectedWashouts) {
-        const rawDriverTipValue = washout.locationDriverIncentiveTip;
-        const tipInspection = inspectLocationDriverIncentiveTipCents(rawDriverTipValue);
+      const debugTipSources = selectedWashouts.map((washout: ApprovedWashoutPreviewRow) => {
+        const selectedLocationDriverTipRate = washout.locationDriverTipRate ?? null;
+        const selectedPaymentWashoutServiceFee = washout.paymentTipAmountCents ?? null;
+        const selectedPaymentDriverTipCents = washout.paymentDriverTipCents ?? null;
+        const selectedActivityDriverTipCents = washout.activityDriverTipCents ?? null;
+        const hasActivityAmount = washout.activityAmount !== null && washout.activityAmount !== undefined && washout.activityAmount !== "";
+        const rawDriverTipValue = forceDriverTipCents ?? (hasActivityAmount ? washout.activityAmount : selectedLocationDriverTipRate) ?? null;
+        const ownerPostedTipCents = normalizeMoneyToCents(washout.activityAmount, "dollars");
+        const resolvedDriverTipCents = forceDriverTipCents ?? normalizeMoneyToCents(rawDriverTipValue, "dollars");
+        const billingReadTipCents = resolvedDriverTipCents;
+        const sourceUsed = forceDriverTipCents !== null
+          ? "request.forceDriverTipCents"
+          : hasActivityAmount
+            ? "washout_activities.amount"
+            : "washout_locations.rate";
+        const driverReadiness = driverReadinessById.get(washout.driverId) || null;
+        const driverProfileComplete = driverProfileCompleteById.get(washout.driverId) || false;
 
-        if (tipInspection.driverTipEnabled && tipInspection.normalizedDriverTipCents === 0) {
+        console.log("[OWNER_BILLING_TIP_RECONCILIATION]", {
+          washoutActivityId: washout.activityId,
+          ownerPostedTipCents,
+          billingReadTipCents,
+          matches: ownerPostedTipCents === billingReadTipCents,
+        });
+
+        return {
+          washoutActivityId: washout.activityId,
+          locationId: washout.locationId,
+          locationName: washout.locationName ?? null,
+          driverId: washout.driverId,
+          ownerId,
+          ownerPostedTipCents,
+          paymentWashoutServiceFee: selectedPaymentWashoutServiceFee,
+          activityAmount: washout.activityAmount ?? null,
+          activityDriverTipCents: selectedActivityDriverTipCents,
+          paymentDriverTipCents: selectedPaymentDriverTipCents,
+          locationDriverTipRate: selectedLocationDriverTipRate,
+          resolvedDriverTipCents,
+          billingReadTipCents,
+          sourceUsed,
+          rawDriverTipField: sourceUsed,
+          rawDriverTipValue,
+          rawLocationDriverTipRate: selectedLocationDriverTipRate,
+          normalizedDriverTipCents: resolvedDriverTipCents,
+          normalizedLocationDriverTipCents: normalizeMoneyToCents(selectedLocationDriverTipRate, "dollars"),
+          driverProfileComplete,
+          driverStripeAccountId: driverAccounts.get(washout.driverId) || null,
+          stripeDetailsSubmitted: driverReadiness?.detailsSubmitted ?? null,
+          stripePayoutsEnabled: driverReadiness?.payoutsEnabled ?? null,
+          driverPayoutReady: driverReadiness?.ready ?? false,
+          tipStatus: driverReadiness?.ready ? "transfer_ready" : "pending_driver_setup",
+        };
+      });
+
+      for (const tipSource of debugTipSources as Array<{
+        washoutActivityId?: string;
+        ownerId?: string;
+        driverId?: string;
+        ownerPostedTipCents?: number;
+        billingReadTipCents?: number;
+      }>) {
+        if ((tipSource.ownerPostedTipCents ?? 0) > 0 && (tipSource.billingReadTipCents ?? 0) === 0) {
           return res.status(400).json({
-            message: `Invalid driver tip configuration for washout ${washout.activityId}`,
-            reason: "driver_tip_invalid_for_preview",
-            washoutActivityId: washout.activityId,
-            locationId: washout.locationId,
-            ownerId,
-            driverId: washout.driverId,
-            rawDriverTipValue,
-            rawDriverTipField: "washout_locations.driver_incentive_tip",
-            normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+            message: `Owner-approved tip was not read for washout ${tipSource.washoutActivityId}`,
+            reason: "owner_tip_not_loaded_into_billing",
+            washoutActivityId: tipSource.washoutActivityId,
+            ownerId: tipSource.ownerId,
+            driverId: tipSource.driverId,
+            ownerPostedTipCents: tipSource.ownerPostedTipCents ?? 0,
+            billingReadTipCents: tipSource.billingReadTipCents ?? 0,
           });
         }
+      }
+
+      for (const washout of selectedWashouts) {
+        const hasActivityAmount = washout.activityAmount !== null && washout.activityAmount !== undefined && washout.activityAmount !== "";
+        const rawDriverTipValue = forceDriverTipCents ?? (hasActivityAmount ? washout.activityAmount : washout.locationDriverTipRate) ?? null;
+        const normalizedDriverTipCents = forceDriverTipCents ?? normalizeMoneyToCents(rawDriverTipValue, "dollars");
+        const sourceUsed = forceDriverTipCents !== null
+          ? "request.forceDriverTipCents"
+          : hasActivityAmount
+            ? "washout_activities.amount"
+            : "washout_locations.rate";
 
         console.log("[WASHOUT_BILLING_INPUT]", {
           ownerId,
@@ -11219,27 +11477,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rawSystemPlatformFee: systemSettings?.platformWashoutFee ?? null,
           normalizedPlatformFeeCents: configuredPlatformFeeCents,
           rawDriverTipValue,
-          rawDriverTipField: "washout_locations.driver_incentive_tip",
-          normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+          rawDriverTipField: sourceUsed,
+          rawLocationDriverTipRate: washout.locationDriverTipRate ?? null,
+          normalizedDriverTipCents,
+          normalizedLocationDriverTipCents: normalizeMoneyToCents(washout.locationDriverTipRate, "dollars"),
+        });
+        console.log("[WASHOUT_DRIVER_TIP_SOURCE]", {
+          washoutActivityId: washout.activityId,
+          locationId: washout.locationId,
+          locationName: washout.locationName ?? null,
+          paymentWashoutServiceFee: washout.paymentTipAmountCents ?? null,
+          paymentDriverTipCents: washout.paymentDriverTipCents ?? null,
+          locationDriverTipRate: washout.locationDriverTipRate ?? null,
+          resolvedDriverTipCents: normalizedDriverTipCents,
+          sourceUsed,
         });
         console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
           washoutActivityId: washout.activityId,
           locationId: washout.locationId,
+          locationName: washout.locationName ?? null,
           ownerId,
           driverId: washout.driverId,
           rawDriverTipValue,
-          rawDriverTipField: "washout_locations.driver_incentive_tip",
-          driverTipEnabled: tipInspection.driverTipEnabled,
-          normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+          rawDriverTipField: sourceUsed,
+          rawLocationDriverTipRate: washout.locationDriverTipRate ?? null,
+          driverTipEnabled: normalizedDriverTipCents > 0,
+          normalizedDriverTipCents,
+          normalizedLocationDriverTipCents: normalizeMoneyToCents(washout.locationDriverTipRate, "dollars"),
+        });
+        console.log("[OWNER_BILLING_TIP_RECONCILIATION]", {
+          washoutActivityId: washout.activityId,
+          ownerPostedTipCents: normalizeMoneyToCents(washout.activityAmount, "dollars"),
+          billingReadTipCents: normalizedDriverTipCents,
+          matches: normalizeMoneyToCents(washout.activityAmount, "dollars") === normalizedDriverTipCents,
         });
       }
 
-      res.json(preview);
+      const previewResponse = {
+        ...preview,
+        debugTipSources,
+      };
+
+      res.json(previewResponse);
     } catch (error: any) {
       console.error("Error previewing owner washout billing charge:", error);
       res.status(500).json({
         message: error?.message || "Failed to preview owner washout billing charge",
         reason: "owner_billing_preview_failed",
+      });
+    }
+  });
+
+  app.get('/api/admin/debug/billing-tip-source/:ownerId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: "Super admin access required" });
+      }
+
+      const ownerId = typeof req.params?.ownerId === "string" ? req.params.ownerId.trim() : "";
+      if (!ownerId) {
+        return res.status(400).json({ message: "ownerId is required", reason: "missing_owner_id" });
+      }
+
+      const washoutIdsParam = req.query?.washoutIds;
+      const requestedWashoutIds = typeof washoutIdsParam === "string"
+        ? washoutIdsParam.split(",")
+        : Array.isArray(washoutIdsParam)
+          ? washoutIdsParam.flatMap((value: unknown) => String(value).split(","))
+          : [];
+      const washoutIds = requestedWashoutIds.map((value) => value.trim()).filter(Boolean);
+
+      const debugTipSourceLoader = (storage as any).getBillingTipSourceDebugRows;
+      const debugTipSources = typeof debugTipSourceLoader === "function"
+        ? await debugTipSourceLoader.call(
+            storage,
+            ownerId,
+            washoutIds.length > 0 ? washoutIds : undefined,
+          )
+        : [];
+
+      if (washoutIds.length > 0) {
+        const returnedIds = new Set(debugTipSources.map((row: any) => String(row.washoutActivityId)));
+        const missingWashoutActivityIds = washoutIds.filter((id) => !returnedIds.has(id));
+        if (missingWashoutActivityIds.length > 0) {
+          return res.status(400).json({
+            message: "One or more washouts are not approved or already billed",
+            reason: "selected_washouts_not_billable",
+            missingWashoutActivityIds,
+          });
+        }
+      }
+
+      res.json({
+        ownerId,
+        debugTipSources,
+      });
+    } catch (error: any) {
+      console.error("Error fetching billing tip source debug rows:", error);
+      res.status(500).json({
+        message: error?.message || "Failed to fetch billing tip source debug rows",
+        reason: "billing_tip_source_debug_failed",
       });
     }
   });

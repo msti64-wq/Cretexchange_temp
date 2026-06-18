@@ -1,5 +1,6 @@
 import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
 import { normalizeMoneyToCents } from "./money";
+import { resolveApprovedWashoutDriverTipCents } from "./locationBilling";
 
 export type WashoutBillingVerificationRow = {
   activityId: string;
@@ -9,9 +10,10 @@ export type WashoutBillingVerificationRow = {
   locationName?: string | null;
   status?: string | null;
   paymentStatus?: string | null;
+  activityAmount?: string | number | null;
   feeCentsPlatform?: number | null;
   ownerCustomPlatformFeeCents?: number | null;
-  driverIncentiveTipCents?: number | null;
+  locationDriverTipRate?: string | number | null;
   paymentId?: string | null;
   stripePaymentIntentId?: string | null;
   stripeChargeId?: string | null;
@@ -35,7 +37,7 @@ export type WashoutBillingVerificationBreakdown = {
   platformFeeReceivableCents: number;
   platformFeeOwedCents: number;
   platformFeeBilledCents: number;
-  driverIncentiveTipTotalCents: number;
+  driverTipRateTotalCents: number;
   washoutIds: string[];
 };
 
@@ -53,7 +55,7 @@ export type WashoutBillingVerificationReport = {
   platformFeeReceivableCents: number;
   platformFeeOwedCents: number;
   platformFeeBilledCents: number;
-  driverIncentiveTipTotalCents: number;
+  driverTipRateTotalCents: number;
   washoutIdsByStatus: Record<string, string[]>;
   breakdownByOwnerLocation: WashoutBillingVerificationBreakdown[];
   dateRange: {
@@ -136,7 +138,7 @@ export function buildWashoutBillingVerificationReport(
     const locationId = String(row.locationId);
     const locationName = String(row.locationName || "").trim() || locationId;
     const platformFeeCents = resolvePlatformFeeCents(row, defaultPlatformFeeCents);
-    const driverTipCents = normalizeMoneyToCents(row.driverIncentiveTipCents, "auto");
+    const driverTipCents = resolveApprovedWashoutDriverTipCents(row.activityAmount ?? null, null, row.locationDriverTipRate ?? null);
     const approved = isBillableWashoutForOwnerBilling({ status });
     const rejected = REJECTED_STATUSES.has(status);
     const declined = DECLINED_STATUSES.has(status);
@@ -154,7 +156,7 @@ export function buildWashoutBillingVerificationReport(
       summary.approvedWashouts += 1;
       summary.approvedBillableWashouts += 1;
       summary.platformFeeReceivableCents += platformFeeCents;
-      summary.driverIncentiveTipTotalCents += driverTipCents;
+      summary.driverTipRateTotalCents += driverTipCents;
       if (billed) {
         summary.alreadyBilledWashouts += 1;
         summary.platformFeeBilledCents += platformFeeCents;
@@ -193,7 +195,7 @@ export function buildWashoutBillingVerificationReport(
       platformFeeReceivableCents: 0,
       platformFeeOwedCents: 0,
       platformFeeBilledCents: 0,
-      driverIncentiveTipTotalCents: 0,
+      driverTipRateTotalCents: 0,
       washoutIds: [],
     };
 
@@ -204,7 +206,7 @@ export function buildWashoutBillingVerificationReport(
       breakdown.approvedWashouts += 1;
       breakdown.approvedBillableWashouts += 1;
       breakdown.platformFeeReceivableCents += platformFeeCents;
-      breakdown.driverIncentiveTipTotalCents += driverTipCents;
+      breakdown.driverTipRateTotalCents += driverTipCents;
       if (billed) {
         breakdown.alreadyBilledWashouts += 1;
         breakdown.platformFeeBilledCents += platformFeeCents;
@@ -240,7 +242,7 @@ export function buildWashoutBillingVerificationReport(
     platformFeeReceivableCents: 0,
     platformFeeOwedCents: 0,
     platformFeeBilledCents: 0,
-    driverIncentiveTipTotalCents: 0,
+    driverTipRateTotalCents: 0,
     washoutIdsByStatus,
     breakdownByOwnerLocation: [],
     dateRange: {

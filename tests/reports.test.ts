@@ -288,13 +288,13 @@ function createStorageFixture() {
   const location2 = makeLocation("location-2", owner2.id, "South Yard");
   const location3 = makeLocation("location-3", owner1.id, "West Yard");
 
-  const activityToday = makeActivity("activity-today", { ...driver1, user: driverUser1 }, location1, "verified", "100.00", fixtureDate(0));
-  const activityWeek = makeActivity("activity-week", { ...driver1, user: driverUser1 }, location1, "pending", "75.00", fixtureDate(3));
-  const activityOld = makeActivity("activity-old", { ...driver1, user: driverUser1 }, location1, "pending", "50.00", fixtureDate(10));
-  const activityOtherOwner = makeActivity("activity-other", { ...driver2, user: driverUser2 }, location2, "verified", "120.00", fixtureDate(2));
-  const activityMultiDriver = makeActivity("activity-multi-driver", { ...driver2, user: driverUser2 }, location3, "verified", "30.00", fixtureDate(2));
-  const activityRefunded = makeActivity("activity-refunded", { ...driver1, user: driverUser1 }, location3, "verified", "50.00", fixtureDate(1));
-  const activityLegacy = makeActivity("activity-legacy", { ...driver1, user: driverUser1 }, location1, "verified", "55.00", fixtureDate(5));
+  const activityToday = makeActivity("activity-today", { ...driver1, user: driverUser1 }, location1, "verified", "0.00", fixtureDate(0));
+  const activityWeek = makeActivity("activity-week", { ...driver1, user: driverUser1 }, location1, "pending", "5.00", fixtureDate(3));
+  const activityOld = makeActivity("activity-old", { ...driver1, user: driverUser1 }, location1, "pending", "0.00", fixtureDate(10));
+  const activityOtherOwner = makeActivity("activity-other", { ...driver2, user: driverUser2 }, location2, "verified", "0.00", fixtureDate(2));
+  const activityMultiDriver = makeActivity("activity-multi-driver", { ...driver2, user: driverUser2 }, location3, "verified", "0.00", fixtureDate(2));
+  const activityRefunded = makeActivity("activity-refunded", { ...driver1, user: driverUser1 }, location3, "verified", "0.00", fixtureDate(1));
+  const activityLegacy = makeActivity("activity-legacy", { ...driver1, user: driverUser1 }, location1, "verified", "0.00", fixtureDate(5));
 
   const paymentToday = makePayment("payment-today", activityToday, { ...driver1, user: driverUser1 }, owner1, "100.00", "completed", fixtureDate(0), 0);
   const paymentWeek = makePayment("payment-week", activityWeek, { ...driver1, user: driverUser1 }, owner1, "75.00", "completed", fixtureDate(2), 500);
@@ -680,7 +680,7 @@ test("billing audit report builds from minimal safe report fields only", async (
     driverId: driver.id,
     locationId: location.id,
     status: "verified",
-    amount: "5.00",
+    amount: "0.70",
     checkInTime: new Date("2026-05-01T12:00:00.000Z"),
     checkOutTime: null,
     photoUrls: [],
@@ -753,7 +753,7 @@ test("billing audit report builds from minimal safe report fields only", async (
   assert.equal(report.rows[0].ownerCompanyName, "Minimal Owner LLC");
   assert.equal(report.rows[0].driverDisplayName, "Driver One");
   assert.equal(report.rows[0].platformFeeTotal, "0.30");
-  assert.equal(report.rows[0].driverIncentiveTip, "0.70");
+  assert.equal(report.rows[0].driverTipRate, "0.70");
   assert.equal(report.summary.totalPlatformFeeTotal, "0.30");
   assert.equal(report.summary.totalDriverTips, "0.70");
 });
