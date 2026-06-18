@@ -121,6 +121,13 @@ function logDeploymentGitCommitStartupState() {
   console.log("Deployment git commit:", getDeploymentGitCommitState());
 }
 
+function logCurrentSourceMarkerStartupState() {
+  const commitState = getDeploymentGitCommitState();
+  console.log(`CURRENT_COMMIT=${commitState.gitCommitHash ?? "unknown"}`);
+  console.log(`BUILD_TIMESTAMP=${new Date().toISOString()}`);
+  console.log("SOURCE_NO_DRIVER_INCENTIVE_TIP=true");
+}
+
 // Debug database connection
 console.log('Environment check:', {
   environment: process.env.REPLIT_DEPLOYMENT ? 'production' : 'development',
@@ -128,6 +135,7 @@ console.log('Environment check:', {
 });
 logDriverStripeOnboardingUrlStartupState();
 logDeploymentGitCommitStartupState();
+logCurrentSourceMarkerStartupState();
 
 // Raw body parsing specifically for Stripe webhooks (must come before JSON parsing)
 app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }));
