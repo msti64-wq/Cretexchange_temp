@@ -161,6 +161,8 @@ async function startApplication() {
   try {
     const { registerRoutes } = await import("./routes");
     const server = await registerRoutes(app);
+    const { logBillingSchemaGuard } = await import("./billingSchemaGuard");
+    await logBillingSchemaGuard();
     const storageSelection = getStorageSelection();
     console.log(`Storage provider selected: ${storageSelection.provider}`);
     console.log(`Bucket: ${storageSelection.bucket}`);

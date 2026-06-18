@@ -1148,10 +1148,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(washoutLocations.ownerId, ownerId))
       .orderBy(desc(washoutLocations.createdAt));
 
-    return rows.map((row) => ({
-      ...row,
-      driverIncentiveTip: normalizeMoneyToCents(row.rate, "dollars"),
-    })) as WashoutLocation[];
+    return rows as WashoutLocation[];
   }
 
   async getActiveLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]> {
@@ -1717,7 +1714,7 @@ export class DatabaseStorage implements IStorage {
         locationState: washoutLocations.state,
         locationZip: washoutLocations.zip,
         locationRate: washoutLocations.rate,
-        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        locationDriverRate: washoutLocations.rate,
         locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
         driverId: drivers.id,
         driverUserId: drivers.userId,
@@ -1762,7 +1759,7 @@ export class DatabaseStorage implements IStorage {
         state: row.locationState,
         zip: row.locationZip,
         rate: row.locationRate,
-        driverIncentiveTip: row.locationDriverIncentiveTip,
+        driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
         monthlyFeeCents: row.locationMonthlyFeeCents,
       },
       driver: {
@@ -1884,7 +1881,7 @@ export class DatabaseStorage implements IStorage {
         const platformFee = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined
           ? resolvePlatformFeeCents(owner.customPlatformFee) / 100
           : resolvePlatformFeeCents(systemSettings?.platformWashoutFee) / 100;
-        const driverTip = resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100;
+        const driverTip = normalizeMoneyToCents(location.rate, "dollars") / 100;
         const ownerCharge = driverAmount + platformFee + driverTip;
 
         // Calculate business date
@@ -1951,7 +1948,13 @@ export class DatabaseStorage implements IStorage {
 
   // Payment operations
   async createPayment(payment: InsertPayment): Promise<Payment> {
-    const { tipAmountCents: _tipAmountCents, ...paymentData } = payment as any;
+    const {
+      tipAmountCents: _tipAmountCents,
+      payoutStatus: _payoutStatus,
+      deferReason: _deferReason,
+      deferredAt: _deferredAt,
+      ...paymentData
+    } = payment as any;
     const [newPayment] = await db.insert(payments).values(paymentData).returning();
     return newPayment;
   }
@@ -1977,7 +1980,7 @@ export class DatabaseStorage implements IStorage {
         paymentCreatedAt: payments.createdAt,
         paymentUpdatedAt: payments.updatedAt,
         activityLocationId: washoutActivities.locationId,
-        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        locationDriverRate: washoutLocations.rate,
       })
       .from(payments)
       .leftJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
@@ -1994,8 +1997,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (Number(row.locationDriverIncentiveTip || 0) / 100).toFixed(2),
-      tipAmountCents: Number(row.locationDriverIncentiveTip || 0),
+      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2063,7 +2066,7 @@ export class DatabaseStorage implements IStorage {
         locationLatitude: washoutLocations.latitude,
         locationLongitude: washoutLocations.longitude,
         locationRate: washoutLocations.rate,
-        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        locationDriverRate: washoutLocations.rate,
         locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
         locationIsActive: washoutLocations.isActive,
         locationIsVisible: washoutLocations.isVisible,
@@ -2084,8 +2087,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (Number(row.locationDriverIncentiveTip || 0) / 100).toFixed(2),
-      tipAmountCents: Number(row.locationDriverIncentiveTip || 0),
+      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2122,7 +2125,7 @@ export class DatabaseStorage implements IStorage {
           latitude: row.locationLatitude,
           longitude: row.locationLongitude,
           rate: row.locationRate,
-          driverIncentiveTip: row.locationDriverIncentiveTip,
+          driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
           monthlyFeeCents: row.locationMonthlyFeeCents,
           isActive: row.locationIsActive,
           isVisible: row.locationIsVisible,
@@ -2190,7 +2193,7 @@ export class DatabaseStorage implements IStorage {
         locationLatitude: washoutLocations.latitude,
         locationLongitude: washoutLocations.longitude,
         locationRate: washoutLocations.rate,
-        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        locationDriverRate: washoutLocations.rate,
         locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
         locationIsActive: washoutLocations.isActive,
         locationIsVisible: washoutLocations.isVisible,
@@ -2213,7 +2216,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: Number(row.locationDriverIncentiveTip || 0),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2249,7 +2252,7 @@ export class DatabaseStorage implements IStorage {
           latitude: row.locationLatitude,
           longitude: row.locationLongitude,
           rate: row.locationRate,
-          driverIncentiveTip: row.locationDriverIncentiveTip,
+          driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
           monthlyFeeCents: row.locationMonthlyFeeCents,
           isActive: row.locationIsActive,
           isVisible: row.locationIsVisible,
@@ -2346,7 +2349,7 @@ export class DatabaseStorage implements IStorage {
         locationLatitude: washoutLocations.latitude,
         locationLongitude: washoutLocations.longitude,
         locationRate: washoutLocations.rate,
-        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        locationDriverRate: washoutLocations.rate,
         locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
         locationIsActive: washoutLocations.isActive,
         locationIsVisible: washoutLocations.isVisible,
@@ -2372,7 +2375,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: Number(row.locationDriverIncentiveTip || 0),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
@@ -2406,7 +2409,7 @@ export class DatabaseStorage implements IStorage {
           latitude: row.locationLatitude,
           longitude: row.locationLongitude,
           rate: row.locationRate,
-          driverIncentiveTip: row.locationDriverIncentiveTip,
+          driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
           monthlyFeeCents: row.locationMonthlyFeeCents,
           isActive: row.locationIsActive,
           isVisible: row.locationIsVisible,
@@ -2469,7 +2472,7 @@ export class DatabaseStorage implements IStorage {
         latitude: row.locationLatitude,
         longitude: row.locationLongitude,
         rate: row.locationRate,
-        driverIncentiveTip: row.locationDriverIncentiveTip,
+        driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
         monthlyFeeCents: row.locationMonthlyFeeCents,
         isActive: row.locationIsActive,
         isVisible: row.locationIsVisible,
@@ -2552,7 +2555,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: Number(row.locationDriverIncentiveTip || 0),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
@@ -2586,7 +2589,7 @@ export class DatabaseStorage implements IStorage {
           latitude: row.locationLatitude,
           longitude: row.locationLongitude,
           rate: row.locationRate,
-          driverIncentiveTip: row.locationDriverIncentiveTip,
+          driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
           monthlyFeeCents: row.locationMonthlyFeeCents,
           isActive: row.locationIsActive,
           isVisible: row.locationIsVisible,
@@ -2627,7 +2630,7 @@ export class DatabaseStorage implements IStorage {
         latitude: row.locationLatitude,
         longitude: row.locationLongitude,
         rate: row.locationRate,
-        driverIncentiveTip: row.locationDriverIncentiveTip,
+        driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
         monthlyFeeCents: row.locationMonthlyFeeCents,
         isActive: row.locationIsActive,
         isVisible: row.locationIsVisible,
@@ -2716,7 +2719,7 @@ export class DatabaseStorage implements IStorage {
         locationLatitude: washoutLocations.latitude,
         locationLongitude: washoutLocations.longitude,
         locationRate: washoutLocations.rate,
-        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        locationDriverRate: washoutLocations.rate,
         locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
         locationIsActive: washoutLocations.isActive,
         locationIsVisible: washoutLocations.isVisible,
@@ -2747,7 +2750,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: Number(row.locationDriverIncentiveTip || 0),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2909,7 +2912,7 @@ export class DatabaseStorage implements IStorage {
             driverId: row.driverId,
             driverStripeAccountId: null,
             platformFeeCents: normalizeMoneyToCents(row.activityFeeCentsPlatform ?? 0, "auto"),
-            driverTipCents: normalizeMoneyToCents(row.locationRate || 0, "dollars"),
+            driverTipCents: normalizeMoneyToCents(row.locationDriverRate || 0, "auto"),
           })),
           immediateBilling: true,
         })
@@ -3090,7 +3093,7 @@ export class DatabaseStorage implements IStorage {
               driverId: row.driverId,
               driverStripeAccountId: null,
               platformFeeCents: configuredPlatformFeeCents,
-              driverTipCents: normalizeMoneyToCents(row.locationDriverIncentiveTip || 0, "auto"),
+              driverTipCents: normalizeMoneyToCents(row.locationDriverRate || 0, "auto"),
             })),
             immediateBilling: ownerSetting.billingCadence === "immediate",
             allowAdminOverride: true,
@@ -4755,7 +4758,7 @@ export class DatabaseStorage implements IStorage {
         activityStatus: washoutActivities.status,
         activityAmount: washoutActivities.amount,
         activityNotes: washoutActivities.notes,
-        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        locationDriverRate: washoutLocations.rate,
         driverId: drivers.id,
         driverUserId: drivers.userId,
         driverTruckNumber: drivers.truckNumber,
@@ -4786,8 +4789,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (Number(row.locationDriverIncentiveTip || 0) / 100).toFixed(2),
-      tipAmountCents: Number(row.locationDriverIncentiveTip || 0),
+      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -4887,7 +4890,7 @@ export class DatabaseStorage implements IStorage {
         activityStatus: washoutActivities.status,
         activityAmount: washoutActivities.amount,
         activityNotes: washoutActivities.notes,
-        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        locationDriverRate: washoutLocations.rate,
         driverId: drivers.id,
         driverUserId: drivers.userId,
         driverTruckNumber: drivers.truckNumber,
@@ -4911,8 +4914,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (Number(row.locationDriverIncentiveTip || 0) / 100).toFixed(2),
-      tipAmountCents: Number(row.locationDriverIncentiveTip || 0),
+      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -4977,7 +4980,7 @@ export class DatabaseStorage implements IStorage {
     locationId: string;
     activityStatus?: string | null;
     activityFeeCentsPlatform?: number | null;
-    locationDriverIncentiveTip?: number | string | null;
+    locationDriverRate?: number | string | null;
     locationRate?: number | string | null;
     verifiedAt?: Date | null;
     createdAt?: Date | null;
@@ -5062,7 +5065,7 @@ export class DatabaseStorage implements IStorage {
       return true;
     }).map((row: any) => ({
       ...row,
-      locationDriverIncentiveTip: normalizeMoneyToCents(row.locationRate, "dollars"),
+      locationDriverRate: row.locationRate,
     })) as any;
   }
 
