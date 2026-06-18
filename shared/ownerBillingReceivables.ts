@@ -1,10 +1,12 @@
 import { normalizeMoneyToCents } from "./money";
+import { resolveWashoutDriverTipCents } from "./locationBilling";
 import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
 
 export type OwnerBillingReceivableRow = {
   activityStatus?: string | null;
   activityFeeCentsPlatform?: number | string | null;
-  locationDriverIncentiveTipCents?: number | string | null;
+  activityAmount?: number | string | null;
+  locationDriverTipRate?: number | string | null;
   paymentStatus?: string | null;
   paymentBatchId?: string | null;
 };
@@ -56,7 +58,7 @@ export function summarizeOwnerBillingReceivables(
     const platformFeeCents = ownerPlatformFeeCents !== null && ownerPlatformFeeCents !== undefined && ownerPlatformFeeCents !== ""
       ? normalizeMoneyToCents(ownerPlatformFeeCents, "auto")
       : defaultPlatformFeeCents;
-    const driverTipCents = normalizeMoneyToCents(row.locationDriverIncentiveTipCents, "auto");
+    const driverTipCents = resolveWashoutDriverTipCents(row.activityAmount ?? null, row.locationDriverTipRate ?? null);
 
     if (approved) {
       summary.approvedWashoutCount += 1;

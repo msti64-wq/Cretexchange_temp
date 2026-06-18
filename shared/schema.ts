@@ -285,7 +285,6 @@ export const washoutLocations = pgTable("washout_locations", {
   latitude: decimal("latitude", { precision: 9, scale: 6 }).notNull(),
   longitude: decimal("longitude", { precision: 10, scale: 6 }).notNull(),
   rate: decimal("rate", { precision: 10, scale: 2 }).notNull().default("0.50"),
-  driverIncentiveTip: integer("driver_incentive_tip").notNull().default(0),
   monthlyFeeCents: integer("monthly_fee_cents").default(100), // Monthly listing fee in cents (default $1.00)
   isActive: boolean("is_active").default(true),
   isVisible: boolean("is_visible").default(true),

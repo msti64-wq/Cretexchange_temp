@@ -365,7 +365,7 @@ export default function AdminLocations() {
                       </div>
                       <div className="text-xs text-muted-foreground mb-1">driver payout per washout</div>
                       <div className="text-xs text-muted-foreground mb-3">
-                        Driver tip: {formatCurrency(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100)}
+                        Driver tip: {formatCurrency(resolveLocationDriverIncentiveTipCents(location.rate) / 100)}
                       </div>
 
                       <Button

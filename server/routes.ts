@@ -34,7 +34,7 @@ import {
   type UserTermsState,
 } from "./terms";
 import { normalizeLegalLanguage } from "@shared/legalDocuments";
-import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, inspectLocationDriverIncentiveTipCents, resolveLocationMonthlyFeeCents, resolveLocationDriverIncentiveTipCents } from "./locationBilling";
+import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, inspectLocationDriverIncentiveTipCents, resolveLocationMonthlyFeeCents, resolveLocationDriverIncentiveTipCents, resolveWashoutDriverTipCents } from "./locationBilling";
 import {
   resolveOwnerBillingPolicy,
   getActiveBillingPolicyLabels,
@@ -1086,7 +1086,7 @@ function resolveWashoutChargeComponents(params: {
   const platformFee = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined
     ? resolvePlatformFeeCents(owner.customPlatformFee)
     : resolvePlatformFeeCents(systemSettings?.platformWashoutFee);
-  const driverTipCents = resolveLocationDriverIncentiveTipCents(location?.driverIncentiveTip);
+  const driverTipCents = normalizeMoneyToCents(location?.rate, "dollars");
   const baseAmountCents = Math.round(Math.max(0, baseAmount) * 100);
   const ownerChargeCents = calculateOwnerWashoutChargeCents(baseAmountCents, platformFee, driverTipCents);
   const driverPayoutCents = calculateDriverPayoutCents(baseAmountCents, driverTipCents);
@@ -2694,7 +2694,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Payment structure: platform fee + optional owner-funded driver incentive tip
       // Driver receives the location rate; tip is tracked separately when present
       const locationRate = parseFloat(location.rate);
-      const driverTipCents = resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip);
+      const driverTipCents = normalizeMoneyToCents(location.rate, "dollars");
       const driverTip = driverTipCents / 100;
       const PLATFORM_FEE = platformFee; // Configurable via admin settings (global or per-owner)
       const DRIVER_PAYMENT = locationRate; // Set by location owner
@@ -11139,8 +11139,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: string;
         driverId: string;
         locationId: string;
+        activityAmount?: string | number | null;
         activityFeeCentsPlatform?: number | null;
-        locationDriverIncentiveTip?: number | null;
+        locationDriverTipRate?: string | number | null;
       };
       const approvedWashouts = (await storage.getApprovedWashoutsForOwnerBilling(ownerId)) as ApprovedWashoutPreviewRow[];
       const approvedWashoutLookup = new Map<string, ApprovedWashoutPreviewRow>(approvedWashouts.map((washout) => [washout.activityId, washout]));
@@ -11184,7 +11185,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           driverId: washout.driverId,
           driverStripeAccountId: driverAccounts.get(washout.driverId) || null,
           platformFeeCents: configuredPlatformFeeCents,
-          driverTipCents: normalizeMoneyToCents(washout.locationDriverIncentiveTip, "auto"),
+          activityAmount: washout.activityAmount ?? null,
+          locationDriverTipRate: washout.locationDriverTipRate ?? null,
         })),
         customerId: ownerStripeSetup.customerId,
         paymentMethodId: ownerStripeSetup.paymentMethodId,
@@ -11193,10 +11195,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       for (const washout of selectedWashouts) {
-        const rawDriverTipValue = washout.locationDriverIncentiveTip;
-        const tipInspection = inspectLocationDriverIncentiveTipCents(rawDriverTipValue);
+        const hasActivityAmount = washout.activityAmount !== null && washout.activityAmount !== undefined && washout.activityAmount !== "";
+        const rawDriverTipValue = hasActivityAmount ? washout.activityAmount : washout.locationDriverTipRate;
+        const rawDriverTipField = hasActivityAmount ? "washout_activities.amount" : "washout_locations.rate";
+        const normalizedDriverTipCents = resolveWashoutDriverTipCents(washout.activityAmount ?? null, washout.locationDriverTipRate ?? null);
+        const tipInspection = inspectLocationDriverIncentiveTipCents(normalizedDriverTipCents);
 
-        if (tipInspection.driverTipEnabled && tipInspection.normalizedDriverTipCents === 0) {
+        if (tipInspection.driverTipEnabled && normalizedDriverTipCents === 0) {
           return res.status(400).json({
             message: `Invalid driver tip configuration for washout ${washout.activityId}`,
             reason: "driver_tip_invalid_for_preview",
@@ -11205,8 +11210,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ownerId,
             driverId: washout.driverId,
             rawDriverTipValue,
-            rawDriverTipField: "washout_locations.driver_incentive_tip",
-            normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+            rawDriverTipField,
+            normalizedDriverTipCents,
           });
         }
 
@@ -11219,8 +11224,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rawSystemPlatformFee: systemSettings?.platformWashoutFee ?? null,
           normalizedPlatformFeeCents: configuredPlatformFeeCents,
           rawDriverTipValue,
-          rawDriverTipField: "washout_locations.driver_incentive_tip",
-          normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+          rawDriverTipField,
+          rawWashoutActivityAmount: washout.activityAmount ?? null,
+          rawLocationDriverTipRate: washout.locationDriverTipRate ?? null,
+          normalizedDriverTipCents,
         });
         console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
           washoutActivityId: washout.activityId,
@@ -11228,9 +11235,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerId,
           driverId: washout.driverId,
           rawDriverTipValue,
-          rawDriverTipField: "washout_locations.driver_incentive_tip",
+          rawDriverTipField,
+          rawWashoutActivityAmount: washout.activityAmount ?? null,
+          rawLocationDriverTipRate: washout.locationDriverTipRate ?? null,
           driverTipEnabled: tipInspection.driverTipEnabled,
-          normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+          normalizedDriverTipCents,
         });
       }
 

@@ -37,3 +37,18 @@ export function inspectLocationDriverIncentiveTipCents(tipAmount: string | numbe
     driverTipEnabled,
   };
 }
+
+function hasMoneyValue(value: string | number | null | undefined): boolean {
+  return value !== null && value !== undefined && value !== "";
+}
+
+export function resolveWashoutDriverTipCents(
+  activityAmount: string | number | null | undefined,
+  locationDriverTipRate: string | number | null | undefined,
+): number {
+  if (hasMoneyValue(activityAmount)) {
+    return normalizeMoneyToCents(activityAmount, "auto");
+  }
+
+  return normalizeMoneyToCents(locationDriverTipRate, "dollars");
+}

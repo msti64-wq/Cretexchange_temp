@@ -254,7 +254,7 @@ function buildRowsFromActivities({
     const displayOwnerName = ownerEntry
       ? formatPersonName(ownerEntry.user)
       : "";
-    const driverTipCents = normalizeMoneyToCents(payment?.tipAmountCents ?? activity.location?.driverIncentiveTip ?? 0, "auto");
+    const driverTipCents = normalizeMoneyToCents(payment?.tipAmountCents ?? activity.location?.rate ?? 0, "auto");
     const platformFeeCents = payment ? parseMoneyToCents(payment.processingFee) : normalizeMoneyToCents(activity.feeCentsPlatform || 0, "auto");
     const ownerChargeAmountCents = platformFeeCents + driverTipCents;
     const driverPaymentAmountCents = payment

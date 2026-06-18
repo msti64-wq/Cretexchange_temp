@@ -1,4 +1,5 @@
 import { calculateOwnerWashoutBillingLedger, type OwnerBillingLedger, type OwnerBillingTransferEntry } from "../../shared/billingPolicy";
+import { resolveWashoutDriverTipCents } from "../../shared/locationBilling";
 import { normalizeMoneyToCents } from "../../shared/money";
 
 export type BillableWashout = {
@@ -7,7 +8,8 @@ export type BillableWashout = {
   driverId: string;
   driverStripeAccountId?: string | null;
   platformFeeCents: number | string | null;
-  driverTipCents: number | string | null;
+  activityAmount?: number | string | null;
+  locationDriverTipRate?: number | string | null;
   alreadyBilled?: boolean;
 };
 
@@ -158,9 +160,24 @@ export function buildOwnerWashoutBillingLedgerFromBillableWashouts(params: {
   const billable = params.washouts.filter((washout) => washout.ownerId === params.ownerId && !washout.alreadyBilled);
   const washoutActivityIds = billable.map((washout) => washout.id);
   const platformFeeCentsByWashout = billable.map((washout) => normalizeMoneyToCents(washout.platformFeeCents, "auto"));
-  const driverTipCentsByWashout = billable.map((washout) => normalizeMoneyToCents(washout.driverTipCents, "auto"));
+  const driverTipCentsByWashout = billable.map((washout) => {
+    const driverTipCents = resolveWashoutDriverTipCents(washout.activityAmount ?? null, washout.locationDriverTipRate ?? null);
+    console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
+      washoutActivityId: washout.id,
+      ownerId: washout.ownerId,
+      driverId: washout.driverId,
+      rawDriverTipField: washout.activityAmount !== null && washout.activityAmount !== undefined && washout.activityAmount !== ""
+        ? "washout_activities.amount"
+        : "washout_locations.rate",
+      rawDriverTipValue: washout.activityAmount ?? washout.locationDriverTipRate ?? null,
+      rawWashoutActivityAmount: washout.activityAmount ?? null,
+      rawLocationDriverTipRate: washout.locationDriverTipRate ?? null,
+      normalizedDriverTipCents: driverTipCents,
+    });
+    return driverTipCents;
+  });
   const driverTipCentsByDriver = billable.reduce<Record<string, number>>((acc, washout) => {
-    acc[washout.driverId] = (acc[washout.driverId] || 0) + normalizeMoneyToCents(washout.driverTipCents, "auto");
+    acc[washout.driverId] = (acc[washout.driverId] || 0) + resolveWashoutDriverTipCents(washout.activityAmount ?? null, washout.locationDriverTipRate ?? null);
     return acc;
   }, {});
   const driverTransfers = Object.entries(driverTipCentsByDriver).map(([driverId, tipAmountCents]) => {

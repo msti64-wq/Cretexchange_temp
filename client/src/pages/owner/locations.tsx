@@ -340,7 +340,7 @@ export default function OwnerLocations() {
       state: location.state || "",
       zip: location.zip || "",
       rate: location.rate?.toString() || "5.00",
-      driverIncentiveTip: (resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100).toFixed(2),
+      driverIncentiveTip: (resolveLocationDriverIncentiveTipCents(location.rate) / 100).toFixed(2),
       operatingHours: location.operatingHours || "",
       amenities: location.amenities?.join(", ") || "",
       description: location.description || "",
@@ -1065,7 +1065,7 @@ export default function OwnerLocations() {
                             </div>
                             <div className="text-xs text-muted-foreground">{t("owner.locations.driverPayoutClickEdit")}</div>
                             <div className="text-xs text-muted-foreground">
-                              {t("driver.locations.driverTip", { amount: formatCentsToDollars(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip)) })}
+                              {t("driver.locations.driverTip", { amount: formatCentsToDollars(resolveLocationDriverIncentiveTipCents(location.rate)) })}
                             </div>
                           </div>
                         )}

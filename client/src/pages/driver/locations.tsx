@@ -314,7 +314,7 @@ export default function DriverLocations() {
                       </div>
                       <div className="text-xs text-muted-foreground">{t("driver.locations.driverPayoutPerWashout")}</div>
                       <div className="text-xs text-muted-foreground">
-                        {t("driver.locations.driverTip", { amount: formatCurrency(resolveLocationDriverIncentiveTipCents(location.driverIncentiveTip) / 100) })}
+                        {t("driver.locations.driverTip", { amount: formatCurrency(resolveLocationDriverIncentiveTipCents(location.rate) / 100) })}
                       </div>
                     </div>
                   </div>

@@ -5,6 +5,7 @@ import {
   resolveConfiguredWashoutPlatformFeeCents,
 } from "../shared/billingPolicy";
 import { normalizeMoneyToCents } from "../shared/money";
+import { resolveWashoutDriverTipCents } from "../shared/locationBilling";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 
 type BillingBatch = any;
@@ -19,8 +20,9 @@ type ApprovedWashoutBillingRow = {
   driverId: string;
   locationId: string;
   activityStatus?: string | null;
+  activityAmount?: string | number | null;
   activityFeeCentsPlatform?: number | null;
-  locationDriverIncentiveTip?: number | null;
+  locationDriverTipRate?: string | number | null;
   verifiedAt?: Date | string | null;
   createdAt?: Date | string | null;
 };
@@ -271,12 +273,12 @@ async function processSingleOwnerBillingRun(
     });
     const approvedWashouts = await storage.getApprovedWashoutsForOwnerBilling(ownerId, startDate, endDate);
     const platformFeeCentsPerWashout = approvedWashouts.map(() => configuredPlatformFeeCents);
-    const driverTipCentsPerWashout = approvedWashouts.map((row) => normalizeMoneyToCents(row.locationDriverIncentiveTip, "auto"));
+    const driverTipCentsPerWashout = approvedWashouts.map((row) => resolveWashoutDriverTipCents(row.activityAmount ?? null, row.locationDriverTipRate ?? null));
     const platformFeeTotalCents = platformFeeCentsPerWashout.reduce((sum, feeCents) => sum + feeCents, 0);
     const driverTipTotalCents = driverTipCentsPerWashout.reduce((sum, tipCents) => sum + tipCents, 0);
     const washoutActivityIds = approvedWashouts.map((row) => row.activityId).filter(Boolean);
     const approvedDriverTipCentsByDriver = approvedWashouts.reduce<Record<string, number>>((acc, row) => {
-      const tipCents = normalizeMoneyToCents(row.locationDriverIncentiveTip, "auto");
+      const tipCents = resolveWashoutDriverTipCents(row.activityAmount ?? null, row.locationDriverTipRate ?? null);
       acc[row.driverId] = (acc[row.driverId] || 0) + tipCents;
       return acc;
     }, {});
