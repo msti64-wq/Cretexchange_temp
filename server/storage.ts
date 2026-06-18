@@ -500,21 +500,25 @@ export interface IStorage {
   } | undefined>;
 }
 
-function normalizeWashoutActivityAmountTipCents(rawActivityAmount: unknown, rawLocationDriverTipRate: unknown, context: {
+function normalizeWashoutActivityAmountTipCents(rawActivityAmount: unknown, rawPaymentDriverTipCents: unknown, rawLocationDriverTipRate: unknown, context: {
   washoutActivityId?: string | null;
   ownerId?: string | null;
   driverId?: string | null;
 } = {}): number {
   const hasActivityAmount = rawActivityAmount !== null && rawActivityAmount !== undefined && rawActivityAmount !== "";
-  const rawDriverTipValue = hasActivityAmount ? rawActivityAmount : rawLocationDriverTipRate;
-  const rawDriverTipField = hasActivityAmount ? "washout_activities.amount" : "washout_locations.rate";
-  const normalizedDriverTipCents = normalizeMoneyToCents(rawDriverTipValue, "dollars");
+  const hasPaymentDriverTip = rawPaymentDriverTipCents !== null && rawPaymentDriverTipCents !== undefined && rawPaymentDriverTipCents !== "";
+  const rawDriverTipValue = hasActivityAmount ? rawActivityAmount : hasPaymentDriverTip ? rawPaymentDriverTipCents : rawLocationDriverTipRate;
+  const rawDriverTipField = hasActivityAmount ? "washout_activities.amount" : hasPaymentDriverTip ? "payments.driver_tip_cents" : "washout_locations.rate";
+  const normalizedDriverTipCents = normalizeMoneyToCents(rawDriverTipValue, hasActivityAmount ? "auto" : hasPaymentDriverTip ? "cents" : "dollars");
   console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
     washoutActivityId: context.washoutActivityId ?? null,
     ownerId: context.ownerId ?? null,
     driverId: context.driverId ?? null,
     rawDriverTipField,
     rawDriverTipValue: rawDriverTipValue ?? null,
+    rawWashoutActivityAmount: rawActivityAmount ?? null,
+    normalizedWashoutActivityAmountCents: normalizeMoneyToCents(rawActivityAmount, "auto"),
+    rawPaymentDriverTipCents: rawPaymentDriverTipCents ?? null,
     rawLocationDriverTipRate: rawLocationDriverTipRate ?? null,
     normalizedDriverTipCents,
     normalizedLocationDriverTipCents: normalizeMoneyToCents(rawLocationDriverTipRate, "dollars"),
@@ -1682,7 +1686,7 @@ export class DatabaseStorage implements IStorage {
         status: "verified",
         verifiedBy,
         verifiedAt: new Date(),
-        ...(resolvedDriverTipCents !== undefined ? { driverTipCents: resolvedDriverTipCents } : {}),
+        ...(resolvedDriverTipCents !== undefined ? { amount: (resolvedDriverTipCents / 100).toFixed(2) } : {}),
         updatedAt: new Date()
       })
       .where(eq(washoutActivities.id, activityId))
@@ -1749,7 +1753,6 @@ export class DatabaseStorage implements IStorage {
         activityId: washoutActivities.id,
         activityDriverId: washoutActivities.driverId,
         activityLocationId: washoutActivities.locationId,
-        activityDriverTipCents: washoutActivities.driverTipCents,
         activityCheckInTime: washoutActivities.checkInTime,
         activityStatus: washoutActivities.status,
         activityAmount: washoutActivities.amount,
@@ -2032,7 +2035,6 @@ export class DatabaseStorage implements IStorage {
         paymentCreatedAt: payments.createdAt,
         paymentUpdatedAt: payments.updatedAt,
         activityLocationId: washoutActivities.locationId,
-        activityDriverTipCents: washoutActivities.driverTipCents,
         activityAmount: washoutActivities.amount,
         locationDriverTipRate: washoutLocations.rate,
       })
@@ -2043,7 +2045,7 @@ export class DatabaseStorage implements IStorage {
 
     if (!row) return undefined;
 
-    const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+    const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
       washoutActivityId: row.paymentActivityId,
       ownerId: row.paymentOwnerId,
       driverId: row.paymentDriverId,
@@ -2112,7 +2114,6 @@ export class DatabaseStorage implements IStorage {
         activityId: washoutActivities.id,
         activityDriverId: washoutActivities.driverId,
         activityLocationId: washoutActivities.locationId,
-        activityDriverTipCents: washoutActivities.driverTipCents,
         activityCheckInTime: washoutActivities.checkInTime,
         activityCheckOutTime: washoutActivities.checkOutTime,
         activityStatus: washoutActivities.status,
@@ -2143,7 +2144,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(payments.createdAt));
 
     const mappedBatches: any = results.map((row: any) => {
-      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
         washoutActivityId: row.paymentActivityId,
         ownerId: row.paymentOwnerId,
         driverId: row.paymentDriverId,
@@ -2289,7 +2290,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
         washoutActivityId: row.paymentActivityId,
         ownerId: row.paymentOwnerId,
         driverId: row.paymentDriverId,
@@ -2395,7 +2396,6 @@ export class DatabaseStorage implements IStorage {
         paymentUpdatedAt: payments.updatedAt,
         activityId: washoutActivities.id,
         activityLocationId: washoutActivities.locationId,
-        activityDriverTipCents: washoutActivities.driverTipCents,
         activityStatus: washoutActivities.status,
         activityCheckInTime: washoutActivities.checkInTime,
         activityCheckOutTime: washoutActivities.checkOutTime,
@@ -2455,7 +2455,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
         washoutActivityId: row.paymentActivityId,
         ownerId: row.paymentOwnerId,
         driverId: row.paymentDriverId,
@@ -2640,7 +2640,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
         washoutActivityId: row.paymentActivityId,
         ownerId: row.paymentOwnerId,
         driverId: row.paymentDriverId,
@@ -2816,7 +2816,6 @@ export class DatabaseStorage implements IStorage {
         locationUpdatedAt: washoutLocations.updatedAt,
         activityId: washoutActivities.id,
         activityLocationId: washoutActivities.locationId,
-        activityDriverTipCents: washoutActivities.driverTipCents,
         activityCheckInTime: washoutActivities.checkInTime,
         activityStatus: washoutActivities.status,
         activityAmount: washoutActivities.amount,
@@ -2840,7 +2839,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
         washoutActivityId: row.paymentActivityId,
         ownerId: row.paymentOwnerId,
         driverId: row.paymentDriverId,
@@ -3014,8 +3013,8 @@ export class DatabaseStorage implements IStorage {
             platformFeeCents: configuredPlatformFeeCents,
             activityAmount: row.activityAmount ?? null,
             locationDriverTipRate: row.locationDriverTipRate ?? null,
-            paymentTipAmountCents: row.paymentDriverTipCents ?? row.paymentTipAmountCents ?? null,
-            driverTipCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+            paymentTipAmountCents: row.paymentDriverTipCents ?? null,
+            driverTipCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
               washoutActivityId: row.activityId,
               ownerId: row.ownerId,
               driverId: row.driverId,
@@ -3202,8 +3201,8 @@ export class DatabaseStorage implements IStorage {
               platformFeeCents: configuredPlatformFeeCents,
               activityAmount: row.activityAmount ?? null,
               locationDriverTipRate: row.locationDriverTipRate ?? null,
-              paymentTipAmountCents: row.paymentDriverTipCents ?? row.paymentTipAmountCents ?? null,
-              driverTipCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+              paymentTipAmountCents: row.paymentDriverTipCents ?? null,
+              driverTipCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
                 washoutActivityId: row.activityId,
                 ownerId: row.ownerId,
                 driverId: row.driverId,
@@ -4867,7 +4866,6 @@ export class DatabaseStorage implements IStorage {
         activityId: washoutActivities.id,
         activityDriverId: washoutActivities.driverId,
         activityLocationId: washoutActivities.locationId,
-        activityDriverTipCents: washoutActivities.driverTipCents,
         activityCheckInTime: washoutActivities.checkInTime,
         activityCheckOutTime: washoutActivities.checkOutTime,
         activityStatus: washoutActivities.status,
@@ -4898,7 +4896,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(payments.createdAt);
 
     return pendingPayments.map((row: any) => {
-      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
         washoutActivityId: row.paymentActivityId,
         ownerId: row.paymentOwnerId,
         driverId: row.paymentDriverId,
@@ -5010,7 +5008,6 @@ export class DatabaseStorage implements IStorage {
         activityId: washoutActivities.id,
         activityDriverId: washoutActivities.driverId,
         activityLocationId: washoutActivities.locationId,
-        activityDriverTipCents: washoutActivities.driverTipCents,
         activityCheckInTime: washoutActivities.checkInTime,
         activityCheckOutTime: washoutActivities.checkOutTime,
         activityStatus: washoutActivities.status,
@@ -5034,7 +5031,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(payments.createdAt);
 
     return pendingPayments.map((row: any) => {
-      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
         washoutActivityId: row.paymentActivityId,
         ownerId: row.paymentOwnerId,
         driverId: row.paymentDriverId,
@@ -5118,7 +5115,6 @@ export class DatabaseStorage implements IStorage {
     activityStatus?: string | null;
     activityAmount?: string | number | null;
     activityFeeCentsPlatform?: number | null;
-    activityDriverTipCents?: number | null;
     paymentDriverTipCents?: number | null;
     paymentTipAmountCents?: number | null;
     locationDriverTipRate?: number | null;
@@ -5166,7 +5162,6 @@ export class DatabaseStorage implements IStorage {
         activityStatus: washoutActivities.status,
         activityAmount: washoutActivities.amount,
         activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
-        activityDriverTipCents: washoutActivities.driverTipCents,
         paymentDriverTipCents: payments.driverTipCents,
         paymentTipAmountCents: payments.washoutServiceFee,
         locationDriverTipRate: washoutLocations.rate,
@@ -5251,7 +5246,6 @@ export class DatabaseStorage implements IStorage {
     status: string | null;
     activityAmount: string | number | null;
     feeCentsPlatform: number | null;
-    activityDriverTipCents: number | null;
     paymentStatus: string | null;
     paymentDriverTipCents: number | null;
     paymentWashoutServiceFee: string | number | null;
@@ -5283,7 +5277,6 @@ export class DatabaseStorage implements IStorage {
         status: washoutActivities.status,
         activityAmount: washoutActivities.amount,
         feeCentsPlatform: washoutActivities.feeCentsPlatform,
-        activityDriverTipCents: washoutActivities.driverTipCents,
         paymentDriverTipCents: payments.driverTipCents,
         paymentStatus: payments.status,
         paymentWashoutServiceFee: payments.washoutServiceFee,
@@ -5303,12 +5296,12 @@ export class DatabaseStorage implements IStorage {
     return rows.map((row: any) => {
       const locationDriverTipRate = row.locationDriverTipRate ?? null;
       const paymentWashoutServiceFee = row.paymentWashoutServiceFee ?? null;
-      const activityDriverTipCents = row.activityDriverTipCents ?? null;
       const paymentDriverTipCents = row.paymentDriverTipCents ?? null;
       const activityAmount = row.activityAmount ?? null;
       const hasActivityAmount = activityAmount !== null && activityAmount !== undefined && activityAmount !== "";
-      const resolvedTipSource = hasActivityAmount ? "washout_activities.amount" : "washout_locations.rate";
-      const resolvedDriverTipCents = normalizeWashoutActivityAmountTipCents(activityAmount, row.locationDriverTipRate, {
+      const hasPaymentDriverTip = paymentDriverTipCents !== null && paymentDriverTipCents !== undefined && paymentDriverTipCents !== "";
+      const resolvedTipSource = hasActivityAmount ? "washout_activities.amount" : hasPaymentDriverTip ? "payments.driver_tip_cents" : "washout_locations.rate";
+      const resolvedDriverTipCents = normalizeWashoutActivityAmountTipCents(activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
         washoutActivityId: row.washoutActivityId,
         ownerId: row.ownerId,
         driverId: row.driverId,
@@ -5323,7 +5316,6 @@ export class DatabaseStorage implements IStorage {
         status: row.status ?? null,
         activityAmount,
         feeCentsPlatform: row.feeCentsPlatform ?? null,
-        activityDriverTipCents,
         paymentStatus: row.paymentStatus ?? null,
         paymentWashoutServiceFee,
         paymentDriverTipCents,
@@ -5374,7 +5366,6 @@ export class DatabaseStorage implements IStorage {
         activityId: washoutActivities.id,
         activityDriverId: washoutActivities.driverId,
         activityLocationId: washoutActivities.locationId,
-        activityDriverTipCents: washoutActivities.driverTipCents,
         activityCheckInTime: washoutActivities.checkInTime,
         activityCheckOutTime: washoutActivities.checkOutTime,
         activityStatus: washoutActivities.status,
@@ -5398,7 +5389,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(payments.createdAt);
 
     return batchPayments.map((row: any) => {
-      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
         washoutActivityId: row.paymentActivityId,
         ownerId: row.paymentOwnerId,
         driverId: row.paymentDriverId,

@@ -303,7 +303,6 @@ export const washoutActivities = pgTable("washout_activities", {
   locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "cascade" }),
   status: washoutStatusEnum("status").notNull().default("pending"),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  driverTipCents: integer("driver_tip_cents").notNull().default(0),
   checkInTime: timestamp("check_in_time").notNull(),
   checkOutTime: timestamp("check_out_time"),
   photoUrls: text("photo_urls").array(), // Legacy field - will be removed after migration

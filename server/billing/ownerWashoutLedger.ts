@@ -8,7 +8,6 @@ export type BillableWashout = {
   driverStripeAccountId?: string | null;
   platformFeeCents: number | string | null;
   activityAmount?: number | string | null;
-  activityDriverTipCents?: number | string | null;
   locationDriverTipRate?: number | string | null;
   paymentTipAmountCents?: number | string | null;
   driverTipCents?: number | string | null;
@@ -23,7 +22,7 @@ export type ResolvedDriverTipForWashout = {
   driverId: string;
   driverStripeAccountId: string | null;
   driverTipCents: number;
-  source: "washout_activities.amount" | "washout_locations.rate" | "request.forceDriverTipCents";
+  source: "washout_activities.amount" | "payments.driver_tip_cents" | "washout_locations.rate" | "request.forceDriverTipCents";
 };
 
 export type DriverTransferLedger = {
@@ -167,19 +166,31 @@ function normalizeTransfer(transfer: OwnerBillingTransferEntry): DriverTransferL
 export function resolveDriverTipForWashout(washout: BillableWashout): ResolvedDriverTipForWashout {
   const hasOverride = washout.driverTipOverrideCents !== null && washout.driverTipOverrideCents !== undefined && washout.driverTipOverrideCents !== "";
   const hasActivityAmount = washout.activityAmount !== null && washout.activityAmount !== undefined && washout.activityAmount !== "";
-  const rawDriverTipValue = hasOverride ? washout.driverTipOverrideCents : hasActivityAmount ? washout.activityAmount : washout.locationDriverTipRate;
+  const hasPaymentDriverTip = washout.paymentTipAmountCents !== null && washout.paymentTipAmountCents !== undefined && washout.paymentTipAmountCents !== "";
+  const rawDriverTipValue = hasOverride
+    ? washout.driverTipOverrideCents
+    : hasActivityAmount
+      ? washout.activityAmount
+      : hasPaymentDriverTip
+        ? washout.paymentTipAmountCents
+        : washout.locationDriverTipRate;
   const rawDriverTipField = hasOverride
     ? "request.forceDriverTipCents"
     : hasActivityAmount
       ? "washout_activities.amount"
-      : "washout_locations.rate";
-  const driverTipCents = normalizeMoneyToCents(rawDriverTipValue, hasOverride ? "cents" : "dollars");
+      : hasPaymentDriverTip
+        ? "payments.driver_tip_cents"
+        : "washout_locations.rate";
+  const driverTipCents = normalizeMoneyToCents(rawDriverTipValue, hasOverride ? "cents" : hasActivityAmount ? "auto" : hasPaymentDriverTip ? "cents" : "dollars");
   console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
     washoutActivityId: washout.id,
     ownerId: washout.ownerId,
     driverId: washout.driverId,
     rawDriverTipField,
     rawDriverTipValue: rawDriverTipValue ?? null,
+    rawWashoutActivityAmount: washout.activityAmount ?? null,
+    normalizedWashoutActivityAmountCents: normalizeMoneyToCents(washout.activityAmount, "auto"),
+    rawPaymentDriverTipCents: washout.paymentTipAmountCents ?? null,
     rawLocationDriverTipRate: washout.locationDriverTipRate ?? null,
     normalizedDriverTipCents: driverTipCents,
     normalizedLocationDriverTipCents: normalizeMoneyToCents(washout.locationDriverTipRate, "dollars"),

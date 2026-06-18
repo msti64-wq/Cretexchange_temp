@@ -6,7 +6,6 @@ export type OwnerBillingReceivableRow = {
   activityStatus?: string | null;
   activityFeeCentsPlatform?: number | string | null;
   activityAmount?: number | string | null;
-  activityDriverTipCents?: number | string | null;
   locationDriverTipRate?: number | string | null;
   paymentDriverTipCents?: number | string | null;
   paymentStatus?: string | null;
@@ -60,7 +59,7 @@ export function summarizeOwnerBillingReceivables(
     const platformFeeCents = ownerPlatformFeeCents !== null && ownerPlatformFeeCents !== undefined && ownerPlatformFeeCents !== ""
       ? normalizeMoneyToCents(ownerPlatformFeeCents, "auto")
       : defaultPlatformFeeCents;
-    const activityAmount = row.activityAmount ?? row.activityDriverTipCents ?? null;
+    const activityAmount = row.activityAmount ?? null;
     const locationDriverTipRate = row.locationDriverTipRate ?? null;
     const driverTipCents = resolveApprovedWashoutDriverTipCents(activityAmount, row.paymentDriverTipCents ?? null, locationDriverTipRate);
 

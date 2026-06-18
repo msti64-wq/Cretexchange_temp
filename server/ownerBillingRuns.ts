@@ -24,7 +24,6 @@ type ApprovedWashoutBillingRow = {
   paymentDriverTipCents?: number | null;
   paymentTipAmountCents?: number | string | null;
   locationDriverTipRate?: string | number | null;
-  activityDriverTipCents?: number | null;
   verifiedAt?: Date | string | null;
   createdAt?: Date | string | null;
 };
@@ -152,21 +151,25 @@ function formatMoney(amountCents: number): string {
   return (amountCents / 100).toFixed(2);
 }
 
-function normalizeWashoutActivityAmountTipCents(rawActivityAmount: unknown, rawLocationDriverTipRate: unknown, context: {
+function normalizeWashoutActivityAmountTipCents(rawActivityAmount: unknown, rawPaymentDriverTipCents: unknown, rawLocationDriverTipRate: unknown, context: {
   washoutActivityId?: string | null;
   ownerId?: string | null;
   driverId?: string | null;
 } = {}): number {
   const hasActivityAmount = rawActivityAmount !== null && rawActivityAmount !== undefined && rawActivityAmount !== "";
-  const rawDriverTipValue = hasActivityAmount ? rawActivityAmount : rawLocationDriverTipRate;
-  const rawDriverTipField = hasActivityAmount ? "washout_activities.amount" : "washout_locations.rate";
-  const normalizedDriverTipCents = normalizeMoneyToCents(rawDriverTipValue, "dollars");
+  const hasPaymentDriverTip = rawPaymentDriverTipCents !== null && rawPaymentDriverTipCents !== undefined && rawPaymentDriverTipCents !== "";
+  const rawDriverTipValue = hasActivityAmount ? rawActivityAmount : hasPaymentDriverTip ? rawPaymentDriverTipCents : rawLocationDriverTipRate;
+  const rawDriverTipField = hasActivityAmount ? "washout_activities.amount" : hasPaymentDriverTip ? "payments.driver_tip_cents" : "washout_locations.rate";
+  const normalizedDriverTipCents = normalizeMoneyToCents(rawDriverTipValue, hasActivityAmount ? "auto" : hasPaymentDriverTip ? "cents" : "dollars");
   console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
     washoutActivityId: context.washoutActivityId ?? null,
     ownerId: context.ownerId ?? null,
     driverId: context.driverId ?? null,
     rawDriverTipField,
     rawDriverTipValue: rawDriverTipValue ?? null,
+    rawWashoutActivityAmount: rawActivityAmount ?? null,
+    normalizedWashoutActivityAmountCents: normalizeMoneyToCents(rawActivityAmount, "auto"),
+    rawPaymentDriverTipCents: rawPaymentDriverTipCents ?? null,
     rawLocationDriverTipRate: rawLocationDriverTipRate ?? null,
     normalizedDriverTipCents,
     normalizedLocationDriverTipCents: normalizeMoneyToCents(rawLocationDriverTipRate, "dollars"),
@@ -176,6 +179,10 @@ function normalizeWashoutActivityAmountTipCents(rawActivityAmount: unknown, rawL
 
 function paymentActivityAmount(payment: Payment): unknown {
   return payment?.activity?.amount ?? null;
+}
+
+function paymentDriverTipCents(payment: Payment): unknown {
+  return payment?.driverTipCents ?? payment?.tipAmountCents ?? null;
 }
 
 function paymentLocationDriverTipRate(payment: Payment): unknown {
@@ -347,7 +354,7 @@ async function processSingleOwnerBillingRun(
     });
     const approvedWashouts = await storage.getApprovedWashoutsForOwnerBilling(ownerId, startDate, endDate);
     const platformFeeCentsPerWashout = approvedWashouts.map(() => configuredPlatformFeeCents);
-    const driverTipCentsPerWashout = approvedWashouts.map((row) => normalizeWashoutActivityAmountTipCents(row.activityAmount, row.locationDriverTipRate, {
+    const driverTipCentsPerWashout = approvedWashouts.map((row) => normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
       washoutActivityId: row.activityId,
       ownerId: row.ownerId,
       driverId: row.driverId,
@@ -617,7 +624,7 @@ async function processSingleOwnerBillingRun(
   console.log(`💳 [OWNER_BILLING] Candidate washouts for owner ${ownerId}: ${candidatePayments.length}`);
 
   const platformFeeCentsPerWashout = candidatePayments.map((payment) => toCents(payment.processingFee));
-  const driverTipCentsPerWashout = candidatePayments.map((payment) => normalizeWashoutActivityAmountTipCents(paymentActivityAmount(payment), paymentLocationDriverTipRate(payment), {
+  const driverTipCentsPerWashout = candidatePayments.map((payment) => normalizeWashoutActivityAmountTipCents(paymentActivityAmount(payment), paymentDriverTipCents(payment), paymentLocationDriverTipRate(payment), {
     washoutActivityId: payment.activityId,
     ownerId: payment.ownerId,
     driverId: payment.driverId,
@@ -723,7 +730,7 @@ async function processSingleOwnerBillingRun(
 
   const paymentsToBill = batchPayments.length > 0 ? batchPayments : candidatePayments;
   const totalPlatformFeeCents = paymentsToBill.reduce((sum, payment) => sum + toCents(payment.processingFee), 0);
-  const batchDriverTipCentsByWashout = paymentsToBill.map((payment) => normalizeWashoutActivityAmountTipCents(paymentActivityAmount(payment), paymentLocationDriverTipRate(payment), {
+  const batchDriverTipCentsByWashout = paymentsToBill.map((payment) => normalizeWashoutActivityAmountTipCents(paymentActivityAmount(payment), paymentDriverTipCents(payment), paymentLocationDriverTipRate(payment), {
     washoutActivityId: payment.activityId,
     ownerId: payment.ownerId,
     driverId: payment.driverId,

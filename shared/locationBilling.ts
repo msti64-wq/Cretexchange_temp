@@ -24,22 +24,35 @@ export function resolveLocationDriverTipRateCents(rate: string | number | null |
   return Number.isFinite(normalized) && normalized >= 0 ? normalized : DEFAULT_LOCATION_DRIVER_TIP_CENTS;
 }
 
+export function resolveWashoutActivityAmountDriverTipCents(amount: string | number | null | undefined): number {
+  if (!hasMoneyValue(amount)) {
+    return DEFAULT_LOCATION_DRIVER_TIP_CENTS;
+  }
+
+  const normalized = normalizeMoneyToCents(amount, "auto");
+  return Number.isFinite(normalized) && normalized >= 0 ? normalized : DEFAULT_LOCATION_DRIVER_TIP_CENTS;
+}
+
 export function resolveWashoutDriverTipCents(
   activityAmount: string | number | null | undefined,
+  paymentDriverTipCents: string | number | null | undefined,
   locationDriverTipRate: string | number | null | undefined,
 ): number {
   if (hasMoneyValue(activityAmount)) {
-    return normalizeMoneyToCents(activityAmount, "dollars");
+    return resolveWashoutActivityAmountDriverTipCents(activityAmount);
+  }
+  if (hasMoneyValue(paymentDriverTipCents)) {
+    return normalizeMoneyToCents(paymentDriverTipCents, "cents");
   }
   return resolveLocationDriverTipRateCents(locationDriverTipRate);
 }
 
 export function resolveApprovedWashoutDriverTipCents(
   activityAmount: string | number | null | undefined,
-  _paymentTipAmountCents: string | number | null | undefined,
+  paymentDriverTipCents: string | number | null | undefined,
   locationDriverTipRate: string | number | null | undefined,
 ): number {
-  return resolveWashoutDriverTipCents(activityAmount, locationDriverTipRate);
+  return resolveWashoutDriverTipCents(activityAmount, paymentDriverTipCents, locationDriverTipRate);
 }
 
 export function inspectLocationDriverTipRateCents(rate: string | number | null | undefined) {

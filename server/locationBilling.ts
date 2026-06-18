@@ -1,1 +1,1 @@
-export { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, resolveLocationMonthlyFeeCents, resolveLocationDriverTipRateCents, resolveWashoutDriverTipCents, resolveApprovedWashoutDriverTipCents, inspectLocationDriverTipRateCents } from "../shared/locationBilling";
+export { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, resolveLocationMonthlyFeeCents, resolveLocationDriverTipRateCents, resolveWashoutActivityAmountDriverTipCents, resolveWashoutDriverTipCents, resolveApprovedWashoutDriverTipCents, inspectLocationDriverTipRateCents } from "../shared/locationBilling";

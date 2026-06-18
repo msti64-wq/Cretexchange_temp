@@ -99,13 +99,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
               platformFeeCents: configuredPlatformFeeCents,
               activityAmount: row.activityAmount ?? null,
               locationDriverTipRate: row.locationDriverTipRate ?? null,
-              paymentTipAmountCents: row.paymentDriverTipCents ?? row.paymentTipAmountCents ?? null,
-              driverTipCents: normalizeMoneyToCents(
-                row.activityAmount !== null && row.activityAmount !== undefined && row.activityAmount !== ""
-                  ? row.activityAmount
-                  : row.locationDriverTipRate,
-                "dollars",
-              ),
+              paymentTipAmountCents: row.paymentDriverTipCents ?? null,
             })),
             allowAdminOverride: true,
           })

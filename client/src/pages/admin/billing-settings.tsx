@@ -172,7 +172,7 @@ interface DryRunOwnerBillingResult {
     ownerPostedTipCents?: number;
     billingReadTipCents?: number;
     paymentWashoutServiceFee: number | string | null;
-    activityDriverTipCents?: number | null;
+    activityAmount?: number | string | null;
     paymentDriverTipCents?: number | null;
     locationDriverTipRate: number | null;
     resolvedDriverTipCents: number;
@@ -807,7 +807,7 @@ export default function AdminBillingSettings() {
                               <TableHead>Owner</TableHead>
                               <TableHead>Location Tip</TableHead>
                               <TableHead>Owner Posted</TableHead>
-                              <TableHead>Activity Tip</TableHead>
+                              <TableHead>Activity Amount</TableHead>
                               <TableHead>Payment Fee</TableHead>
                               <TableHead>Payment Tip Cents</TableHead>
                               <TableHead>Billing Read</TableHead>
@@ -840,9 +840,9 @@ export default function AdminBillingSettings() {
                                       : row.ownerPostedTipCents}
                                   </TableCell>
                                   <TableCell className="font-mono text-xs">
-                                    {row.activityDriverTipCents === null || row.activityDriverTipCents === undefined
+                                    {row.activityAmount === null || row.activityAmount === undefined
                                       ? "None"
-                                      : row.activityDriverTipCents}
+                                      : String(row.activityAmount)}
                                   </TableCell>
                                   <TableCell className="font-mono text-xs">
                                     {row.paymentWashoutServiceFee === null || row.paymentWashoutServiceFee === undefined
