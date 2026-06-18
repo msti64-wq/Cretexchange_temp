@@ -4247,20 +4247,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Owner endpoints
   app.get('/api/owners/dashboard', isAuthenticated, async (req: any, res) => {
+    let dashboardPhase = "start";
+    let ownerIdForLog: string | null = null;
     try {
       setBillingNoCacheHeaders(res);
       const userId = req.user.id;
+      console.info("[OWNER_DASHBOARD] request", { userId });
+
+      dashboardPhase = "owner_lookup";
       const owner = await storage.getOwner(userId);
       
       if (!owner) {
+        console.warn("[OWNER_DASHBOARD] owner lookup returned no owner", { userId });
         return res.status(404).json({ message: "Owner not found" });
       }
+      ownerIdForLog = owner.id;
 
+      dashboardPhase = "week_stats";
       const weekStats = await storage.getOwnerStats(owner.id, 7);
+      console.info("[OWNER_DASHBOARD] week stats loaded", {
+        ownerId: owner.id,
+        totalWashouts: weekStats.totalWashouts,
+        totalDrivers: weekStats.totalDrivers,
+      });
+
+      dashboardPhase = "month_stats";
       const monthStats = await storage.getOwnerStats(owner.id, 30);
+      console.info("[OWNER_DASHBOARD] month stats loaded", {
+        ownerId: owner.id,
+        totalWashouts: monthStats.totalWashouts,
+        totalDrivers: monthStats.totalDrivers,
+      });
+
+      dashboardPhase = "locations";
       const locations = await storage.getLocationsByOwner(owner.id);
+      console.info("[OWNER_DASHBOARD] locations loaded", {
+        ownerId: owner.id,
+        locationCount: locations.length,
+      });
 
       // Get user data for profile completion checks
+      dashboardPhase = "user_lookup";
       const user = await storage.getUser(userId);
 
       logReportingReconciliation("/api/owners/dashboard", {
@@ -4280,7 +4307,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         owner: owner,
       });
     } catch (error) {
-      console.error("Error fetching owner dashboard:", error);
+      const dbError = summarizeDatabaseError(error, {
+        phase: `owner-dashboard:${dashboardPhase}`,
+      });
+      console.error("[OWNER_DASHBOARD] query failed", {
+        ownerId: ownerIdForLog,
+        phase: dashboardPhase,
+        ...dbError,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       res.status(500).json({ message: "Failed to fetch dashboard data" });
     }
   });

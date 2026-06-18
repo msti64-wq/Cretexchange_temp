@@ -1121,11 +1121,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLocationsByOwner(ownerId: string): Promise<WashoutLocation[]> {
-    return await db
-      .select()
+    const rows = await db
+      .select({
+        id: washoutLocations.id,
+        ownerId: washoutLocations.ownerId,
+        name: washoutLocations.name,
+        street: washoutLocations.street,
+        city: washoutLocations.city,
+        state: washoutLocations.state,
+        zip: washoutLocations.zip,
+        address: washoutLocations.address,
+        latitude: washoutLocations.latitude,
+        longitude: washoutLocations.longitude,
+        rate: washoutLocations.rate,
+        monthlyFeeCents: washoutLocations.monthlyFeeCents,
+        isActive: washoutLocations.isActive,
+        isVisible: washoutLocations.isVisible,
+        description: washoutLocations.description,
+        amenities: washoutLocations.amenities,
+        operatingHours: washoutLocations.operatingHours,
+        permitUrls: washoutLocations.permitUrls,
+        createdAt: washoutLocations.createdAt,
+        updatedAt: washoutLocations.updatedAt,
+      })
       .from(washoutLocations)
       .where(eq(washoutLocations.ownerId, ownerId))
       .orderBy(desc(washoutLocations.createdAt));
+
+    return rows.map((row) => ({
+      ...row,
+      driverIncentiveTip: normalizeMoneyToCents(row.rate, "dollars"),
+    })) as WashoutLocation[];
   }
 
   async getActiveLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]> {
@@ -2883,7 +2909,7 @@ export class DatabaseStorage implements IStorage {
             driverId: row.driverId,
             driverStripeAccountId: null,
             platformFeeCents: normalizeMoneyToCents(row.activityFeeCentsPlatform ?? 0, "auto"),
-            driverTipCents: normalizeMoneyToCents(row.locationDriverIncentiveTip || 0, "auto"),
+            driverTipCents: normalizeMoneyToCents(row.locationRate || 0, "dollars"),
           })),
           immediateBilling: true,
         })
@@ -4951,7 +4977,8 @@ export class DatabaseStorage implements IStorage {
     locationId: string;
     activityStatus?: string | null;
     activityFeeCentsPlatform?: number | null;
-    locationDriverIncentiveTip?: number | null;
+    locationDriverIncentiveTip?: number | string | null;
+    locationRate?: number | string | null;
     verifiedAt?: Date | null;
     createdAt?: Date | null;
   }>> {
@@ -4979,7 +5006,7 @@ export class DatabaseStorage implements IStorage {
         locationId: washoutActivities.locationId,
         activityStatus: washoutActivities.status,
         activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
-        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        locationRate: washoutLocations.rate,
         paymentStatus: payments.status,
         paymentBatchId: payments.batchId,
         verifiedAt: washoutActivities.verifiedAt,
@@ -5033,7 +5060,10 @@ export class DatabaseStorage implements IStorage {
         return false;
       }
       return true;
-    }) as any;
+    }).map((row: any) => ({
+      ...row,
+      locationDriverIncentiveTip: normalizeMoneyToCents(row.locationRate, "dollars"),
+    })) as any;
   }
 
   async assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void> {
@@ -5080,7 +5110,7 @@ export class DatabaseStorage implements IStorage {
         activityStatus: washoutActivities.status,
         activityAmount: washoutActivities.amount,
         activityNotes: washoutActivities.notes,
-        locationDriverIncentiveTip: washoutLocations.driverIncentiveTip,
+        locationRate: washoutLocations.rate,
         driverId: drivers.id,
         driverUserId: drivers.userId,
         driverTruckNumber: drivers.truckNumber,
@@ -5091,6 +5121,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(payments)
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
+      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(drivers, eq(payments.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
       .where(eq(payments.batchId, batchId))
@@ -5104,8 +5135,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (Number(row.locationDriverIncentiveTip || 0) / 100).toFixed(2),
-      tipAmountCents: Number(row.locationDriverIncentiveTip || 0),
+      washoutServiceFee: (normalizeMoneyToCents(row.locationRate, "dollars") / 100).toFixed(2),
+      tipAmountCents: normalizeMoneyToCents(row.locationRate, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
