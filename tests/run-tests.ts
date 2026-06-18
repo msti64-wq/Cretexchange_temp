@@ -2542,6 +2542,7 @@ function createOwnerBillingRunFixture(params: {
   const storage = {
     getOwnerById: async (id: string) => (id === ownerId ? owner : undefined),
     getUser: async (id: string) => (id === owner.userId ? ownerUser : undefined),
+    getSystemSettings: async () => ({ platformWashoutFee: "5.00" }),
     getAllOwnersBillingSettings: async () => [
       {
         ownerId,
@@ -7737,6 +7738,7 @@ test("owner billing blocks suspicious immediate charge before Stripe API call", 
 test("manual owner billing charges approved washout platform fees plus driver tips", async () => {
   const fixture = createOwnerBillingRunFixture({
     billingCadence: "weekly",
+    ownerCustomPlatformFee: "2.50",
     approvedWashouts: [
       {
         activityId: "activity_1",
