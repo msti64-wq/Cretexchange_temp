@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { execSync } from "node:child_process";
 import { installConsoleRedaction } from "../shared/logRedaction";
 import { setupVite, serveStatic, log } from "./vite";
 import { getStorageSelection } from "./objectStorage";
@@ -121,6 +122,31 @@ function logDeploymentGitCommitStartupState() {
   console.log("Deployment git commit:", getDeploymentGitCommitState());
 }
 
+function logCurrentCommitStartupState() {
+  const envCommit = [
+    process.env.RAILWAY_GIT_COMMIT_SHA,
+    process.env.GIT_COMMIT_SHA,
+    process.env.GIT_SHA,
+    process.env.COMMIT_SHA,
+    process.env.SOURCE_VERSION,
+    process.env.npm_package_gitHead,
+  ].find((value) => Boolean(value?.trim()))?.trim() || null;
+  let gitCommit = envCommit;
+  if (!gitCommit) {
+    try {
+      gitCommit = execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
+    } catch {
+      gitCommit = null;
+    }
+  }
+
+  console.log("[STARTUP_COMMIT]", {
+    CURRENT_COMMIT: gitCommit,
+    BUILD_TIMESTAMP: new Date().toISOString(),
+    SOURCE_NO_DRIVER_INCENTIVE_TIP: true,
+  });
+}
+
 // Debug database connection
 console.log('Environment check:', {
   environment: process.env.REPLIT_DEPLOYMENT ? 'production' : 'development',
@@ -128,6 +154,7 @@ console.log('Environment check:', {
 });
 logDriverStripeOnboardingUrlStartupState();
 logDeploymentGitCommitStartupState();
+logCurrentCommitStartupState();
 
 // Raw body parsing specifically for Stripe webhooks (must come before JSON parsing)
 app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }));
