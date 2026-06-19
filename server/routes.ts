@@ -34,7 +34,6 @@ import {
   type UserTermsState,
 } from "./terms";
 import { normalizeLegalLanguage } from "@shared/legalDocuments";
-import { DEFAULT_LOCATION_MONTHLY_FEE_CENTS, inspectLocationDriverIncentiveTipCents, resolveLocationMonthlyFeeCents, resolveLocationDriverIncentiveTipCents } from "./locationBilling";
 import {
   resolveOwnerBillingPolicy,
   getActiveBillingPolicyLabels,
@@ -11151,7 +11150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverId: string;
         locationId: string;
         activityFeeCentsPlatform?: number | null;
-        locationDriverRate?: number | null;
+        activityDriverTipAmount?: number | string | null;
+        locationDriverRate?: number | string | null;
       };
       const approvedWashouts = (await storage.getApprovedWashoutsForOwnerBilling(ownerId)) as ApprovedWashoutPreviewRow[];
       const approvedWashoutLookup = new Map<string, ApprovedWashoutPreviewRow>(approvedWashouts.map((washout) => [washout.activityId, washout]));
@@ -11195,7 +11195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           driverId: washout.driverId,
           driverStripeAccountId: driverAccounts.get(washout.driverId) || null,
           platformFeeCents: configuredPlatformFeeCents,
-          driverTipCents: normalizeMoneyToCents(washout.locationDriverRate, "auto"),
+          driverTipCents: normalizeMoneyToCents(washout.activityDriverTipAmount, "dollars"),
         })),
         customerId: ownerStripeSetup.customerId,
         paymentMethodId: ownerStripeSetup.paymentMethodId,
@@ -11204,10 +11204,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       for (const washout of selectedWashouts) {
-        const rawDriverTipValue = washout.locationDriverRate;
-        const tipInspection = inspectLocationDriverIncentiveTipCents(rawDriverTipValue);
+        const rawDriverTipValue = washout.activityDriverTipAmount;
+        const normalizedDriverTipCents = normalizeMoneyToCents(rawDriverTipValue, "dollars");
 
-        if (tipInspection.driverTipEnabled && tipInspection.normalizedDriverTipCents === 0) {
+        if (rawDriverTipValue !== null && rawDriverTipValue !== undefined && Number(rawDriverTipValue) > 0 && normalizedDriverTipCents === 0) {
           return res.status(400).json({
             message: `Invalid driver tip configuration for washout ${washout.activityId}`,
             reason: "driver_tip_invalid_for_preview",
@@ -11216,8 +11216,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ownerId,
             driverId: washout.driverId,
             rawDriverTipValue,
-            rawDriverTipField: "washout_locations.rate",
-            normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+            rawDriverTipField: "washout_activities.amount",
+            normalizedDriverTipCents,
           });
         }
 
@@ -11230,8 +11230,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rawSystemPlatformFee: systemSettings?.platformWashoutFee ?? null,
           normalizedPlatformFeeCents: configuredPlatformFeeCents,
           rawDriverTipValue,
-          rawDriverTipField: "washout_locations.rate",
-          normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+          rawDriverTipField: "washout_activities.amount",
+          normalizedDriverTipCents,
         });
         console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
           washoutActivityId: washout.activityId,
@@ -11239,9 +11239,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ownerId,
           driverId: washout.driverId,
           rawDriverTipValue,
-          rawDriverTipField: "washout_locations.rate",
-          driverTipEnabled: tipInspection.driverTipEnabled,
-          normalizedDriverTipCents: tipInspection.normalizedDriverTipCents,
+          rawDriverTipField: "washout_activities.amount",
+          driverTipEnabled: normalizedDriverTipCents > 0,
+          normalizedDriverTipCents,
         });
       }
 

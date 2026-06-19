@@ -77,32 +77,15 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
     immediateOwners.map(async (ownerSetting: { ownerId: string; companyName: string; username: string; billingCadence: string }) => {
       const owner = await storageApi.getOwnerById(ownerSetting.ownerId);
       const ownerUser = owner ? await storageApi.getUser(owner.userId) : null;
-      let approvedWashouts: any[] = [];
-      if (typeof storageApi.getApprovedWashoutsForOwnerBilling === "function") {
-        try {
-          approvedWashouts = await storageApi.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId);
-        } catch (error) {
-          console.warn("[OWNER_BILLING_RECEIVABLES] approved washouts query failed, falling back to batch history only", {
-            ownerId: ownerSetting.ownerId,
-            error: error instanceof Error ? error.message : String(error),
-          });
-          approvedWashouts = [];
-        }
+      if (typeof storageApi.getApprovedWashoutsForOwnerBilling !== "function") {
+        throw new Error("[OWNER_BILLING_RECEIVABLES] getApprovedWashoutsForOwnerBilling is not available");
       }
+      const approvedWashouts = await storageApi.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId);
       const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
         ownerCustomPlatformFee: owner?.customPlatformFee,
         systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
       });
-      let batches: any[] = [];
-      try {
-        batches = await storageApi.getBillingBatchesByOwner(ownerSetting.ownerId);
-      } catch (error) {
-        console.warn("[OWNER_BILLING_RECEIVABLES] billing batches query failed, falling back to zeroed batch summary", {
-          ownerId: ownerSetting.ownerId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-        batches = [];
-      }
+      const batches = await storageApi.getBillingBatchesByOwner(ownerSetting.ownerId);
       const billableApprovedWashouts = approvedWashouts.filter((row: any) => isBillableWashoutForOwnerBilling({ status: row.activityStatus }));
       const approvedLedger = billableApprovedWashouts.length > 0
         ? buildOwnerWashoutBillingLedgerFromBillableWashouts({
@@ -114,26 +97,17 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
               driverId: row.driverId,
               driverStripeAccountId: null,
               platformFeeCents: configuredPlatformFeeCents,
-              driverTipCents: normalizeMoneyToCents(row.locationDriverIncentiveTip || 0, "auto"),
+              driverTipCents: normalizeMoneyToCents(row.activityDriverTipAmount || 0, "dollars"),
             })),
             allowAdminOverride: true,
           })
         : null;
       const batchLedgers = await Promise.all(
         batches.map(async (batch: { id: string; status?: string | null }) => {
-          let payments: any[] = [];
-          if (typeof storageApi.getPaymentsByBatchId === "function") {
-            try {
-              payments = await storageApi.getPaymentsByBatchId(batch.id);
-            } catch (error) {
-              console.warn("[OWNER_BILLING_RECEIVABLES] payments by batch query failed, falling back to empty payments", {
-                ownerId: ownerSetting.ownerId,
-                batchId: batch.id,
-                error: error instanceof Error ? error.message : String(error),
-              });
-              payments = [];
-            }
+          if (typeof storageApi.getPaymentsByBatchId !== "function") {
+            throw new Error("[OWNER_BILLING_RECEIVABLES] getPaymentsByBatchId is not available");
           }
+          const payments = await storageApi.getPaymentsByBatchId(batch.id);
           const ledger = buildOwnerWashoutBillingLedgerFromPayments({
             ownerId: ownerSetting.ownerId,
             billingBatchId: batch.id,

@@ -103,7 +103,6 @@ import {
 import { db } from "./db";
 import { summarizeDatabaseError } from "./dbErrors";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
-import { resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
 import { resolvePlatformFeeCents, resolveConfiguredWashoutPlatformFeeCents, type OwnerBillingLedger } from "../shared/billingPolicy";
 import { normalizeMoneyToCents } from "../shared/money";
 import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
@@ -2912,7 +2911,7 @@ export class DatabaseStorage implements IStorage {
             driverId: row.driverId,
             driverStripeAccountId: null,
             platformFeeCents: normalizeMoneyToCents(row.activityFeeCentsPlatform ?? 0, "auto"),
-            driverTipCents: normalizeMoneyToCents(row.locationDriverRate || 0, "auto"),
+            driverTipCents: normalizeMoneyToCents(row.activityDriverTipAmount || 0, "dollars"),
           })),
           immediateBilling: true,
         })
@@ -3093,7 +3092,7 @@ export class DatabaseStorage implements IStorage {
               driverId: row.driverId,
               driverStripeAccountId: null,
               platformFeeCents: configuredPlatformFeeCents,
-              driverTipCents: normalizeMoneyToCents(row.locationDriverRate || 0, "auto"),
+              driverTipCents: normalizeMoneyToCents(row.activityDriverTipAmount || 0, "dollars"),
             })),
             immediateBilling: ownerSetting.billingCadence === "immediate",
             allowAdminOverride: true,
@@ -4980,6 +4979,7 @@ export class DatabaseStorage implements IStorage {
     locationId: string;
     activityStatus?: string | null;
     activityFeeCentsPlatform?: number | null;
+    activityDriverTipAmount?: number | string | null;
     locationDriverRate?: number | string | null;
     locationRate?: number | string | null;
     verifiedAt?: Date | null;
@@ -5009,6 +5009,7 @@ export class DatabaseStorage implements IStorage {
         locationId: washoutActivities.locationId,
         activityStatus: washoutActivities.status,
         activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
+        activityDriverTipAmount: washoutActivities.amount,
         locationRate: washoutLocations.rate,
         paymentStatus: payments.status,
         paymentBatchId: payments.batchId,
@@ -5065,6 +5066,7 @@ export class DatabaseStorage implements IStorage {
       return true;
     }).map((row: any) => ({
       ...row,
+      activityDriverTipAmount: row.activityDriverTipAmount,
       locationDriverRate: row.locationRate,
     })) as any;
   }
