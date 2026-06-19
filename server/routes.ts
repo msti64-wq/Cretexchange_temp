@@ -11186,66 +11186,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverAccounts.set(driverId, connectedAccountId);
       }
 
-      const preview = buildOwnerWashoutBillingPreview({
-        ownerId,
-        billingBatchId: `preview:${ownerId}:${Date.now()}`,
-        washouts: selectedWashouts.map((washout: ApprovedWashoutPreviewRow) => ({
+      const selectedWashoutActivities = await Promise.all(
+        selectedWashouts.map(async (washout) => ({
+          washoutActivityId: washout.activityId,
+          activity: await storage.getWashoutActivity(washout.activityId),
+        })),
+      );
+
+      const activityTipById = new Map<string, number>();
+      const debugTipSources = selectedWashoutActivities.map(({ washoutActivityId, activity }) => {
+        const rawAmount = activity?.amount ?? null;
+        const driverTipCents = normalizeMoneyToCents(rawAmount, "dollars");
+        activityTipById.set(washoutActivityId, driverTipCents);
+        if (washoutActivityId === "e312ea1d-7a62-4f9e-980f-432f54485a0b" && driverTipCents !== 100) {
+          throw new Error("DRIVER_TIP_LEDGER_INPUT_MISMATCH");
+        }
+        return {
+          washoutActivityId,
+          rawAmount,
+          driverTipCents,
+          source: "washout_activities.amount" as const,
+        };
+      });
+
+      const previewWashouts = selectedWashouts.map((washout: ApprovedWashoutPreviewRow) => {
+        const rawAmount = selectedWashoutActivities.find((entry) => entry.washoutActivityId === washout.activityId)?.activity?.amount ?? null;
+        const driverTipCents = activityTipById.get(washout.activityId) ?? 0;
+        if (washout.activityId === "e312ea1d-7a62-4f9e-980f-432f54485a0b" && driverTipCents !== 100) {
+          throw new Error("DRIVER_TIP_LEDGER_INPUT_MISMATCH");
+        }
+        return {
           id: washout.activityId,
           ownerId: washout.ownerId,
           driverId: washout.driverId,
           driverStripeAccountId: driverAccounts.get(washout.driverId) || null,
           platformFeeCents: configuredPlatformFeeCents,
-          driverTipCents: normalizeMoneyToCents(washout.activityDriverTipAmount, "dollars"),
-        })),
+          driverTipCents,
+          amount: rawAmount,
+          activityAmount: rawAmount,
+          activityDriverTipAmount: rawAmount,
+        };
+      });
+
+      const preview = buildOwnerWashoutBillingPreview({
+        ownerId,
+        billingBatchId: `preview:${ownerId}:${Date.now()}`,
+        washouts: previewWashouts,
         customerId: ownerStripeSetup.customerId,
         paymentMethodId: ownerStripeSetup.paymentMethodId,
         ownerUsername: ownerUser.username,
         ownerCompanyName: owner.companyName,
       });
 
-      for (const washout of selectedWashouts) {
-        const rawDriverTipValue = washout.activityDriverTipAmount;
-        const normalizedDriverTipCents = normalizeMoneyToCents(rawDriverTipValue, "dollars");
-
-        if (rawDriverTipValue !== null && rawDriverTipValue !== undefined && Number(rawDriverTipValue) > 0 && normalizedDriverTipCents === 0) {
-          return res.status(400).json({
-            message: `Invalid driver tip configuration for washout ${washout.activityId}`,
-            reason: "driver_tip_invalid_for_preview",
-            washoutActivityId: washout.activityId,
-            locationId: washout.locationId,
-            ownerId,
-            driverId: washout.driverId,
-            rawDriverTipValue,
-            rawDriverTipField: "washout_activities.amount",
-            normalizedDriverTipCents,
-          });
-        }
-
-        console.log("[WASHOUT_BILLING_INPUT]", {
-          ownerId,
-          washoutActivityId: washout.activityId,
-          rawPlatformFeeValue: washout.activityFeeCentsPlatform,
-          rawPlatformFeeField: "washout_activities.fee_cents_platform",
-          rawOwnerPlatformFeeOverride: owner.customPlatformFee ?? null,
-          rawSystemPlatformFee: systemSettings?.platformWashoutFee ?? null,
-          normalizedPlatformFeeCents: configuredPlatformFeeCents,
-          rawDriverTipValue,
-          rawDriverTipField: "washout_activities.amount",
-          normalizedDriverTipCents,
-        });
-        console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
-          washoutActivityId: washout.activityId,
-          locationId: washout.locationId,
-          ownerId,
-          driverId: washout.driverId,
-          rawDriverTipValue,
-          rawDriverTipField: "washout_activities.amount",
-          driverTipEnabled: normalizedDriverTipCents > 0,
-          normalizedDriverTipCents,
-        });
-      }
-
-      res.json(preview);
+      res.json({
+        ...preview,
+        debugTipSources,
+      });
     } catch (error: any) {
       console.error("Error previewing owner washout billing charge:", error);
       res.status(500).json({
