@@ -11238,8 +11238,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerCompanyName: owner.companyName,
       });
 
+      console.log("[DRY_RUN_RESPONSE_MARKER]", {
+        buildMarker: "dryrun-tip-direct-amount-1e4dfc0",
+        hasDebugTipSources: true,
+      });
       res.json({
         ...preview,
+        buildMarker: "dryrun-tip-direct-amount-1e4dfc0",
         debugTipSources,
       });
     } catch (error: any) {
