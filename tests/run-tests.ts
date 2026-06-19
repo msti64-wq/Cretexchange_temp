@@ -1297,7 +1297,7 @@ test("billing ledger parses payment processing fee dollars into cents exactly on
   assert.equal(ledger.ownerChargeAmountCents, 5);
 });
 
-test("washout location schema rejects negative driver incentive tips", () => {
+test("washout location schema ignores legacy driver incentive tip input", () => {
   const baseLocation = {
     ownerId: "owner_1",
     name: "Site A",
@@ -1308,18 +1308,20 @@ test("washout location schema rejects negative driver incentive tips", () => {
     latitude: "30.2672",
     longitude: "-97.7431",
     rate: 5,
-    driverIncentiveTip: 0,
   };
 
   const positive = insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: 1.5 });
   assert.equal(positive.success, true);
-  assert.equal(positive.success && positive.data.driverIncentiveTip, 150);
+  assert.equal(positive.success && "driverIncentiveTip" in positive.data, false);
+  assert.equal(positive.success && positive.data.rate, "5");
 
   const zero = insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: 0 });
   assert.equal(zero.success, true);
-  assert.equal(zero.success && zero.data.driverIncentiveTip, 0);
+  assert.equal(zero.success && "driverIncentiveTip" in zero.data, false);
 
-  assert.equal(insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: -0.01 }).success, false);
+  const negative = insertWashoutLocationSchema.safeParse({ ...baseLocation, driverIncentiveTip: -0.01 });
+  assert.equal(negative.success, true);
+  assert.equal(negative.success && "driverIncentiveTip" in negative.data, false);
 });
 
 test("washout revenue summary separates platform revenue, driver tips, and pending washouts", () => {
@@ -1348,35 +1350,35 @@ test("approved washout revenue summary uses stored platform fee cents and exclud
       activityStatus: "verified",
       paymentStatus: "completed",
       activityFeeCentsPlatform: 500,
-      locationDriverIncentiveTipCents: 0,
+      locationDriverRate: 0,
       paymentTipAmountCents: 0,
     },
     {
       activityStatus: "approved",
       paymentStatus: "completed",
       activityFeeCentsPlatform: 500,
-      locationDriverIncentiveTipCents: 150,
+      locationDriverRate: 150,
       paymentTipAmountCents: 150,
     },
     {
       activityStatus: "completed",
       paymentStatus: "pending",
       activityFeeCentsPlatform: 500,
-      locationDriverIncentiveTipCents: 0,
+      locationDriverRate: 0,
       paymentTipAmountCents: 0,
     },
     {
       activityStatus: "settled",
       paymentStatus: "completed",
       activityFeeCentsPlatform: 500,
-      locationDriverIncentiveTipCents: 0,
+      locationDriverRate: 0,
       paymentTipAmountCents: 0,
     },
     {
       activityStatus: "pending",
       paymentStatus: "pending",
       activityFeeCentsPlatform: 500,
-      locationDriverIncentiveTipCents: 300,
+      locationDriverRate: 300,
       paymentTipAmountCents: 300,
     },
   ]);
@@ -1398,7 +1400,7 @@ test("approved washout revenue summary defaults null platform fee rows to five d
       activityStatus: "verified",
       paymentStatus: "pending",
       activityFeeCentsPlatform: null,
-      locationDriverIncentiveTipCents: 0,
+      locationDriverRate: 0,
       paymentTipAmountCents: 0,
     })),
   ]);
@@ -1417,7 +1419,7 @@ test("approved washout revenue summary uses explicit five dollar platform fee on
       activityStatus: "approved",
       paymentStatus: "pending",
       activityFeeCentsPlatform: 500,
-      locationDriverIncentiveTipCents: 0,
+      locationDriverRate: 0,
       paymentTipAmountCents: 0,
     })),
   ]);
@@ -1433,14 +1435,14 @@ test("approved washout revenue summary uses explicit five dollar platform fee on
 test("owner billing receivables summary excludes declined and billed washouts", () => {
   const summary = summarizeOwnerBillingReceivables(
     [
-      { activityStatus: "verified", activityFeeCentsPlatform: null, locationDriverIncentiveTipCents: 0 },
-      { activityStatus: "approved", activityFeeCentsPlatform: 500, locationDriverIncentiveTipCents: 0 },
-      { activityStatus: "declined", activityFeeCentsPlatform: 500, locationDriverIncentiveTipCents: 0 },
-      { activityStatus: "rejected", activityFeeCentsPlatform: 500, locationDriverIncentiveTipCents: 0 },
-      { activityStatus: "pending", activityFeeCentsPlatform: 500, locationDriverIncentiveTipCents: 0 },
-      { activityStatus: "needs_review", activityFeeCentsPlatform: 500, locationDriverIncentiveTipCents: 0 },
-      { activityStatus: "cancelled", activityFeeCentsPlatform: 500, locationDriverIncentiveTipCents: 0 },
-      { activityStatus: "completed", activityFeeCentsPlatform: 500, paymentStatus: "completed", locationDriverIncentiveTipCents: 0 },
+      { activityStatus: "verified", activityFeeCentsPlatform: null, locationDriverRate: 0 },
+      { activityStatus: "approved", activityFeeCentsPlatform: 500, locationDriverRate: 0 },
+      { activityStatus: "declined", activityFeeCentsPlatform: 500, locationDriverRate: 0 },
+      { activityStatus: "rejected", activityFeeCentsPlatform: 500, locationDriverRate: 0 },
+      { activityStatus: "pending", activityFeeCentsPlatform: 500, locationDriverRate: 0 },
+      { activityStatus: "needs_review", activityFeeCentsPlatform: 500, locationDriverRate: 0 },
+      { activityStatus: "cancelled", activityFeeCentsPlatform: 500, locationDriverRate: 0 },
+      { activityStatus: "completed", activityFeeCentsPlatform: 500, paymentStatus: "completed", locationDriverRate: 0 },
     ],
     null,
   );
@@ -1461,8 +1463,8 @@ test("owner billing receivables summary excludes declined and billed washouts", 
 test("owner billing receivables summary uses configured platform fee instead of legacy activity fee values", () => {
   const summary = summarizeOwnerBillingReceivables(
     [
-      { activityStatus: "verified", activityFeeCentsPlatform: 10000, locationDriverIncentiveTipCents: 0 },
-      { activityStatus: "verified", activityFeeCentsPlatform: 10000, locationDriverIncentiveTipCents: 0 },
+      { activityStatus: "verified", activityFeeCentsPlatform: 10000, locationDriverRate: 0 },
+      { activityStatus: "verified", activityFeeCentsPlatform: 10000, locationDriverRate: 0 },
     ],
     500,
   );
@@ -1474,9 +1476,9 @@ test("owner billing receivables summary uses configured platform fee instead of 
 test("owner billing receivables summary bills verified and completed washouts without approved status", () => {
   const summary = summarizeOwnerBillingReceivables(
     [
-      { activityStatus: "verified", activityFeeCentsPlatform: null, locationDriverIncentiveTipCents: 0 },
-      { activityStatus: "completed", activityFeeCentsPlatform: 500, paymentStatus: "completed", locationDriverIncentiveTipCents: 0 },
-      { activityStatus: "declined", activityFeeCentsPlatform: 500, locationDriverIncentiveTipCents: 0 },
+      { activityStatus: "verified", activityFeeCentsPlatform: null, locationDriverRate: 0 },
+      { activityStatus: "completed", activityFeeCentsPlatform: 500, paymentStatus: "completed", locationDriverRate: 0 },
+      { activityStatus: "declined", activityFeeCentsPlatform: 500, locationDriverRate: 0 },
     ],
     null,
   );
@@ -1495,7 +1497,7 @@ test("owner billing receivables summary shows before and after payment totals co
     ...Array.from({ length: 5 }, () => ({
       activityStatus: "verified",
       activityFeeCentsPlatform: null,
-      locationDriverIncentiveTipCents: 0,
+      locationDriverRate: 0,
     })),
   ]);
 
@@ -1505,7 +1507,7 @@ test("owner billing receivables summary shows before and after payment totals co
       activityFeeCentsPlatform: 500,
       paymentStatus: "completed",
       paymentBatchId: "batch_1",
-      locationDriverIncentiveTipCents: 0,
+      locationDriverRate: 0,
     })),
   ]);
 
@@ -1900,13 +1902,13 @@ test("owner can create location with default driver tip and no monthly billing r
       );
 
       assert.equal(res.statusCode, 201);
-      assert.equal(createdLocations[0].driverIncentiveTip, 0);
+      assert.equal("driverIncentiveTip" in createdLocations[0], false);
       assert.equal((res.body as { location?: { id?: string } }).location?.id, "location_1");
     },
   );
 });
 
-test("owner can enable or disable driver tip on a location without affecting lottery settings", async () => {
+test("owner can update location rate without affecting lottery settings", async () => {
   const { app, puts } = createRouteRegistry();
   const updates: any[] = [];
 
@@ -1944,14 +1946,15 @@ test("owner can enable or disable driver tip on a location without affecting lot
           params: { id: "location_1" },
           user: { id: "owner_user_1" },
           body: {
-            driverIncentiveTip: 2.5,
+            rate: 2.5,
           },
         },
         res,
       );
 
       assert.equal(res.statusCode, 200);
-      assert.equal(updates[0].locationData.driverIncentiveTip, 250);
+      assert.equal(updates[0].locationData.rate, "2.5");
+      assert.equal("driverIncentiveTip" in updates[0].locationData, false);
       assert.equal(updates[0].ownerId, "owner_1");
     },
   );
@@ -2531,9 +2534,9 @@ function createOwnerBillingRunFixture(params: {
     activityFeeCentsPlatform: row.activityFeeCentsPlatform === undefined || row.activityFeeCentsPlatform === null
       ? null
       : Number(row.activityFeeCentsPlatform),
-    locationDriverIncentiveTip: row.locationDriverIncentiveTip === undefined || row.locationDriverIncentiveTip === null
+    locationDriverRate: row.locationDriverRate === undefined || row.locationDriverRate === null
       ? 0
-      : Number(row.locationDriverIncentiveTip),
+      : Number(row.locationDriverRate),
     verifiedAt: row.verifiedAt || new Date("2026-05-28T12:00:00Z"),
     createdAt: row.createdAt || new Date("2026-05-28T12:00:00Z"),
   }));
@@ -2718,9 +2721,9 @@ function createOwnerBillingRunFixture(params: {
         activityFeeCentsPlatform: row.activityFeeCentsPlatform === undefined || row.activityFeeCentsPlatform === null
           ? null
           : Number(row.activityFeeCentsPlatform),
-        locationDriverIncentiveTip: row.locationDriverIncentiveTip === undefined || row.locationDriverIncentiveTip === null
+        locationDriverRate: row.locationDriverRate === undefined || row.locationDriverRate === null
           ? 0
-          : Number(row.locationDriverIncentiveTip),
+          : Number(row.locationDriverRate),
         verifiedAt: row.verifiedAt || new Date("2026-05-28T12:00:00Z"),
         createdAt: row.createdAt || new Date("2026-05-28T12:00:00Z"),
       })) as typeof approvedWashouts;
@@ -7521,6 +7524,7 @@ test("owner billing dry-run preview route is registered on the admin billing API
   const routesSource = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
 
   assert.match(routesSource, /app\.post\('\/api\/admin\/billing\/preview-owner-washout-charge', isAuthenticated/);
+  assert.match(routesSource, /app\.post\('\/api\/admin\/billing\/preview-driver-tip-reconciliation', isAuthenticated/);
   assert.match(helperSource, /\[OWNER_BILLING_DRY_RUN\]/);
   assert.match(helperSource, /\[STRIPE_PAYMENT_REQUEST_PREVIEW\]/);
   assert.match(helperSource, /\[DRIVER_TIP_TRANSFER_PREVIEW\]/);
@@ -7562,9 +7566,9 @@ test("owner billing dry-run preview uses current approved washouts when IDs are 
           },
           getOwnerById: async () => ({ id: "owner_1", userId: "owner_user_1", companyName: "Owner Co" }),
           getApprovedWashoutsForOwnerBilling: async () => ([
-            { activityId: "activity_1", ownerId: "owner_1", driverId: "driver_1", activityFeeCentsPlatform: 500, locationDriverIncentiveTip: 1 },
-            { activityId: "activity_2", ownerId: "owner_1", driverId: "driver_1", activityFeeCentsPlatform: 500, locationDriverIncentiveTip: 1 },
-            { activityId: "activity_3", ownerId: "owner_1", driverId: "driver_1", activityFeeCentsPlatform: 500, locationDriverIncentiveTip: 1 },
+            { activityId: "activity_1", ownerId: "owner_1", driverId: "driver_1", activityFeeCentsPlatform: 500, locationDriverRate: 1 },
+            { activityId: "activity_2", ownerId: "owner_1", driverId: "driver_1", activityFeeCentsPlatform: 500, locationDriverRate: 1 },
+            { activityId: "activity_3", ownerId: "owner_1", driverId: "driver_1", activityFeeCentsPlatform: 500, locationDriverRate: 1 },
           ]),
           getDriverById: async () => ({ id: "driver_1", userId: "driver_user_1", connectedAccountId: "acct_driver_1" }),
         } as any,
@@ -7590,6 +7594,141 @@ test("owner billing dry-run preview uses current approved washouts when IDs are 
           assert.equal((res.body as { ledger?: { ownerChargeAmountCents?: number } }).ledger?.ownerChargeAmountCents, 1503);
           assert.equal((res.body as { validation?: { passed?: boolean; blockedForReview?: boolean } }).validation?.passed, true);
           assert.equal((res.body as { validation?: { blockedForReview?: boolean } }).validation?.blockedForReview, false);
+        },
+      );
+    },
+  );
+});
+
+test("driver tip reconciliation preview reads already billed washout amounts without calling Stripe", async () => {
+  const { app, posts } = createRouteRegistry();
+  let stripeCalls = 0;
+  const billingBatchId = "e36cf1f2-acd4-44c3-ab3a-9def5d4b2d05";
+  const ownerId = "5e083b4e-b0c1-4c76-ab52-7e52dd5d8082";
+  const driverId = "3571dfc4-27c0-43a7-bbb3-dddf1bb9c68f";
+  const locationId = "1367c68a-e12b-46a4-a417-6f21febe5640";
+  const washoutAmounts: Record<string, string> = {
+    "f3805985-6db4-4cf8-81a2-24fc3a41a9cb": "1.00",
+    "3042b4cb-8e1a-4cbb-a38a-569879aef6fa": "0.05",
+    "d66f29bb-0515-4a2e-bce1-c8f09083bde5": "0.01",
+    "01a9046e-fe73-4443-b806-d44b0895a9de": "0.01",
+    "057351bf-c480-4b55-a6cb-635037655561": "0.01",
+    "5ca7dc66-1c34-4530-919e-c17ea43237f8": "0.01",
+    "77323db3-be40-4923-aa70-615d2f70b871": "0.01",
+  };
+
+  await withPatchedStripe(
+    {
+      paymentIntents: {
+        create: async () => {
+          stripeCalls += 1;
+          throw new Error("Stripe should not be called by reconciliation preview");
+        },
+      },
+      transfers: {
+        create: async () => {
+          stripeCalls += 1;
+          throw new Error("Stripe should not be called by reconciliation preview");
+        },
+      },
+    },
+    async () => {
+      await withPatchedStorage(
+        {
+          getUser: async (id: string) => {
+            if (id === "admin_1") {
+              return { id: "admin_1", role: "super_admin" };
+            }
+            if (id === "driver_user_1") {
+              return { id: "driver_user_1", role: "driver", stripeConnectAccountId: "acct_driver_tip" };
+            }
+            return null;
+          },
+          getBillingBatch: async (id: string) => id === billingBatchId ? ({
+            id: billingBatchId,
+            ownerId,
+            businessDate: "2026-06-17",
+            totalAmount: "35.00",
+            totalFees: "35.00",
+            paymentCount: 7,
+            stripePaymentIntentId: "pi_3TjS9eLqF7RVaZdv0qDc4TWa",
+            status: "completed",
+            metadata: {
+              stripeChargeId: "ch_3TjS9eLqF7RVaZdv090OForp",
+              washoutActivityIds: Object.keys(washoutAmounts).join(","),
+            },
+          }) : undefined,
+          getPaymentsByBatchId: async () => [],
+          getWashoutActivity: async (id: string) => ({
+            id,
+            status: "verified",
+            locationId,
+            ownerId,
+            driverId,
+            amount: washoutAmounts[id],
+            feeCentsPlatform: 0,
+          }),
+          getWashoutLocation: async () => ({
+            id: locationId,
+            ownerId,
+            rate: "0.00",
+          }),
+          getDriverById: async () => ({
+            id: driverId,
+            userId: "driver_user_1",
+            connectedAccountId: "acct_driver_tip",
+          }),
+        } as any,
+        async () => {
+          const { registerRoutes } = await import("../server/routes");
+          await registerRoutes(app as never);
+          const route = posts.get("/api/admin/billing/preview-driver-tip-reconciliation");
+          assert.equal(typeof route, "function");
+
+          const res = createResponse();
+          await route!(
+            {
+              user: { id: "admin_1", role: "super_admin" },
+              body: { billingBatchId },
+            },
+            res,
+          );
+
+          const body = res.body as {
+            dryRun?: boolean;
+            originalPlatformChargeAmountCents?: number;
+            missingDriverTipAmountCents?: number;
+            proposedOwnerSupplementalChargeCents?: number;
+            proposedDriverTransferTotalCents?: number;
+            platformRevenueCents?: number;
+            platformFeeRebillCents?: number;
+            washouts?: Array<{ washoutActivityId: string; missingDriverTipCents: number; rawDriverTipField: string }>;
+            proposedDriverTransfers?: Array<{ driverId: string; connectedAccountId: string; amountCents: number; washoutActivityIds: string[] }>;
+            liveExecution?: { availableFromThisEndpoint?: boolean; stripeWillBeCalled?: boolean; requiresExplicitAdminConfirmation?: boolean };
+            validation?: { readsDriverTipFrom?: string; alreadyTransferredTipsExcluded?: boolean };
+          };
+
+          assert.equal(res.statusCode, 200);
+          assert.equal(stripeCalls, 0);
+          assert.equal(body.dryRun, true);
+          assert.equal(body.originalPlatformChargeAmountCents, 3500);
+          assert.equal(body.missingDriverTipAmountCents, 110);
+          assert.equal(body.proposedOwnerSupplementalChargeCents, 110);
+          assert.equal(body.proposedDriverTransferTotalCents, 110);
+          assert.equal(body.platformRevenueCents, 0);
+          assert.equal(body.platformFeeRebillCents, 0);
+          assert.equal(body.washouts?.length, 7);
+          assert.equal(body.washouts?.[0]?.rawDriverTipField, "washout_activities.amount");
+          assert.equal(body.proposedDriverTransfers?.length, 1);
+          assert.equal(body.proposedDriverTransfers?.[0]?.driverId, driverId);
+          assert.equal(body.proposedDriverTransfers?.[0]?.connectedAccountId, "acct_driver_tip");
+          assert.equal(body.proposedDriverTransfers?.[0]?.amountCents, 110);
+          assert.deepEqual(body.proposedDriverTransfers?.[0]?.washoutActivityIds, Object.keys(washoutAmounts));
+          assert.equal(body.liveExecution?.availableFromThisEndpoint, false);
+          assert.equal(body.liveExecution?.stripeWillBeCalled, false);
+          assert.equal(body.liveExecution?.requiresExplicitAdminConfirmation, true);
+          assert.equal(body.validation?.readsDriverTipFrom, "washout_activities.amount");
+          assert.equal(body.validation?.alreadyTransferredTipsExcluded, true);
         },
       );
     },
@@ -7740,13 +7879,13 @@ test("manual owner billing charges approved washout platform fees plus driver ti
         activityId: "activity_1",
         activityFeeCentsPlatform: 300,
         activityStatus: "verified",
-        locationDriverIncentiveTip: 150,
+        locationDriverRate: 150,
       },
       {
         activityId: "activity_2",
         activityFeeCentsPlatform: 200,
         activityStatus: "verified",
-        locationDriverIncentiveTip: 350,
+        locationDriverRate: 350,
       },
     ],
     payments: [],
@@ -8397,13 +8536,13 @@ test("admin dashboard surfaces repaired washout fee and lottery metrics", async 
       stripePaymentMethodId: "pm_owner_1",
     }),
     getApprovedWashoutsForOwnerBilling: async () => ([
-      { activityId: "activity_1", ownerId: "owner_1", driverId: "driver_1", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-      { activityId: "activity_2", ownerId: "owner_1", driverId: "driver_2", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-      { activityId: "activity_3", ownerId: "owner_1", driverId: "driver_3", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-      { activityId: "activity_4", ownerId: "owner_1", driverId: "driver_4", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-      { activityId: "activity_5", ownerId: "owner_1", driverId: "driver_5", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-      { activityId: "activity_6", ownerId: "owner_1", driverId: "driver_6", activityFeeCentsPlatform: null, activityStatus: "declined", locationDriverIncentiveTipCents: 0 },
-      { activityId: "activity_7", ownerId: "owner_1", driverId: "driver_7", activityFeeCentsPlatform: null, activityStatus: "rejected", locationDriverIncentiveTipCents: 0 },
+      { activityId: "activity_1", ownerId: "owner_1", driverId: "driver_1", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+      { activityId: "activity_2", ownerId: "owner_1", driverId: "driver_2", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+      { activityId: "activity_3", ownerId: "owner_1", driverId: "driver_3", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+      { activityId: "activity_4", ownerId: "owner_1", driverId: "driver_4", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+      { activityId: "activity_5", ownerId: "owner_1", driverId: "driver_5", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+      { activityId: "activity_6", ownerId: "owner_1", driverId: "driver_6", activityFeeCentsPlatform: null, activityStatus: "declined", locationDriverRate: 0 },
+      { activityId: "activity_7", ownerId: "owner_1", driverId: "driver_7", activityFeeCentsPlatform: null, activityStatus: "rejected", locationDriverRate: 0 },
     ]),
     getBillingBatchesByOwner: async () => [],
     getPaymentsByBatchId: async () => [],
@@ -8463,13 +8602,13 @@ test("admin dashboard surfaces repaired washout fee and lottery metrics", async 
         stripePaymentMethodId: "pm_owner_1",
       }),
       getApprovedWashoutsForOwnerBilling: async () => ([
-        { activityId: "activity_1", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_2", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_3", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_4", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_5", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_6", activityFeeCentsPlatform: null, activityStatus: "declined", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_7", activityFeeCentsPlatform: null, activityStatus: "rejected", locationDriverIncentiveTipCents: 0 },
+        { activityId: "activity_1", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+        { activityId: "activity_2", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+        { activityId: "activity_3", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+        { activityId: "activity_4", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+        { activityId: "activity_5", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+        { activityId: "activity_6", activityFeeCentsPlatform: null, activityStatus: "declined", locationDriverRate: 0 },
+        { activityId: "activity_7", activityFeeCentsPlatform: null, activityStatus: "rejected", locationDriverRate: 0 },
       ]),
       getBillingBatchesByOwner: async () => [],
       getPaymentsAwaitingDriverStripe: async () => [],
@@ -8642,13 +8781,13 @@ test("admin dashboard current receivables match billing settings summary", async
         stripePaymentMethodId: "pm_owner_1",
       }),
       getApprovedWashoutsForOwnerBilling: async () => ([
-        { activityId: "activity_1", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_2", activityFeeCentsPlatform: null, activityStatus: "approved", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_3", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_4", activityFeeCentsPlatform: null, activityStatus: "approved", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_5", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_6", activityFeeCentsPlatform: null, activityStatus: "declined", locationDriverIncentiveTipCents: 0 },
-        { activityId: "activity_7", activityFeeCentsPlatform: null, activityStatus: "rejected", locationDriverIncentiveTipCents: 0 },
+        { activityId: "activity_1", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+        { activityId: "activity_2", activityFeeCentsPlatform: null, activityStatus: "approved", locationDriverRate: 0 },
+        { activityId: "activity_3", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+        { activityId: "activity_4", activityFeeCentsPlatform: null, activityStatus: "approved", locationDriverRate: 0 },
+        { activityId: "activity_5", activityFeeCentsPlatform: null, activityStatus: "verified", locationDriverRate: 0 },
+        { activityId: "activity_6", activityFeeCentsPlatform: null, activityStatus: "declined", locationDriverRate: 0 },
+        { activityId: "activity_7", activityFeeCentsPlatform: null, activityStatus: "rejected", locationDriverRate: 0 },
       ]),
       getBillingBatchesByOwner: async () => [],
     },
@@ -9656,7 +9795,7 @@ test("admin dashboard returns partial data when one widget query fails", async (
 
 test("deferred driver Stripe payment can be processed once the driver is ready", async () => {
   const { app, posts } = createRouteRegistry();
-  let paymentStatusUpdates: Array<Record<string, unknown>> = [];
+  let completedPaymentId: string | null = null;
 
   await withMockedDb([[]], async (mock) => {
     await withPatchedStripe(
@@ -9754,10 +9893,15 @@ test("deferred driver Stripe payment can be processed once the driver is ready",
             adjustDriverWalletBalance: async () => undefined,
             createWalletTransaction: async () => undefined,
             createDriverLotteryEntry: async () => ({ id: "lottery_1" }),
-            updatePaymentStatus: async () => ({
-              id: "payment_1",
-              status: "completed",
-            }),
+            updatePaymentStatus: async (paymentId: string, status: string) => {
+              if (status === "completed") {
+                completedPaymentId = paymentId;
+              }
+              return {
+                id: paymentId,
+                status,
+              };
+            },
           },
           async () => {
             const { registerRoutes } = await import("../server/routes");
@@ -9778,14 +9922,16 @@ test("deferred driver Stripe payment can be processed once the driver is ready",
             assert.equal((res.body as { processed?: number }).processed, 1);
             assert.equal((res.body as { skipped?: number }).skipped, 0);
             assert.equal((res.body as { failed?: number }).failed, 0);
-            paymentStatusUpdates = mock.updates;
+            assert.equal(Array.isArray((res.body as { results?: unknown[] }).results), true);
+            assert.equal(((res.body as { results: Array<{ payoutStatus?: string }> }).results[0]?.payoutStatus), "completed");
+            assert.equal(mock.updates.length, 0);
           },
         );
       },
     );
   });
 
-  assert.ok(paymentStatusUpdates.length > 0);
+  assert.equal(completedPaymentId, "payment_1");
 });
 
 test("batch owner payment transfers driver tip to connected account", async () => {

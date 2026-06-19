@@ -87,6 +87,41 @@ function setBillingNoCacheHeaders(res: any) {
   res.setHeader("Expires", "0");
 }
 
+function formatCentsAsDollars(cents: number): string {
+  return (Math.max(0, Math.round(cents)) / 100).toFixed(2);
+}
+
+function getRecordMetadata(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function parseDelimitedIdList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((id) => String(id).trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value.split(",").map((id) => id.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function parseBillingBatchWashoutActivityIds(metadata: Record<string, unknown>): string[] {
+  return Array.from(new Set(parseDelimitedIdList(
+    metadata.washoutActivityIds
+      ?? metadata.washout_activity_ids
+      ?? metadata.activityIds
+      ?? metadata.activity_ids,
+  )));
+}
+
+function isCompletedBillingBatchForCorrection(status?: string | null): boolean {
+  return new Set(["completed", "paid", "posted", "settled", "succeeded"]).has(
+    String(status || "").trim().toLowerCase(),
+  );
+}
+
 function logReportingReconciliation(endpoint: string, summary: {
   platformRevenueCents?: number | null;
   ownerReceivablesCents?: number | null;
@@ -11216,6 +11251,261 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         message: error?.message || "Failed to preview owner washout billing charge",
         reason: "owner_billing_preview_failed",
+      });
+    }
+  });
+
+  app.post('/api/admin/billing/preview-driver-tip-reconciliation', isAuthenticated, async (req: any, res) => {
+    try {
+      setBillingNoCacheHeaders(res);
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'super_admin' && user.role !== 'admin')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const billingBatchId = typeof req.body?.billingBatchId === "string"
+        ? req.body.billingBatchId.trim()
+        : typeof req.body?.batchId === "string"
+          ? req.body.batchId.trim()
+          : "";
+
+      if (!billingBatchId) {
+        return res.status(400).json({
+          message: "billingBatchId is required",
+          reason: "missing_billing_batch_id",
+        });
+      }
+
+      const batch = await storage.getBillingBatch(billingBatchId);
+      if (!batch) {
+        return res.status(404).json({
+          message: "Billing batch not found",
+          reason: "billing_batch_not_found",
+          billingBatchId,
+        });
+      }
+
+      if (!isCompletedBillingBatchForCorrection(batch.status)) {
+        return res.status(400).json({
+          message: "Driver tip reconciliation preview is only available for completed billing batches",
+          reason: "billing_batch_not_completed",
+          billingBatchId: batch.id,
+          status: batch.status,
+        });
+      }
+
+      const metadata = getRecordMetadata(batch.metadata);
+      const metadataWashoutActivityIds = parseBillingBatchWashoutActivityIds(metadata);
+      const batchPayments = typeof storage.getPaymentsByBatchId === "function"
+        ? await storage.getPaymentsByBatchId(batch.id)
+        : [];
+      const paymentWashoutActivityIds = batchPayments
+        .map((payment: any) => String(payment.activityId || "").trim())
+        .filter(Boolean);
+      const washoutActivityIds = Array.from(new Set([
+        ...metadataWashoutActivityIds,
+        ...paymentWashoutActivityIds,
+      ]));
+
+      if (washoutActivityIds.length === 0) {
+        return res.status(400).json({
+          message: "Billing batch has no washout activity IDs to reconcile",
+          reason: "billing_batch_missing_washout_ids",
+          billingBatchId: batch.id,
+        });
+      }
+
+      const transferredTipCentsByActivity = new Map<string, number>();
+      for (const payment of batchPayments as any[]) {
+        const activityId = String(payment.activityId || "").trim();
+        const transferId = String(payment.stripeTransferId || "").trim();
+        if (!activityId || !transferId) continue;
+
+        const transferredTipCents = payment.amount !== null && payment.amount !== undefined
+          ? normalizeMoneyToCents(payment.amount, "dollars")
+          : normalizeMoneyToCents(payment.tipAmountCents || 0, "auto");
+        transferredTipCentsByActivity.set(
+          activityId,
+          (transferredTipCentsByActivity.get(activityId) || 0) + Math.max(0, transferredTipCents),
+        );
+      }
+
+      const washouts: Array<{
+        washoutActivityId: string;
+        status: string | null;
+        ownerId: string | null;
+        locationId: string | null;
+        driverId: string | null;
+        rawDriverTipField: "washout_activities.amount";
+        rawDriverTipValue: string | number | null;
+        driverTipCents: number;
+        alreadyTransferredTipCents: number;
+        missingDriverTipCents: number;
+        connectedAccountId: string | null;
+      }> = [];
+      const missingWashoutActivityIds: string[] = [];
+      const ownerMismatchWashoutActivityIds: string[] = [];
+      const driverTransferGroups = new Map<string, {
+        driverId: string;
+        connectedAccountId: string | null;
+        amountCents: number;
+        washoutActivityIds: string[];
+      }>();
+
+      for (const washoutActivityId of washoutActivityIds) {
+        const activity = await storage.getWashoutActivity(washoutActivityId);
+        if (!activity) {
+          missingWashoutActivityIds.push(washoutActivityId);
+          continue;
+        }
+
+        const location = activity.locationId ? await storage.getWashoutLocation(activity.locationId) : null;
+        if (location?.ownerId && location.ownerId !== batch.ownerId) {
+          ownerMismatchWashoutActivityIds.push(washoutActivityId);
+        }
+
+        const driver = activity.driverId ? await storage.getDriverById(activity.driverId) : null;
+        const driverUser = driver?.userId ? await storage.getUser(driver.userId) : null;
+        const connectedAccountId = String(
+          (driver as any)?.connectedAccountId
+            || (driver as any)?.stripeConnectAccountId
+            || (driverUser as any)?.stripeConnectAccountId
+            || "",
+        ).trim() || null;
+
+        const driverTipCents = normalizeMoneyToCents(activity.amount, "dollars");
+        const alreadyTransferredTipCents = Math.min(
+          driverTipCents,
+          transferredTipCentsByActivity.get(washoutActivityId) || 0,
+        );
+        const missingDriverTipCents = Math.max(0, driverTipCents - alreadyTransferredTipCents);
+
+        washouts.push({
+          washoutActivityId,
+          status: activity.status || null,
+          ownerId: location?.ownerId || null,
+          locationId: activity.locationId || null,
+          driverId: activity.driverId || null,
+          rawDriverTipField: "washout_activities.amount",
+          rawDriverTipValue: activity.amount ?? null,
+          driverTipCents,
+          alreadyTransferredTipCents,
+          missingDriverTipCents,
+          connectedAccountId,
+        });
+
+        if (missingDriverTipCents > 0 && activity.driverId) {
+          const groupKey = `${activity.driverId}:${connectedAccountId || "missing_connected_account"}`;
+          const group = driverTransferGroups.get(groupKey) || {
+            driverId: activity.driverId,
+            connectedAccountId,
+            amountCents: 0,
+            washoutActivityIds: [] as string[],
+          };
+          group.amountCents += missingDriverTipCents;
+          group.washoutActivityIds.push(washoutActivityId);
+          driverTransferGroups.set(groupKey, group);
+        }
+      }
+
+      if (missingWashoutActivityIds.length > 0 || ownerMismatchWashoutActivityIds.length > 0) {
+        return res.status(409).json({
+          message: "Billing batch washout metadata could not be reconciled safely",
+          reason: "billing_batch_washout_metadata_mismatch",
+          billingBatchId: batch.id,
+          missingWashoutActivityIds,
+          ownerMismatchWashoutActivityIds,
+        });
+      }
+
+      const originalOwnerChargeAmountCents = normalizeMoneyToCents(batch.totalAmount, "dollars");
+      const originalPlatformChargeAmountCents = normalizeMoneyToCents(batch.totalFees ?? batch.totalAmount, "dollars");
+      const alreadyTransferredDriverTipCents = washouts.reduce((sum, washout) => sum + washout.alreadyTransferredTipCents, 0);
+      const missingDriverTipAmountCents = washouts.reduce((sum, washout) => sum + washout.missingDriverTipCents, 0);
+      const proposedDriverTransfers = Array.from(driverTransferGroups.values()).map((transfer) => ({
+        ...transfer,
+        amount: formatCentsAsDollars(transfer.amountCents),
+        requiresConnectedAccount: !transfer.connectedAccountId,
+      }));
+      const missingConnectedAccountDriverIds = proposedDriverTransfers
+        .filter((transfer) => !transfer.connectedAccountId)
+        .map((transfer) => transfer.driverId);
+      const confirmationText = `CONFIRM_DRIVER_TIP_RECONCILIATION_${batch.id}_${missingDriverTipAmountCents}`;
+
+      const preview = {
+        dryRun: true,
+        correctivePreview: true,
+        mode: "driver_tip_reconciliation_preview",
+        billingBatchId: batch.id,
+        originalStripePaymentIntentId: batch.stripePaymentIntentId || metadata.stripePaymentIntentId || null,
+        originalStripeChargeId: typeof metadata.stripeChargeId === "string" ? metadata.stripeChargeId : null,
+        billingBatch: {
+          id: batch.id,
+          ownerId: batch.ownerId,
+          businessDate: batch.businessDate,
+          status: batch.status,
+          paymentCount: batch.paymentCount,
+          originalOwnerChargeAmountCents,
+          originalOwnerChargeAmount: formatCentsAsDollars(originalOwnerChargeAmountCents),
+          originalPlatformChargeAmountCents,
+          originalPlatformChargeAmount: formatCentsAsDollars(originalPlatformChargeAmountCents),
+        },
+        originalPlatformChargeAmountCents,
+        originalPlatformChargeAmount: formatCentsAsDollars(originalPlatformChargeAmountCents),
+        alreadyTransferredDriverTipCents,
+        alreadyTransferredDriverTipAmount: formatCentsAsDollars(alreadyTransferredDriverTipCents),
+        missingDriverTipAmountCents,
+        missingDriverTipAmount: formatCentsAsDollars(missingDriverTipAmountCents),
+        proposedOwnerSupplementalChargeCents: missingDriverTipAmountCents,
+        proposedOwnerSupplementalCharge: formatCentsAsDollars(missingDriverTipAmountCents),
+        proposedDriverTransferTotalCents: missingDriverTipAmountCents,
+        proposedDriverTransferTotal: formatCentsAsDollars(missingDriverTipAmountCents),
+        platformRevenueCents: 0,
+        platformRevenue: "0.00",
+        platformFeeRebillCents: 0,
+        platformFeeRebill: "0.00",
+        washouts,
+        proposedDriverTransfers,
+        validation: {
+          passed: missingConnectedAccountDriverIds.length === 0,
+          missingConnectedAccountDriverIds,
+          alreadyTransferredTipsExcluded: true,
+          readsDriverTipFrom: "washout_activities.amount",
+          platformFeesExcluded: true,
+        },
+        liveExecution: {
+          availableFromThisEndpoint: false,
+          stripeWillBeCalled: false,
+          requiresExplicitAdminConfirmation: true,
+          requiredConfirmationText: confirmationText,
+          requiredFieldsForFutureLiveAction: {
+            billingBatchId: batch.id,
+            missingDriverTipAmountCents,
+            confirmationText,
+          },
+        },
+      };
+
+      console.log("[DRIVER_TIP_RECONCILIATION_PREVIEW]", {
+        billingBatchId: batch.id,
+        ownerId: batch.ownerId,
+        washoutActivityIds,
+        originalPlatformChargeAmountCents,
+        alreadyTransferredDriverTipCents,
+        missingDriverTipAmountCents,
+        proposedOwnerSupplementalChargeCents: missingDriverTipAmountCents,
+        proposedDriverTransferTotalCents: missingDriverTipAmountCents,
+        platformRevenueCents: 0,
+        platformFeeRebillCents: 0,
+        liveExecutionAvailableFromThisEndpoint: false,
+      });
+
+      res.json(preview);
+    } catch (error: any) {
+      console.error("Error previewing driver tip reconciliation:", error);
+      res.status(500).json({
+        message: error?.message || "Failed to preview driver tip reconciliation",
+        reason: "driver_tip_reconciliation_preview_failed",
       });
     }
   });
