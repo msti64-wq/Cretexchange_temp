@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { execSync } from "node:child_process";
 import { installConsoleRedaction } from "../shared/logRedaction";
 import { setupVite, serveStatic, log } from "./vite";
 import { getStorageSelection } from "./objectStorage";
@@ -121,11 +122,29 @@ function logDeploymentGitCommitStartupState() {
   console.log("Deployment git commit:", getDeploymentGitCommitState());
 }
 
-function logCurrentSourceMarkerStartupState() {
-  const commitState = getDeploymentGitCommitState();
-  console.log(`CURRENT_COMMIT=${commitState.gitCommitHash ?? "unknown"}`);
-  console.log(`BUILD_TIMESTAMP=${new Date().toISOString()}`);
-  console.log("SOURCE_NO_DRIVER_INCENTIVE_TIP=true");
+function logCurrentCommitStartupState() {
+  const envCommit = [
+    process.env.RAILWAY_GIT_COMMIT_SHA,
+    process.env.GIT_COMMIT_SHA,
+    process.env.GIT_SHA,
+    process.env.COMMIT_SHA,
+    process.env.SOURCE_VERSION,
+    process.env.npm_package_gitHead,
+  ].find((value) => Boolean(value?.trim()))?.trim() || null;
+  let gitCommit = envCommit;
+  if (!gitCommit) {
+    try {
+      gitCommit = execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
+    } catch {
+      gitCommit = null;
+    }
+  }
+
+  console.log("[STARTUP_COMMIT]", {
+    CURRENT_COMMIT: gitCommit,
+    BUILD_TIMESTAMP: new Date().toISOString(),
+    SOURCE_NO_DRIVER_INCENTIVE_TIP: true,
+  });
 }
 
 // Debug database connection
@@ -135,7 +154,7 @@ console.log('Environment check:', {
 });
 logDriverStripeOnboardingUrlStartupState();
 logDeploymentGitCommitStartupState();
-logCurrentSourceMarkerStartupState();
+logCurrentCommitStartupState();
 
 // Raw body parsing specifically for Stripe webhooks (must come before JSON parsing)
 app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }));
@@ -169,6 +188,8 @@ async function startApplication() {
   try {
     const { registerRoutes } = await import("./routes");
     const server = await registerRoutes(app);
+    const { logBillingSchemaGuard } = await import("./billingSchemaGuard");
+    await logBillingSchemaGuard();
     const storageSelection = getStorageSelection();
     console.log(`Storage provider selected: ${storageSelection.provider}`);
     console.log(`Bucket: ${storageSelection.bucket}`);

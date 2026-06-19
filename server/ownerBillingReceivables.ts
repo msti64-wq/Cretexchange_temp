@@ -77,10 +77,10 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
     immediateOwners.map(async (ownerSetting: { ownerId: string; companyName: string; username: string; billingCadence: string }) => {
       const owner = await storageApi.getOwnerById(ownerSetting.ownerId);
       const ownerUser = owner ? await storageApi.getUser(owner.userId) : null;
-      let approvedWashouts: any[] = [];
-      if (typeof storageApi.getApprovedWashoutsForOwnerBilling === "function") {
-        approvedWashouts = await storageApi.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId);
+      if (typeof storageApi.getApprovedWashoutsForOwnerBilling !== "function") {
+        throw new Error("[OWNER_BILLING_RECEIVABLES] getApprovedWashoutsForOwnerBilling is not available");
       }
+      const approvedWashouts = await storageApi.getApprovedWashoutsForOwnerBilling(ownerSetting.ownerId);
       const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
         ownerCustomPlatformFee: owner?.customPlatformFee,
         systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
@@ -97,19 +97,17 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
               driverId: row.driverId,
               driverStripeAccountId: null,
               platformFeeCents: configuredPlatformFeeCents,
-              activityAmount: row.activityAmount ?? null,
-              locationDriverTipRate: row.locationDriverTipRate ?? null,
-              paymentTipAmountCents: row.paymentDriverTipCents ?? null,
+              driverTipCents: normalizeMoneyToCents(row.activityDriverTipAmount || 0, "dollars"),
             })),
             allowAdminOverride: true,
           })
         : null;
       const batchLedgers = await Promise.all(
         batches.map(async (batch: { id: string; status?: string | null }) => {
-          let payments: any[] = [];
-          if (typeof storageApi.getPaymentsByBatchId === "function") {
-            payments = await storageApi.getPaymentsByBatchId(batch.id);
+          if (typeof storageApi.getPaymentsByBatchId !== "function") {
+            throw new Error("[OWNER_BILLING_RECEIVABLES] getPaymentsByBatchId is not available");
           }
+          const payments = await storageApi.getPaymentsByBatchId(batch.id);
           const ledger = buildOwnerWashoutBillingLedgerFromPayments({
             ownerId: ownerSetting.ownerId,
             billingBatchId: batch.id,
@@ -119,7 +117,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
               driverId: payment.driverId,
               activityId: payment.activityId,
               processingFee: payment.processingFee,
-              tipAmountCents: payment.tipAmountCents ?? payment.driverTipCents,
+              tipAmountCents: payment.tipAmountCents,
               status: payment.status,
               batchId: payment.batchId,
               stripePaymentIntentId: payment.stripePaymentIntentId,

@@ -103,7 +103,6 @@ import {
 import { db } from "./db";
 import { summarizeDatabaseError } from "./dbErrors";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
-import { resolveLocationDriverTipRateCents, resolveWashoutDriverTipCents } from "../shared/locationBilling";
 import { resolvePlatformFeeCents, resolveConfiguredWashoutPlatformFeeCents, type OwnerBillingLedger } from "../shared/billingPolicy";
 import { normalizeMoneyToCents } from "../shared/money";
 import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
@@ -498,32 +497,6 @@ export interface IStorage {
     winnerNotificationsSentAt: Date | null;
     participantNotificationsSentAt: Date | null;
   } | undefined>;
-}
-
-function normalizeWashoutActivityAmountTipCents(rawActivityAmount: unknown, rawPaymentDriverTipCents: unknown, rawLocationDriverTipRate: unknown, context: {
-  washoutActivityId?: string | null;
-  ownerId?: string | null;
-  driverId?: string | null;
-} = {}): number {
-  const hasActivityAmount = rawActivityAmount !== null && rawActivityAmount !== undefined && rawActivityAmount !== "";
-  const hasPaymentDriverTip = rawPaymentDriverTipCents !== null && rawPaymentDriverTipCents !== undefined && rawPaymentDriverTipCents !== "";
-  const rawDriverTipValue = hasActivityAmount ? rawActivityAmount : hasPaymentDriverTip ? rawPaymentDriverTipCents : rawLocationDriverTipRate;
-  const rawDriverTipField = hasActivityAmount ? "washout_activities.amount" : hasPaymentDriverTip ? "payments.driver_tip_cents" : "washout_locations.rate";
-  const normalizedDriverTipCents = normalizeMoneyToCents(rawDriverTipValue, hasActivityAmount ? "auto" : hasPaymentDriverTip ? "cents" : "dollars");
-  console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
-    washoutActivityId: context.washoutActivityId ?? null,
-    ownerId: context.ownerId ?? null,
-    driverId: context.driverId ?? null,
-    rawDriverTipField,
-    rawDriverTipValue: rawDriverTipValue ?? null,
-    rawWashoutActivityAmount: rawActivityAmount ?? null,
-    normalizedWashoutActivityAmountCents: normalizeMoneyToCents(rawActivityAmount, "auto"),
-    rawPaymentDriverTipCents: rawPaymentDriverTipCents ?? null,
-    rawLocationDriverTipRate: rawLocationDriverTipRate ?? null,
-    normalizedDriverTipCents,
-    normalizedLocationDriverTipCents: normalizeMoneyToCents(rawLocationDriverTipRate, "dollars"),
-  });
-  return normalizedDriverTipCents;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1147,11 +1120,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLocationsByOwner(ownerId: string): Promise<WashoutLocation[]> {
-    return await db
-      .select()
+    const rows = await db
+      .select({
+        id: washoutLocations.id,
+        ownerId: washoutLocations.ownerId,
+        name: washoutLocations.name,
+        street: washoutLocations.street,
+        city: washoutLocations.city,
+        state: washoutLocations.state,
+        zip: washoutLocations.zip,
+        address: washoutLocations.address,
+        latitude: washoutLocations.latitude,
+        longitude: washoutLocations.longitude,
+        rate: washoutLocations.rate,
+        monthlyFeeCents: washoutLocations.monthlyFeeCents,
+        isActive: washoutLocations.isActive,
+        isVisible: washoutLocations.isVisible,
+        description: washoutLocations.description,
+        amenities: washoutLocations.amenities,
+        operatingHours: washoutLocations.operatingHours,
+        permitUrls: washoutLocations.permitUrls,
+        createdAt: washoutLocations.createdAt,
+        updatedAt: washoutLocations.updatedAt,
+      })
       .from(washoutLocations)
       .where(eq(washoutLocations.ownerId, ownerId))
       .orderBy(desc(washoutLocations.createdAt));
+
+    return rows as WashoutLocation[];
   }
 
   async getActiveLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]> {
@@ -1450,21 +1446,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]> {
-    const activityDate = sql<Date>`COALESCE(${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`;
-    const ownerLinkCondition = or(
-      eq(washoutLocations.ownerId, ownerId),
-      eq(payments.ownerId, ownerId)
-    );
-    const dateConditions: any[] = [];
+    const conditions = [eq(washoutLocations.ownerId, ownerId)];
     
     if (startDate) {
-      dateConditions.push(gte(activityDate, startDate));
+      conditions.push(gte(washoutActivities.checkInTime, startDate));
     }
     
     if (endDate) {
-      dateConditions.push(lte(activityDate, endDate));
+      conditions.push(lte(washoutActivities.checkInTime, endDate));
     }
-    const conditions: any[] = [ownerLinkCondition, ...dateConditions];
 
     console.log('🔍 getActivitiesByOwner query:', {
       ownerId,
@@ -1473,68 +1463,28 @@ export class DatabaseStorage implements IStorage {
       conditionsCount: conditions.length
     });
 
-    const countOwnerActivities = async (whereConditions: any[]) => {
-      const [row] = await db
-        .select({ count: sql<number>`COUNT(DISTINCT ${washoutActivities.id})::integer` })
-        .from(washoutActivities)
-        .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-        .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
-        .where(and(...whereConditions));
-      return Number(row?.count || 0);
-    };
-
-    const [legacyInnerJoinRow] = await db
-      .select({ count: sql<number>`COUNT(DISTINCT ${washoutActivities.id})::integer` })
+    const results = await db
+      .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(and(eq(washoutLocations.ownerId, ownerId), ...dateConditions));
-
-    const results = await db
-      .select()
-      .from(washoutActivities)
-      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
-      .leftJoin(drivers, eq(washoutActivities.driverId, drivers.id))
-      .leftJoin(users, eq(drivers.userId, users.id))
       .where(and(...conditions))
-      .orderBy(desc(activityDate), desc(washoutActivities.createdAt));
+      .orderBy(desc(washoutActivities.checkInTime));
 
-    const rowsByActivityId = new Map<string, (typeof results)[number]>();
-    for (const row of results) {
-      const activityId = String(row.washout_activities?.id || "");
-      if (activityId && !rowsByActivityId.has(activityId)) {
-        rowsByActivityId.set(activityId, row);
-      }
-    }
+    // Query results processed
 
-    const baseWashoutCount = await countOwnerActivities([ownerLinkCondition]);
-    const afterStatusFilterCount = await countOwnerActivities([ownerLinkCondition]);
-    const afterDateFilterCount = await countOwnerActivities(conditions);
-    console.log("[OWNER_ACTIVITY_VISIBILITY]", {
-      ownerId,
-      baseWashoutCount,
-      afterStatusFilterCount,
-      statusFilter: "none",
-      afterDateFilterCount,
-      afterSafeJoinsCount: rowsByActivityId.size,
-      legacyInnerJoinCompatibleCount: Number(legacyInnerJoinRow?.count || 0),
-      startDate: startDate?.toISOString() || null,
-      endDate: endDate?.toISOString() || null,
-      sampleActivityIds: Array.from(rowsByActivityId.keys()).slice(0, 10),
-    });
-
-    // Keep owner-visible activity rows even when related display records are missing.
+    // Remove post-processing filter - rely on INNER JOIN constraints
+    // Add photo validation to prevent phantom activities with missing photos
     const mappedResults = await Promise.all(
-      Array.from(rowsByActivityId.values()).map(async (row: any) => {
+      results.map(async (row: any) => {
         const activity = {
           ...row.washout_activities,
-          location: row.washout_locations ?? null,
-          driver: row.drivers ? {
+          location: row.washout_locations,
+          driver: {
             ...row.drivers,
-            user: row.users ?? null
-          } : null
+            user: row.users
+          }
         };
 
         // Photo validation removed for performance - phantom activities handled by cleanup job
@@ -1676,17 +1626,13 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async verifyWashoutActivity(activityId: string, verifiedBy: string, driverTipCents?: number | null): Promise<WashoutActivity> {
-    const resolvedDriverTipCents = driverTipCents !== undefined && driverTipCents !== null
-      ? Math.max(0, Math.round(driverTipCents))
-      : undefined;
+  async verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity> {
     const [activity] = await db
       .update(washoutActivities)
       .set({ 
         status: "verified",
         verifiedBy,
         verifiedAt: new Date(),
-        ...(resolvedDriverTipCents !== undefined ? { amount: (resolvedDriverTipCents / 100).toFixed(2) } : {}),
         updatedAt: new Date()
       })
       .where(eq(washoutActivities.id, activityId))
@@ -1767,7 +1713,7 @@ export class DatabaseStorage implements IStorage {
         locationState: washoutLocations.state,
         locationZip: washoutLocations.zip,
         locationRate: washoutLocations.rate,
-        locationDriverTipRate: washoutLocations.rate,
+        locationDriverRate: washoutLocations.rate,
         locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
         driverId: drivers.id,
         driverUserId: drivers.userId,
@@ -1812,7 +1758,7 @@ export class DatabaseStorage implements IStorage {
         state: row.locationState,
         zip: row.locationZip,
         rate: row.locationRate,
-        driverTipRate: row.locationDriverTipRate,
+        driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
         monthlyFeeCents: row.locationMonthlyFeeCents,
       },
       driver: {
@@ -1934,7 +1880,7 @@ export class DatabaseStorage implements IStorage {
         const platformFee = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined
           ? resolvePlatformFeeCents(owner.customPlatformFee) / 100
           : resolvePlatformFeeCents(systemSettings?.platformWashoutFee) / 100;
-        const driverTip = resolveLocationDriverTipRateCents(location.rate) / 100;
+        const driverTip = normalizeMoneyToCents(location.rate, "dollars") / 100;
         const ownerCharge = driverAmount + platformFee + driverTip;
 
         // Calculate business date
@@ -2001,16 +1947,15 @@ export class DatabaseStorage implements IStorage {
 
   // Payment operations
   async createPayment(payment: InsertPayment): Promise<Payment> {
-    const { tipAmountCents, driverTipCents, ...paymentData } = payment as any;
-    const resolvedDriverTipCents = driverTipCents ?? tipAmountCents ?? 0;
-    const [newPayment] = await db.insert(payments).values({
-      ...paymentData,
-      driverTipCents: resolvedDriverTipCents,
-    }).returning();
-    return {
-      ...newPayment,
-      tipAmountCents: resolvedDriverTipCents,
-    } as Payment;
+    const {
+      tipAmountCents: _tipAmountCents,
+      payoutStatus: _payoutStatus,
+      deferReason: _deferReason,
+      deferredAt: _deferredAt,
+      ...paymentData
+    } = payment as any;
+    const [newPayment] = await db.insert(payments).values(paymentData).returning();
+    return newPayment;
   }
 
   async getPaymentById(paymentId: string): Promise<Payment | undefined> {
@@ -2022,7 +1967,6 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2036,32 +1980,25 @@ export class DatabaseStorage implements IStorage {
         paymentUpdatedAt: payments.updatedAt,
         activityLocationId: washoutActivities.locationId,
         activityAmount: washoutActivities.amount,
-        locationDriverTipRate: washoutLocations.rate,
+        locationDriverRate: washoutLocations.rate,
       })
       .from(payments)
       .leftJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
-      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .where(eq(payments.id, paymentId));
 
     if (!row) return undefined;
 
-    const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-      washoutActivityId: row.paymentActivityId,
-      ownerId: row.paymentOwnerId,
+    return {
+      id: row.paymentId,
       driverId: row.paymentDriverId,
-    });
-      return {
-        id: row.paymentId,
-        driverId: row.paymentDriverId,
-        ownerId: row.paymentOwnerId,
-        activityId: row.paymentActivityId,
+      ownerId: row.paymentOwnerId,
+      activityId: row.paymentActivityId,
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizedDriverTipCents / 100).toFixed(2),
-      driverTipCents: normalizedDriverTipCents,
-      tipAmountCents: normalizedDriverTipCents,
-      locationDriverTipRate: row.locationDriverTipRate ?? null,
+      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      tipAmountCents: normalizeMoneyToCents(row.activityAmount, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2099,7 +2036,6 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2130,7 +2066,7 @@ export class DatabaseStorage implements IStorage {
         locationLatitude: washoutLocations.latitude,
         locationLongitude: washoutLocations.longitude,
         locationRate: washoutLocations.rate,
-        locationDriverTipRate: washoutLocations.rate,
+        locationDriverRate: washoutLocations.rate,
         locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
         locationIsActive: washoutLocations.isActive,
         locationIsVisible: washoutLocations.isVisible,
@@ -2143,13 +2079,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(payments.createdAt));
 
-    const mappedBatches: any = results.map((row: any) => {
-      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-        washoutActivityId: row.paymentActivityId,
-        ownerId: row.paymentOwnerId,
-        driverId: row.paymentDriverId,
-      });
-      return {
+    const mappedBatches: any = results.map((row: any) => ({
       id: row.paymentId,
       driverId: row.paymentDriverId,
       ownerId: row.paymentOwnerId,
@@ -2157,10 +2087,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizedDriverTipCents / 100).toFixed(2),
-      driverTipCents: normalizedDriverTipCents,
-      tipAmountCents: normalizedDriverTipCents,
-      locationDriverTipRate: row.locationDriverTipRate ?? null,
+      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2197,7 +2125,7 @@ export class DatabaseStorage implements IStorage {
           latitude: row.locationLatitude,
           longitude: row.locationLongitude,
           rate: row.locationRate,
-          driverTipRate: row.locationDriverTipRate,
+          driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
           monthlyFeeCents: row.locationMonthlyFeeCents,
           isActive: row.locationIsActive,
           isVisible: row.locationIsVisible,
@@ -2205,8 +2133,7 @@ export class DatabaseStorage implements IStorage {
           updatedAt: row.locationUpdatedAt,
         } : undefined
       }
-    };
-    }) as any;
+    })) as any;
     return mappedBatches;
   }
 
@@ -2229,7 +2156,6 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2267,7 +2193,7 @@ export class DatabaseStorage implements IStorage {
         locationLatitude: washoutLocations.latitude,
         locationLongitude: washoutLocations.longitude,
         locationRate: washoutLocations.rate,
-        locationDriverTipRate: washoutLocations.rate,
+        locationDriverRate: washoutLocations.rate,
         locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
         locationIsActive: washoutLocations.isActive,
         locationIsVisible: washoutLocations.isVisible,
@@ -2275,10 +2201,10 @@ export class DatabaseStorage implements IStorage {
         locationUpdatedAt: washoutLocations.updatedAt,
       })
       .from(payments)
-      .leftJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
-      .leftJoin(drivers, eq(washoutActivities.driverId, drivers.id))
-      .leftJoin(users, eq(drivers.userId, users.id))
-      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
+      .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .where(and(...conditions))
       .orderBy(desc(payments.createdAt));
 
@@ -2290,11 +2216,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-        washoutActivityId: row.paymentActivityId,
-        ownerId: row.paymentOwnerId,
-        driverId: row.paymentDriverId,
-      }),
+      tipAmountCents: normalizeMoneyToCents(row.activityAmount, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2330,18 +2252,18 @@ export class DatabaseStorage implements IStorage {
           latitude: row.locationLatitude,
           longitude: row.locationLongitude,
           rate: row.locationRate,
-          driverTipRate: row.locationDriverTipRate,
+          driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
           monthlyFeeCents: row.locationMonthlyFeeCents,
           isActive: row.locationIsActive,
           isVisible: row.locationIsVisible,
           createdAt: row.locationCreatedAt,
           updatedAt: row.locationUpdatedAt,
         } : undefined,
-        driver: row.driverId ? {
+        driver: {
           id: row.driverId,
           userId: row.driverUserId,
           truckNumber: row.driverTruckNumber,
-          user: row.driverUserId ? {
+          user: {
             id: row.driverUserId,
             username: row.driverEmail,
             email: row.driverEmail,
@@ -2363,8 +2285,8 @@ export class DatabaseStorage implements IStorage {
             createdAt: row.paymentCreatedAt,
             updatedAt: row.paymentUpdatedAt,
             profileImageUrl: null,
-          } as User : null,
-        } : null,
+          } as User,
+        },
       }
     })) as any;
     return mappedBatches;
@@ -2382,7 +2304,6 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2399,7 +2320,6 @@ export class DatabaseStorage implements IStorage {
         activityStatus: washoutActivities.status,
         activityCheckInTime: washoutActivities.checkInTime,
         activityCheckOutTime: washoutActivities.checkOutTime,
-        activityAmount: washoutActivities.amount,
         activityNotes: washoutActivities.notes,
         driverId: drivers.id,
         driverUserId: driverUsers.id,
@@ -2429,7 +2349,7 @@ export class DatabaseStorage implements IStorage {
         locationLatitude: washoutLocations.latitude,
         locationLongitude: washoutLocations.longitude,
         locationRate: washoutLocations.rate,
-        locationDriverTipRate: washoutLocations.rate,
+        locationDriverRate: washoutLocations.rate,
         locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
         locationIsActive: washoutLocations.isActive,
         locationIsVisible: washoutLocations.isVisible,
@@ -2442,7 +2362,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(driverUsers, eq(drivers.userId, driverUsers.id))
       .leftJoin(owners, eq(payments.ownerId, owners.id))
       .leftJoin(ownerUsers, eq(owners.userId, ownerUsers.id))
-      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .where(and(
         inArray(payments.status, ["awaiting_driver_stripe", "pending_driver_onboarding"]),
       ));
@@ -2455,11 +2375,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-        washoutActivityId: row.paymentActivityId,
-        ownerId: row.paymentOwnerId,
-        driverId: row.paymentDriverId,
-      }),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
@@ -2493,7 +2409,7 @@ export class DatabaseStorage implements IStorage {
           latitude: row.locationLatitude,
           longitude: row.locationLongitude,
           rate: row.locationRate,
-          driverTipRate: row.locationDriverTipRate,
+          driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
           monthlyFeeCents: row.locationMonthlyFeeCents,
           isActive: row.locationIsActive,
           isVisible: row.locationIsVisible,
@@ -2556,7 +2472,7 @@ export class DatabaseStorage implements IStorage {
         latitude: row.locationLatitude,
         longitude: row.locationLongitude,
         rate: row.locationRate,
-        driverTipRate: row.locationDriverTipRate,
+        driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
         monthlyFeeCents: row.locationMonthlyFeeCents,
         isActive: row.locationIsActive,
         isVisible: row.locationIsVisible,
@@ -2577,7 +2493,6 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2624,7 +2539,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
       .leftJoin(owners, eq(payments.ownerId, owners.id))
       .leftJoin(ownerUsers, eq(owners.userId, ownerUsers.id))
-      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .where(
         and(
           eq(payments.driverId, driverId),
@@ -2640,11 +2555,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-        washoutActivityId: row.paymentActivityId,
-        ownerId: row.paymentOwnerId,
-        driverId: row.paymentDriverId,
-      }),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
@@ -2678,7 +2589,7 @@ export class DatabaseStorage implements IStorage {
           latitude: row.locationLatitude,
           longitude: row.locationLongitude,
           rate: row.locationRate,
-          driverTipRate: row.locationDriverTipRate,
+          driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
           monthlyFeeCents: row.locationMonthlyFeeCents,
           isActive: row.locationIsActive,
           isVisible: row.locationIsVisible,
@@ -2719,7 +2630,7 @@ export class DatabaseStorage implements IStorage {
         latitude: row.locationLatitude,
         longitude: row.locationLongitude,
         rate: row.locationRate,
-        driverTipRate: row.locationDriverTipRate,
+        driverIncentiveTip: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
         monthlyFeeCents: row.locationMonthlyFeeCents,
         isActive: row.locationIsActive,
         isVisible: row.locationIsVisible,
@@ -2808,7 +2719,7 @@ export class DatabaseStorage implements IStorage {
         locationLatitude: washoutLocations.latitude,
         locationLongitude: washoutLocations.longitude,
         locationRate: washoutLocations.rate,
-        locationDriverTipRate: washoutLocations.rate,
+        locationDriverRate: washoutLocations.rate,
         locationMonthlyFeeCents: washoutLocations.monthlyFeeCents,
         locationIsActive: washoutLocations.isActive,
         locationIsVisible: washoutLocations.isVisible,
@@ -2839,11 +2750,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-        washoutActivityId: row.paymentActivityId,
-        ownerId: row.paymentOwnerId,
-        driverId: row.paymentDriverId,
-      }),
+      tipAmountCents: normalizeMoneyToCents(row.activityAmount, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2993,12 +2900,6 @@ export class DatabaseStorage implements IStorage {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const owner = await this.getOwnerById(ownerId);
-    const systemSettings = await this.getSystemSettings();
-    const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
-      ownerCustomPlatformFee: owner?.customPlatformFee,
-      systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
-    });
     const approvedWashouts = await this.getApprovedWashoutsForOwnerBilling(ownerId, startDate, new Date());
     const batches = await this.getBillingBatchesByOwner(ownerId, startDate, new Date());
     const pendingLedger = approvedWashouts.length > 0
@@ -3010,15 +2911,8 @@ export class DatabaseStorage implements IStorage {
             ownerId: row.ownerId,
             driverId: row.driverId,
             driverStripeAccountId: null,
-            platformFeeCents: configuredPlatformFeeCents,
-            activityAmount: row.activityAmount ?? null,
-            locationDriverTipRate: row.locationDriverTipRate ?? null,
-            paymentTipAmountCents: row.paymentDriverTipCents ?? null,
-            driverTipCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-              washoutActivityId: row.activityId,
-              ownerId: row.ownerId,
-              driverId: row.driverId,
-            }),
+            platformFeeCents: normalizeMoneyToCents(row.activityFeeCentsPlatform ?? 0, "auto"),
+            driverTipCents: normalizeMoneyToCents(row.activityDriverTipAmount || 0, "dollars"),
           })),
           immediateBilling: true,
         })
@@ -3199,14 +3093,7 @@ export class DatabaseStorage implements IStorage {
               driverId: row.driverId,
               driverStripeAccountId: null,
               platformFeeCents: configuredPlatformFeeCents,
-              activityAmount: row.activityAmount ?? null,
-              locationDriverTipRate: row.locationDriverTipRate ?? null,
-              paymentTipAmountCents: row.paymentDriverTipCents ?? null,
-              driverTipCents: normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-                washoutActivityId: row.activityId,
-                ownerId: row.ownerId,
-                driverId: row.driverId,
-              }),
+              driverTipCents: normalizeMoneyToCents(row.activityDriverTipAmount || 0, "dollars"),
             })),
             immediateBilling: ownerSetting.billingCadence === "immediate",
             allowAdminOverride: true,
@@ -3283,13 +3170,13 @@ export class DatabaseStorage implements IStorage {
       totalEarnings = Number(((ownerChargeTotalCents || 0) / 100).toFixed(2));
     } catch (error) {
       const safeError = summarizeDatabaseError(error);
+      washoutRevenueError = "Unable to load washout revenue metrics.";
       console.error("[SYSTEM_STATS] washoutRevenue query failed", {
         days,
         startDate: startDate.toISOString(),
         query: "washoutRevenue",
         ...safeError,
       });
-      throw error;
     }
 
     let lotteryTicketCount = 0;
@@ -4871,7 +4758,7 @@ export class DatabaseStorage implements IStorage {
         activityStatus: washoutActivities.status,
         activityAmount: washoutActivities.amount,
         activityNotes: washoutActivities.notes,
-        locationDriverTipRate: washoutLocations.rate,
+        locationDriverRate: washoutLocations.rate,
         driverId: drivers.id,
         driverUserId: drivers.userId,
         driverTruckNumber: drivers.truckNumber,
@@ -4882,9 +4769,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(payments)
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
-      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .leftJoin(drivers, eq(payments.driverId, drivers.id))
-      .leftJoin(users, eq(drivers.userId, users.id))
+      .innerJoin(drivers, eq(payments.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
       .where(
         and(
           eq(payments.ownerId, ownerId),
@@ -4895,13 +4781,7 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(payments.createdAt);
 
-    return pendingPayments.map((row: any) => {
-      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-        washoutActivityId: row.paymentActivityId,
-        ownerId: row.paymentOwnerId,
-        driverId: row.paymentDriverId,
-      });
-      return {
+    return pendingPayments.map((row: any) => ({
       id: row.paymentId,
       driverId: row.paymentDriverId,
       ownerId: row.paymentOwnerId,
@@ -4909,145 +4789,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizedDriverTipCents / 100).toFixed(2),
-      driverTipCents: normalizedDriverTipCents,
-      tipAmountCents: normalizedDriverTipCents,
-      locationDriverTipRate: row.locationDriverTipRate ?? null,
-      stripePaymentIntentId: row.paymentStripePaymentIntentId,
-      stripeTransferId: row.paymentStripeTransferId,
-      stripeChargeId: row.paymentStripeChargeId,
-      status: row.paymentStatus,
-      refundedAt: row.paymentRefundedAt,
-      refundAmount: row.paymentRefundAmount,
-      refundReason: row.paymentRefundReason,
-      batchId: row.paymentBatchId,
-      payoutStatus: "not_started",
-      deferReason: null,
-      deferredAt: null,
-      businessDate: row.paymentCreatedAt ? row.paymentCreatedAt.toISOString().split('T')[0] : null,
-      paidAt: row.paymentPaidAt,
-      createdAt: row.paymentCreatedAt,
-      updatedAt: row.paymentUpdatedAt,
-      activity: {
-        id: row.activityId,
-        driverId: row.activityDriverId,
-        locationId: row.activityLocationId,
-        checkInTime: row.activityCheckInTime,
-        checkOutTime: row.activityCheckOutTime,
-        status: row.activityStatus,
-        amount: row.activityAmount,
-        notes: row.activityNotes,
-      } as WashoutActivity,
-      driver: {
-        id: row.driverId || row.paymentDriverId,
-        userId: row.driverUserId,
-        truckNumber: row.driverTruckNumber,
-        licenseNumber: null as any,
-        user: row.driverUserId ? {
-          id: row.driverUserId,
-          username: row.driverEmail,
-          email: row.driverEmail,
-          passwordHash: "",
-          firstName: row.driverFirstName,
-          lastName: row.driverLastName,
-          role: "driver",
-          phone: row.driverPhone,
-          street: "",
-          city: "",
-          state: "",
-          zip: "",
-          paymentMethod: "ach",
-          paymentFrequency: "weekly",
-          stripeConnectAccountId: null,
-          stripeCustomerId: null,
-          stripeConnectBalance: null,
-          isActive: true,
-          createdAt: row.paymentCreatedAt,
-          updatedAt: row.paymentUpdatedAt,
-          profileImageUrl: null,
-        } as User : null,
-      },
-    };
-    }) as any;
-  }
-
-  async getPendingPaymentsForOwnerBilling(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
-    const conditions = [
-      eq(payments.ownerId, ownerId),
-      eq(payments.status, 'pending'),
-      isNull(payments.batchId),
-    ];
-
-    if (startDate) {
-      conditions.push(gte(payments.businessDate, startDate.toISOString().split('T')[0]));
-    }
-
-    if (endDate) {
-      conditions.push(lte(payments.businessDate, endDate.toISOString().split('T')[0]));
-    }
-
-    const pendingPayments = await db
-      .select({
-        paymentId: payments.id,
-        paymentDriverId: payments.driverId,
-        paymentOwnerId: payments.ownerId,
-        paymentActivityId: payments.activityId,
-        paymentAmount: payments.amount,
-        paymentProcessingFee: payments.processingFee,
-        paymentStripePaymentIntentId: payments.stripePaymentIntentId,
-        paymentStripeTransferId: payments.stripeTransferId,
-        paymentStripeChargeId: payments.stripeChargeId,
-        paymentStatus: payments.status,
-        paymentRefundedAt: payments.refundedAt,
-        paymentRefundAmount: payments.refundAmount,
-        paymentRefundReason: payments.refundReason,
-        paymentBatchId: payments.batchId,
-        paymentPaidAt: payments.paidAt,
-        paymentCreatedAt: payments.createdAt,
-        paymentUpdatedAt: payments.updatedAt,
-        activityId: washoutActivities.id,
-        activityDriverId: washoutActivities.driverId,
-        activityLocationId: washoutActivities.locationId,
-        activityCheckInTime: washoutActivities.checkInTime,
-        activityCheckOutTime: washoutActivities.checkOutTime,
-        activityStatus: washoutActivities.status,
-        activityAmount: washoutActivities.amount,
-        activityNotes: washoutActivities.notes,
-        locationDriverTipRate: washoutLocations.rate,
-        driverId: drivers.id,
-        driverUserId: drivers.userId,
-        driverTruckNumber: drivers.truckNumber,
-        driverFirstName: users.firstName,
-        driverLastName: users.lastName,
-        driverEmail: users.email,
-        driverPhone: users.phone,
-      })
-      .from(payments)
-      .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
-      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .leftJoin(drivers, eq(payments.driverId, drivers.id))
-      .leftJoin(users, eq(drivers.userId, users.id))
-      .where(and(...conditions))
-      .orderBy(payments.createdAt);
-
-    return pendingPayments.map((row: any) => {
-      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-        washoutActivityId: row.paymentActivityId,
-        ownerId: row.paymentOwnerId,
-        driverId: row.paymentDriverId,
-      });
-      return {
-      id: row.paymentId,
-      driverId: row.paymentDriverId,
-      ownerId: row.paymentOwnerId,
-      activityId: row.paymentActivityId,
-      amount: row.paymentAmount,
-      processingFee: row.paymentProcessingFee,
-      platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizedDriverTipCents / 100).toFixed(2),
-      driverTipCents: normalizedDriverTipCents,
-      tipAmountCents: normalizedDriverTipCents,
-      locationDriverTipRate: row.locationDriverTipRate ?? null,
+      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -5102,8 +4845,132 @@ export class DatabaseStorage implements IStorage {
           profileImageUrl: null,
         } as User,
       },
-    };
-    }) as any;
+    })) as any;
+  }
+
+  async getPendingPaymentsForOwnerBilling(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
+    const conditions = [
+      eq(payments.ownerId, ownerId),
+      eq(payments.status, 'pending'),
+      isNull(payments.batchId),
+    ];
+
+    if (startDate) {
+      conditions.push(gte(payments.businessDate, startDate.toISOString().split('T')[0]));
+    }
+
+    if (endDate) {
+      conditions.push(lte(payments.businessDate, endDate.toISOString().split('T')[0]));
+    }
+
+    const pendingPayments = await db
+      .select({
+        paymentId: payments.id,
+        paymentDriverId: payments.driverId,
+        paymentOwnerId: payments.ownerId,
+        paymentActivityId: payments.activityId,
+        paymentAmount: payments.amount,
+        paymentProcessingFee: payments.processingFee,
+        paymentStripePaymentIntentId: payments.stripePaymentIntentId,
+        paymentStripeTransferId: payments.stripeTransferId,
+        paymentStripeChargeId: payments.stripeChargeId,
+        paymentStatus: payments.status,
+        paymentRefundedAt: payments.refundedAt,
+        paymentRefundAmount: payments.refundAmount,
+        paymentRefundReason: payments.refundReason,
+        paymentBatchId: payments.batchId,
+        paymentPaidAt: payments.paidAt,
+        paymentCreatedAt: payments.createdAt,
+        paymentUpdatedAt: payments.updatedAt,
+        activityId: washoutActivities.id,
+        activityDriverId: washoutActivities.driverId,
+        activityLocationId: washoutActivities.locationId,
+        activityCheckInTime: washoutActivities.checkInTime,
+        activityCheckOutTime: washoutActivities.checkOutTime,
+        activityStatus: washoutActivities.status,
+        activityAmount: washoutActivities.amount,
+        activityNotes: washoutActivities.notes,
+        locationDriverRate: washoutLocations.rate,
+        driverId: drivers.id,
+        driverUserId: drivers.userId,
+        driverTruckNumber: drivers.truckNumber,
+        driverFirstName: users.firstName,
+        driverLastName: users.lastName,
+        driverEmail: users.email,
+        driverPhone: users.phone,
+      })
+      .from(payments)
+      .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
+      .innerJoin(drivers, eq(payments.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .where(and(...conditions))
+      .orderBy(payments.createdAt);
+
+    return pendingPayments.map((row: any) => ({
+      id: row.paymentId,
+      driverId: row.paymentDriverId,
+      ownerId: row.paymentOwnerId,
+      activityId: row.paymentActivityId,
+      amount: row.paymentAmount,
+      processingFee: row.paymentProcessingFee,
+      platformFee: row.paymentProcessingFee,
+      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      tipAmountCents: normalizeMoneyToCents(row.locationDriverRate, "dollars"),
+      stripePaymentIntentId: row.paymentStripePaymentIntentId,
+      stripeTransferId: row.paymentStripeTransferId,
+      stripeChargeId: row.paymentStripeChargeId,
+      status: row.paymentStatus,
+      refundedAt: row.paymentRefundedAt,
+      refundAmount: row.paymentRefundAmount,
+      refundReason: row.paymentRefundReason,
+      batchId: row.paymentBatchId,
+      payoutStatus: "not_started",
+      deferReason: null,
+      deferredAt: null,
+      businessDate: row.paymentCreatedAt ? row.paymentCreatedAt.toISOString().split('T')[0] : null,
+      paidAt: row.paymentPaidAt,
+      createdAt: row.paymentCreatedAt,
+      updatedAt: row.paymentUpdatedAt,
+      activity: {
+        id: row.activityId,
+        driverId: row.activityDriverId,
+        locationId: row.activityLocationId,
+        checkInTime: row.activityCheckInTime,
+        checkOutTime: row.activityCheckOutTime,
+        status: row.activityStatus,
+        amount: row.activityAmount,
+        notes: row.activityNotes,
+      } as WashoutActivity,
+      driver: {
+        id: row.driverId,
+        userId: row.driverUserId,
+        truckNumber: row.driverTruckNumber,
+        licenseNumber: null as any,
+        user: {
+          id: row.driverUserId,
+          username: row.driverEmail,
+          email: row.driverEmail,
+          passwordHash: "",
+          firstName: row.driverFirstName,
+          lastName: row.driverLastName,
+          role: "driver",
+          phone: row.driverPhone,
+          street: "",
+          city: "",
+          state: "",
+          zip: "",
+          paymentMethod: "ach",
+          paymentFrequency: "weekly",
+          stripeConnectAccountId: null,
+          stripeCustomerId: null,
+          stripeConnectBalance: null,
+          isActive: true,
+          createdAt: row.paymentCreatedAt,
+          updatedAt: row.paymentUpdatedAt,
+          profileImageUrl: null,
+        } as User,
+      },
+    })) as any;
   }
 
   async getApprovedWashoutsForOwnerBilling(ownerId: string, startDate?: Date, endDate?: Date): Promise<Array<{
@@ -5111,83 +4978,54 @@ export class DatabaseStorage implements IStorage {
     ownerId: string;
     driverId: string;
     locationId: string;
-    locationName?: string | null;
     activityStatus?: string | null;
-    activityAmount?: string | number | null;
     activityFeeCentsPlatform?: number | null;
-    paymentDriverTipCents?: number | null;
-    paymentTipAmountCents?: number | null;
-    locationDriverTipRate?: number | null;
+    activityDriverTipAmount?: number | string | null;
+    locationDriverRate?: number | string | null;
+    locationRate?: number | string | null;
     verifiedAt?: Date | null;
     createdAt?: Date | null;
   }>> {
-    const ownerLinkCondition = or(
-      eq(washoutLocations.ownerId, ownerId),
-      eq(payments.ownerId, ownerId)
-    );
-    const billableStatusCondition = or(
-      eq(washoutActivities.status, "verified"),
-      sql<boolean>`${washoutActivities.status}::text = 'approved'`,
-      sql<boolean>`${washoutActivities.status}::text = 'completed'`
-    );
-    const billableDate = sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`;
-    const dateConditions: any[] = [];
+    const conditions = [
+      eq(owners.id, ownerId),
+      or(
+        eq(washoutActivities.status, "verified"),
+        sql<boolean>`${washoutActivities.status}::text = 'completed'`
+      ),
+    ];
 
     if (startDate) {
-      dateConditions.push(gte(billableDate, startDate));
+      conditions.push(gte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, startDate));
     }
 
     if (endDate) {
-      dateConditions.push(lte(billableDate, endDate));
+      conditions.push(lte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, endDate));
     }
-    const conditions: any[] = [ownerLinkCondition, billableStatusCondition, ...dateConditions];
-
-    const countOwnerBillableWashouts = async (whereConditions: any[]) => {
-      const [row] = await db
-        .select({ count: sql<number>`COUNT(DISTINCT ${washoutActivities.id})::integer` })
-        .from(washoutActivities)
-        .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-        .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
-        .where(and(...whereConditions));
-      return Number(row?.count || 0);
-    };
 
     const rows = await db
       .select({
         activityId: washoutActivities.id,
-        ownerId: sql<string>`COALESCE(${washoutLocations.ownerId}, ${payments.ownerId})`,
+        ownerId: owners.id,
         driverId: washoutActivities.driverId,
         locationId: washoutActivities.locationId,
-        locationName: washoutLocations.name,
         activityStatus: washoutActivities.status,
-        activityAmount: washoutActivities.amount,
         activityFeeCentsPlatform: washoutActivities.feeCentsPlatform,
-        paymentDriverTipCents: payments.driverTipCents,
-        paymentTipAmountCents: payments.washoutServiceFee,
-        locationDriverTipRate: washoutLocations.rate,
+        activityDriverTipAmount: washoutActivities.amount,
+        locationRate: washoutLocations.rate,
         paymentStatus: payments.status,
         paymentBatchId: payments.batchId,
         verifiedAt: washoutActivities.verifiedAt,
         createdAt: washoutActivities.createdAt,
       })
       .from(washoutActivities)
-      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
       .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
       .where(and(...conditions))
-      .orderBy(desc(billableDate), desc(washoutActivities.createdAt));
+      .orderBy(desc(washoutActivities.verifiedAt), desc(washoutActivities.createdAt));
 
-    const rowsByActivityId = new Map<string, (typeof rows)[number]>();
-    for (const row of rows) {
-      const activityId = String(row.activityId || "");
-      if (activityId && !rowsByActivityId.has(activityId)) {
-        rowsByActivityId.set(activityId, row);
-      }
-    }
-
-    const baseWashoutCount = await countOwnerBillableWashouts([ownerLinkCondition]);
-    const afterStatusFilterCount = await countOwnerBillableWashouts([ownerLinkCondition, billableStatusCondition]);
-    const afterDateFilterCount = await countOwnerBillableWashouts(conditions);
     const billedActivityIds = new Set<string>();
+    const billedStatuses = new Set(["paid", "posted", "completed", "succeeded"]);
     const batches = await this.getBillingBatchesByOwner(ownerId);
     for (const batch of batches) {
       const batchStatus = String(batch.status || "").toLowerCase();
@@ -5210,7 +5048,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    const unbilledRows = Array.from(rowsByActivityId.values()).filter((row: any) => {
+    return rows.filter((row: any) => {
       const activityId = String(row.activityId || "");
       if (!isBillableWashoutForOwnerBilling({ status: row.activityStatus })) {
         return false;
@@ -5218,113 +5056,20 @@ export class DatabaseStorage implements IStorage {
       if (billedActivityIds.has(activityId)) {
         return false;
       }
+      const paymentStatus = String(row.paymentStatus || "").toLowerCase();
+      const paymentBatchId = String(row.paymentBatchId || "").trim();
+      if (paymentBatchId) {
+        return false;
+      }
+      if (billedStatuses.has(paymentStatus)) {
+        return false;
+      }
       return true;
-    }) as any;
-
-    console.log("[OWNER_BILLING_WASHOUT_VISIBILITY]", {
-      ownerId,
-      baseWashoutCount,
-      afterStatusFilterCount,
-      afterDateFilterCount,
-      afterJoinCount: rowsByActivityId.size,
-      billedExcludedCount: billedActivityIds.size,
-      returnedUnbilledCount: unbilledRows.length,
-      startDate: startDate?.toISOString() || null,
-      endDate: endDate?.toISOString() || null,
-      sampleActivityIds: unbilledRows.slice(0, 10).map((row: any) => row.activityId),
-    });
-
-    return unbilledRows;
-  }
-
-  async getBillingTipSourceDebugRows(ownerId: string, washoutIds?: string[]): Promise<Array<{
-    washoutActivityId: string;
-    locationId: string;
-    locationName: string | null;
-    ownerId: string;
-    driverId: string;
-    status: string | null;
-    activityAmount: string | number | null;
-    feeCentsPlatform: number | null;
-    paymentStatus: string | null;
-    paymentDriverTipCents: number | null;
-    paymentWashoutServiceFee: string | number | null;
-    locationDriverTipRate: number | null;
-    resolvedDriverTipCents: number;
-    resolvedTipSource: string;
-    driverStripeAccountId: string | null;
-  }>> {
-    const approvedWashouts = await this.getApprovedWashoutsForOwnerBilling(ownerId);
-    const approvedIds = new Set(approvedWashouts.map((row) => row.activityId));
-    const requestedIds = Array.isArray(washoutIds)
-      ? washoutIds.map((id) => String(id).trim()).filter(Boolean)
-      : [];
-    const effectiveIds = requestedIds.length > 0
-      ? requestedIds.filter((id) => approvedIds.has(id))
-      : Array.from(approvedIds);
-
-    if (effectiveIds.length === 0) {
-      return [];
-    }
-
-    const rows = await db
-      .select({
-        washoutActivityId: washoutActivities.id,
-        locationId: washoutActivities.locationId,
-        locationName: washoutLocations.name,
-        ownerId: sql<string>`COALESCE(${washoutLocations.ownerId}, ${payments.ownerId})`,
-        driverId: washoutActivities.driverId,
-        status: washoutActivities.status,
-        activityAmount: washoutActivities.amount,
-        feeCentsPlatform: washoutActivities.feeCentsPlatform,
-        paymentDriverTipCents: payments.driverTipCents,
-        paymentStatus: payments.status,
-        paymentWashoutServiceFee: payments.washoutServiceFee,
-        locationDriverTipRate: washoutLocations.rate,
-        driverStripeAccountId: drivers.connectedAccountId,
-      })
-      .from(washoutActivities)
-      .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
-      .leftJoin(drivers, eq(washoutActivities.driverId, drivers.id))
-      .where(and(
-        or(eq(washoutLocations.ownerId, ownerId), eq(payments.ownerId, ownerId)),
-        inArray(washoutActivities.id, effectiveIds),
-      ))
-      .orderBy(desc(washoutActivities.createdAt));
-
-    return rows.map((row: any) => {
-      const locationDriverTipRate = row.locationDriverTipRate ?? null;
-      const paymentWashoutServiceFee = row.paymentWashoutServiceFee ?? null;
-      const paymentDriverTipCents = row.paymentDriverTipCents ?? null;
-      const activityAmount = row.activityAmount ?? null;
-      const hasActivityAmount = activityAmount !== null && activityAmount !== undefined && activityAmount !== "";
-      const hasPaymentDriverTip = paymentDriverTipCents !== null && paymentDriverTipCents !== undefined && paymentDriverTipCents !== "";
-      const resolvedTipSource = hasActivityAmount ? "washout_activities.amount" : hasPaymentDriverTip ? "payments.driver_tip_cents" : "washout_locations.rate";
-      const resolvedDriverTipCents = normalizeWashoutActivityAmountTipCents(activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-        washoutActivityId: row.washoutActivityId,
-        ownerId: row.ownerId,
-        driverId: row.driverId,
-      });
-
-      return {
-        washoutActivityId: row.washoutActivityId,
-        locationId: row.locationId,
-        locationName: row.locationName ?? null,
-        ownerId: row.ownerId,
-        driverId: row.driverId,
-        status: row.status ?? null,
-        activityAmount,
-        feeCentsPlatform: row.feeCentsPlatform ?? null,
-        paymentStatus: row.paymentStatus ?? null,
-        paymentWashoutServiceFee,
-        paymentDriverTipCents,
-        locationDriverTipRate,
-        resolvedDriverTipCents,
-        resolvedTipSource,
-        driverStripeAccountId: row.driverStripeAccountId ?? null,
-      };
-    });
+    }).map((row: any) => ({
+      ...row,
+      activityDriverTipAmount: row.activityDriverTipAmount,
+      locationDriverRate: row.locationRate,
+    })) as any;
   }
 
   async assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void> {
@@ -5371,7 +5116,7 @@ export class DatabaseStorage implements IStorage {
         activityStatus: washoutActivities.status,
         activityAmount: washoutActivities.amount,
         activityNotes: washoutActivities.notes,
-        locationDriverTipRate: washoutLocations.rate,
+        locationRate: washoutLocations.rate,
         driverId: drivers.id,
         driverUserId: drivers.userId,
         driverTruckNumber: drivers.truckNumber,
@@ -5383,18 +5128,12 @@ export class DatabaseStorage implements IStorage {
       .from(payments)
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
       .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .leftJoin(drivers, eq(payments.driverId, drivers.id))
-      .leftJoin(users, eq(drivers.userId, users.id))
+      .innerJoin(drivers, eq(payments.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
       .where(eq(payments.batchId, batchId))
       .orderBy(payments.createdAt);
 
-    return batchPayments.map((row: any) => {
-      const normalizedDriverTipCents = normalizeWashoutActivityAmountTipCents(row.activityAmount, row.paymentDriverTipCents ?? null, row.locationDriverTipRate, {
-        washoutActivityId: row.paymentActivityId,
-        ownerId: row.paymentOwnerId,
-        driverId: row.paymentDriverId,
-      });
-      return {
+    return batchPayments.map((row: any) => ({
       id: row.paymentId,
       driverId: row.paymentDriverId,
       ownerId: row.paymentOwnerId,
@@ -5402,10 +5141,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizedDriverTipCents / 100).toFixed(2),
-      driverTipCents: normalizedDriverTipCents,
-      tipAmountCents: normalizedDriverTipCents,
-      locationDriverTipRate: row.locationDriverTipRate ?? null,
+      washoutServiceFee: (normalizeMoneyToCents(row.locationRate, "dollars") / 100).toFixed(2),
+      tipAmountCents: normalizeMoneyToCents(row.locationRate, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -5460,8 +5197,7 @@ export class DatabaseStorage implements IStorage {
           profileImageUrl: null,
         } as User,
       },
-    };
-    }) as any;
+    })) as any;
   }
 
   async getOwnerBillingSettings(ownerId: string): Promise<{ billingCadence: string; billingCutoffTime: string; billingTimezone: string; billingDayOfWeek: number } | undefined> {
