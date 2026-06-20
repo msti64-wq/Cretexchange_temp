@@ -11115,6 +11115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== ADMIN BILLING SETTINGS MANAGEMENT ENDPOINTS ==========
 
   app.post('/api/admin/billing/preview-owner-washout-charge', isAuthenticated, async (req: any, res) => {
+    console.log("[DRY_RUN_RECREATED_ROUTE_HIT]", { buildMarker: "recreated-preview-route" });
     try {
       const user = await storage.getUser(req.user.id);
       if (!user || user.role !== 'super_admin') {
@@ -11127,15 +11128,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : [];
 
       if (!ownerId) {
-        return res.status(400).json({ message: "ownerId is required", reason: "missing_owner_id" });
+        return res.status(400).json({ buildMarker: "recreated-preview-route", message: "ownerId is required", reason: "missing_owner_id" });
       }
       const owner = await storage.getOwnerById(ownerId);
       if (!owner) {
-        return res.status(404).json({ message: "Owner not found", reason: "owner_not_found" });
+        return res.status(404).json({ buildMarker: "recreated-preview-route", message: "Owner not found", reason: "owner_not_found" });
       }
       const ownerUser = await storage.getUser(owner.userId);
       if (!ownerUser) {
-        return res.status(404).json({ message: "Owner user not found", reason: "owner_user_not_found" });
+        return res.status(404).json({ buildMarker: "recreated-preview-route", message: "Owner user not found", reason: "owner_user_not_found" });
       }
       const systemSettings = await storage.getSystemSettings();
       const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
@@ -11239,17 +11240,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log("[DRY_RUN_RESPONSE_MARKER]", {
-        buildMarker: "dryrun-tip-direct-amount-1e4dfc0",
+        buildMarker: "recreated-preview-route",
         hasDebugTipSources: true,
       });
       res.json({
         ...preview,
-        buildMarker: "dryrun-tip-direct-amount-1e4dfc0",
+        buildMarker: "recreated-preview-route",
         debugTipSources,
       });
     } catch (error: any) {
       console.error("Error previewing owner washout billing charge:", error);
       res.status(500).json({
+        buildMarker: "recreated-preview-route",
         message: error?.message || "Failed to preview owner washout billing charge",
         reason: "owner_billing_preview_failed",
       });
