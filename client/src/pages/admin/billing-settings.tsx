@@ -165,24 +165,10 @@ interface DryRunOwnerBillingResult {
   validation: DryRunValidation;
   debugTipSources?: Array<{
     washoutActivityId: string;
-    locationId: string;
-    locationName?: string | null;
-    driverId: string;
-    ownerId: string;
-    ownerPostedTipCents?: number;
-    billingReadTipCents?: number;
-    paymentWashoutServiceFee: number | string | null;
-    activityAmount?: number | string | null;
-    paymentDriverTipCents?: number | null;
-    locationDriverTipRate: number | null;
-    resolvedDriverTipCents: number;
-    sourceUsed: string;
-    driverProfileComplete?: boolean;
-    driverStripeAccountId?: string | null;
-    stripeDetailsSubmitted?: boolean | null;
-    stripePayoutsEnabled?: boolean | null;
-    driverPayoutReady?: boolean;
-    tipStatus?: string;
+    rawAmount: number | string | null;
+    driverTipCents: number;
+    source: "washout_activities.amount" | "washout_locations.rate" | "default" | string;
+    connectedAccountId?: string | null;
   }>;
 }
 
@@ -340,6 +326,20 @@ export default function AdminBillingSettings() {
       });
     },
   });
+
+  const previewTipRows = previewResult?.debugTipSources?.map((row) => {
+    const matchedTransfer = previewResult.ledger.driverTransfers.find((transfer) =>
+      transfer.washoutActivityIds.includes(row.washoutActivityId),
+    );
+    const connectedAccountId = row.connectedAccountId ?? matchedTransfer?.connectedAccountId ?? null;
+    const driverReady = Boolean(connectedAccountId);
+    return {
+      ...row,
+      connectedAccountId,
+      driverReady,
+      tipStatus: driverReady ? "ready" : "previewed",
+    };
+  }) || [];
 
   const previewBillingMutation = useMutation({
     mutationFn: async () => {
@@ -801,16 +801,7 @@ export default function AdminBillingSettings() {
                             <TableHeader>
                             <TableRow>
                               <TableHead>Washout</TableHead>
-                              <TableHead>Location</TableHead>
-                              <TableHead>Location Name</TableHead>
-                              <TableHead>Driver</TableHead>
-                              <TableHead>Owner</TableHead>
-                              <TableHead>Location Tip</TableHead>
-                              <TableHead>Owner Posted</TableHead>
                               <TableHead>Activity Amount</TableHead>
-                              <TableHead>Payment Fee</TableHead>
-                              <TableHead>Payment Tip Cents</TableHead>
-                              <TableHead>Billing Read</TableHead>
                               <TableHead>Resolved Cents</TableHead>
                               <TableHead>Resolved Source</TableHead>
                               <TableHead>Driver Ready</TableHead>
@@ -818,55 +809,18 @@ export default function AdminBillingSettings() {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {previewResult.debugTipSources.map((row) => (
+                              {previewTipRows.map((row) => (
                                 <TableRow key={row.washoutActivityId}>
                                   <TableCell className="font-mono text-xs">{row.washoutActivityId}</TableCell>
-                                  <TableCell className="font-mono text-xs">{row.locationId}</TableCell>
-                                  <TableCell className="text-xs">{row.locationName || "Unknown"}</TableCell>
                                   <TableCell className="font-mono text-xs">
-                                    {row.driverId}
-                                  </TableCell>
-                                  <TableCell className="font-mono text-xs">
-                                    {row.ownerId}
-                                  </TableCell>
-                                  <TableCell className="font-mono text-xs">
-                                    {row.locationDriverTipRate === null || row.locationDriverTipRate === undefined
+                                    {row.rawAmount === null || row.rawAmount === undefined
                                       ? "None"
-                                      : row.locationDriverTipRate}
+                                      : String(row.rawAmount)}
                                   </TableCell>
-                                  <TableCell className="font-mono text-xs">
-                                    {row.ownerPostedTipCents === null || row.ownerPostedTipCents === undefined
-                                      ? "None"
-                                      : row.ownerPostedTipCents}
-                                  </TableCell>
-                                  <TableCell className="font-mono text-xs">
-                                    {row.activityAmount === null || row.activityAmount === undefined
-                                      ? "None"
-                                      : String(row.activityAmount)}
-                                  </TableCell>
-                                  <TableCell className="font-mono text-xs">
-                                    {row.paymentWashoutServiceFee === null || row.paymentWashoutServiceFee === undefined
-                                      ? "None"
-                                      : String(row.paymentWashoutServiceFee)}
-                                  </TableCell>
-                                  <TableCell className="font-mono text-xs">
-                                    {row.paymentDriverTipCents === null || row.paymentDriverTipCents === undefined
-                                      ? "None"
-                                      : row.paymentDriverTipCents}
-                                  </TableCell>
-                                  <TableCell className="font-mono text-xs">
-                                    {row.billingReadTipCents === null || row.billingReadTipCents === undefined
-                                      ? "None"
-                                      : row.billingReadTipCents}
-                                  </TableCell>
-                                  <TableCell className="font-medium">{row.resolvedDriverTipCents}</TableCell>
-                                  <TableCell className="text-xs">{row.sourceUsed || "unknown"}</TableCell>
-                                  <TableCell className="text-xs">
-                                    {row.driverPayoutReady ? "Yes" : "No"}
-                                  </TableCell>
-                                  <TableCell className="text-xs">
-                                    {row.tipStatus || "unknown"}
-                                  </TableCell>
+                                  <TableCell className="font-medium">{row.driverTipCents}</TableCell>
+                                  <TableCell className="text-xs">{row.source}</TableCell>
+                                  <TableCell className="text-xs">{row.driverReady ? "Yes" : "No"}</TableCell>
+                                  <TableCell className="text-xs">{row.tipStatus}</TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
