@@ -21,6 +21,12 @@ Production startup path:
 3. Serve static assets
 4. Route API calls through Express
 
+Production source of truth:
+
+- production repo: `msti64-wq/Cretexchange_temp`
+- production branch: `main`
+- deployment checklist: [docs/deployment.md](./deployment.md)
+
 If the browser gets HTML instead of JavaScript for a module request, check the build artifacts and static routing before investigating the client app.
 
 ## Environment Checklist
@@ -98,6 +104,11 @@ If production metrics look wrong after a migration:
 - compare the live query shape to the migration
 - look for enum mismatches or missing columns in logs
 
+Billing and accounting references:
+
+- dry-run and live billing: [docs/billing.md](./billing.md)
+- owner wallet accounting: [docs/owner-wallet-accounting.md](./owner-wallet-accounting.md)
+
 ## Stripe Operations
 
 Owner billing:
@@ -110,6 +121,12 @@ Driver tip payouts:
 
 - optional and separate from owner billing
 - only relevant when the feature is enabled
+
+Billing preview and ledger notes:
+
+- canonical ledger: `shared/billingPolicy.ts`
+- dry-run preview endpoint: `POST /api/admin/billing/preview-owner-washout-charge`
+- driver tip source: `washout_activities.amount`
 
 If Stripe is unavailable:
 
@@ -272,4 +289,3 @@ Common logs:
 - Prefer the repair scripts for backfills and reconciliation.
 - If you must re-run a billing flow, confirm the previous billing batch status and the idempotency key inputs first.
 - If a query fails because of a schema mismatch, fix the query against the live schema instead of masking the error everywhere.
-

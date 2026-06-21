@@ -83,6 +83,8 @@ Current billing behavior:
 
 Your owner dashboard and billing page now use the same server-side summary, so the numbers should match.
 
+Owner wallet accounting uses completed billing batches and historical owner charge rows. See [docs/owner-wallet-accounting.md](./owner-wallet-accounting.md).
+
 ### Immediate Billing
 
 If an admin runs billing immediately:
@@ -163,4 +165,3 @@ The billing page now uses the same shared summary as the dashboard. If the numbe
 - paid vs owed split
 - a stale browser cache
 - a backend query failure on the current environment
-

@@ -51,6 +51,11 @@ The billing settings page shows:
 - paid platform fees
 - billing history
 
+See also:
+
+- billing runbook: [docs/billing.md](./billing.md)
+- deployment checklist: [docs/deployment.md](./deployment.md)
+
 Current billing cadence options:
 
 - immediate
@@ -224,4 +229,3 @@ Use the lottery dashboard to:
 - If the lottery page hangs:
   - confirm the auth token is being sent
   - confirm the queries are not waiting on stale cached auth data
-

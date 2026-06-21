@@ -4,6 +4,8 @@
 
 This guide describes the current stabilized CreteXchange application as it exists in this repository: how it is built, how the major workflows fit together, how billing and lottery logic work, and what operators should watch in logs when something breaks.
 
+For deployment and production ownership rules, see [docs/deployment.md](./deployment.md). For billing and dry-run details, see [docs/billing.md](./billing.md). For the owner wallet accounting model, see [docs/owner-wallet-accounting.md](./owner-wallet-accounting.md). For the design system rollout, see [docs/design-system.md](./design-system.md).
+
 ## System Architecture
 
 CreteXchange is a TypeScript full-stack application with three main layers:
@@ -107,6 +109,8 @@ The current billing model separates three things:
    - Total platform fees for the selected period
 
 The dashboard and the billing page now use the same shared server-side receivables summary so they stay aligned.
+
+Dry-run owner washout billing uses the shared canonical ledger calculator in `shared/billingPolicy.ts` and reads driver tips from `washout_activities.amount`.
 
 ## Immediate Owner Billing
 
