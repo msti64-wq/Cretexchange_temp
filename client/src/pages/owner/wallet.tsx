@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
@@ -16,20 +14,18 @@ import {
   ArrowDownRight, 
   CreditCard, 
   Building2, 
-  TrendingUp, 
   AlertTriangle,
   Settings,
   RefreshCw,
   Download,
-  Calendar,
   DollarSign
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/utils";
 import { OwnerColumnOnboardingDialog } from "@/components/OwnerColumnOnboardingDialog";
+import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
 
 export default function OwnerWallet() {
   const [, setLocation] = useLocation();
@@ -431,26 +427,32 @@ export default function OwnerWallet() {
               <p className="text-white/80 text-sm">Payment Account</p>
             </div>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSettingsDialog(true)}
-                className="text-white hover:bg-white/20 p-2"
-                data-testid="button-settings"
-              >
-                <Settings className="w-5 h-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Configure low balance alerts & auto top-up</p>
-            </TooltipContent>
-          </Tooltip>
         </div>
       </header>
 
       <main className="p-4 space-y-6">
+        <DSSectionHeader
+          eyebrow="Owner Wallet"
+          title="Financial overview"
+          description="Current balance, spend trends, and transaction history."
+          actions={
+            <div className="flex items-center gap-2">
+              <DSStatusChip tone={(walletData as any)?.status === "active" ? "success" : "neutral"}>
+                {(walletData as any)?.status || 'Active'}
+              </DSStatusChip>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSettingsDialog(true)}
+                data-testid="button-settings"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Button>
+            </div>
+          }
+        />
+
         {/* Low Balance Warning Banner */}
         {(() => {
           const balance = parseFloat((walletData as any)?.balance || '0');
@@ -493,8 +495,15 @@ export default function OwnerWallet() {
 
         {/* Wallet Balance Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white">
-            <CardContent className="p-6">
+          <DSCard
+            padding="lg"
+            elevated
+            className="text-white"
+            style={{
+              backgroundImage: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+            }}
+          >
+            <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-blue-100 text-sm">Current Balance</p>
@@ -505,9 +514,9 @@ export default function OwnerWallet() {
                 <Wallet className="w-8 h-8 text-blue-200" />
               </div>
               <div className="flex items-center justify-between">
-                <Badge variant="secondary" className="bg-blue-500 text-white">
+                <DSStatusChip tone="info">
                   {(walletData as any)?.status || 'Active'}
-                </Badge>
+                </DSStatusChip>
                 {isWalletFundingEnabled ? (
                   <Button
                     onClick={handleFundButtonClick}
@@ -519,35 +528,28 @@ export default function OwnerWallet() {
                     Fund
                   </Button>
                 ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        disabled
-                        size="sm"
-                        className="bg-gray-300 text-gray-500 cursor-not-allowed"
-                        data-testid="button-fund-wallet-disabled"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Fund
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Wallet funding requires Stripe Treasury approval</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Button
+                    disabled
+                    size="sm"
+                    className="bg-gray-300 text-gray-500 cursor-not-allowed"
+                    data-testid="button-fund-wallet-disabled"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Fund
+                  </Button>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DSCard>
 
-          <Card>
-            <CardContent className="p-6">
+          <DSCard padding="lg">
+            <div className="space-y-4">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Auto Top-up</span>
-                  <Badge variant={(walletData as any)?.autoTopupEnabled ? 'default' : 'secondary'}>
+                  <DSStatusChip tone={(walletData as any)?.autoTopupEnabled ? "success" : "neutral"}>
                     {(walletData as any)?.autoTopupEnabled ? 'Enabled' : 'Disabled'}
-                  </Badge>
+                  </DSStatusChip>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Low Balance Alert</span>
@@ -585,76 +587,24 @@ export default function OwnerWallet() {
                   Manage Sources
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </DSCard>
         </div>
 
         {/* Analytics Cards */}
         {analytics && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <ArrowDownRight className="w-4 h-4 text-green-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total Funded</p>
-                    <p className="text-lg font-semibold text-green-600">
-                      {formatCurrency((analytics as any)?.totalFunded || 0)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <ArrowUpRight className="w-4 h-4 text-red-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total Spent</p>
-                    <p className="text-lg font-semibold text-red-600">
-                      {formatCurrency((analytics as any)?.totalSpent || 0)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="w-4 h-4 text-blue-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Avg Monthly</p>
-                    <p className="text-lg font-semibold text-blue-600">
-                      {formatCurrency((analytics as any)?.avgMonthlySpend || 0)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <Calendar className="w-4 h-4 text-purple-600" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Transactions</p>
-                    <p className="text-lg font-semibold text-purple-600">
-                      {(analytics as any)?.transactionCount || 0}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <DSKpiCard label="Total Funded" value={formatCurrency((analytics as any)?.totalFunded || 0)} accentTone="success" />
+            <DSKpiCard label="Total Spent" value={formatCurrency((analytics as any)?.totalSpent || 0)} accentTone="danger" />
+            <DSKpiCard label="Avg Monthly" value={formatCurrency((analytics as any)?.avgMonthlySpend || 0)} accentTone="info" />
+            <DSKpiCard label="Transactions" value={(analytics as any)?.transactionCount || 0} accentTone="accent" />
           </div>
         )}
 
         {/* Low Balance Warning */}
         {(walletData as any)?.balance && 
          parseFloat((walletData as any).balance) < parseFloat((walletData as any)?.lowBalanceThreshold || '100') && (
-          <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
-            <CardContent className="p-4">
+          <DSCard className="border-amber-200 bg-amber-50 dark:bg-amber-950/20" padding="md">
               <div className="flex items-center space-x-3">
                 <AlertTriangle className="w-5 h-5 text-amber-600" />
                 <div>
@@ -667,37 +617,33 @@ export default function OwnerWallet() {
                   </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+          </DSCard>
         )}
 
         {/* Transaction History */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center">
-                <RefreshCw className="w-5 h-5 mr-2" />
-                Transaction History
-              </CardTitle>
-              <div className="flex items-center space-x-2">
-                <Select value={dateRange} onValueChange={(value: any) => setDateRange(value)}>
-                  <SelectTrigger className="w-32" data-testid="select-date-range">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7days">Last 7 days</SelectItem>
-                    <SelectItem value="30days">Last 30 days</SelectItem>
-                    <SelectItem value="90days">Last 90 days</SelectItem>
-                    <SelectItem value="all">All time</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="sm" data-testid="button-export">
-                  <Download className="w-4 h-4" />
-                </Button>
-              </div>
+        <DSTableShell
+          title="Transaction History"
+          description="Completed owner charges, funding, and wallet adjustments."
+          actions={
+            <div className="flex items-center space-x-2">
+              <Select value={dateRange} onValueChange={(value: any) => setDateRange(value)}>
+                <SelectTrigger className="w-32" data-testid="select-date-range">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7days">Last 7 days</SelectItem>
+                  <SelectItem value="30days">Last 30 days</SelectItem>
+                  <SelectItem value="90days">Last 90 days</SelectItem>
+                  <SelectItem value="all">All time</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" data-testid="button-export">
+                <Download className="w-4 h-4" />
+              </Button>
             </div>
-          </CardHeader>
-          <CardContent>
+          }
+        >
+          <div className="p-6">
             {!(transactions as any[])?.length ? (
               <div className="text-center py-8">
                 <RefreshCw className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
@@ -711,7 +657,7 @@ export default function OwnerWallet() {
                 {((transactions as any[]) || []).map((transaction: any, index: number) => (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
+                    className="flex items-center justify-between rounded-xl border border-border/70 bg-card p-3"
                     data-testid={`transaction-${index}`}
                   >
                     <div className="flex items-center space-x-3">
@@ -723,9 +669,9 @@ export default function OwnerWallet() {
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {new Date(transaction.createdAt).toLocaleDateString()} {new Date(transaction.createdAt).toLocaleTimeString()} • 
-                          <Badge variant="outline" className="ml-2">
+                          <DSStatusChip tone="neutral" className="ml-2">
                             {transaction.status}
-                          </Badge>
+                          </DSStatusChip>
                         </div>
                       </div>
                     </div>
@@ -756,8 +702,8 @@ export default function OwnerWallet() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DSTableShell>
       </main>
 
       {/* Fund Wallet Dialog */}

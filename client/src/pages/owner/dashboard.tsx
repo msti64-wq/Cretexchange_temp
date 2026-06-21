@@ -2,23 +2,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import React from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 import { MobileNav } from "@/components/MobileNav";
-import { StatCard } from "@/components/StatCard";
-import { DashboardMetricCard } from "@/components/DashboardMetricCard";
-import { DashboardSectionCard } from "@/components/DashboardSectionCard";
 import { DashboardEmptyState } from "@/components/DashboardEmptyState";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { DebugPanel } from "@/components/DebugPanel";
-import { Users, DollarSign, MapPin, Clock, ImageIcon, Check, X, MessageCircle, Phone, ClipboardCheck, WalletCards, Building2, ChevronRight, Gauge, Package, MapPinned, Clock3, Loader2, ShieldAlert, Activity } from "lucide-react";
+import { Users, DollarSign, MapPin, Clock, ImageIcon, Check, X, MessageCircle, Phone, Building2, ChevronRight, Gauge, MapPinned, Loader2, ShieldAlert, Activity } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -32,6 +27,7 @@ import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isPendi
 import { useLanguage } from "@/lib/i18n";
 import { formatCentsToDollars } from "@/lib/utils";
 import { normalizeDollarInputToCents } from "@shared/money";
+import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 
 const AUTO_APPROVAL_HOURS = 72;
 
@@ -46,13 +42,11 @@ function OwnerDashboardSkeleton() {
       <main className="mx-auto w-full max-w-6xl min-w-0 space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
-            <Card key={item} className="rounded-2xl border-border/70 bg-card/95 shadow-sm">
-              <CardContent className="space-y-3 p-4">
+            <DSCard key={item} className="space-y-3" padding="md">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="h-8 w-28" />
                 <Skeleton className="h-3 w-32" />
-              </CardContent>
-            </Card>
+            </DSCard>
           ))}
         </div>
         <Skeleton className="h-72 rounded-2xl" />
@@ -122,6 +116,17 @@ function bucketOwnerWashoutStatus(status: string | null | undefined): "pending" 
       return "rejected";
     default:
       return "pending";
+  }
+}
+
+function statusTone(status: string | null | undefined) {
+  switch (bucketOwnerWashoutStatus(status)) {
+    case "approved":
+      return "success";
+    case "rejected":
+      return "danger";
+    default:
+      return "warning";
   }
 }
 
@@ -504,49 +509,45 @@ export default function OwnerDashboard() {
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <DashboardMetricCard
-              title={t("common.washouts")}
+            <DSKpiCard
+              label={t("common.washouts")}
               value={recentActivities?.length || 0}
-              helper={t("owner.dashboard.pendingApproval", { count: pendingCount })}
-              icon={ClipboardCheck}
-              toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
-              dataTestId="text-daily-visits"
+              detail={t("owner.dashboard.pendingApproval", { count: pendingCount })}
+              accentTone="info"
+              data-testid="text-daily-visits"
             />
-            <DashboardMetricCard
-              title={t("owner.dashboard.pending")}
+            <DSKpiCard
+              label={t("owner.dashboard.pending")}
               value={formatCentsToDollars(pendingPaymentsCents)}
-              helper={t("owner.dashboard.awaitingReview")}
-              icon={Clock}
-              toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
-              dataTestId="text-pending-payments"
+              detail={t("owner.dashboard.awaitingReview")}
+              accentTone="warning"
+              data-testid="text-pending-payments"
             />
-            <DashboardMetricCard
-              title={t("owner.dashboard.ready")}
+            <DSKpiCard
+              label={t("owner.dashboard.ready")}
               value={formatCentsToDollars(approvedPaymentsCents)}
-              helper={t("owner.dashboard.approvedForPayout")}
-              icon={WalletCards}
-              toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
-              dataTestId="text-approved-payments"
+              detail={t("owner.dashboard.approvedForPayout")}
+              accentTone="success"
+              data-testid="text-approved-payments"
             />
-            <DashboardMetricCard
-              title={t("owner.dashboard.activeSitesTitle")}
+            <DSKpiCard
+              label={t("owner.dashboard.activeSitesTitle")}
               value={Number(locations) || 0}
-              helper={t("owner.dashboard.activeWashoutLocations")}
-              icon={MapPin}
-              toneClassName="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
-              dataTestId="text-total-locations"
+              detail={t("owner.dashboard.activeWashoutLocations")}
+              accentTone="accent"
+              data-testid="text-total-locations"
             />
           </div>
         </section>
 
         {/* Payment and Activity Analytics */}
         <div className="grid gap-4 md:grid-cols-[1.25fr_0.75fr]">
-          <DashboardSectionCard
-            title={t("owner.dashboard.washoutStatusMix")}
-            description={t("owner.dashboard.washoutStatusMixDescription")}
-            icon={<Package className="h-4 w-4 text-secondary" />}
-            badge={<Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">{dateRange}</Badge>}
-          >
+          <DSCard padding="lg">
+            <DSSectionHeader
+              title={t("owner.dashboard.washoutStatusMix")}
+              description={t("owner.dashboard.washoutStatusMixDescription")}
+              actions={<DSStatusChip tone="neutral">{dateRange}</DSStatusChip>}
+            />
             <div className="pt-0">
               <ChartContainer
                 config={{
@@ -570,12 +571,10 @@ export default function OwnerDashboard() {
                 </BarChart>
               </ChartContainer>
             </div>
-          </DashboardSectionCard>
+          </DSCard>
 
-          <DashboardSectionCard
-            title={t("owner.dashboard.thirtyDayTotals")}
-            icon={<Clock3 className="h-4 w-4 text-accent" />}
-          >
+          <DSCard padding="lg">
+            <DSSectionHeader title={t("owner.dashboard.thirtyDayTotals")} />
             <div className="space-y-4">
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                 <div className="flex items-center justify-between gap-3">
@@ -619,13 +618,14 @@ export default function OwnerDashboard() {
                 </div>
               </div>
             </div>
-          </DashboardSectionCard>
+          </DSCard>
         </div>
 
         {/* Recent Activity */}
-        <StatCard
-          title={t("owner.dashboard.recentActivity")}
-          subtitle={
+        <DSCard padding="lg">
+          <DSSectionHeader
+            title={t("owner.dashboard.recentActivity")}
+            actions={
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
               <Select value={dateRange} onValueChange={(value) => setDateRange(value as typeof dateRange)}>
                 <SelectTrigger className="h-9 w-full text-xs sm:w-36" data-testid="select-date-range">
@@ -646,13 +646,13 @@ export default function OwnerDashboard() {
                 className="h-9 justify-start px-2 text-primary hover:text-primary/80 sm:justify-center"
                 onClick={() => setLocation('/drivers')}
                 data-testid="button-view-all-activity"
-              >
-                {t("common.viewAll")}
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </div>
-          }
-        >
+                >
+                  {t("common.viewAll")}
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
+            }
+          />
           <div className="space-y-4">
             {/* 72-hour auto-approval warning */}
             {approvalQueueActivities.some((a: any) => isPendingWashoutApproval(a.status)) && (
@@ -850,17 +850,9 @@ export default function OwnerDashboard() {
                     {/* Mobile layout: Stack status above buttons */}
                     <div className="flex flex-col space-y-2 sm:hidden">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge 
-                          variant={
-                            activity.status === 'verified' ? 'default' : 
-                            activity.status === 'rejected' ? 'destructive' : 
-                            'secondary'
-                          }
-                          className="text-xs w-fit"
-                          data-testid={`badge-activity-status-${index}`}
-                        >
+                        <DSStatusChip tone={statusTone(activity.status)} data-testid={`badge-activity-status-${index}`}>
                           {translateOwnerWashoutStatus(activity.status, t)}
-                        </Badge>
+                        </DSStatusChip>
                         {isPendingWashoutApproval(activity.status) && activity.checkInTime && (() => {
                           const timeLeft = getTimeUntilAutoApproval(activity.checkInTime);
                           return (
@@ -950,17 +942,9 @@ export default function OwnerDashboard() {
                     {/* Desktop layout: Keep status and buttons side by side */}
                     <div className="hidden sm:flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge 
-                          variant={
-                            activity.status === 'verified' ? 'default' : 
-                            activity.status === 'rejected' ? 'destructive' : 
-                            'secondary'
-                          }
-                          className="text-xs"
-                          data-testid={`badge-activity-status-${index}`}
-                        >
+                        <DSStatusChip tone={statusTone(activity.status)} data-testid={`badge-activity-status-${index}`}>
                           {translateOwnerWashoutStatus(activity.status, t)}
-                        </Badge>
+                        </DSStatusChip>
                         {isPendingWashoutApproval(activity.status) && activity.checkInTime && (() => {
                           const timeLeft = getTimeUntilAutoApproval(activity.checkInTime);
                           return (
@@ -1052,7 +1036,7 @@ export default function OwnerDashboard() {
               ))
             )}
           </div>
-        </StatCard>
+        </DSCard>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1084,7 +1068,7 @@ export default function OwnerDashboard() {
         </div>
 
         {/* Support Section */}
-        <StatCard title={t("owner.dashboard.needHelp")} className="border-sky-200 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-slate-900">
+        <DSCard padding="lg" className="border-sky-200 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-slate-900">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1 space-y-2">
               <p className="text-sm text-muted-foreground">{t("owner.dashboard.supportDescription")}</p>
@@ -1103,7 +1087,7 @@ export default function OwnerDashboard() {
               {t("owner.dashboard.messageSupport")}
             </Button>
           </div>
-        </StatCard>
+        </DSCard>
       </main>
 
       <PhotoModal
