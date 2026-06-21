@@ -35,6 +35,7 @@ import {
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLanguage } from "@/lib/i18n";
+import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
 
 interface WalletBalance {
   availableBalance: number;
@@ -306,74 +307,36 @@ export default function DriverWallet() {
 
       <div className="p-4 space-y-6">
         {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground" data-testid="text-wallet-title">
-                My Wallet
-              </h1>
-              <p className="text-muted-foreground">Manage your earnings and withdrawals</p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refreshAllData}
-            className="flex items-center space-x-2"
-            data-testid="button-refresh-wallet"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Refresh</span>
-          </Button>
+        <DSSectionHeader
+          title="My Wallet"
+          description="Manage your earnings and withdrawals"
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshAllData}
+              className="flex items-center space-x-2"
+              data-testid="button-refresh-wallet"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Refresh</span>
+            </Button>
+          }
+        />
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <DSKpiCard label="Available Balance" value={formatCurrency(walletBalance?.availableBalance || 0)} detail="Available to withdraw" accentTone="success" data-testid="text-available-balance" />
+          <DSKpiCard label="Pending" value={formatCurrency(walletBalance?.pendingBalance || 0)} detail="Pending" accentTone="warning" data-testid="text-pending-balance" />
+          <DSKpiCard label="Total Earned" value={formatCurrency(walletBalance?.totalEarnings || 0)} detail="Total earned from washouts" accentTone="accent" data-testid="text-total-earnings" />
         </div>
 
-        {/* Wallet Balance Card */}
-        <StatCard
-          title="Wallet Balance"
-          subtitle={
-            <div className="flex items-center text-green-600 text-sm font-medium">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              Available to withdraw
-            </div>
-          }
-        >
-          <div className="space-y-4">
-            <div className="text-center py-6">
-              <div className="text-4xl font-bold text-primary mb-2" data-testid="text-available-balance">
-                {formatCurrency(walletBalance?.availableBalance || 0)}
-              </div>
-              <div className="text-muted-foreground">Available Balance</div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
-                <div className="text-2xl font-semibold text-amber-600" data-testid="text-pending-balance">
-                  {formatCurrency(walletBalance?.pendingBalance || 0)}
-                </div>
-                <div className="text-sm text-muted-foreground">Pending</div>
-              </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
-                <div className="text-2xl font-semibold text-green-600" data-testid="text-total-earnings">
-                  {formatCurrency(walletBalance?.totalEarnings || 0)}
-                </div>
-                <div className="text-sm text-muted-foreground">Total Earned</div>
-              </div>
-            </div>
-          </div>
-        </StatCard>
-
         {/* Bank Account Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <CreditCard className="w-5 h-5 mr-2" />
-              Payment Account Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <DSCard padding="lg">
+          <DSSectionHeader
+            title="Payment Account Status"
+            eyebrow={<CreditCard className="inline-block h-4 w-4 align-[-2px]" />}
+          />
+          <div className="mt-4">
             {!columnStatus?.isOnboarded ? (
               <div className="text-center py-6">
                 <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
@@ -396,17 +359,11 @@ export default function DriverWallet() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Account Status</span>
-                  <Badge 
-                    variant="default"
-                    className="bg-green-600 hover:bg-green-700"
-                    data-testid="badge-account-status"
-                  >
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                  <DSStatusChip tone="success" data-testid="badge-account-status">
                     Connected & Ready
-                  </Badge>
+                  </DSStatusChip>
                 </div>
 
-                {/* Show account connection details */}
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
@@ -434,22 +391,20 @@ export default function DriverWallet() {
                 </Alert>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DSCard>
 
         {/* Withdrawal Request Form */}
-        <StatCard
-          title="Request Withdrawal"
-          subtitle={
-            <span className="text-sm text-muted-foreground">
-              {!termsStatus?.hasAgreed 
+        <DSCard padding="lg">
+          <DSSectionHeader
+            title="Request Withdrawal"
+            description={
+              !termsStatus?.hasAgreed 
                 ? "$1 fee under $10, then 10% • ACH transfer to your bank (1-2 business days)"
                 : "ACH transfer to your bank (1-2 business days)"
-              }
-            </span>
-          }
-        >
-          <div className="space-y-4">
+            }
+          />
+          <div className="mt-4 space-y-4">
             {!canWithdraw ? (
               <div className="text-center py-6 text-muted-foreground">
                 <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -479,7 +434,7 @@ export default function DriverWallet() {
                 </div>
 
                 {withdrawAmount > 0 && (
-                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <DSCard padding="sm" elevated={false} className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Withdrawal Amount:</span>
                       <span data-testid="text-withdrawal-amount">{formatCurrency(withdrawAmount)}</span>
@@ -490,13 +445,13 @@ export default function DriverWallet() {
                         <span data-testid="text-fee-amount">-{formatCurrency(feeAmount)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between font-semibold border-t pt-2">
+                    <div className="flex justify-between border-t pt-2 font-semibold">
                       <span>You'll Receive:</span>
                       <span className="text-green-600" data-testid="text-net-amount">
                         {formatCurrency(netAmount)}
                       </span>
                     </div>
-                  </div>
+                  </DSCard>
                 )}
 
                 <Button
@@ -519,7 +474,6 @@ export default function DriverWallet() {
                   Request Withdrawal
                 </Button>
 
-                {/* Withdrawal timing and debit card guidance */}
                 <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
                   <Clock className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800 dark:text-blue-200">
@@ -527,8 +481,7 @@ export default function DriverWallet() {
                       <p className="font-medium">ACH withdrawals to your bank account typically arrive in 1-2 business days</p>
                       
                       {issuingEnabled && debitCardStatus?.hasCard ? (
-                        // Show card details if they have one
-                        <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700">
+                        <div className="mt-3 rounded-lg border border-blue-200 bg-white p-3 dark:border-blue-700 dark:bg-gray-800">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-semibold text-gray-900 dark:text-gray-100">
@@ -541,13 +494,10 @@ export default function DriverWallet() {
                                 Expires {debitCardStatus.card?.expirationMonth}/{debitCardStatus.card?.expirationYear}
                               </p>
                             </div>
-                            <Badge variant={debitCardStatus.card?.cardStatus === 'active' ? 'default' : 'secondary'}>
-                              {debitCardStatus.card?.cardStatus}
-                            </Badge>
+                            <DSStatusChip tone="success">{debitCardStatus.card?.cardStatus}</DSStatusChip>
                           </div>
                         </div>
                       ) : issuingEnabled ? (
-                        // Show request button if they don't have one (only if issuing enabled)
                         <>
                           <p className="text-sm">
                             <strong>Need instant access?</strong> Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
@@ -573,22 +523,19 @@ export default function DriverWallet() {
               </>
             )}
           </div>
-        </StatCard>
+        </DSCard>
 
         {/* Debit Card Section - Only show if Stripe Issuing is enabled */}
         {issuingEnabled && (
-          <StatCard
-            title="Debit Card"
-            subtitle={
-              <span className="text-sm text-muted-foreground">
-                Instant access to your wallet funds
-              </span>
-            }
-          >
+          <DSCard padding="lg">
+            <DSSectionHeader
+              title="Debit Card"
+              description="Instant access to your wallet funds"
+              eyebrow={<CreditCard className="inline-block h-4 w-4 align-[-2px]" />}
+            />
             <div className="space-y-4">
               {debitCardStatus?.hasCard ? (
-                // Show card details if they have one
-                <div className="p-4 bg-muted/30 rounded-lg border border-muted">
+                <DSCard padding="md" elevated={false}>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-foreground">
@@ -601,13 +548,12 @@ export default function DriverWallet() {
                         Expires {debitCardStatus.card?.expirationMonth}/{debitCardStatus.card?.expirationYear}
                       </p>
                     </div>
-                    <Badge variant={debitCardStatus.card?.cardStatus === 'active' ? 'default' : 'secondary'}>
+                    <DSStatusChip tone={debitCardStatus.card?.cardStatus === 'active' ? 'success' : 'warning'}>
                       {debitCardStatus.card?.cardStatus}
-                    </Badge>
+                    </DSStatusChip>
                   </div>
-                </div>
+                </DSCard>
               ) : (
-                // Show request button if they don't have one
                 <div className="text-center py-6">
                   <CreditCard className="w-12 h-12 mx-auto mb-3 text-primary" />
                   <h3 className="font-semibold mb-2">Get Instant Access to Your Funds</h3>
@@ -632,19 +578,13 @@ export default function DriverWallet() {
                 </div>
               )}
             </div>
-          </StatCard>
+          </DSCard>
         )}
 
         {/* Transaction History */}
-        <StatCard
+        <DSTableShell
           title="Transaction History"
-          subtitle={
-            (transactionsData as any)?.total > 0 ? (
-              <span className="text-sm text-muted-foreground">
-                {(transactionsData as any).total} total transactions
-              </span>
-            ) : null
-          }
+          description={(transactionsData as any)?.total > 0 ? `${(transactionsData as any).total} total transactions` : undefined}
         >
           <div className="space-y-3">
             {transactionsLoading ? (
@@ -669,7 +609,7 @@ export default function DriverWallet() {
                 {(transactionsData as any).transactions.map((transaction: WalletTransaction, index: number) => (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
                     data-testid={`transaction-${index}`}
                   >
                     <div className="flex items-center space-x-3">
@@ -684,12 +624,9 @@ export default function DriverWallet() {
                           {formatDateTime(transaction.createdAt)}
                         </div>
                         <div className="flex items-center space-x-2 mt-1">
-                          <Badge 
-                            variant={transaction.status === 'posted' ? 'default' : 'secondary'}
-                            className="text-xs"
-                          >
+                          <DSStatusChip tone={transaction.status === 'posted' ? 'success' : 'neutral'} className="text-xs">
                             {transaction.status}
-                          </Badge>
+                          </DSStatusChip>
                           <span className="text-xs text-muted-foreground">
                             Balance: {formatCurrency(transaction.balanceAfter)}
                           </span>
@@ -734,7 +671,7 @@ export default function DriverWallet() {
               </>
             )}
           </div>
-        </StatCard>
+        </DSTableShell>
       </div>
 
       {/* Driver Terms Dialog */}

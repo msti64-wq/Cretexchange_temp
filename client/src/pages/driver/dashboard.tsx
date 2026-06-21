@@ -7,9 +7,6 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useLocation } from "wouter";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
-import { StatCard } from "@/components/StatCard";
-import { DashboardMetricCard } from "@/components/DashboardMetricCard";
-import { DashboardSectionCard } from "@/components/DashboardSectionCard";
 import { DashboardEmptyState } from "@/components/DashboardEmptyState";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
@@ -19,6 +16,7 @@ import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarS
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { useLanguage } from "@/lib/i18n";
+import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
 
 type DriverDashboardStatsRange = "today" | "week" | "month";
 
@@ -263,7 +261,7 @@ export default function DriverDashboard() {
         <DriverHeader />
 
         {/* GPS Status Bar */}
-        <div className="w-full max-w-full overflow-hidden border-b border-border/70 bg-card/95 px-3 py-3 shadow-sm sm:px-4">
+        <DSCard className="w-full max-w-full rounded-none border-x-0 border-t-0 px-3 py-3 sm:px-4" padding="sm" elevated>
           <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
             <div className="flex min-w-0 items-center gap-2">
               <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)] animate-pulse" />
@@ -274,10 +272,10 @@ export default function DriverDashboard() {
               <span className="min-w-0 truncate" data-testid="text-current-location">{t("driver.dashboard.locationEnabled")}</span>
             </div>
           </div>
-        </div>
+        </DSCard>
  
         <main className="mx-auto w-full max-w-6xl space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5">
-          <section className="grid w-full max-w-full min-w-0 grid-cols-1 gap-4 overflow-hidden rounded-3xl border border-border/70 bg-card/95 p-4 shadow-sm min-[430px]:p-5 md:grid-cols-[1.15fr_0.85fr] md:p-6">
+          <DSCard className="grid w-full max-w-full min-w-0 grid-cols-1 gap-4 overflow-hidden md:grid-cols-[1.15fr_0.85fr]" padding="lg" elevated>
           <div className="min-w-0 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="max-w-full break-words rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
@@ -413,7 +411,7 @@ export default function DriverDashboard() {
               </div>
             )}
           </div>
-        </section>
+          </DSCard>
 
         {/* Profile Completion Notice */}
         {(dashboardData as any)?.user && (
@@ -494,67 +492,59 @@ export default function DriverDashboard() {
 
         {/* Dashboard Snapshot */}
         <section className="space-y-3">
-          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="min-w-0">
-              <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.18em]">
-                {t("driver.dashboard.dailyOperations")}
-              </p>
-              <h2 className="mt-1 break-words text-2xl font-semibold tracking-tight">{t("driver.dashboard.title")}</h2>
-              <p className="mt-1 break-words text-sm text-muted-foreground">
-                {t("driver.dashboard.dailySubtitle", {
-                  date: new Date().toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" }),
-                })}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-auto min-h-9 w-full !whitespace-normal sm:w-auto"
-              onClick={() => refetch()}
-              data-testid="button-refresh-dashboard"
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              {t("driver.dashboard.refresh")}
-            </Button>
-          </div>
+          <DSSectionHeader
+            eyebrow={t("driver.dashboard.dailyOperations")}
+            title={t("driver.dashboard.title")}
+            description={t("driver.dashboard.dailySubtitle", {
+              date: new Date().toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" }),
+            })}
+            actions={
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-auto min-h-9 w-full !whitespace-normal sm:w-auto"
+                onClick={() => refetch()}
+                data-testid="button-refresh-dashboard"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {t("driver.dashboard.refresh")}
+              </Button>
+            }
+          />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <DashboardMetricCard
-              title={t("driver.dashboard.siteVisits")}
+            <DSKpiCard
+              label={t("driver.dashboard.siteVisits")}
               value={dailyStats?.visits || 0}
-              helper={t("driver.dashboard.completedToday")}
-              icon={Navigation}
-              toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
-              dataTestId="text-daily-visits"
+              detail={t("driver.dashboard.completedToday")}
+              accentTone="info"
+              data-testid="text-daily-visits"
             />
-            <DashboardMetricCard
-              title={t("driver.dashboard.todayEarnings")}
+            <DSKpiCard
+              label={t("driver.dashboard.todayEarnings")}
               value={formatCurrency(adjustedDailyEarnings)}
-              helper={rejectedTotal > 0 ? t("driver.dashboard.rejectedAmountShort", { amount: formatCurrency(rejectedTotal) }) : t("driver.dashboard.netOfRejected")}
-              icon={DollarSign}
-              toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
-              dataTestId="text-daily-earnings"
+              detail={rejectedTotal > 0 ? t("driver.dashboard.rejectedAmountShort", { amount: formatCurrency(rejectedTotal) }) : t("driver.dashboard.netOfRejected")}
+              accentTone="success"
+              data-testid="text-daily-earnings"
             />
-            <DashboardMetricCard
-              title={t("driver.dashboard.sevenDayNet")}
+            <DSKpiCard
+              label={t("driver.dashboard.sevenDayNet")}
               value={formatCurrency(weeklyNetEarnings)}
-              helper={t("driver.dashboard.weeklyWashoutsHelper", { count: weeklyStats?.totalWashouts || 0 })}
-              icon={TrendingUp}
-              toneClassName="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
-              dataTestId="text-net-earnings"
+              detail={t("driver.dashboard.weeklyWashoutsHelper", { count: weeklyStats?.totalWashouts || 0 })}
+              accentTone="warning"
+              data-testid="text-net-earnings"
             />
-            <DashboardMetricCard
-              title={t("driver.dashboard.totalPaid")}
+            <DSKpiCard
+              label={t("driver.dashboard.totalPaid")}
               value={formatCurrency(totalPaid)}
-              helper={t("driver.dashboard.recordedPaymentHistory")}
-              icon={CreditCard}
-              toneClassName="bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-300"
-              dataTestId="text-total-paid"
+              detail={t("driver.dashboard.recordedPaymentHistory")}
+              accentTone="accent"
+              data-testid="text-total-paid"
             />
           </div>
         </section>
 
         {/* Lottery Entries Card - always visible */}
-        <Card className="w-full max-w-full overflow-hidden rounded-3xl border-border/70 bg-card/95 shadow-sm">
+        <DSCard className="w-full max-w-full overflow-hidden" padding="none" elevated>
           <div className="h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-600" />
           <CardContent className="min-w-0 space-y-4 p-4 min-[430px]:p-5">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -667,7 +657,7 @@ export default function DriverDashboard() {
               </p>
             )}
           </CardContent>
-        </Card>
+        </DSCard>
 
         {/* Quick Actions */}
         <section className="grid gap-3 sm:grid-cols-2">
@@ -702,62 +692,40 @@ export default function DriverDashboard() {
 
         {/* Earnings Summary */}
         <div className="grid w-full max-w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-[1.25fr_0.75fr]">
-          <DashboardSectionCard
-            title={t("driver.dashboard.washoutStatsMix")}
-            description={`${t("driver.dashboard.periodDisplayed", { period: selectedStatsLabel })}${selectedStatsDateRange ? ` - ${selectedStatsDateRange}` : ""}`}
-            icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
-            action={
-              <ToggleGroup
-                type="single"
-                value={statsRange}
-                onValueChange={(value) => {
-                  if (value) setStatsRange(value as DriverDashboardStatsRange);
-                }}
-                className="flex w-full max-w-full min-w-0 flex-wrap rounded-lg border border-border/70 bg-muted/40 p-1 sm:w-auto"
-                data-testid="toggle-washout-stats-range"
-              >
-                {DRIVER_STATS_RANGE_OPTIONS.map((option) => (
-                  <ToggleGroupItem
-                    key={option.value}
-                    value={option.value}
-                    size="sm"
-                    className="h-auto min-h-8 min-w-0 flex-1 basis-0 whitespace-normal rounded-md px-2 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm sm:flex-none sm:basis-auto sm:px-3"
-                    data-testid={`button-washout-stats-${option.value}`}
-                  >
-                    <span className="truncate">{t(option.labelKey)}</span>
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            }
-          >
+          <DSCard padding="lg" elevated>
+            <DSSectionHeader
+              eyebrow={t("driver.dashboard.washoutStatsMix")}
+              title={t("driver.dashboard.washoutStatsMix")}
+              description={`${t("driver.dashboard.periodDisplayed", { period: selectedStatsLabel })}${selectedStatsDateRange ? ` - ${selectedStatsDateRange}` : ""}`}
+              actions={
+                <ToggleGroup
+                  type="single"
+                  value={statsRange}
+                  onValueChange={(value) => {
+                    if (value) setStatsRange(value as DriverDashboardStatsRange);
+                  }}
+                  className="flex w-full max-w-full min-w-0 flex-wrap rounded-lg border border-border/70 bg-muted/40 p-1 sm:w-auto"
+                  data-testid="toggle-washout-stats-range"
+                >
+                  {DRIVER_STATS_RANGE_OPTIONS.map((option) => (
+                    <ToggleGroupItem
+                      key={option.value}
+                      value={option.value}
+                      size="sm"
+                      className="h-auto min-h-8 min-w-0 flex-1 basis-0 whitespace-normal rounded-md px-2 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm sm:flex-none sm:basis-auto sm:px-3"
+                      data-testid={`button-washout-stats-${option.value}`}
+                    >
+                      <span className="truncate">{t(option.labelKey)}</span>
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              }
+            />
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="min-w-0 rounded-2xl border border-border/70 bg-muted/30 p-3">
-                  <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.14em]">{t("driver.dashboard.period")}</p>
-                  <p className="mt-1 break-words text-sm font-semibold text-foreground" data-testid="text-washout-stats-period">
-                    {selectedStatsLabel}
-                  </p>
-                  {selectedStatsDateRange && (
-                    <p className="mt-1 break-words text-xs text-muted-foreground" data-testid="text-washout-stats-range-label">
-                      {selectedStatsDateRange}
-                    </p>
-                  )}
-                </div>
-                <div className="min-w-0 rounded-2xl border border-border/70 bg-muted/30 p-3">
-                  <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.14em]">{t("common.washouts")}</p>
-                  <p className="mt-1 break-words text-lg font-semibold text-foreground" data-testid="text-washout-stats-total">
-                    {selectedStatsWashouts}
-                  </p>
-                </div>
-                <div className="min-w-0 rounded-2xl border border-border/70 bg-muted/30 p-3">
-                  <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.14em]">{t("driver.dashboard.earned")}</p>
-                  <p className="mt-1 break-words text-lg font-semibold text-foreground" data-testid="text-washout-stats-earnings">
-                    {formatCurrency(selectedStatsEarnings)}
-                  </p>
-                  <p className="mt-1 break-words text-xs text-muted-foreground" data-testid="text-washout-stats-average">
-                    {t("driver.dashboard.average")} {formatCurrency(selectedStatsAverage)}
-                  </p>
-                </div>
+                <DSKpiCard label={t("driver.dashboard.period")} value={selectedStatsLabel} detail={selectedStatsDateRange || undefined} accentTone="info" />
+                <DSKpiCard label={t("common.washouts")} value={selectedStatsWashouts} detail={t("driver.dashboard.entriesThisMonth")} accentTone="accent" />
+                <DSKpiCard label={t("driver.dashboard.earned")} value={formatCurrency(selectedStatsEarnings)} detail={`${t("driver.dashboard.average")} ${formatCurrency(selectedStatsAverage)}`} accentTone="success" />
               </div>
               <ChartContainer
                 config={{
@@ -781,9 +749,10 @@ export default function DriverDashboard() {
                 </BarChart>
               </ChartContainer>
             </div>
-          </DashboardSectionCard>
+          </DSCard>
 
-          <DashboardSectionCard title={t("driver.dashboard.sevenDayDetails")}>
+          <DSCard padding="lg" elevated>
+            <DSSectionHeader title={t("driver.dashboard.sevenDayDetails")} />
             <div className="space-y-3">
               <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <span className="break-words text-sm text-muted-foreground">{t("driver.dashboard.totalEarned")}</span>
@@ -799,21 +768,19 @@ export default function DriverDashboard() {
                   </span>
                 </div>
               )}
-              <div className="flex min-w-0 flex-col gap-1 rounded-lg bg-emerald-50 px-3 py-2 dark:bg-emerald-950/20 sm:flex-row sm:items-center sm:justify-between">
-                <span className="break-words text-sm font-medium text-emerald-700 dark:text-emerald-300">{t("driver.dashboard.netEarnings")}</span>
-                <span className="break-words text-lg font-bold text-emerald-700 dark:text-emerald-300 sm:text-right">
-                  {formatCurrency(weeklyNetEarnings)}
-                </span>
-              </div>
+              <DSStatusChip tone="success" className="flex w-full justify-between rounded-2xl px-3 py-2 text-sm font-medium">
+                <span>{t("driver.dashboard.netEarnings")}</span>
+                <span className="font-bold">{formatCurrency(weeklyNetEarnings)}</span>
+              </DSStatusChip>
               <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
-                <div className="min-w-0 rounded-lg border p-3">
+                <DSCard padding="sm">
                   <p className="break-words text-xs text-muted-foreground">{t("common.washouts")}</p>
                   <p className="break-words text-lg font-semibold" data-testid="text-weekly-washouts">{weeklyStats?.totalWashouts || 0}</p>
-                </div>
-                <div className="min-w-0 rounded-lg border p-3">
+                </DSCard>
+                <DSCard padding="sm">
                   <p className="break-words text-xs text-muted-foreground">{t("driver.dashboard.avgEach")}</p>
                   <p className="break-words text-lg font-semibold" data-testid="text-avg-washout">{formatCurrency(weeklyStats?.avgPerWashout || 0)}</p>
-                </div>
+                </DSCard>
               </div>
               {rejectedWashouts.length > 0 && (
                 <p className="break-words text-xs text-red-600 dark:text-red-400" data-testid="text-rejected-washouts">
@@ -821,15 +788,16 @@ export default function DriverDashboard() {
                 </p>
               )}
             </div>
-          </DashboardSectionCard>
+          </DSCard>
         </div>
 
         {/* Payment Status */}
-        <DashboardSectionCard
-          title={t("driver.dashboard.paymentStatus")}
-          description={t("driver.dashboard.paymentStatusDescription")}
-          icon={<DollarSign className="w-5 h-5 text-green-600" />}
-        >
+        <DSCard padding="lg" elevated>
+          <DSSectionHeader
+            title={t("driver.dashboard.paymentStatus")}
+            description={t("driver.dashboard.paymentStatusDescription")}
+            eyebrow={<DollarSign className="inline-block h-4 w-4 align-[-2px] text-green-600" />}
+          />
           <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="min-w-0 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
@@ -852,24 +820,25 @@ export default function DriverDashboard() {
                 <span className="break-words font-medium text-foreground sm:text-right">{t("driver.dashboard.fullAmounts")}</span>
               </div>
           </div>
-        </DashboardSectionCard>
+        </DSCard>
 
         {/* Recent Activity */}
-        <StatCard
-          title={t("driver.dashboard.recentWashouts")}
-          subtitle={
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-auto min-h-9 w-full !whitespace-normal px-2 text-primary hover:text-primary/80 sm:w-auto"
-              onClick={() => setLocation('/activity')}
-              data-testid="button-view-all"
-            >
-              {t("common.viewAll")}
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          }
-        >
+        <DSCard padding="lg" elevated>
+          <DSSectionHeader
+            title={t("driver.dashboard.recentWashouts")}
+            actions={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto min-h-9 w-full !whitespace-normal px-2 text-primary hover:text-primary/80 sm:w-auto"
+                onClick={() => setLocation('/activity')}
+                data-testid="button-view-all"
+              >
+                {t("common.viewAll")}
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            }
+          />
           <div className="space-y-3">
             {!recentActivities?.length ? (
               <DashboardEmptyState
@@ -890,7 +859,7 @@ export default function DriverDashboard() {
               />
             ) : (
               recentActivities.map((activity: any, index: number) => (
-                <div key={activity.washout_activities?.id || activity.id || index} className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm" data-testid={`card-activity-${index}`}>
+                <DSCard key={activity.washout_activities?.id || activity.id || index} padding="md" className="min-w-0 space-y-3" data-testid={`card-activity-${index}`}>
                   <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -922,7 +891,7 @@ export default function DriverDashboard() {
                   </div>
                   
                   <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                    <div className="min-w-0 rounded-2xl border border-border/70 bg-muted/30 p-3">
+                    <DSCard padding="sm" elevated={false} className="min-w-0">
                       <div className="flex items-center gap-2 text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
                         <MapPinned className="h-4 w-4 shrink-0 text-secondary" />
                         <span className="truncate">{activity.washout_locations?.name || activity.location?.name || t("driver.activity.unknownLocation")}</span>
@@ -930,23 +899,27 @@ export default function DriverDashboard() {
                       <div className="mt-1 break-words text-xs text-muted-foreground">
                         {activity.washout_locations?.address || activity.location?.address || t("driver.dashboard.addressUnavailable")}
                       </div>
-                    </div>
-                    <div className="min-w-0 rounded-2xl border border-border/70 bg-muted/30 p-3">
-                      <div className={`inline-flex max-w-full whitespace-normal break-words rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] ${
-                        (activity.washout_activities?.status || activity.status) === 'verified'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-                          : isPendingWashoutApproval(activity.washout_activities?.status || activity.status)
-                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
-                            : 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300'
-                      }`} data-testid={`text-activity-status-${index}`}>
-                        {translateWashoutApprovalStatus(activity.washout_activities?.status || activity.status, t)}
+                    </DSCard>
+                    <DSCard padding="sm" elevated={false} className="min-w-0">
+                      <div className="mt-2">
+                        <DSStatusChip
+                          tone={(activity.washout_activities?.status || activity.status) === 'verified'
+                            ? 'success'
+                            : isPendingWashoutApproval(activity.washout_activities?.status || activity.status)
+                              ? 'warning'
+                              : 'danger'}
+                          className="max-w-full whitespace-normal"
+                          data-testid={`text-activity-status-${index}`}
+                        >
+                          {translateWashoutApprovalStatus(activity.washout_activities?.status || activity.status, t)}
+                        </DSStatusChip>
                       </div>
                       <p className="mt-2 break-words text-xs text-muted-foreground">
                         {activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName
                           ? t("driver.activity.ownerName", { name: `${activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName} ${activity.location?.owner?.user?.lastName || activity.washout_locations?.owner?.user?.lastName || ''}`.trim() })
                           : t("driver.dashboard.ownerContactUnavailable")}
                       </p>
-                    </div>
+                    </DSCard>
                   </div>
 
                   <div className="flex min-w-0 flex-col gap-2 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
@@ -970,14 +943,15 @@ export default function DriverDashboard() {
                       {t("common.photos")}
                     </Button>
                   </div>
-                </div>
+                </DSCard>
               ))
             )}
           </div>
-        </StatCard>
+        </DSCard>
 
         {/* Support Section */}
-        <StatCard title={t("driver.dashboard.needHelp")} className="border-sky-200 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-slate-900">
+        <DSCard padding="lg" elevated className="border-sky-200 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-slate-900">
+          <DSSectionHeader title={t("driver.dashboard.needHelp")} />
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1 space-y-2">
               <p className="break-words text-sm text-muted-foreground">{t("driver.dashboard.supportDescription")}</p>
@@ -996,7 +970,7 @@ export default function DriverDashboard() {
               {t("driver.dashboard.messageSupport")}
             </Button>
           </div>
-        </StatCard>
+        </DSCard>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

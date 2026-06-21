@@ -1,7 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Bell, Check, CheckCheck, AlertTriangle, Info, DollarSign,
   Trophy, Ticket, Megaphone, ArrowLeft,
@@ -10,6 +9,7 @@ import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
 import { MobileNav } from "@/components/MobileNav";
+import { DSCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 
 function getNotificationIcon(type: string) {
   switch (type) {
@@ -126,16 +126,20 @@ export default function DriverNotifications() {
       </header>
 
       <main className="p-4 max-w-2xl mx-auto space-y-3">
+        <DSSectionHeader
+          title="Message Center"
+          description={unreadCount > 0 ? `${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}` : 'All caught up'}
+        />
         {isLoading ? (
           [1, 2, 3].map(i => (
-            <Card key={i} className="animate-pulse">
+            <DSCard key={i} className="animate-pulse">
               <CardContent className="p-4">
                 <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded" />
               </CardContent>
-            </Card>
+            </DSCard>
           ))
         ) : notifications.length === 0 ? (
-          <Card>
+          <DSCard padding="lg">
             <CardContent className="p-12 text-center">
               <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
@@ -145,10 +149,10 @@ export default function DriverNotifications() {
                 You'll see notifications here about lottery results, payments, and account updates.
               </p>
             </CardContent>
-          </Card>
+          </DSCard>
         ) : (
           notifications.map((notification: any) => (
-            <Card
+            <DSCard
               key={notification.id}
               className={`border ${getNotificationColor(notification.type, notification.isRead)}`}
             >
@@ -164,7 +168,7 @@ export default function DriverNotifications() {
                       </h3>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {!notification.isRead && (
-                          <Badge className="bg-blue-600 text-white text-xs">New</Badge>
+                          <DSStatusChip tone="info" className="text-xs">New</DSStatusChip>
                         )}
                       </div>
                     </div>
@@ -191,7 +195,7 @@ export default function DriverNotifications() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </DSCard>
           ))
         )}
       </main>

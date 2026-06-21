@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { DriverHeader } from "@/components/DriverHeader";
@@ -20,6 +19,7 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { hasHandledInstallPromptThisSession, markInstallPromptHandledThisSession } from "@/hooks/usePWAInstall";
 import { useLanguage } from "@/lib/i18n";
+import { DSCard, DSStatusChip } from "@/components/design-system";
 
 export default function DriverProfile() {
   const { toast } = useToast();
@@ -179,7 +179,7 @@ export default function DriverProfile() {
       
       <div className="p-4 space-y-4">
         {/* Profile Header */}
-        <Card>
+        <DSCard padding="lg">
           <CardContent className="p-6 text-center">
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <User className="w-10 h-10 text-primary" />
@@ -199,7 +199,7 @@ export default function DriverProfile() {
               </Button>
             </div>
           </CardContent>
-        </Card>
+        </DSCard>
 
         <DriverPayoutSettings
           featureEnabled={driverStripePayoutsEnabled}
@@ -209,7 +209,7 @@ export default function DriverProfile() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Personal Information */}
-          <Card>
+          <DSCard padding="lg">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <User className="w-5 h-5 mr-2" />
@@ -311,10 +311,10 @@ export default function DriverProfile() {
               </div>
 
             </CardContent>
-          </Card>
+          </DSCard>
 
           {/* Employment Information */}
-          <Card>
+          <DSCard padding="lg">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Truck className="w-5 h-5 mr-2" />
@@ -406,10 +406,10 @@ export default function DriverProfile() {
                 </p>
               </div>
             </CardContent>
-          </Card>
+          </DSCard>
 
           {/* Lottery Prize Preference */}
-          <Card>
+          <DSCard padding="lg">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Gift className="w-5 h-5 mr-2" />
@@ -470,10 +470,10 @@ export default function DriverProfile() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </DSCard>
 
           {/* App Settings Section */}
-          <Card>
+          <DSCard padding="lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Smartphone className="w-5 h-5" />
@@ -510,10 +510,10 @@ export default function DriverProfile() {
                 </p>
               </div>
             </CardContent>
-          </Card>
+          </DSCard>
 
           {/* Terms & Conditions Section */}
-          <Card>
+          <DSCard padding="lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
@@ -525,12 +525,9 @@ export default function DriverProfile() {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">{t("driver.profile.driverTermsAgreement")}</p>
                   <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={termsStatus?.hasAgreed ? "default" : "secondary"}
-                      data-testid="badge-terms-status"
-                    >
+                    <DSStatusChip tone={termsStatus?.hasAgreed ? "success" : "warning"} data-testid="badge-terms-status">
                       {termsStatus?.hasAgreed ? t("driver.profile.agreed") : t("driver.profile.notAgreed")}
-                    </Badge>
+                    </DSStatusChip>
                     {termsStatus?.hasAgreed && termsStatus?.agreedAt && (
                       <span className="text-xs text-muted-foreground">
                         {t("driver.profile.agreedOn", { date: new Date(termsStatus.agreedAt).toLocaleDateString() })}
@@ -556,7 +553,7 @@ export default function DriverProfile() {
                 </p>
               </div>
             </CardContent>
-          </Card>
+          </DSCard>
 
           {isEditing && (
             <Button 

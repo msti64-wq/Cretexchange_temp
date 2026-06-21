@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { PhotoModal } from "@/components/PhotoModal";
@@ -11,6 +10,7 @@ import { Calendar, Download, MapPin, Clock, Image as ImageIcon, Filter } from "l
 import { formatCurrency } from "@/lib/utils";
 import { exportToCsv } from "@/lib/csvExport";
 import { useLanguage } from "@/lib/i18n";
+import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
 
 export default function DriverActivity() {
   const { t, language } = useLanguage();
@@ -108,130 +108,104 @@ export default function DriverActivity() {
       
       <div className="p-4 space-y-4">
         {/* Stats Summary */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary" data-testid="text-total-activities">
-                  {stats.totalActivities}
-                </div>
-                <div className="text-sm text-muted-foreground">{t("driver.activity.totalWashouts")}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-secondary" data-testid="text-total-earnings">
-                  {formatCurrency(stats.totalEarnings)}
-                </div>
-                <div className="text-sm text-muted-foreground">{t("driver.activity.totalEarned")}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-semibold text-green-600" data-testid="text-verified-count">
-                  {stats.verifiedCount}
-                </div>
-                <div className="text-sm text-muted-foreground">{t("driver.activity.verified")}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-semibold text-yellow-600" data-testid="text-pending-count">
-                  {stats.pendingCount}
-                </div>
-                <div className="text-sm text-muted-foreground">{t("driver.activity.pending")}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-2 gap-3">
+          <DSKpiCard label={t("driver.activity.totalWashouts")} value={stats.totalActivities} detail={t("driver.activity.totalWashouts")} accentTone="info" data-testid="text-total-activities" />
+          <DSKpiCard label={t("driver.activity.totalEarned")} value={formatCurrency(stats.totalEarnings)} detail={t("driver.activity.totalEarned")} accentTone="success" data-testid="text-total-earnings" />
+          <DSKpiCard label={t("driver.activity.verified")} value={stats.verifiedCount} detail={t("driver.activity.verified")} accentTone="success" data-testid="text-verified-count" />
+          <DSKpiCard label={t("driver.activity.pending")} value={stats.pendingCount} detail={t("driver.activity.pending")} accentTone="warning" data-testid="text-pending-count" />
+        </div>
 
         {/* Filters */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{t("common.filters")}</span>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">{t("driver.activity.startDate")}</label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    min="2020-01-01"
-                    max="2030-12-31"
-                    data-testid="input-start-date"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">{t("driver.activity.endDate")}</label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    min="2020-01-01"
-                    max="2030-12-31"
-                    data-testid="input-end-date"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 flex-wrap">
-                <Button 
-                  size="sm"
-                  variant={filterStatus === "all" ? "default" : "outline"}
-                  onClick={() => setFilterStatus("all")}
-                  data-testid="button-filter-all"
-                >
-                  {t("common.all")}
-                </Button>
-                <Button 
-                  size="sm"
-                  variant={filterStatus === "verified" ? "default" : "outline"}
-                  onClick={() => setFilterStatus("verified")}
-                  data-testid="button-filter-verified"
-                >
-                  {t("driver.activity.verified")}
-                </Button>
-                <Button 
-                  size="sm"
-                  variant={filterStatus === "pending" ? "default" : "outline"}
-                  onClick={() => setFilterStatus("pending")}
-                  data-testid="button-filter-pending"
-                >
-                  {t("driver.activity.pending")}
-                </Button>
-              </div>
-
+        <DSCard padding="md">
+          <DSSectionHeader
+            eyebrow={<Filter className="inline-block h-4 w-4 align-[-2px]" />}
+            title={t("common.filters")}
+            description={t("driver.activity.activityHistory")}
+            actions={
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={handleExport}
-                className="w-full"
+                className="w-full sm:w-auto"
                 data-testid="button-export"
               >
                 <Download className="w-4 h-4 mr-2" />
                 {t("common.exportCsv")}
               </Button>
+            }
+          />
+          <div className="mt-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm text-muted-foreground">{t("driver.activity.startDate")}</label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  min="2020-01-01"
+                  max="2030-12-31"
+                  data-testid="input-start-date"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-muted-foreground">{t("driver.activity.endDate")}</label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min="2020-01-01"
+                  max="2030-12-31"
+                  data-testid="input-end-date"
+                />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                size="sm"
+                variant={filterStatus === "all" ? "default" : "outline"}
+                onClick={() => setFilterStatus("all")}
+                data-testid="button-filter-all"
+              >
+                {t("common.all")}
+              </Button>
+              <Button 
+                size="sm"
+                variant={filterStatus === "verified" ? "default" : "outline"}
+                onClick={() => setFilterStatus("verified")}
+                data-testid="button-filter-verified"
+              >
+                {t("driver.activity.verified")}
+              </Button>
+              <Button 
+                size="sm"
+                variant={filterStatus === "pending" ? "default" : "outline"}
+                onClick={() => setFilterStatus("pending")}
+                data-testid="button-filter-pending"
+              >
+                {t("driver.activity.pending")}
+              </Button>
+            </div>
+          </div>
+        </DSCard>
 
         {/* Activity List */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold flex items-center">
-            <Calendar className="w-5 h-5 mr-2" />
-            {t("driver.activity.activityHistory")}
-          </h2>
+          <DSSectionHeader
+            eyebrow={<Calendar className="inline-block h-4 w-4 align-[-2px]" />}
+            title={t("driver.activity.activityHistory")}
+          />
 
           {filteredActivities.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8">
+            <DSCard padding="lg">
+              <div className="text-center py-8">
                 <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">{t("driver.activity.noActivities")}</p>
-              </CardContent>
-            </Card>
+              </div>
+            </DSCard>
           ) : (
             filteredActivities.map((activity: any, index: number) => (
-              <Card key={activity.washout_activities?.id || activity.id || index} className="hover:shadow-md transition-shadow" data-testid={`card-activity-${index}`}>
-                <CardContent className="p-4">
+              <DSCard key={activity.washout_activities?.id || activity.id || index} className="hover:shadow-md transition-shadow" padding="md" data-testid={`card-activity-${index}`}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="font-semibold mb-1" data-testid={`text-activity-location-${index}`}>
@@ -273,16 +247,16 @@ export default function DriverActivity() {
                       <div className="text-xl font-bold text-foreground mb-1" data-testid={`text-activity-amount-${index}`}>
                         {formatCurrency(Number(activity.washout_activities?.amount || activity.amount || 0))}
                       </div>
-                      <Badge 
-                        variant={
-                          (activity.washout_activities?.status || activity.status) === 'verified' ? 'default' : 
-                          (activity.washout_activities?.status || activity.status) === 'pending' ? 'secondary' : 'destructive'
+                      <DSStatusChip
+                        tone={
+                          (activity.washout_activities?.status || activity.status) === 'verified' ? 'success' :
+                          (activity.washout_activities?.status || activity.status) === 'pending' ? 'warning' : 'danger'
                         }
                         data-testid={`badge-activity-status-${index}`}
                       >
                         {(activity.washout_activities?.status || activity.status) === 'verified' ? t("driver.activity.verified") :
                          (activity.washout_activities?.status || activity.status) === 'pending' ? t("driver.activity.pending") : t("common.rejected")}
-                      </Badge>
+                      </DSStatusChip>
                     </div>
                   </div>
 
@@ -319,8 +293,7 @@ export default function DriverActivity() {
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+              </DSCard>
             ))
           )}
         </div>
