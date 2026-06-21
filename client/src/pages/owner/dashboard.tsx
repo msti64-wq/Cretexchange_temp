@@ -107,6 +107,24 @@ function translateOwnerWashoutStatus(status: string | null | undefined, t: (key:
   }
 }
 
+function bucketOwnerWashoutStatus(status: string | null | undefined): "pending" | "approved" | "rejected" {
+  switch (status) {
+    case "verified":
+    case "approved":
+    case "completed":
+    case "paid":
+    case "settled":
+      return "approved";
+    case "rejected":
+    case "declined":
+    case "cancelled":
+    case "canceled":
+      return "rejected";
+    default:
+      return "pending";
+  }
+}
+
 export default function OwnerDashboard() {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
@@ -363,6 +381,23 @@ export default function OwnerDashboard() {
   }, 0) || 0;
   const approvedCount = Number(weekStats?.billedWashoutCount || recentActivities?.filter((activity: any) => activity.status === 'verified').length || 0);
   const rejectedCount = recentActivities?.filter((activity: any) => activity.status === 'rejected').length || 0;
+  const washoutStatusMix = dashboardData?.washoutStatusMix && typeof dashboardData.washoutStatusMix === "object"
+    ? dashboardData.washoutStatusMix
+    : Array.isArray(allActivitiesData)
+      ? allActivitiesData.reduce<Record<string, number>>((acc: Record<string, number>, activity: any) => {
+          const status = String(activity?.status || "unknown");
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {})
+      : {};
+  const ownerWashoutStatusCounts = Object.entries(washoutStatusMix).reduce(
+    (acc, [status, count]) => {
+      const bucket = bucketOwnerWashoutStatus(status);
+      acc[bucket] += Number(count || 0);
+      return acc;
+    },
+    { pending: 0, approved: 0, rejected: 0 },
+  );
 
   // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
 
@@ -377,9 +412,9 @@ export default function OwnerDashboard() {
       .filter(Boolean)
   ).size : 0));
   const ownerStatusChartData = [
-    { label: t("common.pending"), amount: pendingPaymentsCents / 100, count: pendingCount },
-    { label: t("common.approved"), amount: approvedPaymentsCents / 100, count: approvedCount },
-    { label: t("common.rejected"), amount: rejectedPayments, count: rejectedCount },
+    { label: t("common.pending"), amount: ownerWashoutStatusCounts.pending, count: ownerWashoutStatusCounts.pending },
+    { label: t("common.approved"), amount: ownerWashoutStatusCounts.approved, count: ownerWashoutStatusCounts.approved },
+    { label: t("common.rejected"), amount: ownerWashoutStatusCounts.rejected, count: ownerWashoutStatusCounts.rejected },
   ];
 
   return (
@@ -515,7 +550,7 @@ export default function OwnerDashboard() {
             <div className="pt-0">
               <ChartContainer
                 config={{
-                  amount: { label: t("common.amount"), color: "var(--color-amount)" },
+                  amount: { label: t("common.washouts"), color: "var(--color-amount)" },
                 }}
                 className="h-[240px] w-full"
               >
@@ -527,7 +562,7 @@ export default function OwnerDashboard() {
                     content={
                       <ChartTooltipContent
                         hideLabel
-                        formatter={(value) => formatCurrency(Number(value))}
+                        formatter={(value) => new Intl.NumberFormat("en-US").format(Number(value))}
                       />
                     }
                   />

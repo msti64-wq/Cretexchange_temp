@@ -4317,6 +4317,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       dashboardPhase = "user_lookup";
       const user = await storage.getUser(userId);
 
+      dashboardPhase = "washout_status_mix";
+      const ownerWashoutActivities = (await storage.getActivitiesByOwner(owner.id)) as Array<{
+        id: string;
+        status: string | null;
+      }>;
+      console.info("[OWNER_STATUS_MIX_INPUT]", {
+        ownerId: owner.id,
+        activityCount: ownerWashoutActivities.length,
+        sampleStatuses: ownerWashoutActivities.slice(0, 10).map((activity) => ({
+          id: activity.id,
+          status: activity.status,
+        })),
+      });
+      const washoutStatusMix = ownerWashoutActivities.reduce<Record<string, number>>((acc, activity) => {
+        const status = String(activity.status || "unknown");
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.info("[OWNER_STATUS_MIX_OUTPUT]", {
+        ownerId: owner.id,
+        washoutStatusMix,
+      });
+
       logReportingReconciliation("/api/owners/dashboard", {
         platformRevenueCents: Number(monthStats.platformFeesPaidCents || 0),
         ownerReceivablesCents: Number(monthStats.platformFeesOwedCents || 0),
@@ -4332,6 +4355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         locations: locations.length,
         user: user,
         owner: owner,
+        washoutStatusMix,
       });
     } catch (error) {
       const dbError = summarizeDatabaseError(error, {
