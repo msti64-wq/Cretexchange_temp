@@ -18,10 +18,9 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import { PlatformPerformanceCard } from "@/components/PlatformPerformanceCard";
 import { LogoutButton } from "@/components/LogoutButton";
 import logoImage from "@assets/cretexchange-logo-white-transparent.png";
-import { ShieldAlert, Gauge, UsersRound } from "lucide-react";
+import { ShieldAlert, UsersRound } from "lucide-react";
 
 function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
   return (
@@ -533,67 +532,6 @@ export default function AdminDashboard() {
             </div>
           </DashboardSectionCard>
         )}
-
-        {/* Platform Performance Analytics */}
-        <DashboardSectionCard
-          title="Platform Performance Analytics"
-          description="License activity and platform utilization over the selected window."
-          icon={<Gauge className="h-4 w-4 text-primary" />}
-          action={
-            <div className="grid grid-cols-3 gap-2 sm:w-auto">
-              <Button 
-                size="sm"
-                variant={dateRange === "30" ? "default" : "outline"}
-                onClick={() => setDateRange("30")}
-                data-testid="button-range-30-performance"
-                className="text-xs"
-              >
-                30 Days
-              </Button>
-              <Button 
-                size="sm"
-                variant={dateRange === "60" ? "default" : "outline"}
-                onClick={() => setDateRange("60")}
-                data-testid="button-range-60-performance"
-                className="text-xs"
-              >
-                60 Days
-              </Button>
-              <Button 
-                size="sm"
-                variant={dateRange === "90" ? "default" : "outline"}
-                onClick={() => setDateRange("90")}
-                data-testid="button-range-90-performance"
-                className="text-xs"
-              >
-                90 Days
-              </Button>
-            </div>
-          }
-        >
-          <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Active licenses</p>
-                <p className="mt-1 text-xl font-semibold tracking-tight">{weekStats?.activeLicenses || 0}</p>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Renewals</p>
-                <p className="mt-1 text-xl font-semibold tracking-tight">{weekStats?.licenseRenewals || 0}</p>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Support queue</p>
-                <p className="mt-1 text-xl font-semibold tracking-tight">{activeMessages}</p>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-muted/30 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Open prizes</p>
-                <p className="mt-1 text-xl font-semibold tracking-tight">{pendingDrawings?.length || 0}</p>
-              </div>
-            </div>
-
-            <PlatformPerformanceCard dateRange={parseInt(dateRange)} />
-          </div>
-        </DashboardSectionCard>
 
         {/* Revenue and Support Overview */}
         <div className="grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
