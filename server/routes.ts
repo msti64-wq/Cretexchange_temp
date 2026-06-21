@@ -8749,8 +8749,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transactionType: txn.type,
         amount: txn.amount,
         description: txn.description || `${txn.type} transaction`,
-        status: 'posted',
-        externalTransactionId: null,
+        status: txn.status || 'posted',
+        externalTransactionId: txn.externalTransactionId || txn.stripePaymentIntentId || txn.stripeChargeId || txn.stripeTransferId || null,
+        washoutCount: txn.washoutCount ?? null,
+        businessDate: txn.businessDate ?? null,
         createdAt: txn.createdAt
       }));
 
@@ -8805,20 +8807,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate analytics from real data
       let totalFunded = 0;
       let totalSpent = 0;
+      let completedBillingBatchTotal = 0;
+      let walletTransactionTotal = 0;
+      let completedBatchCount = 0;
       
       transactions.forEach((txn: any) => {
         const amount = parseFloat(txn.amount);
         
         if (txn.type === 'topup') {
           totalFunded += amount;
-        } else if (txn.type === 'payment' || txn.type === 'fee' || txn.type === 'withdrawal' || txn.type === 'washout_debit' || txn.type === 'fee_debit') {
+        } else if (txn.type === 'billing_batch') {
+          completedBillingBatchTotal += amount;
+          completedBatchCount += 1;
+        } else if (txn.type === 'payment' || txn.type === 'fee' || txn.type === 'withdrawal' || txn.type === 'washout_debit' || txn.type === 'fee_debit' || txn.type === 'washout_charge') {
+          walletTransactionTotal += amount;
           totalSpent += amount;
         }
       });
       
+      totalSpent += completedBillingBatchTotal;
+      
       // Calculate average monthly spend
       const monthsInRange = daysInRange / 30;
       const avgMonthlySpend = monthsInRange > 0 ? totalSpent / monthsInRange : 0;
+
+      console.info("[OWNER_WALLET_ACCOUNTING]", {
+        ownerId: owner.id,
+        walletTransactionTotal: walletTransactionTotal.toFixed(2),
+        completedBillingBatchTotal: completedBillingBatchTotal.toFixed(2),
+        totalSpent: totalSpent.toFixed(2),
+        avgMonthlySpend: avgMonthlySpend.toFixed(2),
+        completedBatchCount,
+      });
 
       const analytics = {
         totalFunded: totalFunded.toFixed(2),

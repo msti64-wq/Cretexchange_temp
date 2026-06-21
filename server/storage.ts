@@ -924,23 +924,52 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOwnerWalletTransactions(ownerId: string, startDate?: Date, endDate?: Date): Promise<any[]> {
-    let query: any = db
-      .select()
-      .from(ownerWalletTransactions)
-      .where(eq(ownerWalletTransactions.ownerId, ownerId))
-      .orderBy(desc(ownerWalletTransactions.createdAt));
-
-    if (startDate && endDate) {
-      query = query.where(
-        and(
-          eq(ownerWalletTransactions.ownerId, ownerId),
-          gte(ownerWalletTransactions.createdAt, startDate),
-          lte(ownerWalletTransactions.createdAt, endDate)
-        )
-      );
+    const walletConditions = [eq(ownerWalletTransactions.ownerId, ownerId)];
+    if (startDate) {
+      walletConditions.push(gte(ownerWalletTransactions.createdAt, startDate));
+    }
+    if (endDate) {
+      walletConditions.push(lte(ownerWalletTransactions.createdAt, endDate));
     }
 
-    return await query;
+    const walletTransactions = await db
+      .select()
+      .from(ownerWalletTransactions)
+      .where(and(...walletConditions))
+      .orderBy(desc(ownerWalletTransactions.createdAt));
+
+    const billingBatches = await this.getBillingBatchesByOwner(ownerId, startDate, endDate);
+    const completedBillingTransactions = billingBatches
+      .filter((batch) => batch.status === "completed")
+      .map((batch) => ({
+        id: `billing-batch:${batch.id}`,
+        ownerId,
+        type: "billing_batch",
+        amount: batch.totalAmount,
+        balanceBefore: "0.00",
+        balanceAfter: "0.00",
+        description: `Completed billing batch ${batch.businessDate} (${batch.paymentCount} washouts)`,
+        status: batch.status,
+        paymentId: null,
+        batchId: batch.id,
+        columnTransferId: batch.stripeBatchTransferId ?? null,
+        columnCounterpartyId: null,
+        stripeTransferId: batch.stripeBatchTransferId ?? null,
+        stripePaymentIntentId: batch.stripePaymentIntentId ?? null,
+        externalTransactionId: batch.stripePaymentIntentId ?? batch.stripeBatchTransferId ?? null,
+        washoutCount: batch.paymentCount,
+        businessDate: batch.businessDate,
+        createdAt: batch.completedAt ?? batch.createdAt,
+      }));
+
+    return [
+      ...walletTransactions,
+      ...completedBillingTransactions,
+    ].sort((left: any, right: any) => {
+      const leftTime = new Date(left.createdAt || 0).getTime();
+      const rightTime = new Date(right.createdAt || 0).getTime();
+      return rightTime - leftTime;
+    });
   }
 
   // Removed: getOwnerSubscriptionStatus - replaced by getOwnerWalletBalance
