@@ -399,10 +399,6 @@ export default function AdminBillingSettings() {
     bulkUpdateMutation.mutate(bulkForm);
   };
 
-  const cadenceStats = billingData?.owners.reduce((acc, owner) => {
-    acc[owner.billingCadence] = (acc[owner.billingCadence] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>) || {};
   const immediateBillingOwners = billingData?.immediateBillingOwners || [];
   const immediateBillingHistory = billingData?.immediateBillingHistory || [];
   const immediateBillingSummary = billingData?.immediateBillingSummary || {
@@ -442,56 +438,7 @@ export default function AdminBillingSettings() {
       </header>
 
       <main className="p-4 space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Billing Cadence Overview
-            </CardTitle>
-            <CardDescription>
-              Configure when owner charges are requested and processed for each owner
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="p-4 rounded-lg border bg-blue-50 dark:bg-blue-900/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <CalendarDays className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium">Daily</span>
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Charges batched and processed at end of day
-                </p>
-                <p className="text-2xl font-bold">{cadenceStats['daily'] || 0}</p>
-                <p className="text-xs text-muted-foreground">owners</p>
-              </div>
-              
-              <div className="p-4 rounded-lg border bg-purple-50 dark:bg-purple-900/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <CalendarRange className="w-5 h-5 text-purple-600" />
-                  <span className="font-medium">Weekly</span>
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Charges batched and processed at end of week
-                </p>
-                <p className="text-2xl font-bold">{cadenceStats['weekly'] || 0}</p>
-                <p className="text-xs text-muted-foreground">owners</p>
-              </div>
-              
-              <div className="p-4 rounded-lg border bg-indigo-50 dark:bg-indigo-900/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="w-5 h-5 text-indigo-600" />
-                  <span className="font-medium">Monthly</span>
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Charges batched and processed at end of month
-                </p>
-                <p className="text-2xl font-bold">{cadenceStats['monthly'] || 0}</p>
-                <p className="text-xs text-muted-foreground">owners</p>
-              </div>
-            </div>
-
-            <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+        <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="w-full md:w-auto" data-testid="button-bulk-update">
                   <Settings className="w-4 h-4 mr-2" />
@@ -600,9 +547,7 @@ export default function AdminBillingSettings() {
                   </Button>
                 </DialogFooter>
               </DialogContent>
-            </Dialog>
-          </CardContent>
-        </Card>
+        </Dialog>
 
         {isSuperAdmin && (
           <Card data-testid="card-owner-billing-preview">
