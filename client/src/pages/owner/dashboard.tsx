@@ -551,7 +551,7 @@ export default function OwnerDashboard() {
             <div className="pt-0">
               <ChartContainer
                 config={{
-                  amount: { label: t("common.washouts"), color: "var(--color-amount)" },
+                  amount: { label: t("common.washouts"), color: "#F97316" },
                 }}
                 className="h-[240px] w-full"
               >
@@ -567,7 +567,7 @@ export default function OwnerDashboard() {
                       />
                     }
                   />
-                  <Bar dataKey="amount" fill="var(--color-amount)" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="amount" fill="#F97316" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ChartContainer>
             </div>
@@ -590,7 +590,7 @@ export default function OwnerDashboard() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.pendingPayments")}</p>
-                  <p className="mt-2 text-xl font-semibold tracking-tight text-secondary" data-testid="text-pending-total">
+                  <p className="mt-2 text-xl font-semibold tracking-tight text-foreground" data-testid="text-pending-total">
                     {formatCentsToDollars(pendingPaymentsCents)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.awaitingReview")}</p>
@@ -770,7 +770,7 @@ export default function OwnerDashboard() {
                 title={t("owner.dashboard.noActivity")}
                 description={t("owner.dashboard.noActivityDescription")}
                 icon={Clock}
-                toneClassName="bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-300"
+                toneClassName="bg-slate-50 text-foreground dark:bg-slate-950/30 dark:text-foreground"
                 action={
                   <Button
                     variant="outline"

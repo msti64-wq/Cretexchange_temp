@@ -396,7 +396,7 @@ export default function DriverDashboard() {
                   title={t("driver.dashboard.noRecentWashouts")}
                   description={t("driver.dashboard.noRecentWashoutsDescription")}
                   icon={Truck}
-                  toneClassName="bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-300"
+                  toneClassName="bg-slate-50 text-foreground dark:bg-slate-950/30 dark:text-foreground"
                   action={
                     <Button
                       variant="outline"
@@ -643,7 +643,7 @@ export default function DriverDashboard() {
                         title={t("driver.dashboard.noEntriesFound")}
                         description={t("driver.dashboard.noEntriesDescription")}
                         icon={Ticket}
-                        toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
+                        toneClassName="bg-amber-50 text-foreground dark:bg-amber-950/30 dark:text-foreground"
                       />
                     )}
                   </div>
@@ -729,7 +729,7 @@ export default function DriverDashboard() {
               </div>
               <ChartContainer
                 config={{
-                  earnings: { label: t("driver.dashboard.earnings"), color: "var(--chart-1)" },
+                  earnings: { label: t("driver.dashboard.earnings"), color: "#3B82F6" },
                 }}
                 className="h-[190px] w-full max-w-full min-w-0 overflow-hidden min-[430px]:h-[210px]"
               >
@@ -745,7 +745,7 @@ export default function DriverDashboard() {
                       />
                     }
                   />
-                  <Bar dataKey="earnings" fill="var(--color-earnings)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="earnings" fill="#3B82F6" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ChartContainer>
             </div>
@@ -845,7 +845,7 @@ export default function DriverDashboard() {
                 title={t("driver.dashboard.noRecentWashouts")}
                 description={t("driver.dashboard.noRecentWashoutsDescription")}
                 icon={Clock}
-                toneClassName="bg-slate-50 text-slate-600 dark:bg-slate-950/30 dark:text-slate-300"
+                toneClassName="bg-slate-50 text-foreground dark:bg-slate-950/30 dark:text-foreground"
                 action={
                   <Button
                     variant="outline"
