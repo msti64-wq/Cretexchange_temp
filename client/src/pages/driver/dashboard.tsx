@@ -342,7 +342,7 @@ export default function DriverDashboard() {
             <div className="flex min-w-0 items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.18em]">{t("driver.dashboard.latestStop")}</p>
-                <h3 className="mt-1 truncate text-lg font-semibold tracking-tight">{latestLocationName}</h3>
+                <h3 className="mt-1 truncate text-lg font-semibold tracking-tight text-sky-300 dark:text-sky-300">{latestLocationName}</h3>
               </div>
               <div className="shrink-0 rounded-full bg-primary/10 p-2 text-primary">
                 <Truck className="h-5 w-5" />
@@ -353,7 +353,7 @@ export default function DriverDashboard() {
               <div className="mt-4 space-y-4">
                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <div className="flex items-center gap-2 text-sm font-medium text-sky-300 dark:text-sky-300">
                       <Route className="h-4 w-4 shrink-0 text-secondary" />
                       <span className="truncate">{latestLocationName}</span>
                     </div>
@@ -369,7 +369,7 @@ export default function DriverDashboard() {
                     )}
                   </div>
                   <div className="min-w-0 text-left sm:text-right">
-                    <p className="break-words text-2xl font-semibold tracking-tight text-foreground">
+                    <p className="break-words text-2xl font-semibold tracking-tight text-sky-300 dark:text-sky-300">
                       {formatCurrency(latestActivityAmount)}
                     </p>
                     <div className={`mt-1 inline-flex max-w-full whitespace-normal break-words rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] ${
@@ -387,11 +387,11 @@ export default function DriverDashboard() {
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div className="min-w-0 rounded-2xl border border-border/70 bg-background/80 px-3 py-2">
                     <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.14em]">{t("driver.dashboard.weeklyNet")}</p>
-                    <p className="mt-1 break-words text-sm font-semibold text-foreground">{formatCurrency(weeklyNetEarnings)}</p>
+                    <p className="mt-1 break-words text-sm font-semibold text-sky-300 dark:text-sky-300">{formatCurrency(weeklyNetEarnings)}</p>
                   </div>
                   <div className="min-w-0 rounded-2xl border border-border/70 bg-background/80 px-3 py-2">
                     <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.14em]">{t("driver.dashboard.totalPaid")}</p>
-                    <p className="mt-1 break-words text-sm font-semibold text-foreground">{formatCurrency(totalPaid)}</p>
+                    <p className="mt-1 break-words text-sm font-semibold text-sky-300 dark:text-sky-300">{formatCurrency(totalPaid)}</p>
                   </div>
                 </div>
               </div>
@@ -482,7 +482,7 @@ export default function DriverDashboard() {
                         <span className="min-w-0 break-words font-medium">
                           {payment.location?.name || payment.activity?.location?.name || t("common.washouts")}
                         </span>
-                        <span className="min-w-0 break-words font-semibold sm:shrink-0">{formatCurrency(Number(payment.amount || 0) + Number((payment.tipAmountCents || 0) / 100))}</span>
+                        <span className="min-w-0 break-words font-semibold text-sky-300 dark:text-sky-300 sm:shrink-0">{formatCurrency(Number(payment.amount || 0) + Number((payment.tipAmountCents || 0) / 100))}</span>
                       </div>
                       <p className="mt-1 break-words text-xs text-amber-700 dark:text-amber-300">
                         {t("driver.dashboard.awaitingTipPayoutSetup")}
@@ -562,7 +562,7 @@ export default function DriverDashboard() {
                   <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
                     {lotteryActive ? t("driver.dashboard.lotteryActiveTitle") : t("driver.dashboard.lotteryDisabledTitle")}
                   </h3>
-                  <p className="break-words text-sm text-muted-foreground">
+                  <p className="break-words text-sm text-sky-500 dark:text-sky-300">
                     {currentLotteryStatusMessage}
                   </p>
                 </div>
@@ -833,9 +833,9 @@ export default function DriverDashboard() {
             title={t("driver.dashboard.recentWashouts")}
             actions={
               <Button
-                variant="ghost"
+                variant="default"
                 size="sm"
-                className="h-auto min-h-9 w-full !whitespace-normal px-2 text-primary hover:text-primary/80 sm:w-auto"
+                className="h-auto min-h-9 w-full !whitespace-normal bg-sky-600 px-3 text-white hover:bg-sky-700 sm:w-auto"
                 onClick={() => setLocation('/activity')}
                 data-testid="button-view-all"
               >
@@ -919,11 +919,11 @@ export default function DriverDashboard() {
                           {translateWashoutApprovalStatus(activity.washout_activities?.status || activity.status, t)}
                         </DSStatusChip>
                       </div>
-                      <p className="mt-2 break-words text-xs text-muted-foreground">
-                        {activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName
-                          ? t("driver.activity.ownerName", { name: `${activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName} ${activity.location?.owner?.user?.lastName || activity.washout_locations?.owner?.user?.lastName || ''}`.trim() })
-                          : t("driver.dashboard.ownerContactUnavailable")}
-                      </p>
+                      {(activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName) && (
+                        <p className="mt-2 break-words text-xs text-muted-foreground">
+                          {t("driver.activity.ownerName", { name: `${activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName} ${activity.location?.owner?.user?.lastName || activity.washout_locations?.owner?.user?.lastName || ''}`.trim() })}
+                        </p>
+                      )}
                     </DSCard>
                   </div>
 
