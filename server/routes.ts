@@ -6119,12 +6119,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         priority: 'normal'
       };
 
-      await storage.createMessage(adminMessage);
-      console.log("[TERMS_AGREEMENT_ADMIN_MESSAGE_CREATED]", {
-        role: "owner",
-        userId,
-        acceptedVersions: agreementData.versions.length,
-      });
+      try {
+        await storage.createMessage(adminMessage);
+        console.log("[TERMS_AGREEMENT_ADMIN_MESSAGE_CREATED]", {
+          role: "owner",
+          userId,
+          acceptedVersions: agreementData.versions.length,
+        });
+      } catch (messageError) {
+        console.warn("[TERMS_AGREEMENT_MESSAGE_WARNING]", {
+          role: "owner",
+          userId,
+          error: messageError,
+        });
+      }
 
       console.log(`📋 Terms agreed by owner: ${agreementData.ownerName} (${agreementData.ownerEmail}) at ${agreementData.agreedAt}`);
 
@@ -6248,12 +6256,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userPhone: user.phone || ''
       };
 
-      await storage.createMessage(adminMessage);
-      console.log("[TERMS_AGREEMENT_ADMIN_MESSAGE_CREATED]", {
-        role: "driver",
-        userId,
-        acceptedVersions: agreementData.versions.length,
-      });
+      try {
+        await storage.createMessage(adminMessage);
+        console.log("[TERMS_AGREEMENT_ADMIN_MESSAGE_CREATED]", {
+          role: "driver",
+          userId,
+          acceptedVersions: agreementData.versions.length,
+        });
+      } catch (messageError) {
+        console.warn("[TERMS_AGREEMENT_MESSAGE_WARNING]", {
+          role: "driver",
+          userId,
+          error: messageError,
+        });
+      }
 
       console.log(`💳 Driver wallet terms agreed: ${agreementData.driverName} at ${agreementData.agreedAt}`);
 
