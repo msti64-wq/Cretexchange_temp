@@ -18,6 +18,7 @@ import { formatAddress } from "@shared/addressUtils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
+import { apiRequest } from "@/lib/queryClient";
 
 type DriverDashboardStatsRange = "today" | "week" | "month";
 
@@ -149,12 +150,11 @@ export default function DriverDashboard() {
     refetchInterval: 60000, // Refresh every minute
   });
 
-  const { data: lotteryEntries, isLoading: lotteryEntriesLoading } = useQuery<any[]>({
+  const { data: lotteryEntries, isLoading: lotteryEntriesLoading, error: lotteryEntriesError } = useQuery<any[]>({
     queryKey: ['/api/drivers/lottery-entries'],
     queryFn: async () => {
-      const res = await fetch(`/api/drivers/lottery-entries`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch entries');
-      return res.json();
+      const response = await apiRequest("GET", "/api/drivers/lottery-entries");
+      return response.json();
     },
     enabled: showLotteryEntries,
   });
@@ -607,6 +607,14 @@ export default function DriverDashboard() {
                           <div key={i} className="h-12 rounded-2xl bg-muted/50" />
                         ))}
                       </div>
+                    ) : lotteryEntriesError ? (
+                      <DashboardEmptyState
+                        title={t("common.error")}
+                        description={lotteryEntriesError instanceof Error ? lotteryEntriesError.message : t("driver.dashboard.loadingEntries")}
+                        icon={Ticket}
+                        titleClassName="text-red-300 dark:text-red-300"
+                        toneClassName="bg-red-50 text-foreground dark:bg-red-950/30 dark:text-foreground"
+                      />
                     ) : lotteryEntries && lotteryEntries.length > 0 ? (
                       <div className="max-h-64 space-y-2 overflow-y-auto">
                         {lotteryEntries.map((entry: any) => (
