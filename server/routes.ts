@@ -6048,7 +6048,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      await ensureCurrentTermsVersions();
+      try {
+        await ensureCurrentTermsVersions();
+      } catch (versionError) {
+        console.warn("[TERMS_VERSION_INIT_WARNING]", {
+          role: "owner",
+          userId,
+          error: versionError,
+        });
+      }
       const state = await getTermsStateForUser(
         { id: userId, role: "owner" },
         undefined,
@@ -6083,7 +6091,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Owner access required" });
       }
 
-      await ensureCurrentTermsVersions();
+      try {
+        await ensureCurrentTermsVersions();
+      } catch (versionError) {
+        console.warn("[TERMS_VERSION_INIT_WARNING]", {
+          role: "owner",
+          userId,
+          error: versionError,
+        });
+      }
       const state = await recordCurrentTermsAcceptance(
         { id: user.id, role: "owner" },
         req,
@@ -6163,7 +6179,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver not found" });
       }
 
-      await ensureCurrentTermsVersions();
+      try {
+        await ensureCurrentTermsVersions();
+      } catch (versionError) {
+        console.warn("[TERMS_VERSION_INIT_WARNING]", {
+          role: "driver",
+          userId,
+          error: versionError,
+        });
+      }
       const state = await getTermsStateForUser(
         { id: userId, role: "driver" },
         undefined,
@@ -6200,7 +6224,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver profile not found" });
       }
 
-      await ensureCurrentTermsVersions();
+      try {
+        await ensureCurrentTermsVersions();
+      } catch (versionError) {
+        console.warn("[TERMS_VERSION_INIT_WARNING]", {
+          role: "driver",
+          userId,
+          error: versionError,
+        });
+      }
       const existingState = await getTermsStateForUser(
         { id: user.id, role: "driver" },
         undefined,
