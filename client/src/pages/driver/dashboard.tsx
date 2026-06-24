@@ -14,9 +14,10 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2, RefreshCw, Navigation, CreditCard, Truck, Route, Loader2, ShieldAlert, ArrowRight, Activity, MapPinned } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatAddress } from "@shared/addressUtils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { useLanguage } from "@/lib/i18n";
-import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
+import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 
 type DriverDashboardStatsRange = "today" | "week" | "month";
 
@@ -241,7 +242,11 @@ export default function DriverDashboard() {
   ) : 0;
   const latestActivity = Array.isArray(recentActivities) && recentActivities.length > 0 ? recentActivities[0] : null;
   const latestLocationName = latestActivity?.washout_locations?.name || latestActivity?.location?.name || t("driver.dashboard.latestStop");
-  const latestLocationAddress = latestActivity?.washout_locations?.address || latestActivity?.location?.address || "";
+  const latestLocationAddress = latestActivity
+    ? (latestActivity.washout_locations?.address
+      || latestActivity.location?.address
+      || formatAddress(latestActivity.washout_locations || latestActivity.location || {}))
+    : "";
   const latestActivityAmount = Number(latestActivity?.washout_activities?.amount || latestActivity?.amount || 0);
   const latestActivityStatus = latestActivity ? (latestActivity.washout_activities?.status || latestActivity.status) : null;
   const selectedStatsLabel = getDriverStatsRangeLabel(statsRange, t, selectedStats?.label);
@@ -563,7 +568,7 @@ export default function DriverDashboard() {
                 </div>
               </div>
               <div className="min-w-0 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-left sm:text-right">
-                <div className="break-words text-3xl font-semibold tracking-tight text-foreground" data-testid="text-lottery-entries">
+                <div className="break-words text-3xl font-semibold tracking-tight text-sky-500 dark:text-sky-300" data-testid="text-lottery-entries">
                   {lotteryActive ? lotteryEntryCount : '—'}
                 </div>
                 <div className="break-words text-xs uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.14em]">
@@ -584,7 +589,7 @@ export default function DriverDashboard() {
               <>
                 <button
                   onClick={() => setShowLotteryEntries(!showLotteryEntries)}
-                  className="flex w-full min-w-0 items-center gap-2 rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-left text-xs font-semibold text-foreground transition-colors hover:bg-muted/60"
+                  className="flex w-full min-w-0 items-center gap-2 rounded-2xl border border-sky-700/60 bg-slate-800/80 px-3 py-2 text-left text-xs font-semibold text-sky-400 transition-colors hover:bg-sky-600 hover:text-white dark:bg-slate-900/80 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white"
                 >
                   {showLotteryEntries ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
                   <span className="min-w-0 break-words">{showLotteryEntries ? t("driver.dashboard.hideEntries") : t("driver.dashboard.viewEntries")}</span>
@@ -712,7 +717,7 @@ export default function DriverDashboard() {
                       key={option.value}
                       value={option.value}
                       size="sm"
-                      className="h-auto min-h-8 min-w-0 flex-1 basis-0 whitespace-normal rounded-md px-2 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm sm:flex-none sm:basis-auto sm:px-3"
+                      className="h-auto min-h-8 min-w-0 flex-1 basis-0 whitespace-normal rounded-md border border-border/70 bg-slate-900/80 px-2 text-xs text-slate-100 transition-colors hover:bg-slate-700 hover:text-white data-[state=on]:border-orange-700 data-[state=on]:bg-orange-600 data-[state=on]:text-white data-[state=on]:shadow-sm sm:flex-none sm:basis-auto sm:px-3 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white"
                       data-testid={`button-washout-stats-${option.value}`}
                     >
                       <span className="truncate">{t(option.labelKey)}</span>
@@ -816,7 +821,7 @@ export default function DriverDashboard() {
                 </div>
               </div>
               <div className="flex min-w-0 flex-col gap-1 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                <span className="break-words">{t("driver.dashboard.paymentsProcessedWeekly")}</span>
+                <span className="break-words text-sky-500 dark:text-sky-300">{t("driver.dashboard.paymentsProcessedWeekly")}</span>
                 <span className="break-words font-medium text-foreground sm:text-right">{t("driver.dashboard.fullAmounts")}</span>
               </div>
           </div>
@@ -897,7 +902,7 @@ export default function DriverDashboard() {
                         <span className="truncate">{activity.washout_locations?.name || activity.location?.name || t("driver.activity.unknownLocation")}</span>
                       </div>
                       <div className="mt-1 break-words text-xs text-muted-foreground">
-                        {activity.washout_locations?.address || activity.location?.address || t("driver.dashboard.addressUnavailable")}
+                        {activity.washout_locations?.address || activity.location?.address || formatAddress(activity.washout_locations || activity.location || {}) || t("driver.dashboard.addressUnavailable")}
                       </div>
                     </DSCard>
                     <DSCard padding="sm" elevated={false} className="min-w-0">
@@ -931,7 +936,11 @@ export default function DriverDashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-auto min-h-9 w-full !whitespace-normal px-3 text-xs sm:w-auto"
+                      className={`h-auto min-h-9 w-full !whitespace-normal px-3 text-xs sm:w-auto ${
+                        isPhotoModalOpen && selectedActivity?.id === activity.id
+                          ? "border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white"
+                          : "border-slate-700 bg-slate-800/80 text-slate-100 hover:bg-slate-700 hover:text-white"
+                      }`}
                       onClick={() => {
                         console.log("Driver Photo Button Clicked:", activity);
                         setSelectedActivity(activity);

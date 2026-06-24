@@ -557,7 +557,12 @@ export default function OwnerDashboard() {
               >
                 <BarChart data={ownerStatusChartData} margin={{ left: -18, right: 8, top: 8 }}>
                   <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "hsl(var(--foreground))" }}
+                  />
                   <YAxis hide />
                   <ChartTooltip
                     content={
@@ -582,7 +587,7 @@ export default function OwnerDashboard() {
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.totalPayments")}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.currentMonthActivity")}</p>
                   </div>
-                  <span className="text-2xl font-semibold tracking-tight text-foreground" data-testid="text-month-total">
+                  <span className="text-2xl font-semibold tracking-tight text-sky-500 dark:text-sky-300" data-testid="text-month-total">
                     {formatCurrency(monthStats?.totalPayments || 0)}
                   </span>
                 </div>
@@ -590,7 +595,7 @@ export default function OwnerDashboard() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.pendingPayments")}</p>
-                  <p className="mt-2 text-xl font-semibold tracking-tight text-foreground" data-testid="text-pending-total">
+                  <p className="mt-2 text-xl font-semibold tracking-tight text-sky-500 dark:text-sky-300" data-testid="text-pending-total">
                     {formatCentsToDollars(pendingPaymentsCents)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.awaitingReview")}</p>
@@ -626,26 +631,26 @@ export default function OwnerDashboard() {
           <DSSectionHeader
             title={t("owner.dashboard.recentActivity")}
             actions={
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-              <Select value={dateRange} onValueChange={(value) => setDateRange(value as typeof dateRange)}>
-                <SelectTrigger className="h-9 w-full text-xs sm:w-36" data-testid="select-date-range">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today" data-testid="option-today">{t("owner.dashboard.today")}</SelectItem>
-                  <SelectItem value="yesterday" data-testid="option-yesterday">{t("owner.dashboard.yesterday")}</SelectItem>
-                  <SelectItem value="7days" data-testid="option-7days">{t("owner.dashboard.last7Days")}</SelectItem>
-                  <SelectItem value="30days" data-testid="option-30days">{t("owner.dashboard.last30Days")}</SelectItem>
-                  <SelectItem value="90days" data-testid="option-90days">{t("owner.dashboard.last90Days")}</SelectItem>
-                  <SelectItem value="all" data-testid="option-all">{t("owner.dashboard.allTime")}</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-9 justify-start px-2 text-primary hover:text-primary/80 sm:justify-center"
-                onClick={() => setLocation('/drivers')}
-                data-testid="button-view-all-activity"
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+                <Select value={dateRange} onValueChange={(value) => setDateRange(value as typeof dateRange)}>
+                  <SelectTrigger className="h-9 w-full border-border bg-card text-foreground shadow-sm data-[placeholder]:text-muted-foreground sm:w-36" data-testid="select-date-range">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today" data-testid="option-today">{t("owner.dashboard.today")}</SelectItem>
+                    <SelectItem value="yesterday" data-testid="option-yesterday">{t("owner.dashboard.yesterday")}</SelectItem>
+                    <SelectItem value="7days" data-testid="option-7days">{t("owner.dashboard.last7Days")}</SelectItem>
+                    <SelectItem value="30days" data-testid="option-30days">{t("owner.dashboard.last30Days")}</SelectItem>
+                    <SelectItem value="90days" data-testid="option-90days">{t("owner.dashboard.last90Days")}</SelectItem>
+                    <SelectItem value="all" data-testid="option-all">{t("owner.dashboard.allTime")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-9 justify-start px-3 sm:justify-center"
+                  onClick={() => setLocation('/drivers')}
+                  data-testid="button-view-all-activity"
                 >
                   {t("common.viewAll")}
                   <ChevronRight className="ml-1 h-4 w-4" />
@@ -773,7 +778,7 @@ export default function OwnerDashboard() {
                 toneClassName="bg-slate-50 text-foreground dark:bg-slate-950/30 dark:text-foreground"
                 action={
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="sm"
                     className="h-9"
                     onClick={() => setLocation('/locations')}
