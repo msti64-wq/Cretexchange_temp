@@ -80,8 +80,9 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentStorageKey, LegalDocumentVersi
       {
         heading: "3. Fees, Payments, and Records",
         body: [
-          "Owner billing, platform fees, driver incentives, and payout timing are handled according to the pricing and billing settings shown in the app.",
+          "Owner charges are currently limited to per-washout platform fees and any other fees disclosed in the app's current pricing and billing settings. Owners are not currently charged recurring subscription fees.",
           "CreteXchange may retain operational records needed for billing, dispute resolution, compliance, and support.",
+          "CreteXchange may change fees in the future with advance notice and updated terms.",
         ],
       },
       {
@@ -115,8 +116,9 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentStorageKey, LegalDocumentVersi
       {
         heading: "3. Tarifas, pagos y registros",
         body: [
-          "La facturación de propietarios, tarifas de plataforma, incentivos para conductores y tiempos de pago se manejan según la configuración mostrada en la app.",
+          "Los cargos para propietarios actualmente se limitan a tarifas de plataforma por lavado y cualquier otra tarifa revelada en la configuración actual de precios y facturación de la app. Actualmente no se cobran cuotas de suscripción recurrentes a los propietarios.",
           "CreteXchange puede conservar registros operativos necesarios para facturación, disputas, cumplimiento y soporte.",
+          "CreteXchange puede cambiar las tarifas en el futuro con aviso previo y términos actualizados.",
         ],
       },
       {
@@ -292,8 +294,10 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentStorageKey, LegalDocumentVersi
       {
         heading: "3. Owner Billing and Driver Incentives",
         body: [
-          "Owners are responsible for platform fees, washout charges, location fees, and any owner-funded driver incentive tips configured for their account or locations.",
+          "Owners are not currently charged recurring subscription fees.",
+          "Owners may still be charged per-washout platform fees, and any owner/location-configured driver incentive tips are separate from platform fees.",
           "Owner billing is separate from driver payout onboarding. Drivers do not add cards or pay CreteXchange to receive funded tips.",
+          "CreteXchange may change fees in the future with advance notice and updated terms.",
         ],
       },
       {
@@ -328,8 +332,10 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentStorageKey, LegalDocumentVersi
       {
         heading: "3. Facturación del propietario e incentivos al conductor",
         body: [
-          "Los propietarios son responsables de tarifas de plataforma, cargos de lavado, tarifas de ubicación y cualquier propina de incentivo financiada por el propietario configurada para su cuenta o ubicaciones.",
+          "Actualmente no se cobran cuotas de suscripción recurrentes a los propietarios.",
+          "Los propietarios aún pueden ser cobrados por tarifas de plataforma por lavado, y cualquier propina de incentivo al conductor configurada por el propietario o por la ubicación es independiente de las tarifas de plataforma.",
           "La facturación del propietario es independiente de la incorporación de pagos del conductor. Los conductores no agregan tarjetas ni pagan a CreteXchange para recibir propinas financiadas.",
+          "CreteXchange puede cambiar las tarifas en el futuro con aviso previo y términos actualizados.",
         ],
       },
       {

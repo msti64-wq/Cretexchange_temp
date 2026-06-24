@@ -81,6 +81,8 @@ Current billing behavior:
   - paid platform fees
   - total platform fees
 
+Owners are not currently charged recurring subscription fees. Current owner charges are per-approved-washout platform fees, plus any owner/location-configured driver incentive tips shown in the app. Billing cadence controls when charges are processed; it does not create a recurring subscription charge. CreteXchange may change fees in the future with advance notice and updated terms.
+
 Your owner dashboard and billing page now use the same server-side summary, so the numbers should match.
 
 Owner wallet accounting uses completed billing batches and historical owner charge rows. See [docs/owner-wallet-accounting.md](./owner-wallet-accounting.md).

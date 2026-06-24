@@ -95,6 +95,8 @@ Billing currently works like this:
 - owner Stripe Connect is not required for owner billing
 - driver Stripe onboarding is not required for owner billing
 
+Owners are not currently charged recurring subscription fees. Billing cadence only controls when approved per-washout platform fees are requested or charged. CreteXchange may change fees in the future with advance notice and updated terms.
+
 If a charge succeeds:
 
 - the billing batch becomes paid/completed

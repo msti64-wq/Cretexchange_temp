@@ -116,6 +116,8 @@ Owner billing:
 - bills the owner’s saved Stripe customer/payment method off-session
 - does not require Stripe Connect for the owner
 - does not require driver payout readiness
+- owner billing cadence controls per-washout platform fee timing; it is not a recurring subscription fee
+- owners are not currently charged recurring subscription fees, but fee schedules may change in the future with advance notice and updated terms
 
 Driver tip payouts:
 

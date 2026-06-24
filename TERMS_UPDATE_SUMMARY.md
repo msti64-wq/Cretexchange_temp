@@ -1,5 +1,9 @@
 # Terms and Conditions Update Summary
 
+> Historical implementation summary only. This document reflects an older fee model and must not be treated as current owner billing policy.
+>
+> Owners are not currently charged recurring subscription fees. Current production billing behavior is documented in `docs/billing.md` and `docs/USER_GUIDE_OWNER.md`.
+
 ## Overview
 Updated comprehensive Terms and Conditions for both Drivers and Location Owners to reflect all current platform features, fees, and services.
 
@@ -89,7 +93,7 @@ Updated comprehensive Terms and Conditions for both Drivers and Location Owners 
 
 ### Owner Terms Location:
 - Component: `client/src/components/OwnerTermsDialog.tsx`
-- Shown when: Owner sets up wallet or subscription
+- Shown when: Owner sets up wallet or related terms flow (historical)
 - Access: "View Full Terms" button in wallet wizard
 - Acceptance tracked: Checkbox in wallet setup
 
