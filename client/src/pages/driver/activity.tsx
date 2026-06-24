@@ -2,15 +2,72 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { PhotoModal } from "@/components/PhotoModal";
 import { Calendar, Download, MapPin, Clock, Image as ImageIcon, Filter } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
-import { exportToCsv } from "@/lib/csvExport";
+import { Calendar as DateCalendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n";
-import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
+import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
+
+function formatDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateInputValue(value: string) {
+  if (!value) return undefined;
+  const [year, month, day] = value.split("-").map((part) => Number(part));
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+function DateFilterButton({
+  label,
+  value,
+  onValueChange,
+  testId,
+}: {
+  label: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  testId: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedDate = parseDateInputValue(value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto min-h-10 w-full justify-between border-slate-700 bg-slate-800/90 px-3 text-left text-slate-100 hover:bg-slate-700 hover:text-white"
+          data-testid={testId}
+        >
+          <span className="truncate">{selectedDate ? formatDate(selectedDate) : label}</span>
+          <Calendar className="h-4 w-4 shrink-0 text-sky-300" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <DateCalendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={(date) => {
+            if (!date) return;
+            onValueChange(formatDateInputValue(date));
+            setOpen(false);
+          }}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function DriverActivity() {
   const { t, language } = useLanguage();
@@ -123,10 +180,10 @@ export default function DriverActivity() {
             description={t("driver.activity.activityHistory")}
             actions={
               <Button 
-                variant="outline" 
+                variant="default" 
                 size="sm"
                 onClick={handleExport}
-                className="w-full sm:w-auto"
+                className="w-full border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white sm:w-auto"
                 data-testid="button-export"
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -138,24 +195,20 @@ export default function DriverActivity() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 block text-sm text-muted-foreground">{t("driver.activity.startDate")}</label>
-                <Input
-                  type="date"
+                <DateFilterButton
+                  label={t("driver.activity.startDate")}
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min="2020-01-01"
-                  max="2030-12-31"
-                  data-testid="input-start-date"
+                  onValueChange={setStartDate}
+                  testId="button-start-date"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm text-muted-foreground">{t("driver.activity.endDate")}</label>
-                <Input
-                  type="date"
+                <DateFilterButton
+                  label={t("driver.activity.endDate")}
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min="2020-01-01"
-                  max="2030-12-31"
-                  data-testid="input-end-date"
+                  onValueChange={setEndDate}
+                  testId="button-end-date"
                 />
               </div>
             </div>
@@ -165,6 +218,11 @@ export default function DriverActivity() {
                 size="sm"
                 variant={filterStatus === "all" ? "default" : "outline"}
                 onClick={() => setFilterStatus("all")}
+                className={
+                  filterStatus === "all"
+                    ? "border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white"
+                    : "border-slate-700 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white"
+                }
                 data-testid="button-filter-all"
               >
                 {t("common.all")}
@@ -173,6 +231,11 @@ export default function DriverActivity() {
                 size="sm"
                 variant={filterStatus === "verified" ? "default" : "outline"}
                 onClick={() => setFilterStatus("verified")}
+                className={
+                  filterStatus === "verified"
+                    ? "border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white"
+                    : "border-slate-700 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white"
+                }
                 data-testid="button-filter-verified"
               >
                 {t("driver.activity.verified")}
@@ -181,6 +244,11 @@ export default function DriverActivity() {
                 size="sm"
                 variant={filterStatus === "pending" ? "default" : "outline"}
                 onClick={() => setFilterStatus("pending")}
+                className={
+                  filterStatus === "pending"
+                    ? "border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white"
+                    : "border-slate-700 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white"
+                }
                 data-testid="button-filter-pending"
               >
                 {t("driver.activity.pending")}

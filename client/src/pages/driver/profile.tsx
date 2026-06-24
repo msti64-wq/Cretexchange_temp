@@ -1,11 +1,10 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { DriverHeader } from "@/components/DriverHeader";
@@ -27,6 +26,7 @@ export default function DriverProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const contrastFieldClassName = "!opacity-100 text-foreground disabled:!opacity-100 disabled:text-foreground";
 
   const { data: user, isLoading, refetch } = useQuery<any>({
     queryKey: ['/api/auth/user'],
@@ -193,6 +193,7 @@ export default function DriverProfile() {
                 variant={isEditing ? "default" : "outline"}
                 size="sm"
                 onClick={() => setIsEditing(!isEditing)}
+                className="border-slate-700 bg-slate-800/90 text-white hover:bg-slate-700 hover:text-white"
                 data-testid="button-edit-profile"
               >
                 {isEditing ? t("driver.profile.cancel") : t("driver.profile.editProfile")}
@@ -225,6 +226,7 @@ export default function DriverProfile() {
                     value={formData.firstName}
                     onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                     disabled={!isEditing}
+                    className={contrastFieldClassName}
                     data-testid="input-first-name"
                   />
                 </div>
@@ -235,6 +237,7 @@ export default function DriverProfile() {
                     value={formData.lastName}
                     onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                     disabled={!isEditing}
+                    className={contrastFieldClassName}
                     data-testid="input-last-name"
                   />
                 </div>
@@ -248,6 +251,7 @@ export default function DriverProfile() {
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   disabled={!isEditing}
+                  className={contrastFieldClassName}
                   data-testid="input-email"
                 />
               </div>
@@ -259,6 +263,7 @@ export default function DriverProfile() {
                   value={formData.phone}
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
                   disabled={!isEditing}
+                  className={contrastFieldClassName}
                   data-testid="input-phone"
                 />
               </div>
@@ -270,6 +275,7 @@ export default function DriverProfile() {
                   value={formData.street}
                   onChange={(e) => setFormData({...formData, street: e.target.value})}
                   disabled={!isEditing}
+                  className={contrastFieldClassName}
                   data-testid="input-street"
                 />
               </div>
@@ -282,6 +288,7 @@ export default function DriverProfile() {
                     value={formData.city}
                     onChange={(e) => setFormData({...formData, city: e.target.value})}
                     disabled={!isEditing}
+                    className={contrastFieldClassName}
                     data-testid="input-city"
                   />
                 </div>
@@ -294,6 +301,7 @@ export default function DriverProfile() {
                     onChange={(e) => setFormData({...formData, state: e.target.value})}
                     disabled={!isEditing}
                     maxLength={2}
+                    className={contrastFieldClassName}
                     data-testid="input-state"
                   />
                 </div>
@@ -306,6 +314,7 @@ export default function DriverProfile() {
                   value={formData.zip}
                   onChange={(e) => setFormData({...formData, zip: e.target.value})}
                   disabled={!isEditing}
+                  className={contrastFieldClassName}
                   data-testid="input-zip"
                 />
               </div>
@@ -329,6 +338,7 @@ export default function DriverProfile() {
                   value={formData.employerName}
                   onChange={(e) => setFormData({...formData, employerName: e.target.value})}
                   disabled={!isEditing}
+                  className={contrastFieldClassName}
                   data-testid="input-employer-name"
                 />
               </div>
@@ -340,6 +350,7 @@ export default function DriverProfile() {
                   value={formData.employerStreet}
                   onChange={(e) => setFormData({...formData, employerStreet: e.target.value})}
                   disabled={!isEditing}
+                  className={contrastFieldClassName}
                   data-testid="input-employer-street"
                 />
               </div>
@@ -352,6 +363,7 @@ export default function DriverProfile() {
                     value={formData.employerCity}
                     onChange={(e) => setFormData({...formData, employerCity: e.target.value})}
                     disabled={!isEditing}
+                    className={contrastFieldClassName}
                     data-testid="input-employer-city"
                   />
                 </div>
@@ -364,6 +376,7 @@ export default function DriverProfile() {
                     onChange={(e) => setFormData({...formData, employerState: e.target.value})}
                     disabled={!isEditing}
                     maxLength={2}
+                    className={contrastFieldClassName}
                     data-testid="input-employer-state"
                   />
                 </div>
@@ -376,6 +389,7 @@ export default function DriverProfile() {
                   value={formData.employerZip}
                   onChange={(e) => setFormData({...formData, employerZip: e.target.value})}
                   disabled={!isEditing}
+                  className={contrastFieldClassName}
                   data-testid="input-employer-zip"
                 />
               </div>
@@ -387,6 +401,7 @@ export default function DriverProfile() {
                   value={formData.employerPhone}
                   onChange={(e) => setFormData({...formData, employerPhone: e.target.value})}
                   disabled={!isEditing}
+                  className={contrastFieldClassName}
                   data-testid="input-employer-phone"
                 />
               </div>
@@ -399,6 +414,7 @@ export default function DriverProfile() {
                   value={formData.truckNumber}
                   onChange={(e) => setFormData({...formData, truckNumber: e.target.value})}
                   disabled={!isEditing}
+                  className={contrastFieldClassName}
                   data-testid="input-truck-number"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
@@ -427,7 +443,7 @@ export default function DriverProfile() {
                   onValueChange={(val) => setFormData({ ...formData, payoutPreference: val, payoutPreferenceNote: val !== "other_prize" ? "" : formData.payoutPreferenceNote })}
                   disabled={!isEditing}
                 >
-                  <SelectTrigger data-testid="select-payout-preference">
+                  <SelectTrigger className={contrastFieldClassName} data-testid="select-payout-preference">
                     <SelectValue placeholder={t("driver.profile.selectPreference")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -444,14 +460,15 @@ export default function DriverProfile() {
               {formData.payoutPreference === "other_prize" && (
                 <div className="space-y-2">
                   <Label htmlFor="payoutPreferenceNote">{t("driver.profile.tellUsMore")}</Label>
-                  <Input
-                    id="payoutPreferenceNote"
-                    placeholder="e.g., merchandise, restaurant gift card, tool store credit..."
-                    value={formData.payoutPreferenceNote}
-                    onChange={(e) => setFormData({ ...formData, payoutPreferenceNote: e.target.value })}
-                    disabled={!isEditing}
-                    data-testid="input-payout-preference-note"
-                  />
+                <Input
+                  id="payoutPreferenceNote"
+                  placeholder="e.g., merchandise, restaurant gift card, tool store credit..."
+                  value={formData.payoutPreferenceNote}
+                  onChange={(e) => setFormData({ ...formData, payoutPreferenceNote: e.target.value })}
+                  disabled={!isEditing}
+                  className={contrastFieldClassName}
+                  data-testid="input-payout-preference-note"
+                />
                 </div>
               )}
 
@@ -481,7 +498,7 @@ export default function DriverProfile() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
                   <p className="text-sm font-medium">{t("driver.profile.installCreteXchange")}</p>
                   <p className="text-xs text-muted-foreground">
@@ -497,6 +514,7 @@ export default function DriverProfile() {
                     }
                     setShowInstallPrompt(true);
                   }}
+                  className="w-full border-slate-700 bg-slate-800/90 text-white hover:bg-slate-700 hover:text-white sm:w-auto"
                   data-testid="button-install-app-manual"
                 >
                   <Smartphone className="w-4 h-4 mr-2" />
@@ -521,7 +539,7 @@ export default function DriverProfile() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
                   <p className="text-sm font-medium">{t("driver.profile.driverTermsAgreement")}</p>
                   <div className="flex items-center gap-2">
@@ -539,8 +557,8 @@ export default function DriverProfile() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowTermsDialog(true)}
+                  className="w-full border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white sm:w-auto"
                   data-testid="button-view-terms"
-                  className={!termsStatus?.hasAgreed ? "border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-400 dark:text-red-400 dark:hover:bg-red-900/20" : ""}
                 >
                   <Eye className="w-4 h-4 mr-2" />
                   {!termsStatus?.hasAgreed ? t("driver.profile.mustReadTerms") : t("driver.profile.viewTerms")}
