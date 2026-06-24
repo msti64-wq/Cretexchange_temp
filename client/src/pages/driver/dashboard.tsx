@@ -150,9 +150,9 @@ export default function DriverDashboard() {
   });
 
   const { data: lotteryEntries, isLoading: lotteryEntriesLoading } = useQuery<any[]>({
-    queryKey: ['/api/drivers/lottery-entries', currentMonth, currentYear],
+    queryKey: ['/api/drivers/lottery-entries'],
     queryFn: async () => {
-      const res = await fetch(`/api/drivers/lottery-entries?month=${currentMonth}&year=${currentYear}`, { credentials: 'include' });
+      const res = await fetch(`/api/drivers/lottery-entries`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch entries');
       return res.json();
     },
@@ -648,6 +648,7 @@ export default function DriverDashboard() {
                         title={t("driver.dashboard.noEntriesFound")}
                         description={t("driver.dashboard.noEntriesDescription")}
                         icon={Ticket}
+                        titleClassName="text-sky-300 dark:text-sky-300"
                         toneClassName="bg-amber-50 text-foreground dark:bg-amber-950/30 dark:text-foreground"
                       />
                     )}

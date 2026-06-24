@@ -11,6 +11,7 @@ interface DashboardEmptyStateProps {
   badge?: ReactNode;
   className?: string;
   toneClassName?: string;
+  titleClassName?: string;
   dataTestId?: string;
 }
 
@@ -22,6 +23,7 @@ export function DashboardEmptyState({
   badge,
   className,
   toneClassName,
+  titleClassName,
   dataTestId,
 }: DashboardEmptyStateProps) {
   return (
@@ -47,7 +49,7 @@ export function DashboardEmptyState({
         <div className="flex min-w-0 flex-col justify-between gap-4">
           <div className="space-y-2">
             <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.18em]">CreteXchange workspace</p>
-            <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+            <h3 className={cn("break-words text-lg font-semibold tracking-tight text-foreground", titleClassName)}>{title}</h3>
             <div className="max-w-xl break-words text-sm text-muted-foreground">{description}</div>
           </div>
           {action && <div className="flex w-full min-w-0 flex-wrap gap-2">{action}</div>}
