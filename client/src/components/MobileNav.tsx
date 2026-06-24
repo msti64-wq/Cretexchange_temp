@@ -80,7 +80,7 @@ export function MobileNav({ role }: MobileNavProps) {
 
   return (
     <nav className={cn(
-      "mobile-nav fixed bottom-0 left-0 right-0 z-50 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2",
+      "mobile-nav !fixed inset-x-0 bottom-0 z-50 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2",
       fitViewportNav ? "overflow-x-hidden" : "overflow-x-auto"
     )}>
       <div className={cn(

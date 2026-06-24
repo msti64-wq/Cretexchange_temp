@@ -6069,6 +6069,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const language = normalizeLegalLanguage(req.body?.language);
       const owner = await storage.getOwner(userId);
       const user = await storage.getUser(userId);
+      console.log("[TERMS_AGREEMENT_ATTEMPT]", {
+        role: "owner",
+        userId,
+        language,
+        hasTermsTypes: Array.isArray(req.body?.termsTypes),
+      });
       
       if (!owner || !user) {
         return res.status(404).json({ message: "Owner not found" });
@@ -6085,6 +6091,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         language,
       );
       const response = buildTermsStatusResponse(state);
+      console.log("[TERMS_AGREEMENT_ACCEPTED]", {
+        role: "owner",
+        userId,
+        acceptedVersions: response.acceptedVersions.length,
+        requiresAcceptance: response.requiresAcceptance,
+      });
 
       const agreementData = {
         ownerId: owner.id,
@@ -6108,6 +6120,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       await storage.createMessage(adminMessage);
+      console.log("[TERMS_AGREEMENT_ADMIN_MESSAGE_CREATED]", {
+        role: "owner",
+        userId,
+        acceptedVersions: agreementData.versions.length,
+      });
 
       console.log(`📋 Terms agreed by owner: ${agreementData.ownerName} (${agreementData.ownerEmail}) at ${agreementData.agreedAt}`);
 
@@ -6117,7 +6134,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...response,
       });
     } catch (error) {
-      console.error("Error recording terms agreement:", error);
+      console.error("Error recording terms agreement:", {
+        role: "owner",
+        userId: req?.user?.id,
+        error,
+      });
       res.status(500).json({ message: "Failed to record terms agreement" });
     }
   });
@@ -6154,6 +6175,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const language = normalizeLegalLanguage(req.body?.language);
       const user = await storage.getUser(userId);
+      console.log("[TERMS_AGREEMENT_ATTEMPT]", {
+        role: "driver",
+        userId,
+        language,
+        hasTermsTypes: Array.isArray(req.body?.termsTypes),
+      });
       
       // Verify user is a driver
       if (!user || user.role !== 'driver') {
@@ -6189,6 +6216,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         language,
       );
       const response = buildTermsStatusResponse(state);
+      console.log("[TERMS_AGREEMENT_ACCEPTED]", {
+        role: "driver",
+        userId,
+        acceptedVersions: response.acceptedVersions.length,
+        requiresAcceptance: response.requiresAcceptance,
+      });
       const now = response.agreedAt ? new Date(response.agreedAt) : new Date();
       const ipAddress = req.get('x-forwarded-for') || req.ip || req.connection.remoteAddress || 'unknown';
       
@@ -6216,6 +6249,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       await storage.createMessage(adminMessage);
+      console.log("[TERMS_AGREEMENT_ADMIN_MESSAGE_CREATED]", {
+        role: "driver",
+        userId,
+        acceptedVersions: agreementData.versions.length,
+      });
 
       console.log(`💳 Driver wallet terms agreed: ${agreementData.driverName} at ${agreementData.agreedAt}`);
 
@@ -6225,7 +6263,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...response,
       });
     } catch (error) {
-      console.error("Error recording driver terms agreement:", error);
+      console.error("Error recording driver terms agreement:", {
+        role: "driver",
+        userId: req?.user?.id,
+        error,
+      });
       res.status(500).json({ message: "Failed to record terms agreement" });
     }
   });

@@ -86,15 +86,18 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
 
           {!readOnly && (
             <>
-              <div className="flex items-center space-x-2 p-3 border border-border rounded">
-                <Checkbox
-                  id="owner-terms-read"
-                  checked={hasReadTerms}
-                  onCheckedChange={(v) => setHasReadTerms(!!v)}
-                  data-testid="checkbox-owner-terms-read"
-                />
-                <label htmlFor="owner-terms-read" className="text-sm cursor-pointer">
+              <div className="space-y-3 rounded border border-border p-4">
+                <p className="text-sm font-medium text-foreground">
                   {t("legal.readAndUnderstand")}
+                </p>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    id="owner-terms-read"
+                    checked={hasReadTerms}
+                    onCheckedChange={(v) => setHasReadTerms(!!v)}
+                    data-testid="checkbox-owner-terms-read"
+                  />
+                  <span>{t("legal.iAgree")}</span>
                 </label>
               </div>
 

@@ -10,9 +10,15 @@ interface LegalDocumentViewerProps {
   role?: "driver" | "owner";
   documentIds?: LegalDocumentId[];
   language: LegalLanguage;
+  showAcceptanceSection?: boolean;
 }
 
-export function LegalDocumentViewer({ role, documentIds, language }: LegalDocumentViewerProps) {
+export function LegalDocumentViewer({
+  role,
+  documentIds,
+  language,
+  showAcceptanceSection = false,
+}: LegalDocumentViewerProps) {
   const resolvedDocuments = documentIds?.length
     ? documentIds.map((documentId) => resolveLegalDocument(documentId, language))
     : getRequiredLegalDocumentsForRole(role, language);
@@ -69,11 +75,13 @@ export function LegalDocumentViewer({ role, documentIds, language }: LegalDocume
             ))}
           </div>
 
-          <div className="border-t pt-4 bg-green-50 p-3 rounded">
-            <p className="font-semibold text-green-800 text-center">
-              {document.acceptanceText}
-            </p>
-          </div>
+          {showAcceptanceSection ? (
+            <div className="border-t pt-4 bg-green-50 p-3 rounded">
+              <p className="font-semibold text-green-800 text-center">
+                {document.acceptanceText}
+              </p>
+            </div>
+          ) : null}
         </article>
       ))}
     </div>

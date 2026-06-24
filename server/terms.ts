@@ -194,8 +194,21 @@ export async function recordCurrentTermsAcceptance(
   const acceptedAt = new Date();
   const ipAddress = getRequestIp(req);
   const userAgent = getRequestUserAgent(req);
+  console.log("[TERMS_ACCEPTANCE_WRITE_START]", {
+    userId: user.id,
+    role,
+    targetDocs: targetDocs.map((doc) => doc.termsType),
+    language,
+  });
 
   for (const doc of targetDocs) {
+    console.log("[TERMS_ACCEPTANCE_WRITE_DOC]", {
+      userId: user.id,
+      role,
+      termsType: doc.termsType,
+      storageKey: doc.storageKey,
+      version: doc.version,
+    });
     await storage.createTermsAcceptance({
       userId: user.id,
       role,
@@ -208,6 +221,11 @@ export async function recordCurrentTermsAcceptance(
       ipAddress,
       userAgent,
     });
+    console.log("[TERMS_ACCEPTANCE_WRITTEN_DOC]", {
+      userId: user.id,
+      role,
+      termsType: doc.termsType,
+    });
   }
 
   if (role === "driver" && targetDocs.some((doc) => doc.termsType === TERMS_TYPES.DRIVER_AGREEMENT)) {
@@ -216,6 +234,10 @@ export async function recordCurrentTermsAcceptance(
       await storage.updateDriver(driver.id, {
         hasAgreedToTerms: true,
         termsAgreedAt: acceptedAt,
+      });
+      console.log("[TERMS_ACCEPTANCE_DRIVER_UPDATED]", {
+        userId: user.id,
+        driverId: driver.id,
       });
     }
   }
@@ -226,6 +248,10 @@ export async function recordCurrentTermsAcceptance(
       await storage.updateOwner(owner.id, {
         hasAgreedToTerms: true,
         termsAgreedAt: acceptedAt,
+      });
+      console.log("[TERMS_ACCEPTANCE_OWNER_UPDATED]", {
+        userId: user.id,
+        ownerId: owner.id,
       });
     }
   }

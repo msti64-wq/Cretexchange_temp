@@ -77,15 +77,18 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
 
           {!readOnly && (
             <>
-              <div className="flex items-center space-x-2 p-3 border border-border rounded">
-                <Checkbox
-                  id="terms-read"
-                  checked={hasReadTerms}
-                  onCheckedChange={(v) => setHasReadTerms(!!v)}
-                  data-testid="checkbox-terms-read"
-                />
-                <label htmlFor="terms-read" className="text-sm cursor-pointer">
+              <div className="space-y-3 rounded border border-border p-4">
+                <p className="text-sm font-medium text-foreground">
                   {t("legal.readAndUnderstand")}
+                </p>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    id="terms-read"
+                    checked={hasReadTerms}
+                    onCheckedChange={(v) => setHasReadTerms(!!v)}
+                    data-testid="checkbox-terms-read"
+                  />
+                  <span>{t("legal.iAgree")}</span>
                 </label>
               </div>
 
