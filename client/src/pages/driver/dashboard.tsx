@@ -822,7 +822,7 @@ export default function DriverDashboard() {
               </div>
               <div className="flex min-w-0 flex-col gap-1 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <span className="break-words text-sky-300 dark:text-sky-300">{t("driver.dashboard.paymentsProcessedWeekly")}</span>
-                <span className="break-words font-medium text-foreground sm:text-right">{t("driver.dashboard.fullAmounts")}</span>
+                <span className="break-words font-medium text-white sm:text-right">{t("driver.dashboard.fullAmounts")}</span>
               </div>
           </div>
         </DSCard>
