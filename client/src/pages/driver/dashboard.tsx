@@ -821,7 +821,7 @@ export default function DriverDashboard() {
                 </div>
               </div>
               <div className="flex min-w-0 flex-col gap-1 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                <span className="break-words text-sky-500 dark:text-sky-300">{t("driver.dashboard.paymentsProcessedWeekly")}</span>
+                <span className="break-words text-sky-300 dark:text-sky-300">{t("driver.dashboard.paymentsProcessedWeekly")}</span>
                 <span className="break-words font-medium text-foreground sm:text-right">{t("driver.dashboard.fullAmounts")}</span>
               </div>
           </div>
@@ -897,11 +897,11 @@ export default function DriverDashboard() {
                   
                   <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                     <DSCard padding="sm" elevated={false} className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
+                      <div className="flex items-center gap-2 text-sm font-medium text-sky-300 dark:text-sky-300" data-testid={`text-location-name-${index}`}>
                         <MapPinned className="h-4 w-4 shrink-0 text-secondary" />
                         <span className="truncate">{activity.washout_locations?.name || activity.location?.name || t("driver.activity.unknownLocation")}</span>
                       </div>
-                      <div className="mt-1 break-words text-xs text-muted-foreground">
+                      <div className="mt-1 break-words text-xs text-sky-300/90 dark:text-sky-300/90">
                         {activity.washout_locations?.address || activity.location?.address || formatAddress(activity.washout_locations || activity.location || {}) || t("driver.dashboard.addressUnavailable")}
                       </div>
                     </DSCard>
@@ -929,7 +929,7 @@ export default function DriverDashboard() {
 
                   <div className="flex min-w-0 flex-col gap-2 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
                     {(activity.washout_locations?.address || activity.location?.address) && (
-                      <div className="min-w-0 break-words text-xs text-muted-foreground">
+                      <div className="min-w-0 break-words text-xs text-sky-300/90 dark:text-sky-300/90">
                         {activity.washout_locations?.address || activity.location?.address}
                       </div>
                     )}
