@@ -5,6 +5,18 @@ export const LOTTERY_FEATURE_FLAG_KEY = "lottery_enabled";
 export type LotteryDrawingPrizeConfig = {
   title?: string | null;
   description?: string | null;
+  quantity?: number | string | null;
+  tierLabel?: string | null;
+  placeLabel?: string | null;
+};
+
+export type LotteryDrawingPrizeSlot = {
+  title: string | null;
+  description: string | null;
+  tierLabel: string | null;
+  tierQuantity: number;
+  tierWinnerIndex: number;
+  tierIndex: number;
 };
 
 export type LotteryDrawingPreviewEntry = {
@@ -31,6 +43,9 @@ export type LotteryDrawingPreviewDriverTotal = {
 
 export type LotteryDrawingPreviewWinner = {
   placeIndex: number;
+  tierLabel: string | null;
+  tierQuantity: number;
+  tierWinnerIndex: number;
   driverId: string;
   driverName: string;
   entryId: string;
@@ -65,6 +80,40 @@ function parseBooleanEnv(value?: string | null): boolean | undefined {
   return undefined;
 }
 
+function normalizePrizeQuantity(quantity?: number | string | null): number {
+  const parsed = Number(quantity);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 1;
+  }
+  return Math.max(1, Math.floor(parsed));
+}
+
+export function expandLotteryPrizeConfigs(prizes: LotteryDrawingPrizeConfig[] = []): LotteryDrawingPrizeSlot[] {
+  const slots: LotteryDrawingPrizeSlot[] = [];
+
+  prizes.forEach((prize, tierIndex) => {
+    const tierQuantity = normalizePrizeQuantity(prize?.quantity ?? 1);
+    const tierLabel = prize?.tierLabel ?? prize?.placeLabel ?? prize?.title ?? `Tier ${tierIndex + 1}`;
+
+    for (let tierWinnerIndex = 1; tierWinnerIndex <= tierQuantity; tierWinnerIndex += 1) {
+      slots.push({
+        title: prize?.title ?? null,
+        description: prize?.description ?? null,
+        tierLabel,
+        tierQuantity,
+        tierWinnerIndex,
+        tierIndex: tierIndex + 1,
+      });
+    }
+  });
+
+  return slots;
+}
+
+export function countLotteryPrizeSlots(prizes: LotteryDrawingPrizeConfig[] = []): number {
+  return expandLotteryPrizeConfigs(prizes).length;
+}
+
 export async function resolveLotteryEnabled(storage: Pick<IStorage, "getFeatureFlag">): Promise<{
   enabled: boolean;
   source: "env" | "flag" | "default";
@@ -89,9 +138,9 @@ export function buildLotteryDrawingPreview(input: {
   allowDuplicateWinnerDriver?: boolean;
   prizes?: LotteryDrawingPrizeConfig[];
 }): LotteryDrawingPreviewResult {
-  const winnerCountRequested = Math.max(1, Math.floor(input.winnerCount || 3));
+  const prizeSlots = expandLotteryPrizeConfigs(input.prizes ?? []);
+  const winnerCountRequested = Math.max(1, Math.floor(input.winnerCount || prizeSlots.length || 3));
   const allowDuplicateWinnerDriver = Boolean(input.allowDuplicateWinnerDriver);
-  const prizes = Array.isArray(input.prizes) ? input.prizes : [];
   const warnings: string[] = [];
 
   const pool: Array<{
@@ -149,9 +198,12 @@ export function buildLotteryDrawingPreview(input: {
     }
 
     const placeIndex = selectedWinners.length + 1;
-    const prize = prizes[placeIndex - 1] || {};
+    const prize = prizeSlots[placeIndex - 1] || {};
     selectedWinners.push({
       placeIndex,
+      tierLabel: prize.tierLabel ?? null,
+      tierQuantity: prize.tierQuantity || 1,
+      tierWinnerIndex: prize.tierWinnerIndex || placeIndex,
       driverId: slot.driverId,
       driverName: slot.driverName,
       entryId: slot.entryId,

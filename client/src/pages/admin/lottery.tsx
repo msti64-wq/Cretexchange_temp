@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,18 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+const DEFAULT_PRIZE_TIERS = [
+  { label: "First Place", title: "", description: "", quantity: 1 },
+  { label: "Second Place", title: "", description: "", quantity: 1 },
+  { label: "Third Place", title: "", description: "", quantity: 1 },
+];
+
+const clampTierQuantity = (value: number | string | null | undefined) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return Math.max(1, Math.floor(parsed));
+};
+
 export default function AdminLottery() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -68,15 +80,13 @@ export default function AdminLottery() {
   const [prize, setPrize] = useState("");
   const [winnerMessage, setWinnerMessage] = useState("");
   const [showIndividualEntries, setShowIndividualEntries] = useState(false);
-  const [numberOfWinners, setNumberOfWinners] = useState(3);
-  const [firstPrize, setFirstPrize] = useState("");
-  const [firstPrizeDescription, setFirstPrizeDescription] = useState("");
-  const [secondPrize, setSecondPrize] = useState("");
-  const [secondPrizeDescription, setSecondPrizeDescription] = useState("");
-  const [thirdPrize, setThirdPrize] = useState("");
-  const [thirdPrizeDescription, setThirdPrizeDescription] = useState("");
+  const [prizeTiers, setPrizeTiers] = useState(DEFAULT_PRIZE_TIERS);
   const [allowDuplicateWinnerDriver, setAllowDuplicateWinnerDriver] = useState(false);
   const [previewResult, setPreviewResult] = useState<any | null>(null);
+
+  useEffect(() => {
+    setPreviewResult(null);
+  }, [selectedMonth, selectedYear, allowDuplicateWinnerDriver, prizeTiers]);
 
   const { data: months, isLoading: monthsLoading } = useQuery<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/months'],
@@ -118,6 +128,18 @@ export default function AdminLottery() {
 
   const selectedDrawing = drawingHistory?.find((drawing: any) => drawing.lotteryMonth === selectedMonth && drawing.lotteryYear === selectedYear) || null;
   const existingDrawing = selectedDrawing;
+  const totalWinnerCount = prizeTiers.reduce((sum, tier) => sum + clampTierQuantity(tier.quantity), 0);
+  const normalizedPrizeTiers = prizeTiers.map((tier, index) => ({
+    title: tier.title.trim() || null,
+    description: tier.description.trim() || null,
+    quantity: clampTierQuantity(tier.quantity),
+    tierLabel: tier.label,
+    placeLabel: tier.label,
+    tierOrder: index + 1,
+  }));
+  const previewResultCount = previewResult?.selectedWinners?.length || 0;
+  const previewHasWarnings = Boolean(previewResult?.warnings?.length);
+  const previewIsComplete = Boolean(previewResult) && previewResultCount === totalWinnerCount && !previewHasWarnings;
 
   const executeMutation = useMutation({
     mutationFn: async (payload: {
@@ -128,7 +150,7 @@ export default function AdminLottery() {
       firstPrize: string;
       secondPrize: string;
       thirdPrize: string;
-      prizes: Array<{ title: string | null; description: string | null }>;
+      prizes: Array<{ title: string | null; description: string | null; quantity: number; tierLabel: string; placeLabel: string; tierOrder: number }>;
     }) => {
       const response = await apiRequest('/api/admin/lottery/execute', {
         method: 'POST',
@@ -181,13 +203,9 @@ export default function AdminLottery() {
         body: JSON.stringify({
           month: selectedMonth,
           year: selectedYear,
-          winnerCount: numberOfWinners,
+          winnerCount: totalWinnerCount,
           allowDuplicateWinnerDriver,
-          prizes: [
-            { title: firstPrize || null, description: firstPrizeDescription || null },
-            { title: secondPrize || null, description: secondPrizeDescription || null },
-            { title: thirdPrize || null, description: thirdPrizeDescription || null },
-          ],
+          prizes: normalizedPrizeTiers,
         }),
       });
       return response.json();
@@ -447,22 +465,13 @@ export default function AdminLottery() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="winner-count">Number of Winners</Label>
-                <Input
-                  id="winner-count"
-                  type="number"
-                  min={1}
-                  max={3}
-                  value={numberOfWinners}
-                  onChange={(event) => {
-                    const nextValue = Math.max(1, Math.min(3, parseInt(event.target.value || "1", 10) || 1));
-                    setNumberOfWinners(nextValue);
-                  }}
-                  data-testid="input-winner-count"
-                />
+              <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-sm font-semibold">Tier Quantities</Label>
+                  <Badge variant="outline">{totalWinnerCount} total winners</Badge>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  This workflow currently supports up to 3 winners in the admin page.
+                  Configure how many reward winners each prize tier should produce.
                 </p>
               </div>
               <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3">
@@ -487,61 +496,67 @@ export default function AdminLottery() {
             </div>
 
             <div className="space-y-3">
-              <div className="space-y-2 rounded-lg border border-border/60 p-3">
-                <Label className="flex items-center gap-2 text-sm font-semibold">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">1</span>
-                  1st Place Prize
-                </Label>
-                <Input
-                  placeholder="e.g., $500 Prepaid Debit Card"
-                  value={firstPrize}
-                  onChange={(e) => setFirstPrize(e.target.value)}
-                />
-                <Textarea
-                  placeholder="Prize description for the first winner"
-                  value={firstPrizeDescription}
-                  onChange={(e) => setFirstPrizeDescription(e.target.value)}
-                  rows={2}
-                />
-              </div>
-              {numberOfWinners >= 2 && (
-                <div className="space-y-2 rounded-lg border border-border/60 p-3">
-                  <Label className="flex items-center gap-2 text-sm font-semibold">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">2</span>
-                    2nd Place Prize
-                  </Label>
+              {prizeTiers.map((tier, index) => (
+                <div key={tier.label} className="space-y-3 rounded-lg border border-border/60 p-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Label className="flex items-center gap-2 text-sm font-semibold">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
+                        {index + 1}
+                      </span>
+                      {tier.label}
+                    </Label>
+                    <div className="ml-auto flex items-center gap-2">
+                      <Label htmlFor={`tier-quantity-${index}`} className="text-xs font-medium text-muted-foreground">
+                        Qty
+                      </Label>
+                      <Input
+                        id={`tier-quantity-${index}`}
+                        type="number"
+                        min={1}
+                        step={1}
+                        className="w-20"
+                        value={tier.quantity}
+                        onChange={(event) => {
+                          const nextQuantity = clampTierQuantity(event.target.value || 1);
+                          setPrizeTiers((current) => current.map((currentTier, currentIndex) => (
+                            currentIndex === index
+                              ? { ...currentTier, quantity: nextQuantity }
+                              : currentTier
+                          )));
+                        }}
+                        data-testid={`input-tier-quantity-${index}`}
+                      />
+                    </div>
+                  </div>
                   <Input
-                    placeholder="e.g., $200 Prepaid Debit Card"
-                    value={secondPrize}
-                    onChange={(e) => setSecondPrize(e.target.value)}
+                    placeholder={`e.g., ${index === 0 ? "$500 Milwaukee Tool Kit" : index === 1 ? "$50 Visa Card" : "YETI Tumbler"}`}
+                    value={tier.title}
+                    onChange={(e) => {
+                      const nextTitle = e.target.value;
+                      setPrizeTiers((current) => current.map((currentTier, currentIndex) => (
+                        currentIndex === index
+                          ? { ...currentTier, title: nextTitle }
+                          : currentTier
+                      )));
+                    }}
+                    data-testid={`input-tier-title-${index}`}
                   />
                   <Textarea
-                    placeholder="Prize description for the second winner"
-                    value={secondPrizeDescription}
-                    onChange={(e) => setSecondPrizeDescription(e.target.value)}
+                    placeholder={`Prize description for ${tier.label.toLowerCase()}`}
+                    value={tier.description}
+                    onChange={(e) => {
+                      const nextDescription = e.target.value;
+                      setPrizeTiers((current) => current.map((currentTier, currentIndex) => (
+                        currentIndex === index
+                          ? { ...currentTier, description: nextDescription }
+                          : currentTier
+                      )));
+                    }}
                     rows={2}
+                    data-testid={`input-tier-description-${index}`}
                   />
                 </div>
-              )}
-              {numberOfWinners >= 3 && (
-                <div className="space-y-2 rounded-lg border border-border/60 p-3">
-                  <Label className="flex items-center gap-2 text-sm font-semibold">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">3</span>
-                    3rd Place Prize
-                  </Label>
-                  <Input
-                    placeholder="e.g., $100 Prepaid Debit Card"
-                    value={thirdPrize}
-                    onChange={(e) => setThirdPrize(e.target.value)}
-                  />
-                  <Textarea
-                    placeholder="Prize description for the third winner"
-                    value={thirdPrizeDescription}
-                    onChange={(e) => setThirdPrizeDescription(e.target.value)}
-                    rows={2}
-                  />
-                </div>
-              )}
+              ))}
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -559,24 +574,26 @@ export default function AdminLottery() {
                 onClick={() => executeMutation.mutate({
                   month: selectedMonth,
                   year: selectedYear,
-                  numberOfWinners,
+                  numberOfWinners: totalWinnerCount,
                   allowDuplicateWinnerDriver,
-                  firstPrize,
-                  secondPrize,
-                  thirdPrize,
-                  prizes: [
-                    { title: firstPrize || null, description: firstPrizeDescription || null },
-                    { title: secondPrize || null, description: secondPrizeDescription || null },
-                    { title: thirdPrize || null, description: thirdPrizeDescription || null },
-                  ],
+                  firstPrize: prizeTiers[0]?.title || "",
+                  secondPrize: prizeTiers[1]?.title || "",
+                  thirdPrize: prizeTiers[2]?.title || "",
+                  prizes: normalizedPrizeTiers,
                 })}
-                disabled={executeMutation.isPending || !totalEntriesCount || Boolean(selectedDrawing) || isCurrentMonth}
+                disabled={executeMutation.isPending || !totalEntriesCount || Boolean(selectedDrawing) || isCurrentMonth || !previewIsComplete}
                 data-testid="button-run-drawing"
               >
                 <Zap className="w-4 h-4 mr-2" />
                 {executeMutation.isPending ? "Running..." : "Run Official Drawing"}
               </Button>
             </div>
+
+            {!previewIsComplete && (
+              <div className="rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100">
+                Preview winners first. The official drawing remains disabled until the preview succeeds without validation warnings.
+              </div>
+            )}
 
             {selectedDrawing && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
@@ -602,6 +619,7 @@ export default function AdminLottery() {
                 <Badge variant="outline">{previewResult.eligibleEntryCount} eligible entries</Badge>
                 <Badge variant="outline">{previewResult.eligibleDriverCount} drivers</Badge>
                 <Badge variant="outline">{previewResult.winnerCountRequested} requested winners</Badge>
+                <Badge variant="outline">{previewResult.selectedWinners?.length || 0} selected winners</Badge>
                 <Badge variant={previewResult.allowDuplicateWinnerDriver ? "default" : "secondary"}>
                   {previewResult.allowDuplicateWinnerDriver ? "Duplicate winners allowed" : "Unique drivers only"}
                 </Badge>
@@ -618,10 +636,10 @@ export default function AdminLottery() {
               )}
 
               {previewResult.selectedWinners?.length > 0 ? (
-                <Table>
+                  <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Place</TableHead>
+                      <TableHead>Place / Tier</TableHead>
                       <TableHead>Reward Winner</TableHead>
                       <TableHead>Entry Number</TableHead>
                       <TableHead>Prize</TableHead>
@@ -631,7 +649,16 @@ export default function AdminLottery() {
                     {previewResult.selectedWinners.map((winner: any) => (
                       <TableRow key={`${winner.placeIndex}-${winner.driverId}-${winner.entryId}`}>
                         <TableCell className="font-semibold">
-                          {winner.placeIndex === 1 ? "🥇 1st" : winner.placeIndex === 2 ? "🥈 2nd" : winner.placeIndex === 3 ? "🥉 3rd" : `#${winner.placeIndex}`}
+                          <div className="space-y-1">
+                            <div>
+                              {winner.tierLabel || (winner.placeIndex === 1 ? "🥇 1st" : winner.placeIndex === 2 ? "🥈 2nd" : winner.placeIndex === 3 ? "🥉 3rd" : `#${winner.placeIndex}`)}
+                            </div>
+                            {winner.tierQuantity > 1 && (
+                              <div className="text-xs font-normal text-muted-foreground">
+                                Winner {winner.tierWinnerIndex} of {winner.tierQuantity}
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{winner.driverName}</div>

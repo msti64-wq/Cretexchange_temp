@@ -45,7 +45,7 @@ import {
 } from "./billingPolicy";
 import { buildOwnerWashoutBillingLedgerFromPayments, buildOwnerWashoutBillingPreview, getDriverTipSummaryFromPayments } from "./billing/ownerWashoutLedger";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
-import { buildLotteryDrawingPreview, resolveLotteryEnabled } from "./lottery";
+import { buildLotteryDrawingPreview, countLotteryPrizeSlots, resolveLotteryEnabled } from "./lottery";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
@@ -10644,12 +10644,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59);
       const driverTotals = await storage.getDriverLotteryEntryTotals(monthNum, yearNum);
       const entries = await storage.getAllDriverLotteryEntries(startDate, endDate);
+      const normalizedPrizes = normalizeLotteryPrizeTierConfigs(Array.isArray(prizes) ? prizes : []);
+      const derivedWinnerCount = countLotteryPrizeSlots(normalizedPrizes);
       const preview = buildLotteryDrawingPreview({
         entries,
         driverTotals,
-        winnerCount: Number(winnerCount) || 3,
+        winnerCount: derivedWinnerCount > 0 ? derivedWinnerCount : Number(winnerCount) || 3,
         allowDuplicateWinnerDriver: allowDuplicateWinnerDriver === true || allowDuplicateWinnerDriver === "true",
-        prizes: Array.isArray(prizes) ? prizes : [],
+        prizes: normalizedPrizes,
       });
 
       res.json({
@@ -10843,6 +10845,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== LOTTERY DRAWINGS ENDPOINTS ==========
 
+  const normalizeLotteryPrizeTierConfigs = (rawPrizes: any[], fallbackTitles?: Array<{ title?: string | null; description?: string | null }>) => {
+    const source = Array.isArray(rawPrizes) && rawPrizes.length > 0
+      ? rawPrizes
+      : (fallbackTitles || []);
+
+    return source.map((prize: any, index: number) => ({
+      title: typeof prize?.title === "string" ? prize.title : prize?.title ?? null,
+      description: typeof prize?.description === "string" ? prize.description : prize?.description ?? null,
+      quantity: Number.isFinite(Number(prize?.quantity)) && Number(prize?.quantity) > 0
+        ? Math.max(1, Math.floor(Number(prize.quantity)))
+        : 1,
+      tierLabel: typeof prize?.tierLabel === "string" && prize.tierLabel.trim()
+        ? prize.tierLabel
+        : typeof prize?.placeLabel === "string" && prize.placeLabel.trim()
+          ? prize.placeLabel
+          : typeof prize?.label === "string" && prize.label.trim()
+            ? prize.label
+            : typeof prize?.title === "string" && prize.title.trim()
+              ? prize.title
+              : `${index + 1}${index === 0 ? "st" : index === 1 ? "nd" : index === 2 ? "rd" : "th"} Place`,
+    }));
+  };
+
   // Execute a lottery drawing for a given month/year (admin/super_admin)
   app.post('/api/admin/lottery/execute', isAuthenticated, async (req: any, res) => {
     try {
@@ -10865,23 +10890,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!month || !year) {
         return res.status(400).json({ message: "Month and year are required" });
       }
+      const duplicateDriverWinnersAllowed = allowDuplicateWinnerDriver === true || allowDuplicateWinnerDriver === "true";
+      const prizeConfigs = normalizeLotteryPrizeTierConfigs(
+        Array.isArray(rawPrizes) && rawPrizes.length > 0
+          ? rawPrizes
+          : [
+              { title: firstPrize || null, description: null, quantity: 1, tierLabel: "1st Place" },
+              { title: secondPrize || null, description: null, quantity: 1, tierLabel: "2nd Place" },
+              { title: thirdPrize || null, description: null, quantity: 1, tierLabel: "3rd Place" },
+            ],
+      );
+      const derivedWinnerCount = countLotteryPrizeSlots(prizeConfigs);
       const parsedWinnerCount = Number.isFinite(Number(rawWinnerCount))
         ? Number(rawWinnerCount)
         : Number.isFinite(Number(rawWinners))
           ? Number(rawWinners)
-          : 3;
-      const winnerCount = Math.max(1, Math.floor(parsedWinnerCount || 3));
-      const duplicateDriverWinnersAllowed = allowDuplicateWinnerDriver === true || allowDuplicateWinnerDriver === "true";
-      const prizeConfigs: Array<{ title?: string | null; description?: string | null }> = Array.isArray(rawPrizes) && rawPrizes.length > 0
-        ? rawPrizes.map((prize: any) => ({
-            title: typeof prize?.title === "string" ? prize.title : prize?.title ?? null,
-            description: typeof prize?.description === "string" ? prize.description : prize?.description ?? null,
-          }))
-        : [
-            { title: firstPrize || null, description: null },
-            { title: secondPrize || null, description: null },
-            { title: thirdPrize || null, description: null },
-          ];
+          : derivedWinnerCount || 3;
+      const winnerCount = Math.max(1, Math.floor(derivedWinnerCount || parsedWinnerCount || 3));
 
       const existing = await storage.getLotteryDrawingByMonthYear(month, year);
       if (existing) {
@@ -10909,6 +10934,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allowDuplicateWinnerDriver: duplicateDriverWinnersAllowed,
         prizes: prizeConfigs,
       });
+      if (preview.selectedWinners.length < winnerCount) {
+        return res.status(400).json({
+          message: preview.warnings[0] || "Not enough eligible reward entries to satisfy the requested prize tiers.",
+          preview,
+        });
+      }
       const winners: LotteryWinnerSummary[] = preview.selectedWinners.map((winner) => ({
         place: winner.placeIndex,
         driverId: winner.driverId,
