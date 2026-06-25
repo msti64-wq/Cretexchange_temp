@@ -60,7 +60,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/payments", icon: DollarSign, label: "Payments" },
-          { path: "/lottery-dashboard", icon: Trophy, label: "Lottery" },
+          { path: "/lottery-dashboard", icon: Trophy, label: "Rewards Program" },
           { path: "/reconciliation", icon: RefreshCw, label: "Reconcile" },
           { path: "/subscriptions", icon: Receipt, label: "Subscriptions" },
           { path: "/fees", icon: FileText, label: "Fees" },

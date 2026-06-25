@@ -196,7 +196,7 @@ export default function SuperAdminLotteryDashboard() {
     setShowResetDialog(false);
     toast({
       title: "Dashboard Reset",
-      description: "Lottery dashboard view has been reset. Historical data remains intact in the database.",
+      description: "Rewards program dashboard view has been reset. Historical data remains intact in the database.",
     });
   };
 
@@ -207,7 +207,7 @@ export default function SuperAdminLotteryDashboard() {
 
   const openNotifyDialog = (driver: { driverId: string; driverName: string }) => {
     setSelectedDriver(driver);
-    setWinnerMessage(`Congratulations ${driver.driverName}! You have been selected as a winner in our ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} lottery drawing. Please contact us to claim your prize.`);
+    setWinnerMessage(`Congratulations ${driver.driverName}! You have been selected as a winner in our ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} monthly prize drawing. Please contact us to claim your prize.`);
     setNotifyDialogOpen(true);
   };
 
@@ -321,7 +321,7 @@ export default function SuperAdminLotteryDashboard() {
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center space-y-3">
-            <p className="text-base font-semibold text-foreground">Lottery dashboard is still loading</p>
+            <p className="text-base font-semibold text-foreground">Rewards program dashboard is still loading</p>
             <p className="text-sm text-muted-foreground">
               Authentication did not finish in time. Retry loading the page or return to the admin dashboard.
             </p>
@@ -345,8 +345,8 @@ export default function SuperAdminLotteryDashboard() {
         <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/95 px-5 py-4 shadow-sm">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Loading lottery dashboard</p>
-            <p className="text-xs text-muted-foreground">Verifying access and loading live lottery data</p>
+            <p className="text-sm font-medium text-foreground">Loading rewards program dashboard</p>
+            <p className="text-xs text-muted-foreground">Verifying access and loading live rewards program data</p>
           </div>
         </div>
       </div>
@@ -386,7 +386,7 @@ export default function SuperAdminLotteryDashboard() {
               <Trophy className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-lg">Lottery Dashboard</h1>
+              <h1 className="font-semibold text-lg">Rewards Program Dashboard</h1>
               <p className="text-white/80 text-sm">Super Admin - Full Reporting</p>
             </div>
           </div>
@@ -422,9 +422,9 @@ export default function SuperAdminLotteryDashboard() {
         {hasLotteryQueryError && (
           <Card className="border-amber-200 bg-amber-50/80 dark:border-amber-900/30 dark:bg-amber-950/20">
             <CardContent className="p-4">
-              <p className="font-semibold text-amber-900 dark:text-amber-100">Lottery data partially unavailable</p>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">Rewards program data partially unavailable</p>
               <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
-                One or more lottery queries failed to load. Showing whatever data is available instead of an empty page.
+                One or more rewards program queries failed to load. Showing whatever data is available instead of an empty page.
               </p>
             </CardContent>
           </Card>
@@ -434,14 +434,14 @@ export default function SuperAdminLotteryDashboard() {
           <Card className={lotteryOverview.status?.enabled ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/30 dark:bg-emerald-950/20" : "border-amber-200 bg-amber-50/60 dark:border-amber-900/30 dark:bg-amber-950/20"}>
             <CardContent className="p-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Lottery status</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Rewards program status</p>
                 <p className="text-lg font-semibold text-foreground">
-                  {lotteryOverview.status?.enabled ? 'Lottery active' : 'Lottery disabled'}
+                  {lotteryOverview.status?.enabled ? 'Rewards program active' : 'Rewards program disabled'}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {lotteryOverview.currentDrawing
-                    ? `Current drawing: ${MONTH_NAMES[lotteryOverview.currentDrawing.lotteryMonth - 1]} ${lotteryOverview.currentDrawing.lotteryYear}`
-                    : 'No active drawing exists yet.'}
+                  ? `Current prize drawing: ${MONTH_NAMES[lotteryOverview.currentDrawing.lotteryMonth - 1]} ${lotteryOverview.currentDrawing.lotteryYear}`
+                    : 'No active prize drawing exists yet.'}
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -450,7 +450,7 @@ export default function SuperAdminLotteryDashboard() {
                   <p className="text-2xl font-semibold text-foreground">{lotteryOverview.totalEligibleWashouts || 0}</p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Tickets / entries</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Reward entries</p>
                   <p className="text-2xl font-semibold text-foreground">{lotteryOverview.totalTickets || 0}</p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
@@ -639,7 +639,7 @@ export default function SuperAdminLotteryDashboard() {
                           data-testid={`button-notify-${index}`}
                         >
                           <Trophy className="w-4 h-4 mr-1" />
-                          Notify Winner
+                          Notify Reward Winner
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -649,11 +649,11 @@ export default function SuperAdminLotteryDashboard() {
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <Ticket className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                <p className="text-lg font-medium">No lottery entries</p>
+                <p className="text-lg font-medium">No reward entries</p>
                 <p className="text-sm">
                   {viewMode === 'current' && resetDate 
-                    ? 'No entries since the last reset'
-                    : `No entries for ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`}
+                    ? 'No reward entries since the last reset'
+                    : `No reward entries for ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`}
                 </p>
               </div>
             )}
@@ -669,8 +669,8 @@ export default function SuperAdminLotteryDashboard() {
             </CardTitle>
             <CardDescription>
               {selectedDrawing
-                ? `Drawing executed on ${new Date(selectedDrawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} by ${selectedDrawing.executedByName || 'admin'}`
-                : 'No drawing has been executed for this period yet.'}
+                  ? `Prize drawing executed on ${new Date(selectedDrawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} by ${selectedDrawing.executedByName || 'admin'}`
+                : 'No prize drawing has been executed for this period yet.'}
             </CardDescription>
             {selectedDrawing && (
               <div className="flex flex-wrap gap-2 pt-2">
@@ -687,7 +687,7 @@ export default function SuperAdminLotteryDashboard() {
             {!selectedDrawing ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Execute a drawing to see winners and their notifications here.</p>
+                <p className="text-sm">Execute a prize drawing to see winners and their notifications here.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -769,7 +769,7 @@ export default function SuperAdminLotteryDashboard() {
                 ))}
 
                 <p className="text-xs text-muted-foreground pt-2 border-t">
-                  Winner and participant announcements are sent automatically when a drawing is executed. Use the "Notify Winner" button on the leaderboard to send additional messages to any driver.
+                  Winner and participant announcements are sent automatically when a prize drawing is executed. Use the "Notify Reward Winner" button on the leaderboard to send additional messages to any driver.
                 </p>
               </div>
             )}
@@ -814,10 +814,10 @@ export default function SuperAdminLotteryDashboard() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
-              Notify Lottery Winner
+              Notify Reward Winner
             </DialogTitle>
             <DialogDescription>
-              Send a notification to {selectedDriver?.driverName} about their lottery win.
+              Send a notification to {selectedDriver?.driverName} about their reward win.
             </DialogDescription>
           </DialogHeader>
           

@@ -365,7 +365,7 @@ export default function AdminDashboard() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Approved washouts</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{approvedWashoutsValue}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {washoutRevenueError || "eligible for platform fee and lottery entry"}
+                {washoutRevenueError || "eligible for platform fee and reward entry"}
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
@@ -442,7 +442,7 @@ export default function AdminDashboard() {
               dataTestId="text-driver-tip-total-summary"
             />
             <DashboardMetricCard
-              title="Lottery Tickets"
+              title="Reward Entries"
               value={lotteryTicketValue}
               helper={lotteryMetricsError || `${lotteryDriverValue} drivers entered`}
               icon={Ticket}
@@ -892,7 +892,7 @@ export default function AdminDashboard() {
                 return (
                   <div key={drawing.id} className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{monthName} drawing</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{monthName} prize drawing</p>
                       <span className="rounded-full border border-border/70 bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
                         {winners.length} pending
                       </span>

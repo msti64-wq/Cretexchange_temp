@@ -129,7 +129,7 @@ export default function AdminLottery() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/drawings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/months'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/totals'] });
-      toast({ title: "🎉 Drawing Complete!", description: data.message });
+      toast({ title: "🎉 Prize Drawing Complete!", description: data.message });
     },
     onError: (error: Error) => {
       toast({ title: "Drawing Failed", description: error.message, variant: "destructive" });
@@ -190,7 +190,7 @@ export default function AdminLottery() {
 
   const openNotifyDialog = (driver: { driverId: string; driverName: string; payoutPreference: string | null; payoutPreferenceNote: string | null }) => {
     setSelectedDriver(driver);
-    setWinnerMessage(`Congratulations ${driver.driverName}! You have been selected as a winner in our ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} lottery drawing. Please contact us to claim your prize.`);
+    setWinnerMessage(`Congratulations ${driver.driverName}! You have been selected as a winner in our ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} monthly prize drawing. Please contact us to claim your prize.`);
     setNotifyDialogOpen(true);
   };
 
@@ -270,8 +270,8 @@ export default function AdminLottery() {
             <Ticket className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-semibold text-lg">Driver Lottery</h1>
-            <p className="text-white/80 text-sm">Monthly drawings - entries reset each month</p>
+            <h1 className="font-semibold text-lg">Driver Rewards Program</h1>
+            <p className="text-white/80 text-sm">Monthly prize drawings - entries reset each month</p>
           </div>
         </div>
       </header>
@@ -326,7 +326,7 @@ export default function AdminLottery() {
               )}
               
               <div className="flex gap-2 flex-wrap justify-end">
-                {/* Execute Drawing button */}
+                {/* Run Monthly Drawing button */}
                 {!isCurrentMonth && !existingDrawing && !drawingLoading && totalEntriesCount > 0 && (
                   <Button
                     size="sm"
@@ -335,14 +335,14 @@ export default function AdminLottery() {
                     data-testid="button-execute-drawing"
                   >
                     <Zap className="w-4 h-4 mr-2" />
-                    Execute Drawing
+                    Run Monthly Drawing
                   </Button>
                 )}
 
                 {existingDrawing && (
                   <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300">
                     <Trophy className="w-3 h-3 mr-1" />
-                    Drawing Complete
+                    Prize Drawing Complete
                   </Badge>
                 )}
 
@@ -399,13 +399,13 @@ export default function AdminLottery() {
           </Card>
         </div>
 
-        {/* Drawing Results Card */}
+        {/* Monthly Prize Drawing Results Card */}
         {existingDrawing && (
           <Card className="border-yellow-300 dark:border-yellow-700 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
                 <Medal className="w-5 h-5 text-yellow-600" />
-                {MONTH_NAMES[existingDrawing.lotteryMonth - 1]} {existingDrawing.lotteryYear} — Drawing Results
+                {MONTH_NAMES[existingDrawing.lotteryMonth - 1]} {existingDrawing.lotteryYear} — Monthly Prize Drawing Results
               </CardTitle>
               <p className="text-xs text-yellow-600 dark:text-yellow-400">
                 Drawn on {new Date(existingDrawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -495,7 +495,7 @@ export default function AdminLottery() {
                             data-testid={`button-notify-${index}`}
                           >
                             <Trophy className="w-4 h-4 mr-1" />
-                            Notify Winner
+                            Notify Reward Winner
                           </Button>
                         </div>
                       </TableCell>
@@ -506,7 +506,7 @@ export default function AdminLottery() {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Ticket className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No entries for {MONTH_NAMES[selectedMonth - 1]} {selectedYear}</p>
+                <p>No reward entries for {MONTH_NAMES[selectedMonth - 1]} {selectedYear}</p>
                 {isCurrentMonth && (
                   <p className="text-sm">Entries will appear when washouts are verified</p>
                 )}
@@ -533,7 +533,7 @@ export default function AdminLottery() {
                   {showIndividualEntries ? (
                     <><ChevronUp className="w-4 h-4 mr-1" /> Hide</>
                   ) : (
-                    <><ChevronDown className="w-4 h-4 mr-1" /> Show all entries</>
+                    <><ChevronDown className="w-4 h-4 mr-1" /> Show all reward entries</>
                   )}
                 </Button>
               </div>
@@ -551,7 +551,7 @@ export default function AdminLottery() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Ticket #</TableHead>
+                        <TableHead>Entry #</TableHead>
                         <TableHead>Driver</TableHead>
                         <TableHead>Location</TableHead>
                         <TableHead>Date</TableHead>
@@ -592,7 +592,7 @@ export default function AdminLottery() {
                     </TableBody>
                   </Table>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">No individual entries found for this period</p>
+                <p className="text-sm text-muted-foreground text-center py-4">No individual reward entries found for this period</p>
                 )}
               </CardContent>
             )}
@@ -600,7 +600,7 @@ export default function AdminLottery() {
         )}
       </main>
 
-      {/* Execute Drawing Dialog */}
+      {/* Run Monthly Drawing Dialog */}
       <Dialog open={executeDialogOpen} onOpenChange={(open) => { setExecuteDialogOpen(open); if (!open) { setNumberOfWinners(3); setFirstPrize(""); setSecondPrize(""); setThirdPrize(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -665,7 +665,7 @@ export default function AdminLottery() {
               {executeMutation.isPending ? (
                 <><Clock className="w-4 h-4 mr-2 animate-spin" />Drawing...</>
               ) : (
-                <><Zap className="w-4 h-4 mr-2" />Execute Drawing</>
+                <><Zap className="w-4 h-4 mr-2" />Run Monthly Drawing</>
               )}
             </Button>
           </DialogFooter>
@@ -677,10 +677,10 @@ export default function AdminLottery() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
-              Notify Lottery Winner
+              Notify Reward Winner
             </DialogTitle>
             <DialogDescription>
-              Send a notification to {selectedDriver?.driverName} about their lottery win.
+              Send a notification to {selectedDriver?.driverName} about their reward win.
             </DialogDescription>
           </DialogHeader>
           

@@ -644,7 +644,7 @@ export default function DriverDashboard() {
                               </p>
                               {entry.ticketNumber && (
                                 <span className="max-w-full break-words rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] font-mono font-semibold text-white">
-                                  #{entry.ticketNumber}
+                                  Entry # {entry.ticketNumber}
                                 </span>
                               )}
                             </div>

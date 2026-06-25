@@ -24,7 +24,7 @@ The dashboard is now focused on the actual operational numbers:
 - paid platform fees
 - total platform fees for the selected period
 - approved/billable washout count
-- lottery ticket count
+- reward entry count
 - driver tips as a separate number
 
 The dashboard and billing page use the same server-side receivables summary, so the current receivables number should match.
@@ -129,23 +129,23 @@ The audit report is for reconciliation and support:
 
 Use this report when a customer asks, “Why was I charged this amount?”
 
-## Lottery Dashboard
+## Rewards Program Dashboard
 
-The lottery dashboard is for superadmin operational control of the lottery:
+The rewards program dashboard is for superadmin operational control of the rewards program:
 
 - current drawing status
-- entries
+- reward entries
 - totals
-- pending drawings
-- executed drawings
+- pending prize drawings
+- executed prize drawings
 
-Lottery entries are created automatically from eligible approved washouts, so the dashboard is primarily for oversight and drawing execution.
+Reward entries are created automatically from eligible approved washouts, so the dashboard is primarily for oversight and drawing execution.
 
 ## Feature Flags
 
 The feature flag page controls application features such as:
 
-- lottery enablement
+- rewards program enablement
 - driver tip payout-related behavior
 
 Feature flags are an operational safety tool. Use them to disable a problematic feature without redeploying code.
@@ -177,7 +177,7 @@ Feature flags are an operational safety tool. Use them to disable a problematic 
   - The platform revenue query ran successfully.
 
 - `🎰 Lottery entry created for washout ...`
-  - A washout was converted into a lottery entry.
+  - A washout was converted into a reward entry.
 
 ## Admin Operating Procedures
 
@@ -209,13 +209,13 @@ Use the billing audit report and the billing settings history to confirm:
 
 If the dashboard and billing page disagree, they should be using the same shared receivables summary. A mismatch usually means a query failure or a stale browser cache.
 
-### Managing Lottery
+### Managing Rewards Program
 
-Use the lottery dashboard to:
+Use the rewards program dashboard to:
 
 - confirm entries are being created
 - review current totals
-- execute a drawing
+- execute a monthly prize drawing
 - notify winners
 
 ## Troubleshooting
@@ -228,6 +228,6 @@ Use the lottery dashboard to:
   - inspect `server/storage.ts` query projections
   - check for stale payment columns in production
 
-- If the lottery page hangs:
+- If the rewards program page hangs:
   - confirm the auth token is being sent
   - confirm the queries are not waiting on stale cached auth data

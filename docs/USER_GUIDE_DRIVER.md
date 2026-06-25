@@ -2,9 +2,9 @@
 
 ## What This Account Type Does
 
-Drivers complete washouts, upload photos, view activity, and earn lottery entries from eligible approved washouts.
+Drivers complete washouts, upload photos, view activity, and earn reward entries from eligible approved washouts.
 
-Drivers do not need to manually enter the lottery.
+Drivers do not need to manually enter the rewards program.
 
 ## Driver Dashboard
 
@@ -15,7 +15,7 @@ The dashboard is the main view for:
 - locations
 - wallet / payout status
 - notifications
-- lottery entries
+- reward entries
 
 ## Washout Workflow
 
@@ -30,7 +30,7 @@ Typical driver flow:
 
 After a washout is approved and billable:
 
-- the driver earns lottery eligibility automatically
+- the driver earns reward eligibility automatically
 - the platform records the activity
 - the owner billing side can count the washout as receivable
 
@@ -59,21 +59,21 @@ If GPS is missing or the coordinates do not line up, the photo may go to review 
 - Do not reuse the same stale image for a new washout.
 - A photo outside the normal GPS radius can be flagged or rejected.
 
-## Lottery
+## Rewards Program
 
-Drivers automatically receive lottery entries for eligible approved washouts.
+Drivers automatically receive reward entries for eligible approved washouts.
 
 Important rules:
 
 - no manual entry is needed
-- only billable approved washouts earn entries
-- `rubble_dropoff` is not treated as a washout lottery entry
-- duplicate approvals do not create duplicate entries
+- only billable approved washouts earn reward entries
+- `rubble_dropoff` is not treated as a washout reward entry
+- duplicate approvals do not create duplicate reward entries
 
 The driver dashboard can show:
 
-- whether lottery is active
-- the current drawing
+- whether the rewards program is active
+- the current prize drawing
 - your current entry count
 
 ## Wallet and Payouts
@@ -84,7 +84,7 @@ Optional payout-related behavior:
 
 - driver Stripe tip payout setup is only relevant if the platform enables it
 - it is not required for washout completion
-- it is not required for lottery eligibility
+- it is not required for reward eligibility
 
 If tip payouts are enabled, the driver may need to complete Stripe onboarding for that separate flow.
 
@@ -95,21 +95,21 @@ Drivers can update profile details, payout preferences, and optional financial s
 Do not confuse:
 
 - washout completion
-- lottery eligibility
+- reward eligibility
 - optional tip payout onboarding
 
 These are separate systems.
 
 ## Common Driver Messages
 
-- `Lottery active`
-  - The lottery feature is enabled.
+- `Rewards program active`
+  - The rewards program feature is enabled.
 
-- `Lottery disabled`
-  - An admin has disabled the lottery feature.
+- `Rewards program disabled`
+  - An admin has disabled the rewards program feature.
 
-- `Lottery is active for [month] [year], but no drawing has been posted yet.`
-  - The lottery system is on, but a drawing has not been posted.
+- `Rewards program is active for [month] [year], but no drawing has been posted yet.`
+  - The rewards program is on, but a drawing has not been posted.
 
 - `Photo GPS is ... miles from the washout location.`
   - The photo was too far from the location to auto-verify.
@@ -119,7 +119,7 @@ These are separate systems.
 
 ## Driver Troubleshooting
 
-### My washout is not earning a lottery entry
+### My washout is not earning a reward entry
 
 Check:
 
