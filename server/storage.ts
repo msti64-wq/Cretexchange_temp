@@ -96,8 +96,11 @@ import {
   type InsertLocationMaterialIntent,
   type DriverLotteryEntry,
   type InsertDriverLotteryEntry,
+  type LotteryDrawingWinner,
+  type InsertLotteryDrawingWinner,
   type LotteryNotification,
   type InsertLotteryNotification,
+  lotteryDrawingWinners,
   lotteryDrawings,
 } from "@shared/schema";
 import { db } from "./db";
@@ -119,7 +122,7 @@ import {
   type ReportingLedgerBatch,
 } from "./billing/ownerWashoutLedger";
 import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
-import { eq, and, gte, lte, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, asc, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
 import type { PhotoFingerprintCandidate } from "@shared/photoFingerprint";
@@ -470,6 +473,9 @@ export interface IStorage {
   createLotteryDrawing(data: any): Promise<any>;
   getLotteryDrawings(): Promise<any[]>;
   getLotteryDrawingByMonthYear(month: number, year: number): Promise<any | undefined>;
+  createLotteryDrawingWinner(winner: InsertLotteryDrawingWinner): Promise<LotteryDrawingWinner>;
+  getLotteryDrawingWinners(drawingId: string): Promise<any[]>;
+  getLotteryDrawingHistoryWithWinners(): Promise<any[]>;
   getPendingLotteryDrawings(): Promise<any[]>;
   markLotteryPrizeDelivered(drawingId: string, place: 'first' | 'second' | 'third'): Promise<any>;
   updateLotteryDrawingNotificationSummary(drawingId: string, updates: {
@@ -6476,6 +6482,96 @@ export class DatabaseStorage implements IStorage {
     return drawing;
   }
 
+  async createLotteryDrawingWinner(winner: InsertLotteryDrawingWinner): Promise<LotteryDrawingWinner> {
+    const values = Object.fromEntries(
+      Object.entries(winner).filter(([, value]) => value !== undefined)
+    ) as InsertLotteryDrawingWinner;
+
+    const [record] = await db
+      .insert(lotteryDrawingWinners)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [lotteryDrawingWinners.lotteryDrawingId, lotteryDrawingWinners.placeIndex],
+        set: values,
+      })
+      .returning();
+    return record;
+  }
+
+  async getLotteryDrawingWinners(drawingId: string): Promise<any[]> {
+    const results = await db
+      .select({
+        winner: lotteryDrawingWinners,
+        driver: drivers,
+        driverUser: users,
+        entry: driverLotteryEntries,
+      })
+      .from(lotteryDrawingWinners)
+      .innerJoin(drivers, eq(lotteryDrawingWinners.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .innerJoin(driverLotteryEntries, eq(lotteryDrawingWinners.entryId, driverLotteryEntries.id))
+      .where(eq(lotteryDrawingWinners.lotteryDrawingId, drawingId))
+      .orderBy(asc(lotteryDrawingWinners.placeIndex));
+
+    if (results.length === 0) {
+      const [drawing] = await db
+        .select()
+        .from(lotteryDrawings)
+        .where(eq(lotteryDrawings.id, drawingId))
+        .limit(1);
+
+      if (!drawing) {
+        return [];
+      }
+
+      return [
+        drawing.firstPlaceDriverId && drawing.firstPlaceDriverName ? {
+          placeIndex: 1,
+          lotteryDrawingId: drawing.id,
+          driverId: drawing.firstPlaceDriverId,
+          driverName: drawing.firstPlaceDriverName,
+          entryId: null,
+          ticketNumber: drawing.firstPlaceTicketNumber || null,
+          prizeTitle: drawing.firstPrize || null,
+          prizeDescription: null,
+          notificationId: null,
+          createdAt: drawing.createdAt,
+        } : null,
+        drawing.secondPlaceDriverId && drawing.secondPlaceDriverName ? {
+          placeIndex: 2,
+          lotteryDrawingId: drawing.id,
+          driverId: drawing.secondPlaceDriverId,
+          driverName: drawing.secondPlaceDriverName,
+          entryId: null,
+          ticketNumber: drawing.secondPlaceTicketNumber || null,
+          prizeTitle: drawing.secondPrize || null,
+          prizeDescription: null,
+          notificationId: null,
+          createdAt: drawing.createdAt,
+        } : null,
+        drawing.thirdPlaceDriverId && drawing.thirdPlaceDriverName ? {
+          placeIndex: 3,
+          lotteryDrawingId: drawing.id,
+          driverId: drawing.thirdPlaceDriverId,
+          driverName: drawing.thirdPlaceDriverName,
+          entryId: null,
+          ticketNumber: drawing.thirdPlaceTicketNumber || null,
+          prizeTitle: drawing.thirdPrize || null,
+          prizeDescription: null,
+          notificationId: null,
+          createdAt: drawing.createdAt,
+        } : null,
+      ].filter(Boolean);
+    }
+
+    return results.map((row) => ({
+      ...row.winner,
+      driver: { ...row.driver, user: row.driverUser },
+      entry: row.entry,
+      driverName: `${row.driverUser.firstName} ${row.driverUser.lastName}`,
+    }));
+  }
+
   async getPendingLotteryDrawings(): Promise<any[]> {
     return await db
       .select()
@@ -6512,6 +6608,90 @@ export class DatabaseStorage implements IStorage {
       .where(eq(lotteryDrawings.id, drawingId))
       .returning();
     return updated;
+  }
+
+  async getLotteryDrawingHistoryWithWinners(): Promise<any[]> {
+    const drawings = await this.getLotteryDrawings();
+    if (drawings.length === 0) {
+      return [];
+    }
+
+    const winners = await db
+      .select({
+        winner: lotteryDrawingWinners,
+        driver: drivers,
+        driverUser: users,
+        entry: driverLotteryEntries,
+      })
+      .from(lotteryDrawingWinners)
+      .innerJoin(drivers, eq(lotteryDrawingWinners.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .innerJoin(driverLotteryEntries, eq(lotteryDrawingWinners.entryId, driverLotteryEntries.id))
+      .orderBy(desc(lotteryDrawingWinners.createdAt));
+
+    const winnersByDrawing = new Map<string, any[]>();
+    for (const row of winners) {
+      const mapped = {
+        ...row.winner,
+        driver: { ...row.driver, user: row.driverUser },
+        entry: row.entry,
+        driverName: `${row.driverUser.firstName} ${row.driverUser.lastName}`,
+      };
+      const existing = winnersByDrawing.get(row.winner.lotteryDrawingId) || [];
+      existing.push(mapped);
+      winnersByDrawing.set(row.winner.lotteryDrawingId, existing);
+    }
+
+    return drawings.map((drawing: any) => {
+      const winnerRows = winnersByDrawing.get(drawing.id);
+      if (winnerRows?.length) {
+        return {
+          ...drawing,
+          winners: winnerRows.sort((a, b) => (a.placeIndex || 0) - (b.placeIndex || 0)),
+        };
+      }
+
+      const legacyWinners = [
+        drawing.firstPlaceDriverId && drawing.firstPlaceDriverName ? {
+          placeIndex: 1,
+          driverId: drawing.firstPlaceDriverId,
+          driverName: drawing.firstPlaceDriverName,
+          entryId: null,
+          ticketNumber: drawing.firstPlaceTicketNumber || null,
+          prizeTitle: drawing.firstPrize || null,
+          prizeDescription: null,
+          notificationId: null,
+          createdAt: drawing.createdAt,
+        } : null,
+        drawing.secondPlaceDriverId && drawing.secondPlaceDriverName ? {
+          placeIndex: 2,
+          driverId: drawing.secondPlaceDriverId,
+          driverName: drawing.secondPlaceDriverName,
+          entryId: null,
+          ticketNumber: drawing.secondPlaceTicketNumber || null,
+          prizeTitle: drawing.secondPrize || null,
+          prizeDescription: null,
+          notificationId: null,
+          createdAt: drawing.createdAt,
+        } : null,
+        drawing.thirdPlaceDriverId && drawing.thirdPlaceDriverName ? {
+          placeIndex: 3,
+          driverId: drawing.thirdPlaceDriverId,
+          driverName: drawing.thirdPlaceDriverName,
+          entryId: null,
+          ticketNumber: drawing.thirdPlaceTicketNumber || null,
+          prizeTitle: drawing.thirdPrize || null,
+          prizeDescription: null,
+          notificationId: null,
+          createdAt: drawing.createdAt,
+        } : null,
+      ].filter(Boolean);
+
+      return {
+        ...drawing,
+        winners: legacyWinners,
+      };
+    });
   }
 
   // Driver lottery entries operations

@@ -748,6 +748,23 @@ export const lotteryDrawings = pgTable("lottery_drawings", {
   monthYearUnique: uniqueIndex("uniq_lottery_drawings_month_year").on(table.lotteryMonth, table.lotteryYear),
 }));
 
+export const lotteryDrawingWinners = pgTable("lottery_drawing_winners", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lotteryDrawingId: varchar("lottery_drawing_id").notNull().references(() => lotteryDrawings.id, { onDelete: "cascade" }),
+  placeIndex: integer("place_index").notNull(),
+  driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
+  entryId: varchar("entry_id").notNull().references(() => driverLotteryEntries.id, { onDelete: "cascade" }),
+  ticketNumber: varchar("ticket_number").notNull(),
+  prizeTitle: varchar("prize_title"),
+  prizeDescription: text("prize_description"),
+  notificationId: varchar("notification_id").references(() => notifications.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  drawingPlaceUnique: uniqueIndex("uniq_lottery_drawing_winners_drawing_place").on(table.lotteryDrawingId, table.placeIndex),
+  drawingIndex: index("idx_lottery_drawing_winners_drawing").on(table.lotteryDrawingId),
+  driverIndex: index("idx_lottery_drawing_winners_driver").on(table.driverId),
+}));
+
 export const lotteryNotifications = pgTable("lottery_notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   lotteryDrawingId: varchar("lottery_drawing_id").notNull().references(() => lotteryDrawings.id, { onDelete: "cascade" }),
@@ -843,6 +860,18 @@ export const lotteryNotificationsRelations = relations(lotteryNotifications, ({ 
   drawing: one(lotteryDrawings, { fields: [lotteryNotifications.lotteryDrawingId], references: [lotteryDrawings.id] }),
   user: one(users, { fields: [lotteryNotifications.userId], references: [users.id] }),
   driver: one(drivers, { fields: [lotteryNotifications.driverId], references: [drivers.id] }),
+}));
+
+export const lotteryDrawingsRelations = relations(lotteryDrawings, ({ many }) => ({
+  winners: many(lotteryDrawingWinners),
+  notifications: many(lotteryNotifications),
+}));
+
+export const lotteryDrawingWinnersRelations = relations(lotteryDrawingWinners, ({ one }) => ({
+  drawing: one(lotteryDrawings, { fields: [lotteryDrawingWinners.lotteryDrawingId], references: [lotteryDrawings.id] }),
+  driver: one(drivers, { fields: [lotteryDrawingWinners.driverId], references: [drivers.id] }),
+  entry: one(driverLotteryEntries, { fields: [lotteryDrawingWinners.entryId], references: [driverLotteryEntries.id] }),
+  notification: one(notifications, { fields: [lotteryDrawingWinners.notificationId], references: [notifications.id] }),
 }));
 
 export const driverWalletsRelations = relations(driverWallets, ({ one, many }) => ({
@@ -1372,8 +1401,15 @@ export const insertLotteryNotificationSchema = createInsertSchema(lotteryNotific
   notificationId: true,
 });
 
+export const insertLotteryDrawingWinnerSchema = createInsertSchema(lotteryDrawingWinners).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type LotteryNotification = typeof lotteryNotifications.$inferSelect;
 export type InsertLotteryNotification = z.infer<typeof insertLotteryNotificationSchema>;
+export type LotteryDrawingWinner = typeof lotteryDrawingWinners.$inferSelect;
+export type InsertLotteryDrawingWinner = z.infer<typeof insertLotteryDrawingWinnerSchema>;
 
 // Date range validation schema
 export const dateRangeSchema = z.enum(['today', 'yesterday', '7days', '30days', '90days', 'all']).default('today');

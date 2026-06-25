@@ -45,7 +45,7 @@ import {
 } from "./billingPolicy";
 import { buildOwnerWashoutBillingLedgerFromPayments, buildOwnerWashoutBillingPreview, getDriverTipSummaryFromPayments } from "./billing/ownerWashoutLedger";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
-import { resolveLotteryEnabled } from "./lottery";
+import { buildLotteryDrawingPreview, resolveLotteryEnabled } from "./lottery";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
@@ -190,6 +190,7 @@ type LotteryWinnerSummary = {
   place: number;
   driverId: string;
   driverName: string;
+  entryId?: string | null;
   ticketNumber: string | null;
   payoutPreference: string | null;
   prize?: string | null;
@@ -10598,9 +10599,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Preview a monthly prize drawing without persisting winners
+  app.post('/api/admin/lottery/drawings/preview', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { month, year, winnerCount, allowDuplicateWinnerDriver, prizes } = req.body || {};
+      const monthNum = month ? parseInt(month as string, 10) : NaN;
+      const yearNum = year ? parseInt(year as string, 10) : NaN;
+      if (!monthNum || !yearNum) {
+        return res.status(400).json({ message: "Month and year are required" });
+      }
+
+      const startDate = new Date(yearNum, monthNum - 1, 1);
+      const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59);
+      const driverTotals = await storage.getDriverLotteryEntryTotals(monthNum, yearNum);
+      const entries = await storage.getAllDriverLotteryEntries(startDate, endDate);
+      const preview = buildLotteryDrawingPreview({
+        entries,
+        driverTotals,
+        winnerCount: Number(winnerCount) || 3,
+        allowDuplicateWinnerDriver: allowDuplicateWinnerDriver === true || allowDuplicateWinnerDriver === "true",
+        prizes: Array.isArray(prizes) ? prizes : [],
+      });
+
+      res.json({
+        month: monthNum,
+        year: yearNum,
+        ...preview,
+      });
+    } catch (error: any) {
+      console.error("Error building lottery preview:", error);
+      res.status(500).json({ message: error.message || "Failed to build preview" });
+    }
+  });
+
   // Support a friendlier draw endpoint that forwards to the existing execute handler.
   app.post('/api/admin/lottery/draw', isAuthenticated, async (_req: any, res) => {
     res.redirect(307, '/api/admin/lottery/execute');
+  });
+
+  // Return the winners for a completed drawing
+  app.get('/api/admin/lottery/drawings/:id/winners', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { id } = req.params;
+      const winners = await storage.getLotteryDrawingWinners(id);
+      res.json(winners);
+    } catch (error: any) {
+      console.error("Error fetching lottery drawing winners:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch winners" });
+    }
+  });
+
+  // Return historical drawings with nested winners
+  app.get('/api/admin/lottery/drawings/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const history = await storage.getLotteryDrawingHistoryWithWinners();
+      res.json(history);
+    } catch (error: any) {
+      console.error("Error fetching lottery drawing history:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch history" });
+    }
   });
 
   // Get all lottery entries with driver details (admin/super admin)
@@ -10771,7 +10843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const individualEntries = await storage.getAllDriverLotteryEntries(startDate, endDate);
 
       // Build weighted pool (one slot per entry earned)
-      const pool: { driverId: string; driverName: string; ticketNumber: string | null; payoutPreference: string | null }[] = [];
+      const pool: { driverId: string; driverName: string; entryId: string | null; ticketNumber: string | null; payoutPreference: string | null }[] = [];
       for (const t of allEntries) {
         const driverIndividualEntries = individualEntries.filter((e: any) => e.driverId === t.driverId);
         for (let i = 0; i < t.totalEntries; i++) {
@@ -10779,6 +10851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pool.push({
             driverId: t.driverId,
             driverName: t.driverName,
+            entryId: entryForSlot?.id || null,
             ticketNumber: entryForSlot?.ticketNumber || null,
             payoutPreference: t.payoutPreference,
           });
@@ -10793,30 +10866,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existing) {
         winners = [];
         if (existing.firstPlaceDriverId && existing.firstPlaceDriverName) {
+          const matchingEntry = individualEntries.find((entry: any) =>
+            entry.driverId === existing.firstPlaceDriverId && entry.ticketNumber === existing.firstPlaceTicketNumber,
+          );
           winners.push({
             place: 1,
             driverId: existing.firstPlaceDriverId,
             driverName: existing.firstPlaceDriverName,
+            entryId: matchingEntry?.id || null,
             ticketNumber: existing.firstPlaceTicketNumber || null,
             payoutPreference: existing.firstPlacePayoutPreference || null,
             prize: existing.firstPrize || null,
           });
         }
         if (existing.secondPlaceDriverId && existing.secondPlaceDriverName) {
+          const matchingEntry = individualEntries.find((entry: any) =>
+            entry.driverId === existing.secondPlaceDriverId && entry.ticketNumber === existing.secondPlaceTicketNumber,
+          );
           winners.push({
             place: 2,
             driverId: existing.secondPlaceDriverId,
             driverName: existing.secondPlaceDriverName,
+            entryId: matchingEntry?.id || null,
             ticketNumber: existing.secondPlaceTicketNumber || null,
             payoutPreference: existing.secondPlacePayoutPreference || null,
             prize: existing.secondPrize || null,
           });
         }
         if (existing.thirdPlaceDriverId && existing.thirdPlaceDriverName) {
+          const matchingEntry = individualEntries.find((entry: any) =>
+            entry.driverId === existing.thirdPlaceDriverId && entry.ticketNumber === existing.thirdPlaceTicketNumber,
+          );
           winners.push({
             place: 3,
             driverId: existing.thirdPlaceDriverId,
             driverName: existing.thirdPlaceDriverName,
+            entryId: matchingEntry?.id || null,
             ticketNumber: existing.thirdPlaceTicketNumber || null,
             payoutPreference: existing.thirdPlacePayoutPreference || null,
             prize: existing.thirdPrize || null,
@@ -10839,6 +10924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               place: winners.length + 1,
               driverId: slot.driverId,
               driverName: slot.driverName,
+              entryId: slot.entryId,
               ticketNumber: slot.ticketNumber,
               payoutPreference: slot.payoutPreference,
               prize: null,
@@ -10891,6 +10977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const participantMessage = buildLotteryParticipantMessage(monthName, year, winners, nextMonthName, nextMonthYear);
 
       let winnerNotificationCount = 0;
+      const winnerNotificationResults: Array<{ winner: LotteryWinnerSummary; prize: string | null; notificationId: string | null }> = [];
       for (const { winner, title, message, prize } of winnerMessages) {
         const driver = driverMap.get(winner.driverId);
         if (!driver) continue;
@@ -10916,6 +11003,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (result.created) {
           winnerNotificationCount += 1;
         }
+        winnerNotificationResults.push({
+          winner,
+          prize: prize ?? null,
+          notificationId: result.record.notificationId || null,
+        });
       }
 
       let participantNotificationCount = 0;
@@ -10945,6 +11037,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (result.created) {
           participantNotificationCount += 1;
         }
+      }
+
+      for (const winnerResult of winnerNotificationResults) {
+        if (!winnerResult.winner.entryId || !winnerResult.winner.ticketNumber) {
+          console.warn("[LOTTERY] Skipping winner row persistence without entryId", {
+            drawingId: drawing.id,
+            placeIndex: winnerResult.winner.place,
+            driverId: winnerResult.winner.driverId,
+          });
+          continue;
+        }
+
+        await storage.createLotteryDrawingWinner({
+          lotteryDrawingId: drawing.id,
+          placeIndex: winnerResult.winner.place,
+          driverId: winnerResult.winner.driverId,
+          entryId: winnerResult.winner.entryId,
+          ticketNumber: winnerResult.winner.ticketNumber,
+          prizeTitle: winnerResult.prize,
+          prizeDescription: null,
+          notificationId: winnerResult.notificationId,
+        });
       }
 
       const summary = await storage.getLotteryNotificationSummary(drawing.id);
