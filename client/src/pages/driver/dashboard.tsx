@@ -562,7 +562,7 @@ export default function DriverDashboard() {
                   <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
                     {lotteryActive ? t("driver.dashboard.lotteryActiveTitle") : t("driver.dashboard.lotteryDisabledTitle")}
                   </h3>
-                  <p className="break-words text-sm text-sky-300 dark:text-sky-300">
+                  <p className="break-words text-sm text-blue-300 dark:text-blue-300">
                     {currentLotteryStatusMessage}
                   </p>
                 </div>
