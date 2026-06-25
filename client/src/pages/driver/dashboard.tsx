@@ -562,7 +562,7 @@ export default function DriverDashboard() {
                   <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
                     {lotteryActive ? t("driver.dashboard.lotteryActiveTitle") : t("driver.dashboard.lotteryDisabledTitle")}
                   </h3>
-                  <p className="break-words text-sm text-sky-500 dark:text-sky-300">
+                  <p className="break-words text-sm text-sky-300 dark:text-sky-300">
                     {currentLotteryStatusMessage}
                   </p>
                 </div>
@@ -906,11 +906,11 @@ export default function DriverDashboard() {
                   
                   <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                     <DSCard padding="sm" elevated={false} className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm font-medium text-sky-300 dark:text-sky-300" data-testid={`text-location-name-${index}`}>
+                      <div className="flex items-center gap-2 text-sm font-medium text-blue-300 dark:text-blue-300" data-testid={`text-location-name-${index}`}>
                         <MapPinned className="h-4 w-4 shrink-0 text-secondary" />
                         <span className="truncate">{activity.washout_locations?.name || activity.location?.name || t("driver.activity.unknownLocation")}</span>
                       </div>
-                      <div className="mt-1 break-words text-xs text-sky-300/90 dark:text-sky-300/90">
+                      <div className="mt-1 break-words text-xs text-blue-300/90 dark:text-blue-300/90">
                         {activity.washout_locations?.address || activity.location?.address || formatAddress(activity.washout_locations || activity.location || {}) || t("driver.dashboard.addressUnavailable")}
                       </div>
                     </DSCard>
