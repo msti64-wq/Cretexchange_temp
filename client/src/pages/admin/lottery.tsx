@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -41,7 +42,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Ticket, Download, Calendar, Trophy, Archive, Clock, Send, Gift, ChevronDown, ChevronUp, Building2, List, Zap, Medal } from "lucide-react";
+import { Ticket, Download, Calendar, Trophy, Archive, Clock, Send, Gift, ChevronDown, ChevronUp, Building2, List, Zap, Medal, FileText } from "lucide-react";
 import { MobileNav } from "@/components/MobileNav";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -67,69 +68,80 @@ export default function AdminLottery() {
   const [prize, setPrize] = useState("");
   const [winnerMessage, setWinnerMessage] = useState("");
   const [showIndividualEntries, setShowIndividualEntries] = useState(false);
-  const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
   const [numberOfWinners, setNumberOfWinners] = useState(3);
   const [firstPrize, setFirstPrize] = useState("");
+  const [firstPrizeDescription, setFirstPrizeDescription] = useState("");
   const [secondPrize, setSecondPrize] = useState("");
+  const [secondPrizeDescription, setSecondPrizeDescription] = useState("");
   const [thirdPrize, setThirdPrize] = useState("");
-  const [drawingResult, setDrawingResult] = useState<any | null>(null);
+  const [thirdPrizeDescription, setThirdPrizeDescription] = useState("");
+  const [allowDuplicateWinnerDriver, setAllowDuplicateWinnerDriver] = useState(false);
+  const [previewResult, setPreviewResult] = useState<any | null>(null);
 
   const { data: months, isLoading: monthsLoading } = useQuery<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>({
     queryKey: ['/api/admin/lottery/months'],
+    enabled: !!user && (user.role === 'admin' || user.role === 'super_admin'),
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/lottery/months');
+      return response.json();
+    },
   });
 
   const { data: totals, isLoading: totalsLoading } = useQuery<{ driverId: string; driverName: string; totalEntries: number; payoutPreference: string | null; payoutPreferenceNote: string | null }[]>({
     queryKey: ['/api/admin/lottery/totals', selectedMonth, selectedYear],
+    enabled: !!user && (user.role === 'admin' || user.role === 'super_admin'),
     queryFn: async () => {
-      const response = await fetch(`/api/admin/lottery/totals?month=${selectedMonth}&year=${selectedYear}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch totals');
+      const response = await apiRequest('GET', `/api/admin/lottery/totals?month=${selectedMonth}&year=${selectedYear}`);
       return response.json();
     },
   });
 
   const { data: individualEntries, isLoading: entriesLoading } = useQuery<any[]>({
     queryKey: ['/api/admin/lottery/entries', selectedMonth, selectedYear],
+    enabled: showIndividualEntries && !!user && (user.role === 'admin' || user.role === 'super_admin'),
     queryFn: async () => {
       const start = new Date(selectedYear, selectedMonth - 1, 1).toISOString();
       const end = new Date(selectedYear, selectedMonth, 0, 23, 59, 59).toISOString();
-      const response = await fetch(`/api/admin/lottery/entries?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch entries');
+      const response = await apiRequest('GET', `/api/admin/lottery/entries?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`);
       return response.json();
     },
-    enabled: showIndividualEntries,
   });
 
-  const { data: existingDrawing, isLoading: drawingLoading } = useQuery<any>({
-    queryKey: ['/api/admin/lottery/drawings', selectedMonth, selectedYear],
+  const { data: drawingHistory, isLoading: drawingHistoryLoading } = useQuery<any[]>({
+    queryKey: ['/api/admin/lottery/drawings/history'],
+    enabled: !!user && (user.role === 'admin' || user.role === 'super_admin'),
     queryFn: async () => {
-      const response = await fetch('/api/admin/lottery/drawings', { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch drawings');
-      const all: any[] = await response.json();
-      return all.find(d => d.lotteryMonth === selectedMonth && d.lotteryYear === selectedYear) || null;
+      const response = await apiRequest('GET', '/api/admin/lottery/drawings/history');
+      return response.json();
     },
   });
 
+  const selectedDrawing = drawingHistory?.find((drawing: any) => drawing.lotteryMonth === selectedMonth && drawing.lotteryYear === selectedYear) || null;
+  const existingDrawing = selectedDrawing;
+
   const executeMutation = useMutation({
-    mutationFn: async (payload: { month: number; year: number; numberOfWinners: number; firstPrize: string; secondPrize: string; thirdPrize: string }) => {
+    mutationFn: async (payload: {
+      month: number;
+      year: number;
+      numberOfWinners: number;
+      allowDuplicateWinnerDriver: boolean;
+      firstPrize: string;
+      secondPrize: string;
+      thirdPrize: string;
+      prizes: Array<{ title: string | null; description: string | null }>;
+    }) => {
       const response = await apiRequest('/api/admin/lottery/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
-      setDrawingResult(data);
-      setExecuteDialogOpen(false);
-      setFirstPrize(""); setSecondPrize(""); setThirdPrize("");
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/drawings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/drawings/history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/months'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/totals'] });
-      toast({ title: "🎉 Prize Drawing Complete!", description: data.message });
+      toast({ title: "🎉 Monthly Prize Drawing Complete!", description: data.message });
     },
     onError: (error: Error) => {
       toast({ title: "Drawing Failed", description: error.message, variant: "destructive" });
@@ -149,12 +161,47 @@ export default function AdminLottery() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/lottery/totals'] });
       toast({
         title: "Month Closed",
-        description: data.message || `Archived ${data.archivedCount} entries`,
+        description: data.message || `Archived ${data.archivedCount} reward entries`,
       });
     },
     onError: (error: Error) => {
       toast({
         title: "Archive Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const previewMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('/api/admin/lottery/drawings/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          month: selectedMonth,
+          year: selectedYear,
+          winnerCount: numberOfWinners,
+          allowDuplicateWinnerDriver,
+          prizes: [
+            { title: firstPrize || null, description: firstPrizeDescription || null },
+            { title: secondPrize || null, description: secondPrizeDescription || null },
+            { title: thirdPrize || null, description: thirdPrizeDescription || null },
+          ],
+        }),
+      });
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      setPreviewResult(data);
+      toast({
+        title: "Preview Ready",
+        description: `Previewed ${data?.selectedWinners?.length || 0} reward winners for ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Preview Failed",
         description: error.message,
         variant: "destructive",
       });
@@ -190,7 +237,7 @@ export default function AdminLottery() {
 
   const openNotifyDialog = (driver: { driverId: string; driverName: string; payoutPreference: string | null; payoutPreferenceNote: string | null }) => {
     setSelectedDriver(driver);
-    setWinnerMessage(`Congratulations ${driver.driverName}! You have been selected as a winner in our ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} monthly prize drawing. Please contact us to claim your prize.`);
+    setWinnerMessage(`Congratulations ${driver.driverName}! You have been selected as a winner in our ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} Monthly Prize Drawing. Please contact us to claim your prize.`);
     setNotifyDialogOpen(true);
   };
 
@@ -231,12 +278,13 @@ export default function AdminLottery() {
     
     toast({
       title: "Export Complete",
-      description: `Exported ${totals.length} driver entries for ${monthName} ${selectedYear}`,
+      description: `Exported ${totals.length} reward entries for ${monthName} ${selectedYear}`,
     });
   };
 
   const totalEntriesCount = totals?.reduce((sum, t) => sum + t.totalEntries, 0) || 0;
   const uniqueDrivers = totals?.length || 0;
+  const selectedDrawingWinnerCount = selectedDrawing?.winners?.length || 0;
   
   const isCurrentMonth = selectedMonth === currentMonth && selectedYear === currentYear;
   const selectedMonthData = months?.find(m => m.month === selectedMonth && m.year === selectedYear);
@@ -248,6 +296,7 @@ export default function AdminLottery() {
 
   const endOfMonth = new Date(selectedYear, selectedMonth, 0);
   const daysUntilClose = isCurrentMonth ? Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  const canRunDrawing = !isCurrentMonth && !selectedDrawing && totalEntriesCount > 0;
 
   if (monthsLoading && totalsLoading) {
     return (
@@ -271,7 +320,7 @@ export default function AdminLottery() {
           </div>
           <div>
             <h1 className="font-semibold text-lg">Driver Rewards Program</h1>
-            <p className="text-white/80 text-sm">Monthly prize drawings - entries reset each month</p>
+            <p className="text-white/80 text-sm">Monthly Prize Drawings - reward entries reset each month</p>
           </div>
         </div>
       </header>
@@ -326,19 +375,6 @@ export default function AdminLottery() {
               )}
               
               <div className="flex gap-2 flex-wrap justify-end">
-                {/* Run Monthly Drawing button */}
-                {!isCurrentMonth && !existingDrawing && !drawingLoading && totalEntriesCount > 0 && (
-                  <Button
-                    size="sm"
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                    onClick={() => setExecuteDialogOpen(true)}
-                    data-testid="button-execute-drawing"
-                  >
-                    <Zap className="w-4 h-4 mr-2" />
-                    Run Monthly Prize Drawing
-                  </Button>
-                )}
-
                 {existingDrawing && (
                   <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300">
                     <Trophy className="w-3 h-3 mr-1" />
@@ -386,7 +422,7 @@ export default function AdminLottery() {
               <div className="text-3xl font-bold text-primary" data-testid="text-total-entries">
                 {totalEntriesCount}
               </div>
-              <p className="text-sm text-muted-foreground">Total Entries</p>
+              <p className="text-sm text-muted-foreground">Reward Entries</p>
             </CardContent>
           </Card>
           <Card>
@@ -398,6 +434,228 @@ export default function AdminLottery() {
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Medal className="w-5 h-5 text-yellow-500" />
+              Monthly Prize Drawing
+            </CardTitle>
+            <CardDescription>
+              Preview reward winners before you run the official monthly prize drawing.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="winner-count">Number of Winners</Label>
+                <Input
+                  id="winner-count"
+                  type="number"
+                  min={1}
+                  max={3}
+                  value={numberOfWinners}
+                  onChange={(event) => {
+                    const nextValue = Math.max(1, Math.min(3, parseInt(event.target.value || "1", 10) || 1));
+                    setNumberOfWinners(nextValue);
+                  }}
+                  data-testid="input-winner-count"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This workflow currently supports up to 3 winners in the admin page.
+                </p>
+              </div>
+              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="allow-duplicate-winner-driver"
+                    checked={allowDuplicateWinnerDriver}
+                    onCheckedChange={(checked) => setAllowDuplicateWinnerDriver(Boolean(checked))}
+                    data-testid="checkbox-allow-duplicate-winner-driver"
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="allow-duplicate-winner-driver">Allow duplicate driver winners</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Leave off to prefer unique drivers. Turn on if you want the same driver to win more than one prize in the same drawing.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Duplicate-driver runs are supported in preview and in the official drawing execution path.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-2 rounded-lg border border-border/60 p-3">
+                <Label className="flex items-center gap-2 text-sm font-semibold">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">1</span>
+                  1st Place Prize
+                </Label>
+                <Input
+                  placeholder="e.g., $500 Prepaid Debit Card"
+                  value={firstPrize}
+                  onChange={(e) => setFirstPrize(e.target.value)}
+                />
+                <Textarea
+                  placeholder="Prize description for the first winner"
+                  value={firstPrizeDescription}
+                  onChange={(e) => setFirstPrizeDescription(e.target.value)}
+                  rows={2}
+                />
+              </div>
+              {numberOfWinners >= 2 && (
+                <div className="space-y-2 rounded-lg border border-border/60 p-3">
+                  <Label className="flex items-center gap-2 text-sm font-semibold">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">2</span>
+                    2nd Place Prize
+                  </Label>
+                  <Input
+                    placeholder="e.g., $200 Prepaid Debit Card"
+                    value={secondPrize}
+                    onChange={(e) => setSecondPrize(e.target.value)}
+                  />
+                  <Textarea
+                    placeholder="Prize description for the second winner"
+                    value={secondPrizeDescription}
+                    onChange={(e) => setSecondPrizeDescription(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+              )}
+              {numberOfWinners >= 3 && (
+                <div className="space-y-2 rounded-lg border border-border/60 p-3">
+                  <Label className="flex items-center gap-2 text-sm font-semibold">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">3</span>
+                    3rd Place Prize
+                  </Label>
+                  <Input
+                    placeholder="e.g., $100 Prepaid Debit Card"
+                    value={thirdPrize}
+                    onChange={(e) => setThirdPrize(e.target.value)}
+                  />
+                  <Textarea
+                    placeholder="Prize description for the third winner"
+                    value={thirdPrizeDescription}
+                    onChange={(e) => setThirdPrizeDescription(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => previewMutation.mutate()}
+                disabled={previewMutation.isPending || !totalEntriesCount}
+                data-testid="button-preview-drawing"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                {previewMutation.isPending ? "Previewing..." : "Preview Winners"}
+              </Button>
+              <Button
+                className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                onClick={() => executeMutation.mutate({
+                  month: selectedMonth,
+                  year: selectedYear,
+                  numberOfWinners,
+                  allowDuplicateWinnerDriver,
+                  firstPrize,
+                  secondPrize,
+                  thirdPrize,
+                  prizes: [
+                    { title: firstPrize || null, description: firstPrizeDescription || null },
+                    { title: secondPrize || null, description: secondPrizeDescription || null },
+                    { title: thirdPrize || null, description: thirdPrizeDescription || null },
+                  ],
+                })}
+                disabled={executeMutation.isPending || !totalEntriesCount || Boolean(selectedDrawing) || isCurrentMonth}
+                data-testid="button-run-drawing"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                {executeMutation.isPending ? "Running..." : "Run Official Drawing"}
+              </Button>
+            </div>
+
+            {selectedDrawing && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                A completed drawing already exists for this month. The official run is blocked until the month is voided or reopened.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {previewResult && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Ticket className="w-5 h-5 text-sky-500" />
+                Preview Winners
+              </CardTitle>
+              <CardDescription>
+                Preview results are not persisted until the official drawing is run.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline">{previewResult.eligibleEntryCount} eligible entries</Badge>
+                <Badge variant="outline">{previewResult.eligibleDriverCount} drivers</Badge>
+                <Badge variant="outline">{previewResult.winnerCountRequested} requested winners</Badge>
+                <Badge variant={previewResult.allowDuplicateWinnerDriver ? "default" : "secondary"}>
+                  {previewResult.allowDuplicateWinnerDriver ? "Duplicate winners allowed" : "Unique drivers only"}
+                </Badge>
+              </div>
+
+              {previewResult.warnings?.length > 0 && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                  <ul className="list-disc space-y-1 pl-5">
+                    {previewResult.warnings.map((warning: string) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {previewResult.selectedWinners?.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Place</TableHead>
+                      <TableHead>Reward Winner</TableHead>
+                      <TableHead>Entry Number</TableHead>
+                      <TableHead>Prize</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewResult.selectedWinners.map((winner: any) => (
+                      <TableRow key={`${winner.placeIndex}-${winner.driverId}-${winner.entryId}`}>
+                        <TableCell className="font-semibold">
+                          {winner.placeIndex === 1 ? "🥇 1st" : winner.placeIndex === 2 ? "🥈 2nd" : winner.placeIndex === 3 ? "🥉 3rd" : `#${winner.placeIndex}`}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{winner.driverName}</div>
+                          <div className="text-xs text-muted-foreground">{winner.payoutPreference || "Reward winner"}</div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{winner.ticketNumber || "—"}</TableCell>
+                        <TableCell>
+                          <div className="font-medium text-foreground">{winner.prizeTitle || "—"}</div>
+                          {winner.prizeDescription && (
+                            <div className="text-xs text-muted-foreground">{winner.prizeDescription}</div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                  Preview results will appear here once you run the preview.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Monthly Prize Drawing Results Card */}
         {existingDrawing && (
@@ -411,8 +669,11 @@ export default function AdminLottery() {
                 Drawn on {new Date(existingDrawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
               <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant="outline">
+                  {selectedDrawingWinnerCount} reward winners
+                </Badge>
                 <Badge variant={existingDrawing.winnerNotificationsSentAt ? "default" : "outline"} className={existingDrawing.winnerNotificationsSentAt ? "bg-green-600 hover:bg-green-700" : ""}>
-                  Winners {existingDrawing.winnerNotificationsSentAt ? `sent (${existingDrawing.winnerNotificationCount || 0})` : 'pending'}
+                  Reward winners {existingDrawing.winnerNotificationsSentAt ? `sent (${existingDrawing.winnerNotificationCount || 0})` : 'pending'}
                 </Badge>
                 <Badge variant={existingDrawing.participantNotificationsSentAt ? "default" : "outline"} className={existingDrawing.participantNotificationsSentAt ? "bg-blue-600 hover:bg-blue-700" : ""}>
                   Participants {existingDrawing.participantNotificationsSentAt ? `sent (${existingDrawing.participantNotificationCount || 0})` : 'pending'}
@@ -420,7 +681,21 @@ export default function AdminLottery() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {[
+              {existingDrawing.winners?.length ? existingDrawing.winners.map((winner: any) => (
+                <div key={`${winner.placeIndex}-${winner.driverId}`} className="flex items-start justify-between bg-white/60 dark:bg-black/20 rounded-lg px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-yellow-900 dark:text-yellow-100">
+                      {winner.placeIndex === 1 ? '🥇 1st' : winner.placeIndex === 2 ? '🥈 2nd' : winner.placeIndex === 3 ? '🥉 3rd' : `#${winner.placeIndex}`} — {winner.driverName}
+                    </p>
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300 font-mono">Entry {winner.ticketNumber || '—'}</p>
+                    {winner.prizeTitle && <p className="text-xs text-yellow-600 dark:text-yellow-400">Prize: {winner.prizeTitle}</p>}
+                    {winner.prizeDescription && <p className="text-xs text-yellow-600 dark:text-yellow-400">{winner.prizeDescription}</p>}
+                  </div>
+                  <Badge variant={winner.notificationId ? "secondary" : "outline"} className={winner.notificationId ? "text-green-700 bg-green-100" : "text-yellow-700 border-yellow-400"}>
+                    {winner.notificationId ? "✓ Notified" : "Pending"}
+                  </Badge>
+                </div>
+              )) : [
                 { place: '🥇 1st', name: existingDrawing.firstPlaceDriverName, ticket: existingDrawing.firstPlaceTicketNumber, pref: existingDrawing.firstPlacePayoutPreference, prize: existingDrawing.firstPrize, delivered: existingDrawing.firstPlaceDelivered },
                 { place: '🥈 2nd', name: existingDrawing.secondPlaceDriverName, ticket: existingDrawing.secondPlaceTicketNumber, pref: existingDrawing.secondPlacePayoutPreference, prize: existingDrawing.secondPrize, delivered: existingDrawing.secondPlaceDelivered },
                 { place: '🥉 3rd', name: existingDrawing.thirdPlaceDriverName, ticket: existingDrawing.thirdPlaceTicketNumber, pref: existingDrawing.thirdPlacePayoutPreference, prize: existingDrawing.thirdPrize, delivered: existingDrawing.thirdPlaceDelivered },
@@ -440,6 +715,70 @@ export default function AdminLottery() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Archive className="w-5 h-5 text-yellow-500" />
+              Completed Drawing History
+            </CardTitle>
+            <CardDescription>
+              Review previous monthly prize drawings and their reward winners.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {drawingHistoryLoading ? (
+              <div className="space-y-3">
+                {[1, 2].map((item) => (
+                  <div key={item} className="h-24 animate-pulse rounded-lg bg-muted" />
+                ))}
+              </div>
+            ) : drawingHistory && drawingHistory.length > 0 ? (
+              <div className="space-y-4">
+                {drawingHistory.map((drawing: any) => (
+                  <div key={drawing.id} className="rounded-lg border border-border/70 bg-muted/20 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {MONTH_NAMES[drawing.lotteryMonth - 1]} {drawing.lotteryYear} — Monthly Prize Drawing
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Run on {new Date(drawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                          {drawing.executedByName ? ` by ${drawing.executedByName}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline">{drawing.winners?.length || 0} winners</Badge>
+                        <Badge variant="outline">{drawing.winnerNotificationCount || 0} winner notifications</Badge>
+                      </div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {(drawing.winners || []).map((winner: any) => (
+                        <div key={`${drawing.id}-${winner.placeIndex}`} className="flex items-start justify-between rounded-md bg-background/80 px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">
+                              {winner.placeIndex === 1 ? '🥇 1st' : winner.placeIndex === 2 ? '🥈 2nd' : winner.placeIndex === 3 ? '🥉 3rd' : `#${winner.placeIndex}`} — {winner.driverName}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono">Entry {winner.ticketNumber || '—'}</p>
+                            {winner.prizeTitle && <p className="text-xs text-muted-foreground">Prize: {winner.prizeTitle}</p>}
+                            {winner.prizeDescription && <p className="text-xs text-muted-foreground">{winner.prizeDescription}</p>}
+                          </div>
+                          <Badge variant={winner.notificationId ? "secondary" : "outline"}>
+                            {winner.notificationId ? "Notified" : "Pending"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                No monthly prize drawings have been completed yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -599,78 +938,6 @@ export default function AdminLottery() {
           </Card>
         )}
       </main>
-
-      {/* Run Monthly Drawing Dialog */}
-      <Dialog open={executeDialogOpen} onOpenChange={(open) => { setExecuteDialogOpen(open); if (!open) { setNumberOfWinners(3); setFirstPrize(""); setSecondPrize(""); setThirdPrize(""); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-yellow-500" />
-              Execute {MONTH_NAMES[selectedMonth - 1]} {selectedYear} Drawing
-            </DialogTitle>
-            <DialogDescription>
-              Winners are selected randomly, weighted by number of entries. They will receive automatic win notifications and the month will be archived. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 text-sm text-amber-800 dark:text-amber-200">
-              <strong>{totalEntriesCount}</strong> entries from <strong>{uniqueDrivers}</strong> drivers will be entered into the drawing.
-            </div>
-
-            {/* Number of winners selector */}
-            <div className="space-y-2">
-              <Label>Number of Winners</Label>
-              <div className="flex gap-2">
-                {[1, 2, 3].map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setNumberOfWinners(n)}
-                    className={`flex-1 py-2 rounded-md border text-sm font-semibold transition-colors ${
-                      numberOfWinners === n
-                        ? 'bg-yellow-500 text-white border-yellow-500'
-                        : 'border-border text-muted-foreground hover:border-yellow-400 hover:text-foreground'
-                    }`}
-                  >
-                    {n === 1 ? '1 Winner' : `${n} Winners`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>🥇 1st Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
-              <Input placeholder="e.g., $500 Prepaid Debit Card" value={firstPrize} onChange={e => setFirstPrize(e.target.value)} />
-            </div>
-            {numberOfWinners >= 2 && (
-              <div className="space-y-2">
-                <Label>🥈 2nd Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                <Input placeholder="e.g., $200 Prepaid Debit Card" value={secondPrize} onChange={e => setSecondPrize(e.target.value)} />
-              </div>
-            )}
-            {numberOfWinners >= 3 && (
-              <div className="space-y-2">
-                <Label>🥉 3rd Place Prize <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                <Input placeholder="e.g., $100 Prepaid Debit Card" value={thirdPrize} onChange={e => setThirdPrize(e.target.value)} />
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setExecuteDialogOpen(false)}>Cancel</Button>
-            <Button
-              className="bg-yellow-500 hover:bg-yellow-600 text-white"
-              onClick={() => executeMutation.mutate({ month: selectedMonth, year: selectedYear, numberOfWinners, firstPrize, secondPrize, thirdPrize })}
-              disabled={executeMutation.isPending}
-            >
-              {executeMutation.isPending ? (
-                <><Clock className="w-4 h-4 mr-2 animate-spin" />Drawing...</>
-              ) : (
-                <><Zap className="w-4 h-4 mr-2" />Run Monthly Prize Drawing</>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={notifyDialogOpen} onOpenChange={setNotifyDialogOpen}>
         <DialogContent className="sm:max-w-md">

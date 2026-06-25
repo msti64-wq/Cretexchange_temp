@@ -194,6 +194,7 @@ type LotteryWinnerSummary = {
   ticketNumber: string | null;
   payoutPreference: string | null;
   prize?: string | null;
+  prizeDescription?: string | null;
 };
 
 type DriverStripeReadiness = {
@@ -271,9 +272,34 @@ function buildDriverDashboardWashoutStats(
 function buildLotteryWinnerMessage(winner: LotteryWinnerSummary, monthName: string, year: number): { title: string; message: string } {
   const placeLabel = winner.place === 1 ? "1st Place" : winner.place === 2 ? "2nd Place" : "3rd Place";
   const prizeText = winner.prize ? ` Your prize: ${winner.prize}.` : "";
+  const prizeDescriptionText = winner.prizeDescription ? ` ${winner.prizeDescription}` : "";
   return {
-    title: `🎉 You Won ${placeLabel} in the ${monthName} ${year} Lottery!`,
-    message: `Congratulations! Your ticket ${winner.ticketNumber || ""} was selected as the ${placeLabel} winner of the ${monthName} ${year} lottery.${prizeText} We will be in touch soon to arrange your prize delivery. Thank you for being part of CreteXchange!`,
+    title: `🎉 You Won ${placeLabel} in the ${monthName} ${year} Monthly Prize Drawing!`,
+    message: `Congratulations! Your reward entry ${winner.ticketNumber || ""} was selected as the ${placeLabel} winner of the ${monthName} ${year} Monthly Prize Drawing.${prizeText}${prizeDescriptionText} We will be in touch soon to arrange your prize delivery. Thank you for being part of CreteXchange!`,
+  };
+}
+
+function buildLotteryWinnerGroupMessage(
+  winners: LotteryWinnerSummary[],
+  monthName: string,
+  year: number,
+): { title: string; message: string } {
+  if (winners.length === 1) {
+    return buildLotteryWinnerMessage(winners[0], monthName, year);
+  }
+
+  const winnerSummary = winners
+    .map((winner) => {
+      const placeLabel = winner.place === 1 ? "1st Place" : winner.place === 2 ? "2nd Place" : "3rd Place";
+      const prizeText = winner.prize ? ` Prize: ${winner.prize}.` : "";
+      const prizeDescriptionText = winner.prizeDescription ? ` ${winner.prizeDescription}` : "";
+      return `${placeLabel} — Reward entry ${winner.ticketNumber || ""}.${prizeText}${prizeDescriptionText}`;
+    })
+    .join("\n");
+
+  return {
+    title: `🎉 You Won Multiple Prizes in the ${monthName} ${year} Monthly Prize Drawing!`,
+    message: `Congratulations! More than one of your reward entries was selected in the ${monthName} ${year} Monthly Prize Drawing.\n${winnerSummary}\nNext steps: our team will follow up with prize delivery instructions. Thank you for being part of CreteXchange!`,
   };
 }
 
@@ -296,9 +322,9 @@ async function buildLotteryStatusSnapshot(driverId?: string): Promise<LotterySta
     driverEntryCount,
     currentDrawingMessage: resolution.enabled
       ? currentDrawing
-        ? `Current drawing is open for ${new Date(currentYear, currentMonth - 1, 1).toLocaleDateString('en-US', { month: 'long' })} ${currentYear}.`
-        : `Lottery is active for ${new Date(currentYear, currentMonth - 1, 1).toLocaleDateString('en-US', { month: 'long' })} ${currentYear}, but no drawing has been posted yet.`
-      : 'Lottery is currently disabled by an administrator.',
+        ? `Current Monthly Prize Drawing is open for ${new Date(currentYear, currentMonth - 1, 1).toLocaleDateString('en-US', { month: 'long' })} ${currentYear}.`
+        : `Driver Rewards Program is active for ${new Date(currentYear, currentMonth - 1, 1).toLocaleDateString('en-US', { month: 'long' })} ${currentYear}, but no monthly prize drawing has been posted yet.`
+      : 'Driver Rewards Program is currently disabled by an administrator.',
   };
 }
 
@@ -1335,8 +1361,8 @@ function buildLotteryParticipantMessage(monthName: string, year: number, winners
     .join("; ");
 
   return {
-    title: `🎰 ${monthName} ${year} Lottery Drawing Complete!`,
-    message: `The ${monthName} ${year} lottery drawing is complete. Winners: ${winnerSummary}. Thank you for participating. Every completed washout earns another entry for the next drawing in ${nextMonthName} ${nextYear}.`,
+    title: `🎰 ${monthName} ${year} Monthly Prize Drawing Complete!`,
+    message: `The ${monthName} ${year} Monthly Prize Drawing is complete. Reward winners: ${winnerSummary}. Thank you for participating. Every completed washout earns another reward entry for the next drawing in ${nextMonthName} ${nextYear}.`,
   };
 }
 
@@ -10445,9 +10471,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentDrawing,
         currentDrawingMessage: status.enabled
           ? currentDrawing
-            ? `Current drawing is open for ${monthName} ${status.currentYear}.`
-            : `Lottery is active for ${monthName} ${status.currentYear}, but no drawing has been posted yet.`
-          : 'Lottery is currently disabled by an administrator.',
+            ? `Current Monthly Prize Drawing is open for ${monthName} ${status.currentYear}.`
+            : `Driver Rewards Program is active for ${monthName} ${status.currentYear}, but no monthly prize drawing has been posted yet.`
+          : 'Driver Rewards Program is currently disabled by an administrator.',
       });
     } catch (error: any) {
       console.error("Error fetching lottery status:", error);
@@ -10498,7 +10524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentMonth: selectedMonth,
         currentYear: selectedYear,
         currentDrawing: null,
-        currentDrawingMessage: "Lottery data is temporarily unavailable.",
+        currentDrawingMessage: "Driver Rewards Program data is temporarily unavailable.",
       };
       try {
         status = await buildLotteryStatusSnapshot();
@@ -10792,8 +10818,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const monthName = month ? new Date(2000, month - 1, 1).toLocaleDateString('en-US', { month: 'long' }) : '';
       const title = prize 
-        ? `Congratulations! You won ${prize} in the ${monthName} ${year || ''} lottery!`
-        : `Lottery Winner Notification`;
+        ? `Congratulations! You won ${prize} in the ${monthName} ${year || ''} Monthly Prize Drawing!`
+        : `Reward Winner Notification`;
 
       await storage.createNotification({
         userId: driver.userId,
@@ -10803,7 +10829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: { month, year, prize, sentBy: user.username },
       });
 
-      console.log(`🎉 Lottery winner notification sent to driver ${driverId} by ${user.username}`);
+      console.log(`🎉 Reward winner notification sent to driver ${driverId} by ${user.username}`);
       
       res.json({ 
         message: `Winner notification sent to ${driverUser.firstName} ${driverUser.lastName}`,
@@ -10825,11 +10851,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const { month, year, firstPrize, secondPrize, thirdPrize, numberOfWinners: rawWinners } = req.body;
+      const {
+        month,
+        year,
+        firstPrize,
+        secondPrize,
+        thirdPrize,
+        numberOfWinners: rawWinners,
+        winnerCount: rawWinnerCount,
+        allowDuplicateWinnerDriver,
+        prizes: rawPrizes,
+      } = req.body || {};
       if (!month || !year) {
         return res.status(400).json({ message: "Month and year are required" });
       }
-      const numberOfWinners = Math.min(3, Math.max(1, parseInt(rawWinners) || 3));
+      const parsedWinnerCount = Number.isFinite(Number(rawWinnerCount))
+        ? Number(rawWinnerCount)
+        : Number.isFinite(Number(rawWinners))
+          ? Number(rawWinners)
+          : 3;
+      const winnerCount = Math.max(1, Math.floor(parsedWinnerCount || 3));
+      const duplicateDriverWinnersAllowed = allowDuplicateWinnerDriver === true || allowDuplicateWinnerDriver === "true";
+      const prizeConfigs: Array<{ title?: string | null; description?: string | null }> = Array.isArray(rawPrizes) && rawPrizes.length > 0
+        ? rawPrizes.map((prize: any) => ({
+            title: typeof prize?.title === "string" ? prize.title : prize?.title ?? null,
+            description: typeof prize?.description === "string" ? prize.description : prize?.description ?? null,
+          }))
+        : [
+            { title: firstPrize || null, description: null },
+            { title: secondPrize || null, description: null },
+            { title: thirdPrize || null, description: null },
+          ];
+
+      const existing = await storage.getLotteryDrawingByMonthYear(month, year);
+      if (existing) {
+        return res.status(409).json({
+          message: "Monthly prize drawing already exists for this period.",
+          drawing: existing,
+        });
+      }
 
       // Get all non-archived entries for this month/year
       const allEntries = await storage.getDriverLotteryEntryTotals(month, year);
@@ -10842,105 +10902,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const endDate = new Date(year, month, 0, 23, 59, 59);
       const individualEntries = await storage.getAllDriverLotteryEntries(startDate, endDate);
 
-      // Build weighted pool (one slot per entry earned)
-      const pool: { driverId: string; driverName: string; entryId: string | null; ticketNumber: string | null; payoutPreference: string | null }[] = [];
-      for (const t of allEntries) {
-        const driverIndividualEntries = individualEntries.filter((e: any) => e.driverId === t.driverId);
-        for (let i = 0; i < t.totalEntries; i++) {
-          const entryForSlot = driverIndividualEntries[i % driverIndividualEntries.length];
-          pool.push({
-            driverId: t.driverId,
-            driverName: t.driverName,
-            entryId: entryForSlot?.id || null,
-            ticketNumber: entryForSlot?.ticketNumber || null,
-            payoutPreference: t.payoutPreference,
-          });
-        }
-      }
+      const preview = buildLotteryDrawingPreview({
+        entries: individualEntries,
+        driverTotals: allEntries,
+        winnerCount,
+        allowDuplicateWinnerDriver: duplicateDriverWinnersAllowed,
+        prizes: prizeConfigs,
+      });
+      const winners: LotteryWinnerSummary[] = preview.selectedWinners.map((winner) => ({
+        place: winner.placeIndex,
+        driverId: winner.driverId,
+        driverName: winner.driverName,
+        entryId: winner.entryId,
+        ticketNumber: winner.ticketNumber,
+        payoutPreference: winner.payoutPreference,
+        prize: winner.prizeTitle || null,
+        prizeDescription: winner.prizeDescription || null,
+      }));
 
-      const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
-      const existing = await storage.getLotteryDrawingByMonthYear(month, year);
-
-      let winners: LotteryWinnerSummary[];
-      let prizes: (string | null)[];
-      if (existing) {
-        winners = [];
-        if (existing.firstPlaceDriverId && existing.firstPlaceDriverName) {
-          const matchingEntry = individualEntries.find((entry: any) =>
-            entry.driverId === existing.firstPlaceDriverId && entry.ticketNumber === existing.firstPlaceTicketNumber,
-          );
-          winners.push({
-            place: 1,
-            driverId: existing.firstPlaceDriverId,
-            driverName: existing.firstPlaceDriverName,
-            entryId: matchingEntry?.id || null,
-            ticketNumber: existing.firstPlaceTicketNumber || null,
-            payoutPreference: existing.firstPlacePayoutPreference || null,
-            prize: existing.firstPrize || null,
-          });
-        }
-        if (existing.secondPlaceDriverId && existing.secondPlaceDriverName) {
-          const matchingEntry = individualEntries.find((entry: any) =>
-            entry.driverId === existing.secondPlaceDriverId && entry.ticketNumber === existing.secondPlaceTicketNumber,
-          );
-          winners.push({
-            place: 2,
-            driverId: existing.secondPlaceDriverId,
-            driverName: existing.secondPlaceDriverName,
-            entryId: matchingEntry?.id || null,
-            ticketNumber: existing.secondPlaceTicketNumber || null,
-            payoutPreference: existing.secondPlacePayoutPreference || null,
-            prize: existing.secondPrize || null,
-          });
-        }
-        if (existing.thirdPlaceDriverId && existing.thirdPlaceDriverName) {
-          const matchingEntry = individualEntries.find((entry: any) =>
-            entry.driverId === existing.thirdPlaceDriverId && entry.ticketNumber === existing.thirdPlaceTicketNumber,
-          );
-          winners.push({
-            place: 3,
-            driverId: existing.thirdPlaceDriverId,
-            driverName: existing.thirdPlaceDriverName,
-            entryId: matchingEntry?.id || null,
-            ticketNumber: existing.thirdPlaceTicketNumber || null,
-            payoutPreference: existing.thirdPlacePayoutPreference || null,
-            prize: existing.thirdPrize || null,
-          });
-        }
-        prizes = [existing.firstPrize || null, existing.secondPrize || null, existing.thirdPrize || null];
-      } else {
-        // Shuffle pool using Fisher-Yates
-        for (let i = pool.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [pool[i], pool[j]] = [pool[j], pool[i]];
-        }
-
-        // Pick up to numberOfWinners unique winners
-        winners = [];
-        const pickedDriverIds = new Set<string>();
-        for (const slot of pool) {
-          if (!pickedDriverIds.has(slot.driverId)) {
-            winners.push({
-              place: winners.length + 1,
-              driverId: slot.driverId,
-              driverName: slot.driverName,
-              entryId: slot.entryId,
-              ticketNumber: slot.ticketNumber,
-              payoutPreference: slot.payoutPreference,
-              prize: null,
-            });
-            pickedDriverIds.add(slot.driverId);
-            if (winners.length === numberOfWinners) break;
-          }
-        }
-
-        if (winners.length < 1) {
-          return res.status(400).json({ message: "Not enough unique drivers to hold a drawing" });
-        }
-        prizes = [firstPrize || null, secondPrize || null, thirdPrize || null];
+      if (winners.length < 1) {
+        return res.status(400).json({ message: "No eligible reward entries found for this period" });
       }
 
       const [first, second, third] = winners;
+      const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
       const nextMonthDate = new Date(year, month, 1);
       const nextMonthName = nextMonthDate.toLocaleDateString('en-US', { month: 'long' });
       const nextMonthYear = nextMonthDate.getFullYear();
@@ -10948,7 +10933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allDrivers = await storage.getAllDrivers() as DriverWithUser[];
       const driverMap = new Map(allDrivers.map((driver) => [driver.id, driver]));
 
-      const drawing = existing || await storage.createLotteryDrawing({
+      const drawing = await storage.createLotteryDrawing({
         lotteryMonth: month,
         lotteryYear: year,
         executedBy: user.id,
@@ -10956,31 +10941,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstPlaceDriverName: first?.driverName || null,
         firstPlaceTicketNumber: first?.ticketNumber || null,
         firstPlacePayoutPreference: first?.payoutPreference || null,
-        firstPrize: prizes[0],
+        firstPrize: first?.prize || prizeConfigs[0]?.title || null,
         secondPlaceDriverId: second?.driverId || null,
         secondPlaceDriverName: second?.driverName || null,
         secondPlaceTicketNumber: second?.ticketNumber || null,
         secondPlacePayoutPreference: second?.payoutPreference || null,
-        secondPrize: prizes[1],
+        secondPrize: second?.prize || prizeConfigs[1]?.title || null,
         thirdPlaceDriverId: third?.driverId || null,
         thirdPlaceDriverName: third?.driverName || null,
         thirdPlaceTicketNumber: third?.ticketNumber || null,
         thirdPlacePayoutPreference: third?.payoutPreference || null,
-        thirdPrize: prizes[2],
+        thirdPrize: third?.prize || prizeConfigs[2]?.title || null,
       });
 
-      const winnerMessages = winners.map((winner, index) => ({
-        winner,
-        ...buildLotteryWinnerMessage({ ...winner, prize: prizes[index] }, monthName, year),
-        prize: prizes[index],
-      }));
+      const winnerGroups = new Map<string, LotteryWinnerSummary[]>();
+      for (const winner of winners) {
+        const current = winnerGroups.get(winner.driverId) || [];
+        current.push(winner);
+        winnerGroups.set(winner.driverId, current);
+      }
+
       const participantMessage = buildLotteryParticipantMessage(monthName, year, winners, nextMonthName, nextMonthYear);
 
       let winnerNotificationCount = 0;
-      const winnerNotificationResults: Array<{ winner: LotteryWinnerSummary; prize: string | null; notificationId: string | null }> = [];
-      for (const { winner, title, message, prize } of winnerMessages) {
-        const driver = driverMap.get(winner.driverId);
+      const notificationIdsByDriver = new Map<string, string | null>();
+      for (const [driverId, groupedWinners] of Array.from(winnerGroups.entries())) {
+        const driver = driverMap.get(driverId);
         if (!driver) continue;
+        const { title, message } = buildLotteryWinnerGroupMessage(groupedWinners, monthName, year);
         const result = await storage.createLotteryNotificationOnce({
           lotteryDrawingId: drawing.id,
           lotteryMonth: month,
@@ -10988,26 +10976,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId: driver.userId,
           driverId: driver.id,
           notificationKind: 'winner',
-          place: winner.place,
+          place: groupedWinners[0]?.place || 1,
           title,
           message,
           data: {
             month,
             year,
-            place: winner.place,
-            ticketNumber: winner.ticketNumber,
-            prize,
-            driverName: winner.driverName,
+            winners: groupedWinners.map((groupWinner: LotteryWinnerSummary) => ({
+              place: groupWinner.place,
+              ticketNumber: groupWinner.ticketNumber,
+              prize: groupWinner.prize,
+              prizeDescription: groupWinner.prizeDescription,
+              driverName: groupWinner.driverName,
+            })),
+            driverName: groupedWinners[0]?.driverName,
           },
         });
         if (result.created) {
           winnerNotificationCount += 1;
         }
-        winnerNotificationResults.push({
-          winner,
-          prize: prize ?? null,
-          notificationId: result.record.notificationId || null,
-        });
+        notificationIdsByDriver.set(driverId, result.record.notificationId || null);
       }
 
       let participantNotificationCount = 0;
@@ -11039,25 +11027,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      for (const winnerResult of winnerNotificationResults) {
-        if (!winnerResult.winner.entryId || !winnerResult.winner.ticketNumber) {
+      for (const winner of winners) {
+        if (!winner.entryId || !winner.ticketNumber) {
           console.warn("[LOTTERY] Skipping winner row persistence without entryId", {
             drawingId: drawing.id,
-            placeIndex: winnerResult.winner.place,
-            driverId: winnerResult.winner.driverId,
+            placeIndex: winner.place,
+            driverId: winner.driverId,
           });
           continue;
         }
 
         await storage.createLotteryDrawingWinner({
           lotteryDrawingId: drawing.id,
-          placeIndex: winnerResult.winner.place,
-          driverId: winnerResult.winner.driverId,
-          entryId: winnerResult.winner.entryId,
-          ticketNumber: winnerResult.winner.ticketNumber,
-          prizeTitle: winnerResult.prize,
-          prizeDescription: null,
-          notificationId: winnerResult.notificationId,
+          placeIndex: winner.place,
+          driverId: winner.driverId,
+          entryId: winner.entryId,
+          ticketNumber: winner.ticketNumber,
+          prizeTitle: winner.prize || null,
+          prizeDescription: winner.prizeDescription || null,
+          notificationId: notificationIdsByDriver.get(winner.driverId) || null,
         });
       }
 
@@ -11066,15 +11054,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateLotteryDrawingNotificationSummary(drawing.id, summary);
       }
 
-      if (!existing) {
-        await storage.archiveLotteryMonth(month, year);
-      }
+      await storage.archiveLotteryMonth(month, year);
 
-      console.log(`🎰 Lottery drawing executed for ${monthName} ${year} by ${user.username}. Winners: ${winners.map(w => w.driverName).join(', ')}`);
-      console.log(`📣 Lottery notifications ${existing ? 'ensured' : 'sent'} for drawing ${drawing.id}: ${winnerNotificationCount} winner messages, ${participantNotificationCount} participant announcements`);
+      console.log(`🎉 Monthly prize drawing executed for ${monthName} ${year} by ${user.username}. Winners: ${winners.map(w => w.driverName).join(', ')}`);
+      console.log(`📣 Monthly prize drawing notifications sent for drawing ${drawing.id}: ${winnerNotificationCount} winner messages, ${participantNotificationCount} participant announcements`);
 
       res.json({
-        message: `Drawing complete! ${winners.length} winner${winners.length !== 1 ? 's' : ''} selected and notified.`,
+        message: `Monthly prize drawing complete! ${winners.length} winner${winners.length !== 1 ? 's' : ''} selected and notified.`,
         drawing: summary ? { ...drawing, ...summary } : drawing,
         winners: winners.map((w) => ({ ...w })),
       });
