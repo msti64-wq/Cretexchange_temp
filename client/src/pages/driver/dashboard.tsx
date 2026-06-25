@@ -643,7 +643,7 @@ export default function DriverDashboard() {
                                   : new Date(entry.createdAt).toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
                               </p>
                               {entry.ticketNumber && (
-                                <span className="max-w-full break-words rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] font-mono font-semibold text-foreground">
+                                <span className="max-w-full break-words rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] font-mono font-semibold text-white">
                                   #{entry.ticketNumber}
                                 </span>
                               )}
