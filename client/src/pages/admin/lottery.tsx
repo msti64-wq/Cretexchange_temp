@@ -335,7 +335,7 @@ export default function AdminLottery() {
                     data-testid="button-execute-drawing"
                   >
                     <Zap className="w-4 h-4 mr-2" />
-                    Run Monthly Drawing
+                    Run Monthly Prize Drawing
                   </Button>
                 )}
 
@@ -665,7 +665,7 @@ export default function AdminLottery() {
               {executeMutation.isPending ? (
                 <><Clock className="w-4 h-4 mr-2 animate-spin" />Drawing...</>
               ) : (
-                <><Zap className="w-4 h-4 mr-2" />Run Monthly Drawing</>
+                <><Zap className="w-4 h-4 mr-2" />Run Monthly Prize Drawing</>
               )}
             </Button>
           </DialogFooter>

@@ -10,7 +10,7 @@ This guide covers the operational screens used by admin and superadmin accounts:
 - payments
 - billing settings
 - billing audit
-- lottery
+- rewards program
 - feature flags
 - reports
 
@@ -176,7 +176,7 @@ Feature flags are an operational safety tool. Use them to disable a problematic 
 - `[SYSTEM_STATS] washout revenue summary { ... }`
   - The platform revenue query ran successfully.
 
-- `🎰 Lottery entry created for washout ...`
+- `🎰 Reward entry created for washout ...`
   - A washout was converted into a reward entry.
 
 ## Admin Operating Procedures
