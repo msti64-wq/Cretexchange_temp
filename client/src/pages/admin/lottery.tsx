@@ -52,10 +52,21 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const DEFAULT_PRIZE_TIERS = [
-  { label: "First Place", title: "", description: "", quantity: 1 },
-  { label: "Second Place", title: "", description: "", quantity: 1 },
-  { label: "Third Place", title: "", description: "", quantity: 1 },
+type PrizeTierSource = "manual" | "catalog";
+
+type PrizeTierState = {
+  label: string;
+  title: string;
+  description: string;
+  quantity: number;
+  prizeSource: PrizeTierSource;
+  catalogPrizeId: string | null;
+};
+
+const DEFAULT_PRIZE_TIERS: PrizeTierState[] = [
+  { label: "First Place", title: "", description: "", quantity: 1, prizeSource: "manual", catalogPrizeId: null },
+  { label: "Second Place", title: "", description: "", quantity: 1, prizeSource: "manual", catalogPrizeId: null },
+  { label: "Third Place", title: "", description: "", quantity: 1, prizeSource: "manual", catalogPrizeId: null },
 ];
 
 const clampTierQuantity = (value: number | string | null | undefined, allowZero = false) => {
@@ -187,6 +198,16 @@ const formatDateTimeDisplay = (value: string | Date | null | undefined) => {
   });
 };
 
+const getCatalogInventoryMetrics = (item: PrizeCatalogItem) => {
+  const availableQuantity = item.isUnlimited
+    ? Number.POSITIVE_INFINITY
+    : Math.max(0, Number(item.inventoryQuantity || 0) - Number(item.reservedQuantity || 0));
+  const isOutOfStock = !item.isUnlimited && availableQuantity <= 0;
+  const isLowInventory = !item.isUnlimited && availableQuantity > 0 && availableQuantity <= Number(item.minimumInventoryAlert || 0);
+
+  return { availableQuantity, isOutOfStock, isLowInventory };
+};
+
 const toIntegerOrZero = (value: string | number | null | undefined) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.floor(parsed) : 0;
@@ -282,6 +303,10 @@ export default function AdminLottery() {
     },
   });
 
+  const prizeCatalogById = useMemo(() => {
+    return new Map((prizeCatalog || []).map((item) => [item.id, item] as const));
+  }, [prizeCatalog]);
+
   const selectedCatalog = useMemo(
     () => prizeCatalog?.find((item) => item.id === selectedCatalogId) || null,
     [prizeCatalog, selectedCatalogId]
@@ -344,6 +369,8 @@ export default function AdminLottery() {
     tierLabel: tier.label,
     placeLabel: tier.label,
     tierOrder: index + 1,
+    prizeSource: tier.prizeSource,
+    catalogPrizeId: tier.prizeSource === "catalog" ? tier.catalogPrizeId : null,
   }));
   const previewResultCount = previewResult?.selectedWinners?.length || 0;
   const previewIsComplete = Boolean(previewResult) && previewResultCount === totalWinnerCount;
@@ -403,6 +430,41 @@ export default function AdminLottery() {
   const selectedCatalogIsLowInventory = !!selectedCatalog && !selectedCatalog.isUnlimited && selectedCatalogAvailableQuantity > 0 && selectedCatalogAvailableQuantity <= Number(selectedCatalog.minimumInventoryAlert || 0);
   const selectedCatalogInventoryHistory = selectedCatalogHistory || [];
 
+  const getTierCatalogItem = (tier: PrizeTierState) => {
+    if (tier.prizeSource !== "catalog" || !tier.catalogPrizeId) return null;
+    return prizeCatalogById.get(tier.catalogPrizeId) || null;
+  };
+
+  const applyCatalogToTier = (index: number, catalogId: string | null) => {
+    setPrizeTiers((current) => current.map((currentTier, currentIndex) => {
+      if (currentIndex !== index) return currentTier;
+      if (!catalogId) {
+        return {
+          ...currentTier,
+          prizeSource: "manual",
+          catalogPrizeId: null,
+        };
+      }
+
+      const catalogItem = prizeCatalogById.get(catalogId);
+      if (!catalogItem) {
+        return {
+          ...currentTier,
+          prizeSource: "manual",
+          catalogPrizeId: null,
+        };
+      }
+
+      return {
+        ...currentTier,
+        prizeSource: "catalog",
+        catalogPrizeId: catalogItem.id,
+        title: catalogItem.title || "",
+        description: catalogItem.description || "",
+      };
+    }));
+  };
+
   const executeMutation = useMutation({
     mutationFn: async (payload: {
       month: number;
@@ -412,7 +474,16 @@ export default function AdminLottery() {
       firstPrize: string;
       secondPrize: string;
       thirdPrize: string;
-      prizes: Array<{ title: string | null; description: string | null; quantity: number; tierLabel: string; placeLabel: string; tierOrder: number }>;
+      prizes: Array<{
+        title: string | null;
+        description: string | null;
+        quantity: number;
+        tierLabel: string;
+        placeLabel: string;
+        tierOrder: number;
+        prizeSource: PrizeTierSource;
+        catalogPrizeId: string | null;
+      }>;
     }) => {
       const response = await apiRequest('/api/admin/lottery/execute', {
         method: 'POST',
@@ -980,6 +1051,115 @@ export default function AdminLottery() {
                       />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">Prize Source</Label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Button
+                        type="button"
+                        variant={tier.prizeSource === "manual" ? "default" : "outline"}
+                        className={tier.prizeSource === "manual" ? "bg-sky-600 text-white hover:bg-sky-700" : "border-border bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-900 dark:text-white"}
+                        onClick={() => setPrizeTiers((current) => current.map((currentTier, currentIndex) => (
+                          currentIndex === index
+                            ? { ...currentTier, prizeSource: "manual", catalogPrizeId: null }
+                            : currentTier
+                        )))}
+                        data-testid={`button-tier-source-manual-${index}`}
+                      >
+                        Manual Prize
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={tier.prizeSource === "catalog" ? "default" : "outline"}
+                        className={tier.prizeSource === "catalog" ? "bg-emerald-600 text-white hover:bg-emerald-700" : "border-border bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-900 dark:text-white"}
+                        onClick={() => {
+                          const firstActiveCatalog = (prizeCatalog || []).find((item) => item.isActive);
+                          setPrizeTiers((current) => current.map((currentTier, currentIndex) => (
+                            currentIndex === index
+                              ? {
+                                  ...currentTier,
+                                  prizeSource: "catalog",
+                                  catalogPrizeId: currentTier.catalogPrizeId || firstActiveCatalog?.id || null,
+                                  title: currentTier.catalogPrizeId ? currentTier.title : (firstActiveCatalog?.title || currentTier.title),
+                                  description: currentTier.catalogPrizeId ? currentTier.description : (firstActiveCatalog?.description || currentTier.description),
+                                }
+                              : currentTier
+                          )));
+                        }}
+                        data-testid={`button-tier-source-catalog-${index}`}
+                      >
+                        Catalog Prize
+                      </Button>
+                    </div>
+                  </div>
+                  {tier.prizeSource === "catalog" && (
+                    <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <div className="space-y-2">
+                        <Label htmlFor={`tier-catalog-${index}`} className="text-xs font-semibold text-muted-foreground">
+                          Catalog Prize
+                        </Label>
+                        <Select
+                          value={tier.catalogPrizeId || ""}
+                          onValueChange={(value) => applyCatalogToTier(index, value)}
+                        >
+                          <SelectTrigger id={`tier-catalog-${index}`}>
+                            <SelectValue placeholder="Select an active prize catalog item" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(prizeCatalog || [])
+                              .filter((item) => item.isActive)
+                              .map((item) => (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {item.title}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {getTierCatalogItem(tier) ? (() => {
+                        const catalogItem = getTierCatalogItem(tier)!;
+                        const inventoryMetrics = getCatalogInventoryMetrics(catalogItem);
+                        return (
+                          <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-950/40 p-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge className="bg-blue-600 text-white hover:bg-blue-700">Catalog Prize</Badge>
+                              <Badge variant="outline" className="border-slate-700 text-white">
+                                {PRIZE_TYPE_LABELS[catalogItem.prizeType] || catalogItem.prizeType}
+                              </Badge>
+                              {catalogItem.isUnlimited ? (
+                                <Badge className="bg-blue-600 text-white hover:bg-blue-700">Unlimited</Badge>
+                              ) : inventoryMetrics.isOutOfStock ? (
+                                <Badge className="bg-red-600 text-white hover:bg-red-700">Out of Stock</Badge>
+                              ) : inventoryMetrics.isLowInventory ? (
+                                <Badge className="bg-amber-500 text-white hover:bg-amber-600">Low Inventory</Badge>
+                              ) : (
+                                <Badge className="bg-emerald-600 text-white hover:bg-emerald-700">Healthy Stock</Badge>
+                              )}
+                            </div>
+                            <div className="grid gap-2 text-sm sm:grid-cols-2">
+                              <p className="text-white"><span className="font-semibold">Available Quantity:</span> {catalogItem.isUnlimited ? "Unlimited" : inventoryMetrics.availableQuantity}</p>
+                              <p className="text-white"><span className="font-semibold">Reserved Quantity:</span> {catalogItem.reservedQuantity}</p>
+                              <p className="text-white"><span className="font-semibold">Estimated Value:</span> {formatMoneyDisplay(catalogItem.estimatedValueCents)}</p>
+                              <p className="text-white"><span className="font-semibold">Unlimited:</span> {catalogItem.isUnlimited ? "Yes" : "No"}</p>
+                              <p className="text-white sm:col-span-2"><span className="font-semibold">Sponsor/Vendor:</span> {catalogItem.sponsorVendor || "—"}</p>
+                              <p className="text-white sm:col-span-2"><span className="font-semibold">Fulfillment Instructions:</span> {catalogItem.fulfillmentInstructions || "—"}</p>
+                            </div>
+                            {(!catalogItem.isActive || inventoryMetrics.isOutOfStock || inventoryMetrics.isLowInventory) && (
+                              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                                {!catalogItem.isActive && "This catalog prize is inactive and should not be used for future drawings. "}
+                                {inventoryMetrics.isOutOfStock && !catalogItem.isUnlimited && "This prize is out of stock. "}
+                                {!inventoryMetrics.isOutOfStock && inventoryMetrics.isLowInventory && !catalogItem.isUnlimited && `Low inventory: only ${inventoryMetrics.availableQuantity} available.`}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })() : (
+                        <div className="rounded-lg border border-dashed border-border/70 bg-muted/10 p-3 text-sm text-muted-foreground">
+                          Select an active prize catalog item to populate this tier.
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <Input
                     placeholder={`e.g., ${index === 0 ? "$500 Milwaukee Tool Kit" : index === 1 ? "$50 Visa Card" : "YETI Tumbler"}`}
                     value={tier.title}
