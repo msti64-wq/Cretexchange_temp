@@ -14814,6 +14814,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sponsorVendor: normalizeOptionalTextField(result.data.sponsorVendor),
         internalNotes: normalizeOptionalTextField(result.data.internalNotes),
         isActive: result.data.isActive ?? true,
+        inventoryQuantity: result.data.inventoryQuantity ?? 0,
+        minimumInventoryAlert: result.data.minimumInventoryAlert ?? 0,
+        isUnlimited: result.data.isUnlimited ?? false,
         createdBy: user.id,
       };
 
@@ -14885,6 +14888,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(Object.prototype.hasOwnProperty.call(updateData, 'fulfillmentInstructions') ? { fulfillmentInstructions: normalizeOptionalTextField(updateData.fulfillmentInstructions) } : {}),
         ...(Object.prototype.hasOwnProperty.call(updateData, 'sponsorVendor') ? { sponsorVendor: normalizeOptionalTextField(updateData.sponsorVendor) } : {}),
         ...(Object.prototype.hasOwnProperty.call(updateData, 'internalNotes') ? { internalNotes: normalizeOptionalTextField(updateData.internalNotes) } : {}),
+        ...(Object.prototype.hasOwnProperty.call(updateData, 'inventoryQuantity') || Object.prototype.hasOwnProperty.call(updateData, 'minimumInventoryAlert') || Object.prototype.hasOwnProperty.call(updateData, 'isUnlimited')
+          ? { lastInventoryUpdate: new Date() }
+          : {}),
       };
 
       if (Object.keys(normalizedUpdate).length === 0) {

@@ -6498,7 +6498,10 @@ export class DatabaseStorage implements IStorage {
 
     const [record] = await db
       .insert(prizeCatalog)
-      .values(values)
+      .values({
+        ...values,
+        lastInventoryUpdate: new Date(),
+      })
       .returning();
     return record;
   }
@@ -6507,11 +6510,15 @@ export class DatabaseStorage implements IStorage {
     const values = Object.fromEntries(
       Object.entries(updates).filter(([, value]) => value !== undefined)
     ) as UpdatePrizeCatalog;
+    const inventoryFieldsChanged = ["inventoryQuantity", "minimumInventoryAlert", "isUnlimited"].some((key) =>
+      Object.prototype.hasOwnProperty.call(values, key)
+    );
 
     const [record] = await db
       .update(prizeCatalog)
       .set({
         ...values,
+        ...(inventoryFieldsChanged ? { lastInventoryUpdate: new Date() } : {}),
         updatedAt: new Date(),
       })
       .where(eq(prizeCatalog.id, id))

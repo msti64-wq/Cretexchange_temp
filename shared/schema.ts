@@ -725,6 +725,10 @@ export const prizeCatalog = pgTable("prize_catalog", {
   prizeType: varchar("prize_type").notNull(),
   estimatedValueCents: integer("estimated_value_cents"),
   isActive: boolean("is_active").default(true).notNull(),
+  inventoryQuantity: integer("inventory_quantity").default(0).notNull(),
+  minimumInventoryAlert: integer("minimum_inventory_alert").default(0).notNull(),
+  isUnlimited: boolean("is_unlimited").default(false).notNull(),
+  lastInventoryUpdate: timestamp("last_inventory_update").defaultNow(),
   fulfillmentInstructions: text("fulfillment_instructions"),
   sponsorVendor: varchar("sponsor_vendor"),
   internalNotes: text("internal_notes"),
@@ -743,11 +747,15 @@ export const insertPrizeCatalogSchema = createInsertSchema(prizeCatalog).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  lastInventoryUpdate: true,
 }).extend({
   title: z.string().trim().min(1, "Title is required"),
   prizeType: prizeCatalogPrizeTypeSchema,
   estimatedValueCents: z.number().int().min(0).optional().nullable(),
   isActive: z.boolean().default(true).optional(),
+  inventoryQuantity: z.number().int().min(0).default(0),
+  minimumInventoryAlert: z.number().int().min(0).default(0),
+  isUnlimited: z.boolean().default(false),
   description: z.string().optional().nullable(),
   fulfillmentInstructions: z.string().optional().nullable(),
   sponsorVendor: z.string().optional().nullable(),
@@ -755,7 +763,25 @@ export const insertPrizeCatalogSchema = createInsertSchema(prizeCatalog).omit({
   createdBy: z.string().optional().nullable(),
 });
 
-export const updatePrizeCatalogSchema = insertPrizeCatalogSchema.partial();
+export const updatePrizeCatalogSchema = createInsertSchema(prizeCatalog).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastInventoryUpdate: true,
+}).partial().extend({
+  title: z.string().trim().min(1, "Title is required").optional(),
+  prizeType: prizeCatalogPrizeTypeSchema.optional(),
+  estimatedValueCents: z.number().int().min(0).optional().nullable(),
+  isActive: z.boolean().optional(),
+  inventoryQuantity: z.number().int().min(0).optional(),
+  minimumInventoryAlert: z.number().int().min(0).optional(),
+  isUnlimited: z.boolean().optional(),
+  description: z.string().optional().nullable(),
+  fulfillmentInstructions: z.string().optional().nullable(),
+  sponsorVendor: z.string().optional().nullable(),
+  internalNotes: z.string().optional().nullable(),
+  createdBy: z.string().optional().nullable(),
+});
 
 export type PrizeCatalog = typeof prizeCatalog.$inferSelect;
 export type InsertPrizeCatalog = z.infer<typeof insertPrizeCatalogSchema>;
