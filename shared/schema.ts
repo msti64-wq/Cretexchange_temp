@@ -708,6 +708,59 @@ export const driverLotteryEntries = pgTable("driver_lottery_entries", {
   monthYearIndex: index("idx_lottery_entries_month_year").on(table.lotteryMonth, table.lotteryYear),
 }));
 
+// Driver Rewards Program prize catalog
+export const prizeCatalogPrizeTypeValues = [
+  "prepaid_card",
+  "gift_card",
+  "physical_item",
+  "sponsored_item",
+  "service_credit",
+  "other",
+] as const;
+
+export const prizeCatalog = pgTable("prize_catalog", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  prizeType: varchar("prize_type").notNull(),
+  estimatedValueCents: integer("estimated_value_cents"),
+  isActive: boolean("is_active").default(true).notNull(),
+  fulfillmentInstructions: text("fulfillment_instructions"),
+  sponsorVendor: varchar("sponsor_vendor"),
+  internalNotes: text("internal_notes"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  activeIndex: index("idx_prize_catalog_is_active").on(table.isActive),
+  typeIndex: index("idx_prize_catalog_prize_type").on(table.prizeType),
+  updatedAtIndex: index("idx_prize_catalog_updated_at").on(table.updatedAt),
+}));
+
+export const prizeCatalogPrizeTypeSchema = z.enum(prizeCatalogPrizeTypeValues);
+
+export const insertPrizeCatalogSchema = createInsertSchema(prizeCatalog).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  title: z.string().trim().min(1, "Title is required"),
+  prizeType: prizeCatalogPrizeTypeSchema,
+  estimatedValueCents: z.number().int().min(0).optional().nullable(),
+  isActive: z.boolean().default(true).optional(),
+  description: z.string().optional().nullable(),
+  fulfillmentInstructions: z.string().optional().nullable(),
+  sponsorVendor: z.string().optional().nullable(),
+  internalNotes: z.string().optional().nullable(),
+  createdBy: z.string().optional().nullable(),
+});
+
+export const updatePrizeCatalogSchema = insertPrizeCatalogSchema.partial();
+
+export type PrizeCatalog = typeof prizeCatalog.$inferSelect;
+export type InsertPrizeCatalog = z.infer<typeof insertPrizeCatalogSchema>;
+export type UpdatePrizeCatalog = z.infer<typeof updatePrizeCatalogSchema>;
+
 // Lottery drawings - records results of completed monthly drawings
 export const lotteryDrawings = pgTable("lottery_drawings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

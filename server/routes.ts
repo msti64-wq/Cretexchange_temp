@@ -10,7 +10,7 @@ import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { getJwtSecret } from "./jwtSecret";
 import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getPhotoReadProviderSelection, getPhotoUploadProviderSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema, insertPrizeCatalogSchema, updatePrizeCatalogSchema } from "@shared/schema";
 import type { Driver, FeeLedger, FeatureFlag, LocationMaterialIntent, Notification, Owner, OwnerFundingSource, Payment, PendingWashoutPayment, User, WalletTransaction, WashoutActivity, WashoutLocation, WashoutPhoto, Withdrawal } from "@shared/schema";
 import { eq, sql, desc, and, isNotNull } from "drizzle-orm";
 import { z } from "zod";
@@ -105,6 +105,24 @@ function parseDelimitedIdList(value: unknown): string[] {
   }
   return [];
 }
+
+function normalizeOptionalTextField(value: unknown): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+const prizeCatalogStatusSchema = z.object({
+  isActive: z.boolean(),
+});
 
 function parseBillingBatchWashoutActivityIds(metadata: Record<string, unknown>): string[] {
   return Array.from(new Set(parseDelimitedIdList(
@@ -14751,6 +14769,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting default service payment account:", error);
       res.status(500).json({ message: "Failed to set default service payment account" });
+    }
+  });
+
+  // ==================== ADMIN DRIVER REWARDS PRIZE CATALOG ROUTES ====================
+
+  // Get prize catalog (admin and superadmin)
+  app.get('/api/admin/prize-catalog', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const catalog = await storage.getPrizeCatalog();
+      res.json(catalog);
+    } catch (error) {
+      console.error("Error fetching prize catalog:", error);
+      res.status(500).json({ message: "Failed to fetch prize catalog" });
+    }
+  });
+
+  // Create prize catalog item (admin and superadmin)
+  app.post('/api/admin/prize-catalog', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const result = insertPrizeCatalogSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: "Invalid prize catalog data",
+          errors: result.error.issues,
+        });
+      }
+
+      const catalogItem = {
+        ...result.data,
+        title: result.data.title.trim(),
+        description: normalizeOptionalTextField(result.data.description),
+        fulfillmentInstructions: normalizeOptionalTextField(result.data.fulfillmentInstructions),
+        sponsorVendor: normalizeOptionalTextField(result.data.sponsorVendor),
+        internalNotes: normalizeOptionalTextField(result.data.internalNotes),
+        isActive: result.data.isActive ?? true,
+        createdBy: user.id,
+      };
+
+      const created = await storage.createPrizeCatalogItem(catalogItem);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating prize catalog item:", error);
+      res.status(500).json({ message: "Failed to create prize catalog item" });
+    }
+  });
+
+  // Get prize catalog item by id (admin and superadmin)
+  app.get('/api/admin/prize-catalog/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const paramResult = uuidParamSchema.safeParse(req.params);
+      if (!paramResult.success) {
+        return res.status(400).json({
+          message: "Invalid prize catalog ID format",
+          errors: paramResult.error.issues,
+        });
+      }
+
+      const catalogItem = await storage.getPrizeCatalogById(req.params.id);
+      if (!catalogItem) {
+        return res.status(404).json({ message: "Prize catalog item not found" });
+      }
+
+      res.json(catalogItem);
+    } catch (error) {
+      console.error("Error fetching prize catalog item:", error);
+      res.status(500).json({ message: "Failed to fetch prize catalog item" });
+    }
+  });
+
+  // Update prize catalog item (admin and superadmin)
+  app.put('/api/admin/prize-catalog/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const paramResult = uuidParamSchema.safeParse(req.params);
+      if (!paramResult.success) {
+        return res.status(400).json({
+          message: "Invalid prize catalog ID format",
+          errors: paramResult.error.issues,
+        });
+      }
+
+      const result = updatePrizeCatalogSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: "Invalid prize catalog data",
+          errors: result.error.issues,
+        });
+      }
+
+      const { createdBy: _createdBy, ...updateData } = result.data as any;
+      const normalizedUpdate = {
+        ...updateData,
+        ...(typeof updateData.title === 'string' ? { title: updateData.title.trim() } : {}),
+        ...(Object.prototype.hasOwnProperty.call(updateData, 'description') ? { description: normalizeOptionalTextField(updateData.description) } : {}),
+        ...(Object.prototype.hasOwnProperty.call(updateData, 'fulfillmentInstructions') ? { fulfillmentInstructions: normalizeOptionalTextField(updateData.fulfillmentInstructions) } : {}),
+        ...(Object.prototype.hasOwnProperty.call(updateData, 'sponsorVendor') ? { sponsorVendor: normalizeOptionalTextField(updateData.sponsorVendor) } : {}),
+        ...(Object.prototype.hasOwnProperty.call(updateData, 'internalNotes') ? { internalNotes: normalizeOptionalTextField(updateData.internalNotes) } : {}),
+      };
+
+      if (Object.keys(normalizedUpdate).length === 0) {
+        return res.status(400).json({ message: "No prize catalog fields provided" });
+      }
+
+      const updated = await storage.updatePrizeCatalogItem(req.params.id, normalizedUpdate);
+      if (!updated) {
+        return res.status(404).json({ message: "Prize catalog item not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating prize catalog item:", error);
+      res.status(500).json({ message: "Failed to update prize catalog item" });
+    }
+  });
+
+  // Update prize catalog status (admin and superadmin)
+  app.patch('/api/admin/prize-catalog/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const paramResult = uuidParamSchema.safeParse(req.params);
+      if (!paramResult.success) {
+        return res.status(400).json({
+          message: "Invalid prize catalog ID format",
+          errors: paramResult.error.issues,
+        });
+      }
+
+      const result = prizeCatalogStatusSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: "Invalid prize catalog status data",
+          errors: result.error.issues,
+        });
+      }
+
+      const updated = await storage.updatePrizeCatalogItemStatus(req.params.id, result.data.isActive);
+      if (!updated) {
+        return res.status(404).json({ message: "Prize catalog item not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating prize catalog status:", error);
+      res.status(500).json({ message: "Failed to update prize catalog status" });
     }
   });
 

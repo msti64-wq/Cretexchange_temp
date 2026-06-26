@@ -32,7 +32,11 @@ import {
   locationMaterialIntents,
   identityDocuments,
   driverLotteryEntries,
+  prizeCatalog,
   lotteryNotifications,
+  type PrizeCatalog,
+  type InsertPrizeCatalog,
+  type UpdatePrizeCatalog,
   type User,
   type UpsertUser,
   type Driver,
@@ -468,6 +472,13 @@ export interface IStorage {
   // Custom billing model operations (feature flag per owner)
   updateOwnerCustomBillingModel(ownerId: string, settings: { useCustomBillingModel?: boolean; customWashoutRate?: string | null }): Promise<Owner>;
   getOwnersWithCustomBillingModel(): Promise<(Owner & { user: User })[]>;
+
+  // Driver Rewards Program prize catalog operations
+  getPrizeCatalog(): Promise<PrizeCatalog[]>;
+  getPrizeCatalogById(id: string): Promise<PrizeCatalog | undefined>;
+  createPrizeCatalogItem(item: InsertPrizeCatalog): Promise<PrizeCatalog>;
+  updatePrizeCatalogItem(id: string, updates: UpdatePrizeCatalog): Promise<PrizeCatalog>;
+  updatePrizeCatalogItemStatus(id: string, isActive: boolean): Promise<PrizeCatalog>;
 
   // Lottery drawings operations
   createLotteryDrawing(data: any): Promise<any>;
@@ -6462,6 +6473,62 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(owners.userId, users.id))
       .where(eq(owners.useCustomBillingModel, true));
     return results.map(r => ({ ...r.owners, user: r.users }));
+  }
+
+  // Driver Rewards Program prize catalog operations
+  async getPrizeCatalog(): Promise<PrizeCatalog[]> {
+    return await db
+      .select()
+      .from(prizeCatalog)
+      .orderBy(desc(prizeCatalog.updatedAt), desc(prizeCatalog.createdAt));
+  }
+
+  async getPrizeCatalogById(id: string): Promise<PrizeCatalog | undefined> {
+    const [record] = await db
+      .select()
+      .from(prizeCatalog)
+      .where(eq(prizeCatalog.id, id));
+    return record;
+  }
+
+  async createPrizeCatalogItem(item: InsertPrizeCatalog): Promise<PrizeCatalog> {
+    const values = Object.fromEntries(
+      Object.entries(item).filter(([, value]) => value !== undefined)
+    ) as InsertPrizeCatalog;
+
+    const [record] = await db
+      .insert(prizeCatalog)
+      .values(values)
+      .returning();
+    return record;
+  }
+
+  async updatePrizeCatalogItem(id: string, updates: UpdatePrizeCatalog): Promise<PrizeCatalog> {
+    const values = Object.fromEntries(
+      Object.entries(updates).filter(([, value]) => value !== undefined)
+    ) as UpdatePrizeCatalog;
+
+    const [record] = await db
+      .update(prizeCatalog)
+      .set({
+        ...values,
+        updatedAt: new Date(),
+      })
+      .where(eq(prizeCatalog.id, id))
+      .returning();
+    return record;
+  }
+
+  async updatePrizeCatalogItemStatus(id: string, isActive: boolean): Promise<PrizeCatalog> {
+    const [record] = await db
+      .update(prizeCatalog)
+      .set({
+        isActive,
+        updatedAt: new Date(),
+      })
+      .where(eq(prizeCatalog.id, id))
+      .returning();
+    return record;
   }
 
   // Lottery drawings operations
