@@ -625,7 +625,7 @@ export default function DriverDashboard() {
                             <div className="flex min-w-0 flex-col gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between min-[430px]:gap-3">
                               <div className="flex min-w-0 items-center gap-2">
                                 <Building2 className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                                <p className="truncate text-xs font-semibold text-foreground">
+                                <p className="truncate text-xs font-semibold text-white">
                                   {entry.locationName || entry.ownerCompany || t("common.locations")}
                                 </p>
                               </div>
@@ -637,7 +637,7 @@ export default function DriverDashboard() {
                               </div>
                             </div>
                             <div className="mt-2 flex min-w-0 flex-col gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between min-[430px]:gap-3">
-                              <p className="break-words text-xs text-muted-foreground">
+                              <p className="break-words text-xs text-white/90">
                                 {entry.activityDate
                                   ? new Date(entry.activityDate).toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" })
                                   : new Date(entry.createdAt).toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
