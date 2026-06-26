@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { Switch, Route, RouteComponentProps } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
+import { Switch, Route, RouteComponentProps, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -50,7 +50,6 @@ const AdminBatchPayments = lazy(() => import("@/pages/admin/batch-payments"));
 const AdminReconciliation = lazy(() => import("@/pages/admin/reconciliation"));
 const AdminBillingSettings = lazy(() => import("@/pages/admin/billing-settings"));
 const AdminLottery = lazy(() => import("@/pages/admin/lottery"));
-const SuperAdminLotteryDashboard = lazy(() => import("@/pages/super-admin/lottery-dashboard"));
 const SuperAdminBillingAuditReport = lazy(() => import("@/pages/super-admin/billing-audit-report"));
 const AdminReports = lazy(() => import("@/pages/admin/reports"));
 
@@ -155,7 +154,7 @@ function Router() {
           <Route path="/feature-flags" component={AdminFeatureFlags} />
           <Route path="/billing-settings" component={AdminBillingSettings} />
           <Route path="/lottery" component={AdminLottery} />
-          <Route path="/lottery-dashboard" component={SuperAdminLotteryDashboard} />
+          <Route path="/lottery-dashboard" component={LegacyLotteryDashboardRedirect} />
           <Route path="/billing-audit-report" component={SuperAdminBillingAuditReport} />
           <Route path="/reports" component={AdminReports} />
           <Route path="/settings" component={AdminSettings} />
@@ -168,6 +167,16 @@ function Router() {
   }
 
   return <Route component={NotFound} />;
+}
+
+function LegacyLotteryDashboardRedirect() {
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    setLocation("/lottery", { replace: true });
+  }, [setLocation]);
+
+  return null;
 }
 
 function App() {
