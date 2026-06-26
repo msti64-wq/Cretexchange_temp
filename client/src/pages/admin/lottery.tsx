@@ -138,8 +138,7 @@ export default function AdminLottery() {
     tierOrder: index + 1,
   }));
   const previewResultCount = previewResult?.selectedWinners?.length || 0;
-  const previewHasWarnings = Boolean(previewResult?.warnings?.length);
-  const previewIsComplete = Boolean(previewResult) && previewResultCount === totalWinnerCount && !previewHasWarnings;
+  const previewIsComplete = Boolean(previewResult) && previewResultCount === totalWinnerCount;
 
   const executeMutation = useMutation({
     mutationFn: async (payload: {

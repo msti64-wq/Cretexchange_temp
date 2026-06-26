@@ -88,6 +88,10 @@ function normalizePrizeQuantity(quantity?: number | string | null): number {
   return Math.max(0, Math.floor(parsed));
 }
 
+function hasValidTicketNumber(ticketNumber?: string | null): boolean {
+  return typeof ticketNumber === "string" && ticketNumber.trim().length > 0;
+}
+
 export function expandLotteryPrizeConfigs(prizes: LotteryDrawingPrizeConfig[] = []): LotteryDrawingPrizeSlot[] {
   const slots: LotteryDrawingPrizeSlot[] = [];
 
@@ -143,6 +147,24 @@ export function buildLotteryDrawingPreview(input: {
   const allowDuplicateWinnerDriver = Boolean(input.allowDuplicateWinnerDriver);
   const warnings: string[] = [];
 
+  const validEntriesByDriver = new Map<string, LotteryDrawingPreviewEntry[]>();
+  let excludedInvalidEntryCount = 0;
+
+  for (const entry of input.entries) {
+    if (!hasValidTicketNumber(entry.ticketNumber)) {
+      excludedInvalidEntryCount += 1;
+      continue;
+    }
+
+    const driverEntries = validEntriesByDriver.get(entry.driverId) ?? [];
+    driverEntries.push(entry);
+    validEntriesByDriver.set(entry.driverId, driverEntries);
+  }
+
+  if (excludedInvalidEntryCount > 0) {
+    warnings.push(`${excludedInvalidEntryCount} entries excluded because they do not have valid entry numbers.`);
+  }
+
   const pool: Array<{
     driverId: string;
     driverName: string;
@@ -153,23 +175,26 @@ export function buildLotteryDrawingPreview(input: {
   }> = [];
 
   for (const total of input.driverTotals) {
-    const driverEntries = input.entries.filter((entry) => entry.driverId === total.driverId);
+    const driverEntries = validEntriesByDriver.get(total.driverId) ?? [];
     if (driverEntries.length === 0) {
-      warnings.push(`No entry rows found for driver ${total.driverId}`);
       continue;
     }
 
-    for (let i = 0; i < total.totalEntries; i += 1) {
-      const entryForSlot = driverEntries[i % driverEntries.length];
+    for (const entryForSlot of driverEntries) {
+      const weight = Math.max(1, Math.floor(Number(entryForSlot.entriesEarned || 1)));
       const driverUser = entryForSlot.driver?.user;
-      pool.push({
-        driverId: total.driverId,
-        driverName: total.driverName || `${driverUser?.firstName || ""} ${driverUser?.lastName || ""}`.trim() || total.driverId,
-        entryId: entryForSlot.id,
-        ticketNumber: entryForSlot.ticketNumber ?? null,
-        payoutPreference: total.payoutPreference ?? null,
-        payoutPreferenceNote: total.payoutPreferenceNote ?? null,
-      });
+      const driverName = total.driverName || `${driverUser?.firstName || ""} ${driverUser?.lastName || ""}`.trim() || total.driverId;
+
+      for (let i = 0; i < weight; i += 1) {
+        pool.push({
+          driverId: total.driverId,
+          driverName,
+          entryId: entryForSlot.id,
+          ticketNumber: entryForSlot.ticketNumber ?? null,
+          payoutPreference: total.payoutPreference ?? null,
+          payoutPreferenceNote: total.payoutPreferenceNote ?? null,
+        });
+      }
     }
   }
 
@@ -178,9 +203,9 @@ export function buildLotteryDrawingPreview(input: {
       winnerCountRequested,
       allowDuplicateWinnerDriver,
       eligibleEntryCount: 0,
-      eligibleDriverCount: input.driverTotals.length,
+      eligibleDriverCount: validEntriesByDriver.size,
       selectedWinners: [],
-      warnings: warnings.length > 0 ? warnings : ["No eligible reward entries found."],
+      warnings: warnings.length > 0 ? [...warnings, "No eligible reward entries found."] : ["No eligible reward entries found."],
     };
   }
 
@@ -232,7 +257,7 @@ export function buildLotteryDrawingPreview(input: {
     winnerCountRequested,
     allowDuplicateWinnerDriver,
     eligibleEntryCount: pool.length,
-    eligibleDriverCount: input.driverTotals.length,
+    eligibleDriverCount: validEntriesByDriver.size,
     selectedWinners,
     warnings,
   };
