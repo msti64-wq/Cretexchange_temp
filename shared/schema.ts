@@ -46,6 +46,15 @@ export const photoVerificationStatusEnum = pgEnum("photo_verification_status", [
 export const lotteryNotificationKindEnum = pgEnum("lottery_notification_kind", ["winner", "participant"]);
 export const messageStatusEnum = pgEnum("message_status", ["unread", "read", "resolved"]);
 export const distributionFrequencyEnum = pgEnum("distribution_frequency", ["daily", "weekly", "biweekly", "monthly"]);
+export const prizeCatalogInventoryAdjustmentTypeEnum = pgEnum("prize_catalog_inventory_adjustment_type", [
+  "manual_increase",
+  "manual_decrease",
+  "drawing_reserve",
+  "drawing_release",
+  "drawing_deduct",
+  "drawing_void_restore",
+  "inventory_correction",
+]);
 
 // Wallet system enums
 export const transactionDirectionEnum = pgEnum("transaction_direction", ["credit", "debit", "fee"]);
@@ -726,9 +735,11 @@ export const prizeCatalog = pgTable("prize_catalog", {
   estimatedValueCents: integer("estimated_value_cents"),
   isActive: boolean("is_active").default(true).notNull(),
   inventoryQuantity: integer("inventory_quantity").default(0).notNull(),
+  reservedQuantity: integer("reserved_quantity").default(0).notNull(),
   minimumInventoryAlert: integer("minimum_inventory_alert").default(0).notNull(),
   isUnlimited: boolean("is_unlimited").default(false).notNull(),
   lastInventoryUpdate: timestamp("last_inventory_update").defaultNow(),
+  inventoryUpdatedBy: varchar("inventory_updated_by").references(() => users.id, { onDelete: "set null" }),
   fulfillmentInstructions: text("fulfillment_instructions"),
   sponsorVendor: varchar("sponsor_vendor"),
   internalNotes: text("internal_notes"),
@@ -748,6 +759,7 @@ export const insertPrizeCatalogSchema = createInsertSchema(prizeCatalog).omit({
   createdAt: true,
   updatedAt: true,
   lastInventoryUpdate: true,
+  reservedQuantity: true,
 }).extend({
   title: z.string().trim().min(1, "Title is required"),
   prizeType: prizeCatalogPrizeTypeSchema,
@@ -761,6 +773,7 @@ export const insertPrizeCatalogSchema = createInsertSchema(prizeCatalog).omit({
   sponsorVendor: z.string().optional().nullable(),
   internalNotes: z.string().optional().nullable(),
   createdBy: z.string().optional().nullable(),
+  inventoryUpdatedBy: z.string().optional().nullable(),
 });
 
 export const updatePrizeCatalogSchema = createInsertSchema(prizeCatalog).omit({
@@ -768,6 +781,7 @@ export const updatePrizeCatalogSchema = createInsertSchema(prizeCatalog).omit({
   createdAt: true,
   updatedAt: true,
   lastInventoryUpdate: true,
+  reservedQuantity: true,
 }).partial().extend({
   title: z.string().trim().min(1, "Title is required").optional(),
   prizeType: prizeCatalogPrizeTypeSchema.optional(),
@@ -781,11 +795,55 @@ export const updatePrizeCatalogSchema = createInsertSchema(prizeCatalog).omit({
   sponsorVendor: z.string().optional().nullable(),
   internalNotes: z.string().optional().nullable(),
   createdBy: z.string().optional().nullable(),
+  inventoryUpdatedBy: z.string().optional().nullable(),
 });
 
 export type PrizeCatalog = typeof prizeCatalog.$inferSelect;
 export type InsertPrizeCatalog = z.infer<typeof insertPrizeCatalogSchema>;
 export type UpdatePrizeCatalog = z.infer<typeof updatePrizeCatalogSchema>;
+
+export const prizeCatalogInventoryAdjustmentTypeValues = [
+  "manual_increase",
+  "manual_decrease",
+  "drawing_reserve",
+  "drawing_release",
+  "drawing_deduct",
+  "drawing_void_restore",
+  "inventory_correction",
+] as const;
+
+export type PrizeCatalogInventoryAdjustmentType = (typeof prizeCatalogInventoryAdjustmentTypeValues)[number];
+
+export const prizeCatalogInventoryAdjustmentTypeSchema = z.enum(prizeCatalogInventoryAdjustmentTypeValues);
+
+export const prizeCatalogInventoryAdjustments = pgTable("prize_catalog_inventory_adjustments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  prizeCatalogId: varchar("prize_catalog_id").notNull().references(() => prizeCatalog.id, { onDelete: "cascade" }),
+  adjustmentType: prizeCatalogInventoryAdjustmentTypeEnum("adjustment_type").notNull(),
+  quantityDelta: integer("quantity_delta").notNull(),
+  quantityBefore: integer("quantity_before").notNull(),
+  quantityAfter: integer("quantity_after").notNull(),
+  reservedBefore: integer("reserved_before").notNull(),
+  reservedAfter: integer("reserved_after").notNull(),
+  referenceType: varchar("reference_type"),
+  referenceId: varchar("reference_id"),
+  reason: text("reason").notNull(),
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at").defaultNow(),
+  metadata: jsonb("metadata"),
+}, (table) => ({
+  catalogIndex: index("idx_prize_catalog_inventory_adjustments_catalog").on(table.prizeCatalogId),
+  createdAtIndex: index("idx_prize_catalog_inventory_adjustments_created_at").on(table.createdAt),
+  creatorIndex: index("idx_prize_catalog_inventory_adjustments_created_by").on(table.createdBy),
+}));
+
+export const insertPrizeCatalogInventoryAdjustmentSchema = createInsertSchema(prizeCatalogInventoryAdjustments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PrizeCatalogInventoryAdjustment = typeof prizeCatalogInventoryAdjustments.$inferSelect;
+export type InsertPrizeCatalogInventoryAdjustment = z.infer<typeof insertPrizeCatalogInventoryAdjustmentSchema>;
 
 // Lottery drawings - records results of completed monthly drawings
 export const lotteryDrawings = pgTable("lottery_drawings", {

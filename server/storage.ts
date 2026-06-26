@@ -33,10 +33,13 @@ import {
   identityDocuments,
   driverLotteryEntries,
   prizeCatalog,
+  prizeCatalogInventoryAdjustments,
   lotteryNotifications,
   type PrizeCatalog,
   type InsertPrizeCatalog,
   type UpdatePrizeCatalog,
+  type PrizeCatalogInventoryAdjustment,
+  type PrizeCatalogInventoryAdjustmentType,
   type User,
   type UpsertUser,
   type Driver,
@@ -479,6 +482,25 @@ export interface IStorage {
   createPrizeCatalogItem(item: InsertPrizeCatalog): Promise<PrizeCatalog>;
   updatePrizeCatalogItem(id: string, updates: UpdatePrizeCatalog): Promise<PrizeCatalog>;
   updatePrizeCatalogItemStatus(id: string, isActive: boolean): Promise<PrizeCatalog>;
+  adjustPrizeCatalogInventory(
+    prizeCatalogId: string,
+    delta: number,
+    options: {
+      adjustmentType?: PrizeCatalogInventoryAdjustmentType;
+      reason: string;
+      referenceType?: string | null;
+      referenceId?: string | null;
+      metadata?: Record<string, unknown> | null;
+      createdBy: string;
+    }
+  ): Promise<{ catalog: PrizeCatalog; adjustment: PrizeCatalogInventoryAdjustment }>;
+  getPrizeCatalogInventoryHistory(prizeCatalogId: string): Promise<PrizeCatalogInventoryAdjustment[]>;
+  getPrizeCatalogInventorySummary(prizeCatalogId: string): Promise<{
+    catalog: PrizeCatalog;
+    availableQuantity: number;
+    isLowInventory: boolean;
+    lastAdjustment: PrizeCatalogInventoryAdjustment | null;
+  }>;
 
   // Lottery drawings operations
   createLotteryDrawing(data: any): Promise<any>;
@@ -6536,6 +6558,125 @@ export class DatabaseStorage implements IStorage {
       .where(eq(prizeCatalog.id, id))
       .returning();
     return record;
+  }
+
+  async adjustPrizeCatalogInventory(
+    prizeCatalogId: string,
+    delta: number,
+    options: {
+      adjustmentType?: PrizeCatalogInventoryAdjustmentType;
+      reason: string;
+      referenceType?: string | null;
+      referenceId?: string | null;
+      metadata?: Record<string, unknown> | null;
+      createdBy: string;
+    }
+  ): Promise<{ catalog: PrizeCatalog; adjustment: PrizeCatalogInventoryAdjustment }> {
+    if (!Number.isInteger(delta) || delta === 0) {
+      throw new Error("Quantity delta must be a non-zero integer");
+    }
+    if (!options.reason || !String(options.reason).trim()) {
+      throw new Error("Reason is required");
+    }
+
+    return await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select()
+        .from(prizeCatalog)
+        .where(eq(prizeCatalog.id, prizeCatalogId));
+
+      if (!current) {
+        throw new Error("Prize catalog item not found");
+      }
+
+      const currentInventory = Number(current.inventoryQuantity || 0);
+      const currentReserved = Number(current.reservedQuantity || 0);
+      const nextInventory = currentInventory + delta;
+
+      if (nextInventory < 0) {
+        throw new Error("Inventory cannot be negative");
+      }
+      if (currentReserved < 0) {
+        throw new Error("Reserved quantity cannot be negative");
+      }
+
+      const adjustmentType = options.adjustmentType
+        ?? (delta > 0 ? "manual_increase" : "manual_decrease");
+
+      const [catalog] = await tx
+        .update(prizeCatalog)
+        .set({
+          inventoryQuantity: nextInventory,
+          inventoryUpdatedBy: options.createdBy,
+          lastInventoryUpdate: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(prizeCatalog.id, prizeCatalogId))
+        .returning();
+
+      const [adjustment] = await tx
+        .insert(prizeCatalogInventoryAdjustments)
+        .values({
+          prizeCatalogId,
+          adjustmentType,
+          quantityDelta: delta,
+          quantityBefore: currentInventory,
+          quantityAfter: nextInventory,
+          reservedBefore: currentReserved,
+          reservedAfter: currentReserved,
+          referenceType: options.referenceType?.trim() || null,
+          referenceId: options.referenceId?.trim() || null,
+          reason: options.reason.trim(),
+          createdBy: options.createdBy,
+          metadata: options.metadata ?? null,
+        })
+        .returning();
+
+      return { catalog, adjustment };
+    });
+  }
+
+  async getPrizeCatalogInventoryHistory(prizeCatalogId: string): Promise<PrizeCatalogInventoryAdjustment[]> {
+    return await db
+      .select()
+      .from(prizeCatalogInventoryAdjustments)
+      .where(eq(prizeCatalogInventoryAdjustments.prizeCatalogId, prizeCatalogId))
+      .orderBy(desc(prizeCatalogInventoryAdjustments.createdAt));
+  }
+
+  async getPrizeCatalogInventorySummary(prizeCatalogId: string): Promise<{
+    catalog: PrizeCatalog;
+    availableQuantity: number;
+    isLowInventory: boolean;
+    lastAdjustment: PrizeCatalogInventoryAdjustment | null;
+  }> {
+    const [catalog] = await db
+      .select()
+      .from(prizeCatalog)
+      .where(eq(prizeCatalog.id, prizeCatalogId));
+
+    if (!catalog) {
+      throw new Error("Prize catalog item not found");
+    }
+
+    const [lastAdjustment] = await db
+      .select()
+      .from(prizeCatalogInventoryAdjustments)
+      .where(eq(prizeCatalogInventoryAdjustments.prizeCatalogId, prizeCatalogId))
+      .orderBy(desc(prizeCatalogInventoryAdjustments.createdAt))
+      .limit(1);
+
+    const inventoryQuantity = Number(catalog.inventoryQuantity || 0);
+    const reservedQuantity = Number(catalog.reservedQuantity || 0);
+    const availableQuantity = Math.max(0, inventoryQuantity - reservedQuantity);
+    const isLowInventory = !catalog.isUnlimited && inventoryQuantity <= Number(catalog.minimumInventoryAlert || 0);
+
+    return {
+      catalog,
+      availableQuantity,
+      isLowInventory,
+      lastAdjustment: lastAdjustment || null,
+    };
   }
 
   // Lottery drawings operations

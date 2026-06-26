@@ -10,7 +10,7 @@ import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { getJwtSecret } from "./jwtSecret";
 import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getPhotoReadProviderSelection, getPhotoUploadProviderSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema, insertPrizeCatalogSchema, updatePrizeCatalogSchema } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema, insertPrizeCatalogSchema, updatePrizeCatalogSchema, prizeCatalogInventoryAdjustmentTypeValues } from "@shared/schema";
 import type { Driver, FeeLedger, FeatureFlag, LocationMaterialIntent, Notification, Owner, OwnerFundingSource, Payment, PendingWashoutPayment, User, WalletTransaction, WashoutActivity, WashoutLocation, WashoutPhoto, Withdrawal } from "@shared/schema";
 import { eq, sql, desc, and, isNotNull } from "drizzle-orm";
 import { z } from "zod";
@@ -122,6 +122,15 @@ function normalizeOptionalTextField(value: unknown): string | null | undefined {
 
 const prizeCatalogStatusSchema = z.object({
   isActive: z.boolean(),
+});
+
+const prizeCatalogInventoryAdjustmentSchema = z.object({
+  quantityDelta: z.coerce.number().int().refine((value) => value !== 0, "Quantity delta must be non-zero"),
+  reason: z.string().trim().min(1, "Reason is required"),
+  adjustmentType: z.enum(prizeCatalogInventoryAdjustmentTypeValues).optional(),
+  referenceType: z.string().trim().optional().nullable(),
+  referenceId: z.string().trim().optional().nullable(),
+  metadata: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 function parseBillingBatchWashoutActivityIds(metadata: Record<string, unknown>): string[] {
@@ -14817,6 +14826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inventoryQuantity: result.data.inventoryQuantity ?? 0,
         minimumInventoryAlert: result.data.minimumInventoryAlert ?? 0,
         isUnlimited: result.data.isUnlimited ?? false,
+        inventoryUpdatedBy: user.id,
         createdBy: user.id,
       };
 
@@ -14889,7 +14899,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(Object.prototype.hasOwnProperty.call(updateData, 'sponsorVendor') ? { sponsorVendor: normalizeOptionalTextField(updateData.sponsorVendor) } : {}),
         ...(Object.prototype.hasOwnProperty.call(updateData, 'internalNotes') ? { internalNotes: normalizeOptionalTextField(updateData.internalNotes) } : {}),
         ...(Object.prototype.hasOwnProperty.call(updateData, 'inventoryQuantity') || Object.prototype.hasOwnProperty.call(updateData, 'minimumInventoryAlert') || Object.prototype.hasOwnProperty.call(updateData, 'isUnlimited')
-          ? { lastInventoryUpdate: new Date() }
+          ? { lastInventoryUpdate: new Date(), inventoryUpdatedBy: user.id }
           : {}),
       };
 
@@ -14942,6 +14952,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating prize catalog status:", error);
       res.status(500).json({ message: "Failed to update prize catalog status" });
+    }
+  });
+
+  // Adjust prize catalog inventory (admin and superadmin)
+  app.post('/api/admin/prize-catalog/:id/inventory/adjust', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const paramResult = uuidParamSchema.safeParse(req.params);
+      if (!paramResult.success) {
+        return res.status(400).json({
+          message: "Invalid prize catalog ID format",
+          errors: paramResult.error.issues,
+        });
+      }
+
+      const result = prizeCatalogInventoryAdjustmentSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          message: "Invalid prize catalog inventory adjustment data",
+          errors: result.error.issues,
+        });
+      }
+
+      const current = await storage.getPrizeCatalogById(req.params.id);
+      if (!current) {
+        return res.status(404).json({ message: "Prize catalog item not found" });
+      }
+
+      const adjustmentType = result.data.adjustmentType
+        ?? (result.data.quantityDelta > 0 ? "manual_increase" : "manual_decrease");
+
+      const { catalog, adjustment } = await storage.adjustPrizeCatalogInventory(req.params.id, result.data.quantityDelta, {
+        adjustmentType,
+        reason: result.data.reason,
+        referenceType: result.data.referenceType ?? null,
+        referenceId: result.data.referenceId ?? null,
+        metadata: result.data.metadata ?? null,
+        createdBy: user.id,
+      });
+
+      const summary = await storage.getPrizeCatalogInventorySummary(req.params.id);
+      res.json({ catalog, adjustment, summary });
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : "Failed to adjust prize catalog inventory";
+      console.error("Error adjusting prize catalog inventory:", error);
+      if (message === "Inventory cannot be negative" || message === "Reserved quantity cannot be negative" || message === "Quantity delta must be a non-zero integer" || message === "Reason is required") {
+        return res.status(400).json({ message });
+      }
+      res.status(500).json({ message: "Failed to adjust prize catalog inventory" });
+    }
+  });
+
+  // Get prize catalog inventory history (admin and superadmin)
+  app.get('/api/admin/prize-catalog/:id/inventory/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const paramResult = uuidParamSchema.safeParse(req.params);
+      if (!paramResult.success) {
+        return res.status(400).json({
+          message: "Invalid prize catalog ID format",
+          errors: paramResult.error.issues,
+        });
+      }
+
+      const catalog = await storage.getPrizeCatalogById(req.params.id);
+      if (!catalog) {
+        return res.status(404).json({ message: "Prize catalog item not found" });
+      }
+
+      const history = await storage.getPrizeCatalogInventoryHistory(req.params.id);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching prize catalog inventory history:", error);
+      res.status(500).json({ message: "Failed to fetch prize catalog inventory history" });
+    }
+  });
+
+  // Get prize catalog inventory summary (admin and superadmin)
+  app.get('/api/admin/prize-catalog/:id/inventory/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const paramResult = uuidParamSchema.safeParse(req.params);
+      if (!paramResult.success) {
+        return res.status(400).json({
+          message: "Invalid prize catalog ID format",
+          errors: paramResult.error.issues,
+        });
+      }
+
+      const summary = await storage.getPrizeCatalogInventorySummary(req.params.id);
+      res.json(summary);
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : "Failed to fetch prize catalog inventory summary";
+      console.error("Error fetching prize catalog inventory summary:", error);
+      if (message === "Prize catalog item not found") {
+        return res.status(404).json({ message });
+      }
+      res.status(500).json({ message: "Failed to fetch prize catalog inventory summary" });
     }
   });
 
