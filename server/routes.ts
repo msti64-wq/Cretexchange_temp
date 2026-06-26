@@ -10646,10 +10646,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entries = await storage.getAllDriverLotteryEntries(startDate, endDate);
       const normalizedPrizes = normalizeLotteryPrizeTierConfigs(Array.isArray(prizes) ? prizes : []);
       const derivedWinnerCount = countLotteryPrizeSlots(normalizedPrizes);
+      if (derivedWinnerCount < 1) {
+        return res.status(400).json({
+          message: "Configure at least one prize tier winner before previewing this drawing.",
+          preview: {
+            winnerCountRequested: 0,
+            allowDuplicateWinnerDriver: allowDuplicateWinnerDriver === true || allowDuplicateWinnerDriver === "true",
+            eligibleEntryCount: 0,
+            eligibleDriverCount: 0,
+            selectedWinners: [],
+            warnings: ["At least one total winner is required."],
+          },
+        });
+      }
       const preview = buildLotteryDrawingPreview({
         entries,
         driverTotals,
-        winnerCount: derivedWinnerCount > 0 ? derivedWinnerCount : Number(winnerCount) || 3,
+        winnerCount: derivedWinnerCount,
         allowDuplicateWinnerDriver: allowDuplicateWinnerDriver === true || allowDuplicateWinnerDriver === "true",
         prizes: normalizedPrizes,
       });
@@ -10901,12 +10914,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ],
       );
       const derivedWinnerCount = countLotteryPrizeSlots(prizeConfigs);
+      if (derivedWinnerCount < 1) {
+        return res.status(400).json({
+          message: "Configure at least one prize tier winner before running the official drawing.",
+        });
+      }
       const parsedWinnerCount = Number.isFinite(Number(rawWinnerCount))
         ? Number(rawWinnerCount)
         : Number.isFinite(Number(rawWinners))
           ? Number(rawWinners)
-          : derivedWinnerCount || 3;
-      const winnerCount = Math.max(1, Math.floor(derivedWinnerCount || parsedWinnerCount || 3));
+          : derivedWinnerCount;
+      const winnerCount = Math.max(1, Math.floor(derivedWinnerCount || parsedWinnerCount || 1));
 
       const existing = await storage.getLotteryDrawingByMonthYear(month, year);
       if (existing) {

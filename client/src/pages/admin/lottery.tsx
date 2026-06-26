@@ -58,10 +58,10 @@ const DEFAULT_PRIZE_TIERS = [
   { label: "Third Place", title: "", description: "", quantity: 1 },
 ];
 
-const clampTierQuantity = (value: number | string | null | undefined) => {
+const clampTierQuantity = (value: number | string | null | undefined, allowZero = false) => {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 1) return 1;
-  return Math.max(1, Math.floor(parsed));
+  if (!Number.isFinite(parsed)) return allowZero ? 0 : 1;
+  return Math.max(allowZero ? 0 : 1, Math.floor(parsed));
 };
 
 export default function AdminLottery() {
@@ -128,11 +128,11 @@ export default function AdminLottery() {
 
   const selectedDrawing = drawingHistory?.find((drawing: any) => drawing.lotteryMonth === selectedMonth && drawing.lotteryYear === selectedYear) || null;
   const existingDrawing = selectedDrawing;
-  const totalWinnerCount = prizeTiers.reduce((sum, tier) => sum + clampTierQuantity(tier.quantity), 0);
+  const totalWinnerCount = prizeTiers.reduce((sum, tier, index) => sum + clampTierQuantity(tier.quantity, index > 0), 0);
   const normalizedPrizeTiers = prizeTiers.map((tier, index) => ({
     title: tier.title.trim() || null,
     description: tier.description.trim() || null,
-    quantity: clampTierQuantity(tier.quantity),
+    quantity: clampTierQuantity(tier.quantity, index > 0),
     tierLabel: tier.label,
     placeLabel: tier.label,
     tierOrder: index + 1,
@@ -512,12 +512,12 @@ export default function AdminLottery() {
                       <Input
                         id={`tier-quantity-${index}`}
                         type="number"
-                        min={1}
+                        min={index === 0 ? 1 : 0}
                         step={1}
                         className="w-20"
                         value={tier.quantity}
                         onChange={(event) => {
-                          const nextQuantity = clampTierQuantity(event.target.value || 1);
+                          const nextQuantity = clampTierQuantity(event.target.value || (index === 0 ? 1 : 0), index > 0);
                           setPrizeTiers((current) => current.map((currentTier, currentIndex) => (
                             currentIndex === index
                               ? { ...currentTier, quantity: nextQuantity }
@@ -563,7 +563,7 @@ export default function AdminLottery() {
               <Button
                 variant="outline"
                 onClick={() => previewMutation.mutate()}
-                disabled={previewMutation.isPending || !totalEntriesCount}
+                disabled={previewMutation.isPending || !totalEntriesCount || totalWinnerCount < 1}
                 data-testid="button-preview-drawing"
               >
                 <FileText className="w-4 h-4 mr-2" />
@@ -581,7 +581,7 @@ export default function AdminLottery() {
                   thirdPrize: prizeTiers[2]?.title || "",
                   prizes: normalizedPrizeTiers,
                 })}
-                disabled={executeMutation.isPending || !totalEntriesCount || Boolean(selectedDrawing) || isCurrentMonth || !previewIsComplete}
+                disabled={executeMutation.isPending || !totalEntriesCount || totalWinnerCount < 1 || Boolean(selectedDrawing) || isCurrentMonth || !previewIsComplete}
                 data-testid="button-run-drawing"
               >
                 <Zap className="w-4 h-4 mr-2" />
@@ -592,6 +592,12 @@ export default function AdminLottery() {
             {!previewIsComplete && (
               <div className="rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100">
                 Preview winners first. The official drawing remains disabled until the preview succeeds without validation warnings.
+              </div>
+            )}
+
+            {totalWinnerCount < 1 && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                Configure at least one prize tier winner before previewing or running the official drawing.
               </div>
             )}
 

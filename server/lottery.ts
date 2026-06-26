@@ -82,10 +82,10 @@ function parseBooleanEnv(value?: string | null): boolean | undefined {
 
 function normalizePrizeQuantity(quantity?: number | string | null): number {
   const parsed = Number(quantity);
-  if (!Number.isFinite(parsed) || parsed < 1) {
+  if (!Number.isFinite(parsed)) {
     return 1;
   }
-  return Math.max(1, Math.floor(parsed));
+  return Math.max(0, Math.floor(parsed));
 }
 
 export function expandLotteryPrizeConfigs(prizes: LotteryDrawingPrizeConfig[] = []): LotteryDrawingPrizeSlot[] {
