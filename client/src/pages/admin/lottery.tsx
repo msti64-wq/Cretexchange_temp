@@ -837,7 +837,15 @@ export default function AdminLottery() {
 
   const endOfMonth = new Date(selectedYear, selectedMonth, 0);
   const daysUntilClose = isCurrentMonth ? Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-  const canRunDrawing = !isCurrentMonth && !selectedDrawing && totalEntriesCount > 0;
+  const canRunDrawing = !selectedDrawing && totalEntriesCount > 0 && totalWinnerCount > 0 && previewIsComplete;
+  const runDrawingDisabledReason = (() => {
+    if (executeMutation.isPending) return "Drawing is currently running.";
+    if (totalEntriesCount < 1) return "Select a month with eligible reward entries.";
+    if (totalWinnerCount < 1) return "Configure at least one prize tier winner.";
+    if (!previewIsComplete) return "Preview winners first to enable the official drawing.";
+    if (selectedDrawing) return "A completed drawing already exists for this month.";
+    return null;
+  })();
 
   if (monthsLoading && totalsLoading) {
     return (
@@ -1213,7 +1221,7 @@ export default function AdminLottery() {
                   thirdPrize: prizeTiers[2]?.title || "",
                   prizes: normalizedPrizeTiers,
                 })}
-                disabled={executeMutation.isPending || !totalEntriesCount || totalWinnerCount < 1 || Boolean(selectedDrawing) || isCurrentMonth || !previewIsComplete}
+                disabled={!canRunDrawing || executeMutation.isPending}
                 data-testid="button-run-drawing"
               >
                 <Zap className="w-4 h-4 mr-2" />
@@ -1221,21 +1229,15 @@ export default function AdminLottery() {
               </Button>
             </div>
 
-            {!previewIsComplete && (
+            {runDrawingDisabledReason && (
               <div className="rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100">
-                Preview winners first. The official drawing remains disabled until the preview succeeds without validation warnings.
+                {runDrawingDisabledReason}
               </div>
             )}
 
-            {totalWinnerCount < 1 && (
+            {isCurrentMonth && !selectedDrawing && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
-                Configure at least one prize tier winner before previewing or running the official drawing.
-              </div>
-            )}
-
-            {selectedDrawing && (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
-                A completed drawing already exists for this month. The official run is blocked until the month is voided or reopened.
+                The current month can still be previewed. Run Official Drawing is available once preview succeeds and valid winners exist.
               </div>
             )}
           </CardContent>
