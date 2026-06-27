@@ -10893,8 +10893,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return source.map((prize: any, index: number) => ({
       title: typeof prize?.title === "string" ? prize.title : prize?.title ?? null,
       description: typeof prize?.description === "string" ? prize.description : prize?.description ?? null,
-      quantity: Number.isFinite(Number(prize?.quantity)) && Number(prize?.quantity) > 0
-        ? Math.max(1, Math.floor(Number(prize.quantity)))
+      quantity: Number.isFinite(Number(prize?.quantity))
+        ? Math.max(0, Math.floor(Number(prize.quantity)))
         : 1,
       tierLabel: typeof prize?.tierLabel === "string" && prize.tierLabel.trim()
         ? prize.tierLabel
