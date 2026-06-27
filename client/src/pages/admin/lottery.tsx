@@ -359,8 +359,17 @@ export default function AdminLottery() {
     }
   }, [selectedCatalogDetail, catalogEditingId]);
 
-  const selectedDrawing = drawingHistory?.find((drawing: any) => drawing.lotteryMonth === selectedMonth && drawing.lotteryYear === selectedYear) || null;
-  const existingDrawing = selectedDrawing;
+  const currentDrawing = drawingHistory?.find((drawing: any) => drawing.lotteryMonth === selectedMonth && drawing.lotteryYear === selectedYear) || null;
+  const currentDrawingIsComplete = currentDrawing
+    ? Boolean(
+        (currentDrawing.winners?.length || 0) > 0
+        && Number(currentDrawing.winnerNotificationCount || 0) > 0
+        && Number(currentDrawing.participantNotificationCount || 0) > 0,
+      )
+    : false;
+  const selectedDrawing = currentDrawingIsComplete ? currentDrawing : null;
+  const existingDrawing = currentDrawing;
+  const hasPartialDrawing = Boolean(currentDrawing && !currentDrawingIsComplete);
   const totalWinnerCount = prizeTiers.reduce((sum, tier, index) => sum + clampTierQuantity(tier.quantity, index > 0), 0);
   const normalizedPrizeTiers = prizeTiers.map((tier, index) => ({
     title: tier.title.trim() || null,
@@ -924,10 +933,16 @@ export default function AdminLottery() {
               )}
               
               <div className="flex gap-2 flex-wrap justify-end">
-                {existingDrawing && (
+                {selectedDrawing && (
                   <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300">
                     <Trophy className="w-3 h-3 mr-1" />
                     Prize Drawing Complete
+                  </Badge>
+                )}
+                {hasPartialDrawing && !selectedDrawing && (
+                  <Badge className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200">
+                    <Clock className="w-3 h-3 mr-1" />
+                    Prize Drawing Incomplete
                   </Badge>
                 )}
 
@@ -1232,6 +1247,11 @@ export default function AdminLottery() {
             {runDrawingDisabledReason && (
               <div className="rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100">
                 {runDrawingDisabledReason}
+              </div>
+            )}
+            {hasPartialDrawing && !selectedDrawing && previewIsComplete && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                A partial drawing exists for this month. Running the official drawing will clean up the incomplete record and replace it with a completed result.
               </div>
             )}
 
