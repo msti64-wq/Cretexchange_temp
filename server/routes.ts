@@ -11264,9 +11264,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(lotteryNotifications.lotteryDrawingId, drawing.id));
 
         if (summary) {
+          const normalizeTimestamp = (value: Date | string | null | undefined) => {
+            if (!value) return null;
+            return value instanceof Date ? value : new Date(value);
+          };
           await tx
             .update(lotteryDrawings)
-            .set(summary)
+            .set({
+              ...summary,
+              winnerNotificationsSentAt: normalizeTimestamp(summary.winnerNotificationsSentAt),
+              participantNotificationsSentAt: normalizeTimestamp(summary.participantNotificationsSentAt),
+            })
             .where(eq(lotteryDrawings.id, drawing.id));
         }
 
