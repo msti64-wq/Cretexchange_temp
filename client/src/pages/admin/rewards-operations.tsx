@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -565,11 +565,25 @@ export default function RewardsOperationsCenter() {
       <Sheet open={Boolean(selectedFulfillmentId)} onOpenChange={(open) => !open && setSelectedFulfillmentId(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
           <SheetHeader className="space-y-2">
-            <SheetTitle className="flex items-center gap-2">
-              <Ticket className="h-5 w-5 text-sky-500" />
-              Rewards Fulfillment Details
-            </SheetTitle>
-            <SheetDescription>{fulfilledStateLabel(currentSelected)}</SheetDescription>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-2">
+                <SheetTitle className="flex items-center gap-2">
+                  <Ticket className="h-5 w-5 text-sky-500" />
+                  Rewards Fulfillment Details
+                </SheetTitle>
+                <SheetDescription>{fulfilledStateLabel(currentSelected)}</SheetDescription>
+              </div>
+              <SheetClose asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Fulfillment Queue
+                </Button>
+              </SheetClose>
+            </div>
           </SheetHeader>
 
           {!currentSelected ? (
