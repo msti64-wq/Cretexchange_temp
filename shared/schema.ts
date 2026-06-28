@@ -986,6 +986,19 @@ export const insertLotteryDrawingFulfillmentSchema = createInsertSchema(lotteryD
   issueReportedAt: z.date().optional().nullable(),
 });
 
+export const updateLotteryDrawingFulfillmentStatusRequestSchema = z.object({
+  status: lotteryFulfillmentStatusSchema,
+});
+
+export const updateLotteryDrawingFulfillmentNotesRequestSchema = z.object({
+  notes: z.string().trim().min(1).max(2000),
+});
+
+export const updateLotteryDrawingFulfillmentTrackingRequestSchema = z.object({
+  trackingNumber: z.string().trim().max(120).optional().nullable(),
+  trackingReference: z.string().trim().max(120).optional().nullable(),
+});
+
 export type LotteryDrawingFulfillment = typeof lotteryDrawingFulfillments.$inferSelect;
 export type InsertLotteryDrawingFulfillment = z.infer<typeof insertLotteryDrawingFulfillmentSchema>;
 

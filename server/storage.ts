@@ -526,6 +526,9 @@ export interface IStorage {
   getLotteryDrawingFulfillments(filters?: { status?: string; month?: number; year?: number }): Promise<any[]>;
   getLotteryDrawingFulfillmentById(id: string): Promise<any | undefined>;
   getLotteryDrawingFulfillmentHistory(fulfillmentId: string): Promise<LotteryDrawingFulfillmentHistory[]>;
+  updateLotteryDrawingFulfillmentStatus(id: string, status: string, actorUserId: string): Promise<any>;
+  updateLotteryDrawingFulfillmentNotes(id: string, notes: string, actorUserId: string): Promise<any>;
+  updateLotteryDrawingFulfillmentTracking(id: string, tracking: { trackingNumber?: string | null; trackingReference?: string | null }, actorUserId: string): Promise<any>;
   getPendingLotteryDrawings(): Promise<any[]>;
   markLotteryPrizeDelivered(drawingId: string, place: 'first' | 'second' | 'third'): Promise<any>;
   updateLotteryDrawingNotificationSummary(drawingId: string, updates: {
@@ -7071,6 +7074,158 @@ export class DatabaseStorage implements IStorage {
       ...row.history,
       changedByUser: row.changedByUser,
     }));
+  }
+
+  async updateLotteryDrawingFulfillmentStatus(id: string, status: string, actorUserId: string): Promise<any> {
+    const run = async (tx: any) => {
+      const [current] = await tx
+        .select()
+        .from(lotteryDrawingFulfillments)
+        .where(eq(lotteryDrawingFulfillments.id, id))
+        .limit(1);
+
+      if (!current) {
+        throw new Error("Fulfillment record not found");
+      }
+
+      const now = new Date();
+      const updates: Record<string, unknown> = {
+        fulfillmentStatus: status,
+        updatedAt: now,
+        fulfilledBy: actorUserId,
+      };
+
+      if ((status === "delivered" || status === "picked_up") && !current.fulfilledAt) {
+        updates.fulfilledAt = now;
+      }
+      if (status === "canceled" && !current.canceledAt) {
+        updates.canceledAt = now;
+      }
+      if (status === "issue" && !current.issueReportedAt) {
+        updates.issueReportedAt = now;
+      }
+
+      const [updated] = await tx
+        .update(lotteryDrawingFulfillments)
+        .set(updates)
+        .where(eq(lotteryDrawingFulfillments.id, id))
+        .returning();
+
+      const [history] = await tx
+        .insert(lotteryDrawingFulfillmentHistory)
+        .values({
+          fulfillmentId: id,
+          previousStatus: current.fulfillmentStatus,
+          nextStatus: status as any,
+          notes: `Status updated to ${status}.`,
+          trackingNumber: updated.trackingNumber || null,
+          trackingReference: updated.trackingReference || null,
+          changedBy: actorUserId,
+          metadata: {
+            source: "operations_status_update",
+          },
+        })
+        .returning();
+
+      return { fulfillment: updated, history };
+    };
+
+    return await db.transaction(run);
+  }
+
+  async updateLotteryDrawingFulfillmentNotes(id: string, notes: string, actorUserId: string): Promise<any> {
+    const run = async (tx: any) => {
+      const [current] = await tx
+        .select()
+        .from(lotteryDrawingFulfillments)
+        .where(eq(lotteryDrawingFulfillments.id, id))
+        .limit(1);
+
+      if (!current) {
+        throw new Error("Fulfillment record not found");
+      }
+
+      const now = new Date();
+      const [updated] = await tx
+        .update(lotteryDrawingFulfillments)
+        .set({
+          fulfillmentNotes: notes,
+          updatedAt: now,
+          fulfilledBy: actorUserId,
+        })
+        .where(eq(lotteryDrawingFulfillments.id, id))
+        .returning();
+
+      const [history] = await tx
+        .insert(lotteryDrawingFulfillmentHistory)
+        .values({
+          fulfillmentId: id,
+          previousStatus: current.fulfillmentStatus,
+          nextStatus: current.fulfillmentStatus,
+          notes,
+          trackingNumber: updated.trackingNumber || null,
+          trackingReference: updated.trackingReference || null,
+          changedBy: actorUserId,
+          metadata: {
+            source: "operations_notes_update",
+          },
+        })
+        .returning();
+
+      return { fulfillment: updated, history };
+    };
+
+    return await db.transaction(run);
+  }
+
+  async updateLotteryDrawingFulfillmentTracking(
+    id: string,
+    tracking: { trackingNumber?: string | null; trackingReference?: string | null },
+    actorUserId: string,
+  ): Promise<any> {
+    const run = async (tx: any) => {
+      const [current] = await tx
+        .select()
+        .from(lotteryDrawingFulfillments)
+        .where(eq(lotteryDrawingFulfillments.id, id))
+        .limit(1);
+
+      if (!current) {
+        throw new Error("Fulfillment record not found");
+      }
+
+      const now = new Date();
+      const [updated] = await tx
+        .update(lotteryDrawingFulfillments)
+        .set({
+          trackingNumber: tracking.trackingNumber ?? null,
+          trackingReference: tracking.trackingReference ?? null,
+          updatedAt: now,
+          fulfilledBy: actorUserId,
+        })
+        .where(eq(lotteryDrawingFulfillments.id, id))
+        .returning();
+
+      const [history] = await tx
+        .insert(lotteryDrawingFulfillmentHistory)
+        .values({
+          fulfillmentId: id,
+          previousStatus: current.fulfillmentStatus,
+          nextStatus: current.fulfillmentStatus,
+          notes: `Tracking details updated.`,
+          trackingNumber: updated.trackingNumber || null,
+          trackingReference: updated.trackingReference || null,
+          changedBy: actorUserId,
+          metadata: {
+            source: "operations_tracking_update",
+          },
+        })
+        .returning();
+
+      return { fulfillment: updated, history };
+    };
+
+    return await db.transaction(run);
   }
 
   // Driver lottery entries operations

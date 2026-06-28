@@ -29,7 +29,7 @@ import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { getJwtSecret } from "./jwtSecret";
 import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getPhotoReadProviderSelection, getPhotoUploadProviderSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema, insertPrizeCatalogSchema, updatePrizeCatalogSchema, prizeCatalogInventoryAdjustmentTypeValues } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema, insertPrizeCatalogSchema, updatePrizeCatalogSchema, prizeCatalogInventoryAdjustmentTypeValues, updateLotteryDrawingFulfillmentStatusRequestSchema, updateLotteryDrawingFulfillmentNotesRequestSchema, updateLotteryDrawingFulfillmentTrackingRequestSchema, lotteryFulfillmentStatusValues } from "@shared/schema";
 import type { Driver, FeeLedger, FeatureFlag, LocationMaterialIntent, Notification, Owner, OwnerFundingSource, Payment, PendingWashoutPayment, User, WalletTransaction, WashoutActivity, WashoutLocation, WashoutPhoto, Withdrawal } from "@shared/schema";
 import { eq, sql, desc, and, isNotNull, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -10816,6 +10816,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error fetching reward fulfillments:", error);
       res.status(500).json({ message: error.message || "Failed to fetch fulfillments" });
+    }
+  });
+
+  const isSensitivePrepaidCardText = (value: unknown) => {
+    if (typeof value !== "string") {
+      return false;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return false;
+    }
+    const normalized = trimmed.replace(/[\s-]/g, "");
+    if (/^\d{13,19}$/.test(normalized)) {
+      return true;
+    }
+    if (/(redeem|redemption|gift\s*card|card\s*number|voucher\s*code)/i.test(trimmed)) {
+      return true;
+    }
+    if (/^[A-Z0-9]{16,}$/.test(normalized) && /\d/.test(normalized) && /[A-Z]/.test(normalized)) {
+      return true;
+    }
+    return false;
+  };
+
+  app.patch('/api/admin/rewards/fulfillment/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const parsed = updateLotteryDrawingFulfillmentStatusRequestSchema.safeParse(req.body || {});
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Status is required and must be valid." });
+      }
+
+      const { id } = req.params;
+      const fulfillment = await storage.getLotteryDrawingFulfillmentById(id);
+      if (!fulfillment) {
+        return res.status(404).json({ message: "Fulfillment record not found" });
+      }
+
+      const result = await storage.updateLotteryDrawingFulfillmentStatus(id, parsed.data.status, user.id);
+      res.json({ message: "Fulfillment status updated", fulfillment: result.fulfillment, history: result.history });
+    } catch (error: any) {
+      console.error("Error updating reward fulfillment status:", error);
+      res.status(500).json({ message: error.message || "Failed to update fulfillment status" });
+    }
+  });
+
+  app.patch('/api/admin/rewards/fulfillment/:id/notes', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const parsed = updateLotteryDrawingFulfillmentNotesRequestSchema.safeParse(req.body || {});
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Notes are required." });
+      }
+
+      const { id } = req.params;
+      const fulfillment = await storage.getLotteryDrawingFulfillmentById(id);
+      if (!fulfillment) {
+        return res.status(404).json({ message: "Fulfillment record not found" });
+      }
+
+      if (fulfillment.prizeTypeSnapshot === "prepaid_card" && isSensitivePrepaidCardText(parsed.data.notes)) {
+        return res.status(400).json({ message: "Notes cannot contain prepaid card numbers or redemption codes." });
+      }
+
+      const result = await storage.updateLotteryDrawingFulfillmentNotes(id, parsed.data.notes, user.id);
+      res.json({ message: "Fulfillment notes updated", fulfillment: result.fulfillment, history: result.history });
+    } catch (error: any) {
+      console.error("Error updating reward fulfillment notes:", error);
+      res.status(500).json({ message: error.message || "Failed to update fulfillment notes" });
+    }
+  });
+
+  app.patch('/api/admin/rewards/fulfillment/:id/tracking', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const parsed = updateLotteryDrawingFulfillmentTrackingRequestSchema.safeParse(req.body || {});
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Tracking details are required." });
+      }
+
+      const trackingNumber = typeof parsed.data.trackingNumber === "string" ? parsed.data.trackingNumber.trim() : "";
+      const trackingReference = typeof parsed.data.trackingReference === "string" ? parsed.data.trackingReference.trim() : "";
+      if (!trackingNumber && !trackingReference) {
+        return res.status(400).json({ message: "Provide a tracking number or tracking reference." });
+      }
+
+      const { id } = req.params;
+      const fulfillment = await storage.getLotteryDrawingFulfillmentById(id);
+      if (!fulfillment) {
+        return res.status(404).json({ message: "Fulfillment record not found" });
+      }
+
+      if (fulfillment.prizeTypeSnapshot === "prepaid_card") {
+        if (isSensitivePrepaidCardText(trackingNumber) || isSensitivePrepaidCardText(trackingReference)) {
+          return res.status(400).json({ message: "Tracking details cannot contain prepaid card numbers or redemption codes." });
+        }
+      }
+
+      const result = await storage.updateLotteryDrawingFulfillmentTracking(
+        id,
+        {
+          trackingNumber: trackingNumber || null,
+          trackingReference: trackingReference || null,
+        },
+        user.id,
+      );
+      res.json({ message: "Fulfillment tracking updated", fulfillment: result.fulfillment, history: result.history });
+    } catch (error: any) {
+      console.error("Error updating reward fulfillment tracking:", error);
+      res.status(500).json({ message: error.message || "Failed to update fulfillment tracking" });
     }
   });
 
