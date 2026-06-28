@@ -21,6 +21,7 @@ import {
   driverLotteryEntries,
   lotteryDrawings,
   lotteryDrawingWinners,
+  lotteryDrawingFulfillments,
   lotteryNotifications,
 } from "../shared/schema";
 import { db } from "./db";
@@ -10761,6 +10762,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/admin/rewards/fulfillment/:id/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const history = await storage.getLotteryDrawingFulfillmentHistory(req.params.id);
+      res.json(history);
+    } catch (error: any) {
+      console.error("Error fetching reward fulfillment history:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch fulfillment history" });
+    }
+  });
+
+  app.get('/api/admin/rewards/fulfillment/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const fulfillment = await storage.getLotteryDrawingFulfillmentById(req.params.id);
+      if (!fulfillment) {
+        return res.status(404).json({ message: "Fulfillment record not found" });
+      }
+
+      res.json(fulfillment);
+    } catch (error: any) {
+      console.error("Error fetching reward fulfillment:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch fulfillment record" });
+    }
+  });
+
+  app.get('/api/admin/rewards/fulfillment', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { status, month, year } = req.query || {};
+      if (status && typeof status === "string" && !['pending', 'ordered', 'purchased', 'shipped', 'delivered', 'picked_up', 'canceled', 'issue'].includes(status)) {
+        return res.status(400).json({ message: "Invalid fulfillment status" });
+      }
+      const fulfillments = await storage.getLotteryDrawingFulfillments({
+        status: typeof status === "string" ? status : undefined,
+        month: month ? Number(month) : undefined,
+        year: year ? Number(year) : undefined,
+      });
+      res.json(fulfillments);
+    } catch (error: any) {
+      console.error("Error fetching reward fulfillments:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch fulfillments" });
+    }
+  });
+
   // Get all lottery entries with driver details (admin/super admin)
   app.get('/api/admin/lottery/entries', isAuthenticated, async (req: any, res) => {
     try {
@@ -10920,10 +10978,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? prize.placeLabel
           : typeof prize?.label === "string" && prize.label.trim()
             ? prize.label
-            : typeof prize?.title === "string" && prize.title.trim()
-              ? prize.title
-              : `${index + 1}${index === 0 ? "st" : index === 1 ? "nd" : index === 2 ? "rd" : "th"} Place`,
-      }));
+        : typeof prize?.title === "string" && prize.title.trim()
+          ? prize.title
+          : `${index + 1}${index === 0 ? "st" : index === 1 ? "nd" : index === 2 ? "rd" : "th"} Place`,
+      catalogPrizeId: typeof prize?.catalogPrizeId === "string" && prize.catalogPrizeId.trim()
+        ? prize.catalogPrizeId.trim()
+        : null,
+    }));
   };
 
   const isCompletedLotteryDrawing = (drawing: any, winnerRows: any[]) => {
@@ -11090,6 +11151,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No eligible reward entries found for this period" });
       }
 
+      const catalogPrizeIds = Array.from(new Set(
+        prizeConfigs
+          .map((prize) => prize.catalogPrizeId)
+          .filter((catalogPrizeId): catalogPrizeId is string => typeof catalogPrizeId === "string" && catalogPrizeId.trim().length > 0)
+      ));
+      const catalogPrizeItems = await Promise.all(catalogPrizeIds.map((catalogPrizeId) => storage.getPrizeCatalogById(catalogPrizeId)));
+      const catalogPrizeById = new Map(
+        catalogPrizeItems
+          .filter((item): item is NonNullable<typeof item> => Boolean(item))
+          .map((item) => [item.id, item]),
+      );
+
       const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' });
       const nextMonthDate = new Date(year, month, 1);
       const nextMonthName = nextMonthDate.toLocaleDateString('en-US', { month: 'long' });
@@ -11116,6 +11189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await tx.delete(notifications).where(inArray(notifications.id, notificationIds));
           }
 
+          await tx.delete(lotteryDrawingFulfillments).where(eq(lotteryDrawingFulfillments.lotteryDrawingId, partialExistingDrawing.id));
           await tx.delete(lotteryDrawings).where(eq(lotteryDrawings.id, partialExistingDrawing.id));
         }
 
@@ -11221,12 +11295,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
+        const persistedWinnerRows: { id: string; placeIndex: number }[] = [];
         for (const winner of winners) {
           if (!winner.entryId || !winner.ticketNumber) {
             throw new Error(`Winner entry data is incomplete for place ${winner.place}`);
           }
 
-          await tx
+          const [winnerRow] = await tx
             .insert(lotteryDrawingWinners)
             .values({
               lotteryDrawingId: drawing.id,
@@ -11250,8 +11325,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 prizeDescription: winner.prizeDescription || null,
                 notificationId: notificationIdsByDriver.get(winner.driverId) || null,
               },
-            });
+            })
+            .returning();
+
+          if (!winnerRow) {
+            throw new Error(`Unable to persist lottery winner row for place ${winner.place}`);
+          }
+
+          persistedWinnerRows.push(winnerRow);
         }
+
+        const winnerRowsByPlace = new Map(persistedWinnerRows.map((row) => [row.placeIndex, row]));
+        const fulfillmentRows = winners.map((winner) => {
+          const prizeConfig = prizeConfigs[winner.place - 1] || {};
+          const prizeCatalogId = prizeConfig.catalogPrizeId || null;
+          const prizeCatalogItem = prizeCatalogId ? catalogPrizeById.get(prizeCatalogId) || null : null;
+          const winnerRow = winnerRowsByPlace.get(winner.place);
+
+          if (!winnerRow) {
+            throw new Error(`Unable to load persisted winner row for place ${winner.place}`);
+          }
+
+          return {
+            lotteryDrawingWinnerId: winnerRow.id,
+            lotteryDrawingId: drawing.id,
+            prizeCatalogId,
+            drawingMonth: month,
+            drawingYear: year,
+            driverId: winner.driverId,
+            driverNameSnapshot: winner.driverName,
+            entryId: winner.entryId,
+            ticketNumberSnapshot: winner.ticketNumber,
+            prizeTitleSnapshot: winner.prize || prizeConfig.title || prizeConfig.tierLabel || `Prize ${winner.place}`,
+            prizeDescriptionSnapshot: winner.prizeDescription || prizeConfig.description || null,
+            prizeTypeSnapshot: prizeCatalogItem?.prizeType || null,
+            vendorOrSponsorSnapshot: prizeCatalogItem?.sponsorVendor || null,
+            fulfillmentStatus: "pending",
+            fulfillmentNotes: null,
+            trackingNumber: null,
+            trackingReference: null,
+            fulfilledBy: null,
+            fulfilledAt: null,
+            canceledAt: null,
+            issueReportedAt: null,
+          };
+        });
+
+        const createdFulfillments = await storage.createLotteryDrawingFulfillments(fulfillmentRows, tx);
+        if (createdFulfillments.length !== fulfillmentRows.length) {
+          throw new Error("Unable to create fulfillment records for all winners");
+        }
+
+        const fulfillmentHistoryRows = createdFulfillments.map((fulfillment: {
+          id: string;
+          lotteryDrawingWinnerId: string;
+          prizeCatalogId: string | null;
+        }) => ({
+          fulfillmentId: fulfillment.id,
+          previousStatus: null,
+          nextStatus: "pending" as const,
+          notes: "Fulfillment record created from completed monthly drawing.",
+          trackingNumber: null,
+          trackingReference: null,
+          changedBy: user.id,
+          changedAt: new Date(),
+          metadata: {
+            source: "drawing_execute",
+            lotteryDrawingId: drawing.id,
+            lotteryDrawingWinnerId: fulfillment.lotteryDrawingWinnerId,
+            prizeCatalogId: fulfillment.prizeCatalogId,
+          },
+        }));
+
+        await storage.createLotteryDrawingFulfillmentHistory(fulfillmentHistoryRows, tx);
 
         const [summary] = await tx
           .select({

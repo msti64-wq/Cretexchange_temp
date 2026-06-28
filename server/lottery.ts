@@ -8,6 +8,7 @@ export type LotteryDrawingPrizeConfig = {
   quantity?: number | string | null;
   tierLabel?: string | null;
   placeLabel?: string | null;
+  catalogPrizeId?: string | null;
 };
 
 export type LotteryDrawingPrizeSlot = {

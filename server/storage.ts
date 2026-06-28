@@ -35,11 +35,17 @@ import {
   prizeCatalog,
   prizeCatalogInventoryAdjustments,
   lotteryNotifications,
+  lotteryDrawingFulfillments,
+  lotteryDrawingFulfillmentHistory,
   type PrizeCatalog,
   type InsertPrizeCatalog,
   type UpdatePrizeCatalog,
   type PrizeCatalogInventoryAdjustment,
   type PrizeCatalogInventoryAdjustmentType,
+  type LotteryDrawingFulfillment,
+  type InsertLotteryDrawingFulfillment,
+  type LotteryDrawingFulfillmentHistory,
+  type InsertLotteryDrawingFulfillmentHistory,
   type User,
   type UpsertUser,
   type Driver,
@@ -509,6 +515,17 @@ export interface IStorage {
   createLotteryDrawingWinner(winner: InsertLotteryDrawingWinner): Promise<LotteryDrawingWinner>;
   getLotteryDrawingWinners(drawingId: string): Promise<any[]>;
   getLotteryDrawingHistoryWithWinners(): Promise<any[]>;
+  createLotteryDrawingFulfillments(
+    fulfillments: InsertLotteryDrawingFulfillment[],
+    tx?: any,
+  ): Promise<LotteryDrawingFulfillment[]>;
+  createLotteryDrawingFulfillmentHistory(
+    history: InsertLotteryDrawingFulfillmentHistory[],
+    tx?: any,
+  ): Promise<LotteryDrawingFulfillmentHistory[]>;
+  getLotteryDrawingFulfillments(filters?: { status?: string; month?: number; year?: number }): Promise<any[]>;
+  getLotteryDrawingFulfillmentById(id: string): Promise<any | undefined>;
+  getLotteryDrawingFulfillmentHistory(fulfillmentId: string): Promise<LotteryDrawingFulfillmentHistory[]>;
   getPendingLotteryDrawings(): Promise<any[]>;
   markLotteryPrizeDelivered(drawingId: string, place: 'first' | 'second' | 'third'): Promise<any>;
   updateLotteryDrawingNotificationSummary(drawingId: string, updates: {
@@ -6907,6 +6924,153 @@ export class DatabaseStorage implements IStorage {
         winners: legacyWinners,
       };
     });
+  }
+
+  async createLotteryDrawingFulfillments(
+    fulfillments: InsertLotteryDrawingFulfillment[],
+    tx: any = db,
+  ): Promise<LotteryDrawingFulfillment[]> {
+    if (!fulfillments.length) {
+      return [];
+    }
+
+    const values = fulfillments.map((fulfillment) => Object.fromEntries(
+      Object.entries(fulfillment).filter(([, value]) => value !== undefined)
+    )) as InsertLotteryDrawingFulfillment[];
+
+    await tx
+      .insert(lotteryDrawingFulfillments)
+      .values(values)
+      .onConflictDoNothing({
+        target: [lotteryDrawingFulfillments.lotteryDrawingWinnerId],
+      });
+
+    return await tx
+      .select()
+      .from(lotteryDrawingFulfillments)
+      .where(inArray(lotteryDrawingFulfillments.lotteryDrawingWinnerId, values.map((row) => row.lotteryDrawingWinnerId)));
+  }
+
+  async createLotteryDrawingFulfillmentHistory(
+    history: InsertLotteryDrawingFulfillmentHistory[],
+    tx: any = db,
+  ): Promise<LotteryDrawingFulfillmentHistory[]> {
+    if (!history.length) {
+      return [];
+    }
+
+    const values = history.map((item) => Object.fromEntries(
+      Object.entries(item).filter(([, value]) => value !== undefined)
+    )) as InsertLotteryDrawingFulfillmentHistory[];
+
+    return await tx
+      .insert(lotteryDrawingFulfillmentHistory)
+      .values(values)
+      .returning();
+  }
+
+  async getLotteryDrawingFulfillments(filters?: { status?: string; month?: number; year?: number }): Promise<any[]> {
+    const fulfilledByUser = alias(users, "lottery_fulfillments_fulfilled_by_user");
+    const conditions = [] as any[];
+
+    if (filters?.status) {
+      conditions.push(eq(lotteryDrawingFulfillments.fulfillmentStatus, filters.status as any));
+    }
+    if (Number.isFinite(Number(filters?.month))) {
+      conditions.push(eq(lotteryDrawingFulfillments.drawingMonth, Number(filters?.month)));
+    }
+    if (Number.isFinite(Number(filters?.year))) {
+      conditions.push(eq(lotteryDrawingFulfillments.drawingYear, Number(filters?.year)));
+    }
+
+    const query = db
+      .select({
+        fulfillment: lotteryDrawingFulfillments,
+        winner: lotteryDrawingWinners,
+        drawing: lotteryDrawings,
+        driver: drivers,
+        driverUser: users,
+        prizeCatalog: prizeCatalog,
+        fulfilledByUser,
+      })
+      .from(lotteryDrawingFulfillments)
+      .innerJoin(lotteryDrawingWinners, eq(lotteryDrawingFulfillments.lotteryDrawingWinnerId, lotteryDrawingWinners.id))
+      .innerJoin(lotteryDrawings, eq(lotteryDrawingFulfillments.lotteryDrawingId, lotteryDrawings.id))
+      .innerJoin(drivers, eq(lotteryDrawingFulfillments.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .leftJoin(prizeCatalog, eq(lotteryDrawingFulfillments.prizeCatalogId, prizeCatalog.id))
+      .leftJoin(fulfilledByUser, eq(lotteryDrawingFulfillments.fulfilledBy, fulfilledByUser.id));
+
+    const results = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(lotteryDrawingFulfillments.createdAt))
+      : await query.orderBy(desc(lotteryDrawingFulfillments.createdAt));
+
+    return results.map((row: any) => ({
+      ...row.fulfillment,
+      winner: row.winner,
+      drawing: row.drawing,
+      driver: row.driver,
+      driverUser: row.driverUser,
+      prizeCatalog: row.prizeCatalog,
+      fulfilledByUser: row.fulfilledByUser,
+      driverName: row.fulfillment.driverNameSnapshot,
+    }));
+  }
+
+  async getLotteryDrawingFulfillmentById(id: string): Promise<any | undefined> {
+    const fulfilledByUser = alias(users, "lottery_fulfillments_fulfilled_by_user_single");
+    const [record] = await db
+      .select({
+        fulfillment: lotteryDrawingFulfillments,
+        winner: lotteryDrawingWinners,
+        drawing: lotteryDrawings,
+        driver: drivers,
+        driverUser: users,
+        prizeCatalog: prizeCatalog,
+        fulfilledByUser,
+      })
+      .from(lotteryDrawingFulfillments)
+      .innerJoin(lotteryDrawingWinners, eq(lotteryDrawingFulfillments.lotteryDrawingWinnerId, lotteryDrawingWinners.id))
+      .innerJoin(lotteryDrawings, eq(lotteryDrawingFulfillments.lotteryDrawingId, lotteryDrawings.id))
+      .innerJoin(drivers, eq(lotteryDrawingFulfillments.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .leftJoin(prizeCatalog, eq(lotteryDrawingFulfillments.prizeCatalogId, prizeCatalog.id))
+      .leftJoin(fulfilledByUser, eq(lotteryDrawingFulfillments.fulfilledBy, fulfilledByUser.id))
+      .where(eq(lotteryDrawingFulfillments.id, id))
+      .limit(1);
+
+    if (!record) {
+      return undefined;
+    }
+
+    return {
+      ...record.fulfillment,
+      winner: record.winner,
+      drawing: record.drawing,
+      driver: record.driver,
+      driverUser: record.driverUser,
+      prizeCatalog: record.prizeCatalog,
+      fulfilledByUser: record.fulfilledByUser,
+      driverName: record.fulfillment.driverNameSnapshot,
+    };
+  }
+
+  async getLotteryDrawingFulfillmentHistory(fulfillmentId: string): Promise<LotteryDrawingFulfillmentHistory[]> {
+    const changedByUser = alias(users, "lottery_fulfillments_changed_by_user");
+    const results = await db
+      .select({
+        history: lotteryDrawingFulfillmentHistory,
+        changedByUser,
+      })
+      .from(lotteryDrawingFulfillmentHistory)
+      .innerJoin(changedByUser, eq(lotteryDrawingFulfillmentHistory.changedBy, changedByUser.id))
+      .where(eq(lotteryDrawingFulfillmentHistory.fulfillmentId, fulfillmentId))
+      .orderBy(desc(lotteryDrawingFulfillmentHistory.changedAt));
+
+    return results.map((row: any) => ({
+      ...row.history,
+      changedByUser: row.changedByUser,
+    }));
   }
 
   // Driver lottery entries operations

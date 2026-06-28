@@ -44,6 +44,18 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "
 export const washoutStatusEnum = pgEnum("washout_status", ["pending", "verified", "rejected"]);
 export const photoVerificationStatusEnum = pgEnum("photo_verification_status", ["verified", "warning", "failed", "needs_review"]);
 export const lotteryNotificationKindEnum = pgEnum("lottery_notification_kind", ["winner", "participant"]);
+export const lotteryFulfillmentStatusValues = [
+  "pending",
+  "ordered",
+  "purchased",
+  "shipped",
+  "delivered",
+  "picked_up",
+  "canceled",
+  "issue",
+  ] as const;
+export const lotteryFulfillmentStatusEnum = pgEnum("lottery_fulfillment_status", lotteryFulfillmentStatusValues);
+export const lotteryFulfillmentStatusSchema = z.enum(lotteryFulfillmentStatusValues);
 export const messageStatusEnum = pgEnum("message_status", ["unread", "read", "resolved"]);
 export const distributionFrequencyEnum = pgEnum("distribution_frequency", ["daily", "weekly", "biweekly", "monthly"]);
 export const prizeCatalogInventoryAdjustmentTypeEnum = pgEnum("prize_catalog_inventory_adjustment_type", [
@@ -922,6 +934,93 @@ export const lotteryNotifications = pgTable("lottery_notifications", {
   drawingIndex: index("idx_lottery_notifications_drawing").on(table.lotteryDrawingId),
   userIndex: index("idx_lottery_notifications_user").on(table.userId),
 }));
+
+export const lotteryDrawingFulfillments = pgTable("lottery_drawing_fulfillments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lotteryDrawingWinnerId: varchar("lottery_drawing_winner_id").notNull().references(() => lotteryDrawingWinners.id, { onDelete: "cascade" }),
+  lotteryDrawingId: varchar("lottery_drawing_id").notNull().references(() => lotteryDrawings.id, { onDelete: "cascade" }),
+  prizeCatalogId: varchar("prize_catalog_id").references(() => prizeCatalog.id, { onDelete: "set null" }),
+  drawingMonth: integer("drawing_month").notNull(),
+  drawingYear: integer("drawing_year").notNull(),
+  driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "cascade" }),
+  driverNameSnapshot: varchar("driver_name_snapshot").notNull(),
+  entryId: varchar("entry_id").notNull().references(() => driverLotteryEntries.id, { onDelete: "cascade" }),
+  ticketNumberSnapshot: varchar("ticket_number_snapshot").notNull(),
+  prizeTitleSnapshot: varchar("prize_title_snapshot").notNull(),
+  prizeDescriptionSnapshot: text("prize_description_snapshot"),
+  prizeTypeSnapshot: varchar("prize_type_snapshot"),
+  vendorOrSponsorSnapshot: varchar("vendor_or_sponsor_snapshot"),
+  fulfillmentStatus: lotteryFulfillmentStatusEnum("fulfillment_status").notNull().default("pending"),
+  fulfillmentNotes: text("fulfillment_notes"),
+  trackingNumber: varchar("tracking_number"),
+  trackingReference: varchar("tracking_reference"),
+  fulfilledBy: varchar("fulfilled_by").references(() => users.id, { onDelete: "set null" }),
+  fulfilledAt: timestamp("fulfilled_at"),
+  canceledAt: timestamp("canceled_at"),
+  issueReportedAt: timestamp("issue_reported_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  winnerUnique: uniqueIndex("uniq_lottery_drawing_fulfillments_winner").on(table.lotteryDrawingWinnerId),
+  drawingIndex: index("idx_lottery_drawing_fulfillments_drawing").on(table.lotteryDrawingId),
+  statusIndex: index("idx_lottery_drawing_fulfillments_status").on(table.fulfillmentStatus),
+  driverIndex: index("idx_lottery_drawing_fulfillments_driver").on(table.driverId),
+}));
+
+export const insertLotteryDrawingFulfillmentSchema = createInsertSchema(lotteryDrawingFulfillments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  prizeCatalogId: z.string().optional().nullable(),
+  prizeDescriptionSnapshot: z.string().optional().nullable(),
+  prizeTypeSnapshot: z.string().optional().nullable(),
+  vendorOrSponsorSnapshot: z.string().optional().nullable(),
+  fulfillmentStatus: lotteryFulfillmentStatusSchema.optional().default("pending"),
+  fulfillmentNotes: z.string().optional().nullable(),
+  trackingNumber: z.string().optional().nullable(),
+  trackingReference: z.string().optional().nullable(),
+  fulfilledBy: z.string().optional().nullable(),
+  fulfilledAt: z.date().optional().nullable(),
+  canceledAt: z.date().optional().nullable(),
+  issueReportedAt: z.date().optional().nullable(),
+});
+
+export type LotteryDrawingFulfillment = typeof lotteryDrawingFulfillments.$inferSelect;
+export type InsertLotteryDrawingFulfillment = z.infer<typeof insertLotteryDrawingFulfillmentSchema>;
+
+export const lotteryDrawingFulfillmentHistory = pgTable("lottery_drawing_fulfillment_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fulfillmentId: varchar("fulfillment_id").notNull().references(() => lotteryDrawingFulfillments.id, { onDelete: "cascade" }),
+  previousStatus: lotteryFulfillmentStatusEnum("previous_status"),
+  nextStatus: lotteryFulfillmentStatusEnum("next_status").notNull(),
+  notes: text("notes"),
+  trackingNumber: varchar("tracking_number"),
+  trackingReference: varchar("tracking_reference"),
+  changedBy: varchar("changed_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  changedAt: timestamp("changed_at").defaultNow(),
+  metadata: jsonb("metadata"),
+}, (table) => ({
+  fulfillmentIndex: index("idx_lottery_drawing_fulfillment_history_fulfillment").on(table.fulfillmentId),
+  changedAtIndex: index("idx_lottery_drawing_fulfillment_history_changed_at").on(table.changedAt),
+  changedByIndex: index("idx_lottery_drawing_fulfillment_history_changed_by").on(table.changedBy),
+}));
+
+export const insertLotteryDrawingFulfillmentHistorySchema = createInsertSchema(lotteryDrawingFulfillmentHistory).omit({
+  id: true,
+  changedAt: true,
+}).extend({
+  previousStatus: lotteryFulfillmentStatusSchema.optional().nullable(),
+  nextStatus: lotteryFulfillmentStatusSchema,
+  notes: z.string().optional().nullable(),
+  trackingNumber: z.string().optional().nullable(),
+  trackingReference: z.string().optional().nullable(),
+  changedBy: z.string(),
+  metadata: z.record(z.any()).optional().nullable(),
+});
+
+export type LotteryDrawingFulfillmentHistory = typeof lotteryDrawingFulfillmentHistory.$inferSelect;
+export type InsertLotteryDrawingFulfillmentHistory = z.infer<typeof insertLotteryDrawingFulfillmentHistorySchema>;
 
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
