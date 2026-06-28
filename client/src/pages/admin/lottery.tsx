@@ -42,8 +42,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Ticket, Download, Calendar, Trophy, Archive, Clock, Send, Gift, ChevronDown, ChevronUp, Building2, List, Zap, Medal, FileText, Package, Pencil, History, Plus, RotateCcw, Info, Truck } from "lucide-react";
+import { Ticket, Download, Calendar, Trophy, Archive, Clock, Send, Gift, ChevronDown, ChevronUp, Building2, List, Zap, Medal, FileText, Package, Pencil, History, Plus, RotateCcw, Info, Truck, ArrowRight } from "lucide-react";
 import { MobileNav } from "@/components/MobileNav";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -872,14 +873,22 @@ export default function AdminLottery() {
   return (
     <div className="min-h-screen bg-background pb-20">
       <header className="gradient-bg text-white p-4 shadow-lg">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-            <Ticket className="w-5 h-5" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <Ticket className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="font-semibold text-lg">Driver Rewards Program</h1>
+              <p className="text-white/80 text-sm">Monthly Prize Drawings - reward entries reset each month</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-semibold text-lg">Driver Rewards Program</h1>
-            <p className="text-white/80 text-sm">Monthly Prize Drawings - reward entries reset each month</p>
-          </div>
+          <Button asChild variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+            <Link href="/rewards/operations">
+              <ArrowRight className="mr-2 h-4 w-4" />
+              Rewards Operations Center
+            </Link>
+          </Button>
         </div>
       </header>
 
