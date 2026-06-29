@@ -198,6 +198,27 @@ This structure should be used for admin dashboards, operations centers, billing 
 - Avoid low-contrast navy or dark blue text on slate backgrounds.
 - Use accent colors sparingly and with purpose.
 
+## Operational Color Philosophy
+
+CreteXchange uses a neutral slate workspace. Structure should remain visually quiet.
+Color communicates operational meaning, not decoration.
+
+- Containers remain neutral.
+- Status chips, counts, icons, active indicators, and progress elements carry semantic color.
+- Operational data such as driver names, owner names, prize names, and ticket numbers should use high-contrast primary text.
+- Titles use the platform accent blue.
+- Never require hover or text selection to reveal content.
+- Avoid decorative gradients and full-card color fills unless there is a compelling product reason.
+
+Semantic meanings:
+
+- Green = completed / healthy
+- Amber = waiting / pending
+- Blue = active / informational
+- Cyan = in transit / shipped
+- Red = needs attention / error
+- Slate = inactive / archived / canceled
+
 ## Shared Component Guidance
 
 Prefer these shared primitives for new work:

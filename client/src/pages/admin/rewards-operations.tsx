@@ -209,50 +209,50 @@ const queueAccentStyles: Record<string, {
 }> = {
   total: {
     accent: { backgroundColor: "#64748B" },
-    count: semanticTextStyles.operationalText,
-    label: semanticTextStyles.metadataText,
+    count: { color: "#C4CDD7" },
+    label: { color: "#C4CDD7" },
     detail: semanticTextStyles.helperText,
   },
   pending: {
     accent: { backgroundColor: "#F59E0B" },
     count: { color: "#FBBF24" },
-    label: semanticTextStyles.operationalText,
+    label: { color: "#FBBF24" },
     detail: semanticTextStyles.helperText,
   },
   ordered: {
     accent: { backgroundColor: "#3B82F6" },
     count: { color: "#60A5FA" },
-    label: semanticTextStyles.operationalText,
+    label: { color: "#60A5FA" },
     detail: semanticTextStyles.helperText,
   },
   purchased: {
     accent: { backgroundColor: "#2563EB" },
     count: { color: "#60A5FA" },
-    label: semanticTextStyles.operationalText,
+    label: { color: "#60A5FA" },
     detail: semanticTextStyles.helperText,
   },
   shipped: {
     accent: { backgroundColor: "#22D3EE" },
     count: { color: "#22D3EE" },
-    label: semanticTextStyles.operationalText,
+    label: { color: "#22D3EE" },
     detail: semanticTextStyles.helperText,
   },
   deliveredPickedUp: {
     accent: { backgroundColor: "#22C55E" },
     count: { color: "#4ADE80" },
-    label: semanticTextStyles.operationalText,
+    label: { color: "#4ADE80" },
     detail: semanticTextStyles.helperText,
   },
   issues: {
     accent: { backgroundColor: "#EF4444" },
     count: { color: "#F87171" },
-    label: semanticTextStyles.operationalText,
+    label: { color: "#F87171" },
     detail: semanticTextStyles.helperText,
   },
   canceled: {
     accent: { backgroundColor: "#64748B" },
-    count: semanticTextStyles.helperText,
-    label: semanticTextStyles.operationalText,
+    count: { color: "#94A3B8" },
+    label: { color: "#94A3B8" },
     detail: semanticTextStyles.helperText,
   },
 };
@@ -595,10 +595,20 @@ export default function RewardsOperationsCenter() {
                 <TabsTrigger
                   key={queue.value}
                   value={queue.value}
-                  className="gap-2 border border-transparent text-foreground/85 data-[state=active]:border-sky-500 data-[state=active]:bg-sky-500/10 data-[state=active]:text-sky-300"
+                  className="relative gap-2 border-b-2 border-transparent bg-transparent px-2 py-2 text-foreground/85 transition-colors data-[state=active]:text-foreground"
+                  style={{
+                    borderBottomColor:
+                      queue.value === activeQueue
+                        ? queueAccentStyles[queue.value === "all" ? "total" : queue.value].accent.backgroundColor
+                        : "transparent",
+                  }}
                 >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={queueAccentStyles[queue.value === "all" ? "total" : queue.value].accent}
+                  />
                   {queue.label}
-                  <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-white">
+                  <span className="text-sm font-semibold" style={queueAccentStyles[queue.value === "all" ? "total" : queue.value].count}>
                     {counts[queue.value as keyof typeof counts] ?? counts.all}
                   </span>
                 </TabsTrigger>
