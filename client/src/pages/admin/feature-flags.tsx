@@ -295,7 +295,7 @@ export default function AdminFeatureFlags() {
           <div className="flex items-start gap-3">
             <Flag className="mt-0.5 h-5 w-5 text-primary" />
             <div className="flex-1">
-                <h3 className="mb-2 text-base font-semibold text-foreground">
+                <h3 className="mb-2 text-base font-semibold text-primary dark:text-primary">
                   Feature Flag System
                 </h3>
                 <p className="mb-3 text-sm text-foreground/90">
@@ -322,7 +322,7 @@ export default function AdminFeatureFlags() {
             <div className="rounded-xl border border-border/70 bg-background/70 p-4 space-y-3 shadow-sm dark:bg-background/40">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-foreground">Platform Fee per Washout</h3>
+                  <h3 className="text-base font-semibold text-primary dark:text-primary">Platform Fee per Washout</h3>
                   <p className="mt-1 text-sm text-foreground/90">
                     Fee charged per completed washout (blank/default can be overridden by a superadmin to $0.00; currently ${currentPlatformFee})
                   </p>
@@ -334,16 +334,23 @@ export default function AdminFeatureFlags() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="flex-1">
                   <Label htmlFor="platform-fee">New Fee Amount ($)</Label>
-                  <Input
-                    id="platform-fee"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder={currentPlatformFee}
-                    value={platformFee}
-                    onChange={(e) => setPlatformFee(e.target.value)}
-                    data-testid="input-platform-fee"
-                  />
+                  <div className="mt-1 flex items-stretch overflow-hidden rounded-md border border-border bg-card shadow-sm transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
+                    <span className="inline-flex items-center border-r border-border bg-muted/80 px-3 text-sm font-medium text-foreground/80">
+                      $
+                    </span>
+                    <Input
+                      id="platform-fee"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder={currentPlatformFee}
+                      value={platformFee}
+                      onChange={(e) => setPlatformFee(e.target.value)}
+                      className="border-0 bg-transparent px-3 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                      data-testid="input-platform-fee"
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-foreground/75">Enter dollars per approved washout.</p>
                 </div>
                 <Button
                   onClick={handleUpdatePlatformFee}
