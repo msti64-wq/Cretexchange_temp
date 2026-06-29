@@ -606,7 +606,7 @@ function MyComponent() {
   if (isLoading) return <Loading />;
   if (!enabled) return null;
   
-  return <RubbleServiceUI />;
+  return <div>RUBBLE_SERVICE UI goes here (illustrative example only).</div>;
 }`}
               </pre>
             </div>
@@ -615,6 +615,7 @@ function MyComponent() {
               <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
 {`import { FEATURE_FLAGS } from "@shared/featureFlags";
 
+// Illustrative example only: check the RUBBLE_SERVICE flag before exposing rubble-specific behavior.
 app.post("/api/rubble-service", isAuthenticated, async (req, res) => {
   const enabled = await storage.checkFeatureFlag(
     FEATURE_FLAGS.RUBBLE_SERVICE, 

@@ -3511,7 +3511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const locations = await storage.getActiveLocations();
       
-      // Enrich locations with material intents if rubble service is enabled
+      // Enrich locations with material intents for the rubble-service UI
       const locationsWithMaterials = await Promise.all(
         locations.map(async (location: any) => {
           try {
