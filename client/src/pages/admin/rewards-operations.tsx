@@ -184,14 +184,10 @@ export default function RewardsOperationsCenter() {
   }, [activeQueue, fulfillments]);
 
   useEffect(() => {
-    if (!selectedFulfillmentId && filteredFulfillments.length > 0) {
-      setSelectedFulfillmentId(filteredFulfillments[0].id);
-      return;
-    }
     if (selectedFulfillmentId && filteredFulfillments.length > 0) {
       const stillVisible = filteredFulfillments.some((fulfillment) => fulfillment.id === selectedFulfillmentId);
       if (!stillVisible) {
-        setSelectedFulfillmentId(filteredFulfillments[0].id);
+        setSelectedFulfillmentId(null);
       }
     }
     if (filteredFulfillments.length === 0) {
