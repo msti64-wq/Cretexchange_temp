@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,11 @@ import { MobileNav } from "@/components/MobileNav";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { DSSectionHeader } from "@/components/design-system/ds-section-header";
+import { DSStatusChip } from "@/components/design-system/ds-status-chip";
+import { DSTableShell } from "@/components/design-system/ds-table-shell";
+import { DSKpiCard } from "@/components/design-system/ds-kpi-card";
+import { dsTokens } from "@/components/design-system/tokens";
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -221,6 +226,17 @@ const toNullableCents = (value: string) => {
   if (!Number.isFinite(parsed)) return null;
   return Math.max(0, Math.round(parsed * 100));
 };
+
+const semanticTextStyles = {
+  pageTitle: { color: dsTokens.colors.pageTitle },
+  sectionTitle: { color: dsTokens.colors.sectionTitle },
+  cardTitle: { color: dsTokens.colors.cardTitle },
+  operationalText: { color: dsTokens.colors.operationalText },
+  bodyText: { color: dsTokens.colors.bodyText },
+  helperText: { color: dsTokens.colors.helperText },
+  metadataText: { color: dsTokens.colors.metadataText },
+} as const;
+
 
 export default function AdminLottery() {
   const { toast } = useToast();
@@ -872,18 +888,15 @@ export default function AdminLottery() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="gradient-bg text-white p-4 shadow-lg">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <Ticket className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="font-semibold text-lg">Driver Rewards Program</h1>
-              <p className="text-white/80 text-sm">Monthly Prize Drawings - reward entries reset each month</p>
-            </div>
-          </div>
-          <Button asChild variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+      <header className="border-b border-border/70 bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4">
+          <DSSectionHeader
+            className="min-w-0"
+            eyebrow="Admin"
+            title={<span style={semanticTextStyles.pageTitle}>Driver Rewards Program</span>}
+            description="Monthly Prize Drawings - reward entries reset each month"
+          />
+          <Button asChild variant="outline" className="border-border bg-muted/20 text-foreground hover:bg-muted hover:text-foreground">
             <Link href="/rewards/operations">
               <ArrowRight className="mr-2 h-4 w-4" />
               Rewards Operations Center
@@ -893,12 +906,13 @@ export default function AdminLottery() {
       </header>
 
       <main className="p-4 space-y-4">
-        <Card>
+        <Card className="border-border/70 bg-card shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Select Drawing Period
-            </CardTitle>
+            <DSSectionHeader
+              eyebrow="Drawing period"
+              title={<span style={semanticTextStyles.sectionTitle}>Select Drawing Period</span>}
+              description="Choose the month and year you want to review or draw."
+            />
           </CardHeader>
           <CardContent>
             <div className="flex gap-4">
@@ -926,33 +940,33 @@ export default function AdminLottery() {
             
             <div className="mt-4 flex items-center justify-between">
               {isCurrentMonth ? (
-                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                <div className="flex items-center gap-2" style={{ color: dsTokens.colors.warning }}>
                   <Clock className="w-4 h-4" />
                   <span className="text-sm font-medium">Drawing closes in {daysUntilClose} days</span>
                 </div>
               ) : isArchived ? (
-                <Badge variant="secondary" className="bg-gray-100 text-gray-600">
-                  <Archive className="w-3 h-3 mr-1" />
+                <DSStatusChip tone="neutral" size="sm" dot>
+                  <Archive className="w-3 h-3" />
                   Closed
-                </Badge>
+                </DSStatusChip>
               ) : (
-                <Badge variant="outline" className="text-orange-600 border-orange-600">
+                <DSStatusChip tone="info" size="sm" dot>
                   Open (Past Month)
-                </Badge>
+                </DSStatusChip>
               )}
               
               <div className="flex gap-2 flex-wrap justify-end">
                 {selectedDrawing && (
-                  <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300">
-                    <Trophy className="w-3 h-3 mr-1" />
+                  <DSStatusChip tone="success" size="sm" dot>
+                    <Trophy className="w-3 h-3" />
                     Prize Drawing Complete
-                  </Badge>
+                  </DSStatusChip>
                 )}
                 {hasPartialDrawing && !selectedDrawing && (
-                  <Badge className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-200">
-                    <Clock className="w-3 h-3 mr-1" />
+                  <DSStatusChip tone="warning" size="sm" dot>
+                    <Clock className="w-3 h-3" />
                     Prize Drawing Incomplete
-                  </Badge>
+                  </DSStatusChip>
                 )}
 
                 {user?.role === 'super_admin' && !isArchived && !isCurrentMonth && !existingDrawing && (
@@ -990,42 +1004,40 @@ export default function AdminLottery() {
         </Card>
 
         <div className="grid grid-cols-2 gap-4">
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <div className="text-3xl font-bold text-primary" data-testid="text-total-entries">
-                {totalEntriesCount}
-              </div>
-              <p className="text-sm text-muted-foreground">Reward Entries</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <div className="text-3xl font-bold text-secondary" data-testid="text-unique-drivers">
-                {uniqueDrivers}
-              </div>
-              <p className="text-sm text-muted-foreground">Drivers</p>
-            </CardContent>
-          </Card>
+          <DSKpiCard
+            label="Reward Entries"
+            value={totalEntriesCount}
+            detail={selectedMonthData ? `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}` : "Selected period"}
+            accentTone="info"
+            data-testid="text-total-entries"
+          />
+          <DSKpiCard
+            label="Drivers"
+            value={uniqueDrivers}
+            detail="Unique drivers with reward entries"
+            accentTone="textPrimary"
+            data-testid="text-unique-drivers"
+          />
         </div>
 
-        <Card>
+        <Card className="border-border/70 bg-card shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Medal className="w-5 h-5 text-yellow-500" />
-              Monthly Prize Drawing
-            </CardTitle>
-            <CardDescription>
-              Preview reward winners before you run the official monthly prize drawing.
-            </CardDescription>
+            <DSSectionHeader
+              eyebrow="Drawing"
+              title={<span style={semanticTextStyles.sectionTitle}>Monthly Prize Drawing</span>}
+              description="Preview reward winners before you run the official monthly prize drawing."
+            />
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <Label className="text-sm font-semibold">Tier Quantities</Label>
-                  <Badge variant="outline">{totalWinnerCount} total winners</Badge>
+                  <DSStatusChip tone="info" dot>
+                    {totalWinnerCount} total winners
+                  </DSStatusChip>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs" style={semanticTextStyles.helperText}>
                   Configure how many reward winners each prize tier should produce.
                 </p>
               </div>
@@ -1037,14 +1049,14 @@ export default function AdminLottery() {
                     onCheckedChange={(checked) => setAllowDuplicateWinnerDriver(Boolean(checked))}
                     data-testid="checkbox-allow-duplicate-winner-driver"
                   />
-                  <div className="space-y-0.5">
-                    <Label htmlFor="allow-duplicate-winner-driver">Allow duplicate driver winners</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Leave off to prefer unique drivers. Turn on if you want the same driver to win more than one prize in the same drawing.
-                    </p>
-                  </div>
+                <div className="space-y-0.5">
+                  <Label htmlFor="allow-duplicate-winner-driver">Allow duplicate driver winners</Label>
+                  <p className="text-xs" style={semanticTextStyles.helperText}>
+                    Leave off to prefer unique drivers. Turn on if you want the same driver to win more than one prize in the same drawing.
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
+              </div>
+                <p className="text-xs" style={semanticTextStyles.helperText}>
                   Duplicate-driver runs are supported in preview and in the official drawing execution path.
                 </p>
               </div>
@@ -1273,25 +1285,23 @@ export default function AdminLottery() {
         </Card>
 
         {previewResult && (
-          <Card>
+          <Card className="border-border/70 bg-card shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Ticket className="w-5 h-5 text-sky-500" />
-                Preview Winners
-              </CardTitle>
-              <CardDescription>
-                Preview results are not persisted until the official drawing is run.
-              </CardDescription>
+              <DSSectionHeader
+                eyebrow="Preview"
+                title={<span style={semanticTextStyles.sectionTitle}>Preview Winners</span>}
+                description="Preview results are not persisted until the official drawing is run."
+              />
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">{previewResult.eligibleEntryCount} eligible entries</Badge>
-                <Badge variant="outline">{previewResult.eligibleDriverCount} drivers</Badge>
-                <Badge variant="outline">{previewResult.winnerCountRequested} requested winners</Badge>
-                <Badge variant="outline">{previewResult.selectedWinners?.length || 0} selected winners</Badge>
-                <Badge variant={previewResult.allowDuplicateWinnerDriver ? "default" : "secondary"}>
+                <DSStatusChip tone="info" size="sm" dot>{previewResult.eligibleEntryCount} eligible entries</DSStatusChip>
+                <DSStatusChip tone="info" size="sm" dot>{previewResult.eligibleDriverCount} drivers</DSStatusChip>
+                <DSStatusChip tone="neutral" size="sm" dot>{previewResult.winnerCountRequested} requested winners</DSStatusChip>
+                <DSStatusChip tone="success" size="sm" dot>{previewResult.selectedWinners?.length || 0} selected winners</DSStatusChip>
+                <DSStatusChip tone={previewResult.allowDuplicateWinnerDriver ? "warning" : "neutral"} size="sm" dot>
                   {previewResult.allowDuplicateWinnerDriver ? "Duplicate winners allowed" : "Unique drivers only"}
-                </Badge>
+                </DSStatusChip>
               </div>
 
               {previewResult.warnings?.length > 0 && (
@@ -1305,8 +1315,9 @@ export default function AdminLottery() {
               )}
 
               {previewResult.selectedWinners?.length > 0 ? (
+                <DSTableShell density="compact">
                   <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-muted/30">
                     <TableRow>
                       <TableHead>Place / Tier</TableHead>
                       <TableHead>Reward Winner</TableHead>
@@ -1330,22 +1341,23 @@ export default function AdminLottery() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{winner.driverName}</div>
-                          <div className="text-xs text-muted-foreground">{winner.payoutPreference || "Reward winner"}</div>
+                          <div className="font-medium" style={semanticTextStyles.operationalText}>{winner.driverName}</div>
+                          <div className="text-xs" style={semanticTextStyles.metadataText}>{winner.payoutPreference || "Reward winner"}</div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{winner.ticketNumber || "—"}</TableCell>
+                        <TableCell className="font-mono text-xs" style={semanticTextStyles.metadataText}>{winner.ticketNumber || "—"}</TableCell>
                         <TableCell>
-                          <div className="font-medium text-foreground">{winner.prizeTitle || "—"}</div>
+                          <div className="font-medium" style={semanticTextStyles.operationalText}>{winner.prizeTitle || "—"}</div>
                           {winner.prizeDescription && (
-                            <div className="text-xs text-muted-foreground">{winner.prizeDescription}</div>
+                            <div className="text-xs" style={semanticTextStyles.helperText}>{winner.prizeDescription}</div>
                           )}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+                </DSTableShell>
               ) : (
-                <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
+                <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm" style={semanticTextStyles.helperText}>
                   Preview results will appear here once you run the preview.
                 </div>
               )}
@@ -1355,57 +1367,55 @@ export default function AdminLottery() {
 
         {/* Monthly Prize Drawing Results Card */}
         {existingDrawing && (
-          <Card className="border-yellow-300 dark:border-yellow-700 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30">
+          <Card className="border-border/70 bg-card shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-                <Medal className="w-5 h-5 text-yellow-600" />
-                {MONTH_NAMES[existingDrawing.lotteryMonth - 1]} {existingDrawing.lotteryYear} — Monthly Prize Drawing Results
-              </CardTitle>
-              <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                Drawn on {new Date(existingDrawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </p>
+              <DSSectionHeader
+                eyebrow="Completed drawing"
+                title={<span style={semanticTextStyles.sectionTitle}>{MONTH_NAMES[existingDrawing.lotteryMonth - 1]} {existingDrawing.lotteryYear} — Monthly Prize Drawing Results</span>}
+                description={`Drawn on ${new Date(existingDrawing.drawingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`}
+              />
               <div className="flex flex-wrap gap-2 pt-2">
-                <Badge variant="outline">
+                <DSStatusChip tone="info" size="sm" dot>
                   {selectedDrawingWinnerCount} reward winners
-                </Badge>
-                <Badge variant={existingDrawing.winnerNotificationsSentAt ? "default" : "outline"} className={existingDrawing.winnerNotificationsSentAt ? "bg-green-600 hover:bg-green-700" : ""}>
+                </DSStatusChip>
+                <DSStatusChip tone={existingDrawing.winnerNotificationsSentAt ? "success" : "warning"} size="sm" dot>
                   Reward winners {existingDrawing.winnerNotificationsSentAt ? `sent (${existingDrawing.winnerNotificationCount || 0})` : 'pending'}
-                </Badge>
-                <Badge variant={existingDrawing.participantNotificationsSentAt ? "default" : "outline"} className={existingDrawing.participantNotificationsSentAt ? "bg-blue-600 hover:bg-blue-700" : ""}>
+                </DSStatusChip>
+                <DSStatusChip tone={existingDrawing.participantNotificationsSentAt ? "info" : "warning"} size="sm" dot>
                   Participants {existingDrawing.participantNotificationsSentAt ? `sent (${existingDrawing.participantNotificationCount || 0})` : 'pending'}
-                </Badge>
+                </DSStatusChip>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {existingDrawing.winners?.length ? existingDrawing.winners.map((winner: any) => (
-                <div key={`${winner.placeIndex}-${winner.driverId}`} className="flex items-start justify-between bg-white/60 dark:bg-black/20 rounded-lg px-3 py-2">
+                <div key={`${winner.placeIndex}-${winner.driverId}`} className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
                   <div className="min-w-0">
-                    <p className="font-semibold text-sm text-yellow-900 dark:text-yellow-100">
+                    <p className="font-semibold text-sm" style={semanticTextStyles.operationalText}>
                       {winner.placeIndex === 1 ? '🥇 1st' : winner.placeIndex === 2 ? '🥈 2nd' : winner.placeIndex === 3 ? '🥉 3rd' : `#${winner.placeIndex}`} — {winner.driverName}
                     </p>
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300 font-mono">Entry {winner.ticketNumber || '—'}</p>
-                    {winner.prizeTitle && <p className="text-xs text-yellow-600 dark:text-yellow-400">Prize: {winner.prizeTitle}</p>}
-                    {winner.prizeDescription && <p className="text-xs text-yellow-600 dark:text-yellow-400">{winner.prizeDescription}</p>}
+                    <p className="text-xs font-mono" style={semanticTextStyles.metadataText}>Entry {winner.ticketNumber || '—'}</p>
+                    {winner.prizeTitle && <p className="text-xs" style={semanticTextStyles.helperText}>Prize: {winner.prizeTitle}</p>}
+                    {winner.prizeDescription && <p className="text-xs" style={semanticTextStyles.helperText}>{winner.prizeDescription}</p>}
                   </div>
-                  <Badge variant={winner.notificationId ? "secondary" : "outline"} className={winner.notificationId ? "text-green-700 bg-green-100" : "text-yellow-700 border-yellow-400"}>
-                    {winner.notificationId ? "✓ Notified" : "Pending"}
-                  </Badge>
+                  <DSStatusChip tone={winner.notificationId ? "success" : "warning"} size="sm" dot>
+                    {winner.notificationId ? "Notified" : "Pending"}
+                  </DSStatusChip>
                 </div>
               )) : [
                 { place: '🥇 1st', name: existingDrawing.firstPlaceDriverName, ticket: existingDrawing.firstPlaceTicketNumber, pref: existingDrawing.firstPlacePayoutPreference, prize: existingDrawing.firstPrize, delivered: existingDrawing.firstPlaceDelivered },
                 { place: '🥈 2nd', name: existingDrawing.secondPlaceDriverName, ticket: existingDrawing.secondPlaceTicketNumber, pref: existingDrawing.secondPlacePayoutPreference, prize: existingDrawing.secondPrize, delivered: existingDrawing.secondPlaceDelivered },
                 { place: '🥉 3rd', name: existingDrawing.thirdPlaceDriverName, ticket: existingDrawing.thirdPlaceTicketNumber, pref: existingDrawing.thirdPlacePayoutPreference, prize: existingDrawing.thirdPrize, delivered: existingDrawing.thirdPlaceDelivered },
               ].filter(w => w.name).map((winner) => (
-                <div key={winner.place} className="flex items-center justify-between bg-white/60 dark:bg-black/20 rounded-lg px-3 py-2">
+                <div key={winner.place} className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
                   <div>
-                    <p className="font-semibold text-sm text-yellow-900 dark:text-yellow-100">{winner.place} — {winner.name}</p>
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300 font-mono">{winner.ticket}</p>
-                    {winner.prize && <p className="text-xs text-yellow-600 dark:text-yellow-400">Prize: {winner.prize}</p>}
-                    <p className="text-xs text-yellow-600 dark:text-yellow-400">{getPayoutPreferenceLabel(winner.pref)}</p>
+                    <p className="font-semibold text-sm" style={semanticTextStyles.operationalText}>{winner.place} — {winner.name}</p>
+                    <p className="text-xs font-mono" style={semanticTextStyles.metadataText}>{winner.ticket}</p>
+                    {winner.prize && <p className="text-xs" style={semanticTextStyles.helperText}>Prize: {winner.prize}</p>}
+                    <p className="text-xs" style={semanticTextStyles.helperText}>{getPayoutPreferenceLabel(winner.pref)}</p>
                   </div>
-                  <Badge variant={winner.delivered ? "secondary" : "outline"} className={winner.delivered ? "text-green-700 bg-green-100" : "text-yellow-700 border-yellow-400"}>
-                    {winner.delivered ? "✓ Delivered" : "Pending"}
-                  </Badge>
+                  <DSStatusChip tone={winner.delivered ? "success" : "warning"} size="sm" dot>
+                    {winner.delivered ? "Delivered" : "Pending"}
+                  </DSStatusChip>
                 </div>
               ))}
             </CardContent>
@@ -1415,15 +1425,11 @@ export default function AdminLottery() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Package className="w-5 h-5 text-sky-500" />
-                  Prize Catalog Procurement Dashboard
-                </CardTitle>
-                <CardDescription>
-                  Manage Driver Rewards Program prize inventory, fulfillment notes, and catalog status.
-                </CardDescription>
-              </div>
+              <DSSectionHeader
+                eyebrow="Procurement"
+                title={<span style={semanticTextStyles.sectionTitle}>Prize Catalog Procurement Dashboard</span>}
+                description="Manage Driver Rewards Program prize inventory, fulfillment notes, and catalog status."
+              />
               <div className="flex flex-wrap gap-2">
                 <Button onClick={openCreateCatalogDialog} data-testid="button-create-prize">
                   <Plus className="w-4 h-4 mr-2" />
@@ -1672,13 +1678,11 @@ export default function AdminLottery() {
             <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
               <Card className="border-border/70 bg-muted/20">
                 <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Info className="h-4 w-4 text-sky-500" />
-                    Selected Prize Summary
-                  </CardTitle>
-                  <CardDescription>
-                    {selectedCatalog ? "Review inventory state and recent history for the selected prize." : "Select a prize to inspect inventory summary and adjustment history."}
-                  </CardDescription>
+                  <DSSectionHeader
+                    eyebrow="Selected prize"
+                    title={<span style={semanticTextStyles.cardTitle}>Selected Prize Summary</span>}
+                    description={selectedCatalog ? "Review inventory state and recent history for the selected prize." : "Select a prize to inspect inventory summary and adjustment history."}
+                  />
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {selectedCatalog ? (
@@ -1833,13 +1837,11 @@ export default function AdminLottery() {
 
               <Card className="border-border/70 bg-muted/20">
                 <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Truck className="h-4 w-4 text-sky-500" />
-                    Procurement Notes
-                  </CardTitle>
-                  <CardDescription>
-                    Inventory updates are manual and append-only. No inventory is reserved or deducted by drawings in this phase.
-                  </CardDescription>
+                  <DSSectionHeader
+                    eyebrow="Operations"
+                    title={<span style={semanticTextStyles.cardTitle}>Procurement Notes</span>}
+                    description="Inventory updates are manual and append-only. No inventory is reserved or deducted by drawings in this phase."
+                  />
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="rounded-lg border border-border/70 bg-background/80 p-3 text-sm text-foreground">
@@ -1865,13 +1867,11 @@ export default function AdminLottery() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Archive className="w-5 h-5 text-yellow-500" />
-              Completed Drawing History
-            </CardTitle>
-            <CardDescription>
-              Review previous monthly prize drawings and their reward winners.
-            </CardDescription>
+            <DSSectionHeader
+              eyebrow="History"
+              title={<span style={semanticTextStyles.sectionTitle}>Completed Drawing History</span>}
+              description="Review previous monthly prize drawings and their reward winners."
+            />
           </CardHeader>
           <CardContent>
             {drawingHistoryLoading ? (
@@ -1929,9 +1929,10 @@ export default function AdminLottery() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">
-              {MONTH_NAMES[selectedMonth - 1]} {selectedYear} Leaderboard
-            </CardTitle>
+            <DSSectionHeader
+              eyebrow="Leaderboard"
+              title={<span style={semanticTextStyles.sectionTitle}>{MONTH_NAMES[selectedMonth - 1]} {selectedYear} Leaderboard</span>}
+            />
             <Button 
               size="sm" 
               onClick={exportToCSV}
@@ -2006,10 +2007,10 @@ export default function AdminLottery() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <List className="w-4 h-4" />
-                  Individual Entries
-                </CardTitle>
+                <DSSectionHeader
+                  eyebrow="Entries"
+                  title={<span style={semanticTextStyles.sectionTitle}>Individual Entries</span>}
+                />
                 <Button
                   variant="ghost"
                   size="sm"
