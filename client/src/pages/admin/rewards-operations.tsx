@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ComponentProps } from "react";
+import type { CSSProperties, ComponentProps } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeft, CheckCircle2, ClipboardList, Loader2, Package, RefreshCw, Save, ShieldAlert, Truck, XCircle } from "lucide-react";
@@ -147,10 +147,16 @@ const semanticTextStyles = {
   pageTitle: { color: dsTokens.colors.pageTitle },
   sectionTitle: { color: dsTokens.colors.sectionTitle },
   cardTitle: { color: dsTokens.colors.cardTitle },
+  winnerTitle: { color: dsTokens.colors.pageTitle },
+  prizeTitle: { color: "#4ADE80" },
+  actionsTitle: { color: "#FBBF24" },
+  trackingTitle: { color: "#38BDF8" },
+  historyTitle: { color: dsTokens.colors.metadataText },
   operationalText: { color: dsTokens.colors.operationalText },
   bodyText: { color: dsTokens.colors.bodyText },
   helperText: { color: dsTokens.colors.helperText },
   metadataText: { color: dsTokens.colors.metadataText },
+  infoText: { color: "#38BDF8" },
 } as const;
 
 const fulfillmentStatusTone = (status: string): ComponentProps<typeof DSStatusChip>["tone"] => {
@@ -173,6 +179,116 @@ const fulfillmentStatusTone = (status: string): ComponentProps<typeof DSStatusCh
     default:
       return "neutral";
   }
+};
+
+const fulfillmentStatusChipStyle = (status: string) => {
+  switch (status) {
+    case "pending":
+      return { borderColor: "#F59E0B", backgroundColor: "rgba(245, 158, 11, 0.12)", color: "#FBBF24" };
+    case "ordered":
+    case "purchased":
+      return { borderColor: "#3B82F6", backgroundColor: "rgba(59, 130, 246, 0.12)", color: "#60A5FA" };
+    case "shipped":
+      return { borderColor: "#22D3EE", backgroundColor: "rgba(34, 211, 238, 0.12)", color: "#22D3EE" };
+    case "delivered":
+    case "picked_up":
+      return { borderColor: "#22C55E", backgroundColor: "rgba(34, 197, 94, 0.12)", color: "#4ADE80" };
+    case "issue":
+      return { borderColor: "#EF4444", backgroundColor: "rgba(239, 68, 68, 0.12)", color: "#F87171" };
+    case "canceled":
+      return { borderColor: "#64748B", backgroundColor: "rgba(100, 116, 139, 0.14)", color: "#94A3B8" };
+    default:
+      return { borderColor: "#64748B", backgroundColor: "rgba(100, 116, 139, 0.14)", color: "#C4CDD7" };
+  }
+};
+
+const queueAccentStyles: Record<string, {
+  tone: ComponentProps<typeof DSKpiCard>["accentTone"];
+  card: CSSProperties;
+  label: CSSProperties;
+  value: CSSProperties;
+  detail: CSSProperties;
+}> = {
+  total: {
+    tone: "textSecondary",
+    card: {
+      backgroundColor: "rgba(27, 31, 36, 0.95)",
+      borderColor: "#3B4250",
+    },
+    label: semanticTextStyles.metadataText,
+    value: semanticTextStyles.operationalText,
+    detail: semanticTextStyles.helperText,
+  },
+  pending: {
+    tone: "warning",
+    card: {
+      backgroundColor: "rgba(245, 158, 11, 0.09)",
+      borderColor: "rgba(245, 158, 11, 0.38)",
+    },
+    label: { color: "#FBBF24" },
+    value: { color: "#F59E0B" },
+    detail: semanticTextStyles.helperText,
+  },
+  ordered: {
+    tone: "info",
+    card: {
+      backgroundColor: "rgba(59, 130, 246, 0.10)",
+      borderColor: "rgba(59, 130, 246, 0.34)",
+    },
+    label: { color: "#93C5FD" },
+    value: { color: "#60A5FA" },
+    detail: semanticTextStyles.helperText,
+  },
+  purchased: {
+    tone: "info",
+    card: {
+      backgroundColor: "rgba(37, 99, 235, 0.10)",
+      borderColor: "rgba(59, 130, 246, 0.34)",
+    },
+    label: { color: "#93C5FD" },
+    value: { color: "#60A5FA" },
+    detail: semanticTextStyles.helperText,
+  },
+  shipped: {
+    tone: "info",
+    card: {
+      backgroundColor: "rgba(34, 211, 238, 0.10)",
+      borderColor: "rgba(34, 211, 238, 0.34)",
+    },
+    label: { color: "#67E8F9" },
+    value: { color: "#22D3EE" },
+    detail: semanticTextStyles.helperText,
+  },
+  deliveredPickedUp: {
+    tone: "success",
+    card: {
+      backgroundColor: "rgba(34, 197, 94, 0.10)",
+      borderColor: "rgba(34, 197, 94, 0.34)",
+    },
+    label: { color: "#86EFAC" },
+    value: { color: "#4ADE80" },
+    detail: semanticTextStyles.helperText,
+  },
+  issues: {
+    tone: "danger",
+    card: {
+      backgroundColor: "rgba(239, 68, 68, 0.10)",
+      borderColor: "rgba(239, 68, 68, 0.34)",
+    },
+    label: { color: "#FCA5A5" },
+    value: { color: "#F87171" },
+    detail: semanticTextStyles.helperText,
+  },
+  canceled: {
+    tone: "textSecondary",
+    card: {
+      backgroundColor: "rgba(51, 65, 85, 0.38)",
+      borderColor: "rgba(100, 116, 139, 0.38)",
+    },
+    label: semanticTextStyles.metadataText,
+    value: semanticTextStyles.helperText,
+    detail: semanticTextStyles.helperText,
+  },
 };
 
 export default function RewardsOperationsCenter() {
@@ -369,45 +485,57 @@ export default function RewardsOperationsCenter() {
   const visibleQueueLabel = QUEUE_TABS.find((tab) => tab.value === activeQueue)?.label || "All";
   const summaryCards = [
     {
+      key: "total",
       label: "Total",
       value: counts.all,
       detail: "All fulfillment records",
-      accentTone: "accent" as const,
     },
     {
+      key: "pending",
       label: "Needs Purchase",
       value: counts.pending,
       detail: "Pending procurement or prep",
-      accentTone: "warning" as const,
     },
     {
+      key: "ordered",
       label: "Ordered",
       value: counts.ordered,
       detail: "Placed with vendor or sponsor",
-      accentTone: "info" as const,
     },
     {
+      key: "purchased",
       label: "Purchased",
       value: counts.purchased,
       detail: "Ready to send or release",
-      accentTone: "success" as const,
     },
     {
+      key: "shipped",
       label: "Shipped",
       value: counts.shipped,
       detail: "Out for delivery or pickup",
-      accentTone: "info" as const,
     },
     {
+      key: "deliveredPickedUp",
+      label: "Delivered / Picked Up",
+      value: counts.delivered,
+      detail: "Completed by delivery or pickup",
+    },
+    {
+      key: "issues",
       label: "Issues",
       value: counts.issue,
       detail: "Needs review or exception handling",
-      accentTone: "danger" as const,
+    },
+    {
+      key: "canceled",
+      label: "Canceled",
+      value: counts.canceled,
+      detail: "Closed or voided fulfillment records",
     },
   ];
 
   const renderStatusBadge = (status: string) => (
-    <DSStatusChip tone={fulfillmentStatusTone(status)} size="sm">
+    <DSStatusChip tone={fulfillmentStatusTone(status)} size="sm" style={fulfillmentStatusChipStyle(status)}>
       {statusLabel(status)}
     </DSStatusChip>
   );
@@ -459,14 +587,15 @@ export default function RewardsOperationsCenter() {
           description={<span style={semanticTextStyles.bodyText}>Track fulfillment volume by operational stage.</span>}
         />
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {summaryCards.map((card) => (
             <DSKpiCard
-              key={card.label}
-              label={card.label}
-              value={card.value}
-              detail={card.detail}
-              accentTone={card.accentTone}
+              key={card.key}
+              label={<span style={queueAccentStyles[card.key].label}>{card.label}</span>}
+              value={<span style={queueAccentStyles[card.key].value}>{card.value}</span>}
+              detail={<span style={queueAccentStyles[card.key].detail}>{card.detail}</span>}
+              accentTone={queueAccentStyles[card.key].tone}
+              style={queueAccentStyles[card.key].card}
             />
           ))}
         </div>
@@ -581,8 +710,8 @@ export default function RewardsOperationsCenter() {
                           </TableCell>
                           <TableCell>{renderStatusBadge(fulfillment.fulfillmentStatus)}</TableCell>
                           <TableCell className="text-sm">
-                            <div className="space-y-1" style={semanticTextStyles.operationalText}>
-                              <p>{fulfillment.trackingNumber || "—"}</p>
+                            <div className="space-y-1">
+                              <p style={semanticTextStyles.infoText}>{fulfillment.trackingNumber || "—"}</p>
                               <p style={semanticTextStyles.helperText}>{fulfillment.trackingReference || "—"}</p>
                             </div>
                           </TableCell>
@@ -657,7 +786,7 @@ export default function RewardsOperationsCenter() {
         <SheetContent className="w-full overflow-y-auto sm:max-w-3xl">
           <div className="space-y-6">
             <DSSectionHeader
-              title={<span style={semanticTextStyles.sectionTitle}>Rewards Fulfillment Details</span>}
+              title={<span style={semanticTextStyles.winnerTitle}>Rewards Fulfillment Details</span>}
               description={<span style={semanticTextStyles.bodyText}>{fulfilledStateLabel(currentSelected)}</span>}
               actions={
                 <Button type="button" variant="outline" onClick={() => setSelectedFulfillmentId(null)}>
@@ -675,7 +804,7 @@ export default function RewardsOperationsCenter() {
               <div className="space-y-5">
                 <DSCard className="space-y-4">
                   <DSSectionHeader
-                    title={<span style={semanticTextStyles.cardTitle}>Fulfillment Summary</span>}
+                    title={<span style={semanticTextStyles.winnerTitle}>Winner Information</span>}
                     description={<span style={semanticTextStyles.helperText}>Snapshot details from the completed drawing and current fulfillment state.</span>}
                   />
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -709,7 +838,7 @@ export default function RewardsOperationsCenter() {
 
                 <DSCard className="space-y-4">
                   <DSSectionHeader
-                    title={<span style={semanticTextStyles.cardTitle}>Prize Details</span>}
+                    title={<span style={semanticTextStyles.prizeTitle}>Prize Details</span>}
                     description={<span style={semanticTextStyles.helperText}>Prize snapshots from the completed drawing are preserved here.</span>}
                   />
                   <div className="flex flex-wrap items-center gap-2">
@@ -756,7 +885,7 @@ export default function RewardsOperationsCenter() {
 
                 <DSCard className="space-y-4">
                   <DSSectionHeader
-                    title={<span style={semanticTextStyles.cardTitle}>Admin Actions</span>}
+                    title={<span style={semanticTextStyles.actionsTitle}>Fulfillment Actions</span>}
                     description={<span style={semanticTextStyles.helperText}>Update the fulfillment stage or cancel this record if necessary.</span>}
                   />
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -791,7 +920,7 @@ export default function RewardsOperationsCenter() {
 
                 <DSCard className="space-y-4">
                   <DSSectionHeader
-                    title={<span style={semanticTextStyles.cardTitle}>Notes and Tracking</span>}
+                    title={<span style={semanticTextStyles.trackingTitle}>Tracking</span>}
                     description={<span style={semanticTextStyles.helperText}>Record shipment details and operational notes.</span>}
                   />
 
@@ -858,18 +987,18 @@ export default function RewardsOperationsCenter() {
 
                 <DSCard className="space-y-4">
                   <DSSectionHeader
-                    title={<span style={semanticTextStyles.cardTitle}>Fulfillment History</span>}
+                    title={<span style={semanticTextStyles.historyTitle}>Fulfillment History</span>}
                     description={<span style={semanticTextStyles.helperText}>Append-only status and tracking updates for audit review.</span>}
                   />
                   <div className="space-y-3">
                     {history.length > 0 ? (
                       history.map((item) => (
                         <div key={item.id} className="rounded-lg border border-border/70 bg-muted/10 p-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <DSStatusChip tone={fulfillmentStatusTone(item.nextStatus)} size="sm">
-                                {statusLabel(item.nextStatus)}
-                              </DSStatusChip>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <DSStatusChip tone={fulfillmentStatusTone(item.nextStatus)} size="sm">
+                                  {statusLabel(item.nextStatus)}
+                                </DSStatusChip>
                               <span className="text-xs" style={semanticTextStyles.helperText}>
                                 {formatDateTime(item.changedAt)}
                               </span>
@@ -881,7 +1010,7 @@ export default function RewardsOperationsCenter() {
                           <div className="mt-2 space-y-1 text-sm">
                             {item.notes ? <p style={semanticTextStyles.bodyText}>{item.notes}</p> : null}
                             <p className="text-xs" style={semanticTextStyles.helperText}>
-                              Tracking: {item.trackingNumber || "—"} {item.trackingReference ? `• Reference: ${item.trackingReference}` : ""}
+                              Tracking: <span style={semanticTextStyles.infoText}>{item.trackingNumber || "—"}</span>{item.trackingReference ? ` • Reference: ${item.trackingReference}` : ""}
                             </p>
                           </div>
                         </div>
