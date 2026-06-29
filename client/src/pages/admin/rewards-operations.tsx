@@ -15,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   DSCard,
-  DSKpiCard,
   DSSectionHeader,
   DSStatusChip,
   DSTableShell,
@@ -203,90 +202,57 @@ const fulfillmentStatusChipStyle = (status: string) => {
 };
 
 const queueAccentStyles: Record<string, {
-  tone: ComponentProps<typeof DSKpiCard>["accentTone"];
-  card: CSSProperties;
+  accent: CSSProperties;
+  count: CSSProperties;
   label: CSSProperties;
-  value: CSSProperties;
   detail: CSSProperties;
 }> = {
   total: {
-    tone: "textSecondary",
-    card: {
-      backgroundColor: "rgba(27, 31, 36, 0.95)",
-      borderColor: "#3B4250",
-    },
+    accent: { backgroundColor: "#64748B" },
+    count: semanticTextStyles.operationalText,
     label: semanticTextStyles.metadataText,
-    value: semanticTextStyles.operationalText,
     detail: semanticTextStyles.helperText,
   },
   pending: {
-    tone: "warning",
-    card: {
-      backgroundColor: "rgba(245, 158, 11, 0.09)",
-      borderColor: "rgba(245, 158, 11, 0.38)",
-    },
-    label: { color: "#FBBF24" },
-    value: { color: "#F59E0B" },
+    accent: { backgroundColor: "#F59E0B" },
+    count: { color: "#FBBF24" },
+    label: semanticTextStyles.operationalText,
     detail: semanticTextStyles.helperText,
   },
   ordered: {
-    tone: "info",
-    card: {
-      backgroundColor: "rgba(59, 130, 246, 0.10)",
-      borderColor: "rgba(59, 130, 246, 0.34)",
-    },
-    label: { color: "#93C5FD" },
-    value: { color: "#60A5FA" },
+    accent: { backgroundColor: "#3B82F6" },
+    count: { color: "#60A5FA" },
+    label: semanticTextStyles.operationalText,
     detail: semanticTextStyles.helperText,
   },
   purchased: {
-    tone: "info",
-    card: {
-      backgroundColor: "rgba(37, 99, 235, 0.10)",
-      borderColor: "rgba(59, 130, 246, 0.34)",
-    },
-    label: { color: "#93C5FD" },
-    value: { color: "#60A5FA" },
+    accent: { backgroundColor: "#2563EB" },
+    count: { color: "#60A5FA" },
+    label: semanticTextStyles.operationalText,
     detail: semanticTextStyles.helperText,
   },
   shipped: {
-    tone: "info",
-    card: {
-      backgroundColor: "rgba(34, 211, 238, 0.10)",
-      borderColor: "rgba(34, 211, 238, 0.34)",
-    },
-    label: { color: "#67E8F9" },
-    value: { color: "#22D3EE" },
+    accent: { backgroundColor: "#22D3EE" },
+    count: { color: "#22D3EE" },
+    label: semanticTextStyles.operationalText,
     detail: semanticTextStyles.helperText,
   },
   deliveredPickedUp: {
-    tone: "success",
-    card: {
-      backgroundColor: "rgba(34, 197, 94, 0.10)",
-      borderColor: "rgba(34, 197, 94, 0.34)",
-    },
-    label: { color: "#86EFAC" },
-    value: { color: "#4ADE80" },
+    accent: { backgroundColor: "#22C55E" },
+    count: { color: "#4ADE80" },
+    label: semanticTextStyles.operationalText,
     detail: semanticTextStyles.helperText,
   },
   issues: {
-    tone: "danger",
-    card: {
-      backgroundColor: "rgba(239, 68, 68, 0.10)",
-      borderColor: "rgba(239, 68, 68, 0.34)",
-    },
-    label: { color: "#FCA5A5" },
-    value: { color: "#F87171" },
+    accent: { backgroundColor: "#EF4444" },
+    count: { color: "#F87171" },
+    label: semanticTextStyles.operationalText,
     detail: semanticTextStyles.helperText,
   },
   canceled: {
-    tone: "textSecondary",
-    card: {
-      backgroundColor: "rgba(51, 65, 85, 0.38)",
-      borderColor: "rgba(100, 116, 139, 0.38)",
-    },
-    label: semanticTextStyles.metadataText,
-    value: semanticTextStyles.helperText,
+    accent: { backgroundColor: "#64748B" },
+    count: semanticTextStyles.helperText,
+    label: semanticTextStyles.operationalText,
     detail: semanticTextStyles.helperText,
   },
 };
@@ -587,17 +553,28 @@ export default function RewardsOperationsCenter() {
           description={<span style={semanticTextStyles.bodyText}>Track fulfillment volume by operational stage.</span>}
         />
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {summaryCards.map((card) => (
-            <DSKpiCard
-              key={card.key}
-              label={<span style={queueAccentStyles[card.key].label}>{card.label}</span>}
-              value={<span style={queueAccentStyles[card.key].value}>{card.value}</span>}
-              detail={<span style={queueAccentStyles[card.key].detail}>{card.detail}</span>}
-              accentTone={queueAccentStyles[card.key].tone}
-              style={queueAccentStyles[card.key].card}
-            />
-          ))}
+        <div className="overflow-x-auto pb-1">
+          <div className="grid min-w-[1280px] grid-flow-col auto-cols-fr gap-3">
+            {summaryCards.map((card) => (
+              <DSCard key={card.key} padding="sm" className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={queueAccentStyles[card.key].accent}
+                  />
+                  <p className="text-sm font-semibold" style={semanticTextStyles.operationalText}>
+                    {card.label}
+                  </p>
+                </div>
+                <p className="text-2xl font-semibold tracking-tight" style={queueAccentStyles[card.key].count}>
+                  {card.value}
+                </p>
+                <p className="text-xs leading-relaxed" style={queueAccentStyles[card.key].detail}>
+                  {card.detail}
+                </p>
+              </DSCard>
+            ))}
+          </div>
         </div>
 
         <DSCard elevated className="space-y-5">
