@@ -24,7 +24,7 @@ import { useFeatureFlags } from "@/hooks/useFeatureFlag";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Flag, RefreshCw, Shield, UserPlus, Settings } from "lucide-react";
 import { Link } from "wouter";
-import { DSCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
+import { DSCard, DSSectionHeader, DSStatusChip, DSTableShell, dsTokens } from "@/components/design-system";
 
 export default function AdminFeatureFlags() {
   const { toast } = useToast();
@@ -281,8 +281,8 @@ export default function AdminFeatureFlags() {
             </Link>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Admin tools</p>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Feature Flags</h1>
-              <p className="text-sm text-foreground/80">Control feature rollouts.</p>
+              <h1 className="text-2xl font-semibold tracking-tight" style={{ color: dsTokens.colors.pageTitle }}>Feature Flags</h1>
+              <p className="text-sm" style={{ color: dsTokens.colors.bodyText }}>Control feature rollouts.</p>
             </div>
           </div>
           <Shield className="h-8 w-8 text-muted-foreground" />
@@ -295,13 +295,13 @@ export default function AdminFeatureFlags() {
           <div className="flex items-start gap-3">
             <Flag className="mt-0.5 h-5 w-5 text-primary" />
             <div className="flex-1">
-                <h3 className="mb-2 text-base font-semibold text-primary dark:text-primary">
+                <h3 className="mb-2 text-base font-semibold" style={{ color: dsTokens.colors.sectionTitle }}>
                   Feature Flag System
                 </h3>
-                <p className="mb-3 text-sm text-foreground/90">
+                <p className="mb-3 text-sm" style={{ color: dsTokens.colors.bodyText }}>
                   Safely roll out new features with granular control over access.
                 </p>
-                <ul className="ml-2 list-inside list-disc space-y-1 text-sm text-foreground/90">
+                <ul className="ml-2 list-inside list-disc space-y-1 text-sm" style={{ color: dsTokens.colors.bodyText }}>
                   <li>Global on/off switches for instant feature control</li>
                   <li>Role-based access (driver, owner, admin)</li>
                   <li>User-specific overrides for beta testing</li>
@@ -322,11 +322,11 @@ export default function AdminFeatureFlags() {
             <div className="rounded-xl border border-border/70 bg-background/70 p-4 space-y-3 shadow-sm dark:bg-background/40">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-primary dark:text-primary">Platform Fee per Washout</h3>
-                  <p className="mt-1 text-sm text-foreground/90">
+                  <h3 className="text-base font-semibold" style={{ color: dsTokens.colors.sectionTitle }}>Platform Fee per Washout</h3>
+                  <p className="mt-1 text-sm" style={{ color: dsTokens.colors.bodyText }}>
                     Fee charged per completed washout (blank/default can be overridden by a superadmin to $0.00; currently ${currentPlatformFee})
                   </p>
-                  <p className="mt-2 text-xs text-foreground/75">
+                  <p className="mt-2 text-xs" style={{ color: dsTokens.colors.helperText }}>
                     Leave blank to use the current default. Enter 0.00 to waive the fee. Superadmins can override the default rate per owner or location.
                   </p>
                 </div>
@@ -408,13 +408,13 @@ export default function AdminFeatureFlags() {
             {isLoading ? (
               <div className="rounded-xl border border-border/70 bg-background/70 px-6 py-10 text-center shadow-sm dark:bg-background/40">
                 <RefreshCw className="mx-auto mb-3 h-8 w-8 animate-spin text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground">Loading feature flags...</p>
-                <p className="mt-1 text-sm text-foreground/75">Fetching current rollout state from the server.</p>
+                <p className="text-sm font-medium" style={{ color: dsTokens.colors.operationalText }}>Loading feature flags...</p>
+                <p className="mt-1 text-sm" style={{ color: dsTokens.colors.helperText }}>Fetching current rollout state from the server.</p>
               </div>
             ) : flags.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/40 px-6 py-12 text-center">
                 <Flag className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                <p className="mb-4 text-sm text-foreground">No feature flags configured.</p>
+                <p className="mb-4 text-sm" style={{ color: dsTokens.colors.operationalText }}>No feature flags configured.</p>
                 <Button
                   onClick={() => seedFlagsMutation.mutate()}
                   disabled={seedFlagsMutation.isPending}
@@ -432,7 +432,7 @@ export default function AdminFeatureFlags() {
                     </>
                   )}
                 </Button>
-                <p className="mt-3 text-sm text-foreground/75">
+                <p className="mt-3 text-sm" style={{ color: dsTokens.colors.helperText }}>
                   This will initialize all predefined feature flags for the platform
                 </p>
               </div>
@@ -443,7 +443,7 @@ export default function AdminFeatureFlags() {
                 description="Toggle global access, configure role access, and set user overrides."
               >
                 <div className="min-w-[880px]">
-                  <div className="grid grid-cols-[minmax(220px,1.4fr)_minmax(220px,1.1fr)_minmax(180px,0.9fr)_auto] gap-4 border-b px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-foreground/90">
+                  <div className="grid grid-cols-[minmax(220px,1.4fr)_minmax(220px,1.1fr)_minmax(180px,0.9fr)_auto] gap-4 border-b px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: dsTokens.colors.metadataText }}>
                     <div>Flag</div>
                     <div>Description</div>
                     <div>Roles</div>
@@ -458,20 +458,20 @@ export default function AdminFeatureFlags() {
                       >
                         <div className="min-w-0 space-y-2">
                           <div className="flex items-center gap-2">
-                            <h3 className="truncate text-sm font-semibold text-foreground">{flag.flagKey}</h3>
+                            <h3 className="truncate text-sm font-semibold" style={{ color: dsTokens.colors.operationalText }}>{flag.flagKey}</h3>
                             <DSStatusChip tone={flag.enabled ? "success" : "neutral"} size="sm">
                               {flag.enabled ? "Enabled" : "Disabled"}
                             </DSStatusChip>
                           </div>
-                          <p className="text-xs text-foreground/80">
+                          <p className="text-xs" style={{ color: dsTokens.colors.helperText }}>
                             {flag.name || "Feature flag"}
                           </p>
                         </div>
                         <div className="min-w-0">
                           {flag.description ? (
-                            <p className="text-sm text-foreground/90">{flag.description}</p>
+                            <p className="text-sm" style={{ color: dsTokens.colors.bodyText }}>{flag.description}</p>
                           ) : (
-                            <span className="text-sm text-foreground/75">No description available.</span>
+                            <span className="text-sm" style={{ color: dsTokens.colors.helperText }}>No description available.</span>
                           )}
                         </div>
                         <div className="min-w-0">
@@ -484,7 +484,7 @@ export default function AdminFeatureFlags() {
                               ))}
                             </div>
                           ) : (
-                            <span className="text-sm text-foreground/75">All roles</span>
+                            <span className="text-sm" style={{ color: dsTokens.colors.helperText }}>All roles</span>
                           )}
                         </div>
                         <div className="flex flex-wrap justify-end gap-2">

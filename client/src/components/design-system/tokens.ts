@@ -6,6 +6,13 @@ export const dsTokens = {
     border: "#2A3138",
     textPrimary: "#F5F7FA",
     textSecondary: "#C4CDD7",
+    pageTitle: "#7EC8FF",
+    sectionTitle: "#7EC8FF",
+    cardTitle: "#7EC8FF",
+    operationalText: "#F5F7FA",
+    bodyText: "#E7EDF4",
+    helperText: "#C4CDD7",
+    metadataText: "#A9B4C0",
     accent: "#F97316",
     success: "#22C55E",
     warning: "#EAB308",
@@ -62,4 +69,15 @@ export const dsTokens = {
   },
 } as const
 
-export type DSTone = keyof typeof dsTokens.colors
+export type DSTone =
+  | "appBackground"
+  | "cardBackground"
+  | "elevatedBackground"
+  | "border"
+  | "textPrimary"
+  | "textSecondary"
+  | "accent"
+  | "success"
+  | "warning"
+  | "danger"
+  | "info"

@@ -23,6 +23,15 @@ It is the baseline for new work and the target for gradual refactors.
   - helper text and metadata: 12px to 14px
 - Primary body and operational text on dark surfaces should remain readable at a glance.
 - Use secondary text for helper copy, metadata, and tertiary hints only; do not rely on muted text for core labels or queue/table content.
+- Semantic text roles should be used consistently:
+  - `pageTitle`: primary page-level title color
+  - `sectionTitle`: bright accent title for sections and cards
+  - `cardTitle`: bright accent title for card headers and operational emphasis
+  - `operationalText`: primary foreground text for names, values, and queue items
+  - `bodyText`: near-primary readable body copy
+  - `helperText`: readable secondary copy for guidance and descriptions
+  - `metadataText`: tertiary labels and subtle supporting information
+- On dark/slate surfaces, bright accent titles are preferred for page, section, and card titles.
 - Keep line lengths short on dashboards and long enough for normal copy on public pages.
 - Do not rely on color alone to communicate meaning.
 
