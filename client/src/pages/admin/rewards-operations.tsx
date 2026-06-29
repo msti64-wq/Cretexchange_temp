@@ -243,6 +243,12 @@ const queueAccentStyles: Record<string, {
     label: { color: "#4ADE80" },
     detail: semanticTextStyles.helperText,
   },
+  delivered: {
+    accent: { backgroundColor: "#22C55E" },
+    count: { color: "#4ADE80" },
+    label: { color: "#4ADE80" },
+    detail: semanticTextStyles.helperText,
+  },
   issues: {
     accent: { backgroundColor: "#EF4444" },
     count: { color: "#F87171" },
@@ -255,6 +261,13 @@ const queueAccentStyles: Record<string, {
     label: { color: "#94A3B8" },
     detail: semanticTextStyles.helperText,
   },
+};
+
+const queueSemanticKey = (key: string) => {
+  if (key === "all") return "total";
+  if (key === "delivered") return "deliveredPickedUp";
+  if (key in queueAccentStyles) return key;
+  return "pending";
 };
 
 export default function RewardsOperationsCenter() {
@@ -560,16 +573,16 @@ export default function RewardsOperationsCenter() {
                 <div className="flex items-center gap-2">
                   <span
                     className="h-2.5 w-2.5 rounded-full"
-                    style={queueAccentStyles[card.key].accent}
+                    style={queueAccentStyles[queueSemanticKey(card.key)]?.accent ?? queueAccentStyles.pending.accent}
                   />
                   <p className="text-sm font-semibold" style={semanticTextStyles.operationalText}>
                     {card.label}
                   </p>
                 </div>
-                <p className="text-2xl font-semibold tracking-tight" style={queueAccentStyles[card.key].count}>
+                <p className="text-2xl font-semibold tracking-tight" style={queueAccentStyles[queueSemanticKey(card.key)]?.count ?? queueAccentStyles.pending.count}>
                   {card.value}
                 </p>
-                <p className="text-xs leading-relaxed" style={queueAccentStyles[card.key].detail}>
+                <p className="text-xs leading-relaxed" style={queueAccentStyles[queueSemanticKey(card.key)]?.detail ?? queueAccentStyles.pending.detail}>
                   {card.detail}
                 </p>
               </DSCard>
@@ -592,27 +605,27 @@ export default function RewardsOperationsCenter() {
           <Tabs value={activeQueue} onValueChange={(value) => setActiveQueue(value as FulfillmentQueue)} className="space-y-4">
             <TabsList className="flex h-auto flex-wrap gap-2 rounded-xl border border-border/70 bg-background/60 p-2">
               {QUEUE_TABS.map((queue) => (
-                <TabsTrigger
-                  key={queue.value}
-                  value={queue.value}
-                  className="relative gap-2 border-b-2 border-transparent bg-transparent px-2 py-2 text-foreground/85 transition-colors data-[state=active]:text-foreground"
-                  style={{
-                    borderBottomColor:
-                      queue.value === activeQueue
-                        ? queueAccentStyles[queue.value === "all" ? "total" : queue.value].accent.backgroundColor
-                        : "transparent",
-                  }}
-                >
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={queueAccentStyles[queue.value === "all" ? "total" : queue.value].accent}
-                  />
-                  {queue.label}
-                  <span className="text-sm font-semibold" style={queueAccentStyles[queue.value === "all" ? "total" : queue.value].count}>
-                    {counts[queue.value as keyof typeof counts] ?? counts.all}
-                  </span>
-                </TabsTrigger>
-              ))}
+                  <TabsTrigger
+                    key={queue.value}
+                    value={queue.value}
+                    className="relative gap-2 border-b-2 border-transparent bg-transparent px-2 py-2 text-foreground/85 transition-colors data-[state=active]:text-foreground"
+                    style={{
+                      borderBottomColor:
+                        queue.value === activeQueue
+                          ? queueAccentStyles[queueSemanticKey(queue.value)]?.accent.backgroundColor ?? queueAccentStyles.pending.accent.backgroundColor
+                          : "transparent",
+                    }}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={queueAccentStyles[queueSemanticKey(queue.value)]?.accent ?? queueAccentStyles.pending.accent}
+                    />
+                    {queue.label}
+                    <span className="text-sm font-semibold" style={queueAccentStyles[queueSemanticKey(queue.value)]?.count ?? queueAccentStyles.pending.count}>
+                      {counts[queue.value as keyof typeof counts] ?? counts.all}
+                    </span>
+                  </TabsTrigger>
+                ))}
             </TabsList>
 
             {isLoading ? (
