@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,8 +22,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useFeatureFlags } from "@/hooks/useFeatureFlag";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Flag, RefreshCw, Shield, UserPlus, Users, Settings } from "lucide-react";
+import { Flag, RefreshCw, Shield, UserPlus, Settings } from "lucide-react";
 import { Link } from "wouter";
+import { DSCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
 
 export default function AdminFeatureFlags() {
   const { toast } = useToast();
@@ -272,76 +271,67 @@ export default function AdminFeatureFlags() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <div className="bg-primary text-primary-foreground p-4 sticky top-0 z-10">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center space-x-3">
+      <div className="sticky top-0 z-10 border-b border-border/70 bg-card/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-3">
             <Link href="/" className="hover:opacity-80 transition-opacity">
-              <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
+              <Button variant="ghost" size="sm" className="h-9 text-foreground hover:bg-muted">
                 ← Back
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold">Feature Flags</h1>
-              <p className="text-sm text-primary-foreground/80">Control feature rollouts</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Admin tools</p>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Feature Flags</h1>
+              <p className="text-sm text-muted-foreground">Control feature rollouts.</p>
             </div>
           </div>
-          <Shield className="w-8 h-8" />
+          <Shield className="h-8 w-8 text-muted-foreground" />
         </div>
       </div>
 
-      <main className="p-4 space-y-6 max-w-7xl mx-auto">
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-5">
         {/* Info Card */}
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-3">
-              <Flag className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+        <DSCard padding="lg" elevated className="border-border/70 bg-muted/30">
+          <div className="flex items-start gap-3">
+            <Flag className="mt-0.5 h-5 w-5 text-primary" />
+            <div className="flex-1">
+                <h3 className="mb-2 text-base font-semibold text-foreground">
                   Feature Flag System
                 </h3>
-                <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                  Safely roll out new features with granular control over who sees what.
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Safely roll out new features with granular control over access.
                 </p>
-                <ul className="text-sm text-blue-700 dark:text-blue-300 list-disc list-inside ml-2 space-y-1">
+                <ul className="ml-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
                   <li>Global on/off switches for instant feature control</li>
                   <li>Role-based access (driver, owner, admin)</li>
                   <li>User-specific overrides for beta testing</li>
-                  <li>No code deployment needed for feature toggles</li>
                 </ul>
-              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </DSCard>
 
         {/* Platform Settings */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Platform Settings</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Configure global platform parameters
-                </p>
-              </div>
-              <Settings className="w-6 h-6 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <DSCard padding="lg" elevated>
+          <DSSectionHeader
+            title="Platform Settings"
+            description="Configure global platform parameters."
+            actions={<Settings className="h-6 w-6 text-muted-foreground" />}
+          />
+          <div className="mt-4 space-y-4">
             {/* Platform Washout Fee */}
-            <div className="border rounded-lg p-4 space-y-3">
+            <div className="rounded-xl border border-border/70 bg-background/70 p-4 space-y-3 shadow-sm dark:bg-background/40">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="font-semibold">Platform Fee per Washout</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <h3 className="text-base font-semibold text-foreground">Platform Fee per Washout</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Fee charged per completed washout (blank/default can be overridden by a superadmin to $0.00; currently ${currentPlatformFee})
                   </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    💡 Leave blank to use the current default. Enter 0.00 to waive the fee. Superadmins can override the default rate per owner or location.
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Leave blank to use the current default. Enter 0.00 to waive the fee. Superadmins can override the default rate per owner or location.
                   </p>
                 </div>
               </div>
-              <div className="flex items-end gap-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="flex-1">
                   <Label htmlFor="platform-fee">New Fee Amount ($)</Label>
                   <Input
@@ -362,55 +352,62 @@ export default function AdminFeatureFlags() {
                 >
                   {updatePlatformFeeMutation.isPending ? (
                     <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      <RefreshCw className="h-4 w-4 animate-spin" />
                       Updating...
                     </>
                   ) : (
                     <>
-                      <Settings className="w-4 h-4 mr-2" />
+                      <Settings className="h-4 w-4" />
                       Update Fee
                     </>
                   )}
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </DSCard>
 
         {/* Feature Flags List */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Active Feature Flags</CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => seedFlagsMutation.mutate()}
-                  disabled={seedFlagsMutation.isPending}
-                  data-testid="button-sync-flags"
-                >
-                  <Flag className={`w-4 h-4 mr-2 ${seedFlagsMutation.isPending ? 'animate-spin' : ''}`} />
-                  {seedFlagsMutation.isPending ? 'Syncing...' : 'Sync Flags'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => refreshFlagsMutation.mutate()}
-                  disabled={refreshFlagsMutation.isPending}
-                  data-testid="button-refresh-flags"
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${refreshFlagsMutation.isPending ? 'animate-spin' : ''}`} />
-                  {refreshFlagsMutation.isPending ? 'Refreshing...' : 'Refresh'}
-                </Button>
-              </div>
+        <DSCard padding="lg" elevated>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <DSSectionHeader
+              title="Active Feature Flags"
+              description="Manage platform feature rollout, overrides, and role access."
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => seedFlagsMutation.mutate()}
+                disabled={seedFlagsMutation.isPending}
+                data-testid="button-sync-flags"
+              >
+                <Flag className={`h-4 w-4 ${seedFlagsMutation.isPending ? 'animate-spin' : ''}`} />
+                {seedFlagsMutation.isPending ? 'Syncing...' : 'Sync Flags'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refreshFlagsMutation.mutate()}
+                disabled={refreshFlagsMutation.isPending}
+                data-testid="button-refresh-flags"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshFlagsMutation.isPending ? 'animate-spin' : ''}`} />
+                {refreshFlagsMutation.isPending ? 'Refreshing...' : 'Refresh'}
+              </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            {flags.length === 0 ? (
-              <div className="text-center py-12">
-                <Flag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">No feature flags configured</p>
+          </div>
+          <div className="mt-4">
+            {isLoading ? (
+              <div className="rounded-xl border border-border/70 bg-background/70 px-6 py-10 text-center shadow-sm dark:bg-background/40">
+                <RefreshCw className="mx-auto mb-3 h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-sm font-medium text-foreground">Loading feature flags...</p>
+                <p className="mt-1 text-sm text-muted-foreground">Fetching current rollout state from the server.</p>
+              </div>
+            ) : flags.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/40 px-6 py-12 text-center">
+                <Flag className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                <p className="mb-4 text-sm text-muted-foreground">No feature flags configured.</p>
                 <Button
                   onClick={() => seedFlagsMutation.mutate()}
                   disabled={seedFlagsMutation.isPending}
@@ -428,40 +425,62 @@ export default function AdminFeatureFlags() {
                     </>
                   )}
                 </Button>
-                <p className="text-sm text-muted-foreground mt-3">
+                <p className="mt-3 text-sm text-muted-foreground">
                   This will initialize all predefined feature flags for the platform
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {flags.map((flag: any) => (
-                  <div
-                    key={flag.id}
-                    className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-4"
-                    data-testid={`flag-${flag.flagKey}`}
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="font-semibold">{flag.flagKey}</h3>
-                        <Badge variant={flag.enabled ? "default" : "secondary"}>
-                          {flag.enabled ? "Enabled" : "Disabled"}
-                        </Badge>
-                      </div>
-                      {flag.description && (
-                        <p className="text-sm text-muted-foreground mt-1">{flag.description}</p>
-                      )}
-                      {flag.allowedRoles && flag.allowedRoles.length > 0 && (
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <p className="text-xs text-muted-foreground">Allowed roles:</p>
-                          {flag.allowedRoles.map((role: string) => (
-                            <Badge key={role} variant="outline" className="text-xs">
-                              {role}
-                            </Badge>
-                          ))}
+              <DSTableShell
+                density="compact"
+                title="Feature Flags"
+                description="Toggle global access, configure role access, and set user overrides."
+              >
+                <div className="min-w-[880px]">
+                  <div className="grid grid-cols-[minmax(220px,1.4fr)_minmax(220px,1.1fr)_minmax(180px,0.9fr)_auto] gap-4 border-b px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    <div>Flag</div>
+                    <div>Description</div>
+                    <div>Roles</div>
+                    <div className="text-right">Actions</div>
+                  </div>
+                  <div className="divide-y">
+                    {flags.map((flag: any) => (
+                      <div
+                        key={flag.id}
+                        className="grid grid-cols-[minmax(220px,1.4fr)_minmax(220px,1.1fr)_minmax(180px,0.9fr)_auto] items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/40"
+                        data-testid={`flag-${flag.flagKey}`}
+                      >
+                        <div className="min-w-0 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <h3 className="truncate text-sm font-semibold text-foreground">{flag.flagKey}</h3>
+                            <DSStatusChip tone={flag.enabled ? "success" : "neutral"} size="sm">
+                              {flag.enabled ? "Enabled" : "Disabled"}
+                            </DSStatusChip>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {flag.name || "Feature flag"}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
+                        <div className="min-w-0">
+                          {flag.description ? (
+                            <p className="text-sm text-muted-foreground">{flag.description}</p>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">No description available.</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          {flag.allowedRoles && flag.allowedRoles.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {flag.allowedRoles.map((role: string) => (
+                                <DSStatusChip key={role} tone="neutral" size="sm">
+                                  {role}
+                                </DSStatusChip>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">All roles</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap justify-end gap-2">
                       <Dialog open={roleDialogOpen && selectedFlag?.id === flag.id} onOpenChange={setRoleDialogOpen}>
                         <DialogTrigger asChild>
                           <Button
@@ -470,7 +489,7 @@ export default function AdminFeatureFlags() {
                             onClick={() => openRoleDialog(flag)}
                             data-testid={`button-roles-${flag.flagKey}`}
                           >
-                            <Settings className="w-4 h-4 mr-2" />
+                            <Settings className="h-4 w-4" />
                             Roles
                           </Button>
                         </DialogTrigger>
@@ -518,7 +537,7 @@ export default function AdminFeatureFlags() {
                             onClick={() => openOverrideDialog(flag)}
                             data-testid={`button-override-${flag.flagKey}`}
                           >
-                            <UserPlus className="w-4 h-4 mr-2" />
+                            <UserPlus className="h-4 w-4" />
                             Override
                           </Button>
                         </DialogTrigger>
@@ -580,23 +599,26 @@ export default function AdminFeatureFlags() {
                         disabled={toggleMutation.isPending}
                         data-testid={`switch-${flag.flagKey}`}
                       />
-                    </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              </DSTableShell>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </DSCard>
 
         {/* Usage Guide */}
-        <Card>
-          <CardHeader>
-            <CardTitle>How to Use Feature Flags in Code</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <DSCard padding="lg" elevated>
+          <DSSectionHeader
+            title="How to Use Feature Flags in Code"
+            description="Example usage for frontend and backend checks."
+          />
+          <div className="mt-4 space-y-4 text-sm">
             <div>
-              <h4 className="font-medium mb-2">Frontend (React):</h4>
-              <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
+              <h4 className="mb-2 font-medium text-foreground">Frontend (React)</h4>
+              <pre className="overflow-x-auto rounded-xl border border-border/70 bg-muted p-4 text-xs text-foreground shadow-sm dark:bg-background/60">
 {`import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 
@@ -605,14 +627,14 @@ function MyComponent() {
   
   if (isLoading) return <Loading />;
   if (!enabled) return null;
-  
+
   return <div>RUBBLE_SERVICE UI goes here (illustrative example only).</div>;
 }`}
               </pre>
             </div>
             <div>
-              <h4 className="font-medium mb-2">Backend (Express):</h4>
-              <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
+              <h4 className="mb-2 font-medium text-foreground">Backend (Express)</h4>
+              <pre className="overflow-x-auto rounded-xl border border-border/70 bg-muted p-4 text-xs text-foreground shadow-sm dark:bg-background/60">
 {`import { FEATURE_FLAGS } from "@shared/featureFlags";
 
 // Illustrative example only: check the RUBBLE_SERVICE flag before exposing rubble-specific behavior.
@@ -631,8 +653,8 @@ app.post("/api/rubble-service", isAuthenticated, async (req, res) => {
 });`}
               </pre>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </DSCard>
       </main>
     </div>
   );
