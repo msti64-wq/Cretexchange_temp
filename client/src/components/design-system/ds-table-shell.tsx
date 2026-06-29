@@ -8,6 +8,7 @@ export interface DSTableShellProps
   title?: React.ReactNode
   description?: React.ReactNode
   actions?: React.ReactNode
+  density?: "default" | "compact"
   children: React.ReactNode
 }
 
@@ -16,10 +17,13 @@ function DSTableShell({
   title,
   description,
   actions,
+  density = "default",
   children,
   style,
   ...props
 }: DSTableShellProps) {
+  const headerPaddingClassName = density === "compact" ? "px-4 py-3" : "px-6 py-4"
+
   return (
     <div
       className={cn("overflow-hidden border", className)}
@@ -33,7 +37,7 @@ function DSTableShell({
       {...props}
     >
       {(title || description || actions) && (
-        <div className="flex flex-col gap-3 border-b px-6 py-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className={cn("flex flex-col gap-3 border-b sm:flex-row sm:items-start sm:justify-between", headerPaddingClassName)}>
           <div className="min-w-0">
             {title ? (
               <div

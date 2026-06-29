@@ -16,9 +16,14 @@ const dsStatusChipVariants = cva(
         info: "",
         accent: "",
       },
+      size: {
+        md: "",
+        sm: "px-2 py-0.5 text-[11px]",
+      },
     },
     defaultVariants: {
       tone: "neutral",
+      size: "md",
     },
   },
 )
@@ -69,6 +74,7 @@ const toneStyles: Record<NonNullable<DSStatusChipProps["tone"]>, {
 function DSStatusChip({
   className,
   tone = "neutral",
+  size = "md",
   dot = false,
   style,
   children,
@@ -79,7 +85,7 @@ function DSStatusChip({
 
   return (
     <span
-      className={cn(dsStatusChipVariants({ tone: selectedTone }), className)}
+      className={cn(dsStatusChipVariants({ tone: selectedTone, size }), className)}
       style={{
         borderColor: palette.border,
         backgroundColor: palette.background,
