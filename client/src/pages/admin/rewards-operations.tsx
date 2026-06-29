@@ -1,19 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ComponentProps } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, CheckCircle2, ClipboardList, History, Loader2, MessageSquare, Package, RefreshCw, Save, ShieldAlert, Ticket, Truck, User, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, ClipboardList, Loader2, Package, RefreshCw, Save, ShieldAlert, Truck, XCircle } from "lucide-react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  DSCard,
+  DSKpiCard,
+  DSSectionHeader,
+  DSStatusChip,
+  DSTableShell,
+  dsTokens,
+} from "@/components/design-system";
 
 type FulfillmentQueue = "all" | "pending" | "ordered" | "purchased" | "shipped" | "delivered" | "issue" | "canceled";
 
@@ -134,6 +141,38 @@ const actorLabel = (person: any) => {
 const fulfilledStateLabel = (record: RewardFulfillment | null) => {
   if (!record) return "No fulfillment selected";
   return `${statusLabel(record.fulfillmentStatus)} • ${formatMonthYear(record.drawingMonth, record.drawingYear)}`;
+};
+
+const semanticTextStyles = {
+  pageTitle: { color: dsTokens.colors.pageTitle },
+  sectionTitle: { color: dsTokens.colors.sectionTitle },
+  cardTitle: { color: dsTokens.colors.cardTitle },
+  operationalText: { color: dsTokens.colors.operationalText },
+  bodyText: { color: dsTokens.colors.bodyText },
+  helperText: { color: dsTokens.colors.helperText },
+  metadataText: { color: dsTokens.colors.metadataText },
+} as const;
+
+const fulfillmentStatusTone = (status: string): ComponentProps<typeof DSStatusChip>["tone"] => {
+  switch (status) {
+    case "pending":
+      return "warning";
+    case "ordered":
+      return "info";
+    case "purchased":
+      return "success";
+    case "shipped":
+      return "info";
+    case "delivered":
+    case "picked_up":
+      return "success";
+    case "issue":
+      return "danger";
+    case "canceled":
+      return "neutral";
+    default:
+      return "neutral";
+  }
 };
 
 export default function RewardsOperationsCenter() {
@@ -328,11 +367,49 @@ export default function RewardsOperationsCenter() {
   const currentSelected = selectedDetail || selectedFulfillment;
   const history = selectedHistory || [];
   const visibleQueueLabel = QUEUE_TABS.find((tab) => tab.value === activeQueue)?.label || "All";
+  const summaryCards = [
+    {
+      label: "Total",
+      value: counts.all,
+      detail: "All fulfillment records",
+      accentTone: "accent" as const,
+    },
+    {
+      label: "Needs Purchase",
+      value: counts.pending,
+      detail: "Pending procurement or prep",
+      accentTone: "warning" as const,
+    },
+    {
+      label: "Ordered",
+      value: counts.ordered,
+      detail: "Placed with vendor or sponsor",
+      accentTone: "info" as const,
+    },
+    {
+      label: "Purchased",
+      value: counts.purchased,
+      detail: "Ready to send or release",
+      accentTone: "success" as const,
+    },
+    {
+      label: "Shipped",
+      value: counts.shipped,
+      detail: "Out for delivery or pickup",
+      accentTone: "info" as const,
+    },
+    {
+      label: "Issues",
+      value: counts.issue,
+      detail: "Needs review or exception handling",
+      accentTone: "danger" as const,
+    },
+  ];
 
   const renderStatusBadge = (status: string) => (
-    <Badge className={STATUS_STYLES[status] || "bg-slate-600 text-white"}>
+    <DSStatusChip tone={fulfillmentStatusTone(status)} size="sm">
       {statusLabel(status)}
-    </Badge>
+    </DSStatusChip>
   );
 
   const quickActions = [
@@ -346,34 +423,29 @@ export default function RewardsOperationsCenter() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="border-b border-border/70 bg-slate-950 text-white shadow-lg">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                <ClipboardList className="h-5 w-5" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold">Rewards Operations Center</h1>
-                <p className="text-sm text-white/80">
-                  Manage post-drawing prize fulfillment queues, notes, and tracking.
-                </p>
-              </div>
+      <header className="border-b border-border/70 bg-slate-950 shadow-lg">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+              <ClipboardList className="h-5 w-5 text-sky-400" />
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold tracking-tight" style={semanticTextStyles.pageTitle}>
+                Rewards Operations Center
+              </h1>
+              <p className="text-sm" style={semanticTextStyles.bodyText}>
+                Manage post-drawing prize fulfillment queues, notes, and tracking.
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+            <Button asChild variant="outline">
               <Link href="/lottery">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Driver Rewards Program
               </Link>
             </Button>
-            <Button
-              variant="outline"
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-              onClick={() => refetch()}
-              disabled={isFetching}
-            >
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
               {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Refresh
             </Button>
@@ -381,417 +453,449 @@ export default function RewardsOperationsCenter() {
         </div>
       </header>
 
-      <main className="space-y-4 p-4">
-        <Card className="border-border/70 bg-slate-950 text-white">
-          <CardHeader className="pb-3">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-lg text-white">
-                  <Truck className="h-5 w-5 text-sky-400" />
-                  Queue Overview
-                </CardTitle>
-                <CardDescription className="text-white/70">
-                  Group reward fulfillments by operational stage.
-                </CardDescription>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-slate-800 text-white hover:bg-slate-800">Total {counts.all}</Badge>
-                <Badge className="bg-amber-600 text-white hover:bg-amber-700">Needs Purchase {counts.pending}</Badge>
-                <Badge className="bg-sky-600 text-white hover:bg-sky-700">Ordered {counts.ordered}</Badge>
-                <Badge className="bg-emerald-600 text-white hover:bg-emerald-700">Purchased {counts.purchased}</Badge>
-                <Badge className="bg-blue-600 text-white hover:bg-blue-700">Shipped {counts.shipped}</Badge>
-                <Badge className="bg-green-600 text-white hover:bg-green-700">Delivered/Picked Up {counts.delivered}</Badge>
-                <Badge className="bg-red-600 text-white hover:bg-red-700">Issues {counts.issue}</Badge>
-                <Badge className="bg-slate-600 text-white hover:bg-slate-700">Canceled {counts.canceled}</Badge>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeQueue} onValueChange={(value) => setActiveQueue(value as FulfillmentQueue)} className="space-y-4">
-              <TabsList className="flex h-auto flex-wrap gap-2 bg-slate-900/60 p-2">
-                {QUEUE_TABS.map((queue) => (
-                  <TabsTrigger
-                    key={queue.value}
-                    value={queue.value}
-                    className="gap-2 data-[state=active]:bg-white data-[state=active]:text-slate-950"
-                  >
-                    {queue.label}
-                    <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-white">
-                      {counts[queue.value as keyof typeof counts] ?? counts.all}
-                    </span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+      <main className="mx-auto space-y-6 px-4 py-6 max-w-[1600px]">
+        <DSSectionHeader
+          title={<span style={semanticTextStyles.sectionTitle}>Queue Summary</span>}
+          description={<span style={semanticTextStyles.bodyText}>Track fulfillment volume by operational stage.</span>}
+        />
 
-              <div className="rounded-xl border border-border/70 bg-background/80 p-0">
-                <div className="border-b border-border/70 px-4 py-3">
-                  <p className="text-sm font-semibold text-foreground">{visibleQueueLabel}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {filteredFulfillments.length} fulfillment{filteredFulfillments.length === 1 ? "" : "s"} in view
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+          {summaryCards.map((card) => (
+            <DSKpiCard
+              key={card.label}
+              label={card.label}
+              value={card.value}
+              detail={card.detail}
+              accentTone={card.accentTone}
+            />
+          ))}
+        </div>
+
+        <DSCard elevated className="space-y-5">
+          <DSSectionHeader
+            title={<span style={semanticTextStyles.sectionTitle}>Fulfillment Queue</span>}
+            description={<span style={semanticTextStyles.bodyText}>Review items by workflow stage, then open a record to update it.</span>}
+            actions={
+              <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+                {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Refresh
+              </Button>
+            }
+          />
+
+          <Tabs value={activeQueue} onValueChange={(value) => setActiveQueue(value as FulfillmentQueue)} className="space-y-4">
+            <TabsList className="flex h-auto flex-wrap gap-2 rounded-xl border border-border/70 bg-background/60 p-2">
+              {QUEUE_TABS.map((queue) => (
+                <TabsTrigger
+                  key={queue.value}
+                  value={queue.value}
+                  className="gap-2 border border-transparent text-foreground/85 data-[state=active]:border-sky-500 data-[state=active]:bg-sky-500/10 data-[state=active]:text-sky-300"
+                >
+                  {queue.label}
+                  <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-white">
+                    {counts[queue.value as keyof typeof counts] ?? counts.all}
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border/70 bg-muted/20 px-6 py-12 text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
+                <div>
+                  <p className="text-sm font-semibold" style={semanticTextStyles.operationalText}>
+                    Loading fulfillment queue...
+                  </p>
+                  <p className="text-sm" style={semanticTextStyles.helperText}>
+                    Fetching current operational status from the server.
                   </p>
                 </div>
-                {isLoading ? (
-                  <div className="space-y-3 p-4">
-                    {[1, 2, 3].map((row) => (
-                      <div key={row} className="h-16 animate-pulse rounded-lg bg-muted" />
-                    ))}
-                  </div>
-                ) : error ? (
-                  <div className="p-6 text-sm text-red-500">
-                    Unable to load fulfillment queue.
-                  </div>
-                ) : filteredFulfillments.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Month / Year</TableHead>
-                          <TableHead>Driver</TableHead>
-                          <TableHead>Entry #</TableHead>
-                          <TableHead>Prize</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Vendor / Sponsor</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Tracking / Reference</TableHead>
-                          <TableHead>Updated</TableHead>
-                          <TableHead className="text-right">Open</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredFulfillments.map((fulfillment) => (
-                          <TableRow
-                            key={fulfillment.id}
-                            className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => setSelectedFulfillmentId(fulfillment.id)}
-                          >
-                            <TableCell className="font-medium">
-                              {formatMonthYear(fulfillment.drawingMonth, fulfillment.drawingYear)}
-                            </TableCell>
-                            <TableCell>{fulfillment.driverName || fulfillment.driverNameSnapshot || "—"}</TableCell>
-                            <TableCell className="font-mono text-sm text-muted-foreground">
-                              {fulfillment.ticketNumberSnapshot || "—"}
-                            </TableCell>
-                            <TableCell className="max-w-[220px]">
-                              <div className="space-y-1">
-                                <p className="font-medium text-foreground">{fulfillment.prizeTitleSnapshot}</p>
-                                {fulfillment.prizeDescriptionSnapshot && (
-                                  <p className="line-clamp-2 text-xs text-muted-foreground">{fulfillment.prizeDescriptionSnapshot}</p>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {fulfillment.prizeTypeSnapshot || "—"}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {fulfillment.vendorOrSponsorSnapshot || fulfillment.prizeCatalog?.sponsorVendor || "—"}
-                            </TableCell>
-                            <TableCell>{renderStatusBadge(fulfillment.fulfillmentStatus)}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              <div className="space-y-1">
-                                <p>{fulfillment.trackingNumber || "—"}</p>
-                                <p>{fulfillment.trackingReference || "—"}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {formatDateTime(fulfillment.updatedAt)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setSelectedFulfillmentId(fulfillment.id);
-                                }}
-                              >
-                                Open
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
-                    <Package className="h-10 w-10 text-sky-400" />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">No fulfillments in this queue.</p>
-                      <p className="text-sm text-muted-foreground">
-                        {activeQueue === "all"
-                          ? "Completed drawings will populate this list automatically."
-                          : `No ${visibleQueueLabel.toLowerCase()} items are waiting right now.`}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
-            </Tabs>
-          </CardContent>
-        </Card>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-6 py-12 text-center">
+                <AlertTriangle className="h-8 w-8 text-red-400" />
+                <div>
+                  <p className="text-sm font-semibold text-red-200">Unable to load fulfillment queue.</p>
+                  <p className="text-sm text-red-200/80">Refresh the page or try again once the API is reachable.</p>
+                </div>
+              </div>
+            ) : filteredFulfillments.length > 0 ? (
+              <DSTableShell
+                density="compact"
+                title={<span style={semanticTextStyles.sectionTitle}>{visibleQueueLabel}</span>}
+                description={
+                  <span style={semanticTextStyles.bodyText}>
+                    {filteredFulfillments.length} fulfillment{filteredFulfillments.length === 1 ? "" : "s"} in view
+                  </span>
+                }
+              >
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[1180px]">
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead style={semanticTextStyles.metadataText}>Month / Year</TableHead>
+                        <TableHead style={semanticTextStyles.metadataText}>Driver</TableHead>
+                        <TableHead style={semanticTextStyles.metadataText}>Entry #</TableHead>
+                        <TableHead style={semanticTextStyles.metadataText}>Prize</TableHead>
+                        <TableHead style={semanticTextStyles.metadataText}>Type</TableHead>
+                        <TableHead style={semanticTextStyles.metadataText}>Vendor / Sponsor</TableHead>
+                        <TableHead style={semanticTextStyles.metadataText}>Status</TableHead>
+                        <TableHead style={semanticTextStyles.metadataText}>Tracking / Reference</TableHead>
+                        <TableHead style={semanticTextStyles.metadataText}>Updated</TableHead>
+                        <TableHead className="text-right" style={semanticTextStyles.metadataText}>
+                          Open
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredFulfillments.map((fulfillment) => (
+                        <TableRow
+                          key={fulfillment.id}
+                          className="cursor-pointer hover:bg-muted/40"
+                          onClick={() => setSelectedFulfillmentId(fulfillment.id)}
+                        >
+                          <TableCell className="font-medium" style={semanticTextStyles.operationalText}>
+                            {formatMonthYear(fulfillment.drawingMonth, fulfillment.drawingYear)}
+                          </TableCell>
+                          <TableCell style={semanticTextStyles.operationalText}>
+                            {fulfillment.driverName || fulfillment.driverNameSnapshot || "—"}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm" style={semanticTextStyles.operationalText}>
+                            {fulfillment.ticketNumberSnapshot || "—"}
+                          </TableCell>
+                          <TableCell className="max-w-[240px]">
+                            <div className="space-y-1">
+                              <p className="font-medium" style={semanticTextStyles.operationalText}>
+                                {fulfillment.prizeTitleSnapshot}
+                              </p>
+                              {fulfillment.prizeDescriptionSnapshot ? (
+                                <p className="line-clamp-2 text-xs" style={semanticTextStyles.helperText}>
+                                  {fulfillment.prizeDescriptionSnapshot}
+                                </p>
+                              ) : null}
+                            </div>
+                          </TableCell>
+                          <TableCell style={semanticTextStyles.bodyText}>{fulfillment.prizeTypeSnapshot || "—"}</TableCell>
+                          <TableCell style={semanticTextStyles.bodyText}>
+                            {fulfillment.vendorOrSponsorSnapshot || fulfillment.prizeCatalog?.sponsorVendor || "—"}
+                          </TableCell>
+                          <TableCell>{renderStatusBadge(fulfillment.fulfillmentStatus)}</TableCell>
+                          <TableCell className="text-sm">
+                            <div className="space-y-1" style={semanticTextStyles.operationalText}>
+                              <p>{fulfillment.trackingNumber || "—"}</p>
+                              <p style={semanticTextStyles.helperText}>{fulfillment.trackingReference || "—"}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm" style={semanticTextStyles.helperText}>
+                            {formatDateTime(fulfillment.updatedAt)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedFulfillmentId(fulfillment.id);
+                              }}
+                            >
+                              Open
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </DSTableShell>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/70 px-6 py-12 text-center">
+                <Package className="h-10 w-10 text-sky-400" />
+                <div>
+                  <p className="text-sm font-semibold" style={semanticTextStyles.operationalText}>
+                    No fulfillments in this queue.
+                  </p>
+                  <p className="text-sm" style={semanticTextStyles.helperText}>
+                    {activeQueue === "all"
+                      ? "Completed drawings will populate this list automatically."
+                      : `No ${visibleQueueLabel.toLowerCase()} items are waiting right now.`}
+                  </p>
+                </div>
+              </div>
+            )}
+          </Tabs>
+        </DSCard>
 
-        <Card className="border-border/70 bg-slate-950 text-white">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg text-white">
-              <History className="h-5 w-5 text-sky-400" />
-              Operations Notes
-            </CardTitle>
-            <CardDescription className="text-white/70">
-              Use the drawer on the right to update status, notes, and tracking details for a selected fulfillment.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-lg border border-border/70 bg-slate-900/60 p-3">
-              <p className="text-xs font-medium text-white/60">Needs Purchase</p>
-              <p className="mt-1 text-sm text-white">Pending items need procurement or preparation.</p>
+        <DSCard elevated className="space-y-4">
+          <DSSectionHeader
+            title={<span style={semanticTextStyles.sectionTitle}>Operations Notes</span>}
+            description={<span style={semanticTextStyles.bodyText}>Use the drawer to update status, notes, and tracking details for a selected fulfillment.</span>}
+          />
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-lg border border-border/70 bg-muted/20 p-4">
+              <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Needs Purchase</p>
+              <p className="mt-1 text-sm" style={semanticTextStyles.bodyText}>
+                Pending items need procurement or preparation.
+              </p>
             </div>
-            <div className="rounded-lg border border-border/70 bg-slate-900/60 p-3">
-              <p className="text-xs font-medium text-white/60">Shipped / Delivered</p>
-              <p className="mt-1 text-sm text-white">Track outbound delivery and pickup completion.</p>
+            <div className="rounded-lg border border-border/70 bg-muted/20 p-4">
+              <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Shipped / Delivered</p>
+              <p className="mt-1 text-sm" style={semanticTextStyles.bodyText}>
+                Track outbound delivery and pickup completion.
+              </p>
             </div>
-            <div className="rounded-lg border border-border/70 bg-slate-900/60 p-3">
-              <p className="text-xs font-medium text-white/60">Issues / Canceled</p>
-              <p className="mt-1 text-sm text-white">Keep an audit trail for exceptions and cancellations.</p>
+            <div className="rounded-lg border border-border/70 bg-muted/20 p-4">
+              <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Issues / Canceled</p>
+              <p className="mt-1 text-sm" style={semanticTextStyles.bodyText}>
+                Keep an audit trail for exceptions and cancellations.
+              </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </DSCard>
       </main>
 
       <Sheet open={Boolean(selectedFulfillmentId)} onOpenChange={(open) => !open && setSelectedFulfillmentId(null)}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
-          <SheetHeader className="space-y-2">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-2">
-                <SheetTitle className="flex items-center gap-2">
-                  <Ticket className="h-5 w-5 text-sky-500" />
-                  Rewards Fulfillment Details
-                </SheetTitle>
-                <SheetDescription>{fulfilledStateLabel(currentSelected)}</SheetDescription>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"
-                onClick={() => setSelectedFulfillmentId(null)}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Fulfillment Queue
-              </Button>
-            </div>
-          </SheetHeader>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-3xl">
+          <div className="space-y-6">
+            <DSSectionHeader
+              title={<span style={semanticTextStyles.sectionTitle}>Rewards Fulfillment Details</span>}
+              description={<span style={semanticTextStyles.bodyText}>{fulfilledStateLabel(currentSelected)}</span>}
+              actions={
+                <Button type="button" variant="outline" onClick={() => setSelectedFulfillmentId(null)}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Fulfillment Queue
+                </Button>
+              }
+            />
 
-          {!currentSelected ? (
-            <div className="mt-6 rounded-lg border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
-              Select a fulfillment from the queue to review and update it.
-            </div>
-          ) : (
-            <div className="mt-6 space-y-6">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
-                  <p className="text-xs font-medium text-muted-foreground">Drawing</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {formatMonthYear(currentSelected.drawingMonth, currentSelected.drawingYear)}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
-                  <p className="text-xs font-medium text-muted-foreground">Entry Number</p>
-                  <p className="mt-1 font-mono text-sm font-semibold text-foreground">
-                    {currentSelected.ticketNumberSnapshot || "—"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
-                  <p className="text-xs font-medium text-muted-foreground">Driver</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {currentSelected.driverName || currentSelected.driverNameSnapshot || "—"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{actorLabel(currentSelected.driverUser)}</p>
-                </div>
-                <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
-                  <p className="text-xs font-medium text-muted-foreground">Status</p>
-                  <div className="mt-1">{renderStatusBadge(currentSelected.fulfillmentStatus)}</div>
-                </div>
+            {!currentSelected ? (
+              <div className="rounded-lg border border-dashed border-border/70 p-6 text-center text-sm" style={semanticTextStyles.helperText}>
+                Select a fulfillment from the queue to review and update it.
               </div>
+            ) : (
+              <div className="space-y-5">
+                <DSCard className="space-y-4">
+                  <DSSectionHeader
+                    title={<span style={semanticTextStyles.cardTitle}>Fulfillment Summary</span>}
+                    description={<span style={semanticTextStyles.helperText}>Snapshot details from the completed drawing and current fulfillment state.</span>}
+                  />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                      <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Drawing</p>
+                      <p className="mt-1 text-sm font-semibold" style={semanticTextStyles.operationalText}>
+                        {formatMonthYear(currentSelected.drawingMonth, currentSelected.drawingYear)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                      <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Entry Number</p>
+                      <p className="mt-1 font-mono text-sm font-semibold" style={semanticTextStyles.operationalText}>
+                        {currentSelected.ticketNumberSnapshot || "—"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                      <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Driver</p>
+                      <p className="mt-1 text-sm font-semibold" style={semanticTextStyles.operationalText}>
+                        {currentSelected.driverName || currentSelected.driverNameSnapshot || "—"}
+                      </p>
+                      <p className="text-xs" style={semanticTextStyles.helperText}>
+                        {actorLabel(currentSelected.driverUser)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                      <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Status</p>
+                      <div className="mt-1">{renderStatusBadge(currentSelected.fulfillmentStatus)}</div>
+                    </div>
+                  </div>
+                </DSCard>
 
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4 space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Prize Details</p>
-                    <p className="text-xs text-muted-foreground">Prize snapshots from the completed drawing are preserved here.</p>
+                <DSCard className="space-y-4">
+                  <DSSectionHeader
+                    title={<span style={semanticTextStyles.cardTitle}>Prize Details</span>}
+                    description={<span style={semanticTextStyles.helperText}>Prize snapshots from the completed drawing are preserved here.</span>}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    {currentSelected.prizeTypeSnapshot === "prepaid_card" ? (
+                      <DSStatusChip tone="danger" size="sm">
+                        <ShieldAlert className="mr-1 h-3 w-3" />
+                        Sensitive Prize Type
+                      </DSStatusChip>
+                    ) : null}
                   </div>
-                  {currentSelected.prizeTypeSnapshot === "prepaid_card" && (
-                    <Badge className="bg-red-600 text-white hover:bg-red-700">
-                      <ShieldAlert className="mr-1 h-3 w-3" />
-                      Sensitive Prize Type
-                    </Badge>
-                  )}
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                    <p className="text-xs font-medium text-muted-foreground">Prize Title</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">{currentSelected.prizeTitleSnapshot}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-border/70 bg-muted/10 p-3">
+                      <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Prize Title</p>
+                      <p className="mt-1 text-sm font-semibold" style={semanticTextStyles.operationalText}>
+                        {currentSelected.prizeTitleSnapshot}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-muted/10 p-3">
+                      <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Prize Type</p>
+                      <p className="mt-1 text-sm font-semibold" style={semanticTextStyles.operationalText}>
+                        {currentSelected.prizeTypeSnapshot || "—"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-muted/10 p-3 sm:col-span-2">
+                      <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Prize Description</p>
+                      <p className="mt-1 text-sm" style={semanticTextStyles.bodyText}>
+                        {currentSelected.prizeDescriptionSnapshot || "—"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-muted/10 p-3">
+                      <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Vendor / Sponsor</p>
+                      <p className="mt-1 text-sm" style={semanticTextStyles.bodyText}>
+                        {currentSelected.vendorOrSponsorSnapshot || currentSelected.prizeCatalog?.sponsorVendor || "—"}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/70 bg-muted/10 p-3">
+                      <p className="text-xs font-medium" style={semanticTextStyles.metadataText}>Updated</p>
+                      <p className="mt-1 text-sm" style={semanticTextStyles.bodyText}>
+                        {formatDateTime(currentSelected.updatedAt)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                    <p className="text-xs font-medium text-muted-foreground">Prize Type</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">
-                      {currentSelected.prizeTypeSnapshot || "—"}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3 sm:col-span-2">
-                    <p className="text-xs font-medium text-muted-foreground">Prize Description</p>
-                    <p className="mt-1 text-sm text-foreground">
-                      {currentSelected.prizeDescriptionSnapshot || "—"}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                    <p className="text-xs font-medium text-muted-foreground">Vendor / Sponsor</p>
-                    <p className="mt-1 text-sm text-foreground">
-                      {currentSelected.vendorOrSponsorSnapshot || currentSelected.prizeCatalog?.sponsorVendor || "—"}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                    <p className="text-xs font-medium text-muted-foreground">Updated</p>
-                    <p className="mt-1 text-sm text-foreground">{formatDateTime(currentSelected.updatedAt)}</p>
-                  </div>
-                </div>
-              </div>
+                </DSCard>
 
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-sky-500" />
-                  <p className="text-sm font-semibold text-foreground">Admin Actions</p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {quickActions.map((action) => (
+                <DSCard className="space-y-4">
+                  <DSSectionHeader
+                    title={<span style={semanticTextStyles.cardTitle}>Admin Actions</span>}
+                    description={<span style={semanticTextStyles.helperText}>Update the fulfillment stage or cancel this record if necessary.</span>}
+                  />
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {quickActions.map((action) => (
+                      <Button
+                        key={action.status}
+                        type="button"
+                        variant="outline"
+                        className={STATUS_STYLES[action.status] || ""}
+                        onClick={() => statusMutation.mutate(action.status)}
+                        disabled={statusMutation.isPending}
+                      >
+                        {statusMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                        {action.label}
+                      </Button>
+                    ))}
                     <Button
-                      key={action.status}
                       type="button"
-                      variant="outline"
-                      className={STATUS_STYLES[action.status] || "border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"}
-                      onClick={() => statusMutation.mutate(action.status)}
+                      variant="destructive"
+                      onClick={() => {
+                        const confirmed = window.confirm("Cancel this fulfillment?");
+                        if (!confirmed) return;
+                        statusMutation.mutate("canceled");
+                      }}
                       disabled={statusMutation.isPending}
                     >
-                      {statusMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                      {action.label}
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Cancel Fulfillment
                     </Button>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-red-600 bg-red-600/10 text-red-700 hover:bg-red-600 hover:text-white dark:border-red-500 dark:text-red-300"
-                    onClick={() => {
-                      const confirmed = window.confirm("Cancel this fulfillment?");
-                      if (!confirmed) return;
-                      statusMutation.mutate("canceled");
-                    }}
-                    disabled={statusMutation.isPending}
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Cancel Fulfillment
-                  </Button>
-                </div>
-              </div>
+                  </div>
+                </DSCard>
 
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-sky-500" />
-                  <p className="text-sm font-semibold text-foreground">Notes and Tracking</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="fulfillment-notes">Fulfillment Notes</Label>
-                  <Textarea
-                    id="fulfillment-notes"
-                    value={notesDraft}
-                    onChange={(event) => setNotesDraft(event.target.value)}
-                    rows={4}
-                    placeholder="Add operational notes, vendor coordination, or delivery context."
+                <DSCard className="space-y-4">
+                  <DSSectionHeader
+                    title={<span style={semanticTextStyles.cardTitle}>Notes and Tracking</span>}
+                    description={<span style={semanticTextStyles.helperText}>Record shipment details and operational notes.</span>}
                   />
+
+                  <div className="space-y-2">
+                    <Label htmlFor="fulfillment-notes" className="text-foreground/90">
+                      Fulfillment Notes
+                    </Label>
+                    <Textarea
+                      id="fulfillment-notes"
+                      value={notesDraft}
+                      onChange={(event) => setNotesDraft(event.target.value)}
+                      rows={4}
+                      placeholder="Add operational notes, vendor coordination, or delivery context."
+                      className="border-border bg-card text-foreground placeholder:text-foreground/55 focus-visible:ring-ring"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={() => notesMutation.mutate()}
+                        disabled={notesMutation.isPending}
+                      >
+                        {notesMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save Notes
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="tracking-number" className="text-foreground/90">
+                        Tracking Number
+                      </Label>
+                      <Input
+                        id="tracking-number"
+                        value={trackingNumberDraft}
+                        onChange={(event) => setTrackingNumberDraft(event.target.value)}
+                        placeholder="Shipment or delivery number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tracking-reference" className="text-foreground/90">
+                        Tracking Reference
+                      </Label>
+                      <Input
+                        id="tracking-reference"
+                        value={trackingReferenceDraft}
+                        onChange={(event) => setTrackingReferenceDraft(event.target.value)}
+                        placeholder="Pickup receipt, internal reference, or vendor code"
+                      />
+                    </div>
+                  </div>
                   <div className="flex justify-end">
                     <Button
                       type="button"
-                      onClick={() => notesMutation.mutate()}
-                      disabled={notesMutation.isPending}
+                      variant="outline"
+                      onClick={() => trackingMutation.mutate()}
+                      disabled={trackingMutation.isPending}
                     >
-                      {notesMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      Save Notes
+                      {trackingMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Truck className="mr-2 h-4 w-4" />}
+                      Save Tracking
                     </Button>
                   </div>
-                </div>
+                </DSCard>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="tracking-number">Tracking Number</Label>
-                    <Input
-                      id="tracking-number"
-                      value={trackingNumberDraft}
-                      onChange={(event) => setTrackingNumberDraft(event.target.value)}
-                      placeholder="Shipment or delivery number"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tracking-reference">Tracking Reference</Label>
-                    <Input
-                      id="tracking-reference"
-                      value={trackingReferenceDraft}
-                      onChange={(event) => setTrackingReferenceDraft(event.target.value)}
-                      placeholder="Pickup receipt, internal reference, or vendor code"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"
-                    onClick={() => trackingMutation.mutate()}
-                    disabled={trackingMutation.isPending}
-                  >
-                    {trackingMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Truck className="mr-2 h-4 w-4" />}
-                    Save Tracking
-                  </Button>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border/70 bg-background/80 p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <History className="h-4 w-4 text-sky-500" />
-                  <p className="text-sm font-semibold text-foreground">Fulfillment History</p>
-                </div>
-                <div className="space-y-3">
-                  {history.length > 0 ? (
-                    history.map((item) => (
-                      <div key={item.id} className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <Badge className={STATUS_STYLES[item.nextStatus] || "bg-slate-600 text-white"}>
-                              {statusLabel(item.nextStatus)}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDateTime(item.changedAt)}
+                <DSCard className="space-y-4">
+                  <DSSectionHeader
+                    title={<span style={semanticTextStyles.cardTitle}>Fulfillment History</span>}
+                    description={<span style={semanticTextStyles.helperText}>Append-only status and tracking updates for audit review.</span>}
+                  />
+                  <div className="space-y-3">
+                    {history.length > 0 ? (
+                      history.map((item) => (
+                        <div key={item.id} className="rounded-lg border border-border/70 bg-muted/10 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <DSStatusChip tone={fulfillmentStatusTone(item.nextStatus)} size="sm">
+                                {statusLabel(item.nextStatus)}
+                              </DSStatusChip>
+                              <span className="text-xs" style={semanticTextStyles.helperText}>
+                                {formatDateTime(item.changedAt)}
+                              </span>
+                            </div>
+                            <span className="text-xs" style={semanticTextStyles.helperText}>
+                              by {actorLabel(item.changedByUser)}
                             </span>
                           </div>
-                          <span className="text-xs text-muted-foreground">
-                            by {actorLabel(item.changedByUser)}
-                          </span>
+                          <div className="mt-2 space-y-1 text-sm">
+                            {item.notes ? <p style={semanticTextStyles.bodyText}>{item.notes}</p> : null}
+                            <p className="text-xs" style={semanticTextStyles.helperText}>
+                              Tracking: {item.trackingNumber || "—"} {item.trackingReference ? `• Reference: ${item.trackingReference}` : ""}
+                            </p>
+                          </div>
                         </div>
-                        <div className="mt-2 space-y-1 text-sm">
-                          {item.notes && <p className="text-foreground">{item.notes}</p>}
-                          <p className="text-xs text-muted-foreground">
-                            Tracking: {item.trackingNumber || "—"} {item.trackingReference ? `• Reference: ${item.trackingReference}` : ""}
-                          </p>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-border/70 p-4 text-sm" style={semanticTextStyles.helperText}>
+                        No fulfillment history exists yet for this record.
                       </div>
-                    ))
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
-                      No fulfillment history exists yet for this record.
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                </DSCard>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </SheetContent>
       </Sheet>
     </div>
