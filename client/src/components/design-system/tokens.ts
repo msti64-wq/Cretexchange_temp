@@ -5,7 +5,7 @@ export const dsTokens = {
     elevatedBackground: "#242A31",
     border: "#2A3138",
     textPrimary: "#F5F7FA",
-    textSecondary: "#AAB4C0",
+    textSecondary: "#B9C3CF",
     accent: "#F97316",
     success: "#22C55E",
     warning: "#EAB308",
