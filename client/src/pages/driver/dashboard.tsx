@@ -80,7 +80,7 @@ class DriverDashboardErrorBoundary extends Component<{ children: ReactNode }, { 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background">
+        <div className="dark min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background text-foreground">
           <div className="w-full border-b border-border/70 bg-card/95 px-3 py-3 shadow-sm sm:px-4">
             <div className="mx-auto w-full max-w-6xl min-w-0 text-sm text-muted-foreground">
               Driver dashboard
@@ -99,10 +99,10 @@ class DriverDashboardErrorBoundary extends Component<{ children: ReactNode }, { 
 
 function DriverDashboardSkeleton() {
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20">
-      <div className="gradient-bg text-white">
+    <div className="dark min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20 text-foreground">
+      <div className="w-full border-b border-border/70 bg-card/95">
         <div className="mx-auto max-w-6xl px-4 py-4">
-          <Skeleton className="h-14 w-full max-w-md bg-white/20" />
+          <Skeleton className="h-14 w-full max-w-md bg-muted" />
         </div>
       </div>
       <main className="mx-auto w-full max-w-6xl space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5">
@@ -158,6 +158,18 @@ export default function DriverDashboard() {
     },
     enabled: showLotteryEntries,
   });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDarkClass = root.classList.contains("dark");
+    root.classList.add("dark");
+
+    return () => {
+      if (!hadDarkClass) {
+        root.classList.remove("dark");
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -262,7 +274,7 @@ export default function DriverDashboard() {
 
   return (
     <DriverDashboardErrorBoundary>
-      <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20">
+      <div className="dark min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20 text-foreground">
         <DriverHeader />
 
         {/* GPS Status Bar */}
@@ -283,13 +295,13 @@ export default function DriverDashboard() {
           <DSCard className="grid w-full max-w-full min-w-0 grid-cols-1 gap-4 overflow-hidden md:grid-cols-[1.15fr_0.85fr]" padding="lg" elevated>
           <div className="min-w-0 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="max-w-full break-words rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
+              <span className="max-w-full break-words rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
                 {t("driver.dashboard.fieldOps")}
               </span>
               <span className="max-w-full break-words rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/25 dark:text-emerald-300 sm:tracking-[0.16em]">
                 {t("driver.dashboard.gpsReady")}
               </span>
-              <span className="max-w-full break-words rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
+              <span className="max-w-full break-words rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
                 {t("driver.dashboard.siteStopsToday", { count: dailyStats?.visits || 0 })}
               </span>
             </div>
@@ -305,44 +317,44 @@ export default function DriverDashboard() {
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Button
                 variant="default"
-                className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-1.5 !whitespace-normal rounded-2xl border border-primary/30 bg-primary px-4 py-4 text-left text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25 active:translate-y-0 focus-visible:ring-primary/50"
+                className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-1.5 !whitespace-normal rounded-2xl border border-border/70 bg-card px-4 py-4 text-left text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-muted/50 active:translate-y-0 focus-visible:ring-primary/50"
                 onClick={() => setLocation('/locations')}
                 data-testid="button-find-location-hero"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
-                  <MapPin className="h-4 w-4 text-white" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <MapPin className="h-4 w-4" />
                 </div>
                 <span className="break-words text-sm font-semibold tracking-tight">{t("driver.dashboard.findLocation")}</span>
-                <span className="break-words text-xs text-primary-foreground/85">{t("driver.dashboard.findLocationHelp")}</span>
+                <span className="break-words text-xs text-muted-foreground">{t("driver.dashboard.findLocationHelp")}</span>
               </Button>
               <Button
                 variant="outline"
-                className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-1.5 !whitespace-normal rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-1.5 !whitespace-normal rounded-2xl border-border/70 bg-card p-4 text-left shadow-sm hover:bg-muted/50"
                 onClick={() => setLocation('/wallet')}
                 data-testid="button-access-wallet-hero"
               >
-                <Wallet className="h-5 w-5 text-secondary" />
+                <Wallet className="h-5 w-5 text-primary" />
                 <span className="break-words text-sm font-semibold">{t("driver.dashboard.myWallet")}</span>
                 <span className="break-words text-xs text-muted-foreground">{t("driver.dashboard.walletHelp")}</span>
               </Button>
               <Button
                 variant="outline"
-                className="h-auto min-h-20 w-full max-w-full min-w-0 flex-col items-start justify-start gap-1 !whitespace-normal rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                className="h-auto min-h-20 w-full max-w-full min-w-0 flex-col items-start justify-start gap-1 !whitespace-normal rounded-2xl border-border/70 bg-card p-4 text-left shadow-sm hover:bg-muted/50"
                 onClick={() => setLocation('/activity')}
                 data-testid="button-view-all-hero"
               >
-                <Activity className="h-5 w-5 text-accent" />
+                <Activity className="h-5 w-5 text-primary" />
                 <span className="break-words text-sm font-semibold">{t("nav.activity")}</span>
                 <span className="break-words text-xs text-muted-foreground">{t("driver.dashboard.recentWashoutsDescription")}</span>
               </Button>
             </div>
           </div>
 
-          <div className="w-full max-w-full min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-muted/30 p-4 shadow-sm">
+          <div className="w-full max-w-full min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.18em]">{t("driver.dashboard.latestStop")}</p>
-                <h3 className="mt-1 truncate text-lg font-semibold tracking-tight text-sky-300 dark:text-sky-300">{latestLocationName}</h3>
+                <h3 className="mt-1 truncate text-lg font-semibold tracking-tight text-foreground">{latestLocationName}</h3>
               </div>
               <div className="shrink-0 rounded-full bg-primary/10 p-2 text-primary">
                 <Truck className="h-5 w-5" />
@@ -353,8 +365,8 @@ export default function DriverDashboard() {
               <div className="mt-4 space-y-4">
                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-sm font-medium text-sky-300 dark:text-sky-300">
-                      <Route className="h-4 w-4 shrink-0 text-secondary" />
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <Route className="h-4 w-4 shrink-0 text-primary" />
                       <span className="truncate">{latestLocationName}</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -369,7 +381,7 @@ export default function DriverDashboard() {
                     )}
                   </div>
                   <div className="min-w-0 text-left sm:text-right">
-                    <p className="break-words text-2xl font-semibold tracking-tight text-sky-300 dark:text-sky-300">
+                    <p className="break-words text-2xl font-semibold tracking-tight text-primary">
                       {formatCurrency(latestActivityAmount)}
                     </p>
                     <div className={`mt-1 inline-flex max-w-full whitespace-normal break-words rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] ${
@@ -385,13 +397,13 @@ export default function DriverDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <div className="min-w-0 rounded-2xl border border-border/70 bg-background/80 px-3 py-2">
+                  <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
                     <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.14em]">{t("driver.dashboard.weeklyNet")}</p>
-                    <p className="mt-1 break-words text-sm font-semibold text-sky-300 dark:text-sky-300">{formatCurrency(weeklyNetEarnings)}</p>
+                    <p className="mt-1 break-words text-sm font-semibold text-primary">{formatCurrency(weeklyNetEarnings)}</p>
                   </div>
-                  <div className="min-w-0 rounded-2xl border border-border/70 bg-background/80 px-3 py-2">
+                  <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
                     <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.14em]">{t("driver.dashboard.totalPaid")}</p>
-                    <p className="mt-1 break-words text-sm font-semibold text-sky-300 dark:text-sky-300">{formatCurrency(totalPaid)}</p>
+                    <p className="mt-1 break-words text-sm font-semibold text-primary">{formatCurrency(totalPaid)}</p>
                   </div>
                 </div>
               </div>
@@ -401,7 +413,7 @@ export default function DriverDashboard() {
                   title={t("driver.dashboard.noRecentWashouts")}
                   description={t("driver.dashboard.noRecentWashoutsDescription")}
                   icon={Truck}
-                  toneClassName="bg-slate-50 text-foreground dark:bg-slate-950/30 dark:text-foreground"
+                  toneClassName="bg-card text-foreground"
                   action={
                     <Button
                       variant="outline"
@@ -429,22 +441,22 @@ export default function DriverDashboard() {
           !(dashboardData as any).user.roleData?.truckNumber ||
           !(dashboardData as any).user.roleData?.hasAgreedToTerms
         ) && (
-          <div className="w-full max-w-full overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="w-full max-w-full overflow-hidden rounded-2xl border border-amber-500/30 bg-card p-4 shadow-sm">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
                 <ShieldAlert className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="mb-1 break-words font-semibold text-amber-900 dark:text-amber-100">
+                <h3 className="mb-1 break-words font-semibold text-foreground">
                   {t("driver.dashboard.completeProfileTitle")}
                 </h3>
-                <p className="mb-3 break-words text-sm text-amber-800 dark:text-amber-200">
+                <p className="mb-3 break-words text-sm text-muted-foreground">
                   {t("driver.dashboard.completeProfileDescription")}
                 </p>
                 <Button
                   size="sm"
                   onClick={() => setLocation('/profile')}
-                  className="h-auto min-h-10 w-full !whitespace-normal bg-amber-600 text-white hover:bg-amber-700 sm:w-auto"
+                  className="h-auto min-h-10 w-full !whitespace-normal border border-amber-500/30 bg-card text-foreground hover:bg-amber-500/10 sm:w-auto"
                   data-testid="button-complete-profile"
                 >
                   {t("driver.dashboard.completeProfile")}
@@ -455,36 +467,36 @@ export default function DriverDashboard() {
         )}
 
         {awaitingDriverStripeCount > 0 && (
-          <div className="w-full max-w-full overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="w-full max-w-full overflow-hidden rounded-2xl border border-amber-500/30 bg-card p-4 shadow-sm">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
                 <CreditCard className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="mb-1 break-words font-semibold text-amber-900 dark:text-amber-100">
+                <h3 className="mb-1 break-words font-semibold text-foreground">
                   {t("driver.dashboard.tipPayoutSetupNeeded")}
                 </h3>
-                <p className="mb-3 break-words text-sm text-amber-800 dark:text-amber-200">
+                <p className="mb-3 break-words text-sm text-muted-foreground">
                   {t("driver.payout.notStartedMessage")}
                 </p>
                 <Button
                   size="sm"
                   onClick={() => setLocation('/profile')}
-                  className="h-auto min-h-10 w-full !whitespace-normal bg-amber-600 text-white hover:bg-amber-700 sm:w-auto"
+                  className="h-auto min-h-10 w-full !whitespace-normal border border-amber-500/30 bg-card text-foreground hover:bg-amber-500/10 sm:w-auto"
                   data-testid="button-complete-stripe-setup"
                 >
                   {t("driver.dashboard.setUpTipPayouts")}
                 </Button>
                 <div className="mt-3 space-y-2">
                   {awaitingDriverStripePayments.slice(0, 3).map((payment: any) => (
-                    <div key={payment.id} className="w-full max-w-full min-w-0 overflow-hidden rounded-xl border border-amber-200 bg-white/80 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
+                    <div key={payment.id} className="w-full max-w-full min-w-0 overflow-hidden rounded-xl border border-border/70 bg-card px-3 py-2 text-sm text-foreground">
                       <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                         <span className="min-w-0 break-words font-medium">
                           {payment.location?.name || payment.activity?.location?.name || t("common.washouts")}
                         </span>
-                        <span className="min-w-0 break-words font-semibold text-sky-300 dark:text-sky-300 sm:shrink-0">{formatCurrency(Number(payment.amount || 0) + Number((payment.tipAmountCents || 0) / 100))}</span>
+                        <span className="min-w-0 break-words font-semibold text-primary sm:shrink-0">{formatCurrency(Number(payment.amount || 0) + Number((payment.tipAmountCents || 0) / 100))}</span>
                       </div>
-                      <p className="mt-1 break-words text-xs text-amber-700 dark:text-amber-300">
+                      <p className="mt-1 break-words text-xs text-muted-foreground">
                         {t("driver.dashboard.awaitingTipPayoutSetup")}
                       </p>
                     </div>
@@ -550,11 +562,11 @@ export default function DriverDashboard() {
 
         {/* Lottery Entries Card - always visible */}
         <DSCard className="w-full max-w-full overflow-hidden" padding="none" elevated>
-          <div className="h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-600" />
+          <div className="h-1 bg-amber-500" />
           <CardContent className="min-w-0 space-y-4 p-4 min-[430px]:p-5">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-200 ${lotteryActive ? 'bg-amber-500 text-white dark:border-amber-900/40' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-500/30 ${lotteryActive ? 'bg-amber-500/10 text-amber-500' : 'bg-card text-amber-400'}`}>
                   <Ticket className="h-6 w-6" />
                 </div>
                 <div className="min-w-0">
@@ -562,13 +574,13 @@ export default function DriverDashboard() {
                   <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
                     {lotteryActive ? t("driver.dashboard.lotteryActiveTitle") : t("driver.dashboard.lotteryDisabledTitle")}
                   </h3>
-                  <p className="break-words text-sm text-white">
+                  <p className="break-words text-sm text-foreground/90">
                     {currentLotteryStatusMessage}
                   </p>
                 </div>
               </div>
-              <div className="min-w-0 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-left sm:text-right">
-                <div className="break-words text-3xl font-semibold tracking-tight text-sky-500 dark:text-sky-300" data-testid="text-lottery-entries">
+              <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-4 py-3 text-left sm:text-right">
+                <div className="break-words text-3xl font-semibold tracking-tight text-primary" data-testid="text-lottery-entries">
                   {lotteryActive ? lotteryEntryCount : '—'}
                 </div>
                 <div className="break-words text-xs uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.14em]">
@@ -589,7 +601,11 @@ export default function DriverDashboard() {
               <>
                 <button
                   onClick={() => setShowLotteryEntries(!showLotteryEntries)}
-                  className="flex w-full min-w-0 items-center gap-2 rounded-2xl border border-sky-700/60 bg-slate-800/80 px-3 py-2 text-left text-xs font-semibold text-sky-400 transition-colors hover:bg-sky-600 hover:text-white dark:bg-slate-900/80 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white"
+                  className={`flex w-full min-w-0 items-center gap-2 rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition-colors hover:bg-muted/50 ${
+                    showLotteryEntries
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border/70 bg-card text-foreground"
+                  }`}
                 >
                   {showLotteryEntries ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
                   <span className="min-w-0 break-words">{showLotteryEntries ? t("driver.dashboard.hideEntries") : t("driver.dashboard.viewEntries")}</span>
@@ -599,12 +615,12 @@ export default function DriverDashboard() {
                   <div className="space-y-2 border-t border-border/70 pt-3">
                     {lotteryEntriesLoading ? (
                       <div className="space-y-3">
-                        <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                        <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/70 bg-card px-3 py-2 text-xs text-muted-foreground">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           {t("driver.dashboard.loadingEntries")}
                         </div>
                         {[1, 2].map(i => (
-                          <div key={i} className="h-12 rounded-2xl bg-muted/50" />
+                          <div key={i} className="h-12 rounded-2xl border border-border/70 bg-card" />
                         ))}
                       </div>
                     ) : lotteryEntriesError ? (
@@ -612,38 +628,38 @@ export default function DriverDashboard() {
                         title={t("common.error")}
                         description={lotteryEntriesError instanceof Error ? lotteryEntriesError.message : t("driver.dashboard.loadingEntries")}
                         icon={Ticket}
-                        titleClassName="text-red-300 dark:text-red-300"
-                        toneClassName="bg-red-50 text-foreground dark:bg-red-950/30 dark:text-foreground"
+                        titleClassName="text-red-400"
+                        toneClassName="bg-card text-foreground"
                       />
                     ) : lotteryEntries && lotteryEntries.length > 0 ? (
                       <div className="max-h-64 space-y-2 overflow-y-auto">
                         {lotteryEntries.map((entry: any) => (
                           <div
                             key={entry.id}
-                            className="w-full max-w-full min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-muted/30 px-3 py-3"
+                            className="w-full max-w-full min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-card px-3 py-3"
                           >
                             <div className="flex min-w-0 flex-col gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between min-[430px]:gap-3">
                               <div className="flex min-w-0 items-center gap-2">
-                                <Building2 className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                                <p className="truncate text-xs font-semibold text-white">
+                                <Building2 className="h-4 w-4 shrink-0 text-amber-500" />
+                                <p className="truncate text-xs font-semibold text-foreground">
                                   {entry.locationName || entry.ownerCompany || t("common.locations")}
                                 </p>
                               </div>
                               <div className="flex shrink-0 items-center gap-1">
-                                <Ticket className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-                                <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                                <Ticket className="h-3 w-3 text-amber-500" />
+                                <span className="text-sm font-semibold text-amber-400">
                                   +{entry.entriesEarned}
                                 </span>
                               </div>
                             </div>
                             <div className="mt-2 flex min-w-0 flex-col gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between min-[430px]:gap-3">
-                              <p className="break-words text-xs text-white/90">
+                              <p className="break-words text-xs text-muted-foreground">
                                 {entry.activityDate
                                   ? new Date(entry.activityDate).toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" })
                                   : new Date(entry.createdAt).toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
                               </p>
                               {entry.ticketNumber && (
-                                <span className="max-w-full break-words rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] font-mono font-semibold text-white">
+                                <span className="max-w-full break-words rounded-full border border-border/70 bg-card px-2 py-0.5 text-[11px] font-mono font-semibold text-foreground">
                                   Entry # {entry.ticketNumber}
                                 </span>
                               )}
@@ -656,8 +672,8 @@ export default function DriverDashboard() {
                         title={t("driver.dashboard.noEntriesFound")}
                         description={t("driver.dashboard.noEntriesDescription")}
                         icon={Ticket}
-                        titleClassName="text-sky-300 dark:text-sky-300"
-                        toneClassName="bg-amber-50 text-foreground dark:bg-amber-950/30 dark:text-foreground"
+                        titleClassName="text-primary"
+                        toneClassName="bg-card text-foreground"
                       />
                     )}
                   </div>
@@ -677,26 +693,26 @@ export default function DriverDashboard() {
         <section className="grid gap-3 sm:grid-cols-2">
           <Button
             variant="outline"
-            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border border-primary/20 bg-primary/5 p-4 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/10"
+            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border border-border/70 bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/10"
             onClick={() => setLocation('/locations')}
             data-testid="button-find-location"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white shadow-sm shadow-primary/20">
-              <MapPin className="h-4 w-4 text-white" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm">
+              <MapPin className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <div className="break-words text-sm font-semibold text-foreground">{t("driver.dashboard.findLocation")}</div>
               <div className="break-words text-xs text-muted-foreground">{t("driver.dashboard.openWashoutSiteList")}</div>
             </div>
           </Button>
-
-          <Button
-            variant="outline"
-            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+          
+          <Button 
+            variant="outline" 
+            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border-border/70 bg-card p-4 text-left shadow-sm hover:bg-muted/50"
             onClick={() => setLocation('/wallet')}
             data-testid="button-access-wallet"
           >
-            <Wallet className="h-5 w-5 text-secondary" />
+            <Wallet className="h-5 w-5 text-primary" />
             <div className="min-w-0">
               <div className="break-words text-sm font-semibold">{t("driver.dashboard.myWallet")}</div>
               <div className="break-words text-xs text-muted-foreground">{t("driver.dashboard.checkPayoutHistory")}</div>
@@ -712,13 +728,13 @@ export default function DriverDashboard() {
               title={t("driver.dashboard.washoutStatsMix")}
               description={`${t("driver.dashboard.periodDisplayed", { period: selectedStatsLabel })}${selectedStatsDateRange ? ` - ${selectedStatsDateRange}` : ""}`}
               actions={
-                <ToggleGroup
-                  type="single"
-                  value={statsRange}
-                  onValueChange={(value) => {
-                    if (value) setStatsRange(value as DriverDashboardStatsRange);
-                  }}
-                  className="flex w-full max-w-full min-w-0 flex-wrap rounded-lg border border-border/70 bg-muted/40 p-1 sm:w-auto"
+              <ToggleGroup
+                type="single"
+                value={statsRange}
+                onValueChange={(value) => {
+                  if (value) setStatsRange(value as DriverDashboardStatsRange);
+                }}
+                  className="flex w-full max-w-full min-w-0 flex-wrap rounded-lg border border-border/70 bg-card p-1 sm:w-auto"
                   data-testid="toggle-washout-stats-range"
                 >
                   {DRIVER_STATS_RANGE_OPTIONS.map((option) => (
@@ -726,7 +742,7 @@ export default function DriverDashboard() {
                       key={option.value}
                       value={option.value}
                       size="sm"
-                      className="h-auto min-h-8 min-w-0 flex-1 basis-0 whitespace-normal rounded-md border border-border/70 bg-slate-900/80 px-2 text-xs text-slate-100 transition-colors hover:bg-slate-700 hover:text-white data-[state=on]:border-orange-700 data-[state=on]:bg-orange-600 data-[state=on]:text-white data-[state=on]:shadow-sm sm:flex-none sm:basis-auto sm:px-3 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-white"
+                      className="h-auto min-h-8 min-w-0 flex-1 basis-0 whitespace-normal rounded-md border border-border/70 bg-card px-2 text-xs text-foreground transition-colors hover:bg-muted/50 data-[state=on]:border-primary/40 data-[state=on]:bg-primary/10 data-[state=on]:text-primary data-[state=on]:shadow-sm sm:flex-none sm:basis-auto sm:px-3"
                       data-testid={`button-washout-stats-${option.value}`}
                     >
                       <span className="truncate">{t(option.labelKey)}</span>
@@ -814,24 +830,24 @@ export default function DriverDashboard() {
           />
           <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="min-w-0 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-                  <div className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300 sm:tracking-[0.14em]">{t("driver.dashboard.pendingToday")}</div>
-                  <div className="mt-2 break-words text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300" data-testid="text-pending-earnings">
+                <div className="min-w-0 rounded-2xl border border-emerald-500/25 bg-card p-4">
+                  <div className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-400 sm:tracking-[0.14em]">{t("driver.dashboard.pendingToday")}</div>
+                  <div className="mt-2 break-words text-2xl font-semibold tracking-tight text-emerald-300" data-testid="text-pending-earnings">
                     {formatCurrency(adjustedDailyEarnings)}
                   </div>
-                  <div className="mt-1 break-words text-xs text-emerald-700/80 dark:text-emerald-300/80">{t("driver.dashboard.awaitingSettlement")}</div>
+                  <div className="mt-1 break-words text-xs text-muted-foreground">{t("driver.dashboard.awaitingSettlement")}</div>
                 </div>
-                <div className="min-w-0 rounded-2xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-900/40 dark:bg-sky-950/20">
-                  <div className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-700 dark:text-sky-300 sm:tracking-[0.14em]">{t("driver.dashboard.totalPaid")}</div>
-                  <div className="mt-2 break-words text-2xl font-semibold tracking-tight text-sky-700 dark:text-sky-300">
+                <div className="min-w-0 rounded-2xl border border-sky-500/25 bg-card p-4">
+                  <div className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-400 sm:tracking-[0.14em]">{t("driver.dashboard.totalPaid")}</div>
+                  <div className="mt-2 break-words text-2xl font-semibold tracking-tight text-sky-300">
                     {formatCurrency(totalPaid)}
                   </div>
-                  <div className="mt-1 break-words text-xs text-sky-700/80 dark:text-sky-300/80">{t("driver.dashboard.recordedPaymentHistory")}</div>
+                  <div className="mt-1 break-words text-xs text-muted-foreground">{t("driver.dashboard.recordedPaymentHistory")}</div>
                 </div>
               </div>
-              <div className="flex min-w-0 flex-col gap-1 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                <span className="break-words text-sky-300 dark:text-sky-300">{t("driver.dashboard.paymentsProcessedWeekly")}</span>
-                <span className="break-words font-medium text-white sm:text-right">{t("driver.dashboard.fullAmounts")}</span>
+              <div className="flex min-w-0 flex-col gap-1 rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <span className="break-words text-primary">{t("driver.dashboard.paymentsProcessedWeekly")}</span>
+                <span className="break-words font-medium text-foreground sm:text-right">{t("driver.dashboard.fullAmounts")}</span>
               </div>
           </div>
         </DSCard>
@@ -841,10 +857,10 @@ export default function DriverDashboard() {
           <DSSectionHeader
             title={t("driver.dashboard.recentWashouts")}
             actions={
-              <Button
+              <Button 
                 variant="default"
                 size="sm"
-                className="h-auto min-h-9 w-full !whitespace-normal bg-sky-600 px-3 text-white hover:bg-sky-700 sm:w-auto"
+                className="h-auto min-h-9 w-full !whitespace-normal border border-primary/30 bg-card px-3 text-foreground hover:bg-primary/10 sm:w-auto"
                 onClick={() => setLocation('/activity')}
                 data-testid="button-view-all"
               >
@@ -859,7 +875,7 @@ export default function DriverDashboard() {
                 title={t("driver.dashboard.noRecentWashouts")}
                 description={t("driver.dashboard.noRecentWashoutsDescription")}
                 icon={Clock}
-                toneClassName="bg-slate-50 text-foreground dark:bg-slate-950/30 dark:text-foreground"
+                toneClassName="bg-card text-foreground"
                 action={
                   <Button
                     variant="outline"
@@ -906,11 +922,11 @@ export default function DriverDashboard() {
                   
                   <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                     <DSCard padding="sm" elevated={false} className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm font-medium text-white" data-testid={`text-location-name-${index}`}>
-                        <MapPinned className="h-4 w-4 shrink-0 text-secondary" />
+                      <div className="flex items-center gap-2 text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
+                        <MapPinned className="h-4 w-4 shrink-0 text-primary" />
                         <span className="truncate">{activity.washout_locations?.name || activity.location?.name || t("driver.activity.unknownLocation")}</span>
                       </div>
-                      <div className="mt-1 break-words text-xs text-white/90">
+                      <div className="mt-1 break-words text-xs text-muted-foreground">
                         {activity.washout_locations?.address || activity.location?.address || formatAddress(activity.washout_locations || activity.location || {}) || t("driver.dashboard.addressUnavailable")}
                       </div>
                     </DSCard>
@@ -938,7 +954,7 @@ export default function DriverDashboard() {
 
                   <div className="flex min-w-0 flex-col gap-2 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
                     {(activity.washout_locations?.address || activity.location?.address) && (
-                      <div className="min-w-0 break-words text-xs text-sky-300/90 dark:text-sky-300/90">
+                      <div className="min-w-0 break-words text-xs text-primary/80">
                         {activity.washout_locations?.address || activity.location?.address}
                       </div>
                     )}
@@ -947,8 +963,8 @@ export default function DriverDashboard() {
                       size="sm"
                       className={`h-auto min-h-9 w-full !whitespace-normal px-3 text-xs sm:w-auto ${
                         isPhotoModalOpen && selectedActivity?.id === activity.id
-                          ? "border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white"
-                          : "border-slate-700 bg-slate-800/80 text-slate-100 hover:bg-slate-700 hover:text-white"
+                          ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+                          : "border-border/70 bg-card text-foreground hover:bg-muted/50"
                       }`}
                       onClick={() => {
                         console.log("Driver Photo Button Clicked:", activity);
@@ -968,19 +984,19 @@ export default function DriverDashboard() {
         </DSCard>
 
         {/* Support Section */}
-        <DSCard padding="lg" elevated className="border-sky-200 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-slate-900">
+        <DSCard padding="lg" elevated className="border-border">
           <DSSectionHeader title={t("driver.dashboard.needHelp")} />
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1 space-y-2">
               <p className="break-words text-sm text-muted-foreground">{t("driver.dashboard.supportDescription")}</p>
               <div className="flex min-w-0 items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 shrink-0 text-sky-600" />
-                <span className="break-words font-medium text-sky-700 dark:text-sky-300" data-testid="text-support-phone">(469) 269-6709</span>
+                <Phone className="h-4 w-4 shrink-0 text-primary" />
+                <span className="break-words font-medium text-primary" data-testid="text-support-phone">(469) 269-6709</span>
               </div>
             </div>
             <Button 
               size="sm" 
-              className="h-auto min-h-10 w-full !whitespace-normal bg-sky-600 text-white hover:bg-sky-700 sm:w-auto"
+              className="h-auto min-h-10 w-full !whitespace-normal border border-primary/30 bg-card text-foreground hover:bg-primary/10 sm:w-auto"
               onClick={() => setIsSupportDialogOpen(true)}
               data-testid="button-contact-support"
             >
@@ -994,7 +1010,7 @@ export default function DriverDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Button 
             variant="outline" 
-            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border-border/70 bg-card p-4 text-left shadow-sm hover:bg-muted/50"
             onClick={() => setLocation('/activity')}
             data-testid="button-view-history"
           >
@@ -1007,11 +1023,11 @@ export default function DriverDashboard() {
           
           <Button 
             variant="outline" 
-            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border-border/70 bg-card p-4 text-left shadow-sm hover:bg-muted/50"
             onClick={() => setLocation('/profile')}
             data-testid="button-profile"
           >
-            <User className="h-5 w-5 text-secondary" />
+            <User className="h-5 w-5 text-primary" />
             <div className="min-w-0">
               <div className="break-words text-sm font-semibold">{t("common.profile")}</div>
               <div className="break-words text-xs text-muted-foreground">{t("driver.dashboard.updateDetails")}</div>
