@@ -414,16 +414,6 @@ export default function DriverDashboard() {
                   description={t("driver.dashboard.noRecentWashoutsDescription")}
                   icon={Truck}
                   toneClassName="bg-card text-foreground"
-                  action={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-auto min-h-9 w-full !whitespace-normal sm:w-auto"
-                      onClick={() => setLocation('/locations')}
-                    >
-                      {t("driver.dashboard.findLocation")}
-                    </Button>
-                  }
                 />
               </div>
             )}
@@ -688,37 +678,6 @@ export default function DriverDashboard() {
             )}
           </CardContent>
         </DSCard>
-
-        {/* Quick Actions */}
-        <section className="grid gap-3 sm:grid-cols-2">
-          <Button
-            variant="outline"
-            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border border-border/70 bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/10"
-            onClick={() => setLocation('/locations')}
-            data-testid="button-find-location"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm">
-              <MapPin className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="break-words text-sm font-semibold text-foreground">{t("driver.dashboard.findLocation")}</div>
-              <div className="break-words text-xs text-muted-foreground">{t("driver.dashboard.openWashoutSiteList")}</div>
-            </div>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border-border/70 bg-card p-4 text-left shadow-sm hover:bg-muted/50"
-            onClick={() => setLocation('/wallet')}
-            data-testid="button-access-wallet"
-          >
-            <Wallet className="h-5 w-5 text-primary" />
-            <div className="min-w-0">
-              <div className="break-words text-sm font-semibold">{t("driver.dashboard.myWallet")}</div>
-              <div className="break-words text-xs text-muted-foreground">{t("driver.dashboard.checkPayoutHistory")}</div>
-            </div>
-          </Button>
-        </section>
 
         {/* Earnings Summary */}
         <div className="grid w-full max-w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-[1.25fr_0.75fr]">
