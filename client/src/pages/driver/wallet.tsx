@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
@@ -383,12 +382,14 @@ export default function DriverWallet() {
                   )}
                 </div>
                 
-                <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-800 dark:text-green-200">
-                    Your bank account is ready to receive payments
-                  </AlertDescription>
-                </Alert>
+                <div className="rounded-2xl border border-border/70 bg-card/90 p-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500 mt-0.5" />
+                    <p className="text-sm text-foreground/85">
+                      Your bank account is ready to receive payments
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -474,23 +475,25 @@ export default function DriverWallet() {
                   Request Withdrawal
                 </Button>
 
-                <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-                  <Clock className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800 dark:text-blue-200">
+                <div className="rounded-2xl border border-border/70 bg-card/90 p-4">
+                  <div className="flex items-start gap-3">
+                    <Clock className="h-4 w-4 shrink-0 text-primary mt-0.5" />
                     <div className="space-y-2">
-                      <p className="font-medium">ACH withdrawals to your bank account typically arrive in 1-2 business days</p>
+                      <p className="font-medium text-foreground/90">
+                        ACH withdrawals to your bank account typically arrive in 1-2 business days
+                      </p>
                       
                       {issuingEnabled && debitCardStatus?.hasCard ? (
-                        <div className="mt-3 rounded-lg border border-blue-200 bg-white p-3 dark:border-blue-700 dark:bg-gray-800">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                        <div className="rounded-2xl border border-border/70 bg-background/60 p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-foreground">
                                 Debit Card {debitCardStatus.card?.cardStatus === 'active' ? 'Active' : 'Requested'}
                               </p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                              <p className="text-sm text-foreground/75">
                                 {debitCardStatus.card?.cardType === 'virtual' ? 'Virtual' : 'Physical'} Card •••• {debitCardStatus.card?.cardLast4}
                               </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                              <p className="mt-1 text-xs text-foreground/65">
                                 Expires {debitCardStatus.card?.expirationMonth}/{debitCardStatus.card?.expirationYear}
                               </p>
                             </div>
@@ -499,16 +502,16 @@ export default function DriverWallet() {
                         </div>
                       ) : issuingEnabled ? (
                         <>
-                          <p className="text-sm">
+                          <p className="text-sm text-foreground/85">
                             <strong>Need instant access?</strong> Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
                           </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-foreground/65 mt-1">
                             Physical cards typically arrive within 7-10 business days at your registered address.
                           </p>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="mt-2 border-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900"
+                            className="mt-2 border-border bg-background/60 hover:bg-background"
                             onClick={() => setShowDebitCardDialog(true)}
                             data-testid="button-request-debit-card"
                           >
@@ -518,8 +521,8 @@ export default function DriverWallet() {
                         </>
                       ) : null}
                     </div>
-                  </AlertDescription>
-                </Alert>
+                  </div>
+                </div>
               </>
             )}
           </div>
@@ -560,12 +563,10 @@ export default function DriverWallet() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
                   </p>
-                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-                    <div className="flex items-start space-x-2 text-sm text-blue-800 dark:text-blue-200">
-                      <div className="space-y-1">
-                        <p><strong>Virtual Card:</strong> $0.01 • Instant delivery</p>
-                        <p><strong>Physical Card:</strong> $30.00 • 2-day shipping</p>
-                      </div>
+                  <div className="rounded-2xl border border-border/70 bg-card/90 p-3 mb-4">
+                    <div className="space-y-1 text-sm text-foreground/85">
+                      <p><strong>Virtual Card:</strong> $0.01 • Instant delivery</p>
+                      <p><strong>Physical Card:</strong> $30.00 • 2-day shipping</p>
                     </div>
                   </div>
                   <Button
@@ -599,35 +600,35 @@ export default function DriverWallet() {
                 </div>
               ))
             ) : !(transactionsData as any)?.transactions?.length ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Receipt className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No transactions yet</p>
-                <p className="text-sm">Your transaction history will appear here</p>
-              </div>
-            ) : (
-              <>
+                <div className="text-center py-8 text-foreground/75">
+                  <Receipt className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No transactions yet</p>
+                  <p className="text-sm">Your transaction history will appear here</p>
+                </div>
+              ) : (
+                <>
                 {(transactionsData as any).transactions.map((transaction: WalletTransaction, index: number) => (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between rounded-2xl border border-border/70 bg-card/80 p-4 transition-colors hover:border-border hover:bg-card"
                     data-testid={`transaction-${index}`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-background rounded-full flex items-center justify-center border">
+                      <div className="w-10 h-10 rounded-full border border-border/70 bg-background/60 flex items-center justify-center">
                         {getTransactionIcon(transaction)}
                       </div>
                       <div>
                         <div className="font-medium text-sm" data-testid={`transaction-description-${index}`}>
                           {transaction.description}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-foreground/65">
                           {formatDateTime(transaction.createdAt)}
                         </div>
                         <div className="flex items-center space-x-2 mt-1">
                           <DSStatusChip tone={transaction.status === 'posted' ? 'success' : 'neutral'} className="text-xs">
                             {transaction.status}
                           </DSStatusChip>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-foreground/65">
                             Balance: {formatCurrency(transaction.balanceAfter)}
                           </span>
                         </div>
