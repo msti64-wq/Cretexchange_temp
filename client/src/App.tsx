@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { AdminDarkWorkspace } from "@/components/AdminDarkWorkspace";
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Landing = lazy(() => import("@/pages/landing"));
 const Login = lazy(() => import("@/pages/auth/login"));
@@ -143,27 +144,29 @@ function Router() {
   if ((user as any).role === 'admin' || (user as any).role === 'super_admin') {
     return (
       <Suspense fallback={<RouteFallback />}>
-        <Switch>
-          <Route path="/" component={AdminDashboard} />
-          <Route path="/users" component={AdminUsers} />
-          <Route path="/locations" component={AdminLocations} />
-          <Route path="/payments" component={AdminPayments} />
-          <Route path="/batch-payments" component={AdminBatchPayments} />
-          <Route path="/reconciliation" component={AdminReconciliation} />
-          <Route path="/subscriptions" component={AdminSubscriptions} />
-          <Route path="/fees" component={AdminFees} />
-          <Route path="/feature-flags" component={AdminFeatureFlags} />
-          <Route path="/billing-settings" component={AdminBillingSettings} />
-          <Route path="/lottery" component={AdminLottery} />
-          <Route path="/rewards/operations" component={AdminRewardsOperations} />
-          <Route path="/lottery-dashboard" component={LegacyLotteryDashboardRedirect} />
-          <Route path="/billing-audit-report" component={SuperAdminBillingAuditReport} />
-          <Route path="/reports" component={AdminReports} />
-          <Route path="/settings" component={AdminSettings} />
-          <Route path="/profile" component={AdminProfile} />
-          <Route path="/service-accounts" component={ServiceAccountsPage} />
-          <Route component={NotFound} />
-        </Switch>
+        <AdminDarkWorkspace>
+          <Switch>
+            <Route path="/" component={AdminDashboard} />
+            <Route path="/users" component={AdminUsers} />
+            <Route path="/locations" component={AdminLocations} />
+            <Route path="/payments" component={AdminPayments} />
+            <Route path="/batch-payments" component={AdminBatchPayments} />
+            <Route path="/reconciliation" component={AdminReconciliation} />
+            <Route path="/subscriptions" component={AdminSubscriptions} />
+            <Route path="/fees" component={AdminFees} />
+            <Route path="/feature-flags" component={AdminFeatureFlags} />
+            <Route path="/billing-settings" component={AdminBillingSettings} />
+            <Route path="/lottery" component={AdminLottery} />
+            <Route path="/rewards/operations" component={AdminRewardsOperations} />
+            <Route path="/lottery-dashboard" component={LegacyLotteryDashboardRedirect} />
+            <Route path="/billing-audit-report" component={SuperAdminBillingAuditReport} />
+            <Route path="/reports" component={AdminReports} />
+            <Route path="/settings" component={AdminSettings} />
+            <Route path="/profile" component={AdminProfile} />
+            <Route path="/service-accounts" component={ServiceAccountsPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </AdminDarkWorkspace>
       </Suspense>
     );
   }
