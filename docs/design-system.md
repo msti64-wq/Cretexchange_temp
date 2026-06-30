@@ -1,53 +1,70 @@
-# CreteXchange UI Standard
+# CreteXchange Design System V2
 
-This document defines the default UI standard for CreteXchange dashboard and admin surfaces.
-It is the baseline for new work and the target for gradual refactors.
+CreteXchange Design System V2 defines the visual and interaction standards for the product workspace. It is the reference for new UI work and the target state for gradual refactors.
 
-## Principles
+## Philosophy
+
+CreteXchange uses an **Enterprise Slate Workspace** for operational surfaces.
+
+- The workspace is neutral, dense, and task-focused.
+- Structure should be visually quiet.
+- Color communicates operational meaning, not decoration.
+- Pages should feel like working tools, not marketing surfaces.
+- Shared patterns are preferred over page-specific inventions.
+- Changes to presentation must not alter business logic.
+
+## Design Principles
 
 - Keep interfaces dense, readable, and operational.
 - Prefer clarity over decoration.
 - Use shared primitives for repeated patterns.
 - Preserve business logic while changing presentation.
-- Avoid visual drift across admin, driver, owner, and operational pages.
+- Avoid visual drift across admin, driver, owner, and public surfaces.
+- Titles should use the platform accent blue.
+- Operational data should remain high-contrast and readable at a glance.
+- Hover should enhance, not reveal.
 
-## Typography
+## Design Tokens
 
-- Use Inter as the default typeface.
-- Base text should read at 16px on desktop and scale down only where density requires it.
-- Section titles should use a clear hierarchy:
-  - page title: 24px to 32px, semibold
-  - section title: 18px to 24px, semibold
-  - card title: 16px to 18px, semibold
-  - body text: 14px to 16px
-  - helper text and metadata: 12px to 14px
-- Primary body and operational text on dark surfaces should remain readable at a glance.
-- Use secondary text for helper copy, metadata, and tertiary hints only; do not rely on muted text for core labels or queue/table content.
-- Semantic text roles should be used consistently:
-  - `pageTitle`: primary page-level title color
-  - `sectionTitle`: bright accent title for sections and cards
-  - `cardTitle`: bright accent title for card headers and operational emphasis
-  - `operationalText`: primary foreground text for names, values, and queue items
-  - `bodyText`: near-primary readable body copy
-  - `helperText`: readable secondary copy for guidance and descriptions
-  - `metadataText`: tertiary labels and subtle supporting information
-- On dark/slate surfaces, bright accent titles are preferred for page, section, and card titles.
-- Keep line lengths short on dashboards and long enough for normal copy on public pages.
-- Do not rely on color alone to communicate meaning.
+The design tokens are the source of truth for colors, spacing, radius, and typography roles.
 
-## Spacing
+- Background and surface tokens should resolve to neutral slate workspace values in admin mode.
+- Primary text should remain readable on both light and dark surfaces.
+- Secondary text should stay readable without becoming washed out.
+- Accent blue is reserved for titles and emphasis.
+- Semantic status colors should be used consistently across chips, counts, active indicators, and warnings.
 
-- Use a consistent spacing scale: 4, 8, 12, 16, 24, 32, 40.
-- Use 16px to 24px page gutters on desktop and 12px to 16px on mobile.
-- Prefer compact card internals over large empty surfaces.
-- Use vertical rhythm:
-  - page header to content: 16px to 24px
-  - section header to content: 12px to 16px
-  - stacked form fields: 12px to 16px
-  - list rows: compact but breathable
-- Avoid large padding blocks unless the section is intentionally promotional or public-facing.
+Semantic text roles:
 
-## Page Structure
+- `pageTitle`: bright platform accent blue for page-level titles
+- `sectionTitle`: bright platform accent blue for section titles
+- `cardTitle`: bright platform accent blue for card headers and operational emphasis
+- `operationalText`: high-contrast primary text for names, values, and queue items
+- `bodyText`: near-primary readable body copy
+- `helperText`: readable secondary copy for guidance and descriptions
+- `metadataText`: tertiary labels and subtle supporting information
+
+## Shared Components
+
+Prefer these shared primitives for new work:
+
+- `DSCard`
+- `DSKpiCard`
+- `DSSectionHeader`
+- `DSStatusChip`
+- `DSTableShell`
+
+Use shadcn/ui primitives when the interaction is simple and the shared design-system wrapper does not already exist.
+
+### Shared component guidance
+
+- `DSCard`: standard dashboard cards and repeated content blocks.
+- `DSKpiCard`: top-level metrics and summary cards.
+- `DSSectionHeader`: repeatable section headers with clear hierarchy.
+- `DSStatusChip`: recurring operational states using semantic tones.
+- `DSTableShell`: dense operational tables and queues with compact headers and readable rows.
+
+## Layout Standards
 
 Use this order for operational pages whenever possible:
 
@@ -57,146 +74,54 @@ Use this order for operational pages whenever possible:
 4. Table, list, or queue
 5. Detail drawer or dialog when needed
 
-This structure should be used for admin dashboards, operations centers, billing tools, and catalog management.
+### Headers
 
-## Headers
+- Use an eyebrow or context label.
+- Keep the page title short and direct.
+- Include a short supporting description.
+- Place actions on the right when space allows.
+- Do not stack competing title blocks in the same view.
 
-- Use a header pattern with:
-  - eyebrow or context label
-  - page title
-  - short supporting description
-  - right-aligned actions
-- Keep the title short and direct.
-- Do not stack multiple competing title blocks in the same view.
-- Use `DSSectionHeader` for repeatable section headers whenever practical.
+### Cards
 
-## Cards
+- Use neutral surfaces.
+- Keep cards dense enough to scan without unnecessary scrolling.
+- Avoid nested cards unless the child is a repeated item, modal body, or framed tool.
+- Prefer `DSCard` over page-specific card markup for new dashboard surfaces.
 
-- Use `DSCard` for standard dashboard cards and repeated content blocks.
-- Use a consistent radius, subtle border, and restrained shadow.
-- Keep cards dense enough to scan without forcing unnecessary scrolling.
-- Avoid nested cards unless the child card is a repeated item, a modal body, or a genuine framed tool.
-- Prefer `DSCard` over page-specific `Card` markup for new dashboard surfaces.
+### KPI cards
 
-## KPI Cards
-
-- Use `DSKpiCard` for top-level metrics and summary cards.
-- KPI cards should show:
-  - label
-  - value
-  - optional detail
-  - optional trend or tone
+- Show label, value, and optional detail.
 - Keep KPI grids responsive:
   - 1 column on narrow screens
   - 2 columns on tablets
   - 3 or 4 columns on desktop when space allows
 - KPI cards should be readable at a glance and not depend on hover.
 
-## Buttons
-
-- Use the smallest button variant that supports the action clearly.
-- Button hierarchy:
-  - default: primary action
-  - secondary: supporting action
-  - outline: neutral action
-  - ghost: low-emphasis navigation or utility
-  - destructive: removal, cancellation, or irreversible actions
-- Buttons must remain readable before hover.
-- Disabled buttons must still communicate state clearly.
-- Prefer icon + label for actions that repeat across workflows.
-- Use icon-only buttons only when the action is obvious and a tooltip is available.
-
-## Tables and Lists
+### Tables and lists
 
 - Use `DSTableShell` for dense operational tables and queues.
 - Table headers should be concise and aligned with the most important fields.
 - Keep row height compact but readable.
-- Provide a clear empty state when a table has no data.
-- Use row actions sparingly and keep primary actions visible.
-- If a table becomes too dense for mobile, switch to stacked cards on small screens rather than forcing horizontal scrolling.
+- If a table becomes too dense for mobile, switch to stacked cards on small screens.
 
-## Forms
+### Forms
 
 - Use a simple vertical form layout by default.
-- Use two-column fields only for short paired inputs such as first/last name or city/state.
+- Use two-column fields only for short paired inputs.
 - Keep labels visible and concise.
 - Place helper text directly under the field it supports.
-- Group related fields, but avoid deep nesting.
-- Keep required and optional fields clear.
-- Make validation messages specific and local to the field when possible.
+- Keep validation local and specific.
 
-## Dialogs, Drawers, and Sheets
+### Dialogs, drawers, and sheets
 
 - Use dialogs for short confirmations and small forms.
-- Use sheets or drawers for detail views and longer task flows that should preserve context.
+- Use sheets or drawers for detail views and longer task flows.
 - Every drawer or sheet should have:
   - a clear title
   - a visible close or back action
   - an obvious route back to the list or queue
 - Do not trap the user in a detail panel.
-- Keep overlay and escape-to-close behavior enabled unless there is a specific operational reason not to.
-
-## Status Chips
-
-- Use `DSStatusChip` for recurring operational states.
-- Tone mapping should stay semantic:
-  - success: complete, active, delivered, approved
-  - warning: pending, review needed, low stock
-  - danger: failed, issue, canceled, rejected
-  - info: in progress, queued, informational
-  - neutral: inactive, archived, unknown
-  - accent: platform-specific emphasis
-- Do not create new status colors per page unless there is a real semantic need.
-
-## Loading States
-
-- Use skeletons or a clearly labeled loading state for long fetches.
-- Keep loading affordances consistent inside the same page family.
-- Avoid empty spinners without context on large pages.
-
-## Empty States
-
-- Empty states should explain:
-  - what is missing
-  - why it may be missing
-  - what the user can do next
-- Keep empty states concise.
-- Use a single primary action when a next step exists.
-
-## Error States
-
-- Error states should be visible and actionable.
-- Show the problem in plain language.
-- Avoid burying errors in toasts alone when the page cannot function.
-- Do not use red for everything; reserve destructive styling for actual failures or irreversible actions.
-
-## Mobile Behavior
-
-- Mobile layouts should remain functional without horizontal scrolling in core workflows.
-- Collapse wide dashboards into stacked sections when needed.
-- Keep primary actions reachable without excessive scrolling.
-- Favor simple row stacking over cramped multi-column layouts on smaller screens.
-
-## Accessibility and Contrast
-
-- Maintain strong contrast in light and dark themes.
-- No dark blue text on slate or dark cards.
-- Use bright, readable colors for text and status chips on dark surfaces.
-- Disabled controls must still read as controls.
-- Focus states must remain visible.
-- Do not use color alone to indicate state when text or icon support is needed.
-
-## Dark / Slate Color Use
-
-- Dark surfaces should use:
-  - white
-  - muted white
-  - bright blue
-  - green
-  - amber
-  - red
-- Avoid low-contrast navy or dark blue text on slate backgrounds.
-- Use accent colors sparingly and with purpose.
 
 ## Operational Color Philosophy
 
@@ -210,7 +135,7 @@ Color communicates operational meaning, not decoration.
 - Never require hover or text selection to reveal content.
 - Avoid decorative gradients and full-card color fills unless there is a compelling product reason.
 
-Semantic meanings:
+### Semantic meaning
 
 - Green = completed / healthy
 - Amber = waiting / pending
@@ -219,19 +144,93 @@ Semantic meanings:
 - Red = needs attention / error
 - Slate = inactive / archived / canceled
 
-## Shared Component Guidance
+### Usage rules
 
-Prefer these shared primitives for new work:
+- Use semantic color on chips, counts, icons, active indicators, and progress states.
+- Keep containers neutral.
+- Keep labels readable before hover.
+- Avoid using color fills for entire cards unless the card itself is the semantic indicator.
 
-- `DSCard`
-- `DSKpiCard`
-- `DSSectionHeader`
-- `DSStatusChip`
-- `DSTableShell`
+## Surface Hierarchy
 
-Use shadcn/ui primitives when the interaction is simple and the shared design-system wrapper does not already exist.
+The visual stack should read in this order:
 
-## Refactor Guidance
+1. Page shell
+2. Neutral card or panel
+3. Section content
+4. Operational data
+5. Semantic chip or accent
+
+### Surface rules
+
+- Card and panel surfaces should usually be neutral slate.
+- Light surfaces are acceptable only where the theme intentionally calls for them.
+- Dark surfaces should use the DS token set rather than hard-coded page colors.
+- If a surface is semantic, it should be obviously intentional and narrow in scope.
+
+### Dark / slate color use
+
+- Dark surfaces should use:
+  - white
+  - muted white
+  - bright blue
+  - green
+  - amber
+  - red
+- Avoid low-contrast navy or dark blue text on slate backgrounds.
+- Use accent colors sparingly and with purpose.
+
+## Role-Based Experience Design
+
+Different workspaces have different presentation priorities, but the shared system should stay consistent.
+
+### Admin
+
+- Admin surfaces use the Enterprise Slate Workspace.
+- Admin pages should default to neutral card surfaces with semantic accents.
+- Operational data and table content should remain bright and readable.
+
+### Driver
+
+- Driver pages may be more utility-heavy, but they should still follow the same readability and spacing rules.
+- Operational actions should remain obvious and readable in both light and dark contexts.
+
+### Owner
+
+- Owner pages should stay professional and task-focused.
+- Financial and operational data should be readable without hover or selection.
+
+### Public / auth
+
+- Public and auth pages can be lighter or more promotional when appropriate.
+- They still must respect readability, hierarchy, and contrast.
+
+## Accessibility Standards
+
+- Maintain strong contrast in light and dark themes.
+- No dark blue text on slate or dark cards.
+- Use bright, readable colors for text and status chips on dark surfaces.
+- Disabled controls must still read as controls.
+- Focus states must remain visible.
+- Do not use color alone to indicate state when text or icon support is needed.
+- Never require hover or text selection to understand content.
+
+## Definition of Done
+
+### V2 Compliant
+
+A surface is V2 compliant when it:
+
+- uses the documented token roles
+- uses shared DS primitives where practical
+- keeps layout compact and task-focused
+- preserves neutral surfaces with semantic accents only
+- remains readable before hover
+- passes contrast expectations in the Enterprise Slate Workspace
+- does not introduce page-specific design drift
+- does not change business logic, API behavior, or routing
+
+### Refactor guidance
 
 - New admin and dashboard work should use DS primitives by default.
 - Existing pages should be converted gradually, one page group per commit.
@@ -243,28 +242,15 @@ Use shadcn/ui primitives when the interaction is simple and the shared design-sy
   - owner pages
   - public/auth pages
 
-## Phase Plan
+## Change Log
 
-### Phase 1
-- Document the UI standard.
-- Keep tokens and primitives as the source of truth.
-- Avoid runtime behavior changes.
+### V2
 
-### Phase 2
-- Tighten shared component behavior and defaults only if needed.
-- Normalize card, header, chip, and table patterns.
+- Renamed the document to **CreteXchange Design System V2**.
+- Added the Enterprise Slate Workspace philosophy.
+- Added explicit semantic text roles.
+- Added operational color philosophy and surface hierarchy guidance.
+- Added role-based experience design guidance.
+- Added a V2 compliance definition for future work.
+- Preserved the prior guidance on typography, spacing, cards, tables, forms, dialogs, status chips, loading, empty, error, accessibility, and refactor strategy.
 
-### Phase 3
-- Apply the standard to admin pages first.
-
-### Phase 4
-- Apply the standard to driver and owner dashboards and operational pages.
-
-### Phase 5
-- Apply the standard to public/auth pages.
-
-## Notes for Future Work
-
-- Do not invent one-off patterns for every page.
-- Prefer composition from the shared system.
-- If a page needs a special-case layout, document why and keep the exception small.
