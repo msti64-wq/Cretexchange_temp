@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,25 +15,25 @@ import { DSCard, DSSectionHeader, DSStatusChip } from "@/components/design-syste
 function getNotificationIcon(type: string) {
   switch (type) {
     case 'lottery_winner':
-      return <Trophy className="w-5 h-5 text-yellow-500" />;
+      return <Trophy className="w-5 h-5 text-amber-500" />;
     case 'lottery_drawing_complete':
-      return <Ticket className="w-5 h-5 text-purple-500" />;
+      return <Ticket className="w-5 h-5 text-primary" />;
     case 'lottery_entry':
-      return <Ticket className="w-5 h-5 text-indigo-500" />;
+      return <Ticket className="w-5 h-5 text-foreground/70" />;
     case 'payment':
     case 'payment_succeeded':
-      return <DollarSign className="w-5 h-5 text-green-500" />;
+      return <DollarSign className="w-5 h-5 text-emerald-500" />;
     case 'warning':
     case 'low_balance':
-      return <AlertTriangle className="w-5 h-5 text-orange-500" />;
+      return <AlertTriangle className="w-5 h-5 text-amber-500" />;
     case 'error':
       return <AlertTriangle className="w-5 h-5 text-red-500" />;
     case 'success':
-      return <Check className="w-5 h-5 text-green-500" />;
+      return <Check className="w-5 h-5 text-emerald-500" />;
     case 'announcement':
-      return <Megaphone className="w-5 h-5 text-blue-500" />;
+      return <Megaphone className="w-5 h-5 text-primary" />;
     default:
-      return <Info className="w-5 h-5 text-blue-500" />;
+      return <Info className="w-5 h-5 text-foreground/70" />;
   }
 }
 
@@ -40,28 +41,52 @@ function getNotificationColor(type: string, isRead: boolean) {
   const base = (() => {
     switch (type) {
       case 'lottery_winner':
-        return 'bg-yellow-50 dark:bg-yellow-950/40 border-yellow-200 dark:border-yellow-800';
+        return isRead
+          ? 'border-border/70 bg-card/80'
+          : 'border-amber-500/30 bg-card/90 ring-1 ring-amber-500/15';
       case 'lottery_drawing_complete':
       case 'lottery_entry':
-        return 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800';
+        return isRead
+          ? 'border-border/70 bg-card/80'
+          : 'border-primary/30 bg-card/90 ring-1 ring-primary/15';
       case 'payment':
       case 'payment_succeeded':
       case 'success':
-        return 'bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-800';
+        return isRead
+          ? 'border-border/70 bg-card/80'
+          : 'border-emerald-500/30 bg-card/90 ring-1 ring-emerald-500/15';
       case 'warning':
       case 'low_balance':
-        return 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800';
+        return isRead
+          ? 'border-border/70 bg-card/80'
+          : 'border-amber-500/30 bg-card/90 ring-1 ring-amber-500/15';
       case 'error':
-        return 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800';
+        return isRead
+          ? 'border-border/70 bg-card/80'
+          : 'border-red-500/30 bg-card/90 ring-1 ring-red-500/15';
       default:
-        return 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800';
+        return isRead
+          ? 'border-border/70 bg-card/80'
+          : 'border-primary/30 bg-card/90 ring-1 ring-primary/15';
     }
   })();
-  return `${base} ${isRead ? 'opacity-60' : ''}`;
+  return base;
 }
 
 export default function DriverNotifications() {
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDarkClass = root.classList.contains("dark");
+    root.classList.add("dark");
+
+    return () => {
+      if (!hadDarkClass) {
+        root.classList.remove("dark");
+      }
+    };
+  }, []);
 
   const { data: notifications = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/notifications'],
@@ -88,21 +113,21 @@ export default function DriverNotifications() {
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
-      <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
+    <div className="dark min-h-screen bg-background pb-24 text-foreground">
+      <header className="border-b border-border/70 bg-card/95 p-4">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setLocation('/')}
-              className="text-white hover:bg-white/20 p-2"
+              className="border-border/70 bg-background/60 p-2 text-foreground hover:bg-background hover:text-foreground"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="font-semibold text-lg">Message Center</h1>
-              <p className="text-white/80 text-sm">
+              <h1 className="font-semibold text-lg text-foreground">Message Center</h1>
+              <p className="text-sm text-foreground/75">
                 {unreadCount > 0 ? `${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}` : 'All caught up'}
               </p>
             </div>
@@ -112,7 +137,7 @@ export default function DriverNotifications() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-white hover:bg-white/20 text-xs gap-1"
+                className="text-xs gap-1 border-border/70 bg-background/60 text-foreground hover:bg-background hover:text-foreground"
                 onClick={() => markAllReadMutation.mutate()}
                 disabled={markAllReadMutation.isPending}
               >
@@ -132,20 +157,20 @@ export default function DriverNotifications() {
         />
         {isLoading ? (
           [1, 2, 3].map(i => (
-            <DSCard key={i} className="animate-pulse">
+            <DSCard key={i} className="animate-pulse border-border/70 bg-card/90">
               <CardContent className="p-4">
-                <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded" />
+                <div className="h-20 rounded-2xl bg-muted/70" />
               </CardContent>
             </DSCard>
           ))
         ) : notifications.length === 0 ? (
-          <DSCard padding="lg">
+          <DSCard padding="lg" className="border-border/70 bg-card/90">
             <CardContent className="p-12 text-center">
-              <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+              <Bell className="w-12 h-12 text-foreground/65 mx-auto mb-4" />
+              <h3 className="mb-2 text-lg font-medium text-foreground">
                 No messages yet
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-foreground/70">
                 You'll see notifications here about lottery results, payments, and account updates.
               </p>
             </CardContent>
@@ -163,20 +188,20 @@ export default function DriverNotifications() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 leading-snug">
+                      <h3 className="font-semibold leading-snug text-foreground">
                         {notification.title}
                       </h3>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {!notification.isRead && (
-                          <DSStatusChip tone="info" className="text-xs">New</DSStatusChip>
+                          <DSStatusChip tone="warning" className="text-xs">New</DSStatusChip>
                         )}
                       </div>
                     </div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 leading-relaxed">
+                    <p className="mb-2 text-sm leading-relaxed text-foreground/78">
                       {notification.message}
                     </p>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-xs text-foreground/65">
                         {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                       </span>
                       {!notification.isRead && (
@@ -185,7 +210,7 @@ export default function DriverNotifications() {
                           variant="outline"
                           onClick={() => markAsReadMutation.mutate(notification.id)}
                           disabled={markAsReadMutation.isPending}
-                          className="h-7 text-xs bg-white dark:bg-gray-800"
+                          className="h-7 border-border/70 bg-background/60 text-xs text-foreground hover:bg-background hover:text-foreground"
                         >
                           <Check className="w-3 h-3 mr-1" />
                           Mark read
