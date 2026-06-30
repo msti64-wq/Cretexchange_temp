@@ -171,6 +171,18 @@ export default function DriverWallet() {
     }
   }, [columnStatus, toast, previousIsOnboarded]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDarkClass = root.classList.contains("dark");
+    root.classList.add("dark");
+
+    return () => {
+      if (!hadDarkClass) {
+        root.classList.remove("dark");
+      }
+    };
+  }, []);
+
   const handleWithdrawal = () => {
     // Handle terms status loading and error states
     if (termsLoading) {
@@ -289,7 +301,7 @@ export default function DriverWallet() {
 
   if (balanceLoading || columnLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="dark min-h-screen bg-background text-foreground">
         <DriverHeader />
         <div className="p-4 space-y-4">
           <Skeleton className="h-32 rounded-lg" />
@@ -301,7 +313,7 @@ export default function DriverWallet() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="dark min-h-screen bg-background pb-20 text-foreground">
       <DriverHeader />
 
       <div className="p-4 space-y-6">
