@@ -1030,7 +1030,7 @@ export default function AdminLottery() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+              <div className="space-y-2 rounded-lg border border-border/60 bg-card p-3">
                 <div className="flex items-center justify-between gap-2">
                   <Label className="text-sm font-semibold">Tier Quantities</Label>
                   <DSStatusChip tone="info" dot>
@@ -1041,7 +1041,7 @@ export default function AdminLottery() {
                   Configure how many reward winners each prize tier should produce.
                 </p>
               </div>
-              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+              <div className="space-y-3 rounded-lg border border-border/60 bg-card p-3">
                 <div className="flex items-center gap-3">
                   <Checkbox
                     id="allow-duplicate-winner-driver"
@@ -1136,7 +1136,7 @@ export default function AdminLottery() {
                     </div>
                   </div>
                   {tier.prizeSource === "catalog" && (
-                    <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                    <div className="space-y-3 rounded-lg border border-border/60 bg-card p-3">
                       <div className="space-y-2">
                         <Label htmlFor={`tier-catalog-${index}`} className="text-xs font-semibold text-muted-foreground">
                           Catalog Prize
@@ -1198,7 +1198,7 @@ export default function AdminLottery() {
                           </div>
                         );
                       })() : (
-                        <div className="rounded-lg border border-dashed border-border/70 bg-muted/10 p-3 text-sm text-muted-foreground">
+                        <div className="rounded-lg border border-dashed border-border/70 bg-card p-3 text-sm text-muted-foreground">
                           Select an active prize catalog item to populate this tier.
                         </div>
                       )}
@@ -1388,7 +1388,7 @@ export default function AdminLottery() {
             </CardHeader>
             <CardContent className="space-y-3">
               {existingDrawing.winners?.length ? existingDrawing.winners.map((winner: any) => (
-                <div key={`${winner.placeIndex}-${winner.driverId}`} className="flex items-start justify-between rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
+                <div key={`${winner.placeIndex}-${winner.driverId}`} className="flex items-start justify-between rounded-lg border border-border/70 bg-card px-3 py-2">
                   <div className="min-w-0">
                     <p className="font-semibold text-sm" style={semanticTextStyles.operationalText}>
                       {winner.placeIndex === 1 ? '🥇 1st' : winner.placeIndex === 2 ? '🥈 2nd' : winner.placeIndex === 3 ? '🥉 3rd' : `#${winner.placeIndex}`} — {winner.driverName}
@@ -1406,7 +1406,7 @@ export default function AdminLottery() {
                 { place: '🥈 2nd', name: existingDrawing.secondPlaceDriverName, ticket: existingDrawing.secondPlaceTicketNumber, pref: existingDrawing.secondPlacePayoutPreference, prize: existingDrawing.secondPrize, delivered: existingDrawing.secondPlaceDelivered },
                 { place: '🥉 3rd', name: existingDrawing.thirdPlaceDriverName, ticket: existingDrawing.thirdPlaceTicketNumber, pref: existingDrawing.thirdPlacePayoutPreference, prize: existingDrawing.thirdPrize, delivered: existingDrawing.thirdPlaceDelivered },
               ].filter(w => w.name).map((winner) => (
-                <div key={winner.place} className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
+                <div key={winner.place} className="flex items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2">
                   <div>
                     <p className="font-semibold text-sm" style={semanticTextStyles.operationalText}>{winner.place} — {winner.name}</p>
                     <p className="text-xs font-mono" style={semanticTextStyles.metadataText}>{winner.ticket}</p>
@@ -1422,7 +1422,7 @@ export default function AdminLottery() {
           </Card>
         )}
 
-        <Card>
+        <Card className="border-border/70 bg-card shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <DSSectionHeader
@@ -1440,29 +1440,29 @@ export default function AdminLottery() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+              <div className="rounded-lg border border-border/70 bg-card p-3">
                 <p className="text-xs font-medium text-muted-foreground">Catalog Items</p>
                 <p className="mt-1 text-2xl font-bold text-foreground">{prizeCatalogCounts.total}</p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+              <div className="rounded-lg border border-border/70 bg-card p-3">
                 <p className="text-xs font-medium text-muted-foreground">Active</p>
                 <p className="mt-1 text-2xl font-bold text-emerald-500">{prizeCatalogCounts.active}</p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+              <div className="rounded-lg border border-border/70 bg-card p-3">
                 <p className="text-xs font-medium text-muted-foreground">Low Inventory</p>
                 <p className="mt-1 text-2xl font-bold text-amber-500">{prizeCatalogCounts.lowInventory}</p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+              <div className="rounded-lg border border-border/70 bg-card p-3">
                 <p className="text-xs font-medium text-muted-foreground">Out of Stock</p>
                 <p className="mt-1 text-2xl font-bold text-red-500">{prizeCatalogCounts.outOfStock}</p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+              <div className="rounded-lg border border-border/70 bg-card p-3">
                 <p className="text-xs font-medium text-muted-foreground">Unlimited</p>
                 <p className="mt-1 text-2xl font-bold text-sky-500">{prizeCatalogCounts.unlimited}</p>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center gap-2">
                 {[
                   { key: "all", label: "All" },
@@ -1676,7 +1676,7 @@ export default function AdminLottery() {
             )}
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <Card className="border-border/70 bg-muted/20">
+              <Card className="border-border/70 bg-card shadow-sm">
                 <CardHeader className="pb-2">
                   <DSSectionHeader
                     eyebrow="Selected prize"
@@ -1703,28 +1703,28 @@ export default function AdminLottery() {
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-lg border border-border/70 bg-background/80 p-3">
+                        <div className="rounded-lg border border-border/70 bg-card p-3">
                           <p className="text-xs font-medium text-muted-foreground">Available Quantity</p>
                           <p className="mt-1 text-2xl font-bold text-foreground">
                             {selectedCatalog.isUnlimited ? "Unlimited" : selectedCatalogAvailableQuantity}
                           </p>
                         </div>
-                        <div className="rounded-lg border border-border/70 bg-background/80 p-3">
+                        <div className="rounded-lg border border-border/70 bg-card p-3">
                           <p className="text-xs font-medium text-muted-foreground">Reserved Quantity</p>
                           <p className="mt-1 text-2xl font-bold text-sky-500">{selectedCatalog.reservedQuantity}</p>
                         </div>
-                        <div className="rounded-lg border border-border/70 bg-background/80 p-3">
+                        <div className="rounded-lg border border-border/70 bg-card p-3">
                           <p className="text-xs font-medium text-muted-foreground">Total Inventory</p>
                           <p className="mt-1 text-lg font-semibold text-foreground">{selectedCatalog.inventoryQuantity}</p>
                         </div>
-                        <div className="rounded-lg border border-border/70 bg-background/80 p-3">
+                        <div className="rounded-lg border border-border/70 bg-card p-3">
                           <p className="text-xs font-medium text-muted-foreground">Minimum Alert</p>
                           <p className="mt-1 text-lg font-semibold text-amber-500">{selectedCatalog.minimumInventoryAlert}</p>
                         </div>
                       </div>
 
                       {selectedCatalogSummary?.lastAdjustment && (
-                        <div className="rounded-lg border border-border/70 bg-background/80 p-3 text-sm text-foreground">
+                        <div className="rounded-lg border border-border/70 bg-card p-3 text-sm text-foreground">
                           <p className="font-semibold">Most Recent Adjustment</p>
                           <p className="mt-1 text-muted-foreground">
                             {selectedCatalogSummary.lastAdjustment.adjustmentType.replace(/_/g, " ")} · {selectedCatalogSummary.lastAdjustment.quantityDelta > 0 ? "+" : ""}
@@ -1737,7 +1737,7 @@ export default function AdminLottery() {
                         </div>
                       )}
 
-                      <div className="space-y-2 rounded-lg border border-border/70 bg-background/80 p-3">
+                      <div className="space-y-2 rounded-lg border border-border/70 bg-card p-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <Button
                             size="sm"
@@ -1835,7 +1835,7 @@ export default function AdminLottery() {
                 </CardContent>
               </Card>
 
-              <Card className="border-border/70 bg-muted/20">
+              <Card className="border-border/70 bg-card shadow-sm">
                 <CardHeader className="pb-2">
                   <DSSectionHeader
                     eyebrow="Operations"
@@ -1844,7 +1844,7 @@ export default function AdminLottery() {
                   />
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="rounded-lg border border-border/70 bg-background/80 p-3 text-sm text-foreground">
+                  <div className="rounded-lg border border-border/70 bg-card p-3 text-sm text-foreground">
                     <p className="font-semibold">Behavior rules</p>
                     <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                       <li>• Inventory may be zero.</li>
@@ -1853,7 +1853,7 @@ export default function AdminLottery() {
                       <li>• Inactive prizes remain visible for history and operational review.</li>
                     </ul>
                   </div>
-                  <div className="rounded-lg border border-border/70 bg-background/80 p-3 text-sm text-foreground">
+                  <div className="rounded-lg border border-border/70 bg-card p-3 text-sm text-foreground">
                     <p className="font-semibold">Inventory warnings</p>
                     <p className="mt-2 text-muted-foreground">
                       Low inventory and out-of-stock states are visual warnings only in this phase.
@@ -1865,7 +1865,7 @@ export default function AdminLottery() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border/70 bg-card shadow-sm">
           <CardHeader className="pb-2">
             <DSSectionHeader
               eyebrow="History"
@@ -1883,7 +1883,7 @@ export default function AdminLottery() {
             ) : drawingHistory && drawingHistory.length > 0 ? (
               <div className="space-y-4">
                 {drawingHistory.map((drawing: any) => (
-                  <div key={drawing.id} className="rounded-lg border border-border/70 bg-muted/20 p-4">
+                  <div key={drawing.id} className="rounded-lg border border-border/70 bg-card p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <p className="text-sm font-semibold text-foreground">
@@ -1901,7 +1901,7 @@ export default function AdminLottery() {
                     </div>
                     <div className="mt-3 space-y-2">
                       {(drawing.winners || []).map((winner: any) => (
-                        <div key={`${drawing.id}-${winner.placeIndex}`} className="flex items-start justify-between rounded-md bg-background/80 px-3 py-2">
+                        <div key={`${drawing.id}-${winner.placeIndex}`} className="flex items-start justify-between rounded-md border border-border/70 bg-card px-3 py-2">
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-foreground">
                               {winner.placeIndex === 1 ? '🥇 1st' : winner.placeIndex === 2 ? '🥈 2nd' : winner.placeIndex === 3 ? '🥉 3rd' : `#${winner.placeIndex}`} — {winner.driverName}
@@ -1927,7 +1927,7 @@ export default function AdminLottery() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border/70 bg-card shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <DSSectionHeader
               eyebrow="Leaderboard"
@@ -2004,7 +2004,7 @@ export default function AdminLottery() {
 
         {/* Individual Entry Ledger */}
         {totals && totals.length > 0 && (
-          <Card>
+        <Card className="border-border/70 bg-card shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <DSSectionHeader
@@ -2266,7 +2266,7 @@ export default function AdminLottery() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+            <div className="rounded-lg border border-border/70 bg-card p-3">
               <p className="text-sm font-semibold text-foreground">{selectedCatalog?.title || "Selected prize"}</p>
               <p className="text-xs text-muted-foreground">
                 Current available quantity: {selectedCatalog?.isUnlimited ? "Unlimited" : selectedCatalogAvailableQuantity}
