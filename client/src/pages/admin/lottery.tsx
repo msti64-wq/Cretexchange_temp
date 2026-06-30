@@ -896,7 +896,7 @@ export default function AdminLottery() {
             title={<span style={semanticTextStyles.pageTitle}>Driver Rewards Program</span>}
             description="Monthly Prize Drawings - reward entries reset each month"
           />
-          <Button asChild variant="outline" className="border-border bg-muted/20 text-foreground hover:bg-muted hover:text-foreground">
+          <Button asChild variant="outline" className="border-border bg-card text-foreground hover:bg-muted hover:text-foreground">
             <Link href="/rewards/operations">
               <ArrowRight className="mr-2 h-4 w-4" />
               Rewards Operations Center
@@ -1101,7 +1101,7 @@ export default function AdminLottery() {
                       <Button
                         type="button"
                         variant={tier.prizeSource === "manual" ? "default" : "outline"}
-                        className={tier.prizeSource === "manual" ? "bg-sky-600 text-white hover:bg-sky-700" : "border-border bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-900 dark:text-white"}
+                        className={tier.prizeSource === "manual" ? "border-border bg-card text-sky-400 hover:bg-muted" : "border-border bg-card text-foreground hover:bg-muted"}
                         onClick={() => setPrizeTiers((current) => current.map((currentTier, currentIndex) => (
                           currentIndex === index
                             ? { ...currentTier, prizeSource: "manual", catalogPrizeId: null }
@@ -1114,7 +1114,7 @@ export default function AdminLottery() {
                       <Button
                         type="button"
                         variant={tier.prizeSource === "catalog" ? "default" : "outline"}
-                        className={tier.prizeSource === "catalog" ? "bg-emerald-600 text-white hover:bg-emerald-700" : "border-border bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-900 dark:text-white"}
+                        className={tier.prizeSource === "catalog" ? "border-border bg-card text-emerald-400 hover:bg-muted" : "border-border bg-card text-foreground hover:bg-muted"}
                         onClick={() => {
                           const firstActiveCatalog = (prizeCatalog || []).find((item) => item.isActive);
                           setPrizeTiers((current) => current.map((currentTier, currentIndex) => (
@@ -1164,10 +1164,10 @@ export default function AdminLottery() {
                         const catalogItem = getTierCatalogItem(tier)!;
                         const inventoryMetrics = getCatalogInventoryMetrics(catalogItem);
                         return (
-                          <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-950/40 p-3">
+                          <div className="space-y-3 rounded-lg border border-border bg-card p-3">
                             <div className="flex flex-wrap items-center gap-2">
                               <Badge className="bg-blue-600 text-white hover:bg-blue-700">Catalog Prize</Badge>
-                              <Badge variant="outline" className="border-slate-700 text-white">
+                              <Badge variant="outline" className="border-border bg-card text-foreground">
                                 {PRIZE_TYPE_LABELS[catalogItem.prizeType] || catalogItem.prizeType}
                               </Badge>
                               {catalogItem.isUnlimited ? (
@@ -1189,7 +1189,7 @@ export default function AdminLottery() {
                               <p className="text-white sm:col-span-2"><span className="font-semibold">Fulfillment Instructions:</span> {catalogItem.fulfillmentInstructions || "—"}</p>
                             </div>
                             {(!catalogItem.isActive || inventoryMetrics.isOutOfStock || inventoryMetrics.isLowInventory) && (
-                              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                              <div className="rounded-md border border-amber-300 border-l-4 border-l-amber-500 bg-card px-3 py-2 text-xs font-medium text-foreground/90 dark:border-amber-800 dark:border-l-amber-500 dark:bg-card dark:text-foreground/90">
                                 {!catalogItem.isActive && "This catalog prize is inactive and should not be used for future drawings. "}
                                 {inventoryMetrics.isOutOfStock && !catalogItem.isUnlimited && "This prize is out of stock. "}
                                 {!inventoryMetrics.isOutOfStock && inventoryMetrics.isLowInventory && !catalogItem.isUnlimited && `Low inventory: only ${inventoryMetrics.availableQuantity} available.`}
@@ -1266,18 +1266,18 @@ export default function AdminLottery() {
             </div>
 
             {runDrawingDisabledReason && (
-              <div className="rounded-lg border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100">
+              <div className="rounded-lg border border-blue-300 border-l-4 border-l-blue-500 bg-card p-3 text-sm text-foreground/90 dark:border-blue-800 dark:border-l-blue-500 dark:bg-card dark:text-foreground/90">
                 {runDrawingDisabledReason}
               </div>
             )}
             {hasPartialDrawing && !selectedDrawing && previewIsComplete && (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+              <div className="rounded-lg border border-amber-300 border-l-4 border-l-amber-500 bg-card p-3 text-sm text-foreground/90 dark:border-amber-800 dark:border-l-amber-500 dark:bg-card dark:text-foreground/90">
                 A partial drawing exists for this month. Running the official drawing will clean up the incomplete record and replace it with a completed result.
               </div>
             )}
 
             {isCurrentMonth && !selectedDrawing && (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+              <div className="rounded-lg border border-amber-300 border-l-4 border-l-amber-500 bg-card p-3 text-sm text-foreground/90 dark:border-amber-800 dark:border-l-amber-500 dark:bg-card dark:text-foreground/90">
                 The current month can still be previewed. Run Official Drawing is available once preview succeeds and valid winners exist.
               </div>
             )}
@@ -1305,7 +1305,7 @@ export default function AdminLottery() {
               </div>
 
               {previewResult.warnings?.length > 0 && (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                <div className="rounded-lg border border-amber-300 border-l-4 border-l-amber-500 bg-card p-3 text-sm text-foreground/90 dark:border-amber-800 dark:border-l-amber-500 dark:bg-card dark:text-foreground/90">
                   <ul className="list-disc space-y-1 pl-5">
                     {previewResult.warnings.map((warning: string) => (
                       <li key={warning}>{warning}</li>
@@ -1317,7 +1317,7 @@ export default function AdminLottery() {
               {previewResult.selectedWinners?.length > 0 ? (
                 <DSTableShell density="compact">
                   <Table>
-                  <TableHeader className="bg-muted/30">
+                  <TableHeader className="bg-card/95">
                     <TableRow>
                       <TableHead>Place / Tier</TableHead>
                       <TableHead>Reward Winner</TableHead>
@@ -1474,18 +1474,18 @@ export default function AdminLottery() {
                 ].map((filter) => {
                   const active = catalogStatusFilter === filter.key;
                   return (
-                    <Button
-                      key={filter.key}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className={
-                        active
-                          ? "border-orange-500 bg-orange-500 text-white hover:bg-orange-600"
-                          : "border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"
-                      }
-                      onClick={() => setCatalogStatusFilter(filter.key as any)}
-                    >
+                      <Button
+                        key={filter.key}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={
+                          active
+                          ? "border-orange-500 bg-card text-orange-400 hover:bg-muted"
+                          : "border-border bg-card text-foreground hover:bg-muted"
+                        }
+                        onClick={() => setCatalogStatusFilter(filter.key as any)}
+                      >
                       {filter.label}
                     </Button>
                   );
@@ -1494,7 +1494,7 @@ export default function AdminLottery() {
               <div className="flex flex-wrap items-center gap-3">
                 <div className="w-56">
                   <Select value={catalogTypeFilter} onValueChange={setCatalogTypeFilter}>
-                    <SelectTrigger className="bg-background">
+                    <SelectTrigger className="bg-card">
                       <SelectValue placeholder="Prize Type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1513,7 +1513,7 @@ export default function AdminLottery() {
                     setCatalogStatusFilter("all");
                     setCatalogTypeFilter("all");
                   }}
-                  className="border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"
+                  className="border-border bg-card text-foreground hover:bg-muted"
                 >
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Reset Filters
@@ -1530,7 +1530,7 @@ export default function AdminLottery() {
             ) : filteredPrizeCatalog.length > 0 ? (
               <div className="overflow-hidden rounded-lg border border-border/70">
                 <Table>
-                  <TableHeader className="bg-muted/40">
+                  <TableHeader className="bg-card/95">
                     <TableRow>
                       <TableHead>Prize</TableHead>
                       <TableHead>Type</TableHead>
@@ -1553,7 +1553,7 @@ export default function AdminLottery() {
                         <TableRow
                           key={item.id}
                           className={[
-                            rowSelected ? "bg-sky-950/20 dark:bg-sky-950/30" : "",
+                            rowSelected ? "border-l-2 border-l-sky-500 bg-card" : "",
                             !item.isActive ? "opacity-80" : "",
                           ].filter(Boolean).join(" ")}
                         >
@@ -1564,7 +1564,7 @@ export default function AdminLottery() {
                               onClick={() => openHistoryView(item)}
                             >
                               <div className="flex items-start gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white dark:bg-slate-800">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-foreground">
                                   <Gift className="h-5 w-5" />
                                 </div>
                                 <div className="min-w-0 space-y-1">
@@ -1578,7 +1578,7 @@ export default function AdminLottery() {
                             </button>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="border-slate-700 bg-slate-900/30 text-white dark:border-slate-600 dark:bg-slate-800/40">
+                            <Badge variant="outline" className="border-border bg-card text-foreground">
                               {PRIZE_TYPE_LABELS[item.prizeType] || item.prizeType}
                             </Badge>
                           </TableCell>
@@ -1592,10 +1592,10 @@ export default function AdminLottery() {
                                     {availableQuantity}
                                   </div>
                                   <div className="flex flex-wrap gap-1">
-                                    <Badge variant="outline" className="border-slate-700 bg-slate-900/30 text-white">
+                                    <Badge variant="outline" className="border-border bg-card text-foreground">
                                       Available
                                     </Badge>
-                                    <Badge variant="outline" className="border-slate-700 bg-slate-900/30 text-white">
+                                    <Badge variant="outline" className="border-border bg-card text-foreground">
                                       Reserved {item.reservedQuantity}
                                     </Badge>
                                   </div>
@@ -1628,7 +1628,7 @@ export default function AdminLottery() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"
+                                className="border-border bg-card text-foreground hover:bg-muted"
                                 onClick={() => openHistoryView(item)}
                               >
                                 <History className="mr-1 h-4 w-4" />
@@ -1637,7 +1637,7 @@ export default function AdminLottery() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"
+                                className="border-border bg-card text-foreground hover:bg-muted"
                                 onClick={() => openEditCatalogDialog(item)}
                               >
                                 <Pencil className="mr-1 h-4 w-4" />
@@ -1646,7 +1646,7 @@ export default function AdminLottery() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"
+                                className="border-border bg-card text-foreground hover:bg-muted"
                                 onClick={() => openInventoryDialog(item)}
                               >
                                 <RotateCcw className="mr-1 h-4 w-4" />
@@ -1654,7 +1654,7 @@ export default function AdminLottery() {
                               </Button>
                               <Button
                                 size="sm"
-                                className={item.isActive ? "bg-slate-700 text-white hover:bg-slate-800" : "bg-emerald-600 text-white hover:bg-emerald-700"}
+                                className={item.isActive ? "border-border bg-card text-slate-200 hover:bg-muted" : "border-emerald-500 bg-card text-emerald-400 hover:bg-muted"}
                                 onClick={() => statusMutation.mutate({ id: item.id, isActive: !item.isActive })}
                               >
                                 {item.isActive ? "Deactivate" : "Activate"}
@@ -1742,7 +1742,7 @@ export default function AdminLottery() {
                           <Button
                             size="sm"
                             onClick={() => openEditCatalogDialog(selectedCatalog)}
-                            className="bg-slate-700 text-white hover:bg-slate-800"
+                            className="border-border bg-card text-foreground hover:bg-muted"
                           >
                             <Pencil className="mr-1 h-4 w-4" />
                             Edit
@@ -1750,7 +1750,7 @@ export default function AdminLottery() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-slate-700 bg-slate-900/30 text-white hover:bg-slate-800 dark:border-slate-600 dark:bg-slate-800/40 dark:text-white"
+                            className="border-border bg-card text-foreground hover:bg-muted"
                             onClick={() => openInventoryDialog(selectedCatalog)}
                           >
                             <RotateCcw className="mr-1 h-4 w-4" />
@@ -1758,7 +1758,7 @@ export default function AdminLottery() {
                           </Button>
                           <Button
                             size="sm"
-                            className={selectedCatalog.isActive ? "bg-slate-700 text-white hover:bg-slate-800" : "bg-emerald-600 text-white hover:bg-emerald-700"}
+                            className={selectedCatalog.isActive ? "border-border bg-card text-slate-200 hover:bg-muted" : "border-emerald-500 bg-card text-emerald-400 hover:bg-muted"}
                             onClick={() => statusMutation.mutate({ id: selectedCatalog.id, isActive: !selectedCatalog.isActive })}
                           >
                             {selectedCatalog.isActive ? "Deactivate" : "Activate"}
@@ -1776,14 +1776,14 @@ export default function AdminLottery() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-2">
                           <h4 className="text-sm font-semibold text-foreground">Inventory Adjustment History</h4>
-                          <Badge variant="outline" className="border-slate-700 bg-slate-900/30 text-white dark:border-slate-600 dark:bg-slate-800/40">
+                          <Badge variant="outline" className="border-border bg-card text-foreground">
                             {selectedCatalogInventoryHistory.length} records
                           </Badge>
                         </div>
                         {selectedCatalogInventoryHistory.length > 0 ? (
                           <div className="overflow-hidden rounded-lg border border-border/70">
                             <Table>
-                              <TableHeader className="bg-muted/30">
+                              <TableHeader className="bg-card/95">
                                 <TableRow>
                                   <TableHead>Adjustment</TableHead>
                                   <TableHead>Change</TableHead>
@@ -2313,7 +2313,7 @@ export default function AdminLottery() {
               />
             </div>
 
-            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+            <div className="rounded-lg border border-amber-300 border-l-4 border-l-amber-500 bg-card p-3 text-sm text-foreground/90 dark:border-amber-800 dark:border-l-amber-500 dark:bg-card dark:text-foreground/90">
               Inventory adjustment is append-only. Final inventory cannot become negative.
             </div>
           </div>
@@ -2348,7 +2348,7 @@ export default function AdminLottery() {
           <div className="space-y-4 py-4">
             {/* Driver's payout preference */}
             {selectedDriver && (
-              <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 rounded-lg">
+              <div className="flex items-start gap-3 rounded-lg border border-amber-300 border-l-4 border-l-amber-500 bg-card p-3 dark:border-amber-700 dark:border-l-amber-500 dark:bg-card">
                 <Gift className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
