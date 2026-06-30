@@ -385,27 +385,28 @@ export default function DriverDashboard() {
           </DSCard>
 
         {/* Dashboard Snapshot */}
-        <section className="space-y-3">
-          <DSSectionHeader
-            eyebrow={t("driver.dashboard.dailyOperations")}
-            title={t("driver.dashboard.title")}
-            description={t("driver.dashboard.dailySubtitle", {
-              date: new Date().toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", year: "numeric" }),
-            })}
-            actions={
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-auto min-h-9 w-full !whitespace-normal sm:w-auto"
-                onClick={() => refetch()}
-                data-testid="button-refresh-dashboard"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                {t("driver.dashboard.refresh")}
-              </Button>
-            }
-          />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="space-y-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.16em]">
+                {t("driver.dashboard.dailyOperations")}
+              </p>
+              <h3 className="break-words text-sm font-semibold tracking-tight text-foreground">
+                {t("driver.dashboard.title")}
+              </h3>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-auto min-h-9 w-full !whitespace-normal sm:w-auto"
+              onClick={() => refetch()}
+              data-testid="button-refresh-dashboard"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {t("driver.dashboard.refresh")}
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
             <DSKpiCard
               label={t("driver.dashboard.siteVisits")}
               value={dailyStats?.visits || 0}
@@ -438,7 +439,7 @@ export default function DriverDashboard() {
         </section>
 
         {/* Today's Activity */}
-        <DSCard padding="lg" elevated>
+        <DSCard padding="sm" elevated>
           <DSSectionHeader
             title="Today's Activity"
             description="Today's washouts and earnings at a glance."
@@ -453,19 +454,33 @@ export default function DriverDashboard() {
                 {t("common.viewAll")}
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
-            }
-          />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <DSCard padding="sm">
-              <p className="break-words text-xs text-muted-foreground">{t("driver.dashboard.siteVisits")}</p>
-              <p className="break-words text-2xl font-semibold text-foreground" data-testid="text-today-visits">{dailyStats?.visits || 0}</p>
-              <p className="break-words text-xs text-muted-foreground">{t("driver.dashboard.completedToday")}</p>
-            </DSCard>
-            <DSCard padding="sm">
-              <p className="break-words text-xs text-muted-foreground">{t("driver.dashboard.todayEarnings")}</p>
-              <p className="break-words text-2xl font-semibold text-primary" data-testid="text-today-earnings">{formatCurrency(adjustedDailyEarnings)}</p>
-              <p className="break-words text-xs text-muted-foreground">{rejectedTotal > 0 ? t("driver.dashboard.rejectedAmountShort", { amount: formatCurrency(rejectedTotal) }) : t("driver.dashboard.netOfRejected")}</p>
-            </DSCard>
+              }
+            />
+          <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
+                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t("driver.dashboard.siteVisits")}</p>
+                <p className="break-words text-xl font-semibold text-foreground" data-testid="text-today-visits">{dailyStats?.visits || 0}</p>
+              </div>
+              <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
+                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t("driver.dashboard.todayEarnings")}</p>
+                <p className="break-words text-xl font-semibold text-primary" data-testid="text-today-earnings">{formatCurrency(adjustedDailyEarnings)}</p>
+              </div>
+              <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
+                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t("driver.dashboard.latestStop")}</p>
+                <p className="truncate text-sm font-semibold text-foreground">{latestLocationName}</p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-auto min-h-9 w-full !whitespace-normal border-border/70 bg-card px-3 text-foreground hover:bg-muted/50 sm:w-auto"
+              onClick={() => setLocation('/activity')}
+              data-testid="button-view-activity"
+            >
+              {t("common.viewAll")}
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
           </div>
         </DSCard>
 
