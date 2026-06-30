@@ -18,7 +18,6 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { useLanguage } from "@/lib/i18n";
-import { DSCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 
 export default function DriverLocations() {
   const [, setLocation] = useLocation();
@@ -107,12 +106,6 @@ export default function DriverLocations() {
       return Number(locationB.rate) - Number(locationA.rate);
     }
   }) : [];
-  const nearbyCount = filteredAndSortedLocations.length;
-  const activeMaterials = selectedMaterials.length;
-  const gpsStatusLabel = currentLocation
-    ? t("driver.locations.approxLocation")
-    : t("driver.locations.enableGps");
-  const sortLabel = sortBy === "distance" ? t("common.distance") : t("common.rate");
 
   if (isLoading) {
     return (
@@ -136,127 +129,112 @@ export default function DriverLocations() {
       <DriverHeader />
       
       <div className="p-4 space-y-4">
-        <DSCard padding="md" elevated>
-          <div className="space-y-3">
-            <DSSectionHeader
-              eyebrow={t("driver.locations.availableLocations")}
-              title={t("driver.locations.availableLocations")}
-              description={t("driver.locations.locationCount", { count: nearbyCount })}
+        {/* Search and Filter */}
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder={t("driver.locations.searchPlaceholder")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+              data-testid="input-search"
             />
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.2fr)_auto]">
-              <div className="space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={t("driver.locations.searchPlaceholder")}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                    data-testid="input-search"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={sortBy === "distance" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSortBy("distance")}
-                    data-testid="button-sort-distance"
-                  >
-                    <Navigation className="mr-1 h-4 w-4" />
-                    {t("common.distance")}
-                  </Button>
-                  <Button
-                    variant={sortBy === "rate" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSortBy("rate")}
-                    data-testid="button-sort-rate"
-                  >
-                    {t("common.rate")}
-                  </Button>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 lg:justify-end">
-                <DSStatusChip tone="info" className="rounded-2xl px-3 py-2 text-sm font-medium">
-                  <span className="font-semibold">{nearbyCount}</span>
-                  <span className="ml-1">{t("driver.locations.locationCount", { count: nearbyCount })}</span>
-                </DSStatusChip>
-                <DSStatusChip tone={currentLocation ? "success" : "warning"} className="rounded-2xl px-3 py-2 text-sm font-medium">
-                  {gpsStatusLabel}
-                </DSStatusChip>
-                <DSStatusChip tone="neutral" className="rounded-2xl px-3 py-2 text-sm font-medium">
-                  {sortLabel}
-                </DSStatusChip>
-                {isRubbleServiceEnabled && activeMaterials > 0 && (
-                  <DSStatusChip tone="accent" className="rounded-2xl px-3 py-2 text-sm font-medium">
-                    {t("driver.locations.materialsSelected", { count: activeMaterials })}
-                  </DSStatusChip>
-                )}
-              </div>
-            </div>
           </div>
-        </DSCard>
+          
+          <div className="flex gap-2">
+            <Button 
+              variant={sortBy === "distance" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSortBy("distance")}
+              data-testid="button-sort-distance"
+            >
+              <Navigation className="w-4 h-4 mr-1" />
+              {t("common.distance")}
+            </Button>
+            <Button 
+              variant={sortBy === "rate" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSortBy("rate")}
+              data-testid="button-sort-rate"
+            >
+              {t("common.rate")}
+            </Button>
+          </div>
+        </div>
 
         {/* Material Selection for Rubble Service */}
         {isRubbleServiceEnabled && materials && materials.length > 0 && (
-          <DSCard padding="md" elevated>
-            <DSSectionHeader
-              title={t("driver.locations.dropOffQuestion")}
-              description={t("driver.locations.dropOffHelp")}
-            />
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {materials.map((material: any) => (
-                <label key={material.id} htmlFor={`material-${material.id}`} className="flex cursor-pointer items-start gap-2 rounded-2xl border border-border/70 bg-card px-3 py-2">
-                  <Checkbox
-                    id={`material-${material.id}`}
-                    checked={selectedMaterials.includes(material.id)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setSelectedMaterials([...selectedMaterials, material.id]);
-                      } else {
-                        setSelectedMaterials(selectedMaterials.filter(id => id !== material.id));
-                      }
-                    }}
-                    data-testid={`checkbox-material-${material.slug}`}
-                    className="mt-0.5"
-                  />
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-foreground">{material.displayName || material.display_name}</div>
-                    {material.synonyms && material.synonyms.length > 0 && (
-                      <div className="mt-0.5 text-xs text-muted-foreground">
-                        {t("driver.locations.examples", { examples: material.synonyms.join(', ') })}
-                      </div>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-            {selectedMaterials.length > 0 && (
-              <div className="mt-3 flex items-center justify-between border-t border-border/70 pt-3 text-sm">
-                <span className="text-muted-foreground">
-                  {selectedMaterials.length === 1
-                    ? t("driver.locations.materialSelected", { count: selectedMaterials.length })
-                    : t("driver.locations.materialsSelected", { count: selectedMaterials.length })}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedMaterials([])}
-                  data-testid="button-clear-materials"
-                >
-                  {t("driver.locations.clearAll")}
-                </Button>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Trash2 className="w-5 h-5 text-accent" />
+                <h3 className="font-semibold">{t("driver.locations.dropOffQuestion")}</h3>
               </div>
-            )}
-          </DSCard>
+              <p className="text-sm text-muted-foreground mb-4">
+                {t("driver.locations.dropOffHelp")}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {materials.map((material: any) => (
+                  <div key={material.id} className="flex items-start space-x-2">
+                    <Checkbox
+                      id={`material-${material.id}`}
+                      checked={selectedMaterials.includes(material.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedMaterials([...selectedMaterials, material.id]);
+                        } else {
+                          setSelectedMaterials(selectedMaterials.filter(id => id !== material.id));
+                        }
+                      }}
+                      data-testid={`checkbox-material-${material.slug}`}
+                    />
+                    <Label
+                      htmlFor={`material-${material.id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      <div>
+                        <div className="font-medium">{material.displayName || material.display_name}</div>
+                        {material.synonyms && material.synonyms.length > 0 && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {t("driver.locations.examples", { examples: material.synonyms.join(', ') })}
+                          </div>
+                        )}
+                      </div>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              {selectedMaterials.length > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {selectedMaterials.length === 1
+                        ? t("driver.locations.materialSelected", { count: selectedMaterials.length })
+                        : t("driver.locations.materialsSelected", { count: selectedMaterials.length })}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedMaterials([])}
+                      data-testid="button-clear-materials"
+                    >
+                      {t("driver.locations.clearAll")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Location Error Message */}
         {locationError && (
-          <div className="rounded-2xl border border-border/70 bg-card p-4">
-            <p className="text-sm font-medium text-foreground">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-800 text-sm">
               {t("driver.locations.approxLocation")}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-blue-600 text-xs mt-1">
               {t("driver.locations.enableGps")}
             </p>
           </div>
@@ -277,25 +255,32 @@ export default function DriverLocations() {
 
         {/* Location List */}
         <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">{t("driver.locations.availableLocations")}</h2>
+            <Badge variant="secondary" data-testid="text-location-count">
+              {t("driver.locations.locationCount", { count: filteredAndSortedLocations.length })}
+            </Badge>
+          </div>
+
           {filteredAndSortedLocations.length === 0 ? (
-            <DSCard padding="lg" elevated>
-              <div className="text-center">
-                <MapPin className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground">{t("driver.locations.noLocationsFound")}</p>
-              </div>
-            </DSCard>
+            <Card>
+              <CardContent className="text-center py-8">
+                <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">{t("driver.locations.noLocationsFound")}</p>
+              </CardContent>
+            </Card>
           ) : (
             filteredAndSortedLocations.map((item: any, index: number) => {
               const location = item.washout_locations || item;
               return (
-              <DSCard key={location.id} padding="md" elevated className="overflow-hidden" data-testid={`card-location-${index}`}>
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="break-words text-base font-semibold tracking-tight text-foreground" data-testid={`text-location-name-${index}`}>
+              <Card key={location.id} className="hover:shadow-md transition-shadow" data-testid={`card-location-${index}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg mb-1" data-testid={`text-location-name-${index}`}>
                         {location.name}
                       </h3>
-                      <p className="mt-1 break-words text-sm text-muted-foreground" data-testid={`text-location-address-${index}`}>
+                      <p className="text-muted-foreground text-sm mb-2" data-testid={`text-location-address-${index}`}>
                         {formatAddress({
                           street: location.street,
                           city: location.city,
@@ -304,64 +289,60 @@ export default function DriverLocations() {
                         })}
                       </p>
                       {(item.owner?.user || location.owner?.user) && (
-                        <p className="mt-1 break-words text-xs text-muted-foreground" data-testid={`text-owner-name-${index}`}>
+                        <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-name-${index}`}>
                           {t("driver.locations.ownerName", { name: `${item.owner?.user?.firstName || location.owner?.user?.firstName} ${item.owner?.user?.lastName || location.owner?.user?.lastName}` })}
                         </p>
                       )}
+                      <div className="flex items-center gap-4 text-sm">
+                        {currentLocation && item.distance !== undefined && (
+                          <div className="flex items-center text-muted-foreground">
+                            <Navigation className="w-4 h-4 mr-1" />
+                            <span data-testid={`text-location-distance-${index}`}>
+                              {item.distance.toFixed(1)} mi
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center text-green-600">
+                          <Clock className="w-4 h-4 mr-1" />
+                          <span>{t("driver.locations.open247")}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <div className="text-xl font-semibold tracking-tight text-primary" data-testid={`text-location-rate-${index}`}>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-accent mb-1" data-testid={`text-location-rate-${index}`}>
                         {formatCurrency(Number(location.rate))}
                       </div>
-                      <div className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{t("driver.locations.driverPayoutPerWashout")}</div>
-                      <div className="mt-1 text-[11px] text-muted-foreground">
+                      <div className="text-xs text-muted-foreground">{t("driver.locations.driverPayoutPerWashout")}</div>
+                      <div className="text-xs text-muted-foreground">
                         {t("driver.locations.driverTip", { amount: formatCurrency(resolveLocationDriverTipRateCents(location.rate) / 100) })}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 text-sm">
-                    {currentLocation && item.distance !== undefined && (
-                      <div className="flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1 text-muted-foreground">
-                        <Navigation className="h-4 w-4 shrink-0" />
-                        <span data-testid={`text-location-distance-${index}`}>
-                          {item.distance.toFixed(1)} mi
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-card px-2.5 py-1 text-emerald-400">
-                      <Clock className="h-4 w-4 shrink-0" />
-                      <span>{t("driver.locations.open247")}</span>
-                    </div>
-                  </div>
+                  {location.description && (
+                    <p className="text-sm text-muted-foreground mb-3" data-testid={`text-location-description-${index}`}>
+                      {location.description}
+                    </p>
+                  )}
 
-                  {(location.description || (location.amenities && location.amenities.length > 0)) && (
-                    <div className="space-y-2">
-                      {location.description && (
-                        <p className="text-sm text-muted-foreground" data-testid={`text-location-description-${index}`}>
-                          {location.description}
-                        </p>
-                      )}
-                      {location.amenities && location.amenities.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {location.amenities.map((amenity: string, amenityIndex: number) => (
-                            <Badge key={amenityIndex} variant="outline" className="text-xs">
-                              {amenity}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
+                  {location.amenities && location.amenities.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {location.amenities.map((amenity: string, amenityIndex: number) => (
+                        <Badge key={amenityIndex} variant="outline" className="text-xs">
+                          {amenity}
+                        </Badge>
+                      ))}
                     </div>
                   )}
 
                   {/* Materials Accepted - Rubble Service */}
                   {isRubbleServiceEnabled && location.materialIntents && location.materialIntents.length > 0 && (
-                    <div className="rounded-2xl border border-border/70 bg-card p-3">
-                      <div className="mb-2 flex items-center gap-2">
-                        <Package className="h-4 w-4 text-primary" />
-                        <h4 className="text-sm font-semibold text-foreground">{t("driver.locations.materialsAccepted")}</h4>
+                    <div className="mb-3 p-3 border rounded-lg bg-muted/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Package className="w-4 h-4 text-accent" />
+                        <h4 className="text-sm font-semibold">{t("driver.locations.materialsAccepted")}</h4>
                       </div>
-                      <div className="space-y-2">
+                      <div className="grid grid-cols-1 gap-2">
                         {location.materialIntents
                           .filter((intent: any) => intent.active !== false)
                           .map((intent: any, intentIndex: number) => {
@@ -372,9 +353,9 @@ export default function DriverLocations() {
                             const unitDisplay = unit === 'per_load' ? 'per load' : unit === 'per_ton' ? 'per ton' : 'per cubic yard';
                             
                             return (
-                              <div key={intentIndex} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background px-3 py-2 text-sm" data-testid={`material-${index}-${intentIndex}`}>
-                                <span className="min-w-0 break-words text-foreground">{displayName}</span>
-                                <span className="shrink-0 font-semibold text-primary">
+                              <div key={intentIndex} className="flex items-center justify-between text-sm" data-testid={`material-${index}-${intentIndex}`}>
+                                <span className="text-muted-foreground">{displayName}</span>
+                                <span className="font-semibold text-green-600">
                                   {formatCurrency(rateCents / 100)} {unitDisplay}
                                 </span>
                               </div>
@@ -385,30 +366,29 @@ export default function DriverLocations() {
                   )}
 
                   <div className="flex gap-2">
-                    <Button
+                    <Button 
                       size="sm"
                       onClick={() => setLocation(`/check-in/${location.id}`)}
-                      className="h-11 flex-1"
+                      className="flex-1"
                       data-testid={`button-check-in-${index}`}
                     >
-                      <MapPin className="mr-1 h-4 w-4" />
+                      <MapPin className="w-4 h-4 mr-1" />
                       {t("driver.locations.checkIn")}
                     </Button>
-                    <Button
+                    <Button 
                       size="sm"
                       variant="outline"
                       onClick={() => {
                         const url = `https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}`;
                         window.open(url, '_blank');
                       }}
-                      className="h-11 px-3"
                       data-testid={`button-directions-${index}`}
                     >
-                      <Navigation className="h-4 w-4" />
+                      <Navigation className="w-4 h-4" />
                     </Button>
                   </div>
-                </div>
-              </DSCard>
+                </CardContent>
+              </Card>
               );
             })
           )}
