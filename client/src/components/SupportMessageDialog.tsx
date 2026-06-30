@@ -76,32 +76,33 @@ export function SupportMessageDialog({ isOpen, onClose }: SupportMessageDialogPr
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md border-slate-800 bg-slate-950 text-slate-100 shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <MessageCircle className="w-5 h-5 text-blue-600" />
+          <DialogTitle className="flex items-center space-x-2 text-slate-100">
+            <MessageCircle className="w-5 h-5 text-sky-400" />
             <span>Contact Support</span>
           </DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Subject</label>
+            <label className="text-sm font-medium text-slate-200">Subject</label>
             <Input
               value={formData.subject}
               onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
               placeholder="Brief description of your issue"
               maxLength={100}
               disabled={submitMessageMutation.isPending}
+              className="border-slate-700 bg-slate-900/80 text-slate-100 placeholder:text-slate-400 focus-visible:ring-sky-500/60"
               data-testid="input-support-subject"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-400">
               {formData.subject.length}/100 characters
             </p>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Message</label>
+            <label className="text-sm font-medium text-slate-200">Message</label>
             <Textarea
               value={formData.message}
               onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
@@ -109,19 +110,20 @@ export function SupportMessageDialog({ isOpen, onClose }: SupportMessageDialogPr
               rows={6}
               maxLength={1000}
               disabled={submitMessageMutation.isPending}
+              className="border-slate-700 bg-slate-900/80 text-slate-100 placeholder:text-slate-400 focus-visible:ring-sky-500/60"
               data-testid="textarea-support-message"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-400">
               {formData.message.length}/1000 characters
             </p>
           </div>
 
-          <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
             <div className="flex items-center space-x-2 text-sm">
-              <MessageCircle className="w-4 h-4 text-blue-600" />
-              <span className="font-medium text-blue-800 dark:text-blue-200">Need Immediate Help?</span>
+              <MessageCircle className="w-4 h-4 text-sky-400" />
+              <span className="font-medium text-slate-100">Need Immediate Help?</span>
             </div>
-            <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+            <p className="mt-1 text-xs text-sky-300">
               For urgent issues, call: <span className="font-mono font-medium">(469) 269-6709</span>
             </p>
           </div>
@@ -132,6 +134,7 @@ export function SupportMessageDialog({ isOpen, onClose }: SupportMessageDialogPr
               variant="outline"
               onClick={handleClose}
               disabled={submitMessageMutation.isPending}
+              className="border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
               data-testid="button-cancel-support"
             >
               Cancel
@@ -139,6 +142,7 @@ export function SupportMessageDialog({ isOpen, onClose }: SupportMessageDialogPr
             <Button
               type="submit"
               disabled={submitMessageMutation.isPending || !formData.subject.trim() || !formData.message.trim()}
+              className="bg-sky-600 text-white hover:bg-sky-500"
               data-testid="button-send-support"
             >
               {submitMessageMutation.isPending ? (

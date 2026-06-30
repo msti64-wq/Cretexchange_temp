@@ -80,7 +80,7 @@ export function MobileNav({ role }: MobileNavProps) {
 
   return (
     <nav className={cn(
-      "mobile-nav !fixed inset-x-0 bottom-0 z-50 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2",
+      "fixed inset-x-0 bottom-0 z-50 border-t border-slate-800 bg-slate-950/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 text-slate-100 shadow-[0_-16px_30px_-24px_rgba(15,23,42,0.8)] backdrop-blur-xl",
       fitViewportNav ? "overflow-x-hidden" : "overflow-x-auto"
     )}>
       <div className={cn(
@@ -98,12 +98,13 @@ export function MobileNav({ role }: MobileNavProps) {
               key={item.path}
               type="button"
               onClick={() => setLocation(item.path)}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
-                "nav-item flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl px-1.5 py-2.5 text-[10px] font-medium sm:px-2 sm:text-[11px]",
+                "flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5 text-[10px] font-medium transition-colors sm:px-2 sm:text-[11px]",
                 !fitViewportNav && "min-w-[72px]",
                 isActive
-                  ? "active"
-                  : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                  ? "border-sky-500/30 bg-slate-900 text-slate-100 ring-1 ring-inset ring-sky-500/30"
+                  : "border-transparent text-slate-400 hover:border-slate-800 hover:bg-slate-900/80 hover:text-slate-100"
               )}
               data-testid={`nav-${item.testIdLabel || item.label.toLowerCase()}`}
             >

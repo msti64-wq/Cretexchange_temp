@@ -50,38 +50,38 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto border-slate-800 bg-slate-950 text-slate-100 shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <FileText className="w-5 h-5 text-primary" />
+          <DialogTitle className="flex items-center space-x-2 text-slate-100">
+            <FileText className="w-5 h-5 text-sky-400" />
             <span>{t("legal.driverDialogTitle")}</span>
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 text-sm">
-          <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
             <div className="flex items-center mb-2">
-              <AlertCircle className="w-4 h-4 text-blue-600 mr-2" />
-              <span className="font-semibold text-blue-800">
+              <AlertCircle className="mr-2 h-4 w-4 text-sky-400" />
+              <span className="font-semibold text-slate-100">
                 {readOnly ? t("legal.reviewAccepted") : t("legal.requiredReading")}
               </span>
             </div>
-            <p className="text-blue-700 text-xs">
+            <p className="text-xs text-slate-300">
               {readOnly ? t("legal.readOnlyDescription") : t("legal.driverRequiredDescription")}
             </p>
           </div>
 
-          <div className="max-h-[500px] overflow-y-auto">
+          <div className="max-h-[500px] overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/80 p-1">
             <LegalDocumentViewer role="driver" language={language} />
           </div>
 
           {!readOnly && (
             <>
-              <div className="space-y-3 rounded border border-border p-4">
-                <p className="text-sm font-medium text-foreground">
+              <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <p className="text-sm font-medium text-slate-100">
                   {t("legal.readAndUnderstand")}
                 </p>
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className="flex items-center gap-2 text-sm cursor-pointer text-slate-200">
                   <Checkbox
                     id="terms-read"
                     checked={hasReadTerms}
@@ -92,10 +92,11 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                 </label>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t">
+              <div className="flex items-center justify-between border-t border-slate-800 pt-4">
                 <Button
                   variant="outline"
                   onClick={() => onOpenChange(false)}
+                  className="border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
                   data-testid="button-cancel-terms"
                 >
                   {t("common.cancel")}
@@ -103,7 +104,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
                 <Button
                   onClick={() => agreeToTermsMutation.mutate()}
                   disabled={!hasReadTerms || agreeToTermsMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-emerald-600 text-white hover:bg-emerald-500"
                   data-testid="button-agree-terms"
                 >
                   {agreeToTermsMutation.isPending ? t("legal.recording") : t("legal.iAgree")}
@@ -113,10 +114,10 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
           )}
 
           {readOnly && (
-            <div className="flex justify-center pt-4 border-t">
+            <div className="flex justify-center border-t border-slate-800 pt-4">
               <Button
                 onClick={() => onOpenChange(false)}
-                className="w-32"
+                className="w-32 bg-sky-600 text-white hover:bg-sky-500"
                 data-testid="button-close-terms"
               >
                 {t("common.close")}

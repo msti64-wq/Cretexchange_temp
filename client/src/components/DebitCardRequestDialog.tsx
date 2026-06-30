@@ -88,71 +88,74 @@ export function DebitCardRequestDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto" data-testid="dialog-debit-card-request">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-slate-800 bg-slate-950 text-slate-100 shadow-2xl sm:max-w-[500px]" data-testid="dialog-debit-card-request">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <CreditCard className="w-5 h-5 mr-2" />
+          <DialogTitle className="flex items-center text-slate-100">
+            <CreditCard className="mr-2 h-5 w-5 text-sky-400" />
             Request Debit Card
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-400">
             Get instant access to your funds with a debit card linked to your CreteXchange account
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pb-2">
           {/* Benefits Alert */}
-          <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800 dark:text-green-200 text-sm">
+          <Alert className="border border-slate-800 bg-slate-900/70">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <AlertDescription className="text-sm text-slate-200">
               <strong>Instant Access:</strong> Use your card at ATMs and stores without waiting for bank transfers
             </AlertDescription>
           </Alert>
 
           {/* Shipping Information */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-2 text-sm font-medium">
-              <MapPin className="w-4 h-4" />
+            <div className="flex items-center space-x-2 text-sm font-medium text-slate-100">
+              <MapPin className="h-4 w-4 text-sky-400" />
               <span>Shipping Address</span>
             </div>
 
             <div>
-              <Label htmlFor="shippingName">Full Name on Card</Label>
+              <Label htmlFor="shippingName" className="text-slate-200">Full Name on Card</Label>
               <Input
                 id="shippingName"
                 value={formData.shippingName}
                 onChange={(e) => handleInputChange("shippingName", e.target.value)}
                 required
                 autoComplete="name"
+                className="border-slate-700 bg-slate-900/80 text-slate-100 placeholder:text-slate-400 focus-visible:ring-sky-500/60"
                 data-testid="input-card-name"
               />
             </div>
 
             <div>
-              <Label htmlFor="shippingStreet">Street Address</Label>
+              <Label htmlFor="shippingStreet" className="text-slate-200">Street Address</Label>
               <Input
                 id="shippingStreet"
                 value={formData.shippingStreet}
                 onChange={(e) => handleInputChange("shippingStreet", e.target.value)}
                 required
                 autoComplete="street-address"
+                className="border-slate-700 bg-slate-900/80 text-slate-100 placeholder:text-slate-400 focus-visible:ring-sky-500/60"
                 data-testid="input-street"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="shippingCity">City</Label>
+                <Label htmlFor="shippingCity" className="text-slate-200">City</Label>
                 <Input
                   id="shippingCity"
                   value={formData.shippingCity}
                   onChange={(e) => handleInputChange("shippingCity", e.target.value)}
                   required
                   autoComplete="address-level2"
+                  className="border-slate-700 bg-slate-900/80 text-slate-100 placeholder:text-slate-400 focus-visible:ring-sky-500/60"
                   data-testid="input-city"
                 />
               </div>
               <div>
-                <Label htmlFor="shippingState">State</Label>
+                <Label htmlFor="shippingState" className="text-slate-200">State</Label>
                 <Input
                   id="shippingState"
                   value={formData.shippingState}
@@ -160,19 +163,21 @@ export function DebitCardRequestDialog({
                   maxLength={2}
                   required
                   autoComplete="address-level1"
+                  className="border-slate-700 bg-slate-900/80 text-slate-100 placeholder:text-slate-400 focus-visible:ring-sky-500/60"
                   data-testid="input-state"
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="shippingZip">ZIP Code</Label>
+              <Label htmlFor="shippingZip" className="text-slate-200">ZIP Code</Label>
               <Input
                 id="shippingZip"
                 value={formData.shippingZip}
                 onChange={(e) => handleInputChange("shippingZip", e.target.value)}
                 required
                 autoComplete="postal-code"
+                className="border-slate-700 bg-slate-900/80 text-slate-100 placeholder:text-slate-400 focus-visible:ring-sky-500/60"
                 data-testid="input-zip"
               />
             </div>
@@ -190,7 +195,7 @@ export function DebitCardRequestDialog({
             />
             <label
               htmlFor="agreeToTerms"
-              className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              className="text-sm leading-none text-slate-300 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
               I agree to receive a debit card and understand that it will be linked to my CreteXchange account. 
               Card activation and usage are subject to terms and conditions.
@@ -203,6 +208,7 @@ export function DebitCardRequestDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={requestCardMutation.isPending}
+              className="border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
               data-testid="button-cancel"
             >
               Cancel
@@ -210,6 +216,7 @@ export function DebitCardRequestDialog({
             <Button
               type="submit"
               disabled={requestCardMutation.isPending || !formData.agreeToTerms}
+              className="bg-sky-600 text-white hover:bg-sky-500"
               data-testid="button-submit-card-request"
             >
               {requestCardMutation.isPending ? (

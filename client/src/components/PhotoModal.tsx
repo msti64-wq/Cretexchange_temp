@@ -83,11 +83,11 @@ export function PhotoModal({
   if (isLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-h-[90vh] max-w-4xl border-slate-800 bg-slate-950 text-slate-100 shadow-2xl">
           <DialogHeader>
-            <DialogTitle>Washout Photos</DialogTitle>
+            <DialogTitle className="text-slate-100">Washout Photos</DialogTitle>
           </DialogHeader>
-          <div className="flex items-center justify-center p-8">
+          <div className="flex items-center justify-center p-8 text-slate-300">
             <Loader2 className="h-8 w-8 animate-spin" />
             <span className="ml-2">Loading photos...</span>
           </div>
@@ -102,11 +102,11 @@ export function PhotoModal({
       error instanceof Error ? error.message : "Failed to load photos";
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-h-[90vh] max-w-4xl border-slate-800 bg-slate-950 text-slate-100 shadow-2xl">
           <DialogHeader>
-            <DialogTitle>Washout Photos</DialogTitle>
+            <DialogTitle className="text-slate-100">Washout Photos</DialogTitle>
           </DialogHeader>
-          <div className="flex items-center justify-center p-8 text-red-600">
+          <div className="flex items-center justify-center p-8 text-red-400">
             <ImageIcon className="h-8 w-8" />
             <span className="ml-2">{errorMessage}</span>
           </div>
@@ -118,9 +118,9 @@ export function PhotoModal({
   if (photos.length === 0) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-h-[90vh] max-w-4xl border-slate-800 bg-slate-950 text-slate-100 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
+            <DialogTitle className="flex items-center justify-between text-slate-100">
               <span>Washout Verification</span>
               <Badge 
                 variant={status === 'verified' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}
@@ -129,7 +129,7 @@ export function PhotoModal({
               </Badge>
             </DialogTitle>
           </DialogHeader>
-          <div className="flex items-center justify-center p-8 text-gray-500">
+          <div className="flex items-center justify-center p-8 text-slate-400">
             <ImageIcon className="h-8 w-8" />
             <span className="ml-2">No photos available for this washout</span>
           </div>
@@ -175,9 +175,9 @@ export function PhotoModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-h-[90vh] overflow-hidden border-slate-800 bg-slate-950 text-slate-100 shadow-2xl max-w-4xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
+          <DialogTitle className="flex items-center justify-between text-slate-100">
             <span>Washout Verification</span>
             <Badge 
               variant={status === 'verified' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}
@@ -189,19 +189,19 @@ export function PhotoModal({
         
         <div className="space-y-4">
           {/* Activity Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
             <div>
-              <span className="font-medium">Driver:</span> {driverName}
-              {truckNumber && <span className="text-gray-600"> (Truck #{truckNumber})</span>}
+              <span className="font-medium text-slate-200">Driver:</span> {driverName}
+              {truckNumber && <span className="text-slate-400"> (Truck #{truckNumber})</span>}
             </div>
             <div>
-              <span className="font-medium">Location:</span> {locationName}
+              <span className="font-medium text-slate-200">Location:</span> {locationName}
             </div>
             <div>
-              <span className="font-medium">Amount:</span> {formatCurrency(amount)}
+              <span className="font-medium text-slate-200">Amount:</span> {formatCurrency(amount)}
             </div>
             <div>
-              <span className="font-medium">Check-in:</span> {
+              <span className="font-medium text-slate-200">Check-in:</span> {
                 checkInTime ? new Date(checkInTime).toLocaleString() : 'N/A'
               }
             </div>
@@ -209,12 +209,12 @@ export function PhotoModal({
 
           {/* Photo Viewer */}
           <div className="relative">
-            <div className="flex items-center justify-center bg-gray-100 rounded-lg min-h-[400px] relative">
+            <div className="relative flex min-h-[400px] items-center justify-center rounded-xl border border-slate-800 bg-slate-900/80">
               {/* Main Photo - NEW: Simple img tag with signed URL */}
               <AuthenticatedImage
                 src={currentPhoto.url}
                 alt={`Washout photo ${currentPhotoIndex + 1}`}
-                className="max-w-full max-h-[500px] object-contain rounded-lg"
+                className="max-h-[500px] max-w-full rounded-lg object-contain"
                 data-testid={`photo-${currentPhotoIndex}`}
               />
 
@@ -224,7 +224,7 @@ export function PhotoModal({
                   <Button
                     variant="outline"
                     size="icon"
-                    className="absolute left-2 bg-white/90 hover:bg-white"
+                    className="absolute left-2 border-slate-700 bg-slate-950/90 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
                     onClick={prevPhoto}
                     data-testid="button-previous-photo"
                   >
@@ -233,7 +233,7 @@ export function PhotoModal({
                   <Button
                     variant="outline"
                     size="icon"
-                    className="absolute right-2 bg-white/90 hover:bg-white"
+                    className="absolute right-2 border-slate-700 bg-slate-950/90 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
                     onClick={nextPhoto}
                     data-testid="button-next-photo"
                   >
@@ -246,7 +246,7 @@ export function PhotoModal({
             {/* Photo Counter */}
             {photos.length > 1 && (
               <div className="flex justify-center mt-2">
-                <span className="text-sm text-gray-600" data-testid="text-photo-counter">
+                <span className="text-sm text-slate-400" data-testid="text-photo-counter">
                   Photo {currentPhotoIndex + 1} of {photos.length}
                 </span>
               </div>
@@ -259,10 +259,10 @@ export function PhotoModal({
                   <button
                     key={photo.id}
                     onClick={() => setCurrentPhotoIndex(index)}
-                    className={`flex-shrink-0 w-16 h-16 rounded border-2 overflow-hidden ${
+                    className={`flex-shrink-0 h-16 w-16 overflow-hidden rounded border-2 ${
                       index === currentPhotoIndex 
-                        ? 'border-blue-500' 
-                        : 'border-gray-300 hover:border-gray-400'
+                        ? 'border-sky-500' 
+                        : 'border-slate-700 hover:border-slate-500'
                     }`}
                     data-testid={`thumbnail-${index}`}
                   >
@@ -278,21 +278,21 @@ export function PhotoModal({
           </div>
 
           {/* Photo Metadata */}
-          <div className="rounded-lg border bg-muted/30 p-3 text-sm space-y-2">
+          <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="font-medium">Verification</span>
+                <span className="font-medium text-slate-100">Verification</span>
                 <Badge variant={badgeVariant}>
                   {formatPhotoVerificationStatus(verificationStatus)}
                 </Badge>
               </div>
               {distanceMiles != null && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-slate-400">
                   {distanceMiles.toFixed(2)} mi from location
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-1 text-xs text-slate-400 sm:grid-cols-2">
               <div>
                 Taken: {currentPhoto.photoTakenAt
                   ? new Date(currentPhoto.photoTakenAt).toLocaleString()
@@ -311,12 +311,12 @@ export function PhotoModal({
               </div>
             </div>
             {currentPhoto.verificationReason && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-slate-400">
                 {currentPhoto.verificationReason}
               </p>
             )}
             {currentPhoto.duplicateMatchedPhotoId && (
-              <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-1 text-xs text-slate-400 sm:grid-cols-2">
                 <div>
                   Duplicate match photo ID: {currentPhoto.duplicateMatchedPhotoId}
                 </div>
@@ -334,9 +334,9 @@ export function PhotoModal({
           </div>
 
           {duplicateMatches.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+            <div className="rounded-xl border border-amber-500/30 bg-slate-900/75 p-3 text-sm">
               <div className="flex items-center justify-between gap-2">
-                <div className="font-medium text-amber-900">Possible duplicate matches</div>
+                <div className="font-medium text-amber-300">Possible duplicate matches</div>
                 <Badge variant="secondary">
                   {duplicateMatches.length} match{duplicateMatches.length === 1 ? "" : "es"}
                 </Badge>
@@ -345,7 +345,7 @@ export function PhotoModal({
                 {duplicateMatches.map((match, index) => (
                   <div
                     key={`${match.photoId}-${index}`}
-                    className="rounded-md border border-amber-200 bg-background p-3 text-xs text-foreground"
+                    className="rounded-lg border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-100"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="font-medium">
