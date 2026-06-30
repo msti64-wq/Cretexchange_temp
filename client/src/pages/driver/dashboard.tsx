@@ -12,7 +12,7 @@ import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, History, User, TrendingUp, Clock, MessageCircle, Phone, DollarSign, Wallet, ImageIcon, Ticket, ChevronDown, ChevronUp, Building2, RefreshCw, Navigation, CreditCard, Truck, Route, Loader2, ShieldAlert, ArrowRight, Activity, MapPinned } from "lucide-react";
+import { MapPin, MessageCircle, Phone, DollarSign, Wallet, Ticket, ChevronDown, ChevronUp, Building2, RefreshCw, CreditCard, Truck, Route, Loader2, ShieldAlert, ArrowRight, Activity } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { formatAddress } from "@shared/addressUtils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
@@ -284,7 +284,7 @@ export default function DriverDashboard() {
               <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)] animate-pulse" />
               <span className="min-w-0 truncate text-sm font-semibold tracking-tight" data-testid="text-gps-status">{t("driver.dashboard.gpsActive")}</span>
             </div>
-            <div className="flex max-w-full min-w-0 items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">
+            <div className="flex max-w-full min-w-0 items-center gap-2 self-start rounded-full border border-emerald-500/30 bg-card px-3 py-1 text-sm font-medium text-emerald-400">
               <MapPin className="h-4 w-4 shrink-0" />
               <span className="min-w-0 truncate" data-testid="text-current-location">{t("driver.dashboard.locationEnabled")}</span>
             </div>
@@ -298,7 +298,7 @@ export default function DriverDashboard() {
               <span className="max-w-full break-words rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
                 {t("driver.dashboard.fieldOps")}
               </span>
-              <span className="max-w-full break-words rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/25 dark:text-emerald-300 sm:tracking-[0.16em]">
+              <span className="max-w-full break-words rounded-full border border-emerald-500/30 bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-400 sm:tracking-[0.16em]">
                 {t("driver.dashboard.gpsReady")}
               </span>
               <span className="max-w-full break-words rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
@@ -317,15 +317,15 @@ export default function DriverDashboard() {
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Button
                 variant="default"
-                className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-1.5 !whitespace-normal rounded-2xl border border-border/70 bg-card px-4 py-4 text-left text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-muted/50 active:translate-y-0 focus-visible:ring-primary/50"
+                className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-1.5 !whitespace-normal rounded-2xl border border-primary/30 bg-primary px-4 py-4 text-left text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary/90 active:translate-y-0 focus-visible:ring-primary/50"
                 onClick={() => setLocation('/locations')}
                 data-testid="button-find-location-hero"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white">
                   <MapPin className="h-4 w-4" />
                 </div>
                 <span className="break-words text-sm font-semibold tracking-tight">{t("driver.dashboard.findLocation")}</span>
-                <span className="break-words text-xs text-muted-foreground">{t("driver.dashboard.findLocationHelp")}</span>
+                <span className="break-words text-xs text-primary-foreground/85">{t("driver.dashboard.findLocationHelp")}</span>
               </Button>
               <Button
                 variant="outline"
@@ -839,7 +839,7 @@ export default function DriverDashboard() {
                 </div>
                 <div className="min-w-0 rounded-2xl border border-sky-500/25 bg-card p-4">
                   <div className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-sky-400 sm:tracking-[0.14em]">{t("driver.dashboard.totalPaid")}</div>
-                  <div className="mt-2 break-words text-2xl font-semibold tracking-tight text-sky-300">
+                  <div className="mt-2 break-words text-2xl font-semibold tracking-tight text-primary">
                     {formatCurrency(totalPaid)}
                   </div>
                   <div className="mt-1 break-words text-xs text-muted-foreground">{t("driver.dashboard.recordedPaymentHistory")}</div>
@@ -852,134 +852,52 @@ export default function DriverDashboard() {
           </div>
         </DSCard>
 
-        {/* Recent Activity */}
+        {/* Today's Activity */}
         <DSCard padding="lg" elevated>
           <DSSectionHeader
-            title={t("driver.dashboard.recentWashouts")}
+            title="Today's Activity"
+            description="Today's washouts and earnings at a glance."
             actions={
-              <Button 
-                variant="default"
+              <Button
+                variant="outline"
                 size="sm"
-                className="h-auto min-h-9 w-full !whitespace-normal border border-primary/30 bg-card px-3 text-foreground hover:bg-primary/10 sm:w-auto"
+                className="h-auto min-h-9 w-full !whitespace-normal border-border/70 bg-card px-3 text-foreground hover:bg-muted/50 sm:w-auto"
                 onClick={() => setLocation('/activity')}
-                data-testid="button-view-all"
+                data-testid="button-view-activity"
               >
                 {t("common.viewAll")}
                 <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             }
           />
-          <div className="space-y-3">
-            {!recentActivities?.length ? (
-              <DashboardEmptyState
-                title={t("driver.dashboard.noRecentWashouts")}
-                description={t("driver.dashboard.noRecentWashoutsDescription")}
-                icon={Clock}
-                toneClassName="bg-card text-foreground"
-                action={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-auto min-h-9 w-full !whitespace-normal sm:w-auto"
-                    onClick={() => setLocation('/locations')}
-                  >
-                    {t("driver.dashboard.findLocation")}
-                  </Button>
-                }
-              />
-            ) : (
-              recentActivities.map((activity: any, index: number) => (
-                <DSCard key={activity.washout_activities?.id || activity.id || index} padding="md" className="min-w-0 space-y-3" data-testid={`card-activity-${index}`}>
-                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                        <Route className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold" data-testid={`text-activity-date-${index}`}>
-                          {new Date(activity.washout_activities?.checkInTime || activity.checkInTime).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-activity-time-${index}`}>
-                          {new Date(activity.washout_activities?.checkInTime || activity.checkInTime).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="min-w-0 text-left sm:text-right">
-                      <div className="break-words text-lg font-semibold tracking-tight text-accent" data-testid={`text-activity-amount-${index}`}>
-                        {formatCurrency(Number(activity.washout_activities?.amount || activity.amount || 0))}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                    <DSCard padding="sm" elevated={false} className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm font-medium text-foreground" data-testid={`text-location-name-${index}`}>
-                        <MapPinned className="h-4 w-4 shrink-0 text-primary" />
-                        <span className="truncate">{activity.washout_locations?.name || activity.location?.name || t("driver.activity.unknownLocation")}</span>
-                      </div>
-                      <div className="mt-1 break-words text-xs text-muted-foreground">
-                        {activity.washout_locations?.address || activity.location?.address || formatAddress(activity.washout_locations || activity.location || {}) || t("driver.dashboard.addressUnavailable")}
-                      </div>
-                    </DSCard>
-                    <DSCard padding="sm" elevated={false} className="min-w-0">
-                      <div className="mt-2">
-                        <DSStatusChip
-                          tone={(activity.washout_activities?.status || activity.status) === 'verified'
-                            ? 'success'
-                            : isPendingWashoutApproval(activity.washout_activities?.status || activity.status)
-                              ? 'warning'
-                              : 'danger'}
-                          className="max-w-full whitespace-normal"
-                          data-testid={`text-activity-status-${index}`}
-                        >
-                          {translateWashoutApprovalStatus(activity.washout_activities?.status || activity.status, t)}
-                        </DSStatusChip>
-                      </div>
-                      {(activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName) && (
-                        <p className="mt-2 break-words text-xs text-muted-foreground">
-                          {t("driver.activity.ownerName", { name: `${activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName} ${activity.location?.owner?.user?.lastName || activity.washout_locations?.owner?.user?.lastName || ''}`.trim() })}
-                        </p>
-                      )}
-                    </DSCard>
-                  </div>
-
-                  <div className="flex min-w-0 flex-col gap-2 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                    {(activity.washout_locations?.address || activity.location?.address) && (
-                      <div className="min-w-0 break-words text-xs text-primary/80">
-                        {activity.washout_locations?.address || activity.location?.address}
-                      </div>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={`h-auto min-h-9 w-full !whitespace-normal px-3 text-xs sm:w-auto ${
-                        isPhotoModalOpen && selectedActivity?.id === activity.id
-                          ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
-                          : "border-border/70 bg-card text-foreground hover:bg-muted/50"
-                      }`}
-                      onClick={() => {
-                        console.log("Driver Photo Button Clicked:", activity);
-                        setSelectedActivity(activity);
-                        setIsPhotoModalOpen(true);
-                      }}
-                      data-testid={`button-view-photos-${index}`}
-                    >
-                      <ImageIcon className="mr-1 h-4 w-4" />
-                      {t("common.photos")}
-                    </Button>
-                  </div>
-                </DSCard>
-              ))
-            )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <DSCard padding="sm">
+              <p className="break-words text-xs text-muted-foreground">{t("driver.dashboard.siteVisits")}</p>
+              <p className="break-words text-2xl font-semibold text-foreground" data-testid="text-today-visits">{dailyStats?.visits || 0}</p>
+              <p className="break-words text-xs text-muted-foreground">{t("driver.dashboard.completedToday")}</p>
+            </DSCard>
+            <DSCard padding="sm">
+              <p className="break-words text-xs text-muted-foreground">{t("driver.dashboard.todayEarnings")}</p>
+              <p className="break-words text-2xl font-semibold text-primary" data-testid="text-today-earnings">{formatCurrency(adjustedDailyEarnings)}</p>
+              <p className="break-words text-xs text-muted-foreground">{rejectedTotal > 0 ? t("driver.dashboard.rejectedAmountShort", { amount: formatCurrency(rejectedTotal) }) : t("driver.dashboard.netOfRejected")}</p>
+            </DSCard>
+            <DSCard padding="sm" className="flex flex-col justify-between">
+              <div>
+                <p className="break-words text-xs text-muted-foreground">{t("driver.dashboard.recentWashouts")}</p>
+                <p className="break-words text-sm font-semibold text-foreground">{t("driver.dashboard.latestStop")}</p>
+                <p className="break-words text-xs text-muted-foreground">{latestLocationName}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 h-auto min-h-9 w-full !whitespace-normal border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
+                onClick={() => setLocation('/activity')}
+                data-testid="button-view-activity"
+              >
+                {t("common.viewAll")}
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </DSCard>
           </div>
         </DSCard>
 
@@ -1006,34 +924,6 @@ export default function DriverDashboard() {
           </div>
         </DSCard>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Button 
-            variant="outline" 
-            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border-border/70 bg-card p-4 text-left shadow-sm hover:bg-muted/50"
-            onClick={() => setLocation('/activity')}
-            data-testid="button-view-history"
-          >
-            <History className="h-5 w-5 text-primary" />
-            <div className="min-w-0">
-              <div className="break-words text-sm font-semibold">{t("driver.dashboard.viewHistory")}</div>
-              <div className="break-words text-xs text-muted-foreground">{t("driver.dashboard.downloadCsv")}</div>
-            </div>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-2 !whitespace-normal rounded-2xl border-border/70 bg-card p-4 text-left shadow-sm hover:bg-muted/50"
-            onClick={() => setLocation('/profile')}
-            data-testid="button-profile"
-          >
-            <User className="h-5 w-5 text-primary" />
-            <div className="min-w-0">
-              <div className="break-words text-sm font-semibold">{t("common.profile")}</div>
-              <div className="break-words text-xs text-muted-foreground">{t("driver.dashboard.updateDetails")}</div>
-            </div>
-          </Button>
-        </div>
       </main>
 
         <MobileNav role="driver" />
