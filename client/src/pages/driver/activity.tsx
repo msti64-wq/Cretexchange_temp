@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DriverHeader } from "@/components/DriverHeader";
@@ -102,6 +102,18 @@ export default function DriverActivity() {
     staleTime: 0, // Always fetch fresh data  
   });
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDarkClass = root.classList.contains("dark");
+    root.classList.add("dark");
+
+    return () => {
+      if (!hadDarkClass) {
+        root.classList.remove("dark");
+      }
+    };
+  }, []);
+
   const filteredActivities = activities?.filter((activity: any) => {
     if (filterStatus === "all") return true;
     return (activity.washout_activities?.status || activity.status) === filterStatus;
@@ -144,14 +156,14 @@ export default function DriverActivity() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="dark min-h-screen bg-background text-foreground">
         <DriverHeader />
         <div className="animate-pulse p-4 space-y-4">
-          <div className="h-32 bg-muted rounded-lg" />
-          <div className="h-10 bg-muted rounded-lg" />
+          <div className="h-32 rounded-2xl bg-muted/70" />
+          <div className="h-10 rounded-2xl bg-muted/70" />
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-24 bg-muted rounded-lg" />
+              <div key={i} className="h-24 rounded-2xl bg-muted/70" />
             ))}
           </div>
         </div>
@@ -160,7 +172,7 @@ export default function DriverActivity() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="dark min-h-screen bg-background pb-20 text-foreground">
       <DriverHeader />
       
       <div className="p-4 space-y-4">
@@ -179,14 +191,14 @@ export default function DriverActivity() {
             title={t("common.filters")}
             description={t("driver.activity.activityHistory")}
             actions={
-              <Button 
-                variant="default" 
-                size="sm"
-                onClick={handleExport}
-                className="w-full border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white sm:w-auto"
-                data-testid="button-export"
-              >
-                <Download className="w-4 h-4 mr-2" />
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={handleExport}
+                  className="w-full border-border bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground sm:w-auto"
+                  data-testid="button-export"
+                >
+                  <Download className="w-4 h-4 mr-2" />
                 {t("common.exportCsv")}
               </Button>
             }
@@ -194,7 +206,7 @@ export default function DriverActivity() {
           <div className="mt-4 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm text-muted-foreground">{t("driver.activity.startDate")}</label>
+                <label className="mb-1 block text-sm text-foreground/75">{t("driver.activity.startDate")}</label>
                 <DateFilterButton
                   label={t("driver.activity.startDate")}
                   value={startDate}
@@ -203,7 +215,7 @@ export default function DriverActivity() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm text-muted-foreground">{t("driver.activity.endDate")}</label>
+                <label className="mb-1 block text-sm text-foreground/75">{t("driver.activity.endDate")}</label>
                 <DateFilterButton
                   label={t("driver.activity.endDate")}
                   value={endDate}
@@ -214,43 +226,43 @@ export default function DriverActivity() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button 
-                size="sm"
-                variant={filterStatus === "all" ? "default" : "outline"}
-                onClick={() => setFilterStatus("all")}
-                className={
-                  filterStatus === "all"
-                    ? "border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white"
-                    : "border-slate-700 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white"
-                }
-                data-testid="button-filter-all"
-              >
+                <Button 
+                  size="sm"
+                  variant={filterStatus === "all" ? "default" : "outline"}
+                  onClick={() => setFilterStatus("all")}
+                  className={
+                    filterStatus === "all"
+                      ? "border-border bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                      : "border-border bg-card/80 text-foreground hover:bg-card hover:text-foreground"
+                  }
+                  data-testid="button-filter-all"
+                >
                 {t("common.all")}
               </Button>
-              <Button 
-                size="sm"
-                variant={filterStatus === "verified" ? "default" : "outline"}
-                onClick={() => setFilterStatus("verified")}
-                className={
-                  filterStatus === "verified"
-                    ? "border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white"
-                    : "border-slate-700 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white"
-                }
-                data-testid="button-filter-verified"
-              >
+                <Button 
+                  size="sm"
+                  variant={filterStatus === "verified" ? "default" : "outline"}
+                  onClick={() => setFilterStatus("verified")}
+                  className={
+                    filterStatus === "verified"
+                      ? "border-border bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                      : "border-border bg-card/80 text-foreground hover:bg-card hover:text-foreground"
+                  }
+                  data-testid="button-filter-verified"
+                >
                 {t("driver.activity.verified")}
               </Button>
-              <Button 
-                size="sm"
-                variant={filterStatus === "pending" ? "default" : "outline"}
-                onClick={() => setFilterStatus("pending")}
-                className={
-                  filterStatus === "pending"
-                    ? "border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white"
-                    : "border-slate-700 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white"
-                }
-                data-testid="button-filter-pending"
-              >
+                <Button 
+                  size="sm"
+                  variant={filterStatus === "pending" ? "default" : "outline"}
+                  onClick={() => setFilterStatus("pending")}
+                  className={
+                    filterStatus === "pending"
+                      ? "border-border bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                      : "border-border bg-card/80 text-foreground hover:bg-card hover:text-foreground"
+                  }
+                  data-testid="button-filter-pending"
+                >
                 {t("driver.activity.pending")}
               </Button>
             </div>
@@ -267,8 +279,8 @@ export default function DriverActivity() {
           {filteredActivities.length === 0 ? (
             <DSCard padding="lg">
               <div className="text-center py-8">
-                <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">{t("driver.activity.noActivities")}</p>
+                <Clock className="w-12 h-12 text-foreground/65 mx-auto mb-4" />
+                <p className="text-foreground/75">{t("driver.activity.noActivities")}</p>
               </div>
             </DSCard>
           ) : (
@@ -279,25 +291,25 @@ export default function DriverActivity() {
                       <h3 className="font-semibold mb-1" data-testid={`text-activity-location-${index}`}>
                         {activity.washout_locations?.name || activity.location?.name || t("driver.activity.unknownLocation")}
                       </h3>
-                      <p className="text-sm text-muted-foreground mb-2" data-testid={`text-activity-address-${index}`}>
+                      <p className="text-sm text-foreground/75 mb-2" data-testid={`text-activity-address-${index}`}>
                         {activity.washout_locations?.address || activity.location?.address || ''}
                       </p>
                       {(activity.location?.owner?.user || activity.washout_locations?.owner?.user) && (
-                        <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-name-${index}`}>
+                        <p className="text-xs text-foreground/65 mb-2" data-testid={`text-owner-name-${index}`}>
                           {t("driver.activity.ownerName", { name: `${activity.location?.owner?.user?.firstName || activity.washout_locations?.owner?.user?.firstName} ${activity.location?.owner?.user?.lastName || activity.washout_locations?.owner?.user?.lastName}` })}
                         </p>
                       )}
                       {(activity.location?.owner?.user?.phone || activity.washout_locations?.owner?.user?.phone) && (
-                        <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-phone-${index}`}>
+                        <p className="text-xs text-foreground/65 mb-2" data-testid={`text-owner-phone-${index}`}>
                           {t("driver.activity.ownerPhone", { phone: activity.location?.owner?.user?.phone || activity.washout_locations?.owner?.user?.phone })}
                         </p>
                       )}
                       {((activity.washout_activities?.latitude && activity.washout_activities?.longitude) || (activity.latitude && activity.longitude)) && (
-                        <p className="text-xs text-muted-foreground mb-2" data-testid={`text-gps-coordinates-${index}`}>
+                        <p className="text-xs text-foreground/65 mb-2" data-testid={`text-gps-coordinates-${index}`}>
                           {t("driver.activity.gps")} {Number(activity.washout_activities?.latitude || activity.latitude).toFixed(6)}, {Number(activity.washout_activities?.longitude || activity.longitude).toFixed(6)}
                         </p>
                       )}
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4 text-sm text-foreground/70">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
                           <span data-testid={`text-activity-date-${index}`}>
@@ -329,7 +341,7 @@ export default function DriverActivity() {
                   </div>
 
                   {(activity.washout_activities?.notes || activity.notes) && (
-                    <p className="text-sm text-muted-foreground mb-3" data-testid={`text-activity-notes-${index}`}>
+                    <p className="text-sm text-foreground/75 mb-3" data-testid={`text-activity-notes-${index}`}>
                       {activity.washout_activities?.notes || activity.notes}
                     </p>
                   )}
@@ -351,12 +363,12 @@ export default function DriverActivity() {
                   )}
 
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-                    <div className="flex items-center text-sm text-muted-foreground">
+                    <div className="flex items-center text-sm text-foreground/70">
                       <MapPin className="w-4 h-4 mr-1" />
                       <span>{t("driver.activity.gpsVerified")}</span>
                     </div>
                     {activity.verifiedAt && (
-                      <div className="text-xs text-green-600">
+                      <div className="text-xs text-green-500">
                         {t("driver.activity.verifiedOn", { date: new Date(activity.verifiedAt).toLocaleDateString(language === "es" ? "es-US" : "en-US") })}
                       </div>
                     )}
