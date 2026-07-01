@@ -63,6 +63,18 @@ export default function DriverLocations() {
     getLocation();
   }, []);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDarkClass = root.classList.contains("dark");
+    root.classList.add("dark");
+
+    return () => {
+      if (!hadDarkClass) {
+        root.classList.remove("dark");
+      }
+    };
+  }, []);
+
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 3959; // Earth's radius in miles
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -109,14 +121,14 @@ export default function DriverLocations() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="dark min-h-screen bg-background text-foreground">
         <DriverHeader />
         <div className="animate-pulse p-4 space-y-4">
-          <div className="h-10 bg-muted rounded-lg" />
-          <div className="h-48 bg-muted rounded-lg" />
+          <div className="h-10 rounded-lg bg-muted/70" />
+          <div className="h-48 rounded-lg bg-muted/70" />
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-20 bg-muted rounded-lg" />
+              <div key={i} className="h-20 rounded-lg bg-muted/70" />
             ))}
           </div>
         </div>
@@ -125,14 +137,14 @@ export default function DriverLocations() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="dark min-h-screen bg-background pb-20 text-foreground">
       <DriverHeader />
       
       <div className="p-4 space-y-4">
         {/* Search and Filter */}
         <div className="space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-3 w-4 h-4 text-foreground/70" />
             <Input
               placeholder={t("driver.locations.searchPlaceholder")}
               value={searchTerm}
@@ -165,13 +177,13 @@ export default function DriverLocations() {
 
         {/* Material Selection for Rubble Service */}
         {isRubbleServiceEnabled && materials && materials.length > 0 && (
-          <Card>
+          <Card className="border-border/70 bg-card/90">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Trash2 className="w-5 h-5 text-accent" />
                 <h3 className="font-semibold">{t("driver.locations.dropOffQuestion")}</h3>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-foreground/75 mb-4">
                 {t("driver.locations.dropOffHelp")}
               </p>
               <div className="grid grid-cols-2 gap-3">
@@ -196,7 +208,7 @@ export default function DriverLocations() {
                       <div>
                         <div className="font-medium">{material.displayName || material.display_name}</div>
                         {material.synonyms && material.synonyms.length > 0 && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
+                          <div className="text-xs text-foreground/65 mt-0.5">
                             {t("driver.locations.examples", { examples: material.synonyms.join(', ') })}
                           </div>
                         )}
@@ -206,9 +218,9 @@ export default function DriverLocations() {
                 ))}
               </div>
               {selectedMaterials.length > 0 && (
-                <div className="mt-3 pt-3 border-t">
+                <div className="mt-3 pt-3 border-t border-border/70">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
+                    <span className="text-foreground/70">
                       {selectedMaterials.length === 1
                         ? t("driver.locations.materialSelected", { count: selectedMaterials.length })
                         : t("driver.locations.materialsSelected", { count: selectedMaterials.length })}
@@ -230,11 +242,11 @@ export default function DriverLocations() {
 
         {/* Location Error Message */}
         {locationError && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-blue-800 text-sm">
+          <div className="rounded-lg border border-border/70 bg-card/90 p-4">
+            <p className="text-sm text-foreground/85">
               {t("driver.locations.approxLocation")}
             </p>
-            <p className="text-blue-600 text-xs mt-1">
+            <p className="mt-1 text-xs text-foreground/65">
               {t("driver.locations.enableGps")}
             </p>
           </div>
@@ -242,7 +254,7 @@ export default function DriverLocations() {
 
         {/* Map View - Only when enhanced location creation is enabled */}
         {isMapEnabled && (
-          <Card>
+          <Card className="border-border/70 bg-card/90">
             <CardContent className="p-0">
               <LocationMap 
                 locations={filteredAndSortedLocations}
@@ -263,24 +275,24 @@ export default function DriverLocations() {
           </div>
 
           {filteredAndSortedLocations.length === 0 ? (
-            <Card>
+            <Card className="border-border/70 bg-card/90">
               <CardContent className="text-center py-8">
-                <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">{t("driver.locations.noLocationsFound")}</p>
+                <MapPin className="w-12 h-12 text-foreground/65 mx-auto mb-4" />
+                <p className="text-foreground/75">{t("driver.locations.noLocationsFound")}</p>
               </CardContent>
             </Card>
           ) : (
             filteredAndSortedLocations.map((item: any, index: number) => {
               const location = item.washout_locations || item;
               return (
-              <Card key={location.id} className="hover:shadow-md transition-shadow" data-testid={`card-location-${index}`}>
+              <Card key={location.id} className="border-border/70 bg-card/90 hover:border-border hover:shadow-md transition-shadow" data-testid={`card-location-${index}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg mb-1" data-testid={`text-location-name-${index}`}>
                         {location.name}
                       </h3>
-                      <p className="text-muted-foreground text-sm mb-2" data-testid={`text-location-address-${index}`}>
+                      <p className="text-foreground/75 text-sm mb-2" data-testid={`text-location-address-${index}`}>
                         {formatAddress({
                           street: location.street,
                           city: location.city,
@@ -289,13 +301,13 @@ export default function DriverLocations() {
                         })}
                       </p>
                       {(item.owner?.user || location.owner?.user) && (
-                        <p className="text-xs text-muted-foreground mb-2" data-testid={`text-owner-name-${index}`}>
+                        <p className="text-xs text-foreground/65 mb-2" data-testid={`text-owner-name-${index}`}>
                           {t("driver.locations.ownerName", { name: `${item.owner?.user?.firstName || location.owner?.user?.firstName} ${item.owner?.user?.lastName || location.owner?.user?.lastName}` })}
                         </p>
                       )}
                       <div className="flex items-center gap-4 text-sm">
                         {currentLocation && item.distance !== undefined && (
-                          <div className="flex items-center text-muted-foreground">
+                          <div className="flex items-center text-foreground/70">
                             <Navigation className="w-4 h-4 mr-1" />
                             <span data-testid={`text-location-distance-${index}`}>
                               {item.distance.toFixed(1)} mi
@@ -312,15 +324,15 @@ export default function DriverLocations() {
                       <div className="text-2xl font-bold text-accent mb-1" data-testid={`text-location-rate-${index}`}>
                         {formatCurrency(Number(location.rate))}
                       </div>
-                      <div className="text-xs text-muted-foreground">{t("driver.locations.driverPayoutPerWashout")}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-foreground/65">{t("driver.locations.driverPayoutPerWashout")}</div>
+                      <div className="text-xs text-foreground/65">
                         {t("driver.locations.driverTip", { amount: formatCurrency(resolveLocationDriverTipRateCents(location.rate) / 100) })}
                       </div>
                     </div>
                   </div>
 
                   {location.description && (
-                    <p className="text-sm text-muted-foreground mb-3" data-testid={`text-location-description-${index}`}>
+                    <p className="text-sm text-foreground/75 mb-3" data-testid={`text-location-description-${index}`}>
                       {location.description}
                     </p>
                   )}
@@ -337,7 +349,7 @@ export default function DriverLocations() {
 
                   {/* Materials Accepted - Rubble Service */}
                   {isRubbleServiceEnabled && location.materialIntents && location.materialIntents.length > 0 && (
-                    <div className="mb-3 p-3 border rounded-lg bg-muted/30">
+                    <div className="mb-3 rounded-lg border border-border/70 bg-card/80 p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <Package className="w-4 h-4 text-accent" />
                         <h4 className="text-sm font-semibold">{t("driver.locations.materialsAccepted")}</h4>
@@ -354,8 +366,8 @@ export default function DriverLocations() {
                             
                             return (
                               <div key={intentIndex} className="flex items-center justify-between text-sm" data-testid={`material-${index}-${intentIndex}`}>
-                                <span className="text-muted-foreground">{displayName}</span>
-                                <span className="font-semibold text-green-600">
+                                <span className="text-foreground/70">{displayName}</span>
+                                <span className="font-semibold text-emerald-500">
                                   {formatCurrency(rateCents / 100)} {unitDisplay}
                                 </span>
                               </div>
