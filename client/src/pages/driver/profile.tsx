@@ -154,6 +154,18 @@ export default function DriverProfile() {
     }
   }, [user, termsStatus, isEditing, showInstallPrompt]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const hadDarkClass = root.classList.contains("dark");
+    root.classList.add("dark");
+
+    return () => {
+      if (!hadDarkClass) {
+        root.classList.remove("dark");
+      }
+    };
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfileMutation.mutate(formData);
@@ -162,38 +174,38 @@ export default function DriverProfile() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="dark min-h-screen bg-background text-foreground">
         <DriverHeader />
         <div className="animate-pulse p-4 space-y-4">
-          <div className="h-32 bg-muted rounded-lg" />
-          <div className="h-48 bg-muted rounded-lg" />
-          <div className="h-48 bg-muted rounded-lg" />
+          <div className="h-32 rounded-2xl bg-muted/70" />
+          <div className="h-48 rounded-2xl bg-muted/70" />
+          <div className="h-48 rounded-2xl bg-muted/70" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="dark min-h-screen bg-background pb-20 text-foreground">
       <DriverHeader />
       
       <div className="p-4 space-y-4">
         {/* Profile Header */}
-        <DSCard padding="lg">
+        <DSCard padding="lg" className="border-border/70 bg-card/90">
           <CardContent className="p-6 text-center">
-            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/15">
               <User className="w-10 h-10 text-primary" />
             </div>
             <h2 className="text-xl font-semibold mb-1" data-testid="text-user-name">
               {(user as any)?.firstName} {(user as any)?.lastName}
             </h2>
-            <p className="text-muted-foreground" data-testid="text-user-role">{t("driver.profile.concreteTruckDriver")}</p>
+            <p className="text-foreground/75" data-testid="text-user-role">{t("driver.profile.concreteTruckDriver")}</p>
             <div className="flex justify-center gap-2 mt-4 flex-wrap">
               <Button 
                 variant={isEditing ? "default" : "outline"}
                 size="sm"
                 onClick={() => setIsEditing(!isEditing)}
-                className="border-slate-700 bg-slate-800/90 text-white hover:bg-slate-700 hover:text-white"
+                className={isEditing ? "border-border bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : "border-border bg-card/80 text-foreground hover:bg-card hover:text-foreground"}
                 data-testid="button-edit-profile"
               >
                 {isEditing ? t("driver.profile.cancel") : t("driver.profile.editProfile")}
@@ -210,7 +222,7 @@ export default function DriverProfile() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Personal Information */}
-          <DSCard padding="lg">
+          <DSCard padding="lg" className="border-border/70 bg-card/90">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <User className="w-5 h-5 mr-2" />
@@ -323,7 +335,7 @@ export default function DriverProfile() {
           </DSCard>
 
           {/* Employment Information */}
-          <DSCard padding="lg">
+          <DSCard padding="lg" className="border-border/70 bg-card/90">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Truck className="w-5 h-5 mr-2" />
@@ -417,7 +429,7 @@ export default function DriverProfile() {
                   className={contrastFieldClassName}
                   data-testid="input-truck-number"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-foreground/70 mt-1">
                   {t("driver.profile.truckNumberHelp")}
                 </p>
               </div>
@@ -425,13 +437,13 @@ export default function DriverProfile() {
           </DSCard>
 
           {/* Lottery Prize Preference */}
-          <DSCard padding="lg">
+          <DSCard padding="lg" className="border-border/70 bg-card/90">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Gift className="w-5 h-5 mr-2" />
                 {t("driver.profile.lotteryPrizePreference")}
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-foreground/70 mt-2">
                 {t("driver.profile.lotteryPrizePreferenceDescription")}
               </p>
             </CardHeader>
@@ -473,9 +485,9 @@ export default function DriverProfile() {
               )}
 
               {!isEditing && (
-                <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                  <Gift className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card/80 p-3">
+                  <Gift className="w-4 h-4 flex-shrink-0 text-foreground/65" />
+                  <p className="text-sm text-foreground/75">
                     {t("driver.profile.currentPreference")} <span className="font-medium text-foreground">
                       {formData.payoutPreference === "bank_transfer" ? t("driver.profile.directDepositUnavailable") :
                        formData.payoutPreference === "gift_card" ? t("driver.profile.prepaidDebitCard") :
@@ -490,7 +502,7 @@ export default function DriverProfile() {
           </DSCard>
 
           {/* App Settings Section */}
-          <DSCard padding="lg">
+          <DSCard padding="lg" className="border-border/70 bg-card/90">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Smartphone className="w-5 h-5" />
@@ -501,7 +513,7 @@ export default function DriverProfile() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
                   <p className="text-sm font-medium">{t("driver.profile.installCreteXchange")}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-foreground/70">
                     {t("driver.profile.installHelp")}
                   </p>
                 </div>
@@ -514,7 +526,7 @@ export default function DriverProfile() {
                     }
                     setShowInstallPrompt(true);
                   }}
-                  className="w-full border-slate-700 bg-slate-800/90 text-white hover:bg-slate-700 hover:text-white sm:w-auto"
+                  className="w-full border-border bg-card/80 text-foreground hover:bg-card hover:text-foreground sm:w-auto"
                   data-testid="button-install-app-manual"
                 >
                   <Smartphone className="w-4 h-4 mr-2" />
@@ -522,8 +534,8 @@ export default function DriverProfile() {
                 </Button>
               </div>
               
-              <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-                <p className="text-sm text-blue-700 dark:text-blue-300">
+              <div className="rounded-2xl border border-border/70 bg-card/80 p-3">
+                <p className="text-sm text-foreground/75">
                   {t("driver.profile.installBenefit")}
                 </p>
               </div>
@@ -531,7 +543,7 @@ export default function DriverProfile() {
           </DSCard>
 
           {/* Terms & Conditions Section */}
-          <DSCard padding="lg">
+          <DSCard padding="lg" className="border-border/70 bg-card/90">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
@@ -547,7 +559,7 @@ export default function DriverProfile() {
                       {termsStatus?.hasAgreed ? t("driver.profile.agreed") : t("driver.profile.notAgreed")}
                     </DSStatusChip>
                     {termsStatus?.hasAgreed && termsStatus?.agreedAt && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-foreground/65">
                         {t("driver.profile.agreedOn", { date: new Date(termsStatus.agreedAt).toLocaleDateString() })}
                       </span>
                     )}
@@ -557,7 +569,7 @@ export default function DriverProfile() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowTermsDialog(true)}
-                  className="w-full border-orange-700 bg-orange-600 text-white hover:bg-orange-700 hover:text-white sm:w-auto"
+                  className="w-full border-border bg-card/80 text-foreground hover:bg-card hover:text-foreground sm:w-auto"
                   data-testid="button-view-terms"
                 >
                   <Eye className="w-4 h-4 mr-2" />
@@ -565,8 +577,8 @@ export default function DriverProfile() {
                 </Button>
               </div>
               
-              <div className="bg-muted/50 rounded-lg p-4">
-                <p className="text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-border/70 bg-card/80 p-4">
+                <p className="text-sm text-foreground/75">
                   {t("driver.profile.termsHelp")}
                 </p>
               </div>
