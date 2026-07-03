@@ -23,6 +23,7 @@ const DriverCheckIn = lazy(() => import("@/pages/driver/check-in"));
 const DriverWallet = lazy(() => import("@/pages/driver/wallet"));
 const DriverNotifications = lazy(() => import("@/pages/driver/notifications"));
 const DriverReports = lazy(() => import("@/pages/driver/reports"));
+const DriverRewards = lazy(() => import("@/pages/driver/rewards"));
 
 // Owner pages
 const OwnerDashboard = lazy(() => import("@/pages/owner/dashboard"));
@@ -113,6 +114,8 @@ function Router() {
           <Route path="/notifications" component={DriverNotifications} />
           <Route path="/profile" component={DriverProfile} />
           <Route path="/reports" component={DriverReports} />
+          <Route path="/rewards" component={DriverRewards} />
+          <Route path="/driver/rewards" component={DriverRewards} />
           <Route path="/check-in/:locationId?" component={DriverCheckIn} />
           <Route component={NotFound} />
         </Switch>
