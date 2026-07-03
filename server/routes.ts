@@ -718,6 +718,47 @@ function buildDriverStripeProfileErrorResponse(validation: DriverStripePayoutPro
   };
 }
 
+async function syncDriverStripeConnectAccountFieldsFromUser(
+  user: User,
+  driver: Driver | null | undefined,
+  source: string,
+) {
+  if (!driver || !user.stripeConnectAccountId) {
+    return driver || null;
+  }
+
+  const updates: {
+    stripeConnectAccountId?: string;
+    connectedAccountId?: string;
+  } = {};
+
+  if (!driver.stripeConnectAccountId) {
+    updates.stripeConnectAccountId = user.stripeConnectAccountId;
+  }
+
+  if (!driver.connectedAccountId) {
+    updates.connectedAccountId = user.stripeConnectAccountId;
+  }
+
+  if (!updates.stripeConnectAccountId && !updates.connectedAccountId) {
+    return driver;
+  }
+
+  const updatedDriver = await storage.updateDriver(driver.id, updates);
+  console.info('[DRIVER_STRIPE_SYNC]', {
+    source,
+    userId: user.id,
+    driverId: driver.id,
+    userStripeConnectAccountId: user.stripeConnectAccountId,
+    driverStripeConnectAccountId: driver.stripeConnectAccountId || null,
+    driverConnectedAccountId: driver.connectedAccountId || null,
+    syncedStripeConnectAccountId: user.stripeConnectAccountId,
+    updatedFields: Object.keys(updates),
+  });
+
+  return updatedDriver;
+}
+
 function getSafeStripeErrorDetails(error: any) {
   return {
     code: typeof error?.code === 'string' ? error.code : undefined,
@@ -2119,6 +2160,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      const driver = user.role === 'driver' ? await storage.getDriver(userId) : null;
+
+      if (driver && user.stripeConnectAccountId) {
+        await syncDriverStripeConnectAccountFieldsFromUser(user, driver, 'column-status');
+      }
+
       let isOnboarded = false;
       let entityId: string | null = null;
       let bankAccountId: string | null = null;
@@ -2132,7 +2179,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get Treasury account ID from role-specific table
       if (user.role === 'driver') {
-        const driver = await storage.getDriver(userId);
         if (driver?.stripeTreasuryAccountId) {
           bankAccountId = driver.stripeTreasuryAccountId;
         }
@@ -3830,8 +3876,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      let driver = await storage.getDriver(routeUserId);
       if (!user.stripeConnectAccountId) {
-        let driver = await storage.getDriver(routeUserId);
         if (!driver) {
           driver = await storage.createDriver({
             userId: routeUserId,
@@ -3928,6 +3974,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         user.stripeConnectAccountId = connectedAccount.id;
         hasStripeAccount = true;
+      }
+
+      driverId = driver?.id || driverId;
+      if (driver) {
+        await syncDriverStripeConnectAccountFieldsFromUser(user, driver, 'driver-stripe-onboarding');
       }
 
       const stripeConnectAccountId = user.stripeConnectAccountId;
@@ -4111,6 +4162,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (user.role !== 'driver') {
         return res.status(403).json({ message: 'Driver access required' });
+      }
+
+      const driver = await storage.getDriver(userId);
+
+      if (driver && user.stripeConnectAccountId) {
+        await syncDriverStripeConnectAccountFieldsFromUser(user, driver, 'driver-stripe-status');
       }
 
       if (!user.stripeConnectAccountId) {
