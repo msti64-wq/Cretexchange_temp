@@ -33,6 +33,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/", icon: Home, label: t("common.dashboard"), testIdLabel: "dashboard" },
           { path: "/locations", icon: Map, label: t("common.locations"), testIdLabel: "locations" },
           { path: "/activity", icon: List, label: t("nav.activity"), testIdLabel: "activity" },
+          { path: "/rewards", icon: Trophy, label: "Rewards", testIdLabel: "rewards" },
           { path: "/wallet", icon: Wallet, label: t("nav.wallet"), testIdLabel: "wallet" },
           { path: "/notifications", icon: Bell, label: t("nav.messages"), testIdLabel: "messages" },
           { path: "/profile", icon: User, label: t("nav.profile"), testIdLabel: "profile" },
