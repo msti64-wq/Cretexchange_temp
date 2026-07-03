@@ -96,7 +96,30 @@ Future matching should consider:
 - owner instructions
 - whether a location accepts all or some selected materials
 
-## 6. Rewards
+## 6. Sticky Job Type Selection
+
+CreteXchange should support a sticky driver job type setting so drivers can keep a stable operating context across sessions.
+
+Initial job types:
+
+- Ready-Mix / Washout
+- Material Recovery
+- Both / Ask Each Shift
+
+Guidance:
+
+- Persist the selection locally for the first phase.
+- Let drivers change context easily from the dashboard.
+- Keep this separate from any future database-backed profile preference.
+- Do not force material selection or location filtering yet.
+
+Future guidance:
+
+- A persistent database-backed job type belongs in a later phase.
+- Location filtering should follow after the driver context model is validated.
+- Owner material acceptance remains its own future phase.
+
+## 7. Rewards
 
 Rewards may differ by operating mode.
 
@@ -106,7 +129,7 @@ Rewards may differ by operating mode.
 
 Final reward rules are intentionally not defined yet.
 
-## 7. Analytics and Business Intelligence
+## 8. Analytics and Business Intelligence
 
 Material recovery data can support:
 
@@ -119,7 +142,7 @@ Material recovery data can support:
 - owner performance
 - admin marketing insights
 
-## 8. Implementation Phases
+## 9. Implementation Phases
 
 ### Phase 1
 
@@ -127,7 +150,7 @@ Documentation and product definition.
 
 ### Phase 2
 
-Driver operating mode UI foundation.
+Driver operating mode and sticky job type UI foundation.
 
 ### Phase 3
 
@@ -145,10 +168,11 @@ Material recovery reward logic.
 
 Analytics and admin intelligence.
 
-## 9. Guardrails
+## 10. Guardrails
 
 - Do not treat Ready-Mix and Material Recovery as the same workflow.
 - Do not force ready-mix drivers to select materials every trip.
 - Do not change existing washout behavior until the new flow is fully defined.
 - Do not change `/driver/locations` without a preservation strategy.
 - Keep Material Recovery extensible.
+- Keep sticky job type persistence local until a later database-backed phase is defined.

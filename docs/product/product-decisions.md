@@ -84,3 +84,17 @@
 - Location setup should eventually include material acceptance controls.
 - Driver matching should be able to respect location acceptance rules.
 - Analytics can use acceptance data to identify market gaps and opportunities.
+
+## PD-016 - Sticky Job Type Selection
+
+**Decision:** Driver job type should be persisted locally during the first phase so the dashboard can remember the driver's working context across sessions without introducing backend storage.
+
+**Rationale:** A lightweight local-only preference is the lowest-risk way to establish the workflow boundary between ready-mix / washout and material recovery before committing to database-backed persistence.
+
+**Status:** Active
+
+**Implications:**
+
+- The dashboard can show the active job type immediately.
+- Drivers can switch contexts without changing platform logic.
+- A future database-backed preference can be added after the workflow is validated.

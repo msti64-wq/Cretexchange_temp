@@ -18,6 +18,7 @@ import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/d
 import { apiRequest } from "@/lib/queryClient";
 
 type DriverDashboardStatsRange = "today" | "week" | "month";
+type DriverJobType = "ready-mix-washout" | "material-recovery" | "both-ask-each-shift";
 
 interface DriverWalletBalance {
   availableBalance: number;
@@ -30,6 +31,51 @@ const DRIVER_STATS_RANGE_OPTIONS: Array<{ value: DriverDashboardStatsRange; labe
   { value: "week", labelKey: "driver.dashboard.rangeWeek" },
   { value: "month", labelKey: "driver.dashboard.rangeMonth" },
 ];
+
+const DRIVER_JOB_TYPE_OPTIONS: Array<{
+  value: DriverJobType;
+  label: string;
+  helper: string;
+}> = [
+  {
+    value: "ready-mix-washout",
+    label: "Ready-Mix / Washout",
+    helper: "Focus on approved washout locations",
+  },
+  {
+    value: "material-recovery",
+    label: "Material Recovery",
+    helper: "Focus on recovery destinations",
+  },
+  {
+    value: "both-ask-each-shift",
+    label: "Both / Ask Each Shift",
+    helper: "Switch context as needed",
+  },
+];
+
+const DRIVER_JOB_TYPE_STORAGE_KEY = "cretexchange:driver:job-type";
+const LEGACY_DRIVER_HAUL_MODE_STORAGE_KEY = "cretexchange:driver:haul-mode";
+
+function isDriverJobType(value: unknown): value is DriverJobType {
+  return value === "ready-mix-washout" || value === "material-recovery" || value === "both-ask-each-shift";
+}
+
+function mapLegacyHaulModeToJobType(value: string | null): DriverJobType | null {
+  switch (value) {
+    case "fresh-concrete-delivery":
+    case "concrete-washout":
+      return "ready-mix-washout";
+    case "rubble-recycling":
+      return "material-recovery";
+    default:
+      return null;
+  }
+}
+
+function getJobTypeMeta(mode: DriverJobType) {
+  return DRIVER_JOB_TYPE_OPTIONS.find((option) => option.value === mode) || DRIVER_JOB_TYPE_OPTIONS[0];
+}
 
 function getDriverStatsRangeLabel(
   range: DriverDashboardStatsRange,
@@ -127,6 +173,20 @@ export default function DriverDashboard() {
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
   const [showLotteryEntries, setShowLotteryEntries] = useState(false);
   const [statsRange, setStatsRange] = useState<DriverDashboardStatsRange>("today");
+  const [jobType, setJobType] = useState<DriverJobType>(() => {
+    if (typeof window === "undefined") {
+      return "ready-mix-washout";
+    }
+
+    const storedMode = window.localStorage.getItem(DRIVER_JOB_TYPE_STORAGE_KEY);
+    if (isDriverJobType(storedMode)) {
+      return storedMode;
+    }
+
+    const legacyMode = mapLegacyHaulModeToJobType(window.localStorage.getItem(LEGACY_DRIVER_HAUL_MODE_STORAGE_KEY));
+    return legacyMode || "ready-mix-washout";
+  });
+  const [isJobTypePickerOpen, setIsJobTypePickerOpen] = useState(false);
 
   const { data: dashboardData, isLoading, refetch } = useQuery({
     queryKey: [`/api/drivers/dashboard?statsRange=${statsRange}`],
@@ -203,6 +263,10 @@ export default function DriverDashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    window.localStorage.setItem(DRIVER_JOB_TYPE_STORAGE_KEY, jobType);
+  }, [jobType]);
+
   if (isLoading) {
     return <DriverDashboardSkeleton />;
   }
@@ -240,6 +304,7 @@ export default function DriverDashboard() {
     : "";
   const latestActivityAmount = Number(latestActivity?.washout_activities?.amount || latestActivity?.amount || 0);
   const latestActivityStatus = latestActivity ? (latestActivity.washout_activities?.status || latestActivity.status) : null;
+  const activeJobType = getJobTypeMeta(jobType);
 
   return (
     <DriverDashboardErrorBoundary>
@@ -282,6 +347,66 @@ export default function DriverDashboard() {
               <p className="max-w-2xl break-words text-sm text-muted-foreground">
                 {t("driver.dashboard.description")}
               </p>
+            </div>
+            <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border/70 bg-card p-3">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.16em]">
+                  Active job type
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex w-fit items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
+                    {activeJobType.label}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 border-border/70 bg-background px-3 text-xs text-foreground hover:bg-muted/40"
+                    onClick={() => setIsJobTypePickerOpen((current) => !current)}
+                    data-testid="button-change-job-type"
+                  >
+                    Change Job Type
+                  </Button>
+                </div>
+              </div>
+              <p className="break-words text-sm text-muted-foreground">{activeJobType.helper}</p>
+              {isJobTypePickerOpen ? (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {DRIVER_JOB_TYPE_OPTIONS.map((option) => {
+                    const isActive = jobType === option.value;
+                    return (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant={isActive ? "default" : "outline"}
+                        className={[
+                          "h-auto min-h-14 w-full min-w-0 flex-col items-start justify-center gap-1 !whitespace-normal rounded-2xl px-3 py-3 text-left shadow-sm",
+                          isActive
+                            ? "border-primary/30 bg-primary text-primary-foreground hover:bg-primary/90"
+                            : "border-border/70 bg-card text-foreground hover:bg-muted/50",
+                        ].join(" ")}
+                        onClick={() => {
+                          setJobType(option.value);
+                          setIsJobTypePickerOpen(false);
+                        }}
+                        data-testid={`button-job-type-${option.value}`}
+                      >
+                        <span className="break-words text-sm font-semibold leading-5">{option.label}</span>
+                        <span className={isActive ? "break-words text-xs text-primary-foreground/85" : "break-words text-xs text-muted-foreground"}>
+                          {option.helper}
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
+                  <p className="text-sm font-medium text-foreground">Selected context</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {activeJobType.label} keeps the dashboard focused on the right field workflow.
+                  </p>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Button
