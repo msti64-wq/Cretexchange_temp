@@ -19,6 +19,12 @@ import { apiRequest } from "@/lib/queryClient";
 
 type DriverDashboardStatsRange = "today" | "week" | "month";
 
+interface DriverWalletBalance {
+  availableBalance: number;
+  pendingBalance: number;
+  totalBalance: number;
+}
+
 const DRIVER_STATS_RANGE_OPTIONS: Array<{ value: DriverDashboardStatsRange; labelKey: string }> = [
   { value: "today", labelKey: "driver.dashboard.rangeToday" },
   { value: "week", labelKey: "driver.dashboard.rangeWeek" },
@@ -130,6 +136,11 @@ export default function DriverDashboard() {
   const { data: paymentHistory } = useQuery({
     queryKey: ['/api/payments/driver-history'],
     refetchInterval: 60000, // Refresh every minute
+  });
+
+  const { data: walletBalance, isLoading: walletBalanceLoading } = useQuery<DriverWalletBalance>({
+    queryKey: ['/api/wallet/balance'],
+    refetchInterval: 30000,
   });
 
   const { data: lotteryEntries, isLoading: lotteryEntriesLoading, error: lotteryEntriesError } = useQuery<any[]>({
@@ -382,7 +393,39 @@ export default function DriverDashboard() {
               </div>
             )}
           </div>
-          </DSCard>
+        </DSCard>
+
+        <DSCard padding="sm" elevated className="border-border/70">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 space-y-1">
+              <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.16em]">
+                Available Balance
+              </p>
+              {walletBalanceLoading ? (
+                <Skeleton className="h-8 w-32 bg-muted" />
+              ) : (
+                <p className="break-words text-2xl font-semibold tracking-tight text-foreground" data-testid="text-dashboard-available-balance">
+                  {formatCurrency(walletBalance?.availableBalance || 0)}
+                </p>
+              )}
+              <p className="break-words text-sm text-muted-foreground">
+                {walletBalance?.pendingBalance != null
+                  ? `Pending: ${formatCurrency(walletBalance.pendingBalance)}`
+                  : "Available to withdraw in Wallet"}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-auto min-h-9 w-full !whitespace-normal border-border/70 bg-card px-3 text-foreground hover:bg-muted/50 sm:w-auto"
+              onClick={() => setLocation('/wallet')}
+              data-testid="button-view-wallet-preview"
+            >
+              View Wallet
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
+        </DSCard>
 
         {/* Dashboard Snapshot */}
         <section className="space-y-2">
