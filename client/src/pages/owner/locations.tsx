@@ -12,13 +12,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, Package, DollarSign, Pencil, Check, X } from "lucide-react";
+import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, Package, DollarSign, Pencil, Check, X, Clock, ShieldAlert } from "lucide-react";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { formatCentsToDollars, formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatAddress } from "@shared/addressUtils";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
+import { resolveLocationMonthlyFeeCents } from "@shared/locationBilling";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { useAuth } from "@/hooks/useAuth";
 import { resolveOwnerMembershipState } from "@shared/ownerMembership";
@@ -26,6 +27,7 @@ import { resolveOwnerLocationAccessState } from "@shared/ownerLocationAccess";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/lib/i18n";
+import { DSCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 
 export default function OwnerLocations() {
   const { toast } = useToast();
@@ -438,6 +440,175 @@ export default function OwnerLocations() {
 
   const handleToggleStatus = (locationId: string, currentStatus: boolean) => {
     toggleStatusMutation.mutate({ locationId, isActive: !currentStatus });
+  };
+
+  const renderRecoveryProfileCard = (location: any, index: number) => {
+    const formattedAddress = formatAddress({
+      street: location.street,
+      city: location.city,
+      state: location.state,
+      zip: location.zip,
+    });
+    const monthlyFeeCents = resolveLocationMonthlyFeeCents(location.monthlyFeeCents);
+    const permitCount = Array.isArray(location.permitUrls) ? location.permitUrls.length : 0;
+    const amenities = Array.isArray(location.amenities) ? location.amenities : [];
+    const operationalHours = typeof location.operatingHours === "string" && location.operatingHours.trim().length > 0
+      ? location.operatingHours
+      : null;
+    const description = typeof location.description === "string" && location.description.trim().length > 0
+      ? location.description
+      : null;
+
+    return (
+      <DSCard key={location.id} padding="md" className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Recovery Profile
+            </p>
+            <h3 className="truncate text-lg font-semibold text-foreground" data-testid={`text-recovery-profile-name-${index}`}>
+              {location.name}
+            </h3>
+            <p className="text-sm text-muted-foreground" data-testid={`text-recovery-profile-address-${index}`}>
+              {formattedAddress}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <DSStatusChip tone={location.isActive ? "success" : "warning"} dot>
+              {location.isActive ? t("common.active") : t("owner.billing.inactive")}
+            </DSStatusChip>
+            <DSStatusChip tone={location.isVisible ? "info" : "neutral"} dot>
+              {location.isVisible ? t("owner.locations.visible") : t("owner.locations.hidden")}
+            </DSStatusChip>
+          </div>
+        </div>
+
+        <div className="grid gap-3 xl:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-background/70 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Building2 className="h-4 w-4 text-primary" />
+              Recovery Services
+            </div>
+            <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+              <div className="flex items-center justify-between gap-3">
+                <span>Washout rate</span>
+                <span className="font-medium text-foreground">{formatCurrency(Number(location.rate) || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Monthly fee</span>
+                <span className="font-medium text-foreground">{formatCentsToDollars(monthlyFeeCents)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Operating hours</span>
+                <span className="font-medium text-foreground">{operationalHours || "Not set"}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background/70 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Package className="h-4 w-4 text-primary" />
+              Accepted Materials
+            </div>
+            <div className="mt-3 space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Material acceptance is read-only in this phase.
+              </p>
+              <p className="text-sm text-foreground">
+                Future phases will attach a catalog-driven acceptance profile to each recovery site.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <DSStatusChip tone="neutral" size="sm">Future phase</DSStatusChip>
+                <DSStatusChip tone="neutral" size="sm">Catalog-driven</DSStatusChip>
+                <DSStatusChip tone="neutral" size="sm">No persistence</DSStatusChip>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background/70 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <DollarSign className="h-4 w-4 text-primary" />
+              Recovery Incentives
+            </div>
+            <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+              <div className="flex items-center justify-between gap-3">
+                <span>Driver payout</span>
+                <span className="font-medium text-foreground">{formatCurrency(Number(location.rate) || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Driver tip</span>
+                <span className="font-medium text-foreground">
+                  {formatCentsToDollars(resolveLocationDriverTipRateCents(location.rate))}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Monthly fee offset</span>
+                <span className="font-medium text-foreground">{formatCentsToDollars(monthlyFeeCents)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background/70 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Clock className="h-4 w-4 text-primary" />
+              Capacity Management
+            </div>
+            <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+              <div className="flex items-center justify-between gap-3">
+                <span>Availability</span>
+                <span className="font-medium text-foreground">
+                  {location.isActive ? "Available" : "Paused"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Visibility</span>
+                <span className="font-medium text-foreground">
+                  {location.isVisible ? "Driver-facing" : "Hidden"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>Permits</span>
+                <span className="font-medium text-foreground">{permitCount}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background/70 p-4 xl:col-span-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <ShieldAlert className="h-4 w-4 text-primary" />
+              Operational Rules
+            </div>
+            <div className="mt-3 space-y-3 text-sm text-muted-foreground">
+              <p>
+                {description || "No location rules or special instructions are documented yet."}
+              </p>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Amenities
+                </p>
+                {amenities.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {amenities.map((amenity: string, amenityIndex: number) => (
+                      <DSStatusChip key={`${location.id}-amenity-${amenityIndex}`} tone="neutral" size="sm">
+                        {amenity}
+                      </DSStatusChip>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-foreground">No amenities recorded yet.</p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <DSStatusChip tone="neutral" size="sm">Read only</DSStatusChip>
+                <DSStatusChip tone="neutral" size="sm">Future matching</DSStatusChip>
+                <DSStatusChip tone="neutral" size="sm">No workflow changes</DSStatusChip>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DSCard>
+    );
   };
 
   if (isLoading) {
@@ -951,6 +1122,27 @@ export default function OwnerLocations() {
             </div>
             <div className="text-xs text-muted-foreground">{t("owner.locations.perWashout")}</div>
           </StatCard>
+        </div>
+
+        {/* Recovery Profile */}
+        <div className="space-y-4">
+          <DSSectionHeader
+            eyebrow="Owner Operations Management"
+            title="Recovery Profile"
+            description="Read-only site profiles for owner recovery operations. Later phases will connect material acceptance, matching, and incentives without changing current workflows."
+          />
+
+          {!Array.isArray(locations) || locations.length === 0 ? (
+            <DSCard padding="md">
+              <p className="text-sm text-muted-foreground">
+                Recovery profiles will appear here once owner locations are created.
+              </p>
+            </DSCard>
+          ) : (
+            <div className="grid gap-4 xl:grid-cols-2">
+              {locations.map((location: any, index: number) => renderRecoveryProfileCard(location, index))}
+            </div>
+          )}
         </div>
 
         {/* Location List */}
