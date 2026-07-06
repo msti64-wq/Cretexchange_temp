@@ -1405,29 +1405,27 @@ async function finalizeChargedWashoutPayment(params: {
     console.error(`   Owner ID: ${owner.id}, Payment ID: ${paymentId}`);
   }
 
-  if (!useCustomBillingModel) {
-    let driverWallet = await storage.getDriverWallet(driver.id);
-    if (!driverWallet) {
-      await storage.createDriverWallet({ driverId: driver.id });
-    }
-    
-    await storage.adjustDriverWalletBalance(driver.id, driverAmount, 0);
-    
-    const updatedWallet = await storage.getDriverWallet(driver.id);
-    const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
-    
-    await storage.createWalletTransaction({
-      driverId: driver.id,
-      amount: driverAmount.toString(),
-      direction: "credit",
-      balanceAfter: newBalance.toString(),
-      currency: "USD",
-      sourceType: "washout",
-      sourceId: activityId,
-      status: "posted",
-      description: `Washout payment for activity ${activityId}`,
-    });
+  let driverWallet = await storage.getDriverWallet(driver.id);
+  if (!driverWallet) {
+    await storage.createDriverWallet({ driverId: driver.id });
   }
+  
+  await storage.adjustDriverWalletBalance(driver.id, driverAmount, 0);
+  
+  const updatedWallet = await storage.getDriverWallet(driver.id);
+  const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
+  
+  await storage.createWalletTransaction({
+    driverId: driver.id,
+    amount: driverAmount.toString(),
+    direction: "credit",
+    balanceAfter: newBalance.toString(),
+    currency: "USD",
+    sourceType: "washout",
+    sourceId: activityId,
+    status: "posted",
+    description: `Washout payment for activity ${activityId}`,
+  });
 
   return {
     paymentId,
@@ -5047,7 +5045,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const systemSettings = await storage.getSystemSettings();
 
       // ========== CHECK FOR CUSTOM BILLING MODEL (LOTTERY PROGRAM) ==========
-      // Custom billing model: Owner pays fixed custom rate, driver gets lottery entry (no payout)
+      // Custom billing model: Owner pays fixed custom rate, driver still keeps the location incentive,
+      // and the washout also earns a lottery entry when rewards are enabled.
       const useCustomBillingModel = owner.useCustomBillingModel === true;
       let defaultCustomWashoutRate = 5.00;
       try {
@@ -5064,22 +5063,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : defaultCustomWashoutRate;
 
       // FEE STRUCTURE: Depends on billing model
-        // Standard: Driver receives full location rate, Owner pays location rate + platform fee
-      // Custom (Lottery): Owner pays customWashoutRate only, Driver gets lottery entry (no cash)
+      // Standard: Driver receives full location rate, Owner pays location rate + platform fee.
+      // Custom: Owner pays custom washout rate + the same driver incentive, and still earns lottery entry rewards.
       let driverAmount: number;
       let platformFee: number;
       let ownerFee: number;
-      let driverTip = 0;
+      let driverTip: number;
 
       if (useCustomBillingModel) {
-        // CUSTOM BILLING MODEL: Owner pays flat custom rate, platform keeps it all
-        driverAmount = 0; // Driver gets lottery entry, not cash
-        platformFee = customWashoutRate; // Platform keeps entire custom rate
-        ownerFee = customWashoutRate; // Owner pays only the custom rate
-        console.log(`🎰 Custom billing model active for owner ${owner.id}: ownerFee=$${ownerFee}, driver gets lottery entry`);
+        // CUSTOM BILLING MODEL: Owner pays custom rate plus the location incentive.
+        driverAmount = Number(activityDetails.amount || activityLocation?.rate || 0);
+        driverTip = driverAmount;
+        platformFee = customWashoutRate;
+        ownerFee = platformFee + driverTip;
+        console.log(`🎰 Custom billing model active for owner ${owner.id}: ownerFee=$${ownerFee}, platformFee=$${platformFee}, driver incentive=$${driverTip}`);
       } else {
         // STANDARD BILLING MODEL: Driver gets paid, platform takes fee
-        driverAmount = Number(activityDetails.amount); // Driver gets exact location rate
+        driverAmount = Number(activityDetails.amount || activityLocation?.rate || 0); // Driver gets exact location rate
         const billingComponents = resolveWashoutChargeComponents({
           owner,
           location: activityLocation,
@@ -5256,7 +5256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // NOTE: For standard model, driver wallet credit happens when batch payment succeeds (in batch processor)
         
-        const compensationType = useCustomBillingModel ? 'lottery entry' : 'pending payment';
+        const compensationType = useCustomBillingModel ? `$${driverAmount.toFixed(2)} incentive + lottery entry` : 'pending payment';
         console.log(`✅ Washout ${id} approved with ${billingCadence} billing. Payment ${payment.id} pending batch processing. Driver receives: ${compensationType}`);
         approvalResponseMessage = "Washout approved. Payment will be processed in the next billing run.";
         approvalResponsePaymentStatus = "pending";
@@ -5621,41 +5621,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // ========== DRIVER COMPENSATION: CASH OR LOTTERY ENTRY ==========
-      if (!useCustomBillingModel) {
-        // STANDARD MODEL: Credit driver's wallet with cash
-        // Ensure driver has a wallet
-        let driverWallet = await storage.getDriverWallet(driver.id);
-        if (!driverWallet) {
-          await storage.createDriverWallet({ driverId: driver.id });
-        }
-        
-        // Credit driver's wallet balance AFTER successful payment
-        await storage.adjustDriverWalletBalance(driver.id, driverAmount, 0);
-        
-        // Get updated wallet for transaction record
-        const updatedWallet = await storage.getDriverWallet(driver.id);
-        const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
-        
-        // Create wallet transaction record
-        await storage.createWalletTransaction({
-          driverId: driver.id,
-          amount: driverAmount.toString(),
-          direction: "credit",
-          balanceAfter: newBalance.toString(),
-          currency: "USD",
-          sourceType: "washout",
-          sourceId: id,
-          status: "posted",
-          description: `Washout payment for activity ${id}`,
-        });
+      // Credit the driver's wallet with the incentive after successful payment in every billable path.
+      let driverWallet = await storage.getDriverWallet(driver.id);
+      if (!driverWallet) {
+        await storage.createDriverWallet({ driverId: driver.id });
       }
+      
+      await storage.adjustDriverWalletBalance(driver.id, driverAmount, 0);
+      
+      const updatedWallet = await storage.getDriverWallet(driver.id);
+      const newBalance = parseFloat(updatedWallet?.availableBalance || "0");
+      
+      await storage.createWalletTransaction({
+        driverId: driver.id,
+        amount: driverAmount.toString(),
+        direction: "credit",
+        balanceAfter: newBalance.toString(),
+        currency: "USD",
+        sourceType: "washout",
+        sourceId: id,
+        status: "posted",
+        description: `Washout payment for activity ${id}`,
+      });
 
       // Verify activity as final step
       const activity = approvedActivity || await storage.verifyWashoutActivity(id, userId);
       approvalDebugContext.currentStatus = activity?.status || "verified";
       approvalDebugContext.permissionCheckResult = true;
       
-      const compensationType = useCustomBillingModel ? 'lottery entry' : `$${driverAmount}`;
+      const compensationType = useCustomBillingModel ? `$${driverAmount.toFixed(2)} incentive + lottery entry` : `$${driverAmount}`;
       console.log(`✅ Washout ${id} fully processed: Payment completed, driver received ${compensationType}, activity verified`);
       approvalResponseMessage = "Washout approved and payment completed.";
       approvalResponsePaymentStatus = "completed";
