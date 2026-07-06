@@ -171,11 +171,16 @@ export default function AdminDashboard() {
   const billingReceivablesError = dashboardErrors.billingReceivables;
   const washoutRevenueError = weekStats?.washoutRevenueError;
   const lotteryMetricsError = weekStats?.lotteryMetricsError;
-  const currentPlatformReceivablesValue = billingReceivablesError ? "—" : formatCentsToDollars(billingReceivablesSummary?.platformFeesOwedCents ?? 0);
-  const paidPlatformFeesValue = billingReceivablesError ? "—" : formatCentsToDollars(billingReceivablesSummary?.platformFeesPaidCents ?? 0);
-  const totalPlatformFeesValue = billingReceivablesError ? "—" : formatCentsToDollars(billingReceivablesSummary?.platformFeesTotalCents ?? 0);
+  const platformRevenuePaidCents = Number(billingReceivablesSummary?.platformFeesPaidCents ?? 0);
+  const platformRevenueTotalCents = Number(billingReceivablesSummary?.platformFeesTotalCents ?? 0);
+  const driverIncentiveTotalCents = Number(billingReceivablesSummary?.driverTipTotalCents ?? weekStats?.driverTipTotalCents ?? 0);
+  const ownerChargeTotalCents = Number(billingReceivablesSummary?.ownerChargeTotalCents ?? (platformRevenueTotalCents + driverIncentiveTotalCents));
+  const totalOwnerReceivablesCents = Number(billingReceivablesSummary?.platformFeesOwedCents ?? 0) + driverIncentiveTotalCents;
+  const totalOwnerReceivablesValue = billingReceivablesError ? "—" : formatCentsToDollars(totalOwnerReceivablesCents);
+  const paidPlatformFeesValue = billingReceivablesError ? "—" : formatCentsToDollars(platformRevenuePaidCents);
+  const totalPlatformFeesValue = billingReceivablesError ? "—" : formatCentsToDollars(platformRevenueTotalCents);
   const platformWashoutRevenueValue = washoutRevenueError ? "—" : formatCentsToDollars(weekStats?.platformWashoutRevenueCents ?? 0);
-  const driverTipValue = washoutRevenueError ? "—" : formatCentsToDollars(weekStats?.driverTipTotalCents ?? 0);
+  const driverTipValue = washoutRevenueError ? "—" : formatCentsToDollars(driverIncentiveTotalCents);
   const approvedWashoutsValue = washoutRevenueError ? "—" : (weekStats?.approvedWashouts ?? 0);
   const pendingWashoutsValue = washoutRevenueError ? "—" : (weekStats?.pendingWashouts ?? 0);
   const platformFeeRecordCountValue = washoutRevenueError ? "—" : (weekStats?.platformFeeRecordCount ?? 0);
@@ -319,7 +324,7 @@ export default function AdminDashboard() {
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Current Platform Receivables</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-current-platform-receivables">
-                {currentPlatformReceivablesValue}
+                {totalOwnerReceivablesValue}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {billingReceivablesError || "Approved/completed billable washouts minus billed washouts"}
@@ -410,15 +415,15 @@ export default function AdminDashboard() {
         <section className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <DashboardMetricCard
-              title="Current Platform Receivables"
-              value={currentPlatformReceivablesValue}
-              helper={billingReceivablesError || "Platform fees owed / receivable from approved washouts"}
+              title="Total Owner Charge / Receivables"
+              value={totalOwnerReceivablesValue}
+              helper={billingReceivablesError || "Platform fee + driver incentive across billable washouts"}
               icon={DollarSign}
               toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-washout-revenue-summary"
             />
             <DashboardMetricCard
-              title="Paid Platform Fees"
+              title="Platform Revenue Paid"
               value={paidPlatformFeesValue}
               helper={billingReceivablesError || "Approved washouts already collected"}
               icon={CheckCircle}
@@ -426,7 +431,7 @@ export default function AdminDashboard() {
               dataTestId="text-paid-platform-fees-summary"
             />
             <DashboardMetricCard
-              title="Total Platform Fees"
+              title="Platform Revenue Total"
               value={totalPlatformFeesValue}
               helper={billingReceivablesError || "Collected plus current receivables"}
               icon={DollarSign}
@@ -434,7 +439,7 @@ export default function AdminDashboard() {
               dataTestId="text-total-platform-fees-summary"
             />
             <DashboardMetricCard
-              title="Driver Tips"
+              title="Driver Incentives"
               value={driverTipValue}
               helper={washoutRevenueError || "Owner-funded tip total"}
               icon={Building}

@@ -4472,7 +4472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       logReportingReconciliation("/api/owners/dashboard", {
         platformRevenueCents: Number(monthStats.platformFeesPaidCents || 0),
-        ownerReceivablesCents: Number(monthStats.platformFeesOwedCents || 0),
+        ownerReceivablesCents: Number(monthStats.ownerChargeTotalCents || 0),
         paidReceivablesCents: Number(monthStats.platformFeesPaidCents || 0),
         driverTipTotalCents: Number(monthStats.driverTipTotalCents || 0),
         driverTransferredCents: 0,
@@ -9800,14 +9800,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return null;
         });
       const billingReceivablesCents = billingReceivablesSummary?.summary?.platformFeesOwedCents ?? 0;
+      const billingReceivablesOwnerChargeCents = Number(billingReceivablesSummary?.summary?.platformFeesTotalCents || 0) + Number(billingReceivablesSummary?.summary?.driverTipTotalCents || 0);
       console.log("[ADMIN_DASHBOARD] receivables parity", {
-        billingPageReceivablesCents: billingReceivablesCents,
-        dashboardReceivablesCents: billingReceivablesCents,
+        billingPageReceivablesCents: billingReceivablesOwnerChargeCents,
+        dashboardReceivablesCents: billingReceivablesOwnerChargeCents,
         differenceCents: 0,
       });
       logReportingReconciliation("/api/admin/dashboard", {
         platformRevenueCents: Number(weekResult.platformWashoutRevenueCents || 0),
-        ownerReceivablesCents: Number(billingReceivablesCents || 0),
+        ownerReceivablesCents: billingReceivablesOwnerChargeCents,
         paidReceivablesCents: Number(weekResult.platformWashoutPaidRevenueCents || 0),
         driverTipTotalCents: Number(weekResult.driverTipTotalCents || 0),
         driverTransferredCents: Number(weekResult.driverTipTotalCents || 0),
@@ -9819,7 +9820,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         monthStats: monthResult,
         awaitingDriverStripePayments: awaitingResult.slice(0, 5),
         awaitingDriverStripeCount: awaitingResult.length,
-        billingReceivablesSummary: billingReceivablesSummary?.summary || null,
+        billingReceivablesSummary: billingReceivablesSummary?.summary
+          ? {
+              ...billingReceivablesSummary.summary,
+              ownerChargeTotalCents: billingReceivablesOwnerChargeCents,
+            }
+          : null,
         dashboardMeta: {
           httpStatus: 200,
           coreSources: {
@@ -12391,14 +12397,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformFeesPaidCents: immediateBillingSummary.platformFeesPaidCents,
         historyCount: immediateBillingHistory.length,
       });
+      const immediateBillingOwnerChargeCents = Number(immediateBillingSummary.platformFeesTotalCents || 0) + Number(immediateBillingSummary.driverTipTotalCents || 0);
       console.log("[ADMIN_BILLING] receivables parity", {
-        billingPageReceivablesCents: immediateBillingSummary.platformFeesOwedCents,
-        dashboardReceivablesCents: immediateBillingSummary.platformFeesOwedCents,
+        billingPageReceivablesCents: immediateBillingOwnerChargeCents,
+        dashboardReceivablesCents: immediateBillingOwnerChargeCents,
         differenceCents: 0,
       });
       logReportingReconciliation("/api/admin/billing/settings", {
         platformRevenueCents: Number(immediateBillingSummary.platformFeesPaidCents || 0),
-        ownerReceivablesCents: Number(immediateBillingSummary.platformFeesOwedCents || 0),
+        ownerReceivablesCents: immediateBillingOwnerChargeCents,
         paidReceivablesCents: Number(immediateBillingSummary.platformFeesPaidCents || 0),
         driverTipTotalCents: Number(immediateBillingSummary.driverTipTotalCents || 0),
         driverTransferredCents: Number(immediateBillingSummary.driverTransferTotalCents || 0),
