@@ -16774,6 +16774,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/admin/reconciliation/repair-washout-payments - Backfill missing washout payment rows (admin only)
+  app.post('/api/admin/reconciliation/repair-washout-payments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'super_admin') {
+        return res.status(403).json({ message: 'Super admin access required' });
+      }
+
+      const { ownerId, startDate, endDate, dryRun = false } = req.body || {};
+      const dryRunEnabled = dryRun === true || dryRun === "true";
+
+      const result = await storage.repairMissingVerifiedWashoutPayments({
+        ownerId: ownerId ? String(ownerId) : undefined,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        dryRun: dryRunEnabled,
+        triggeredByAdminId: req.user.id,
+      });
+
+      res.json({
+        message: dryRunEnabled
+          ? 'Washout payment repair dry run completed'
+          : 'Washout payment repair completed',
+        result,
+      });
+    } catch (error: any) {
+      console.error('❌ Error repairing missing washout payments:', error.message);
+      res.status(500).json({
+        message: 'Failed to repair missing washout payments',
+        error: error.message,
+      });
+    }
+  });
+
   // POST /api/admin/reconciliation/batches - Run batch payment reconciliation (admin only)
   app.post('/api/admin/reconciliation/batches', isAuthenticated, async (req: any, res) => {
     try {

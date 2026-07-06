@@ -5193,6 +5193,154 @@ export class DatabaseStorage implements IStorage {
     })) as any;
   }
 
+  async repairMissingVerifiedWashoutPayments(options: {
+    ownerId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    dryRun?: boolean;
+    triggeredByAdminId?: string | null;
+  } = {}): Promise<{
+    ownersChecked: number;
+    approvedWashoutsChecked: number;
+    missingPaymentCount: number;
+    repairedCount: number;
+    skippedCount: number;
+    repairedPayments: Array<{
+      paymentId: string;
+      ownerId: string;
+      driverId: string;
+      activityId: string;
+      amountCents: number;
+      processingFeeCents: number;
+      businessDate: string;
+    }>;
+    errors: string[];
+  }> {
+    const result = {
+      ownersChecked: 0,
+      approvedWashoutsChecked: 0,
+      missingPaymentCount: 0,
+      repairedCount: 0,
+      skippedCount: 0,
+      repairedPayments: [] as Array<{
+        paymentId: string;
+        ownerId: string;
+        driverId: string;
+        activityId: string;
+        amountCents: number;
+        processingFeeCents: number;
+        businessDate: string;
+      }>,
+      errors: [] as string[],
+    };
+
+    const systemSettings = typeof this.getSystemSettings === "function"
+      ? await this.getSystemSettings()
+      : null;
+    const ownersToInspect = options.ownerId
+      ? (await this.getAllOwnersBillingSettings()).filter((ownerSetting) => ownerSetting.ownerId === options.ownerId)
+      : await this.getAllOwnersBillingSettings();
+
+    for (const ownerSetting of ownersToInspect) {
+      result.ownersChecked++;
+
+      try {
+        const owner = await this.getOwnerById(ownerSetting.ownerId);
+        if (!owner) {
+          result.errors.push(`Owner ${ownerSetting.ownerId}: owner record not found`);
+          continue;
+        }
+
+        const approvedWashouts = await this.getApprovedWashoutsForOwnerBilling(
+          ownerSetting.ownerId,
+          options.startDate,
+          options.endDate,
+        );
+        result.approvedWashoutsChecked += approvedWashouts.length;
+
+        const missingPayments = approvedWashouts.filter((row) => {
+          const paymentStatus = String((row as any).paymentStatus || "").trim().toLowerCase();
+          return paymentStatus.length === 0;
+        });
+
+        if (missingPayments.length === 0) {
+          continue;
+        }
+
+        const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
+          ownerCustomPlatformFee: owner.customPlatformFee,
+          systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
+        });
+
+        for (const row of missingPayments) {
+          result.missingPaymentCount++;
+          const driverTipCents = normalizeMoneyToCents(
+            row.activityDriverTipAmount ?? row.locationRate ?? 0,
+            "dollars",
+          );
+          const referenceTime = row.verifiedAt || row.createdAt || new Date();
+          const businessDate = this.calculateBusinessDate(
+            ownerSetting.billingTimezone || "America/Chicago",
+            ownerSetting.billingCutoffTime || "23:59:00",
+            referenceTime instanceof Date ? referenceTime : new Date(referenceTime),
+          );
+
+          if (options.dryRun) {
+            result.skippedCount++;
+            console.log("[WASHOUT_PAYMENT_REPAIR][DRY_RUN]", {
+              ownerId: ownerSetting.ownerId,
+              driverId: row.driverId,
+              activityId: row.activityId,
+              amountCents: driverTipCents,
+              processingFeeCents: configuredPlatformFeeCents,
+              businessDate,
+            });
+            continue;
+          }
+
+          const payment = await this.createPayment({
+            activityId: row.activityId,
+            driverId: row.driverId,
+            ownerId: row.ownerId,
+            amount: (driverTipCents / 100).toFixed(2),
+            processingFee: (configuredPlatformFeeCents / 100).toFixed(2),
+            washoutServiceFee: (driverTipCents / 100).toFixed(2),
+            status: "pending",
+            businessDate,
+          } as any);
+
+          result.repairedCount++;
+          result.repairedPayments.push({
+            paymentId: payment.id,
+            ownerId: row.ownerId,
+            driverId: row.driverId,
+            activityId: row.activityId,
+            amountCents: driverTipCents,
+            processingFeeCents: configuredPlatformFeeCents,
+            businessDate,
+          });
+
+          console.log("[WASHOUT_PAYMENT_REPAIR]", {
+            ownerId: row.ownerId,
+            driverId: row.driverId,
+            activityId: row.activityId,
+            paymentId: payment.id,
+            amountCents: driverTipCents,
+            processingFeeCents: configuredPlatformFeeCents,
+            businessDate,
+            triggeredByAdminId: options.triggeredByAdminId || null,
+          });
+        }
+      } catch (error: any) {
+        const message = error instanceof Error ? error.message : String(error);
+        result.errors.push(`Owner ${ownerSetting.ownerId}: ${message}`);
+        console.error(`❌ [WASHOUT_PAYMENT_REPAIR] Failed for owner ${ownerSetting.ownerId}:`, message);
+      }
+    }
+
+    return result;
+  }
+
   async assignPaymentsToBatch(paymentIds: string[], batchId: string, businessDate: string): Promise<void> {
     if (paymentIds.length === 0) return;
 
