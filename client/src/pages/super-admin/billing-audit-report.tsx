@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarDays, Download, FileText, Loader2, ShieldAlert, ReceiptText, TriangleAlert } from "lucide-react";
+import { CalendarDays, Download, FileText, Loader2, ShieldAlert, ReceiptText, TriangleAlert, Wrench } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { BILLING_AUDIT_STATUS_OPTIONS, type BillingAuditReportResponse } from "@shared/billingAuditReport";
 
@@ -58,6 +58,11 @@ export default function BillingAuditReportPage() {
   const [billingRunId, setBillingRunId] = useState("");
   const [status, setStatus] = useState("all");
   const [downloadLoading, setDownloadLoading] = useState<"csv" | "pdf" | null>(null);
+  const [repairOwnerId, setRepairOwnerId] = useState("5e083b4e-b0c1-4c76-ab52-7e52dd5d8082");
+  const [repairStartDate, setRepairStartDate] = useState("2026-07-01");
+  const [repairEndDate, setRepairEndDate] = useState("2026-07-07");
+  const [repairDryRun, setRepairDryRun] = useState(true);
+  const [repairResponse, setRepairResponse] = useState<any>(null);
 
   const isSuperAdmin = user?.role === "super_admin";
 
@@ -152,6 +157,34 @@ export default function BillingAuditReportPage() {
       setDownloadLoading(null);
     }
   };
+
+  const repairMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/reconciliation/repair-washout-payments", {
+        ownerId: repairOwnerId,
+        startDate: repairStartDate,
+        endDate: repairEndDate,
+        dryRun: repairDryRun,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setRepairResponse(data);
+      toast({
+        title: repairDryRun ? "Repair dry run complete" : "Repair complete",
+        description: repairDryRun
+          ? "The washout repair endpoint returned a dry-run result."
+          : "The washout repair endpoint backfilled missing payment rows.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Repair failed",
+        description: error?.message || "Unable to run washout payment repair.",
+        variant: "destructive",
+      });
+    },
+  });
 
   if (!isSuperAdmin) {
     return (
@@ -342,6 +375,93 @@ export default function BillingAuditReportPage() {
             );
           })}
         </section>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5" />
+              Washout Payment Repair
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Temporary super-admin repair action for verified washouts that are missing payment rows.
+            </p>
+
+            <div className="grid gap-4 lg:grid-cols-4">
+              <div className="space-y-2 lg:col-span-2">
+                <Label htmlFor="repair-owner-id">Owner ID</Label>
+                <Input
+                  id="repair-owner-id"
+                  value={repairOwnerId}
+                  onChange={(e) => setRepairOwnerId(e.target.value)}
+                  placeholder="Owner UUID"
+                  data-testid="input-repair-owner-id"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="repair-start-date">Start Date</Label>
+                <Input
+                  id="repair-start-date"
+                  type="date"
+                  value={repairStartDate}
+                  onChange={(e) => setRepairStartDate(e.target.value)}
+                  data-testid="input-repair-start-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="repair-end-date">End Date</Label>
+                <Input
+                  id="repair-end-date"
+                  type="date"
+                  value={repairEndDate}
+                  onChange={(e) => setRepairEndDate(e.target.value)}
+                  data-testid="input-repair-end-date"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={repairDryRun}
+                  onChange={(e) => setRepairDryRun(e.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                  data-testid="checkbox-repair-dry-run"
+                />
+                Dry run
+              </label>
+
+              <Button
+                onClick={() => repairMutation.mutate()}
+                disabled={repairMutation.isPending}
+                data-testid="button-run-washout-repair"
+              >
+                {repairMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Running...
+                  </>
+                ) : (
+                  <>
+                    <Wrench className="mr-2 h-4 w-4" />
+                    Run Repair
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {repairResponse && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">Latest response</p>
+                <pre className="max-h-[28rem] overflow-auto rounded-2xl border border-border/70 bg-background/80 p-4 text-xs leading-relaxed text-foreground">
+{JSON.stringify(repairResponse, null, 2)}
+                </pre>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
