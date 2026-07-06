@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminDarkWorkspace } from "@/components/AdminDarkWorkspace";
+import { OwnerWorkspace } from "@/components/OwnerWorkspace";
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Landing = lazy(() => import("@/pages/landing"));
 const Login = lazy(() => import("@/pages/auth/login"));
@@ -126,20 +127,22 @@ function Router() {
   if ((user as any).role === 'owner') {
     return (
       <Suspense fallback={<RouteFallback />}>
-        <Switch>
-          <Route path="/" component={OwnerDashboard} />
-          <Route path="/dashboard" component={OwnerDashboard} />
-          <Route path="/locations" component={OwnerLocations} />
-          <Route path="/drivers" component={OwnerDrivers} />
-          <Route path="/payments" component={OwnerPayments} />
-          <Route path="/wallet" component={OwnerWallet} />
-          <Route path="/notifications" component={OwnerNotifications} />
-          <Route path="/profile" component={OwnerProfile} />
-          <Route path="/subscribe" component={OwnerSubscribe} />
-          <Route path="/payment-methods" component={OwnerPaymentMethods} />
-          <Route path="/reports" component={OwnerReports} />
-          <Route component={NotFound} />
-        </Switch>
+        <OwnerWorkspace>
+          <Switch>
+            <Route path="/" component={OwnerDashboard} />
+            <Route path="/dashboard" component={OwnerDashboard} />
+            <Route path="/locations" component={OwnerLocations} />
+            <Route path="/drivers" component={OwnerDrivers} />
+            <Route path="/payments" component={OwnerPayments} />
+            <Route path="/wallet" component={OwnerWallet} />
+            <Route path="/notifications" component={OwnerNotifications} />
+            <Route path="/profile" component={OwnerProfile} />
+            <Route path="/subscribe" component={OwnerSubscribe} />
+            <Route path="/payment-methods" component={OwnerPaymentMethods} />
+            <Route path="/reports" component={OwnerReports} />
+            <Route component={NotFound} />
+          </Switch>
+        </OwnerWorkspace>
       </Suspense>
     );
   }
