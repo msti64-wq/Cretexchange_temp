@@ -2037,6 +2037,7 @@ export class DatabaseStorage implements IStorage {
   async createPayment(payment: InsertPayment): Promise<Payment> {
     const {
       tipAmountCents,
+      driverTipCents: _driverTipCents,
       payoutStatus: _payoutStatus,
       deferReason: _deferReason,
       deferredAt: _deferredAt,
@@ -2047,8 +2048,8 @@ export class DatabaseStorage implements IStorage {
         ? normalizeMoneyToCents(tipAmountCents, "auto")
         : undefined;
 
-    if (normalizedTipAmountCents !== undefined) {
-      paymentData.driverTipCents = normalizedTipAmountCents;
+    if (normalizedTipAmountCents !== undefined && paymentData.washoutServiceFee === undefined) {
+      paymentData.washoutServiceFee = (normalizedTipAmountCents / 100).toFixed(2);
     }
     const [newPayment] = await db.insert(payments).values(paymentData).returning();
     return newPayment;
@@ -2063,7 +2064,7 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
+        paymentDriverTipCents: sql<number>`ROUND(CAST(${payments.amount} AS DECIMAL) * 100)`,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2094,7 +2095,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      washoutServiceFee: (normalizeMoneyToCents(row.paymentAmount, "dollars") / 100).toFixed(2),
       tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
         ? Number(row.paymentDriverTipCents)
         : normalizeMoneyToCents(row.activityAmount, "dollars"),
@@ -2135,7 +2136,7 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
+        paymentDriverTipCents: sql<number>`ROUND(CAST(${payments.amount} AS DECIMAL) * 100)`,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2187,7 +2188,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      washoutServiceFee: (normalizeMoneyToCents(row.paymentAmount, "dollars") / 100).toFixed(2),
       tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
         ? Number(row.paymentDriverTipCents)
         : normalizeMoneyToCents(row.locationDriverRate, "dollars"),
@@ -2258,7 +2259,7 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
+        paymentDriverTipCents: sql<number>`ROUND(CAST(${payments.amount} AS DECIMAL) * 100)`,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2409,7 +2410,7 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
+        paymentDriverTipCents: sql<number>`ROUND(CAST(${payments.amount} AS DECIMAL) * 100)`,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2601,7 +2602,7 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
+        paymentDriverTipCents: sql<number>`ROUND(CAST(${payments.amount} AS DECIMAL) * 100)`,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2794,7 +2795,7 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
+        paymentDriverTipCents: sql<number>`ROUND(CAST(${payments.amount} AS DECIMAL) * 100)`,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -2972,7 +2973,7 @@ export class DatabaseStorage implements IStorage {
       driverId: payment.driverId,
       activityId: payment.activityId,
       processingFee: payment.processingFee,
-      tipAmountCents: payment.tipAmountCents,
+      tipAmountCents: normalizeMoneyToCents(payment.amount, "dollars"),
       status: payment.status,
       batchId: payment.batchId,
       stripePaymentIntentId: payment.stripePaymentIntentId,
@@ -3043,7 +3044,7 @@ export class DatabaseStorage implements IStorage {
             driverId: payment.driverId,
             activityId: payment.activityId,
             processingFee: payment.processingFee,
-            tipAmountCents: payment.tipAmountCents,
+            tipAmountCents: normalizeMoneyToCents(payment.amount, "dollars"),
             status: payment.status,
             batchId: payment.batchId,
             stripePaymentIntentId: payment.stripePaymentIntentId,
@@ -3231,7 +3232,7 @@ export class DatabaseStorage implements IStorage {
               driverId: payment.driverId,
               activityId: payment.activityId,
               processingFee: payment.processingFee,
-              tipAmountCents: payment.tipAmountCents,
+              tipAmountCents: normalizeMoneyToCents(payment.amount, "dollars"),
               status: payment.status,
               batchId: payment.batchId,
               stripePaymentIntentId: payment.stripePaymentIntentId,
@@ -4853,6 +4854,7 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
+        paymentWashoutServiceFee: payments.washoutServiceFee,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -4903,7 +4905,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      washoutServiceFee: (normalizeMoneyToCents(row.paymentAmount, "dollars") / 100).toFixed(2),
       tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
         ? Number(row.paymentDriverTipCents)
         : normalizeMoneyToCents(row.locationDriverRate, "dollars"),
@@ -4987,7 +4989,7 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
-        paymentDriverTipCents: payments.driverTipCents,
+        paymentDriverTipCents: sql<number>`ROUND(CAST(${payments.amount} AS DECIMAL) * 100)`,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -5031,7 +5033,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizeMoneyToCents(row.locationDriverRate, "dollars") / 100).toFixed(2),
+      washoutServiceFee: (normalizeMoneyToCents(row.paymentAmount, "dollars") / 100).toFixed(2),
       tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
         ? Number(row.paymentDriverTipCents)
         : normalizeMoneyToCents(row.locationDriverRate, "dollars"),
@@ -5216,6 +5218,7 @@ export class DatabaseStorage implements IStorage {
         paymentActivityId: payments.activityId,
         paymentAmount: payments.amount,
         paymentProcessingFee: payments.processingFee,
+        paymentDriverTipCents: sql<number>`ROUND(CAST(${payments.amount} AS DECIMAL) * 100)`,
         paymentStripePaymentIntentId: payments.stripePaymentIntentId,
         paymentStripeTransferId: payments.stripeTransferId,
         paymentStripeChargeId: payments.stripeChargeId,
@@ -5260,10 +5263,10 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizeMoneyToCents(row.locationRate, "dollars") / 100).toFixed(2),
+      washoutServiceFee: (normalizeMoneyToCents(row.paymentAmount, "dollars") / 100).toFixed(2),
       tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
         ? Number(row.paymentDriverTipCents)
-        : normalizeMoneyToCents(row.locationRate, "dollars"),
+        : normalizeMoneyToCents(row.paymentAmount, "dollars"),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,

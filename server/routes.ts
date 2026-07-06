@@ -14876,7 +14876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           activityId: payment.activityId,
           amount: payment.amount,
           processingFee: payment.processingFee,
-          tipAmountCents: payment.tipAmountCents,
+          tipAmountCents: normalizeMoneyToCents(payment.amount, "dollars"),
           status: payment.status,
           batchId: payment.batchId,
           stripePaymentIntentId: payment.stripePaymentIntentId,
@@ -14898,7 +14898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: p.id,
           amount: p.amount,
           processingFee: p.processingFee,
-          driverTipCents: String(normalizeMoneyToCents(p.tipAmountCents, "auto")),
+          driverTipCents: String(normalizeMoneyToCents(p.amount, "dollars")),
           driver: `${p.driver.user.firstName} ${p.driver.user.lastName}`,
           activity: {
             checkInTime: p.activity.checkInTime,

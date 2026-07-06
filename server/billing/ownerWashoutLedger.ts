@@ -22,7 +22,7 @@ export type ResolvedDriverTipForWashout = {
   driverId: string;
   driverStripeAccountId: string | null;
   driverTipCents: number;
-  source: "washout_activities.amount" | "payments.driver_tip_cents" | "washout_locations.rate" | "request.forceDriverTipCents";
+  source: "washout_activities.amount" | "payments.amount" | "washout_locations.rate" | "request.forceDriverTipCents";
 };
 
 export type DriverTransferLedger = {
@@ -179,7 +179,7 @@ export function resolveDriverTipForWashout(washout: BillableWashout): ResolvedDr
     : hasActivityAmount
       ? "washout_activities.amount"
       : hasPaymentDriverTip
-        ? "payments.driver_tip_cents"
+        ? "payments.amount"
         : "washout_locations.rate";
   const driverTipCents = normalizeMoneyToCents(rawDriverTipValue, hasOverride ? "cents" : hasActivityAmount ? "auto" : hasPaymentDriverTip ? "cents" : "dollars");
   console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
@@ -266,13 +266,13 @@ export function buildOwnerWashoutBillingLedgerFromPayments(params: {
   const billablePayments = params.payments.filter((payment) => payment.ownerId === params.ownerId);
   const washoutActivityIds = billablePayments.map((payment) => payment.activityId);
   const platformFeeCentsByWashout = billablePayments.map((payment) => toCents(payment.processingFee));
-  const driverTipCentsByWashout = billablePayments.map((payment) => normalizeMoneyToCents(payment.tipAmountCents, "auto"));
+  const driverTipCentsByWashout = billablePayments.map((payment) => normalizeMoneyToCents(payment.amount, "dollars"));
   const driverTipCentsByDriver = billablePayments.reduce<Record<string, number>>((acc, payment) => {
-    acc[payment.driverId] = (acc[payment.driverId] || 0) + normalizeMoneyToCents(payment.tipAmountCents, "auto");
+    acc[payment.driverId] = (acc[payment.driverId] || 0) + normalizeMoneyToCents(payment.amount, "dollars");
     return acc;
   }, {});
   const driverTransfers = billablePayments.reduce<DriverTransferLedger[]>((acc, payment) => {
-    const tipAmountCents = normalizeMoneyToCents(payment.tipAmountCents, "auto");
+    const tipAmountCents = normalizeMoneyToCents(payment.amount, "dollars");
     const existing = acc.find((entry) => entry.driverId === payment.driverId);
     if (existing) {
       existing.tipAmountCents += tipAmountCents;

@@ -117,7 +117,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
               driverId: payment.driverId,
               activityId: payment.activityId,
               processingFee: payment.processingFee,
-              tipAmountCents: payment.tipAmountCents,
+              tipAmountCents: normalizeMoneyToCents(payment.amount, "dollars"),
               status: payment.status,
               batchId: payment.batchId,
               stripePaymentIntentId: payment.stripePaymentIntentId,

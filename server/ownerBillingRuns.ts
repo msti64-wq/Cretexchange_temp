@@ -159,7 +159,7 @@ function normalizeWashoutActivityAmountTipCents(rawActivityAmount: unknown, rawP
   const hasActivityAmount = rawActivityAmount !== null && rawActivityAmount !== undefined && rawActivityAmount !== "";
   const hasPaymentDriverTip = rawPaymentDriverTipCents !== null && rawPaymentDriverTipCents !== undefined && rawPaymentDriverTipCents !== "";
   const rawDriverTipValue = hasActivityAmount ? rawActivityAmount : hasPaymentDriverTip ? rawPaymentDriverTipCents : rawLocationDriverTipRate;
-  const rawDriverTipField = hasActivityAmount ? "washout_activities.amount" : hasPaymentDriverTip ? "payments.driver_tip_cents" : "washout_locations.rate";
+  const rawDriverTipField = hasActivityAmount ? "washout_activities.amount" : hasPaymentDriverTip ? "payments.amount" : "washout_locations.rate";
   const normalizedDriverTipCents = normalizeMoneyToCents(rawDriverTipValue, hasActivityAmount ? "auto" : hasPaymentDriverTip ? "cents" : "dollars");
   console.log("[WASHOUT_DRIVER_TIP_INPUT]", {
     washoutActivityId: context.washoutActivityId ?? null,
@@ -182,7 +182,9 @@ function paymentActivityAmount(payment: Payment): unknown {
 }
 
 function paymentDriverTipCents(payment: Payment): unknown {
-  return payment?.driverTipCents ?? payment?.tipAmountCents ?? null;
+  return payment?.amount !== null && payment?.amount !== undefined
+    ? normalizeMoneyToCents(payment.amount, "dollars")
+    : payment?.tipAmountCents ?? null;
 }
 
 function paymentLocationDriverTipRate(payment: Payment): unknown {
