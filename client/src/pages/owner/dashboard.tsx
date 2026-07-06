@@ -34,9 +34,9 @@ const AUTO_APPROVAL_HOURS = 72;
 function OwnerDashboardSkeleton() {
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20">
-      <div className="gradient-bg text-white">
+      <div className="border-b border-border bg-card text-foreground shadow-sm">
         <div className="mx-auto max-w-6xl px-4 py-4">
-          <Skeleton className="h-14 w-full max-w-md bg-white/20" />
+          <Skeleton className="h-14 w-full max-w-md bg-muted/40" />
         </div>
       </div>
       <main className="mx-auto w-full max-w-6xl min-w-0 space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5">
@@ -431,16 +431,16 @@ export default function OwnerDashboard() {
         {/* TODO: Re-enable after TypeScript configuration is resolved */}
 
         {!membershipState.dashboardAccessAllowed && membershipState.accountStatusMessage && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
                 <ShieldAlert className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="mb-1 font-semibold text-amber-900 dark:text-amber-100">
+                <h3 className="mb-1 font-semibold text-foreground">
                   {membershipState.membershipStatus === "pending_review" ? t("owner.dashboard.accountPendingReview") : t("owner.dashboard.accountStatus")}
                 </h3>
-                <p className="text-sm text-amber-800 dark:text-amber-200">
+                <p className="text-sm text-muted-foreground">
                   {membershipState.accountStatusMessage}
                 </p>
               </div>
@@ -450,13 +450,13 @@ export default function OwnerDashboard() {
 
         {/* Overview */}
         <section className="space-y-3">
-          <div className="grid gap-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm md:grid-cols-[1.35fr_0.65fr] md:p-6">
+          <div className="grid gap-4 rounded-3xl border border-border bg-card p-5 shadow-sm md:grid-cols-[1.35fr_0.65fr] md:p-6">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-border/70 bg-muted/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {t("owner.dashboard.portfolioOverview")}
                 </span>
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/25 dark:text-emerald-300">
+                <span className="rounded-full border border-emerald-200 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/25 dark:text-emerald-300">
                   {t("owner.dashboard.liveOperations")}
                 </span>
               </div>
@@ -467,21 +467,21 @@ export default function OwnerDashboard() {
                 </p>
               </div>
               <div className="grid gap-2 sm:grid-cols-3">
-                <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-3 py-2.5">
+                <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/40 px-3 py-2.5">
                   <Gauge className="h-4 w-4 text-primary" />
                   <div>
                     <p className="text-xs font-medium text-foreground">{t("owner.dashboard.openReviews", { count: pendingCount })}</p>
                     <p className="text-[11px] text-muted-foreground">{t("owner.dashboard.requiresAttention")}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-3 py-2.5">
+                <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/40 px-3 py-2.5">
                   <Building2 className="h-4 w-4 text-secondary" />
                   <div>
                     <p className="text-xs font-medium text-foreground">{t("owner.dashboard.sites", { count: Number(locations) || 0 })}</p>
                     <p className="text-[11px] text-muted-foreground">{t("owner.dashboard.activeWashoutLocations")}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-3 py-2.5">
+                <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/40 px-3 py-2.5">
                   <Activity className="h-4 w-4 text-accent" />
                   <div>
                     <p className="text-xs font-medium text-foreground">{t("owner.dashboard.jobs", { count: recentActivities.length })}</p>
@@ -491,17 +491,17 @@ export default function OwnerDashboard() {
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.paymentExposure")}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight">{formatCentsToDollars(Number(weekStats?.platformFeesOwedCents || 0))}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.awaitingReview")}</p>
               </div>
-              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.approvedForPayout")}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{formatCentsToDollars(Number(weekStats?.platformFeesPaidCents || 0))}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.readyToSettle")}</p>
               </div>
-              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.recyclingNetwork")}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight text-amber-700 dark:text-amber-300">{Number(locations) || 0}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.activeSites")}</p>
@@ -581,7 +581,7 @@ export default function OwnerDashboard() {
           <DSCard padding="lg">
             <DSSectionHeader title={t("owner.dashboard.thirtyDayTotals")} />
             <div className="space-y-4">
-              <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.totalPayments")}</p>
@@ -593,14 +593,14 @@ export default function OwnerDashboard() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <div className="rounded-2xl border border-border bg-muted/30 p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.pendingPayments")}</p>
                   <p className="mt-2 text-xl font-semibold tracking-tight text-sky-500 dark:text-sky-300" data-testid="text-pending-total">
                     {formatCentsToDollars(pendingPaymentsCents)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.awaitingReview")}</p>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                <div className="rounded-2xl border border-border bg-muted/30 p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.rejected")}</p>
                   <p className="mt-2 text-xl font-semibold tracking-tight text-red-600 dark:text-red-400" data-testid="text-rejected-count">
                     {rejectedCount}
@@ -609,15 +609,15 @@ export default function OwnerDashboard() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-3">
-                <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-center">
+                <div className="rounded-2xl border border-border bg-muted/20 p-3 text-center">
                   <p className="text-lg font-semibold tracking-tight" data-testid="text-month-washouts">{totalWashouts}</p>
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t("common.washouts")}</p>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-center">
+                <div className="rounded-2xl border border-border bg-muted/20 p-3 text-center">
                   <p className="text-lg font-semibold tracking-tight" data-testid="text-month-drivers">{uniqueDrivers}</p>
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t("common.drivers")}</p>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-center">
+                <div className="rounded-2xl border border-border bg-muted/20 p-3 text-center">
                   <p className="text-lg font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{approvedCount}</p>
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t("common.approved")}</p>
                 </div>
@@ -661,14 +661,14 @@ export default function OwnerDashboard() {
           <div className="space-y-4">
             {/* 72-hour auto-approval warning */}
             {approvalQueueActivities.some((a: any) => isPendingWashoutApproval(a.status)) && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                   <div className="text-sm">
-                    <p className="font-semibold text-amber-900 dark:text-amber-200">
+                    <p className="font-semibold text-foreground">
                       {t("owner.dashboard.reviewRequiredTitle")}
                     </p>
-                    <p className="mt-1 text-amber-800/90 text-xs dark:text-amber-200/80">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {t("owner.dashboard.reviewRequiredDescription")}
                     </p>
                   </div>
@@ -679,7 +679,7 @@ export default function OwnerDashboard() {
             {isAllActivitiesLoading ? (
               <div className="grid gap-3">
                 {[1, 2, 3].map((item) => (
-                  <div key={item} className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                  <div key={item} className="rounded-2xl border border-border bg-muted/30 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <Skeleton className="h-11 w-11 rounded-xl" />
@@ -700,12 +700,12 @@ export default function OwnerDashboard() {
               </div>
             ) : isAllActivitiesFetching ? (
               <div className="space-y-3 opacity-60 transition-opacity">
-                <div className="flex items-center justify-center gap-2 rounded-2xl border border-border/70 bg-muted/40 px-4 py-2 text-sm text-muted-foreground">
+                <div className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-muted/40 px-4 py-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {t("owner.dashboard.updatingActivities")}
                 </div>
                 {approvalQueueActivities.map((activity: any, index: number) => (
-                  <div key={activity.id} className="space-y-3 rounded-2xl border border-border/70 bg-muted/30 p-4" data-testid={`card-recent-activity-${index}`}>
+                <div key={activity.id} className="space-y-3 rounded-2xl border border-border bg-muted/30 p-4" data-testid={`card-recent-activity-${index}`}>
                     {/* Previous activity content will be dimmed while fetching */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -794,7 +794,7 @@ export default function OwnerDashboard() {
                   const driverTipDisplay = approvalDriverTipDrafts[activity.id] ?? (resolveLocationDriverTipRateCents(activity.location?.rate ?? 0) / 100).toFixed(2);
                   const driverTipCents = normalizeDollarInputToCents(driverTipDisplay || 0);
                   return (
-                <div key={activity.id} className="space-y-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm" data-testid={`card-recent-activity-${index}`}>
+                <div key={activity.id} className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm" data-testid={`card-recent-activity-${index}`}>
                   {/* Header Row - Driver and Amount */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
@@ -1047,7 +1047,7 @@ export default function OwnerDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Button 
             variant="outline" 
-            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border bg-card p-4 text-left shadow-sm"
             onClick={() => setLocation('/locations')}
             data-testid="button-manage-locations"
           >
@@ -1060,7 +1060,7 @@ export default function OwnerDashboard() {
           
           <Button 
             variant="outline" 
-            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border bg-card p-4 text-left shadow-sm"
             onClick={() => setLocation('/payments')}
             data-testid="button-view-payments"
           >
@@ -1073,18 +1073,18 @@ export default function OwnerDashboard() {
         </div>
 
         {/* Support Section */}
-        <DSCard padding="lg" className="border-sky-200 bg-gradient-to-br from-sky-50 to-white dark:border-sky-900/40 dark:from-sky-950/20 dark:to-slate-900">
+        <DSCard padding="lg" className="border-border bg-card">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1 space-y-2">
               <p className="text-sm text-muted-foreground">{t("owner.dashboard.supportDescription")}</p>
               <div className="flex items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 text-sky-600" />
-                <span className="font-medium text-sky-700 dark:text-sky-300" data-testid="text-support-phone">(469) 269-6709</span>
+                <Phone className="h-4 w-4 text-primary" />
+                <span className="font-medium text-foreground" data-testid="text-support-phone">(469) 269-6709</span>
               </div>
             </div>
             <Button 
               size="sm" 
-              className="h-10 bg-sky-600 text-white hover:bg-sky-700 w-full sm:w-auto"
+              className="h-10 w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
               onClick={() => setIsSupportDialogOpen(true)}
               data-testid="button-contact-support"
             >
