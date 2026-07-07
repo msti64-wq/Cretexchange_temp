@@ -3,6 +3,7 @@ import { getPaymentDriverIncentiveCents } from "../shared/paymentAccounting";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
 import { resolveConfiguredWashoutPlatformFeeCents } from "../shared/billingPolicy";
+import { resolveApprovedWashoutDriverTipCents } from "../shared/locationBilling";
 import {
   buildOwnerWashoutBillingLedgerFromBillableWashouts,
   buildOwnerWashoutBillingLedgerFromPayments,
@@ -93,17 +94,49 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
       });
       const batches = await storageApi.getBillingBatchesByOwner(ownerSetting.ownerId);
       const billableApprovedWashouts = approvedWashouts.filter((row: any) => isBillableWashoutForOwnerBilling({ status: row.activityStatus }));
-      const approvedLedger = billableApprovedWashouts.length > 0
+      const resolvedBillableApprovedWashouts = billableApprovedWashouts.length > 0 && typeof storageApi.getWashoutActivity === "function"
+        ? await Promise.all(
+            billableApprovedWashouts.map(async (row: any) => {
+              const [activity, location] = await Promise.all([
+                storageApi.getWashoutActivity(row.activityId),
+                typeof storageApi.getWashoutLocation === "function"
+                  ? storageApi.getWashoutLocation(row.locationId)
+                  : Promise.resolve(null),
+              ]);
+              const driverTipCents = resolveApprovedWashoutDriverTipCents(
+                activity?.amount ?? row.activityDriverTipAmount ?? null,
+                null,
+                location?.rate ?? row.locationRate ?? null,
+              );
+              return {
+                ...row,
+                activityAmount: activity?.amount ?? row.activityDriverTipAmount ?? null,
+                locationDriverTipRate: location?.rate ?? row.locationRate ?? null,
+                driverTipCents,
+              };
+            })
+          )
+        : billableApprovedWashouts.map((row: any) => ({
+            ...row,
+            activityAmount: row.activityDriverTipAmount ?? null,
+            locationDriverTipRate: row.locationRate ?? null,
+            driverTipCents: resolveApprovedWashoutDriverTipCents(
+              row.activityDriverTipAmount ?? null,
+              null,
+              row.locationRate ?? null,
+            ),
+          }));
+      const approvedLedger = resolvedBillableApprovedWashouts.length > 0
         ? buildOwnerWashoutBillingLedgerFromBillableWashouts({
             ownerId: ownerSetting.ownerId,
             billingBatchId: `${ownerSetting.ownerId}:receivables:${Date.now()}`,
-            washouts: billableApprovedWashouts.map((row: any) => ({
+            washouts: resolvedBillableApprovedWashouts.map((row: any) => ({
               id: row.activityId,
               ownerId: row.ownerId,
               driverId: row.driverId,
               driverStripeAccountId: null,
               platformFeeCents: configuredPlatformFeeCents,
-              driverTipCents: normalizeMoneyToCents(row.activityDriverTipAmount || 0, "dollars"),
+              driverTipCents: row.driverTipCents,
             })),
             allowAdminOverride: true,
           })
@@ -177,6 +210,14 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
       const effectiveBilledWashoutCount = billedWashoutCount > 0 ? billedWashoutCount : fallbackBilledWashoutCount;
 
       const totalPlatformFeesCents = receivables.unpaidReceivablesCents + effectivePaidPlatformFeesCents;
+      const ownerChargeTotalCents = receivables.ownerChargeTotalCents;
+      console.info("[OWNER_BILLING_RECEIVABLES] canonical summary", {
+        ownerId: ownerSetting.ownerId,
+        approvedWashoutCount: receivables.approvedWashoutCount,
+        platformFeesTotalCents: totalPlatformFeesCents,
+        driverTipTotalCents: receivables.driverTipTotalCents,
+        ownerChargeTotalCents,
+      });
       const latestBatch = (batches[0] || null) as {
         totalAmount?: string | null;
         paymentCount?: number | null;
@@ -221,6 +262,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
         platformFeesTotalCents: totalPlatformFeesCents,
         driverTipTotalCents: receivables.driverTipTotalCents,
         driverTransferTotalCents: receivables.driverTransferTotalCents,
+        ownerChargeTotalCents,
         needsReviewCents: receivables.needsReviewCents,
         billedWashoutCount: effectiveBilledWashoutCount,
         unbilledApprovedWashoutCount: Math.max(0, receivables.approvedWashoutCount - effectiveBilledWashoutCount),
