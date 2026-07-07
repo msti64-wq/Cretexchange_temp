@@ -29,7 +29,10 @@ export function resolveWashoutActivityAmountDriverTipCents(amount: string | numb
     return DEFAULT_LOCATION_DRIVER_TIP_CENTS;
   }
 
-  const normalized = normalizeMoneyToCents(amount, "auto");
+  // Washout activity amounts are stored as dollars in production.
+  // Use explicit dollar normalization so numeric values like `1` become 100 cents,
+  // not 1 cent via auto-detection.
+  const normalized = normalizeMoneyToCents(amount, "dollars");
   return Number.isFinite(normalized) && normalized >= 0 ? normalized : DEFAULT_LOCATION_DRIVER_TIP_CENTS;
 }
 
