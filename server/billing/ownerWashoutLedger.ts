@@ -1,5 +1,10 @@
 import { calculateOwnerWashoutBillingLedger, type OwnerBillingLedger, type OwnerBillingTransferEntry } from "../../shared/billingPolicy";
 import { normalizeMoneyToCents } from "../../shared/money";
+import {
+  getPaymentDriverIncentiveCents,
+  getPaymentOwnerChargeCents,
+  getPaymentPlatformFeeCents,
+} from "../../shared/paymentAccounting";
 
 export type BillableWashout = {
   id: string;
@@ -265,14 +270,14 @@ export function buildOwnerWashoutBillingLedgerFromPayments(params: {
 }): OwnerBillingLedger {
   const billablePayments = params.payments.filter((payment) => payment.ownerId === params.ownerId);
   const washoutActivityIds = billablePayments.map((payment) => payment.activityId);
-  const platformFeeCentsByWashout = billablePayments.map((payment) => toCents(payment.processingFee));
-  const driverTipCentsByWashout = billablePayments.map((payment) => normalizeMoneyToCents(payment.amount, "dollars"));
+  const platformFeeCentsByWashout = billablePayments.map((payment) => getPaymentPlatformFeeCents(payment));
+  const driverTipCentsByWashout = billablePayments.map((payment) => getPaymentDriverIncentiveCents(payment));
   const driverTipCentsByDriver = billablePayments.reduce<Record<string, number>>((acc, payment) => {
-    acc[payment.driverId] = (acc[payment.driverId] || 0) + normalizeMoneyToCents(payment.amount, "dollars");
+    acc[payment.driverId] = (acc[payment.driverId] || 0) + getPaymentDriverIncentiveCents(payment);
     return acc;
   }, {});
   const driverTransfers = billablePayments.reduce<DriverTransferLedger[]>((acc, payment) => {
-    const tipAmountCents = normalizeMoneyToCents(payment.amount, "dollars");
+    const tipAmountCents = getPaymentDriverIncentiveCents(payment);
     const existing = acc.find((entry) => entry.driverId === payment.driverId);
     if (existing) {
       existing.tipAmountCents += tipAmountCents;
@@ -307,7 +312,7 @@ export function buildOwnerWashoutBillingLedgerFromPayments(params: {
     driverTipCentsByWashout,
     driverTipCentsByDriver,
     driverTipTotalCents: driverTipCentsByWashout.reduce((sum, cents) => sum + cents, 0),
-    ownerChargeAmountCents: platformFeeCentsByWashout.reduce((sum, cents) => sum + cents, 0) + driverTipCentsByWashout.reduce((sum, cents) => sum + cents, 0),
+    ownerChargeAmountCents: billablePayments.reduce((sum, payment) => sum + getPaymentOwnerChargeCents(payment), 0),
     platformRevenueCents: platformFeeCentsByWashout.reduce((sum, cents) => sum + cents, 0),
     driverTransfers,
     allowAdminOverride: Boolean(params.allowAdminOverride),
@@ -426,7 +431,7 @@ export function getDriverTipSummaryFromPayments(
   payments: ReportingLedgerPayment[],
 ): ReportingDriverTipSummary {
   const matchingPayments = payments.filter((payment) => payment.driverId === driverId);
-  const driverTipTotalCents = matchingPayments.reduce((sum, payment) => sum + normalizeMoneyToCents(payment.tipAmountCents, "auto"), 0);
+  const driverTipTotalCents = matchingPayments.reduce((sum, payment) => sum + getPaymentDriverIncentiveCents(payment), 0);
   const paidPayments = matchingPayments.filter((payment) => {
     const status = String(payment.status || "").toLowerCase();
     return Boolean(payment.stripeTransferId) || ["paid", "posted", "completed", "succeeded"].includes(status);
@@ -439,8 +444,8 @@ export function getDriverTipSummaryFromPayments(
   return {
     driverId,
     driverTipTotalCents,
-    driverTransferredCents: paidPayments.reduce((sum, payment) => sum + normalizeMoneyToCents(payment.tipAmountCents, "auto"), 0),
-    pendingTransferCents: pendingPayments.reduce((sum, payment) => sum + normalizeMoneyToCents(payment.tipAmountCents, "auto"), 0),
+    driverTransferredCents: paidPayments.reduce((sum, payment) => sum + getPaymentDriverIncentiveCents(payment), 0),
+    pendingTransferCents: pendingPayments.reduce((sum, payment) => sum + getPaymentDriverIncentiveCents(payment), 0),
     transferCount: paidPayments.length,
     pendingCount: pendingPayments.length,
     paidCount: paidPayments.length,

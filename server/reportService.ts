@@ -4,6 +4,11 @@ import { resolveReportDateRange, type ResolvedReportDateRange } from "../shared/
 import { formatAddress } from "../shared/addressUtils";
 import { normalizeMoneyToCents } from "../shared/money";
 import { resolveApprovedWashoutDriverTipCents } from "../shared/locationBilling";
+import {
+  getPaymentDriverIncentiveCents,
+  getPaymentOwnerChargeCents,
+  getPaymentPlatformFeeCents,
+} from "../shared/paymentAccounting";
 
 type ActivityRow = WashoutActivity & {
   location: WashoutLocation & { ownerId?: string };
@@ -255,11 +260,17 @@ function buildRowsFromActivities({
     const displayOwnerName = ownerEntry
       ? formatPersonName(ownerEntry.user)
       : "";
-    const driverTipCents = resolveApprovedWashoutDriverTipCents(activity.amount, null, activity.location?.rate ?? 0);
-    const platformFeeCents = payment ? parseMoneyToCents(payment.processingFee) : normalizeMoneyToCents(activity.feeCentsPlatform || 0, "auto");
-    const ownerChargeAmountCents = platformFeeCents + driverTipCents;
+    const driverTipCents = payment
+      ? getPaymentDriverIncentiveCents(payment)
+      : resolveApprovedWashoutDriverTipCents(activity.amount, null, activity.location?.rate ?? 0);
+    const platformFeeCents = payment
+      ? getPaymentPlatformFeeCents(payment)
+      : normalizeMoneyToCents(activity.feeCentsPlatform || 0, "auto");
+    const ownerChargeAmountCents = payment
+      ? getPaymentOwnerChargeCents(payment)
+      : platformFeeCents + driverTipCents;
     const driverPaymentAmountCents = payment
-      ? parseMoneyToCents(payment.amount)
+      ? getPaymentDriverIncentiveCents(payment)
       : parseMoneyToCents(activity.amount);
 
     const notes = [activity.notes, payment?.refundReason].filter(Boolean).join(" | ");

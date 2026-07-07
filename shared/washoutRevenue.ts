@@ -1,10 +1,16 @@
 import { isBillableWashoutForOwnerBilling } from "./washoutApproval";
 import { normalizeMoneyToCents } from "./money";
 import { resolveApprovedWashoutDriverTipCents } from "./locationBilling";
+import {
+  getPaymentDriverIncentiveCents,
+  getPaymentPlatformFeeCents,
+} from "./paymentAccounting";
 
 export type WashoutPaymentRevenueRow = {
   status?: string | null;
+  amount?: string | number | null;
   processingFee?: string | number | null;
+  washoutServiceFee?: string | number | null;
   tipAmountCents?: number | null;
 };
 
@@ -53,8 +59,14 @@ function toCents(value: string | number | null | undefined): number {
 export function summarizeWashoutRevenue(rows: WashoutPaymentRevenueRow[]): WashoutRevenueSummary {
   return rows.reduce<WashoutRevenueSummary>((summary, row) => {
     const status = String(row.status || "").toLowerCase();
-    const processingFeeCents = toCents(row.processingFee);
-    const tipTotalCents = normalizeMoneyToCents(row.tipAmountCents, "auto");
+    const paymentLike = {
+      amount: row.amount,
+      processingFee: row.processingFee,
+      washoutServiceFee: row.washoutServiceFee,
+      tipAmountCents: row.tipAmountCents,
+    };
+    const processingFeeCents = getPaymentPlatformFeeCents(paymentLike);
+    const tipTotalCents = getPaymentDriverIncentiveCents(paymentLike);
 
     if (BILLED_STATUSES.has(status)) {
       summary.platformWashoutRevenueCents += processingFeeCents;

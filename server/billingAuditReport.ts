@@ -3,8 +3,11 @@ import autoTable from "jspdf-autotable";
 import type { BillingBatch, Driver, Owner, Payment, User, WashoutActivity, WashoutLocation, WashoutPhoto } from "../shared/schema";
 import { formatAddress } from "../shared/addressUtils";
 import { resolveReportDateRange } from "../shared/reportFilters";
-import { normalizeMoneyToCents } from "../shared/money";
-import { resolveApprovedWashoutDriverTipCents } from "../shared/locationBilling";
+import {
+  getPaymentDriverIncentiveCents,
+  getPaymentOwnerChargeCents,
+  getPaymentPlatformFeeCents,
+} from "../shared/paymentAccounting";
 import {
   type BillingAuditItem,
   type BillingAuditReportResponse,
@@ -220,9 +223,9 @@ export async function buildBillingAuditReport(
     const batch = payment.batchId ? batchById.get(payment.batchId) : undefined;
     const paymentStatus = normalizePaymentStatus(payment);
     const groupKey = batch?.id || buildLegacyBillingRunId(payment.ownerId);
-    const driverTipCents = resolveApprovedWashoutDriverTipCents(activity.amount, null, activity.location?.rate ?? 0);
-    const platformFeeCents = toCents(payment.processingFee);
-    const amountChargedCents = platformFeeCents + driverTipCents;
+    const driverTipCents = getPaymentDriverIncentiveCents(payment);
+    const platformFeeCents = getPaymentPlatformFeeCents(payment);
+    const amountChargedCents = getPaymentOwnerChargeCents(payment);
     const paymentCreatedAtDate = new Date(payment.createdAt as unknown as string | number | Date);
     const paymentPaidAtDate = payment.paidAt ? new Date(payment.paidAt as unknown as string | number | Date) : null;
     const paymentFailedAtDate = payment.status === "failed" ? new Date(payment.updatedAt as unknown as string | number | Date) : null;

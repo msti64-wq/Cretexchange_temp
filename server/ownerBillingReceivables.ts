@@ -1,4 +1,5 @@
 import { normalizeMoneyToCents } from "../shared/money";
+import { getPaymentDriverIncentiveCents } from "../shared/paymentAccounting";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
 import { resolveConfiguredWashoutPlatformFeeCents } from "../shared/billingPolicy";
@@ -117,7 +118,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
               driverId: payment.driverId,
               activityId: payment.activityId,
               processingFee: payment.processingFee,
-              tipAmountCents: normalizeMoneyToCents(payment.amount, "dollars"),
+              tipAmountCents: getPaymentDriverIncentiveCents(payment),
               status: payment.status,
               batchId: payment.batchId,
               stripePaymentIntentId: payment.stripePaymentIntentId,

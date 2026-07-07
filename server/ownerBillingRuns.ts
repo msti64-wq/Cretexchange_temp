@@ -5,6 +5,11 @@ import {
   resolveConfiguredWashoutPlatformFeeCents,
 } from "../shared/billingPolicy";
 import { normalizeMoneyToCents } from "../shared/money";
+import {
+  getPaymentDriverIncentiveCents,
+  getPaymentOwnerChargeCents,
+  getPaymentPlatformFeeCents,
+} from "../shared/paymentAccounting";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 
 type BillingBatch = any;
@@ -175,20 +180,6 @@ function normalizeWashoutActivityAmountTipCents(rawActivityAmount: unknown, rawP
     normalizedLocationDriverTipCents: normalizeMoneyToCents(rawLocationDriverTipRate, "dollars"),
   });
   return normalizedDriverTipCents;
-}
-
-function paymentActivityAmount(payment: Payment): unknown {
-  return payment?.activity?.amount ?? null;
-}
-
-function paymentDriverTipCents(payment: Payment): unknown {
-  return payment?.amount !== null && payment?.amount !== undefined
-    ? normalizeMoneyToCents(payment.amount, "dollars")
-    : payment?.tipAmountCents ?? null;
-}
-
-function paymentLocationDriverTipRate(payment: Payment): unknown {
-  return payment?.activity?.location?.rate ?? payment?.locationDriverTipRate ?? null;
 }
 
 function buildDriverTransfersFromPayments(payments: Payment[], tipCentsByPayment: number[]) {
@@ -625,14 +616,11 @@ async function processSingleOwnerBillingRun(
 
   console.log(`💳 [OWNER_BILLING] Candidate washouts for owner ${ownerId}: ${candidatePayments.length}`);
 
-  const platformFeeCentsPerWashout = candidatePayments.map((payment) => toCents(payment.processingFee));
-  const driverTipCentsPerWashout = candidatePayments.map((payment) => normalizeWashoutActivityAmountTipCents(paymentActivityAmount(payment), paymentDriverTipCents(payment), paymentLocationDriverTipRate(payment), {
-    washoutActivityId: payment.activityId,
-    ownerId: payment.ownerId,
-    driverId: payment.driverId,
-  }));
+  const platformFeeCentsPerWashout = candidatePayments.map((payment) => getPaymentPlatformFeeCents(payment));
+  const driverTipCentsPerWashout = candidatePayments.map((payment) => getPaymentDriverIncentiveCents(payment));
   const platformFeeTotalCents = platformFeeCentsPerWashout.reduce((sum, feeCents) => sum + feeCents, 0);
   const driverTipTotalCents = driverTipCentsPerWashout.reduce((sum, tipCents) => sum + tipCents, 0);
+  const candidateOwnerChargeCents = candidatePayments.reduce((sum, payment) => sum + getPaymentOwnerChargeCents(payment), 0);
   const candidateDriverTipCentsByDriver = candidatePayments.reduce<Record<string, number>>((acc, payment, index) => {
     const tipCents = driverTipCentsPerWashout[index] || 0;
     acc[payment.driverId] = (acc[payment.driverId] || 0) + tipCents;
@@ -649,10 +637,10 @@ async function processSingleOwnerBillingRun(
     driverTipCentsByWashout: driverTipCentsPerWashout,
     driverTipCentsByDriver: candidateDriverTipCentsByDriver,
     driverTipTotalCents,
-    ownerChargeAmountCents: platformFeeTotalCents + driverTipTotalCents,
+    ownerChargeAmountCents: candidateOwnerChargeCents,
     platformRevenueCents: platformFeeTotalCents,
     driverTransfers: candidateDriverTransfers,
-    stripeChargeAmountCents: platformFeeTotalCents + driverTipTotalCents,
+    stripeChargeAmountCents: candidateOwnerChargeCents,
     platformFeeCentsPerWashout,
     driverTipCentsPerWashout,
     immediateBilling: runType !== "admin_manual",
@@ -731,12 +719,8 @@ async function processSingleOwnerBillingRun(
   }
 
   const paymentsToBill = batchPayments.length > 0 ? batchPayments : candidatePayments;
-  const totalPlatformFeeCents = paymentsToBill.reduce((sum, payment) => sum + toCents(payment.processingFee), 0);
-  const batchDriverTipCentsByWashout = paymentsToBill.map((payment) => normalizeWashoutActivityAmountTipCents(paymentActivityAmount(payment), paymentDriverTipCents(payment), paymentLocationDriverTipRate(payment), {
-    washoutActivityId: payment.activityId,
-    ownerId: payment.ownerId,
-    driverId: payment.driverId,
-  }));
+  const totalPlatformFeeCents = paymentsToBill.reduce((sum, payment) => sum + getPaymentPlatformFeeCents(payment), 0);
+  const batchDriverTipCentsByWashout = paymentsToBill.map((payment) => getPaymentDriverIncentiveCents(payment));
   const totalDriverTipCents = batchDriverTipCentsByWashout.reduce((sum, tipCents) => sum + tipCents, 0);
   const batchDriverTipCentsByDriver = paymentsToBill.reduce<Record<string, number>>((acc, payment, index) => {
     const tipCents = batchDriverTipCentsByWashout[index] || 0;
@@ -749,7 +733,7 @@ async function processSingleOwnerBillingRun(
     billingBatchId: billingBatch.id,
     washoutActivityIds: paymentsToBill.map((payment) => payment.activityId).filter(Boolean),
     approvedWashoutCount: paymentsToBill.length,
-    platformFeeCentsByWashout: paymentsToBill.map((payment) => toCents(payment.processingFee)),
+    platformFeeCentsByWashout: paymentsToBill.map((payment) => getPaymentPlatformFeeCents(payment)),
     platformFeeTotalCents: totalPlatformFeeCents,
     driverTipCentsByWashout: batchDriverTipCentsByWashout,
     driverTipCentsByDriver: batchDriverTipCentsByDriver,
@@ -758,7 +742,7 @@ async function processSingleOwnerBillingRun(
     platformRevenueCents: totalPlatformFeeCents,
     driverTransfers: batchDriverTransfers,
     stripeChargeAmountCents: totalPlatformFeeCents + totalDriverTipCents,
-    platformFeeCentsPerWashout: paymentsToBill.map((payment) => toCents(payment.processingFee)),
+    platformFeeCentsPerWashout: paymentsToBill.map((payment) => getPaymentPlatformFeeCents(payment)),
     driverTipCentsPerWashout: batchDriverTipCentsByWashout,
     immediateBilling: false,
     allowAdminOverride: runType === "admin_manual",

@@ -414,8 +414,6 @@ export const payments = pgTable("payments", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   processingFee: decimal("processing_fee", { precision: 10, scale: 2 }).notNull(),
   washoutServiceFee: decimal("washout_service_fee", { precision: 10, scale: 2 }).notNull().default("8.00"),
-  driverTipCents: integer("driver_tip_cents").notNull().default(0),
-  payoutStatus: varchar("payout_status").notNull().default("not_started"),
   deferReason: text("defer_reason"),
   deferredAt: timestamp("deferred_at"),
   // Stripe payment tracking - critical for reconciliation
@@ -1459,7 +1457,6 @@ export type WashoutActivity = typeof washoutActivities.$inferSelect;
 export type WashoutPhoto = typeof washoutPhotos.$inferSelect;
 export type Payment = typeof payments.$inferSelect & {
   tipAmountCents?: number | null;
-  driverTipCents?: number | null;
   washoutServiceFee?: string;
   platformFee?: string;
 };
@@ -1477,7 +1474,6 @@ export type InsertWashoutActivity = z.infer<typeof insertWashoutActivitySchema>;
 export type InsertWashoutPhoto = z.infer<typeof insertWashoutPhotoSchema>;
 export type InsertPayment = z.infer<typeof insertPaymentSchema> & {
   tipAmountCents?: number | null;
-  driverTipCents?: number | null;
 };
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type InsertTermsVersion = z.infer<typeof insertTermsVersionSchema>;

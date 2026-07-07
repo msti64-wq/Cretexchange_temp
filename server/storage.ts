@@ -121,6 +121,12 @@ import { summarizeDatabaseError } from "./dbErrors";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { resolvePlatformFeeCents, resolveConfiguredWashoutPlatformFeeCents, type OwnerBillingLedger } from "../shared/billingPolicy";
 import { normalizeMoneyToCents } from "../shared/money";
+import {
+  getPaymentDriverIncentiveCents,
+  getPaymentOwnerChargeCents,
+  getPaymentPlatformFeeCents,
+  getPaymentWashoutServiceFeeCents,
+} from "../shared/paymentAccounting";
 import { resolveDriverLocationVisibilityState } from "../shared/ownerLocationAccess";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import {
@@ -248,7 +254,7 @@ export interface IStorage {
   ): Promise<{ activity: WashoutActivity; photos: WashoutPhoto[] }>;
 
   // Payment operations
-  createPayment(payment: InsertPayment): Promise<Payment>;
+  createPayment(payment: InsertPayment & { tipAmountCents?: number | string | null }): Promise<Payment>;
   getPaymentById(paymentId: string): Promise<Payment | undefined>;
   getPaymentsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { location: WashoutLocation } })[]>;
   getPaymentsByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { driver: Driver & { user: User } } })[]>;
@@ -2034,22 +2040,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Payment operations
-  async createPayment(payment: InsertPayment): Promise<Payment> {
+  async createPayment(payment: InsertPayment & { tipAmountCents?: number | string | null }): Promise<Payment> {
     const {
       tipAmountCents,
-      driverTipCents: _driverTipCents,
-      payoutStatus: _payoutStatus,
       deferReason: _deferReason,
       deferredAt: _deferredAt,
       ...paymentData
     } = payment as any;
-    const normalizedTipAmountCents =
-      tipAmountCents !== null && tipAmountCents !== undefined && tipAmountCents !== ""
-        ? normalizeMoneyToCents(tipAmountCents, "auto")
-        : undefined;
-
-    if (normalizedTipAmountCents !== undefined && paymentData.washoutServiceFee === undefined) {
-      paymentData.washoutServiceFee = (normalizedTipAmountCents / 100).toFixed(2);
+    if (paymentData.washoutServiceFee === undefined) {
+      paymentData.washoutServiceFee = (getPaymentWashoutServiceFeeCents({
+        amount: paymentData.amount,
+        processingFee: paymentData.processingFee,
+        tipAmountCents,
+      }) / 100).toFixed(2);
     }
     const [newPayment] = await db.insert(payments).values(paymentData).returning();
     return newPayment;
@@ -2095,10 +2098,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizeMoneyToCents(row.paymentAmount, "dollars") / 100).toFixed(2),
-      tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
-        ? Number(row.paymentDriverTipCents)
-        : normalizeMoneyToCents(row.activityAmount, "dollars"),
+      washoutServiceFee: (getPaymentWashoutServiceFeeCents({ amount: row.paymentAmount }) / 100).toFixed(2),
+      tipAmountCents: getPaymentDriverIncentiveCents({ amount: row.paymentAmount }),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2107,7 +2108,6 @@ export class DatabaseStorage implements IStorage {
       refundAmount: row.paymentRefundAmount,
       refundReason: row.paymentRefundReason,
       batchId: row.paymentBatchId,
-      payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
       businessDate: row.paymentCreatedAt ? row.paymentCreatedAt.toISOString().split('T')[0] : null,
@@ -2188,10 +2188,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizeMoneyToCents(row.paymentAmount, "dollars") / 100).toFixed(2),
-      tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
-        ? Number(row.paymentDriverTipCents)
-        : normalizeMoneyToCents(row.locationDriverRate, "dollars"),
+      washoutServiceFee: (getPaymentWashoutServiceFeeCents({ amount: row.paymentAmount }) / 100).toFixed(2),
+      tipAmountCents: getPaymentDriverIncentiveCents({ amount: row.paymentAmount }),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2200,7 +2198,6 @@ export class DatabaseStorage implements IStorage {
       refundAmount: row.paymentRefundAmount,
       refundReason: row.paymentRefundReason,
       batchId: row.paymentBatchId,
-      payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
       businessDate: row.paymentCreatedAt ? row.paymentCreatedAt.toISOString().split('T')[0] : null,
@@ -2320,9 +2317,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
-        ? Number(row.paymentDriverTipCents)
-        : normalizeMoneyToCents(row.activityAmount, "dollars"),
+      tipAmountCents: getPaymentDriverIncentiveCents({ amount: row.paymentAmount }),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2331,7 +2326,6 @@ export class DatabaseStorage implements IStorage {
       refundAmount: row.paymentRefundAmount,
       refundReason: row.paymentRefundReason,
       batchId: row.paymentBatchId,
-      payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
       paidAt: row.paymentPaidAt,
@@ -2482,10 +2476,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
-        ? Number(row.paymentDriverTipCents)
-        : normalizeMoneyToCents(row.locationDriverRate, "dollars"),
-      payoutStatus: "not_started",
+      tipAmountCents: getPaymentDriverIncentiveCents({ amount: row.paymentAmount }),
       deferReason: null,
       deferredAt: null,
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
@@ -2665,10 +2656,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
-        ? Number(row.paymentDriverTipCents)
-        : normalizeMoneyToCents(row.locationDriverRate, "dollars"),
-      payoutStatus: "not_started",
+      tipAmountCents: getPaymentDriverIncentiveCents({ amount: row.paymentAmount }),
       deferReason: null,
       deferredAt: null,
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
@@ -2863,9 +2851,7 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
-        ? Number(row.paymentDriverTipCents)
-        : normalizeMoneyToCents(row.activityAmount, "dollars"),
+      tipAmountCents: getPaymentDriverIncentiveCents({ amount: row.paymentAmount }),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -2874,7 +2860,6 @@ export class DatabaseStorage implements IStorage {
       refundAmount: row.paymentRefundAmount,
       refundReason: row.paymentRefundReason,
       batchId: row.paymentBatchId,
-      payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
       paidAt: row.paymentPaidAt,
@@ -2973,7 +2958,7 @@ export class DatabaseStorage implements IStorage {
       driverId: payment.driverId,
       activityId: payment.activityId,
       processingFee: payment.processingFee,
-      tipAmountCents: normalizeMoneyToCents(payment.amount, "dollars"),
+      tipAmountCents: getPaymentDriverIncentiveCents(payment),
       status: payment.status,
       batchId: payment.batchId,
       stripePaymentIntentId: payment.stripePaymentIntentId,
@@ -3044,7 +3029,7 @@ export class DatabaseStorage implements IStorage {
             driverId: payment.driverId,
             activityId: payment.activityId,
             processingFee: payment.processingFee,
-            tipAmountCents: normalizeMoneyToCents(payment.amount, "dollars"),
+            tipAmountCents: getPaymentDriverIncentiveCents(payment),
             status: payment.status,
             batchId: payment.batchId,
             stripePaymentIntentId: payment.stripePaymentIntentId,
@@ -3232,7 +3217,7 @@ export class DatabaseStorage implements IStorage {
               driverId: payment.driverId,
               activityId: payment.activityId,
               processingFee: payment.processingFee,
-              tipAmountCents: normalizeMoneyToCents(payment.amount, "dollars"),
+              tipAmountCents: getPaymentDriverIncentiveCents(payment),
               status: payment.status,
               batchId: payment.batchId,
               stripePaymentIntentId: payment.stripePaymentIntentId,
@@ -4809,8 +4794,8 @@ export class DatabaseStorage implements IStorage {
       const ownerUser = await this.getUser(owner.userId);
 
       // Calculate totals
-      const batchTotal = pendingPayments.reduce((sum, payment) => sum + normalizeMoneyToCents(payment.processingFee, "dollars") + normalizeMoneyToCents(payment.tipAmountCents, "auto"), 0) / 100;
-      const batchFees = pendingPayments.reduce((sum, payment) => sum + normalizeMoneyToCents(payment.processingFee, "dollars"), 0) / 100;
+      const batchTotal = pendingPayments.reduce((sum, payment) => sum + getPaymentOwnerChargeCents(payment), 0) / 100;
+      const batchFees = pendingPayments.reduce((sum, payment) => sum + getPaymentPlatformFeeCents(payment), 0) / 100;
 
       ownerBatches.push({
         ownerId,
@@ -4905,10 +4890,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizeMoneyToCents(row.paymentAmount, "dollars") / 100).toFixed(2),
-      tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
-        ? Number(row.paymentDriverTipCents)
-        : normalizeMoneyToCents(row.locationDriverRate, "dollars"),
+      washoutServiceFee: (getPaymentWashoutServiceFeeCents({ amount: row.paymentAmount }) / 100).toFixed(2),
+      tipAmountCents: getPaymentDriverIncentiveCents({ amount: row.paymentAmount }),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -4917,7 +4900,6 @@ export class DatabaseStorage implements IStorage {
       refundAmount: row.paymentRefundAmount,
       refundReason: row.paymentRefundReason,
       batchId: row.paymentBatchId,
-      payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
       businessDate: row.paymentCreatedAt ? row.paymentCreatedAt.toISOString().split('T')[0] : null,
@@ -5033,10 +5015,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizeMoneyToCents(row.paymentAmount, "dollars") / 100).toFixed(2),
-      tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
-        ? Number(row.paymentDriverTipCents)
-        : normalizeMoneyToCents(row.locationDriverRate, "dollars"),
+      washoutServiceFee: (getPaymentWashoutServiceFeeCents({ amount: row.paymentAmount }) / 100).toFixed(2),
+      tipAmountCents: getPaymentDriverIncentiveCents({ amount: row.paymentAmount }),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -5045,7 +5025,6 @@ export class DatabaseStorage implements IStorage {
       refundAmount: row.paymentRefundAmount,
       refundReason: row.paymentRefundReason,
       batchId: row.paymentBatchId,
-      payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
       businessDate: row.paymentCreatedAt ? row.paymentCreatedAt.toISOString().split('T')[0] : null,
@@ -5411,10 +5390,8 @@ export class DatabaseStorage implements IStorage {
       amount: row.paymentAmount,
       processingFee: row.paymentProcessingFee,
       platformFee: row.paymentProcessingFee,
-      washoutServiceFee: (normalizeMoneyToCents(row.paymentAmount, "dollars") / 100).toFixed(2),
-      tipAmountCents: row.paymentDriverTipCents !== null && row.paymentDriverTipCents !== undefined
-        ? Number(row.paymentDriverTipCents)
-        : normalizeMoneyToCents(row.paymentAmount, "dollars"),
+      washoutServiceFee: (getPaymentWashoutServiceFeeCents({ amount: row.paymentAmount }) / 100).toFixed(2),
+      tipAmountCents: getPaymentDriverIncentiveCents({ amount: row.paymentAmount }),
       stripePaymentIntentId: row.paymentStripePaymentIntentId,
       stripeTransferId: row.paymentStripeTransferId,
       stripeChargeId: row.paymentStripeChargeId,
@@ -5423,7 +5400,6 @@ export class DatabaseStorage implements IStorage {
       refundAmount: row.paymentRefundAmount,
       refundReason: row.paymentRefundReason,
       batchId: row.paymentBatchId,
-      payoutStatus: "not_started",
       deferReason: null,
       deferredAt: null,
       businessDate: row.paymentCreatedAt ? row.paymentCreatedAt.toISOString().split('T')[0] : null,

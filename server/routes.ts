@@ -70,6 +70,10 @@ import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { isPendingWashoutApproval, getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
 import { isAwaitingDriverStripePaymentStatus, getDriverStripeSetupMessage } from "../shared/driverPaymentStatus";
 import { normalizeMoneyToCents } from "../shared/money";
+import {
+  getPaymentDriverIncentiveCents,
+  getPaymentPlatformFeeCents,
+} from "../shared/paymentAccounting";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
@@ -5815,7 +5819,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: 'skipped',
               reason: heldReason,
               paymentStatus: payment.status,
-              payoutStatus: payment.payoutStatus,
             });
             continue;
           }
@@ -5827,7 +5830,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: 'skipped',
               reason: 'Owner payment method missing',
               paymentStatus: payment.status,
-              payoutStatus: payment.payoutStatus,
             });
             continue;
           }
@@ -5840,14 +5842,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: 'skipped',
               reason: `Unsupported payment method type (${paymentMethod.type})`,
               paymentStatus: payment.status,
-              payoutStatus: payment.payoutStatus,
             });
             continue;
           }
 
           const driverAmount = Number(payment.amount);
-          const platformFeeCents = normalizeMoneyToCents(payment.processingFee, "dollars");
-          const driverTipCents = normalizeMoneyToCents((payment as any).tipAmountCents ?? (payment as any).tipAmount ?? 0, "auto");
+          const platformFeeCents = getPaymentPlatformFeeCents(payment);
+          const driverTipCents = getPaymentDriverIncentiveCents(payment);
           const ownerFeeCents = calculateOwnerWashoutChargeCents(0, platformFeeCents, driverTipCents);
           const ownerFee = ownerFeeCents / 100;
           const ownerBillingLedger = calculateOwnerWashoutBillingLedger({
@@ -5953,7 +5954,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             paymentId: payment.id,
             status: 'processed',
             paymentStatus: 'completed',
-            payoutStatus: 'completed',
             paymentIntentId: paymentIntent.id,
           });
         } catch (error: any) {
@@ -12123,9 +12123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const transferId = String(payment.stripeTransferId || "").trim();
         if (!activityId || !transferId) continue;
 
-        const transferredTipCents = payment.amount !== null && payment.amount !== undefined
-          ? normalizeMoneyToCents(payment.amount, "dollars")
-          : normalizeMoneyToCents(payment.tipAmountCents || 0, "auto");
+        const transferredTipCents = getPaymentDriverIncentiveCents(payment);
         transferredTipCentsByActivity.set(
           activityId,
           (transferredTipCentsByActivity.get(activityId) || 0) + Math.max(0, transferredTipCents),
@@ -14876,7 +14874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           activityId: payment.activityId,
           amount: payment.amount,
           processingFee: payment.processingFee,
-          tipAmountCents: normalizeMoneyToCents(payment.amount, "dollars"),
+          tipAmountCents: getPaymentDriverIncentiveCents(payment),
           status: payment.status,
           batchId: payment.batchId,
           stripePaymentIntentId: payment.stripePaymentIntentId,
@@ -14898,7 +14896,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: p.id,
           amount: p.amount,
           processingFee: p.processingFee,
-          driverTipCents: String(normalizeMoneyToCents(p.amount, "dollars")),
+          driverTipCents: String(getPaymentDriverIncentiveCents(p)),
           driver: `${p.driver.user.firstName} ${p.driver.user.lastName}`,
           activity: {
             checkInTime: p.activity.checkInTime,
