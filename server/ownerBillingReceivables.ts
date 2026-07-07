@@ -3,7 +3,9 @@ import { getPaymentDriverIncentiveCents } from "../shared/paymentAccounting";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
 import { resolveConfiguredWashoutPlatformFeeCents } from "../shared/billingPolicy";
-import { resolveApprovedWashoutDriverTipCents } from "../shared/locationBilling";
+import { db } from "./db";
+import { washoutActivities, washoutLocations } from "../shared/schema";
+import { eq, inArray } from "drizzle-orm";
 import {
   buildOwnerWashoutBillingLedgerFromBillableWashouts,
   buildOwnerWashoutBillingLedgerFromPayments,
@@ -94,38 +96,45 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
       });
       const batches = await storageApi.getBillingBatchesByOwner(ownerSetting.ownerId);
       const billableApprovedWashouts = approvedWashouts.filter((row: any) => isBillableWashoutForOwnerBilling({ status: row.activityStatus }));
-      const resolvedBillableApprovedWashouts = billableApprovedWashouts.length > 0 && typeof storageApi.getWashoutActivity === "function"
-        ? await Promise.all(
-            billableApprovedWashouts.map(async (row: any) => {
-              const [activity, location] = await Promise.all([
-                storageApi.getWashoutActivity(row.activityId),
-                typeof storageApi.getWashoutLocation === "function"
-                  ? storageApi.getWashoutLocation(row.locationId)
-                  : Promise.resolve(null),
-              ]);
-              const driverTipCents = resolveApprovedWashoutDriverTipCents(
-                activity?.amount ?? row.activityDriverTipAmount ?? null,
-                null,
-                location?.rate ?? row.locationRate ?? null,
-              );
-              return {
-                ...row,
-                activityAmount: activity?.amount ?? row.activityDriverTipAmount ?? null,
-                locationDriverTipRate: location?.rate ?? row.locationRate ?? null,
-                driverTipCents,
-              };
+      const approvedWashoutIds = billableApprovedWashouts.map((row: any) => row.activityId);
+      const approvedWashoutRows = approvedWashoutIds.length > 0
+        ? await db
+            .select({
+              activityId: washoutActivities.id,
+              activityAmount: washoutActivities.amount,
+              locationId: washoutLocations.id,
+              locationRate: washoutLocations.rate,
             })
-          )
-        : billableApprovedWashouts.map((row: any) => ({
-            ...row,
-            activityAmount: row.activityDriverTipAmount ?? null,
-            locationDriverTipRate: row.locationRate ?? null,
-            driverTipCents: resolveApprovedWashoutDriverTipCents(
-              row.activityDriverTipAmount ?? null,
-              null,
-              row.locationRate ?? null,
-            ),
-          }));
+            .from(washoutActivities)
+            .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+            .where(inArray(washoutActivities.id, approvedWashoutIds))
+        : [];
+      const approvedWashoutRowById = new Map(
+        approvedWashoutRows.map((row) => [String(row.activityId), row]),
+      );
+      const resolvedBillableApprovedWashouts = billableApprovedWashouts.map((row: any) => {
+        const rowData = approvedWashoutRowById.get(String(row.activityId));
+        const rawLocationDriverTipRate = rowData?.locationRate ?? row.locationRate ?? null;
+        const rawWashoutActivityAmount = rowData?.activityAmount ?? row.activityDriverTipAmount ?? null;
+        const driverTipCents = rawLocationDriverTipRate !== null && rawLocationDriverTipRate !== undefined && rawLocationDriverTipRate !== ""
+          ? normalizeMoneyToCents(rawLocationDriverTipRate, "dollars")
+          : normalizeMoneyToCents(rawWashoutActivityAmount, "dollars");
+
+        console.info("[OWNER_BILLING_RECEIVABLES_TIP_RESOLUTION]", {
+          ownerId: ownerSetting.ownerId,
+          activityId: row.activityId,
+          rawLocationDriverTipRate,
+          rawWashoutActivityAmount,
+          normalizedDriverTipCents: driverTipCents,
+        });
+
+        return {
+          ...row,
+          activityAmount: rawWashoutActivityAmount,
+          locationDriverTipRate: rawLocationDriverTipRate,
+          driverTipCents,
+        };
+      });
       const approvedLedger = resolvedBillableApprovedWashouts.length > 0
         ? buildOwnerWashoutBillingLedgerFromBillableWashouts({
             ownerId: ownerSetting.ownerId,
