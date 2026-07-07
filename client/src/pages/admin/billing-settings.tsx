@@ -73,6 +73,8 @@ interface BillingSettingsResponse {
     platformFeesOwedCents: number;
     platformFeesPaidCents: number;
     platformFeesTotalCents: number;
+    driverTipTotalCents: number;
+    ownerChargeTotalCents: number;
     paidBatchCount: number;
     failedBatchCount: number;
   };
@@ -407,6 +409,8 @@ export default function AdminBillingSettings() {
     platformFeesOwedCents: 0,
     platformFeesPaidCents: 0,
     platformFeesTotalCents: 0,
+    driverTipTotalCents: 0,
+    ownerChargeTotalCents: 0,
     paidBatchCount: 0,
     failedBatchCount: 0,
   };
@@ -805,21 +809,27 @@ export default function AdminBillingSettings() {
                 </p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Current platform receivables</p>
-                <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-owed">
-                  {formatCurrencyFromCents(immediateBillingSummary.platformFeesOwedCents)}
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Platform Fees</p>
+                <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-platform-fees">
+                  {formatCurrencyFromCents(immediateBillingSummary.platformFeesTotalCents || immediateBillingSummary.platformFeesOwedCents)}
+                </p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Driver Tips</p>
+                <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-driver-tips">
+                  {formatCurrencyFromCents(immediateBillingSummary.driverTipTotalCents)}
+                </p>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Owner Charge</p>
+                <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-owner-charge">
+                  {formatCurrencyFromCents(immediateBillingSummary.ownerChargeTotalCents || (immediateBillingSummary.platformFeesTotalCents + immediateBillingSummary.driverTipTotalCents))}
                 </p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-4">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Paid platform fees</p>
                 <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-paid-amount">
                   {formatCurrencyFromCents(immediateBillingSummary.platformFeesPaidCents)}
-                </p>
-              </div>
-              <div className="rounded-lg border bg-muted/30 p-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Total platform fees</p>
-                <p className="mt-2 text-2xl font-semibold" data-testid="text-immediate-total-amount">
-                  {formatCurrencyFromCents(immediateBillingSummary.platformFeesTotalCents)}
                 </p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-4">
