@@ -11,6 +11,7 @@ import { PhotoModal } from "@/components/PhotoModal";
 import { Users, Search, Filter, MapPin, Clock, Image as ImageIcon } from "lucide-react";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { formatCurrency } from "@/lib/utils";
+import { isBillableWashoutForOwnerBilling } from "@shared/washoutApproval";
 
 export default function OwnerDrivers() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,6 +46,10 @@ export default function OwnerDrivers() {
     return matchesSearch && matchesLocation && matchesPeriod;
   });
 
+  const billableActivities = filteredActivities.filter((activity: any) =>
+    isBillableWashoutForOwnerBilling({ status: activity.status }),
+  );
+
   // Group activities by driver
   const driverStats = filteredActivities.reduce((acc: any, activity: any) => {
     const driverId = activity.driver?.user?.id;
@@ -61,7 +66,9 @@ export default function OwnerDrivers() {
     }
 
     acc[driverId].totalWashouts += 1;
-    acc[driverId].totalPendingCharges += Number(activity.amount);
+    if (isBillableWashoutForOwnerBilling({ status: activity.status })) {
+      acc[driverId].totalPendingCharges += Number(activity.amount || 0);
+    }
     acc[driverId].locations.add(activity.location?.name);
     
     if (!acc[driverId].lastActivity || new Date(activity.checkInTime) > new Date(acc[driverId].lastActivity)) {
@@ -123,16 +130,16 @@ export default function OwnerDrivers() {
             <div className="text-2xl font-bold text-secondary" data-testid="text-total-washouts">
               {filteredActivities.length}
             </div>
-            <div className="text-xs text-muted-foreground">Completed</div>
+            <div className="text-xs text-muted-foreground">Activity history</div>
           </StatCard>
 
-          <StatCard title="Pending Charges" className="text-center">
+          <StatCard title="Driver Tip Obligations" className="text-center">
             <div className="text-2xl font-bold text-accent" data-testid="text-total-pending-charges">
               {formatCurrency(
-                filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0)
+                billableActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0)
               )}
             </div>
-            <div className="text-xs text-muted-foreground">Owner obligation before billing</div>
+            <div className="text-xs text-muted-foreground">Billable verified/approved washouts only</div>
           </StatCard>
         </div>
 
