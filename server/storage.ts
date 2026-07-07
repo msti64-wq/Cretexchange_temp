@@ -5184,6 +5184,8 @@ export class DatabaseStorage implements IStorage {
     missingPaymentCount: number;
     repairedCount: number;
     skippedCount: number;
+    repairNeededCount: number;
+    repairedWalletTransactionCount: number;
     repairedPayments: Array<{
       paymentId: string;
       ownerId: string;
@@ -5201,6 +5203,8 @@ export class DatabaseStorage implements IStorage {
       missingPaymentCount: 0,
       repairedCount: 0,
       skippedCount: 0,
+      repairNeededCount: 0,
+      repairedWalletTransactionCount: 0,
       repairedPayments: [] as Array<{
         paymentId: string;
         ownerId: string;
@@ -5230,33 +5234,69 @@ export class DatabaseStorage implements IStorage {
           continue;
         }
 
-        const approvedWashouts = await this.getApprovedWashoutsForOwnerBilling(
-          ownerSetting.ownerId,
-          options.startDate,
-          options.endDate,
-        );
-        result.approvedWashoutsChecked += approvedWashouts.length;
-
-        const missingPayments = approvedWashouts.filter((row) => {
-          const paymentStatus = String((row as any).paymentStatus || "").trim().toLowerCase();
-          return paymentStatus.length === 0;
-        });
-
-        if (missingPayments.length === 0) {
-          continue;
-        }
-
         const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
           ownerCustomPlatformFee: owner.customPlatformFee,
           systemPlatformWashoutFee: systemSettings?.platformWashoutFee,
         });
 
-        for (const row of missingPayments) {
-          result.missingPaymentCount++;
-          const driverTipCents = normalizeMoneyToCents(
-            row.activityDriverTipAmount ?? row.locationRate ?? 0,
-            "dollars",
-          );
+        const repairRows = await db
+          .select({
+            activityId: washoutActivities.id,
+            ownerId: owners.id,
+            driverId: washoutActivities.driverId,
+            locationId: washoutActivities.locationId,
+            activityStatus: washoutActivities.status,
+            activityAmount: washoutActivities.amount,
+            locationRate: washoutLocations.rate,
+            verifiedAt: washoutActivities.verifiedAt,
+            createdAt: washoutActivities.createdAt,
+            paymentId: payments.id,
+            paymentAmount: payments.amount,
+            paymentProcessingFee: payments.processingFee,
+            paymentWashoutServiceFee: payments.washoutServiceFee,
+            paymentStatus: payments.status,
+            paymentBatchId: payments.batchId,
+            walletTransactionId: walletTransactions.id,
+            walletTransactionAmount: walletTransactions.amount,
+            walletTransactionBalanceAfter: walletTransactions.balanceAfter,
+            walletTransactionStatus: walletTransactions.status,
+          })
+          .from(washoutActivities)
+          .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+          .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
+          .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
+          .leftJoin(
+            walletTransactions,
+            and(
+              eq(walletTransactions.driverId, washoutActivities.driverId),
+              eq(walletTransactions.sourceType, "washout"),
+              eq(walletTransactions.sourceId, washoutActivities.id),
+              eq(walletTransactions.direction, "credit"),
+            ),
+          )
+          .where(and(
+            eq(owners.id, ownerSetting.ownerId),
+            or(
+              eq(washoutActivities.status, "verified"),
+              sql<boolean>`${washoutActivities.status}::text = 'completed'`,
+            ),
+            ...(options.startDate
+              ? [gte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, options.startDate)]
+              : []),
+            ...(options.endDate
+              ? [lte(sql<Date>`COALESCE(${washoutActivities.verifiedAt}, ${washoutActivities.checkInTime}, ${washoutActivities.createdAt})`, options.endDate)]
+              : []),
+          ))
+          .orderBy(desc(washoutActivities.verifiedAt), desc(washoutActivities.createdAt));
+
+        result.approvedWashoutsChecked += repairRows.length;
+
+        for (const row of repairRows) {
+          const activityStatus = String(row.activityStatus || "").trim().toLowerCase();
+          if (!isBillableWashoutForOwnerBilling({ status: activityStatus })) {
+            continue;
+          }
+
           const referenceTime = row.verifiedAt || row.createdAt || new Date();
           const businessDate = this.calculateBusinessDate(
             ownerSetting.billingTimezone || "America/Chicago",
@@ -5264,50 +5304,219 @@ export class DatabaseStorage implements IStorage {
             referenceTime instanceof Date ? referenceTime : new Date(referenceTime),
           );
 
+          const canonicalDriverTipCents = normalizeMoneyToCents(
+            row.locationRate ?? row.activityAmount ?? 0,
+            "dollars",
+          );
+          if (canonicalDriverTipCents <= 0) {
+            result.errors.push(`Activity ${row.activityId}: canonical driver incentive resolved to $0.00`);
+            continue;
+          }
+          const currentPaymentAmountCents = normalizeMoneyToCents(row.paymentAmount ?? 0, "dollars");
+          const currentProcessingFeeCents = normalizeMoneyToCents(row.paymentProcessingFee ?? 0, "dollars");
+          const currentWashoutServiceFeeCents = normalizeMoneyToCents(row.paymentWashoutServiceFee ?? 0, "dollars");
+          const currentWalletTransactionAmountCents = normalizeMoneyToCents(row.walletTransactionAmount ?? 0, "dollars");
+          const walletRowMissing = !row.walletTransactionId;
+          const paymentNeedsRepair = !row.paymentId
+            || currentPaymentAmountCents <= 0
+            || (canonicalDriverTipCents > 0 && currentPaymentAmountCents < canonicalDriverTipCents)
+            || currentProcessingFeeCents !== configuredPlatformFeeCents
+            || currentWashoutServiceFeeCents !== canonicalDriverTipCents;
+          const walletNeedsRepair = walletRowMissing
+            || currentWalletTransactionAmountCents !== canonicalDriverTipCents;
+
+          if (!paymentNeedsRepair && !walletNeedsRepair) {
+            continue;
+          }
+
+          result.repairNeededCount++;
+          if (!row.paymentId) {
+            result.missingPaymentCount++;
+          }
+
           if (options.dryRun) {
             result.skippedCount++;
             console.log("[WASHOUT_PAYMENT_REPAIR][DRY_RUN]", {
               ownerId: ownerSetting.ownerId,
               driverId: row.driverId,
               activityId: row.activityId,
-              amountCents: driverTipCents,
+              paymentNeedsRepair,
+              walletNeedsRepair,
+              amountCents: canonicalDriverTipCents,
               processingFeeCents: configuredPlatformFeeCents,
               businessDate,
             });
             continue;
           }
 
-          const payment = await this.createPayment({
-            activityId: row.activityId,
-            driverId: row.driverId,
-            ownerId: row.ownerId,
-            amount: (driverTipCents / 100).toFixed(2),
-            processingFee: (configuredPlatformFeeCents / 100).toFixed(2),
-            washoutServiceFee: (driverTipCents / 100).toFixed(2),
-            status: "pending",
-            businessDate,
-          } as any);
+          await db.transaction(async (tx) => {
+            const [currentPayment] = await tx
+              .select()
+              .from(payments)
+              .where(eq(payments.activityId, row.activityId))
+              .orderBy(desc(payments.createdAt))
+              .limit(1);
 
-          result.repairedCount++;
-          result.repairedPayments.push({
-            paymentId: payment.id,
-            ownerId: row.ownerId,
-            driverId: row.driverId,
-            activityId: row.activityId,
-            amountCents: driverTipCents,
-            processingFeeCents: configuredPlatformFeeCents,
-            businessDate,
-          });
+            let paymentId = currentPayment?.id ?? null;
+            let paymentAmountCents = currentPayment ? normalizeMoneyToCents(currentPayment.amount, "dollars") : 0;
+            let paymentProcessingFeeCents = currentPayment ? normalizeMoneyToCents(currentPayment.processingFee, "dollars") : 0;
+            let paymentWashoutServiceFeeCents = currentPayment ? normalizeMoneyToCents(currentPayment.washoutServiceFee ?? currentPayment.amount, "dollars") : 0;
+            const currentWalletTxAmountCents = normalizeMoneyToCents(row.walletTransactionAmount ?? 0, "dollars");
 
-          console.log("[WASHOUT_PAYMENT_REPAIR]", {
-            ownerId: row.ownerId,
-            driverId: row.driverId,
-            activityId: row.activityId,
-            paymentId: payment.id,
-            amountCents: driverTipCents,
-            processingFeeCents: configuredPlatformFeeCents,
-            businessDate,
-            triggeredByAdminId: options.triggeredByAdminId || null,
+            if (!currentPayment) {
+              const [insertedPayment] = await tx.insert(payments).values({
+                activityId: row.activityId,
+                driverId: row.driverId,
+                ownerId: row.ownerId,
+                amount: (canonicalDriverTipCents / 100).toFixed(2),
+                processingFee: (configuredPlatformFeeCents / 100).toFixed(2),
+                washoutServiceFee: (canonicalDriverTipCents / 100).toFixed(2),
+                status: "pending",
+                businessDate,
+              }).returning();
+
+              paymentId = insertedPayment.id;
+              paymentAmountCents = canonicalDriverTipCents;
+              paymentProcessingFeeCents = configuredPlatformFeeCents;
+              paymentWashoutServiceFeeCents = canonicalDriverTipCents;
+            } else if (
+              paymentAmountCents <= 0
+              || (canonicalDriverTipCents > 0 && paymentAmountCents < canonicalDriverTipCents)
+              || paymentProcessingFeeCents !== configuredPlatformFeeCents
+              || paymentWashoutServiceFeeCents !== canonicalDriverTipCents
+            ) {
+              const [updatedPayment] = await tx
+                .update(payments)
+                .set({
+                  amount: (canonicalDriverTipCents / 100).toFixed(2),
+                  processingFee: (configuredPlatformFeeCents / 100).toFixed(2),
+                  washoutServiceFee: (canonicalDriverTipCents / 100).toFixed(2),
+                  updatedAt: new Date(),
+                })
+                .where(eq(payments.id, currentPayment.id))
+                .returning();
+
+              paymentId = updatedPayment.id;
+              paymentAmountCents = canonicalDriverTipCents;
+              paymentProcessingFeeCents = configuredPlatformFeeCents;
+              paymentWashoutServiceFeeCents = canonicalDriverTipCents;
+            }
+
+            const [lockedWallet] = await tx
+              .select()
+              .from(driverWallets)
+              .where(eq(driverWallets.driverId, row.driverId))
+              .for("update");
+
+            let wallet = lockedWallet;
+            if (!wallet) {
+              const seededAvailableBalanceCents = row.walletTransactionId && row.walletTransactionBalanceAfter
+                ? normalizeMoneyToCents(row.walletTransactionBalanceAfter, "dollars")
+                : 0;
+              [wallet] = await tx.insert(driverWallets).values({
+                driverId: row.driverId,
+                availableBalance: (seededAvailableBalanceCents / 100).toFixed(2),
+                pendingBalance: "0.00",
+                updatedAt: new Date(),
+              }).returning();
+            }
+
+            const currentWalletAvailableCents = Math.round(parseFloat(wallet.availableBalance) * 100);
+            const walletDeltaCents = canonicalDriverTipCents - currentWalletTxAmountCents;
+            const repairWalletTransaction = walletRowMissing || walletDeltaCents !== 0 || !lockedWallet;
+
+            let walletTransactionId = row.walletTransactionId ?? null;
+            if (!row.walletTransactionId) {
+              const nextAvailableBalanceCents = currentWalletAvailableCents + canonicalDriverTipCents;
+              const [createdWalletTransaction] = await tx.insert(walletTransactions).values({
+                driverId: row.driverId,
+                amount: (canonicalDriverTipCents / 100).toFixed(2),
+                direction: "credit",
+                balanceAfter: (nextAvailableBalanceCents / 100).toFixed(2),
+                currency: "USD",
+                sourceType: "washout",
+                sourceId: row.activityId,
+                status: "posted",
+                description: `Washout repair credit for activity ${row.activityId}`,
+                metadata: {
+                  repairType: "washout_payment_reconciliation",
+                  activityId: row.activityId,
+                  ownerId: row.ownerId,
+                  driverId: row.driverId,
+                  paymentId,
+                  canonicalDriverTipCents,
+                  currentPaymentAmountCents,
+                },
+              }).returning();
+
+              walletTransactionId = createdWalletTransaction.id;
+              await tx
+                .update(driverWallets)
+                .set({
+                  availableBalance: (nextAvailableBalanceCents / 100).toFixed(2),
+                  pendingBalance: wallet.pendingBalance,
+                  updatedAt: new Date(),
+                })
+                .where(eq(driverWallets.driverId, row.driverId));
+              result.repairedWalletTransactionCount++;
+            } else if (repairWalletTransaction) {
+              const nextAvailableBalanceCents = currentWalletAvailableCents + walletDeltaCents;
+              await tx
+                .update(walletTransactions)
+                .set({
+                  amount: (canonicalDriverTipCents / 100).toFixed(2),
+                  balanceAfter: (nextAvailableBalanceCents / 100).toFixed(2),
+                  status: "posted",
+                  description: `Washout repair credit for activity ${row.activityId}`,
+                  metadata: {
+                    repairType: "washout_payment_reconciliation",
+                    activityId: row.activityId,
+                    ownerId: row.ownerId,
+                    driverId: row.driverId,
+                    paymentId,
+                    canonicalDriverTipCents,
+                    previousWalletTransactionAmountCents: currentWalletTxAmountCents,
+                    walletDeltaCents,
+                    currentPaymentAmountCents,
+                    paymentProcessingFeeCents,
+                    paymentWashoutServiceFeeCents,
+                  },
+                })
+                .where(eq(walletTransactions.id, row.walletTransactionId));
+
+              await tx
+                .update(driverWallets)
+                .set({
+                  availableBalance: (nextAvailableBalanceCents / 100).toFixed(2),
+                  pendingBalance: wallet.pendingBalance,
+                  updatedAt: new Date(),
+                })
+                .where(eq(driverWallets.driverId, row.driverId));
+              result.repairedWalletTransactionCount++;
+            }
+
+            result.repairedCount++;
+            result.repairedPayments.push({
+              paymentId: paymentId || "",
+              ownerId: row.ownerId,
+              driverId: row.driverId,
+              activityId: row.activityId,
+              amountCents: canonicalDriverTipCents,
+              processingFeeCents: configuredPlatformFeeCents,
+              businessDate,
+            });
+
+            console.log("[WASHOUT_PAYMENT_REPAIR]", {
+              ownerId: row.ownerId,
+              driverId: row.driverId,
+              activityId: row.activityId,
+              paymentId,
+              walletTransactionId,
+              amountCents: canonicalDriverTipCents,
+              processingFeeCents: configuredPlatformFeeCents,
+              businessDate,
+              triggeredByAdminId: options.triggeredByAdminId || null,
+            });
           });
         }
       } catch (error: any) {
