@@ -65,7 +65,9 @@ export type OwnerBillingReceivablesSummary = {
   cancelledWashoutCount: number;
 };
 
-export async function buildOwnerBillingReceivablesOverview(storageApi: any): Promise<{
+export async function buildOwnerBillingReceivablesOverview(storageApi: any, options?: {
+  ownerId?: string;
+}): Promise<{
   owners: OwnerBillingReceivablesOwnerSummary[];
   summary: OwnerBillingReceivablesSummary;
 }> {
@@ -73,7 +75,9 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
   const systemSettings = typeof storageApi.getSystemSettings === "function"
     ? await storageApi.getSystemSettings()
     : null;
-  const immediateOwners = billingSettings.filter((owner: { billingCadence?: string }) => owner.billingCadence === "immediate");
+  const immediateOwners = options?.ownerId
+    ? billingSettings.filter((owner: { ownerId: string }) => owner.ownerId === options.ownerId)
+    : billingSettings.filter((owner: { billingCadence?: string }) => owner.billingCadence === "immediate");
 
   const owners: OwnerBillingReceivablesOwnerSummary[] = await Promise.all(
     immediateOwners.map(async (ownerSetting: { ownerId: string; companyName: string; username: string; billingCadence: string }) => {

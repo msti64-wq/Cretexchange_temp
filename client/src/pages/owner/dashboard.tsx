@@ -366,6 +366,7 @@ export default function OwnerDashboard() {
   }
 
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
+  const billingReceivablesSummary = (dashboardData as any)?.billingReceivablesSummary || null;
 
   const approvalQueueActivities = Array.isArray(allActivitiesData)
     ? filterPendingWashoutApprovals(allActivitiesData)
@@ -378,6 +379,9 @@ export default function OwnerDashboard() {
   const platformFeeExposureCents = Number(weekStats?.platformFeesOwedCents || 0);
   const driverIncentiveExposureCents = Number(weekStats?.driverTipTotalCents || 0);
   const ownerChargeExposureCents = Number(weekStats?.ownerChargeTotalCents || (platformFeeExposureCents + driverIncentiveExposureCents));
+  const billingPlatformFeesTotalCents = Number(billingReceivablesSummary?.platformFeesTotalCents ?? platformFeeExposureCents);
+  const billingDriverTipsTotalCents = Number(billingReceivablesSummary?.driverTipTotalCents ?? driverIncentiveExposureCents);
+  const billingOwnerChargeTotalCents = Number(billingReceivablesSummary?.ownerChargeTotalCents ?? ownerChargeExposureCents);
   const pendingPaymentsCents = ownerChargeExposureCents;
   const pendingCount = Number(weekStats?.unbilledApprovedWashoutCount || approvalQueueActivities.length || 0);
   const approvedPaymentsCents = Number(weekStats?.platformFeesPaidCents || 0);
@@ -495,22 +499,19 @@ export default function OwnerDashboard() {
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Owner charge exposure</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight">{formatCentsToDollars(ownerChargeExposureCents)}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Platform Fees</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight">{formatCentsToDollars(billingPlatformFeesTotalCents)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">Current platform receivables for approved washouts</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver Tips</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-sky-700 dark:text-sky-300">{formatCentsToDollars(billingDriverTipsTotalCents)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">Driver incentive total included in owner charge</p>
+              </div>
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total Owner Charge</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{formatCentsToDollars(billingOwnerChargeTotalCents)}</p>
                 <p className="mt-1 text-sm text-muted-foreground">Platform fee + driver incentive awaiting review</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {formatCentsToDollars(platformFeeExposureCents)} platform fee • {formatCentsToDollars(driverIncentiveExposureCents)} driver incentive
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Platform revenue paid</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{formatCentsToDollars(Number(weekStats?.platformFeesPaidCents || 0))}</p>
-                <p className="mt-1 text-sm text-muted-foreground">Platform fee settled for approved washouts</p>
-              </div>
-              <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.recyclingNetwork")}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-amber-700 dark:text-amber-300">{Number(locations) || 0}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.activeSites")}</p>
               </div>
             </div>
           </div>

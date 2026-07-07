@@ -4449,6 +4449,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       dashboardPhase = "user_lookup";
       const user = await storage.getUser(userId);
 
+      dashboardPhase = "billing_receivables";
+      const billingReceivables = await buildOwnerBillingReceivablesOverview(storage, { ownerId: owner.id });
+      console.info("[OWNER_DASHBOARD] billing receivables loaded", {
+        ownerId: owner.id,
+        ownerCount: billingReceivables.summary.ownerCount,
+        approvedWashoutCount: billingReceivables.summary.approvedWashoutCount,
+        platformFeesTotalCents: billingReceivables.summary.platformFeesTotalCents,
+        driverTipTotalCents: billingReceivables.summary.driverTipTotalCents,
+        ownerChargeTotalCents: billingReceivables.summary.ownerChargeTotalCents,
+      });
+
       dashboardPhase = "washout_status_mix";
       const ownerWashoutActivities = (await storage.getActivitiesByOwner(owner.id)) as Array<{
         id: string;
@@ -4473,17 +4484,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       logReportingReconciliation("/api/owners/dashboard", {
-        platformRevenueCents: Number(monthStats.platformFeesPaidCents || 0),
-        ownerReceivablesCents: Number(monthStats.ownerChargeTotalCents || 0),
-        paidReceivablesCents: Number(monthStats.platformFeesPaidCents || 0),
-        driverTipTotalCents: Number(monthStats.driverTipTotalCents || 0),
+        platformRevenueCents: Number(billingReceivables.summary.platformFeesPaidCents || 0),
+        ownerReceivablesCents: Number(billingReceivables.summary.ownerChargeTotalCents || 0),
+        paidReceivablesCents: Number(billingReceivables.summary.platformFeesPaidCents || 0),
+        driverTipTotalCents: Number(billingReceivables.summary.driverTipTotalCents || 0),
         driverTransferredCents: 0,
-        needsReviewCents: Number((monthStats as any).needsReviewBillingCents || 0),
+        needsReviewCents: Number(billingReceivables.summary.needsReviewCents || 0),
       });
 
       res.json({
         weekStats,
         monthStats,
+        billingReceivablesSummary: billingReceivables.summary,
         locations: locations.length,
         user: user,
         owner: owner,
