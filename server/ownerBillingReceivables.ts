@@ -2,12 +2,12 @@ import { normalizeMoneyToCents } from "../shared/money";
 import { getPaymentDriverIncentiveCents } from "../shared/paymentAccounting";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
+import { summarizeOwnerBillingReceivables } from "../shared/ownerBillingReceivables";
 import { resolveConfiguredWashoutPlatformFeeCents } from "../shared/billingPolicy";
 import { db } from "./db";
 import { washoutActivities, washoutLocations } from "../shared/schema";
 import { eq, inArray } from "drizzle-orm";
 import {
-  buildOwnerWashoutBillingLedgerFromBillableWashouts,
   buildOwnerWashoutBillingLedgerFromPayments,
   summarizeReportingLedgerCollection,
   getReportingBillingStatus,
@@ -24,6 +24,7 @@ export type OwnerBillingReceivablesOwnerSummary = {
   platformFeesTotalCents: number;
   driverTipTotalCents: number;
   driverTransferTotalCents: number;
+  paidReceivablesCents: number;
   needsReviewCents: number;
   billedWashoutCount: number;
   unbilledApprovedWashoutCount: number;
@@ -57,6 +58,7 @@ export type OwnerBillingReceivablesSummary = {
   platformFeesTotalCents: number;
   driverTipTotalCents: number;
   driverTransferTotalCents: number;
+  paidReceivablesCents: number;
   ownerChargeTotalCents: number;
   needsReviewCents: number;
   billedWashoutCount: number;
@@ -135,21 +137,19 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
           driverTipCents,
         };
       });
-      const approvedLedger = resolvedBillableApprovedWashouts.length > 0
-        ? buildOwnerWashoutBillingLedgerFromBillableWashouts({
-            ownerId: ownerSetting.ownerId,
-            billingBatchId: `${ownerSetting.ownerId}:receivables:${Date.now()}`,
-            washouts: resolvedBillableApprovedWashouts.map((row: any) => ({
-              id: row.activityId,
-              ownerId: row.ownerId,
-              driverId: row.driverId,
-              driverStripeAccountId: null,
-              platformFeeCents: configuredPlatformFeeCents,
-              driverTipCents: row.driverTipCents,
-            })),
-            allowAdminOverride: true,
-          })
-        : null;
+      const currentReceivables = summarizeOwnerBillingReceivables(
+        resolvedBillableApprovedWashouts.map((row: any) => ({
+          activityStatus: row.activityStatus,
+          activityFeeCentsPlatform: configuredPlatformFeeCents,
+          activityAmount: row.activityAmount,
+          locationDriverTipRate: row.locationDriverTipRate,
+          paymentDriverTipCents: null,
+          paymentStatus: null,
+          paymentBatchId: null,
+        })),
+        configuredPlatformFeeCents,
+        configuredPlatformFeeCents,
+      );
       const batchLedgers = await Promise.all(
         batches.map(async (batch: { id: string; status?: string | null }) => {
           if (typeof storageApi.getPaymentsByBatchId !== "function") {
@@ -180,16 +180,10 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
           };
         })
       );
-      const receivables = summarizeReportingLedgerCollection([
-        ...(approvedLedger ? [{ ...approvedLedger, billingStatus: "pending" as const }] : []),
-        ...batchLedgers,
-      ]);
+      const historicalReceivables = summarizeReportingLedgerCollection(batchLedgers);
       const paidBatchLedgers = batchLedgers.filter((ledger) => ledger.billingStatus === "paid");
       const paidPlatformFeesCents = paidBatchLedgers.reduce((sum: number, ledger: any) => {
         return sum + Number(ledger.platformRevenueCents || 0);
-      }, 0);
-      const billedWashoutCount = paidBatchLedgers.reduce((sum: number, ledger: any) => {
-        return sum + Number(ledger.approvedWashoutCount || 0);
       }, 0);
       const completedBatches = batches.filter((batch: { status?: string | null; completedAt?: Date | string | null }) => {
         const status = String(batch.status || "").toLowerCase();
@@ -212,19 +206,16 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
             : normalizeMoneyToCents(batch.totalAmount, "dollars");
         return sum + platformFeeTotalCents;
       }, 0);
-      const fallbackBilledWashoutCount = completedBatches.reduce((sum: number, batch: any) => {
-        return sum + Number(batch.paymentCount || 0);
-      }, 0);
       const effectivePaidPlatformFeesCents = paidPlatformFeesCents > 0 ? paidPlatformFeesCents : fallbackPaidPlatformFeesCents;
-      const effectiveBilledWashoutCount = billedWashoutCount > 0 ? billedWashoutCount : fallbackBilledWashoutCount;
 
-      const totalPlatformFeesCents = receivables.unpaidReceivablesCents + effectivePaidPlatformFeesCents;
-      const ownerChargeTotalCents = receivables.ownerChargeTotalCents;
+      const totalPlatformFeesCents = currentReceivables.platformFeesTotalCents;
+      const ownerChargeTotalCents = currentReceivables.platformFeesTotalCents + currentReceivables.driverTipTotalCents;
+      const paidReceivablesCents = historicalReceivables.paidReceivablesCents;
       console.info("[OWNER_BILLING_RECEIVABLES] canonical summary", {
         ownerId: ownerSetting.ownerId,
-        approvedWashoutCount: receivables.approvedWashoutCount,
+        approvedWashoutCount: currentReceivables.approvedWashoutCount,
         platformFeesTotalCents: totalPlatformFeesCents,
-        driverTipTotalCents: receivables.driverTipTotalCents,
+        driverTipTotalCents: currentReceivables.driverTipTotalCents,
         ownerChargeTotalCents,
       });
       const latestBatch = (batches[0] || null) as {
@@ -247,7 +238,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
         ? Number(latestBatchMetadata.platformFeeTotalCents)
         : latestBatchMetadata.platformFeeTotal !== undefined && latestBatchMetadata.platformFeeTotal !== null && latestBatchMetadata.platformFeeTotal !== ""
           ? normalizeMoneyToCents(latestBatchMetadata.platformFeeTotal, "dollars")
-          : receivables.unpaidReceivablesCents;
+          : currentReceivables.platformFeesOwedCents;
       const billingDeltaCents = lastBillingAmountCents - lastBillingExpectedPlatformFeeCents;
       const billingReconciliationStatus = latestBatch?.status === "completed"
         ? (billingDeltaCents > 0 ? "overcharged" : billingDeltaCents < 0 ? "undercharged" : "matched")
@@ -264,18 +255,19 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
         companyName: ownerSetting.companyName,
         username: ownerSetting.username,
         billingCadence: ownerSetting.billingCadence,
-        approvedWashoutCount: receivables.approvedWashoutCount,
-        platformFeesOwedCents: receivables.unpaidReceivablesCents,
-        platformFeesOwed: (receivables.unpaidReceivablesCents / 100).toFixed(2),
+        approvedWashoutCount: currentReceivables.approvedWashoutCount,
+        platformFeesOwedCents: currentReceivables.platformFeesOwedCents,
+        platformFeesOwed: (currentReceivables.platformFeesOwedCents / 100).toFixed(2),
         platformFeesPaidCents: effectivePaidPlatformFeesCents,
         platformFeesTotalCents: totalPlatformFeesCents,
-        driverTipTotalCents: receivables.driverTipTotalCents,
-        driverTransferTotalCents: receivables.driverTransferTotalCents,
+        driverTipTotalCents: currentReceivables.driverTipTotalCents,
+        driverTransferTotalCents: currentReceivables.driverTipTotalCents,
+        paidReceivablesCents,
         ownerChargeTotalCents,
-        needsReviewCents: receivables.needsReviewCents,
-        billedWashoutCount: effectiveBilledWashoutCount,
-        unbilledApprovedWashoutCount: Math.max(0, receivables.approvedWashoutCount - effectiveBilledWashoutCount),
-        pendingWashoutCount: Math.max(0, receivables.approvedWashoutCount - effectiveBilledWashoutCount),
+        needsReviewCents: 0,
+        billedWashoutCount: currentReceivables.billedWashoutCount,
+        unbilledApprovedWashoutCount: currentReceivables.unbilledApprovedWashoutCount,
+        pendingWashoutCount: currentReceivables.pendingWashoutCount,
         needsReviewWashoutCount: 0,
         declinedWashoutCount: 0,
         rejectedWashoutCount: 0,
@@ -308,6 +300,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
       acc.platformFeesTotalCents += row.platformFeesTotalCents;
       acc.driverTipTotalCents += row.driverTipTotalCents;
       acc.driverTransferTotalCents += row.driverTransferTotalCents;
+      acc.paidReceivablesCents += row.paidReceivablesCents;
       acc.ownerChargeTotalCents += row.platformFeesTotalCents + row.driverTipTotalCents;
       acc.needsReviewCents += row.needsReviewCents;
       acc.billedWashoutCount += row.billedWashoutCount;
@@ -327,6 +320,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any, opti
       platformFeesTotalCents: 0,
       driverTipTotalCents: 0,
       driverTransferTotalCents: 0,
+      paidReceivablesCents: 0,
       ownerChargeTotalCents: 0,
       needsReviewCents: 0,
       billedWashoutCount: 0,
