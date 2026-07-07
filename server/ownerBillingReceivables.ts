@@ -54,6 +54,7 @@ export type OwnerBillingReceivablesSummary = {
   platformFeesTotalCents: number;
   driverTipTotalCents: number;
   driverTransferTotalCents: number;
+  ownerChargeTotalCents: number;
   needsReviewCents: number;
   billedWashoutCount: number;
   unbilledApprovedWashoutCount: number;
@@ -252,6 +253,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
       acc.platformFeesTotalCents += row.platformFeesTotalCents;
       acc.driverTipTotalCents += row.driverTipTotalCents;
       acc.driverTransferTotalCents += row.driverTransferTotalCents;
+      acc.ownerChargeTotalCents += row.platformFeesTotalCents + row.driverTipTotalCents;
       acc.needsReviewCents += row.needsReviewCents;
       acc.billedWashoutCount += row.billedWashoutCount;
       acc.unbilledApprovedWashoutCount += row.unbilledApprovedWashoutCount;
@@ -270,6 +272,7 @@ export async function buildOwnerBillingReceivablesOverview(storageApi: any): Pro
       platformFeesTotalCents: 0,
       driverTipTotalCents: 0,
       driverTransferTotalCents: 0,
+      ownerChargeTotalCents: 0,
       needsReviewCents: 0,
       billedWashoutCount: 0,
       unbilledApprovedWashoutCount: 0,

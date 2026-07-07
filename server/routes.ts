@@ -9793,8 +9793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dashboardErrors.billingReceivables = "Unable to load current platform receivables.";
           return null;
         });
-      const billingReceivablesCents = billingReceivablesSummary?.summary?.platformFeesOwedCents ?? 0;
-      const billingReceivablesOwnerChargeCents = Number(billingReceivablesSummary?.summary?.platformFeesTotalCents || 0) + Number(billingReceivablesSummary?.summary?.driverTipTotalCents || 0);
+      const billingReceivablesOwnerChargeCents = Number(billingReceivablesSummary?.summary?.ownerChargeTotalCents || 0);
       console.log("[ADMIN_DASHBOARD] receivables parity", {
         billingPageReceivablesCents: billingReceivablesOwnerChargeCents,
         dashboardReceivablesCents: billingReceivablesOwnerChargeCents,
@@ -12389,7 +12388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platformFeesPaidCents: immediateBillingSummary.platformFeesPaidCents,
         historyCount: immediateBillingHistory.length,
       });
-      const immediateBillingOwnerChargeCents = Number(immediateBillingSummary.platformFeesTotalCents || 0) + Number(immediateBillingSummary.driverTipTotalCents || 0);
+      const immediateBillingOwnerChargeCents = Number(immediateBillingSummary.ownerChargeTotalCents || 0);
       console.log("[ADMIN_BILLING] receivables parity", {
         billingPageReceivablesCents: immediateBillingOwnerChargeCents,
         dashboardReceivablesCents: immediateBillingOwnerChargeCents,

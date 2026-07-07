@@ -175,7 +175,9 @@ export default function AdminDashboard() {
   const platformRevenueTotalCents = Number(billingReceivablesSummary?.platformFeesTotalCents ?? 0);
   const driverIncentiveTotalCents = Number(billingReceivablesSummary?.driverTipTotalCents ?? weekStats?.driverTipTotalCents ?? 0);
   const ownerChargeTotalCents = Number(billingReceivablesSummary?.ownerChargeTotalCents ?? (platformRevenueTotalCents + driverIncentiveTotalCents));
-  const totalOwnerReceivablesCents = Number(billingReceivablesSummary?.platformFeesOwedCents ?? 0) + driverIncentiveTotalCents;
+  const totalOwnerReceivablesCents = Number(
+    billingReceivablesSummary?.ownerChargeTotalCents ?? (platformRevenueTotalCents + driverIncentiveTotalCents)
+  );
   const totalOwnerReceivablesValue = billingReceivablesError ? "—" : formatCentsToDollars(totalOwnerReceivablesCents);
   const paidPlatformFeesValue = billingReceivablesError ? "—" : formatCentsToDollars(platformRevenuePaidCents);
   const totalPlatformFeesValue = billingReceivablesError ? "—" : formatCentsToDollars(platformRevenueTotalCents);
@@ -322,17 +324,17 @@ export default function AdminDashboard() {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Current Platform Receivables</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total Owner Charge / Receivables</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-current-platform-receivables">
                 {totalOwnerReceivablesValue}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {billingReceivablesError || "Approved/completed billable washouts minus billed washouts"}
+                {billingReceivablesError || "Platform fee + driver incentive across billable washouts"}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {billingReceivablesSummary ? (
                   <>
-                    {billingReceivablesSummary.approvedWashoutCount} approved washouts • {billingReceivablesSummary.unbilledApprovedWashoutCount} unbilled • {billingReceivablesSummary.platformFeesOwedCents} cents
+                    {billingReceivablesSummary.approvedWashoutCount} approved washouts • {billingReceivablesSummary.unbilledApprovedWashoutCount} unbilled • {formatCentsToDollars(Number(billingReceivablesSummary.platformFeesOwedCents || 0))} platform fees • {formatCentsToDollars(Number(billingReceivablesSummary.driverTipTotalCents || 0))} driver tips
                   </>
                 ) : (
                   "Loading current receivables"
