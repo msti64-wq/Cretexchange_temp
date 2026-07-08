@@ -224,3 +224,17 @@
 - Owner configuration, workflows, and operational KPIs should reference the canonical owner operations architecture.
 - New owner features should update CTX-ARCH-002 before implementation.
 - Operational schema or workflow changes should preserve extensibility and clear ownership boundaries.
+
+## PD-030 - Driver Operations Architecture
+
+**Decision:** Driver operational behavior shall follow CTX-ARCH-003. New driver-facing capabilities require architecture updates before implementation.
+
+**Rationale:** Driver workflows, KPI labels, location discovery, rewards, wallet visibility, and activity history must remain coherent, mobile-first, and traceable as the platform expands.
+
+**Status:** Active
+
+**Implications:**
+
+- Driver workflows and dashboard KPIs should reference the canonical driver operations architecture.
+- New driver-facing features should update CTX-ARCH-003 before implementation.
+- Driver schema or workflow changes should preserve extensibility, safety, and clear separation between activity, earnings, wallet, and payout history.
