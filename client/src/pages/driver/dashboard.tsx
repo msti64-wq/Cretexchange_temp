@@ -101,6 +101,10 @@ function translateWashoutApprovalStatus(status: string | null | undefined, t: (k
   }
 }
 
+function isBillableWashoutStatus(status: string | null | undefined) {
+  return status === "verified" || status === "approved" || status === "completed";
+}
+
 class DriverDashboardErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
@@ -287,6 +291,10 @@ export default function DriverDashboard() {
   const rejectedTotal = rejectedWashouts.reduce((total: number, activity: any) => {
     return total + Number(activity.washout_activities?.amount || activity.amount || 0);
   }, 0);
+  const paidWashoutsThisWeek = weeklyStats?.totalWashouts || 0;
+  const billableRecentWashouts = Array.isArray(recentActivities)
+    ? recentActivities.filter((activity: any) => isBillableWashoutStatus(activity.washout_activities?.status || activity.status)).length
+    : 0;
 
   // Calculate adjusted earnings (total minus rejected)
   const adjustedDailyEarnings = (dailyStats?.earnings || 0) - rejectedTotal;
@@ -576,14 +584,14 @@ export default function DriverDashboard() {
           </div>
           <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
             <DSKpiCard
-              label={t("driver.dashboard.siteVisits")}
+              label="Site Visits Today"
               value={dailyStats?.visits || 0}
               detail={t("driver.dashboard.completedToday")}
               accentTone="info"
               data-testid="text-daily-visits"
             />
             <DSKpiCard
-              label={t("driver.dashboard.todayEarnings")}
+              label="Today Earnings Net"
               value={formatCurrency(adjustedDailyEarnings)}
               detail={rejectedTotal > 0 ? t("driver.dashboard.rejectedAmountShort", { amount: formatCurrency(rejectedTotal) }) : t("driver.dashboard.netOfRejected")}
               accentTone="success"
@@ -592,12 +600,12 @@ export default function DriverDashboard() {
             <DSKpiCard
               label={t("driver.dashboard.sevenDayNet")}
               value={formatCurrency(weeklyNetEarnings)}
-              detail={t("driver.dashboard.weeklyWashoutsHelper", { count: weeklyStats?.totalWashouts || 0 })}
+              detail={`7-day Paid Washouts: ${paidWashoutsThisWeek}`}
               accentTone="warning"
               data-testid="text-net-earnings"
             />
             <DSKpiCard
-              label={t("driver.dashboard.totalPaid")}
+              label="Total Paid Net"
               value={formatCurrency(totalPaid)}
               detail={t("driver.dashboard.recordedPaymentHistory")}
               accentTone="accent"
@@ -627,16 +635,16 @@ export default function DriverDashboard() {
           <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-3">
               <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
-                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t("driver.dashboard.siteVisits")}</p>
+                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Site Visits Today</p>
                 <p className="break-words text-xl font-semibold text-foreground" data-testid="text-today-visits">{dailyStats?.visits || 0}</p>
               </div>
               <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
-                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t("driver.dashboard.todayEarnings")}</p>
+                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Today Earnings Net</p>
                 <p className="break-words text-xl font-semibold text-primary" data-testid="text-today-earnings">{formatCurrency(adjustedDailyEarnings)}</p>
               </div>
               <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
-                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t("driver.dashboard.latestStop")}</p>
-                <p className="truncate text-sm font-semibold text-foreground">{latestLocationName}</p>
+                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Recent Billable Washouts</p>
+                <p className="truncate text-sm font-semibold text-foreground">{billableRecentWashouts}</p>
               </div>
             </div>
             <Button
