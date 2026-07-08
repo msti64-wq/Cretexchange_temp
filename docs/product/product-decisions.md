@@ -210,3 +210,17 @@
 - Financial calculations should reference the canonical architecture specification before implementation.
 - Dashboard KPIs must match the authoritative financial model and source of truth.
 - Financial schema or reconciliation changes require documentation updates first.
+
+## PD-029 - Owner Operations Architecture
+
+**Decision:** Owner operational behavior shall follow CTX-ARCH-002. New owner features require updates to the architecture specification before implementation.
+
+**Rationale:** Owner-facing functionality must remain configuration-driven, operationally coherent, and traceable as the platform expands into more materials, capacity models, and compliance workflows.
+
+**Status:** Active
+
+**Implications:**
+
+- Owner configuration, workflows, and operational KPIs should reference the canonical owner operations architecture.
+- New owner features should update CTX-ARCH-002 before implementation.
+- Operational schema or workflow changes should preserve extensibility and clear ownership boundaries.
