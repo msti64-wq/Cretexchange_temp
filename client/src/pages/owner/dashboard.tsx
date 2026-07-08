@@ -385,14 +385,6 @@ export default function OwnerDashboard() {
   const pendingPaymentsCents = ownerChargeExposureCents;
   const pendingCount = Number(weekStats?.unbilledApprovedWashoutCount || approvalQueueActivities.length || 0);
   const approvedPaymentsCents = Number(weekStats?.platformFeesPaidCents || 0);
-  const rejectedPayments = recentActivities?.reduce((total: number, activity: any) => {
-    if (activity.status === 'rejected') {
-      return total + Number(activity.amount || 0);
-    }
-    return total;
-  }, 0) || 0;
-  const approvedCount = Number(weekStats?.billedWashoutCount || recentActivities?.filter((activity: any) => activity.status === 'verified').length || 0);
-  const rejectedCount = recentActivities?.filter((activity: any) => activity.status === 'rejected').length || 0;
   const washoutStatusMix = dashboardData?.washoutStatusMix && typeof dashboardData.washoutStatusMix === "object"
     ? dashboardData.washoutStatusMix
     : Array.isArray(allActivitiesData)
@@ -410,6 +402,8 @@ export default function OwnerDashboard() {
     },
     { pending: 0, approved: 0, rejected: 0 },
   );
+  const approvedCount = Number(ownerWashoutStatusCounts.approved || weekStats?.billedWashoutCount || 0);
+  const rejectedCount = Number(ownerWashoutStatusCounts.rejected || 0);
 
   // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
 
@@ -524,7 +518,7 @@ export default function OwnerDashboard() {
               data-testid="text-daily-visits"
             />
             <DSKpiCard
-              label={t("owner.dashboard.pending")}
+              label="Current Receivables"
               value={formatCentsToDollars(pendingPaymentsCents)}
               detail="Owner charge exposure awaiting review"
               accentTone="warning"
@@ -600,8 +594,8 @@ export default function OwnerDashboard() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.pendingPayments")}</p>
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Current Receivables</p>
                   <p className="mt-2 text-xl font-semibold tracking-tight text-sky-500 dark:text-sky-300" data-testid="text-pending-total">
                     {formatCentsToDollars(pendingPaymentsCents)}
                   </p>
@@ -626,7 +620,7 @@ export default function OwnerDashboard() {
                 </div>
                 <div className="rounded-2xl border border-border bg-muted/20 p-3 text-center">
                   <p className="text-lg font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{approvedCount}</p>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t("common.approved")}</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Billable Washouts</p>
                 </div>
               </div>
             </div>
