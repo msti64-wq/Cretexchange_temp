@@ -238,3 +238,17 @@
 - Driver workflows and dashboard KPIs should reference the canonical driver operations architecture.
 - New driver-facing features should update CTX-ARCH-003 before implementation.
 - Driver schema or workflow changes should preserve extensibility, safety, and clear separation between activity, earnings, wallet, and payout history.
+
+## PD-031 - Admin Operations Architecture
+
+**Decision:** Admin operational behavior shall follow CTX-ARCH-004. New admin-facing capabilities require architecture updates before implementation.
+
+**Rationale:** Admin workflows must remain auditable, separation-of-duties aware, financially supervised, and consistent with the platform’s architecture-driven governance model.
+
+**Status:** Active
+
+**Implications:**
+
+- Admin workflows and dashboard KPIs should reference the canonical admin operations architecture.
+- New admin-facing features should update CTX-ARCH-004 before implementation.
+- Admin configuration, reconciliation, and oversight changes should preserve auditability and architectural separation between operational and financial concerns.
