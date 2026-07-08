@@ -22,8 +22,9 @@ import { useToast } from "@/hooks/use-toast";
 import { formatAddress } from "@shared/addressUtils";
 import { LogoutButton } from "@/components/LogoutButton";
 import { resolveOwnerMembershipState } from "@shared/ownerMembership";
+import { resolveConfiguredWashoutPlatformFeeCents } from "@shared/billingPolicy";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
-import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
+import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isBillableWashoutForOwnerBilling, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { useLanguage } from "@/lib/i18n";
 import { formatCentsToDollars } from "@/lib/utils";
 import { normalizeDollarInputToCents } from "@shared/money";
@@ -358,7 +359,6 @@ export default function OwnerDashboard() {
 
   // Combined loading states
   const isMainLoading = isDashboardLoading;
-  const isDataReady = dashboardData && activitiesData;
   
 
   if (isMainLoading) {
@@ -366,11 +366,23 @@ export default function OwnerDashboard() {
   }
 
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
+  const owner = (dashboardData as any)?.owner || null;
   const billingReceivablesSummary = (dashboardData as any)?.billingReceivablesSummary || null;
 
   const approvalQueueActivities = Array.isArray(allActivitiesData)
     ? filterPendingWashoutApprovals(allActivitiesData)
     : [];
+  const pendingReviewCount = approvalQueueActivities.length;
+  const configuredPlatformFeeCents = resolveConfiguredWashoutPlatformFeeCents({
+    ownerCustomPlatformFee: owner?.customPlatformFee,
+  });
+  const pendingReviewPotentialChargesCents = approvalQueueActivities.reduce((sum: number, activity: any) => {
+    const rawDriverTipRate = activity?.location?.rate ?? activity?.washout_locations?.rate ?? null;
+    const driverTipCents = rawDriverTipRate !== null && rawDriverTipRate !== undefined && rawDriverTipRate !== ""
+      ? resolveLocationDriverTipRateCents(rawDriverTipRate)
+      : normalizeDollarInputToCents(activity?.washout_activities?.amount ?? activity?.amount ?? 0);
+    return sum + configuredPlatformFeeCents + driverTipCents;
+  }, 0);
 
   const recentActivities = (isAuthError || isDashboardAuthError) 
     ? [] 
@@ -382,9 +394,7 @@ export default function OwnerDashboard() {
   const billingPlatformFeesTotalCents = Number(billingReceivablesSummary?.platformFeesTotalCents ?? platformFeeExposureCents);
   const billingDriverTipsTotalCents = Number(billingReceivablesSummary?.driverTipTotalCents ?? driverIncentiveExposureCents);
   const billingOwnerChargeTotalCents = Number(billingReceivablesSummary?.ownerChargeTotalCents ?? ownerChargeExposureCents);
-  const pendingPaymentsCents = ownerChargeExposureCents;
-  const pendingCount = Number(weekStats?.unbilledApprovedWashoutCount || approvalQueueActivities.length || 0);
-  const approvedPaymentsCents = Number(weekStats?.platformFeesPaidCents || 0);
+  const currentReceivablesCents = billingOwnerChargeTotalCents;
   const washoutStatusMix = dashboardData?.washoutStatusMix && typeof dashboardData.washoutStatusMix === "object"
     ? dashboardData.washoutStatusMix
     : Array.isArray(allActivitiesData)
@@ -402,21 +412,24 @@ export default function OwnerDashboard() {
     },
     { pending: 0, approved: 0, rejected: 0 },
   );
-  const approvedCount = Number(ownerWashoutStatusCounts.approved || 0);
+  const billableRecentActivities = Array.isArray(recentActivities)
+    ? recentActivities.filter((activity: any) => isBillableWashoutForOwnerBilling(activity))
+    : [];
+  const billableWashoutCount = billableRecentActivities.length;
+  const approvedCount = Number(billingReceivablesSummary?.approvedWashoutCount || ownerWashoutStatusCounts.approved || 0);
   const rejectedCount = Number(ownerWashoutStatusCounts.rejected || 0);
 
   // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
 
   // Calculate total washouts from the canonical billing summary when available
-  const totalWashouts = Number(weekStats?.totalWashouts || recentActivities?.filter((activity: any) => activity.status !== 'rejected').length || 0);
+  const totalWashouts = Number(billableWashoutCount || 0);
 
   // Calculate unique drivers from the canonical billing summary when available
-  const uniqueDrivers = Number(weekStats?.totalDrivers || (recentActivities ? new Set(
-    recentActivities
-      .filter((activity: any) => activity.status !== 'rejected')
+  const uniqueDrivers = Number(new Set(
+    billableRecentActivities
       .map((activity: any) => activity.driver?.user?.id)
       .filter(Boolean)
-  ).size : 0));
+  ).size || 0);
   const ownerStatusChartData = [
     { label: t("common.pending"), amount: ownerWashoutStatusCounts.pending, count: ownerWashoutStatusCounts.pending },
     { label: t("common.approved"), amount: ownerWashoutStatusCounts.approved, count: ownerWashoutStatusCounts.approved },
@@ -471,7 +484,7 @@ export default function OwnerDashboard() {
                 <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/40 px-3 py-2.5">
                   <Gauge className="h-4 w-4 text-primary" />
                   <div>
-                    <p className="text-xs font-medium text-foreground">{t("owner.dashboard.openReviews", { count: pendingCount })}</p>
+                    <p className="text-xs font-medium text-foreground">{t("owner.dashboard.openReviews", { count: pendingReviewCount })}</p>
                     <p className="text-[11px] text-muted-foreground">{t("owner.dashboard.requiresAttention")}</p>
                   </div>
                 </div>
@@ -512,22 +525,32 @@ export default function OwnerDashboard() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <DSKpiCard
               label={t("common.washouts")}
-              value={recentActivities?.length || 0}
-              detail={t("owner.dashboard.pendingApproval", { count: pendingCount })}
+              value={billableWashoutCount}
+              detail="Billable washouts in the selected dashboard period"
               accentTone="info"
               data-testid="text-daily-visits"
             />
             <DSKpiCard
-              label="Current Receivables"
-              value={formatCentsToDollars(pendingPaymentsCents)}
-              detail="Owner charge exposure awaiting review"
+              label="Pending Review"
+              value={pendingReviewCount}
+              detail={
+                <div className="space-y-0.5">
+                  <div>{`${pendingReviewCount} Washout${pendingReviewCount === 1 ? "" : "s"}`}</div>
+                  <div>{`Potential Charges: ${formatCentsToDollars(pendingReviewPotentialChargesCents)}`}</div>
+                </div>
+              }
               accentTone="warning"
               data-testid="text-pending-payments"
             />
             <DSKpiCard
-              label={t("owner.dashboard.ready")}
-              value={formatCentsToDollars(approvedPaymentsCents)}
-              detail="Platform revenue approved for payout"
+              label="Current Receivables"
+              value={formatCentsToDollars(currentReceivablesCents)}
+              detail={
+                <div className="space-y-0.5">
+                  <div>{`${approvedCount} Approved Washouts`}</div>
+                  <div>Owner charge awaiting collection</div>
+                </div>
+              }
               accentTone="success"
               data-testid="text-approved-payments"
             />
@@ -597,7 +620,7 @@ export default function OwnerDashboard() {
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Current Receivables</p>
                   <p className="mt-2 text-xl font-semibold tracking-tight text-sky-500 dark:text-sky-300" data-testid="text-pending-total">
-                    {formatCentsToDollars(pendingPaymentsCents)}
+                    {formatCentsToDollars(currentReceivablesCents)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.awaitingReview")}</p>
                 </div>
