@@ -402,7 +402,7 @@ export default function OwnerDashboard() {
     },
     { pending: 0, approved: 0, rejected: 0 },
   );
-  const approvedCount = Number(ownerWashoutStatusCounts.approved || weekStats?.billedWashoutCount || 0);
+  const approvedCount = Number(ownerWashoutStatusCounts.approved || 0);
   const rejectedCount = Number(ownerWashoutStatusCounts.rejected || 0);
 
   // Debug data is now available through the DebugPanel component (add ?debug=1 to URL)
