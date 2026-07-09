@@ -9,13 +9,14 @@ import { DashboardEmptyState } from "@/components/DashboardEmptyState";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, MessageCircle, Phone, Wallet, Ticket, RefreshCw, Truck, Route, ArrowRight, Activity } from "lucide-react";
+import { MapPin, MessageCircle, Phone, Wallet, Ticket, RefreshCw, Truck, Route, ArrowRight, Activity, Bell, CheckCircle2, CreditCard } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { formatAddress } from "@shared/addressUtils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { apiRequest } from "@/lib/queryClient";
+import { formatDistanceToNow } from "date-fns";
 
 type DriverDashboardStatsRange = "today" | "week" | "month";
 type DriverJobType = "ready-mix-washout" | "material-recovery" | "both-ask-each-shift";
@@ -24,6 +25,56 @@ interface DriverWalletBalance {
   availableBalance: number;
   pendingBalance: number;
   totalBalance: number;
+}
+
+interface DriverAuthUser {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  roleData?: {
+    employerName?: string;
+    truckNumber?: string;
+    hasAgreedToTerms?: boolean;
+    termsAgreedAt?: string | Date | null;
+  };
+}
+
+interface DriverTermsStatus {
+  hasAgreed: boolean;
+  agreedAt: string | null;
+}
+
+interface DriverStripeAccountStatus {
+  hasConnectedAccount?: boolean;
+  status?: string;
+  chargesEnabled?: boolean;
+  payoutsEnabled?: boolean;
+  detailsSubmitted?: boolean;
+  disabled?: string | null;
+  message?: string | null;
+}
+
+interface DriverDebitCardStatus {
+  hasRequested?: boolean;
+  status?: string;
+  cardStatus?: string;
+  cardLast4?: string;
+  requestedAt?: string | Date | null;
+  issuedAt?: string | Date | null;
+  activatedAt?: string | Date | null;
+}
+
+interface UnreadNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  createdAt: string | Date;
+  isRead?: boolean;
 }
 
 const DRIVER_STATS_RANGE_OPTIONS: Array<{ value: DriverDashboardStatsRange; labelKey: string }> = [
@@ -197,6 +248,34 @@ export default function DriverDashboard() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
+  const { data: authUser, isLoading: authUserLoading } = useQuery<DriverAuthUser>({
+    queryKey: ['/api/auth/user'],
+    refetchInterval: 60000,
+  });
+
+  const { data: termsStatus, isLoading: termsStatusLoading } = useQuery<DriverTermsStatus>({
+    queryKey: [`/api/drivers/terms-status?language=${encodeURIComponent(language)}`],
+    refetchInterval: 60000,
+  });
+
+  const { data: stripeAccountStatus, isLoading: stripeAccountStatusLoading } = useQuery<DriverStripeAccountStatus>({
+    queryKey: ['/api/stripe/connect/account-status'],
+    refetchInterval: 60000,
+  });
+
+  const { data: debitCardStatus, isLoading: debitCardStatusLoading } = useQuery<DriverDebitCardStatus>({
+    queryKey: ['/api/drivers/debit-card-status'],
+    refetchInterval: 60000,
+  });
+
+  const { data: unreadNotificationsData, isLoading: unreadNotificationsLoading } = useQuery<{
+    count: number;
+    notifications: UnreadNotification[];
+  }>({
+    queryKey: ['/api/notifications/unread'],
+    refetchInterval: 30000,
+  });
+
   const { data: paymentHistory } = useQuery({
     queryKey: ['/api/payments/driver-history'],
     refetchInterval: 60000, // Refresh every minute
@@ -282,6 +361,10 @@ export default function DriverDashboard() {
   const lotteryStatus = (dashboardData as any)?.lotteryStatus || null;
   const lotteryEntryCount = lotteryStatus?.driverEntryCount ?? ((dashboardData as any)?.lotteryEntryCount || 0);
   const lotteryActive = lotteryStatus?.enabled ?? ((dashboardData as any)?.lotteryActive ?? true);
+  const currentDrawing = lotteryStatus?.currentDrawing || null;
+  const currentDrawingLabel = currentDrawing?.monthName
+    ? `${currentDrawing.monthName} ${currentDrawing.lotteryYear}`
+    : lotteryStatus?.currentDrawingMessage || t("driver.dashboard.monthlyLottery");
 
   // Calculate rejected washouts and their total amount
   const rejectedWashouts = recentActivities?.filter((activity: any) => 
@@ -313,6 +396,30 @@ export default function DriverDashboard() {
   const latestActivityAmount = Number(latestActivity?.washout_activities?.amount || latestActivity?.amount || 0);
   const latestActivityStatus = latestActivity ? (latestActivity.washout_activities?.status || latestActivity.status) : null;
   const activeJobType = getJobTypeMeta(jobType);
+  const profileReady = Boolean(
+    authUser?.firstName &&
+    authUser?.lastName &&
+    authUser?.phone &&
+    authUser?.street &&
+    authUser?.city &&
+    authUser?.state &&
+    authUser?.zip &&
+    authUser?.roleData?.employerName &&
+    authUser?.roleData?.truckNumber,
+  );
+  const termsAccepted = Boolean(termsStatus?.hasAgreed || authUser?.roleData?.hasAgreedToTerms);
+  const stripeReady = Boolean(
+    stripeAccountStatus?.status === "active" ||
+    (stripeAccountStatus?.chargesEnabled && stripeAccountStatus?.payoutsEnabled && stripeAccountStatus?.detailsSubmitted),
+  );
+  const debitCardState = debitCardStatus?.hasRequested
+    ? (debitCardStatus.status || debitCardStatus.cardStatus || "requested")
+    : "not requested";
+  const accountReady = profileReady && termsAccepted && stripeReady;
+  const unreadNotifications = unreadNotificationsData?.notifications || [];
+  const unreadNotificationCount = unreadNotificationsData?.count ?? unreadNotifications.length;
+  const topUnreadNotifications = unreadNotifications.slice(0, 3);
+  const currentDrawingText = currentDrawingLabel || "Awaiting drawing";
 
   return (
     <DriverDashboardErrorBoundary>
@@ -528,37 +635,273 @@ export default function DriverDashboard() {
           </div>
         </DSCard>
 
-        <DSCard padding="sm" elevated className="border-border/70">
-          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 space-y-1">
+        <section className="space-y-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
               <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.16em]">
-                Available Balance
+                Operational Intelligence
               </p>
-              {walletBalanceLoading ? (
-                <Skeleton className="h-8 w-32 bg-muted" />
-              ) : (
-                <p className="break-words text-2xl font-semibold tracking-tight text-foreground" data-testid="text-dashboard-available-balance">
-                  {formatCurrency(walletBalance?.availableBalance || 0)}
-                </p>
-              )}
-              <p className="break-words text-sm text-muted-foreground">
-                {walletBalance?.pendingBalance != null
-                  ? `Pending: ${formatCurrency(walletBalance.pendingBalance)}`
-                  : "Available to withdraw in Wallet"}
-              </p>
+              <h3 className="break-words text-sm font-semibold tracking-tight text-foreground">
+                Account, wallet, notifications, and rewards at a glance
+              </h3>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-auto min-h-9 w-full !whitespace-normal border-border/70 bg-card px-3 text-foreground hover:bg-muted/50 sm:w-auto"
-              onClick={() => setLocation('/wallet')}
-              data-testid="button-view-wallet-preview"
-            >
-              View Wallet
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
           </div>
-        </DSCard>
+
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4">
+            <DSCard padding="md" elevated className="min-h-[260px] border-border/70">
+              <div className="flex h-full flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      Account Readiness
+                    </p>
+                    <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
+                      Ready to work
+                    </h3>
+                  </div>
+                  <DSStatusChip tone={accountReady ? "success" : "warning"} size="sm">
+                    {accountReady ? "Ready" : "Action needed"}
+                  </DSStatusChip>
+                </div>
+
+                {authUserLoading || termsStatusLoading || stripeAccountStatusLoading || debitCardStatusLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-40 bg-muted" />
+                    <Skeleton className="h-4 w-36 bg-muted" />
+                    <Skeleton className="h-4 w-32 bg-muted" />
+                    <Skeleton className="h-4 w-28 bg-muted" />
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
+                      <span className="text-muted-foreground">Profile / verification</span>
+                      <DSStatusChip tone={profileReady ? "success" : "warning"} size="sm">
+                        {profileReady ? "Complete" : "Needs info"}
+                      </DSStatusChip>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
+                      <span className="text-muted-foreground">Terms accepted</span>
+                      <DSStatusChip tone={termsAccepted ? "success" : "warning"} size="sm">
+                        {termsAccepted ? "Accepted" : "Pending"}
+                      </DSStatusChip>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
+                      <span className="text-muted-foreground">Stripe ready</span>
+                      <DSStatusChip tone={stripeReady ? "success" : "warning"} size="sm">
+                        {stripeReady ? "Ready" : stripeAccountStatus?.status || "Setup needed"}
+                      </DSStatusChip>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
+                      <span className="text-muted-foreground">Debit card</span>
+                      <DSStatusChip tone={debitCardState === "active" ? "success" : "neutral"} size="sm">
+                        {debitCardState}
+                      </DSStatusChip>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-auto flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
+                    onClick={() => setLocation('/profile')}
+                  >
+                    Profile
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
+                    onClick={() => setLocation('/wallet')}
+                  >
+                    Wallet
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </DSCard>
+
+            <DSCard padding="md" elevated className="min-h-[260px] border-border/70">
+              <div className="flex h-full flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      Unread Notifications
+                    </p>
+                    <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
+                      Stay on top of updates
+                    </h3>
+                  </div>
+                  <DSStatusChip tone={unreadNotificationCount > 0 ? "warning" : "neutral"} size="sm">
+                    {unreadNotificationsLoading ? "…" : unreadNotificationCount}
+                  </DSStatusChip>
+                </div>
+
+                {unreadNotificationsLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-16 rounded-2xl bg-muted" />
+                    <Skeleton className="h-16 rounded-2xl bg-muted" />
+                    <Skeleton className="h-16 rounded-2xl bg-muted" />
+                  </div>
+                ) : topUnreadNotifications.length > 0 ? (
+                  <div className="space-y-2">
+                    {topUnreadNotifications.map((notification) => (
+                      <div key={notification.id} className="rounded-2xl border border-border/70 bg-background/70 p-3">
+                        <div className="flex items-start gap-2">
+                          <div className="mt-0.5 rounded-full bg-primary/10 p-1.5 text-primary">
+                            <Bell className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-foreground">{notification.title}</p>
+                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{notification.message}</p>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                    <p className="text-sm font-medium text-foreground">All caught up</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      No unread messages right now.
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
+                    onClick={() => setLocation('/notifications')}
+                  >
+                    Notifications
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </DSCard>
+
+            <DSCard padding="md" elevated className="min-h-[260px] border-border/70">
+              <div className="flex h-full flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      Wallet Preview
+                    </p>
+                    <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
+                      Available funds
+                    </h3>
+                  </div>
+                  <Wallet className="h-5 w-5 shrink-0 text-primary" />
+                </div>
+
+                {walletBalanceLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-8 w-32 bg-muted" />
+                    <Skeleton className="h-4 w-40 bg-muted" />
+                    <Skeleton className="h-4 w-32 bg-muted" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Available Balance
+                      </p>
+                      <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-dashboard-available-balance">
+                        {formatCurrency(walletBalance?.availableBalance || 0)}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          Pending
+                        </p>
+                        <p className="mt-1 font-semibold text-foreground">
+                          {formatCurrency(walletBalance?.pendingBalance || 0)}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          Total
+                        </p>
+                        <p className="mt-1 font-semibold text-foreground">
+                          {formatCurrency(walletBalance?.totalBalance || 0)}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="mt-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
+                    onClick={() => setLocation('/wallet')}
+                  >
+                    View Wallet
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </DSCard>
+
+            <DSCard padding="md" elevated className="min-h-[260px] border-border/70">
+              <div className="flex h-full flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      Rewards Summary
+                    </p>
+                    <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
+                      Monthly ticket progress
+                    </h3>
+                  </div>
+                  <DSStatusChip tone={lotteryActive ? "success" : "warning"} size="sm">
+                    {lotteryActive ? "Active" : "Paused"}
+                  </DSStatusChip>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      Current Month Entries
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
+                      {lotteryEntryCount}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      Current Drawing
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {currentDrawingText}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-auto flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
+                    onClick={() => setLocation('/driver/rewards')}
+                  >
+                    View Rewards
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </DSCard>
+          </div>
+        </section>
 
         {/* Dashboard Snapshot */}
         <section className="space-y-2">
