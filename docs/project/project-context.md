@@ -2,6 +2,9 @@
 
 This document is the onboarding summary for CreteXchange. It helps a new developer, AI assistant, or Codex session understand the current project state quickly, but it does not replace the authoritative architecture, standards, product, or protocol documents.
 
+[Platform Vision](../vision/platform-vision.md) defines the long-term strategic direction.
+[Project Context](./project-context.md) defines the current implementation state.
+
 ## 1. Project Summary
 
 CreteXchange is a configurable construction and industrial materials exchange platform connecting drivers, contractors, yard owners, recycling facilities, disposal sites, and future material recovery partners.
@@ -31,14 +34,25 @@ CreteXchange is being built as:
 
 Authoritative order:
 
-1. `docs/README.md`
-2. `docs/project/project-context.md`
+1. `docs/vision/platform-vision.md`
+2. `docs/project/project-context.md` - canonical current-state summary within the hierarchy
 3. `docs/standards/cretexchange-platform-standards.md`
 4. CTX-ARCH documents
 5. `docs/product/product-decisions.md`
-6. `docs/development-protocol.md`
+6. `docs/product/data-strategy.md`
+7. `docs/development-protocol.md`
 
 This file is an onboarding guide, not the final authority when detailed architecture exists.
+
+Platform Vision is the strategic North Star.
+Project Context defines the current product and implementation state.
+
+Related references:
+
+- `docs/vision/platform-vision.md`
+- `docs/product/data-strategy.md`
+- `docs/development-protocol.md`
+- `docs/standards/cretexchange-platform-standards.md`
 
 ## 5. Architecture Library
 
@@ -230,4 +244,3 @@ CreteXchange may expand into:
 - Do not duplicate detailed architecture.
 - Link to authoritative documents instead.
 - Keep it concise enough for fast onboarding.
-

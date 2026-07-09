@@ -10,6 +10,32 @@ The platform follows:
 - Financially Conservative Accounting
 - Single Source of Truth
 
+## Documentation Authority
+
+The canonical documentation order of precedence is:
+
+1. `docs/vision/platform-vision.md`
+2. `docs/project/project-context.md`
+3. `docs/standards/cretexchange-platform-standards.md` (`CTX-STD-001`)
+4. `CTX-ARCH` documents
+5. `docs/product/product-decisions.md`
+6. `docs/product/data-strategy.md`
+7. `docs/development-protocol.md`
+
+Supporting, historical, or archived documents must not override this hierarchy.
+
+## Documentation Navigation
+
+- [Platform Vision](./vision/platform-vision.md)
+- [Project Context](./project/project-context.md)
+- [Product Data Strategy](./product/data-strategy.md)
+- [Development Protocol](./development-protocol.md)
+
+## Archived References
+
+- [Archived Governance Documents](./archive/governance/README.md)
+- [Archived Product References](./archive/product/README.md)
+
 ## Documentation Structure
 
 CreteXchange documentation is organized into durable, decision-oriented sections:
@@ -67,4 +93,3 @@ D --> G
 E --> G
 F --> G
 ```
-

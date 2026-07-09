@@ -6,7 +6,14 @@ Every operational event should create value for multiple stakeholders.
 
 Completed washouts, tips, check-ins, reward entries, and recycling activity should become insight, not just transaction history.
 
-## 2. Stakeholder Value
+## 2. Relationship to Canonical Documents
+
+- Platform Vision defines the long-term strategic direction for CreteXchange.
+- Project Context summarizes the current implementation state and sprint roadmap.
+- Product Decisions capture business direction and product intent.
+- CTX-ARCH documents define the authoritative operational, financial, owner, driver, admin, and material mechanics that the data strategy must reflect.
+
+## 3. Stakeholder Value
 
 ### Driver
 
@@ -34,7 +41,7 @@ Completed washouts, tips, check-ins, reward entries, and recycling activity shou
 - Market expansion opportunities
 - Owner marketing opportunities
 
-## 3. Event-to-Insight Map
+## 4. Event-to-Insight Map
 
 | Event | Driver | Owner | Admin | Platform |
 | --- | --- | --- | --- | --- |
@@ -46,7 +53,7 @@ Completed washouts, tips, check-ins, reward entries, and recycling activity shou
 | Prize fulfilled | Shows reward delivery status | Shows successful reward outcome for the site ecosystem | Tracks fulfillment efficiency | Supports customer experience and operational performance |
 | Rubble drop-off, future | Could show another type of earned activity | Could show recycling-driven engagement | Could measure recycling participation | Could support sustainability and routing analytics |
 
-## 4. Future Admin Marketing / Insights Page
+## 5. Future Admin Marketing / Insights Page
 
 CreteXchange should eventually include an admin-facing marketing and insights page showing:
 
@@ -59,7 +66,7 @@ CreteXchange should eventually include an admin-facing marketing and insights pa
 - Regional performance
 - Monthly trends
 
-## 5. Export Requirements
+## 6. Export Requirements
 
 The future admin insights page should support:
 
@@ -70,7 +77,7 @@ The future admin insights page should support:
 - Regional filters
 - Monthly summaries
 
-## 6. Future Owner Outreach Automation
+## 7. Future Owner Outreach Automation
 
 Future capability should include:
 
@@ -81,7 +88,7 @@ Future capability should include:
 - Recommendations to improve driver attraction
 - Opt-in or controlled rollout
 
-## 7. Guardrails
+## 8. Guardrails
 
 - Do not expose private driver personal information unnecessarily.
 - Aggregate data where possible.
@@ -89,11 +96,10 @@ Future capability should include:
 - Use rankings as constructive business intelligence.
 - Respect privacy, security, and role permissions.
 
-## 8. Relationship to Driver Rewards
+## 9. Relationship to Driver Rewards
 
 Reward tickets should show the activity and location where they were earned.
 
 This improves driver transparency and creates useful metadata for platform analytics.
 
 Ticket history becomes part of the data foundation for future owner and admin insights.
-
