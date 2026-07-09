@@ -62,6 +62,22 @@ type LotteryDrawing = {
   thirdPrize?: string | null;
 };
 
+type DriverLotteryHistoryItem = {
+  drawingId: string;
+  lotteryMonth: number;
+  lotteryYear: number;
+  drawingDate: string | Date | null;
+  status: string;
+  won: boolean;
+  placeIndex: number | null;
+  ticketNumber: string | null;
+  prizeTitle: string | null;
+  prizeDescription: string | null;
+  notificationStatus: string | null;
+  notificationSentAt: string | Date | null;
+  createdAt: string | Date | null;
+};
+
 const rewardNotificationTypes = new Set([
   "lottery_winner",
   "lottery_announcement",
@@ -77,12 +93,6 @@ const quickLinks = [
 ];
 
 const futureSections = [
-  {
-    title: "Drawing History",
-    description:
-      "Monthly drawing results, winner records, and prize states will appear here once the driver-safe history view is connected.",
-    icon: Trophy,
-  },
   {
     title: "Prize Fulfillment Status",
     description:
@@ -172,6 +182,11 @@ export default function DriverRewards() {
     refetchInterval: 30000,
   });
 
+  const { data: lotteryHistoryData, isLoading: lotteryHistoryLoading } = useQuery<DriverLotteryHistoryItem[]>({
+    queryKey: ["/api/drivers/lottery-history"],
+    refetchInterval: 60000,
+  });
+
   const currentEntries = Number(
     lotteryStatusData?.driverEntryCount ??
       dashboardData?.lotteryStatus?.driverEntryCount ??
@@ -220,6 +235,7 @@ export default function DriverRewards() {
 
   const rewardUpdateCount = rewardNotifications.length;
   const ticketEntries = Array.isArray(lotteryEntriesData) ? lotteryEntriesData : [];
+  const lotteryHistoryEntries = Array.isArray(lotteryHistoryData) ? lotteryHistoryData : [];
   const rewardSummaryLoading = dashboardLoading || lotteryStatusLoading;
   const rewardNotificationsLoading = notificationsLoading || unreadLoading;
   const drawingLabel =
@@ -561,6 +577,132 @@ export default function DriverRewards() {
                   </p>
                 </div>
                 <DSStatusChip tone="neutral">Waiting for updates</DSStatusChip>
+              </div>
+            </DSCard>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <DSSectionHeader
+            eyebrow="History"
+            title="Drawing history"
+            description="Completed drawings are shown with driver-safe details only."
+          />
+
+          {lotteryHistoryLoading ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <DSCard key={index} padding="lg" className="animate-pulse">
+                  <div className="space-y-4">
+                    <div className="h-4 w-32 rounded-full bg-muted/70" />
+                    <div className="h-6 w-44 rounded-full bg-muted/70" />
+                    <div className="h-20 rounded-2xl bg-muted/70" />
+                  </div>
+                </DSCard>
+              ))}
+            </div>
+          ) : lotteryHistoryEntries.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {lotteryHistoryEntries.map((item) => {
+                const drawingLabelText = formatMonthYear(item.lotteryMonth, item.lotteryYear);
+                const notificationLabel =
+                  item.notificationStatus === "sent"
+                    ? "Notification sent"
+                    : item.notificationStatus === "none"
+                      ? "No notification"
+                      : item.notificationStatus || "Unknown";
+
+                return (
+                  <DSCard key={item.drawingId} padding="md" elevated className="flex min-h-[240px] flex-col">
+                    <div className="flex h-full flex-col gap-4">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            Drawing
+                          </p>
+                          <h3 className="mt-1 text-lg font-semibold tracking-tight">{drawingLabelText}</h3>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <DSStatusChip tone="neutral" size="sm">
+                            {item.status}
+                          </DSStatusChip>
+                          <DSStatusChip tone={item.won ? "success" : "neutral"} size="sm">
+                            {item.won ? "Won" : "No win"}
+                          </DSStatusChip>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Drawing Date
+                          </p>
+                          <p className="mt-1 font-medium">{formatDate(item.drawingDate)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Notification
+                          </p>
+                          <p className="mt-1 font-medium">{notificationLabel}</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-border bg-background/70 p-3">
+                        {item.won ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-semibold">Winning ticket</p>
+                              <DSStatusChip tone="success" size="sm">
+                                Place {item.placeIndex || "—"}
+                              </DSStatusChip>
+                            </div>
+                            <p className="truncate text-sm text-muted-foreground">{item.ticketNumber || "—"}</p>
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Prize
+                              </p>
+                              <p className="mt-1 text-sm font-medium">{item.prizeTitle || "—"}</p>
+                              {item.prizeDescription ? (
+                                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                                  {item.prizeDescription}
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-sm font-semibold">No win recorded</p>
+                            <p className="text-sm text-muted-foreground">
+                              This completed drawing did not result in a prize for your tickets.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-auto rounded-2xl border border-border bg-background/70 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Created
+                        </p>
+                        <p className="mt-1 text-sm font-medium">{formatDate(item.createdAt)}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {item.notificationSentAt ? `Sent ${formatRelative(item.notificationSentAt)}` : "No sent timestamp available"}
+                        </p>
+                      </div>
+                    </div>
+                  </DSCard>
+                );
+              })}
+            </div>
+          ) : (
+            <DSCard padding="lg">
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">No completed drawings yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Completed drawings tied to your tickets will appear here once the driver-safe history feed is available.
+                  </p>
+                </div>
+                <DSStatusChip tone="neutral">Waiting for history</DSStatusChip>
               </div>
             </DSCard>
           )}

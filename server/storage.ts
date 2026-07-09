@@ -521,6 +521,7 @@ export interface IStorage {
   createLotteryDrawingWinner(winner: InsertLotteryDrawingWinner): Promise<LotteryDrawingWinner>;
   getLotteryDrawingWinners(drawingId: string): Promise<any[]>;
   getLotteryDrawingHistoryWithWinners(): Promise<any[]>;
+  getDriverLotteryHistory(driverId: string): Promise<any[]>;
   createLotteryDrawingFulfillments(
     fulfillments: InsertLotteryDrawingFulfillment[],
     tx?: any,
@@ -7295,6 +7296,99 @@ export class DatabaseStorage implements IStorage {
         ...drawing,
         winners: legacyWinners,
       };
+    });
+  }
+
+  async getDriverLotteryHistory(driverId: string): Promise<any[]> {
+    const winnerNotification = alias(lotteryNotifications, "driver_lottery_history_winner_notification");
+    const participantNotification = alias(lotteryNotifications, "driver_lottery_history_participant_notification");
+
+    const results = await db
+      .select({
+        drawing: lotteryDrawings,
+        entry: driverLotteryEntries,
+        winner: lotteryDrawingWinners,
+        winnerNotification,
+        participantNotification,
+      })
+      .from(driverLotteryEntries)
+      .innerJoin(
+        lotteryDrawings,
+        and(
+          eq(driverLotteryEntries.lotteryMonth, lotteryDrawings.lotteryMonth),
+          eq(driverLotteryEntries.lotteryYear, lotteryDrawings.lotteryYear),
+        ),
+      )
+      .leftJoin(lotteryDrawingWinners, eq(driverLotteryEntries.id, lotteryDrawingWinners.entryId))
+      .leftJoin(
+        winnerNotification,
+        and(
+          eq(winnerNotification.lotteryDrawingId, lotteryDrawings.id),
+          eq(winnerNotification.driverId, driverId),
+          eq(winnerNotification.notificationKind, "winner"),
+        ),
+      )
+      .leftJoin(
+        participantNotification,
+        and(
+          eq(participantNotification.lotteryDrawingId, lotteryDrawings.id),
+          eq(participantNotification.driverId, driverId),
+          eq(participantNotification.notificationKind, "participant"),
+        ),
+      )
+      .where(eq(driverLotteryEntries.driverId, driverId))
+      .orderBy(desc(lotteryDrawings.drawingDate), desc(driverLotteryEntries.createdAt), asc(lotteryDrawingWinners.placeIndex));
+
+    const historyByDrawing = new Map<string, any>();
+
+    for (const row of results) {
+      const drawing = row.drawing;
+      if (!drawing) {
+        continue;
+      }
+
+      const existing = historyByDrawing.get(drawing.id) || {
+        drawingId: drawing.id,
+        lotteryMonth: drawing.lotteryMonth,
+        lotteryYear: drawing.lotteryYear,
+        drawingDate: drawing.drawingDate,
+        status: "completed",
+        won: false,
+        placeIndex: null,
+        ticketNumber: null,
+        prizeTitle: null,
+        prizeDescription: null,
+        notificationStatus: row.winnerNotification?.sentAt || row.participantNotification?.sentAt ? "sent" : "none",
+        notificationSentAt: row.winnerNotification?.sentAt || row.participantNotification?.sentAt || null,
+        createdAt: drawing.createdAt,
+      };
+
+      const winnerPlaceIndex = row.winner?.placeIndex != null ? Number(row.winner.placeIndex) : null;
+      if (row.winner && winnerPlaceIndex != null) {
+        const currentPlaceIndex = existing.placeIndex != null ? Number(existing.placeIndex) : Number.POSITIVE_INFINITY;
+        if (!existing.won || winnerPlaceIndex < currentPlaceIndex) {
+          existing.won = true;
+          existing.placeIndex = winnerPlaceIndex;
+          existing.ticketNumber = row.winner.ticketNumber || null;
+          existing.prizeTitle = row.winner.prizeTitle || null;
+          existing.prizeDescription = row.winner.prizeDescription || null;
+        }
+        if (row.winnerNotification?.sentAt) {
+          existing.notificationStatus = "sent";
+          existing.notificationSentAt = row.winnerNotification.sentAt;
+        }
+      } else if (!existing.notificationSentAt && row.participantNotification?.sentAt) {
+        existing.notificationStatus = "sent";
+        existing.notificationSentAt = row.participantNotification.sentAt;
+      }
+
+      historyByDrawing.set(drawing.id, existing);
+    }
+
+    return Array.from(historyByDrawing.values()).sort((a, b) => {
+      const left = a.drawingDate ? new Date(a.drawingDate).getTime() : 0;
+      const right = b.drawingDate ? new Date(b.drawingDate).getTime() : 0;
+      return right - left;
     });
   }
 
