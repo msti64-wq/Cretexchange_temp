@@ -218,6 +218,12 @@ export default function OwnerDashboard() {
     enabled: membershipState.dashboardAccessAllowed,
   });
 
+  const { data: ownerLocationsData, isLoading: isOwnerLocationsLoading } = useQuery<any[]>({
+    queryKey: ['/api/owners/locations'],
+    refetchInterval: 30000,
+    enabled: membershipState.dashboardAccessAllowed,
+  });
+
   // Separate query for activities with date range filtering
   const { data: activitiesData, error: activitiesError } = useQuery<any>({
     queryKey: [`/api/owners/activities?dateRange=${dateRange}`],
@@ -368,6 +374,8 @@ export default function OwnerDashboard() {
   const { weekStats, monthStats, locations } = (dashboardData as any) || {};
   const owner = (dashboardData as any)?.owner || null;
   const billingReceivablesSummary = (dashboardData as any)?.billingReceivablesSummary || null;
+  const ownerActivityRows = Array.isArray(allActivitiesData) ? allActivitiesData : [];
+  const ownerLocationRows = Array.isArray(ownerLocationsData) ? ownerLocationsData : [];
 
   const approvalQueueActivities = Array.isArray(allActivitiesData)
     ? filterPendingWashoutApprovals(allActivitiesData)
@@ -387,6 +395,56 @@ export default function OwnerDashboard() {
   const recentActivities = (isAuthError || isDashboardAuthError) 
     ? [] 
     : Array.isArray(activitiesData) ? activitiesData : [];
+  const recentActivityCount = recentActivities.length;
+
+  const ownerActivityDriverVisitCounts = ownerActivityRows.reduce<Record<string, number>>((acc, activity: any) => {
+    const driverKey = activity?.driver?.user?.id ?? activity?.driver?.id ?? activity?.driverId;
+    if (!driverKey) return acc;
+    acc[driverKey] = (acc[driverKey] || 0) + 1;
+    return acc;
+  }, {});
+
+  const ownerActivityLocationCounts = ownerActivityRows.reduce<Record<string, { count: number; name: string }>>((acc, activity: any) => {
+    const locationKey = activity?.location?.id ?? activity?.locationId;
+    if (!locationKey) return acc;
+    if (!acc[locationKey]) {
+      acc[locationKey] = {
+        count: 0,
+        name: activity?.location?.name || "Unknown location",
+      };
+    }
+    acc[locationKey].count += 1;
+    return acc;
+  }, {});
+
+  const ownerActivityUniqueDriverCount = Object.keys(ownerActivityDriverVisitCounts).length;
+  const repeatDriverCount = Object.values(ownerActivityDriverVisitCounts).filter((count) => count > 1).length;
+  const repeatVisitCount = Object.values(ownerActivityDriverVisitCounts).reduce((sum, count) => {
+    return count > 1 ? sum + (count - 1) : sum;
+  }, 0);
+  const ownerActivityCount = ownerActivityRows.length;
+  const recentLocationCount = new Set(
+    recentActivities
+      .map((activity: any) => activity?.location?.id ?? activity?.locationId)
+      .filter(Boolean)
+  ).size;
+  const topLocationByActivity = Object.values(ownerActivityLocationCounts).sort((a, b) => b.count - a.count)[0] || null;
+  const configuredLocationTipValues = ownerLocationRows
+    .map((location: any) => {
+      const rawRate = location?.rate;
+      if (rawRate === null || rawRate === undefined || rawRate === "") {
+        return null;
+      }
+      const resolved = resolveLocationDriverTipRateCents(rawRate);
+      return Number.isFinite(resolved) && resolved > 0 ? resolved : null;
+    })
+    .filter((value): value is number => value !== null);
+  const averageConfiguredIncentiveCents = configuredLocationTipValues.length > 0
+    ? Math.round(configuredLocationTipValues.reduce((sum, value) => sum + value, 0) / configuredLocationTipValues.length)
+    : null;
+  const activeVisibleLocationCount = ownerLocationRows.filter((location: any) => location?.isActive && location?.isVisible).length;
+  const ownerIntelligenceLoading = isDashboardLoading || isAllActivitiesLoading || isOwnerLocationsLoading;
+  const hasOwnerIntelligenceData = ownerActivityCount > 0 || ownerLocationRows.length > 0;
 
   const platformFeeExposureCents = Number(weekStats?.platformFeesOwedCents || 0);
   const driverIncentiveExposureCents = Number(weekStats?.driverTipTotalCents || 0);
@@ -562,6 +620,112 @@ export default function OwnerDashboard() {
               data-testid="text-total-locations"
             />
           </div>
+        </section>
+
+        {/* Owner Intelligence */}
+        <section className="space-y-3">
+          <DSSectionHeader
+            title="Owner Intelligence"
+            description="Derived from owner activity and location data."
+          />
+          {ownerIntelligenceLoading ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {[1, 2, 3, 4, 5].map((item) => (
+                <DSCard key={item} padding="md">
+                  <div className="space-y-3">
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-8 w-24" />
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-3 w-40" />
+                  </div>
+                </DSCard>
+              ))}
+            </div>
+          ) : !hasOwnerIntelligenceData ? (
+            <DashboardEmptyState
+              title="No owner intelligence yet"
+              description="Add locations and capture activity to surface driver attraction, repeat visits, incentive averages, and site engagement."
+              icon={Activity}
+              action={
+                <Button variant="outline" size="sm" onClick={() => setLocation("/locations")}>
+                  {t("common.locations")}
+                </Button>
+              }
+              dataTestId="empty-owner-intelligence"
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <DSKpiCard
+                label="Driver Attraction"
+                value={ownerActivityCount}
+                detail={
+                  <div className="space-y-0.5">
+                    <div>{`${ownerActivityUniqueDriverCount} unique driver${ownerActivityUniqueDriverCount === 1 ? "" : "s"}`}</div>
+                    <div>{`Recent activity: ${recentActivityCount}`}</div>
+                    <div className="text-xs text-muted-foreground">Derived from owner activity rows</div>
+                  </div>
+                }
+                accentTone="info"
+                data-testid="text-owner-driver-attraction"
+              />
+              <DSKpiCard
+                label="Repeat Driver Visits"
+                value={repeatDriverCount}
+                detail={
+                  <div className="space-y-0.5">
+                    <div>{`${repeatVisitCount} repeat visit${repeatVisitCount === 1 ? "" : "s"}`}</div>
+                    <div>A repeat driver has more than one activity in the selected data set</div>
+                  </div>
+                }
+                accentTone="warning"
+                data-testid="text-owner-repeat-drivers"
+              />
+              <DSKpiCard
+                label="Average Driver Incentive"
+                value={averageConfiguredIncentiveCents !== null ? formatCentsToDollars(averageConfiguredIncentiveCents) : "—"}
+                detail={
+                  <div className="space-y-0.5">
+                    <div>{configuredLocationTipValues.length > 0
+                      ? `${configuredLocationTipValues.length} configured location${configuredLocationTipValues.length === 1 ? "" : "s"}`
+                      : "No configured rates yet"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Derived from location rate settings</div>
+                  </div>
+                }
+                accentTone="success"
+                data-testid="text-owner-average-driver-incentive"
+              />
+              <DSKpiCard
+                label="Washout Counts"
+                value={ownerActivityCount}
+                detail={
+                  <div className="space-y-0.5">
+                    <div>{`${ownerWashoutStatusCounts.approved} approved / ${ownerWashoutStatusCounts.pending} pending / ${ownerWashoutStatusCounts.rejected} rejected`}</div>
+                    <div>{`Selected range washouts: ${billableWashoutCount}`}</div>
+                    <div className="text-xs text-muted-foreground">Derived from owner activity data</div>
+                  </div>
+                }
+                accentTone="accent"
+                data-testid="text-owner-washout-counts"
+              />
+              <DSKpiCard
+                label="Site Engagement Snapshot"
+                value={activeVisibleLocationCount}
+                detail={
+                  <div className="space-y-0.5">
+                    <div>{`${recentLocationCount} location${recentLocationCount === 1 ? "" : "s"} with recent activity`}</div>
+                    <div>{topLocationByActivity
+                      ? `Top location: ${topLocationByActivity.name} (${topLocationByActivity.count})`
+                      : "No activity ranked yet"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{`${ownerLocationRows.length} total locations configured`}</div>
+                  </div>
+                }
+                accentTone="border"
+                data-testid="text-owner-site-engagement"
+              />
+            </div>
+          )}
         </section>
 
         {/* Payment and Activity Analytics */}
