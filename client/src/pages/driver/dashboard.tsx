@@ -13,6 +13,8 @@ import { MapPin, MessageCircle, Phone, Wallet, Ticket, RefreshCw, Truck, Route, 
 import { formatCurrency } from "@/lib/utils";
 import { formatAddress } from "@shared/addressUtils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
+import { calculateDistance, getCurrentLocation } from "@/lib/gps";
+import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { apiRequest } from "@/lib/queryClient";
@@ -75,6 +77,26 @@ interface UnreadNotification {
   type: string;
   createdAt: string | Date;
   isRead?: boolean;
+}
+
+interface DriverDashboardLocation {
+  id?: string;
+  name?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  rate?: string | number | null;
+  isActive?: boolean;
+  isVisible?: boolean;
+  operatingHours?: string | null;
+}
+
+interface RankedDashboardLocation extends DriverDashboardLocation {
+  distanceMiles?: number | null;
+  driverIncentiveCents: number;
 }
 
 const DRIVER_STATS_RANGE_OPTIONS: Array<{ value: DriverDashboardStatsRange; labelKey: string }> = [
@@ -156,6 +178,37 @@ function isBillableWashoutStatus(status: string | null | undefined) {
   return status === "verified" || status === "approved" || status === "completed";
 }
 
+function normalizeDashboardLocation(item: any): DriverDashboardLocation {
+  return item?.washout_locations || item || {};
+}
+
+function parseLocationCoordinate(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatDistanceMiles(distance: number | null | undefined): string {
+  if (distance === null || distance === undefined || !Number.isFinite(distance)) {
+    return "Distance unavailable";
+  }
+
+  if (distance < 1) {
+    return `${Math.max(1, Math.round(distance * 5280))} ft away`;
+  }
+
+  return `${distance.toFixed(distance < 10 ? 1 : 0)} mi away`;
+}
+
+function formatDashboardLocationAddress(location: DriverDashboardLocation): string {
+  return location.street || location.city || location.state || location.zip
+    ? formatAddress(location as Record<string, unknown>)
+    : "";
+}
+
 class DriverDashboardErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
@@ -228,6 +281,8 @@ export default function DriverDashboard() {
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
   const [showLotteryEntries, setShowLotteryEntries] = useState(false);
   const [statsRange, setStatsRange] = useState<DriverDashboardStatsRange>("today");
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [jobType, setJobType] = useState<DriverJobType>(() => {
     if (typeof window === "undefined") {
       return "ready-mix-washout";
@@ -274,6 +329,15 @@ export default function DriverDashboard() {
   }>({
     queryKey: ['/api/notifications/unread'],
     refetchInterval: 30000,
+  });
+
+  const { data: driverLocations, isLoading: driverLocationsLoading } = useQuery<any[]>({
+    queryKey: ['/api/drivers/locations'],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/drivers/locations");
+      return response.json();
+    },
+    refetchInterval: 300000,
   });
 
   const { data: paymentHistory } = useQuery({
@@ -350,6 +414,30 @@ export default function DriverDashboard() {
     window.localStorage.setItem(DRIVER_JOB_TYPE_STORAGE_KEY, jobType);
   }, [jobType]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCurrentLocation = async () => {
+      try {
+        const coords = await getCurrentLocation();
+        if (cancelled) return;
+        setCurrentLocation({ lat: coords.latitude, lng: coords.longitude });
+        setLocationError(null);
+      } catch (error) {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : "Unable to get location";
+        setLocationError(message);
+        setCurrentLocation(null);
+      }
+    };
+
+    loadCurrentLocation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   if (isLoading) {
     return <DriverDashboardSkeleton />;
   }
@@ -420,6 +508,55 @@ export default function DriverDashboard() {
   const unreadNotificationCount = unreadNotificationsData?.count ?? unreadNotifications.length;
   const topUnreadNotifications = unreadNotifications.slice(0, 3);
   const currentDrawingText = currentDrawingLabel || "Awaiting drawing";
+
+  const rankedDriverLocations: RankedDashboardLocation[] = Array.isArray(driverLocations)
+    ? driverLocations
+        .map((item: any) => {
+          const location = normalizeDashboardLocation(item);
+          const latitude = parseLocationCoordinate(location.latitude);
+          const longitude = parseLocationCoordinate(location.longitude);
+          const driverIncentiveCents = resolveLocationDriverTipRateCents(location.rate);
+
+          const distanceMiles = currentLocation && latitude !== null && longitude !== null
+            ? calculateDistance(currentLocation.lat, currentLocation.lng, latitude, longitude)
+            : null;
+
+          return {
+            ...location,
+            distanceMiles,
+            driverIncentiveCents,
+          } as RankedDashboardLocation;
+        })
+        .filter((location) => location.isActive !== false && location.isVisible !== false)
+    : [];
+
+  const recommendedLocation = rankedDriverLocations
+    .filter((location) => location.distanceMiles !== null)
+    .sort((a, b) => {
+      const distanceDelta = (a.distanceMiles || 0) - (b.distanceMiles || 0);
+      if (Math.abs(distanceDelta) <= 0.1) {
+        const incentiveDelta = (b.driverIncentiveCents || 0) - (a.driverIncentiveCents || 0);
+        if (incentiveDelta !== 0) {
+          return incentiveDelta;
+        }
+      }
+
+      return distanceDelta;
+    })[0] || null;
+
+  const highestNearbyIncentiveLocation = rankedDriverLocations
+    .filter((location) => location.distanceMiles !== null)
+    .sort((a, b) => {
+      const incentiveDelta = (b.driverIncentiveCents || 0) - (a.driverIncentiveCents || 0);
+      if (incentiveDelta !== 0) {
+        return incentiveDelta;
+      }
+
+      return (a.distanceMiles || 0) - (b.distanceMiles || 0);
+    })[0] || null;
+
+  const hasLocationData = Array.isArray(driverLocations) && driverLocations.length > 0;
+  const locationRankingUnavailable = Boolean(locationError) || !currentLocation;
 
   return (
     <DriverDashboardErrorBoundary>
@@ -898,6 +1035,199 @@ export default function DriverDashboard() {
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
+              </div>
+            </DSCard>
+          </div>
+        </section>
+
+        <section className="space-y-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.16em]">
+                Location Intelligence
+              </p>
+              <h3 className="break-words text-sm font-semibold tracking-tight text-foreground">
+                Nearby locations and incentive focus
+              </h3>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            <DSCard padding="md" elevated className="min-h-[240px] border-border/70">
+              <div className="flex h-full flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      Recommended Location
+                    </p>
+                    <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
+                      Nearest suitable stop
+                    </h3>
+                  </div>
+                  <MapPin className="h-5 w-5 shrink-0 text-primary" />
+                </div>
+
+                {driverLocationsLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-36 bg-muted" />
+                    <Skeleton className="h-8 w-52 bg-muted" />
+                    <Skeleton className="h-4 w-40 bg-muted" />
+                    <Skeleton className="h-4 w-32 bg-muted" />
+                  </div>
+                ) : locationRankingUnavailable ? (
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                    <p className="text-sm font-medium text-foreground">Location access needed</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Turn on location access to rank nearby stops from your current position.
+                    </p>
+                  </div>
+                ) : !hasLocationData ? (
+                  <DashboardEmptyState
+                    title="No driver locations"
+                    description="No active locations are available right now."
+                    icon={MapPin}
+                    toneClassName="bg-card text-foreground"
+                  />
+                ) : recommendedLocation ? (
+                  <>
+                    <div className="rounded-2xl border border-border/70 bg-background/70 p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="break-words text-base font-semibold text-foreground">
+                            {recommendedLocation.name || "Nearby location"}
+                          </p>
+                          {formatDashboardLocationAddress(recommendedLocation) && (
+                            <p className="mt-1 break-words text-sm text-muted-foreground">
+                              {formatDashboardLocationAddress(recommendedLocation)}
+                            </p>
+                          )}
+                        </div>
+                        <DSStatusChip tone="success" size="sm">Recommended</DSStatusChip>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                        <span>{formatDistanceMiles(recommendedLocation.distanceMiles)}</span>
+                        <span>•</span>
+                        <span>
+                          {recommendedLocation.driverIncentiveCents > 0
+                            ? formatCurrency(recommendedLocation.driverIncentiveCents / 100)
+                            : "Incentive unavailable"}
+                        </span>
+                      </div>
+                      {recommendedLocation.operatingHours && (
+                        <p className="text-sm text-muted-foreground">
+                          Hours: {recommendedLocation.operatingHours}
+                        </p>
+                      )}
+                    </div>
+                    <div className="mt-auto flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
+                        onClick={() => setLocation('/locations')}
+                      >
+                        View Locations
+                        <ArrowRight className="ml-1 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <DashboardEmptyState
+                    title="No ranked location"
+                    description="No nearby stop could be ranked from the current location data."
+                    icon={MapPin}
+                    toneClassName="bg-card text-foreground"
+                  />
+                )}
+              </div>
+            </DSCard>
+
+            <DSCard padding="md" elevated className="min-h-[240px] border-border/70">
+              <div className="flex h-full flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      Highest Nearby Driver Incentive
+                    </p>
+                    <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
+                      Best nearby payout focus
+                    </h3>
+                  </div>
+                  <Ticket className="h-5 w-5 shrink-0 text-primary" />
+                </div>
+
+                {driverLocationsLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-36 bg-muted" />
+                    <Skeleton className="h-8 w-52 bg-muted" />
+                    <Skeleton className="h-4 w-40 bg-muted" />
+                    <Skeleton className="h-4 w-32 bg-muted" />
+                  </div>
+                ) : locationRankingUnavailable ? (
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                    <p className="text-sm font-medium text-foreground">Location access needed</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Allow location access to rank the highest nearby driver incentive.
+                    </p>
+                  </div>
+                ) : !hasLocationData ? (
+                  <DashboardEmptyState
+                    title="No driver locations"
+                    description="No active locations are available right now."
+                    icon={Ticket}
+                    toneClassName="bg-card text-foreground"
+                  />
+                ) : highestNearbyIncentiveLocation ? (
+                  <>
+                    <div className="rounded-2xl border border-border/70 bg-background/70 p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="break-words text-base font-semibold text-foreground">
+                            {highestNearbyIncentiveLocation.name || "Nearby location"}
+                          </p>
+                          {formatDashboardLocationAddress(highestNearbyIncentiveLocation) && (
+                            <p className="mt-1 break-words text-sm text-muted-foreground">
+                              {formatDashboardLocationAddress(highestNearbyIncentiveLocation)}
+                            </p>
+                          )}
+                        </div>
+                        <DSStatusChip tone="accent" size="sm">Highest incentive</DSStatusChip>
+                      </div>
+                      <p className="text-2xl font-semibold tracking-tight text-foreground">
+                        {highestNearbyIncentiveLocation.driverIncentiveCents > 0
+                          ? formatCurrency(highestNearbyIncentiveLocation.driverIncentiveCents / 100)
+                          : "Incentive unavailable"}
+                      </p>
+                      <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                        <span>{formatDistanceMiles(highestNearbyIncentiveLocation.distanceMiles)}</span>
+                        {highestNearbyIncentiveLocation.operatingHours && (
+                          <>
+                            <span>•</span>
+                            <span>Hours: {highestNearbyIncentiveLocation.operatingHours}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-auto flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
+                        onClick={() => setLocation('/locations')}
+                      >
+                        View Locations
+                        <ArrowRight className="ml-1 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <DashboardEmptyState
+                    title="No ranked location"
+                    description="No nearby incentive could be ranked from the current location data."
+                    icon={Ticket}
+                    toneClassName="bg-card text-foreground"
+                  />
+                )}
               </div>
             </DSCard>
           </div>
