@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Bell,
   Clock3,
-  History,
   Home,
   Ticket,
   Trophy,
@@ -78,6 +77,20 @@ type DriverLotteryHistoryItem = {
   createdAt: string | Date | null;
 };
 
+type DriverLotteryFulfillmentItem = {
+  drawingMonth: number;
+  drawingYear: number;
+  prizeTitle: string | null;
+  prizeDescription: string | null;
+  fulfillmentStatus: string;
+  trackingStatus: string;
+  fulfilledAt: string | Date | null;
+  canceledAt: string | Date | null;
+  issueReportedAt: string | Date | null;
+  createdAt: string | Date | null;
+  updatedAt: string | Date | null;
+};
+
 const rewardNotificationTypes = new Set([
   "lottery_winner",
   "lottery_announcement",
@@ -90,15 +103,6 @@ const quickLinks = [
   { label: "Wallet", path: "/wallet", icon: Wallet },
   { label: "Notifications", path: "/notifications", icon: Bell },
   { label: "Profile", path: "/profile", icon: User },
-];
-
-const futureSections = [
-  {
-    title: "Prize Fulfillment Status",
-    description:
-      "Delivery progress, fulfillment status, and follow-up notes require a future driver-safe read path.",
-    icon: History,
-  },
 ];
 
 function formatDate(value: string | Date | null | undefined, pattern = "MMM d, yyyy") {
@@ -121,6 +125,24 @@ function formatMonthYear(month: number | null | undefined, year: number | null |
     month: "long",
     year: "numeric",
   });
+}
+
+function getFulfillmentTone(status: string | null | undefined) {
+  switch (String(status || "").toLowerCase()) {
+    case "delivered":
+    case "fulfilled":
+      return "success";
+    case "shipped":
+    case "ordered":
+    case "picked_up":
+    case "in_progress":
+      return "info";
+    case "canceled":
+    case "issue":
+      return "warning";
+    default:
+      return "neutral";
+  }
 }
 
 function getRewardNotificationIcon(type: string) {
@@ -187,6 +209,11 @@ export default function DriverRewards() {
     refetchInterval: 60000,
   });
 
+  const { data: lotteryFulfillmentData, isLoading: lotteryFulfillmentLoading } = useQuery<DriverLotteryFulfillmentItem[]>({
+    queryKey: ["/api/drivers/lottery-fulfillment-history"],
+    refetchInterval: 60000,
+  });
+
   const currentEntries = Number(
     lotteryStatusData?.driverEntryCount ??
       dashboardData?.lotteryStatus?.driverEntryCount ??
@@ -236,6 +263,7 @@ export default function DriverRewards() {
   const rewardUpdateCount = rewardNotifications.length;
   const ticketEntries = Array.isArray(lotteryEntriesData) ? lotteryEntriesData : [];
   const lotteryHistoryEntries = Array.isArray(lotteryHistoryData) ? lotteryHistoryData : [];
+  const lotteryFulfillmentEntries = Array.isArray(lotteryFulfillmentData) ? lotteryFulfillmentData : [];
   const rewardSummaryLoading = dashboardLoading || lotteryStatusLoading;
   const rewardNotificationsLoading = notificationsLoading || unreadLoading;
   const drawingLabel =
@@ -807,42 +835,110 @@ export default function DriverRewards() {
 
         <div className="space-y-3">
           <DSSectionHeader
-            eyebrow="Reserved"
-            title="Driver-safe future sections"
-            description="These cards reserve room for reward history and fulfillment data without touching admin-only routes."
+            eyebrow="Fulfillment"
+            title="Prize Fulfillment Status"
+            description="Driver-safe fulfillment updates are shown here without exposing tracking numbers, internal notes, or admin details."
           />
-          <div className="grid gap-4 lg:grid-cols-3">
-            {futureSections.map((section) => {
-              const Icon = section.icon;
 
-              return (
-                <DSCard key={section.title} padding="lg" elevated className="min-h-[210px]">
+          {lotteryFulfillmentLoading ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <DSCard key={index} padding="lg" className="animate-pulse">
+                  <div className="space-y-4">
+                    <div className="h-4 w-32 rounded-full bg-muted/70" />
+                    <div className="h-6 w-44 rounded-full bg-muted/70" />
+                    <div className="h-20 rounded-2xl bg-muted/70" />
+                  </div>
+                </DSCard>
+              ))}
+            </div>
+          ) : lotteryFulfillmentEntries.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {lotteryFulfillmentEntries.map((item) => (
+                <DSCard key={`${item.drawingMonth}-${item.drawingYear}-${item.prizeTitle || "fulfillment"}-${item.createdAt || item.updatedAt}`} padding="md" elevated className="flex min-h-[260px] flex-col">
                   <div className="flex h-full flex-col gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border bg-background/70">
-                        <Icon className="h-5 w-5 text-muted-foreground" />
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          Fulfillment
+                        </p>
+                        <h3 className="mt-1 text-lg font-semibold tracking-tight">
+                          {formatMonthYear(item.drawingMonth, item.drawingYear)}
+                        </h3>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap gap-2">
-                          <DSStatusChip tone="neutral" size="sm">
-                            Coming soon
-                          </DSStatusChip>
-                          <DSStatusChip tone="info" size="sm">
-                            Driver view
-                          </DSStatusChip>
-                        </div>
-                        <h3 className="mt-3 text-xl font-semibold tracking-tight">{section.title}</h3>
+                      <div className="flex flex-wrap gap-2">
+                        <DSStatusChip tone={getFulfillmentTone(item.fulfillmentStatus)} size="sm">
+                          {item.fulfillmentStatus}
+                        </DSStatusChip>
+                        <DSStatusChip tone={item.trackingStatus === "fulfilled" ? "success" : item.trackingStatus === "issue" ? "warning" : item.trackingStatus === "in_progress" ? "info" : "neutral"} size="sm">
+                          {item.trackingStatus}
+                        </DSStatusChip>
                       </div>
                     </div>
 
-                    <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                      {section.description}
-                    </p>
+                    <div className="rounded-2xl border border-border bg-background/70 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Prize</p>
+                      <p className="mt-1 text-sm font-medium">{item.prizeTitle || "—"}</p>
+                      {item.prizeDescription ? (
+                        <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">
+                          {item.prizeDescription}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Fulfilled
+                        </p>
+                        <p className="mt-1 font-medium">{formatDate(item.fulfilledAt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Canceled
+                        </p>
+                        <p className="mt-1 font-medium">{formatDate(item.canceledAt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Issue Reported
+                        </p>
+                        <p className="mt-1 font-medium">{formatDate(item.issueReportedAt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Updated
+                        </p>
+                        <p className="mt-1 font-medium">{formatRelative(item.updatedAt)}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto rounded-2xl border border-border bg-background/70 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Created
+                      </p>
+                      <p className="mt-1 text-sm font-medium">{formatDate(item.createdAt)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Coarse tracking only. No carrier reference or internal notes shown.
+                      </p>
+                    </div>
                   </div>
                 </DSCard>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <DSCard padding="lg">
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">No fulfillment updates yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    When a prize is fulfilled or updated, the safe fulfillment status will appear here.
+                  </p>
+                </div>
+                <DSStatusChip tone="neutral">Waiting for fulfillment</DSStatusChip>
+              </div>
+            </DSCard>
+          )}
         </div>
       </main>
 

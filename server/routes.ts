@@ -10615,6 +10615,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/drivers/lottery-fulfillment-history', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'driver') {
+        return res.status(403).json({ message: "Driver access required" });
+      }
+
+      const driver = await storage.getDriver(user.id);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver profile not found" });
+      }
+
+      const fulfillments = await storage.getDriverLotteryFulfillments(driver.id);
+      res.json(fulfillments);
+    } catch (error: any) {
+      console.error("Error fetching driver lottery fulfillment history:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch lottery fulfillment history" });
+    }
+  });
+
   // Alias for driver-owned lottery entries
   app.get('/api/lottery/entries', isAuthenticated, async (req: any, res) => {
     try {

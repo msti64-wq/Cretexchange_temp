@@ -522,6 +522,7 @@ export interface IStorage {
   getLotteryDrawingWinners(drawingId: string): Promise<any[]>;
   getLotteryDrawingHistoryWithWinners(): Promise<any[]>;
   getDriverLotteryHistory(driverId: string): Promise<any[]>;
+  getDriverLotteryFulfillments(driverId: string): Promise<any[]>;
   createLotteryDrawingFulfillments(
     fulfillments: InsertLotteryDrawingFulfillment[],
     tx?: any,
@@ -7390,6 +7391,50 @@ export class DatabaseStorage implements IStorage {
       const right = b.drawingDate ? new Date(b.drawingDate).getTime() : 0;
       return right - left;
     });
+  }
+
+  async getDriverLotteryFulfillments(driverId: string): Promise<any[]> {
+    const results = await db
+      .select({
+        fulfillment: lotteryDrawingFulfillments,
+        drawing: lotteryDrawings,
+      })
+      .from(lotteryDrawingFulfillments)
+      .innerJoin(lotteryDrawingWinners, eq(lotteryDrawingFulfillments.lotteryDrawingWinnerId, lotteryDrawingWinners.id))
+      .innerJoin(lotteryDrawings, eq(lotteryDrawingFulfillments.lotteryDrawingId, lotteryDrawings.id))
+      .where(eq(lotteryDrawingFulfillments.driverId, driverId))
+      .orderBy(desc(lotteryDrawingFulfillments.updatedAt), desc(lotteryDrawingFulfillments.createdAt));
+
+    const resolveTrackingStatus = (fulfillment: typeof lotteryDrawingFulfillments.$inferSelect) => {
+      const status = fulfillment.fulfillmentStatus;
+      if (status === "canceled" || fulfillment.canceledAt) {
+        return "canceled";
+      }
+      if (status === "issue" || fulfillment.issueReportedAt) {
+        return "issue";
+      }
+      if (status === "delivered" || status === "picked_up" || fulfillment.fulfilledAt) {
+        return "fulfilled";
+      }
+      if (status === "ordered" || status === "purchased" || status === "shipped") {
+        return "in_progress";
+      }
+      return "pending";
+    };
+
+    return results.map((row: any) => ({
+      drawingMonth: row.fulfillment.drawingMonth,
+      drawingYear: row.fulfillment.drawingYear,
+      prizeTitle: row.fulfillment.prizeTitleSnapshot,
+      prizeDescription: row.fulfillment.prizeDescriptionSnapshot || null,
+      fulfillmentStatus: row.fulfillment.fulfillmentStatus,
+      trackingStatus: resolveTrackingStatus(row.fulfillment),
+      fulfilledAt: row.fulfillment.fulfilledAt || null,
+      canceledAt: row.fulfillment.canceledAt || null,
+      issueReportedAt: row.fulfillment.issueReportedAt || null,
+      createdAt: row.fulfillment.createdAt,
+      updatedAt: row.fulfillment.updatedAt,
+    }));
   }
 
   async createLotteryDrawingFulfillments(
