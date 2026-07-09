@@ -4,7 +4,6 @@ import { useLocation } from "wouter";
 import {
   ArrowRight,
   Bell,
-  BookOpen,
   Clock3,
   History,
   Home,
@@ -77,24 +76,18 @@ const quickLinks = [
   { label: "Profile", path: "/profile", icon: User },
 ];
 
-const placeholderSections = [
+const futureSections = [
   {
     title: "Drawing History",
     description:
-      "Monthly drawing results, winner records, and prize states will appear here once the driver history view is connected.",
+      "Monthly drawing results, winner records, and prize states will appear here once the driver-safe history view is connected.",
     icon: Trophy,
   },
   {
-    title: "Prize Fulfillment",
+    title: "Prize Fulfillment Status",
     description:
-      "Delivery progress, fulfillment status, and follow-up notes will live here when the driver-facing fulfillment view is available.",
+      "Delivery progress, fulfillment status, and follow-up notes require a future driver-safe read path.",
     icon: History,
-  },
-  {
-    title: "Future Insights",
-    description:
-      "Ticket trends, preferred locations, and reward performance insights are reserved for a later reporting pass.",
-    icon: BookOpen,
   },
 ];
 
@@ -154,12 +147,12 @@ export default function DriverRewards() {
     };
   }, []);
 
-  const { data: dashboardData } = useQuery<any>({
+  const { data: dashboardData, isLoading: dashboardLoading } = useQuery<any>({
     queryKey: ["/api/drivers/dashboard"],
     refetchInterval: 30000,
   });
 
-  const { data: lotteryStatusData } = useQuery<any>({
+  const { data: lotteryStatusData, isLoading: lotteryStatusLoading } = useQuery<any>({
     queryKey: ["/api/lottery/status"],
     refetchInterval: 30000,
   });
@@ -169,12 +162,12 @@ export default function DriverRewards() {
     refetchInterval: 60000,
   });
 
-  const { data: notificationsData } = useQuery<RewardNotification[]>({
+  const { data: notificationsData, isLoading: notificationsLoading } = useQuery<RewardNotification[]>({
     queryKey: ["/api/notifications"],
     refetchInterval: 30000,
   });
 
-  const { data: unreadData } = useQuery<any>({
+  const { data: unreadData, isLoading: unreadLoading } = useQuery<any>({
     queryKey: ["/api/notifications/unread"],
     refetchInterval: 30000,
   });
@@ -227,6 +220,17 @@ export default function DriverRewards() {
 
   const rewardUpdateCount = rewardNotifications.length;
   const ticketEntries = Array.isArray(lotteryEntriesData) ? lotteryEntriesData : [];
+  const rewardSummaryLoading = dashboardLoading || lotteryStatusLoading;
+  const rewardNotificationsLoading = notificationsLoading || unreadLoading;
+  const drawingLabel =
+    currentDrawing?.monthName
+      ? `${currentDrawing.monthName} ${currentDrawing.lotteryYear}`
+      : currentDrawing?.lotteryMonth && currentDrawing?.lotteryYear
+        ? formatMonthYear(currentDrawing.lotteryMonth, currentDrawing.lotteryYear)
+        : null;
+  const drawingPrizes = [currentDrawing?.firstPrize, currentDrawing?.secondPrize, currentDrawing?.thirdPrize].filter(
+    Boolean,
+  );
 
   return (
     <div className="dark min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-24 text-foreground">
@@ -257,13 +261,17 @@ export default function DriverRewards() {
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="min-w-0 rounded-2xl border border-border bg-background/70 p-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Current Entries
                   </div>
                   <div className="mt-2 text-2xl font-semibold tracking-tight">
-                    {currentEntries.toLocaleString()}
+                    {rewardSummaryLoading ? (
+                      <span className="inline-block h-8 w-20 animate-pulse rounded bg-muted/70" />
+                    ) : (
+                      currentEntries.toLocaleString()
+                    )}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">This month’s driver ticket count</div>
                 </div>
@@ -272,39 +280,46 @@ export default function DriverRewards() {
                     Lifetime Entries
                   </div>
                   <div className="mt-2 text-2xl font-semibold tracking-tight">
-                    {lifetimeEntries.toLocaleString()}
+                    {rewardSummaryLoading ? (
+                      <span className="inline-block h-8 w-20 animate-pulse rounded bg-muted/70" />
+                    ) : (
+                      lifetimeEntries.toLocaleString()
+                    )}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">All earned tickets on this account</div>
                 </div>
                 <div className="min-w-0 rounded-2xl border border-border bg-background/70 p-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Next Drawing
+                    Current Drawing
                   </div>
                   <div className="mt-2 text-base font-semibold leading-6">
-                    {nextDrawingValue || "Awaiting drawing"}
+                    {rewardSummaryLoading ? (
+                      <span className="inline-block h-6 w-28 animate-pulse rounded bg-muted/70" />
+                    ) : (
+                      drawingLabel || "Awaiting drawing"
+                    )}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {lotteryStatusData?.currentDrawingMessage || "No current drawing details available."}
+                    {rewardSummaryLoading
+                      ? "Loading current drawing state..."
+                      : lotteryStatusData?.currentDrawingMessage || "No current drawing details available."}
                   </div>
                 </div>
                 <div className="min-w-0 rounded-2xl border border-border bg-background/70 p-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Current Prize
+                    Reward Notifications
                   </div>
-                  <div className="mt-2 text-base font-semibold leading-6">
-                    {currentPrize || "TBD"}
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">Top prize shown from the current drawing</div>
-                </div>
-                <div className="min-w-0 rounded-2xl border border-border bg-background/70 p-3">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Eligible Status
-                  </div>
-                  <div className="mt-2 text-base font-semibold leading-6">
-                    {eligible ? "Eligible" : "Paused"}
+                  <div className="mt-2 text-2xl font-semibold tracking-tight">
+                    {rewardNotificationsLoading ? (
+                      <span className="inline-block h-8 w-16 animate-pulse rounded bg-muted/70" />
+                    ) : (
+                      rewardUnreadCount.toLocaleString()
+                    )}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {eligible ? "Reward program is active" : "Reward program is temporarily disabled"}
+                    {rewardNotificationsLoading
+                      ? "Loading reward notifications..."
+                      : `${rewardUpdateCount} recent reward-related message${rewardUpdateCount === 1 ? "" : "s"}`}
                   </div>
                 </div>
               </div>
@@ -357,11 +372,93 @@ export default function DriverRewards() {
 
         <div className="space-y-3">
           <DSSectionHeader
-            eyebrow="Summary"
-            title="Reward KPI cards"
-            description="A concise snapshot of entries, eligibility, and recent reward updates."
+            eyebrow="Current"
+            title="Current drawing"
+            description="The live lottery snapshot comes from the shared reward status feed and stays driver-safe."
           />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+
+          <DSCard padding="lg">
+            {rewardSummaryLoading ? (
+              <div className="space-y-4">
+                <div className="h-4 w-40 animate-pulse rounded bg-muted/70" />
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div key={index} className="rounded-2xl border border-border bg-background/70 p-3">
+                      <div className="h-3 w-24 animate-pulse rounded bg-muted/70" />
+                      <div className="mt-3 h-6 w-28 animate-pulse rounded bg-muted/70" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : currentDrawing ? (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Drawing Period
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                      {drawingLabel || "Current drawing"}
+                    </h2>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+                      {lotteryStatusData?.currentDrawingMessage ||
+                        "Current drawing details are available from the shared lottery status feed."}
+                    </p>
+                  </div>
+                  <DSStatusChip tone={eligible ? "success" : "warning"}>
+                    {eligible ? "Eligible" : "Paused"}
+                  </DSStatusChip>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-2xl border border-border bg-background/70 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current Entries</p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight">{currentEntries.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-background/70 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top Prize</p>
+                    <p className="mt-2 text-base font-semibold leading-6">{currentPrize || "TBD"}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-background/70 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Reward Status</p>
+                    <p className="mt-2 text-base font-semibold leading-6">
+                      {eligible ? "Reward program active" : "Reward program paused"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-background/70 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Prize Tiers</p>
+                    <p className="mt-2 text-base font-semibold leading-6">
+                      {drawingPrizes.length > 0
+                        ? `${drawingPrizes.length} prize${drawingPrizes.length === 1 ? "" : "s"} published`
+                        : "No prizes published"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-border bg-background/70 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">When</p>
+                  <p className="mt-1 text-sm font-medium">{nextDrawingValue || "Awaiting drawing"}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-border bg-background/70 p-4">
+                <p className="text-sm font-medium">No current drawing details available</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  The driver rewards page will show the active drawing once it is published in the shared lottery
+                  status feed.
+                </p>
+              </div>
+            )}
+          </DSCard>
+        </div>
+
+        <div className="space-y-3">
+          <DSSectionHeader
+            eyebrow="Summary"
+            title="Rewards summary"
+            description="A concise snapshot of entries, current drawing state, and reward notifications."
+          />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <DSKpiCard
               label="Current Month Entries"
               value={currentEntries.toLocaleString()}
@@ -375,16 +472,22 @@ export default function DriverRewards() {
               accentTone="info"
             />
             <DSKpiCard
+              label="Current Drawing"
+              value={drawingLabel || "Pending"}
+              detail={currentPrize || "Top prize not published yet"}
+              accentTone="accent"
+            />
+            <DSKpiCard
+              label="Reward Notifications"
+              value={rewardUnreadCount.toLocaleString()}
+              detail={`${rewardUpdateCount} recent reward-related message${rewardUpdateCount === 1 ? "" : "s"}`}
+              accentTone="warning"
+            />
+            <DSKpiCard
               label="Eligible"
               value={eligible ? "Yes" : "No"}
               detail={eligible ? "Reward program is active" : "Reward program is paused"}
               accentTone={eligible ? "success" : "warning"}
-            />
-            <DSKpiCard
-              label="Reward Updates"
-              value={rewardUnreadCount.toLocaleString()}
-              detail={`${rewardUpdateCount} recent reward-related message${rewardUpdateCount === 1 ? "" : "s"}`}
-              accentTone="warning"
             />
           </div>
         </div>
@@ -392,7 +495,7 @@ export default function DriverRewards() {
         <div className="space-y-3">
           <DSSectionHeader
             eyebrow="Attention"
-            title="Reward updates"
+            title="Reward notifications"
             description="Recent reward-related notifications pulled from the message feed."
             actions={
               <Button
@@ -407,7 +510,19 @@ export default function DriverRewards() {
             }
           />
 
-          {rewardNotifications.length > 0 ? (
+          {rewardNotificationsLoading ? (
+            <div className="grid gap-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <DSCard key={index} padding="md">
+                  <div className="space-y-3">
+                    <div className="h-4 w-28 animate-pulse rounded bg-muted/70" />
+                    <div className="h-4 w-full animate-pulse rounded bg-muted/70" />
+                    <div className="h-4 w-4/5 animate-pulse rounded bg-muted/70" />
+                  </div>
+                </DSCard>
+              ))}
+            </div>
+          ) : rewardNotifications.length > 0 ? (
             <div className="grid gap-3">
               {rewardNotifications.map((notification) => (
                 <DSCard key={notification.id} padding="md">
@@ -551,11 +666,11 @@ export default function DriverRewards() {
         <div className="space-y-3">
           <DSSectionHeader
             eyebrow="Reserved"
-            title="Coming soon sections"
-            description="These cards reserve room for reward history and future analytics without introducing new business logic."
+            title="Driver-safe future sections"
+            description="These cards reserve room for reward history and fulfillment data without touching admin-only routes."
           />
           <div className="grid gap-4 lg:grid-cols-3">
-            {placeholderSections.map((section) => {
+            {futureSections.map((section) => {
               const Icon = section.icon;
 
               return (
