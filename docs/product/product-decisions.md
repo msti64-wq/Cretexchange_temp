@@ -280,3 +280,17 @@
 - Architecture, implementation, and documentation should reference CTX-STD-001 when making platform-wide decisions.
 - New features should validate compliance with CTX-STD-001 before implementation.
 - Standards updates should be documented before platform behavior changes when practical.
+
+## PD-034 - Sprint 2.1 Driver Experience and Operational Intelligence
+
+**Decision:** Sprint 2.1 will prioritize Driver Rewards, Driver Dashboard Intelligence, and the foundation for Owner/Admin operational intelligence while reusing existing platform infrastructure wherever possible.
+
+**Rationale:** The platform already contains wallet, rewards, location, GPS, notification, and Stripe foundations. Sprint 2.1 should turn these into a more useful driver-facing operational experience before adding complex new backend systems.
+
+**Status:** Active
+
+**Implications:**
+
+- Sprint planning should prioritize driver-facing operational intelligence features.
+- Existing rewards, wallet, notification, GPS, location, and Stripe infrastructure should be reused wherever practical.
+- New Sprint 2.1 implementation tasks should avoid duplicate business logic and update documentation as appropriate.
