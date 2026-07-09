@@ -252,3 +252,17 @@
 - Admin workflows and dashboard KPIs should reference the canonical admin operations architecture.
 - New admin-facing features should update CTX-ARCH-004 before implementation.
 - Admin configuration, reconciliation, and oversight changes should preserve auditability and architectural separation between operational and financial concerns.
+
+## PD-032 - Material Management Architecture
+
+**Decision:** The Material Management Architecture (CTX-ARCH-005) governs all material definitions, financial direction, settlement models, platform revenue, capacity, and operational behavior.
+
+**Rationale:** Material handling must remain configuration-driven, auditable, and extensible as the platform grows beyond concrete washout into broader material exchange use cases.
+
+**Status:** Active
+
+**Implications:**
+
+- Material definitions and behavior should reference the canonical material management architecture.
+- New material-facing capabilities should update CTX-ARCH-005 before implementation.
+- Material configuration, pricing, and settlement changes should preserve extensibility and clear ownership of financial direction.
