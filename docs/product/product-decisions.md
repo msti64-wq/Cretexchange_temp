@@ -266,3 +266,17 @@
 - Material definitions and behavior should reference the canonical material management architecture.
 - New material-facing capabilities should update CTX-ARCH-005 before implementation.
 - Material configuration, pricing, and settlement changes should preserve extensibility and clear ownership of financial direction.
+
+## PD-033 - CreteXchange Platform Standards
+
+**Decision:** CTX-STD-001 establishes the mandatory engineering and governance standards for all future development. All architecture documents, runtime implementations, and documentation shall conform to this standard.
+
+**Rationale:** A single platform standard ensures consistent decision-making across architecture, implementation, documentation, security, financial behavior, and extensibility.
+
+**Status:** Active
+
+**Implications:**
+
+- Architecture, implementation, and documentation should reference CTX-STD-001 when making platform-wide decisions.
+- New features should validate compliance with CTX-STD-001 before implementation.
+- Standards updates should be documented before platform behavior changes when practical.
