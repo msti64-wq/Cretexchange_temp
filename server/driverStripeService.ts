@@ -163,6 +163,175 @@ export type DriverStripeOnboardingResolution = DriverStripeAccountResolution & {
   supportRequired: boolean;
 };
 
+export type DriverStripeOnboardingDecision = {
+  action: "reuse" | "create" | "blocked";
+  user: User;
+  driver: Driver;
+  resolution: DriverStripeOnboardingResolution;
+};
+
+export function buildDriverStripeStatusApiResponse(status: CanonicalDriverStripeStatus) {
+  const requirementsDue = [...status.requirementsDue];
+  const requirementsPastDue = [...status.requirementsPastDue];
+  const compatibilityStatus = status.status === "payout_ready" ? "payouts_ready" : status.status;
+
+  return {
+    // Canonical fields. New consumers should use these names and status values.
+    ...status,
+    canonicalStatus: status.status,
+
+    // Compatibility-only aliases retained until the Phase 3 frontend migration.
+    compatibilityStatus,
+    connectedAccountIdExists: status.accountIdPresent,
+    detailsSubmitted: status.detailsSubmitted,
+    details_submitted: status.detailsSubmitted,
+    payoutsEnabled: status.payoutsEnabled,
+    payouts_enabled: status.payoutsEnabled,
+    chargesEnabled: status.chargesEnabled,
+    charges_enabled: status.chargesEnabled,
+    transfersActive: status.transfersActive,
+    requirementsCurrentlyDue: requirementsDue,
+    requirementsPastDue,
+    currentlyDue: requirementsDue,
+    pastDue: requirementsPastDue,
+    requirements: {
+      currently_due: requirementsDue,
+      past_due: requirementsPastDue,
+    },
+    isVerified: status.payoutReady === true,
+    hasBlockingRequirements: requirementsDue.length > 0 || requirementsPastDue.length > 0,
+    stripeStatusUnavailable: status.status === "status_unavailable",
+  };
+}
+
+export function buildLegacyDriverStripeAccountStatusResponse(status: CanonicalDriverStripeStatus) {
+  const legacyStatus = status.status === "payout_ready"
+    ? "active"
+    : status.status === "not_started"
+      ? "no_account"
+      : status.status === "setup_started"
+        ? "incomplete"
+        : status.status === "action_required"
+          ? "pending"
+          : status.status === "account_conflict"
+            ? "conflict"
+            : "unavailable";
+
+  return {
+    hasConnectedAccount: status.hasAccount,
+    status: legacyStatus,
+    canonicalStatus: status.status,
+    accountIdPresent: status.accountIdPresent,
+    onboardingComplete: status.onboardingComplete,
+    payoutReady: status.payoutReady,
+    actionRequired: status.actionRequired,
+    chargesEnabled: status.chargesEnabled,
+    payoutsEnabled: status.payoutsEnabled,
+    detailsSubmitted: status.detailsSubmitted,
+    transfersActive: status.transfersActive,
+    bankAccountPresent: status.bankAccountPresent,
+    requirementsCurrentlyDue: [...status.requirementsDue],
+    requirementsPastDue: [...status.requirementsPastDue],
+    requirementsEventuallyDue: [],
+    disabled: status.errorState?.code || null,
+    errorState: status.errorState,
+    lastStatusCheck: status.lastStatusCheck,
+  };
+}
+
+export function buildDriverColumnStatusResponse(
+  status: CanonicalDriverStripeStatus,
+  stripeTreasuryAccountId: string | null | undefined,
+) {
+  const treasuryAccountId = stripeTreasuryAccountId?.trim() || null;
+  return {
+    // Legacy compatibility: this means Connect payout readiness for drivers.
+    isOnboarded: status.payoutReady === true,
+    entityId: null,
+    bankAccountId: treasuryAccountId,
+    accountLast4: null,
+    requiresSetup: !treasuryAccountId,
+    stripeStatus: status.status,
+    stripePayoutReady: status.payoutReady,
+    stripeAccountPresent: status.hasAccount,
+    treasuryAccountPresent: Boolean(treasuryAccountId),
+    errorState: status.errorState,
+  };
+}
+
+export function getDriverStripeOnboardingHttpStatus(errorCode: DriverStripeErrorCode | null | undefined): number {
+  switch (errorCode) {
+    case "STRIPE_ACCOUNT_CONFLICT":
+    case "STRIPE_ACCOUNT_MATCH_AMBIGUOUS":
+      return 409;
+    case "STRIPE_ACCOUNT_INVALID":
+    case "STRIPE_ACCOUNT_NOT_FOUND":
+    case "STRIPE_ACCOUNT_IDENTITY_MISMATCH":
+    case "STRIPE_ACCOUNT_IDENTITY_UNVERIFIED":
+      return 422;
+    case "STRIPE_DISCOVERY_UNAVAILABLE":
+    case "STRIPE_STATUS_UNAVAILABLE":
+      return 503;
+    default:
+      return 409;
+  }
+}
+
+export async function coordinateDriverStripeOnboarding(params: {
+  user: User;
+  driver: Driver;
+  resolve: (user: User, driver: Driver) => Promise<DriverStripeOnboardingResolution>;
+  beforeFinalResolution?: () => Promise<void>;
+  reload: () => Promise<{ user: User; driver: Driver } | null>;
+}): Promise<DriverStripeOnboardingDecision> {
+  const decide = (user: User, driver: Driver, resolution: DriverStripeOnboardingResolution): DriverStripeOnboardingDecision => {
+    if (resolution.validationResult === "valid" && resolution.accountId) {
+      return { action: "reuse", user, driver, resolution };
+    }
+    if (resolution.safeToCreateAccount && resolution.discoveryOutcome === "no_matches") {
+      return { action: "create", user, driver, resolution };
+    }
+    return { action: "blocked", user, driver, resolution };
+  };
+
+  const initialDecision = decide(params.user, params.driver, await params.resolve(params.user, params.driver));
+  if (initialDecision.action !== "create") {
+    return initialDecision;
+  }
+
+  // Complete any non-Stripe prerequisites before the final race-sensitive check.
+  await params.beforeFinalResolution?.();
+
+  // Creation requires a final database re-read and a second complete resolution.
+  // A concurrent local or external candidate changes this decision to reuse/block.
+  const freshIdentity = await params.reload();
+  if (!freshIdentity) {
+    return {
+      ...initialDecision,
+      action: "blocked",
+      resolution: {
+        ...initialDecision.resolution,
+        safeToCreateAccount: false,
+        supportRequired: true,
+        discoveryOutcome: "discovery_unavailable",
+        status: "status_unavailable",
+        validationResult: "unavailable",
+        errorState: {
+          code: "STRIPE_DISCOVERY_UNAVAILABLE",
+          retryable: true,
+          supportRequired: true,
+        },
+      },
+    };
+  }
+
+  return decide(
+    freshIdentity.user,
+    freshIdentity.driver,
+    await params.resolve(freshIdentity.user, freshIdentity.driver),
+  );
+}
+
 function normalizeAccountId(value: string | null | undefined): string | null {
   const normalized = value?.trim();
   return normalized ? normalized : null;

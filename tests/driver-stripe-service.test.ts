@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import type { Driver, User } from "../shared/schema";
 import {
+  buildDriverColumnStatusResponse,
+  buildDriverStripeStatusApiResponse,
+  buildLegacyDriverStripeAccountStatusResponse,
+  coordinateDriverStripeOnboarding,
   createDriverStripeService,
+  getDriverStripeOnboardingHttpStatus,
   type DriverStripeAccountSnapshot,
   type DriverStripeReconciliationField,
 } from "../server/driverStripeService";
@@ -218,6 +223,48 @@ test("charges disabled does not block payout readiness", async () => {
   });
   assert.equal(result.status, "payout_ready");
   assert.equal(result.chargesEnabled, false);
+});
+
+test("canonical API response retains documented compatibility aliases", async () => {
+  const fixture = serviceFor(stripeAccount({ charges_enabled: false }));
+  const status = await fixture.service.getDriverStripeStatus({
+    user: user({ stripeConnectAccountId: "acct_ready" }), driver: driver(), source: "test",
+  });
+  const response = buildDriverStripeStatusApiResponse(status);
+  assert.equal(response.status, "payout_ready");
+  assert.equal(response.canonicalStatus, "payout_ready");
+  assert.equal(response.compatibilityStatus, "payouts_ready");
+  assert.equal(response.payouts_enabled, true);
+  assert.equal(response.charges_enabled, false);
+});
+
+test("legacy account-status adapter uses payout readiness without charges", async () => {
+  const fixture = serviceFor(stripeAccount({ charges_enabled: false }));
+  const status = await fixture.service.getDriverStripeStatus({
+    user: user({ stripeConnectAccountId: "acct_ready" }), driver: driver(), source: "test",
+  });
+  const response = buildLegacyDriverStripeAccountStatusResponse(status);
+  assert.equal(response.status, "active");
+  assert.equal(response.canonicalStatus, "payout_ready");
+  assert.equal(response.chargesEnabled, false);
+});
+
+test("Column adapter keeps Connect readiness separate from Treasury presence", async () => {
+  const fixture = serviceFor(stripeAccount({ charges_enabled: false }));
+  const status = await fixture.service.getDriverStripeStatus({
+    user: user({ stripeConnectAccountId: "acct_ready" }), driver: driver(), source: "test",
+  });
+  const response = buildDriverColumnStatusResponse(status, null);
+  assert.equal(response.isOnboarded, true);
+  assert.equal(response.stripePayoutReady, true);
+  assert.equal(response.treasuryAccountPresent, false);
+  assert.equal(response.requiresSetup, true);
+});
+
+test("onboarding HTTP status mapping distinguishes conflict, invalid, and unavailable", () => {
+  assert.equal(getDriverStripeOnboardingHttpStatus("STRIPE_ACCOUNT_CONFLICT"), 409);
+  assert.equal(getDriverStripeOnboardingHttpStatus("STRIPE_ACCOUNT_INVALID"), 422);
+  assert.equal(getDriverStripeOnboardingHttpStatus("STRIPE_DISCOVERY_UNAVAILABLE"), 503);
 });
 
 test("inactive transfers block payout readiness", async () => {
@@ -480,6 +527,68 @@ test("Stripe discovery unavailability blocks account creation", async () => {
   assert.equal(result.safeToCreateAccount, false);
 });
 
+test("final onboarding re-read reuses a concurrent verified candidate", async () => {
+  const fixture = serviceFor(stripeAccount(), { findAccountsByIdentity: async () => [] });
+  let resolveCalls = 0;
+  const decision = await coordinateDriverStripeOnboarding({
+    user: user(),
+    driver: driver(),
+    resolve: async (currentUser, currentDriver) => {
+      resolveCalls += 1;
+      return fixture.service.resolveDriverStripeAccountForOnboarding({
+        user: currentUser,
+        driver: currentDriver,
+        source: "test-final-reread",
+      });
+    },
+    reload: async () => ({
+      user: user({ stripeConnectAccountId: "acct_concurrent" }),
+      driver: driver(),
+    }),
+  });
+  assert.equal(resolveCalls, 2);
+  assert.equal(decision.action, "reuse");
+  assert.equal(decision.resolution.accountId, "acct_concurrent");
+});
+
+test("failed final onboarding re-read blocks a previously safe creation", async () => {
+  const fixture = serviceFor(stripeAccount(), { findAccountsByIdentity: async () => [] });
+  const decision = await coordinateDriverStripeOnboarding({
+    user: user(),
+    driver: driver(),
+    resolve: (currentUser, currentDriver) => fixture.service.resolveDriverStripeAccountForOnboarding({
+      user: currentUser,
+      driver: currentDriver,
+      source: "test-final-reread",
+    }),
+    reload: async () => null,
+  });
+  assert.equal(decision.action, "blocked");
+  assert.equal(decision.resolution.errorState?.code, "STRIPE_DISCOVERY_UNAVAILABLE");
+  assert.equal(decision.resolution.safeToCreateAccount, false);
+});
+
+test("creation prerequisites run before the final race-sensitive reread", async () => {
+  const fixture = serviceFor(stripeAccount(), { findAccountsByIdentity: async () => [] });
+  const events: string[] = [];
+  const decision = await coordinateDriverStripeOnboarding({
+    user: user(),
+    driver: driver(),
+    resolve: (currentUser, currentDriver) => fixture.service.resolveDriverStripeAccountForOnboarding({
+      user: currentUser,
+      driver: currentDriver,
+      source: "test-final-reread",
+    }),
+    beforeFinalResolution: async () => { events.push("prerequisite"); },
+    reload: async () => {
+      events.push("reload");
+      return { user: user(), driver: driver() };
+    },
+  });
+  assert.equal(decision.action, "create");
+  assert.deepEqual(events, ["prerequisite", "reload"]);
+});
+
 test("MD1 reconciliation writes only missing fields once and rejects later conflicts", async () => {
   const state: Record<DriverStripeReconciliationField, string | null> = {
     "users.stripeConnectAccountId": "acct_md1_existing",
@@ -518,6 +627,7 @@ test("MD1 reconciliation writes only missing fields once and rejects later confl
   });
   assert.equal(status.status, "payout_ready");
   assert.equal(status.chargesEnabled, false);
+  assert.equal(persistenceCalls, 0);
 
   const first = await fixture.service.executeDriverStripeReconciliation({
     user: md1User,
