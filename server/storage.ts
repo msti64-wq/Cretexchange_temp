@@ -161,6 +161,15 @@ export interface IStorage {
   updateUserPassword(userId: string, passwordHash: string): Promise<User>;
   updateUserStatus(userId: string, isActive: boolean): Promise<User | undefined>;
   updateUserStripeInfo(userId: string, stripeData: { stripeConnectAccountId?: string; stripeCustomerId?: string }): Promise<User>;
+  reconcileDriverStripeAccountIds(params: {
+    userId: string;
+    driverId: string;
+    expectedAccountId: string;
+  }): Promise<{
+    conflict: boolean;
+    updatedFields: Array<"users.stripeConnectAccountId" | "drivers.stripeConnectAccountId" | "drivers.connectedAccountId">;
+    currentValues?: Record<string, string | null>;
+  }>;
 
   // Password reset operations
   createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
@@ -692,6 +701,80 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async reconcileDriverStripeAccountIds(params: {
+    userId: string;
+    driverId: string;
+    expectedAccountId: string;
+  }): Promise<{
+    conflict: boolean;
+    updatedFields: Array<"users.stripeConnectAccountId" | "drivers.stripeConnectAccountId" | "drivers.connectedAccountId">;
+    currentValues?: Record<string, string | null>;
+  }> {
+    const expectedAccountId = params.expectedAccountId.trim();
+    if (!expectedAccountId) {
+      throw new Error("Expected Stripe account ID is required for reconciliation");
+    }
+
+    return await db.transaction(async (tx) => {
+      const [currentUser] = await tx
+        .select({ id: users.id, stripeConnectAccountId: users.stripeConnectAccountId })
+        .from(users)
+        .where(eq(users.id, params.userId))
+        .for("update");
+      const [currentDriver] = await tx
+        .select({
+          id: drivers.id,
+          userId: drivers.userId,
+          stripeConnectAccountId: drivers.stripeConnectAccountId,
+          connectedAccountId: drivers.connectedAccountId,
+        })
+        .from(drivers)
+        .where(eq(drivers.id, params.driverId))
+        .for("update");
+
+      if (!currentUser || !currentDriver || currentDriver.userId !== currentUser.id) {
+        return { conflict: true, updatedFields: [] };
+      }
+
+      const currentValues = {
+        "users.stripeConnectAccountId": currentUser.stripeConnectAccountId,
+        "drivers.stripeConnectAccountId": currentDriver.stripeConnectAccountId,
+        "drivers.connectedAccountId": currentDriver.connectedAccountId,
+      };
+      const normalizedValues = Object.values(currentValues)
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value));
+      if (normalizedValues.some((value) => value !== expectedAccountId)) {
+        return { conflict: true, updatedFields: [], currentValues };
+      }
+
+      const updatedFields: Array<"users.stripeConnectAccountId" | "drivers.stripeConnectAccountId" | "drivers.connectedAccountId"> = [];
+      if (!currentUser.stripeConnectAccountId?.trim()) {
+        await tx
+          .update(users)
+          .set({ stripeConnectAccountId: expectedAccountId, updatedAt: new Date() })
+          .where(eq(users.id, currentUser.id));
+        updatedFields.push("users.stripeConnectAccountId");
+      }
+
+      const driverUpdates: { stripeConnectAccountId?: string; connectedAccountId?: string; updatedAt?: Date } = {};
+      if (!currentDriver.stripeConnectAccountId?.trim()) {
+        driverUpdates.stripeConnectAccountId = expectedAccountId;
+        updatedFields.push("drivers.stripeConnectAccountId");
+      }
+      if (!currentDriver.connectedAccountId?.trim()) {
+        driverUpdates.connectedAccountId = expectedAccountId;
+        updatedFields.push("drivers.connectedAccountId");
+      }
+      if (driverUpdates.stripeConnectAccountId || driverUpdates.connectedAccountId) {
+        driverUpdates.updatedAt = new Date();
+        await tx.update(drivers).set(driverUpdates).where(eq(drivers.id, currentDriver.id));
+      }
+
+      return { conflict: false, updatedFields, currentValues };
+    });
   }
 
   // Password reset operations
