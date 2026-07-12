@@ -2,16 +2,21 @@
 
 This document is the onboarding summary for CreteXchange. It helps a new developer, AI assistant, or Codex session understand the current project state quickly, but it does not replace the authoritative architecture, standards, product, or protocol documents.
 
-[Platform Vision](../vision/platform-vision.md) defines the long-term strategic direction.
+[Platform Vision](../vision/platform-vision.md) defines why CreteXchange exists.
+[Platform Strategy](../vision/platform-strategy.md) defines the authoritative long-term strategic roadmap.
 [Project Context](./project-context.md) defines the current implementation state.
+[Business Model](../business/business-model.md) describes current and possible future business models without changing implementation.
+[Customer Value Framework](../business/customer-value-framework.md) guides customer and value analysis for significant proposals.
+[Investment Thesis](../business/investment-thesis.md) presents a qualified strategic narrative for external and internal audiences.
+[Research Program](../research/README.md) defines proposed research, validation, and grant-readiness work without changing current implementation.
 
 ## 1. Project Summary
 
 CreteXchange is a configurable construction and industrial materials exchange platform connecting drivers, contractors, yard owners, recycling facilities, disposal sites, and future material recovery partners.
 
-The platform began with concrete washout workflows and is expanding into broader material recovery and recycling operations.
+The current production foundation began with concrete washout workflows. Broader material recovery and recycling operations are strategic direction or approved roadmap work only where explicitly identified by current Product Decisions and sprint documents.
 
-## 2. Product Vision
+## 2. Current Product Direction
 
 CreteXchange is being built as:
 
@@ -24,33 +29,45 @@ CreteXchange is being built as:
 - a financially conservative reporting system
 - a scalable industrial recycling ecosystem
 
+These statements describe current product direction, not a claim that every broader marketplace or intelligence capability is implemented. Long-term evolution into the Construction Circular Economy Intelligence Platform is governed by Platform Strategy.
+
 ## 3. Current Phase
 
 - Phase 1 Financial Foundation and Dashboard Reconciliation is complete.
 - Governance Framework v1.0 is complete.
-- Phase 2 Owner Operations / Material Marketplace work is beginning.
+- Phase 2 is in progress.
+- Current sprint scope is defined by `docs/project/sprints/sprint-2.1.md` and remains separate from the long-term strategic roadmap.
 
 ## 4. Governing Documentation Hierarchy
 
 Authoritative order:
 
 1. `docs/vision/platform-vision.md`
-2. `docs/project/project-context.md` - canonical current-state summary within the hierarchy
-3. `docs/standards/cretexchange-platform-standards.md`
-4. CTX-ARCH documents
-5. `docs/product/product-decisions.md`
-6. `docs/product/data-strategy.md`
-7. `docs/development-protocol.md`
+2. `docs/vision/platform-strategy.md`
+3. `docs/project/project-context.md` - canonical current-state summary within the hierarchy
+4. `docs/standards/cretexchange-platform-standards.md`
+5. CTX-ARCH documents
+6. `docs/product/product-decisions.md`
+7. `docs/product/data-strategy.md`
+8. `docs/business/business-model.md` and related business documents
+9. `docs/development-protocol.md`
 
 This file is an onboarding guide, not the final authority when detailed architecture exists.
 
 Platform Vision is the strategic North Star.
+Platform Strategy is the authoritative long-term strategic roadmap.
 Project Context defines the current product and implementation state.
+Business documents guide business-model and customer-value evaluation but do not redefine the current state, override architecture, or authorize implementation.
 
 Related references:
 
 - `docs/vision/platform-vision.md`
+- `docs/vision/platform-strategy.md`
 - `docs/product/data-strategy.md`
+- `docs/business/business-model.md`
+- `docs/business/customer-value-framework.md`
+- `docs/business/investment-thesis.md`
+- `docs/research/README.md`
 - `docs/development-protocol.md`
 - `docs/standards/cretexchange-platform-standards.md`
 
@@ -154,59 +171,28 @@ Known caution:
 - driver wallet and Stripe payout behavior should be treated separately from activity earnings and receivables
 - historical bad financial rows may require reconciliation and should not be charged without review
 
-## 15. Phase 2 Sprint Roadmap
+## 15. Current Sprint Roadmap
 
-### Sprint 2.1 - Material Catalog Foundation
-- global material catalog
-- categories
-- units of measure
-- material attributes
-- financial direction
-- settlement model
-- platform fee policy
+The canonical active sprint document is `docs/project/sprints/sprint-2.1.md`.
 
-### Sprint 2.2 - Owner Material Configuration
-- owner selects accepted materials
-- owner defines incentives, acceptance fees, settlement method, instructions, restrictions, capacity
+Sprint 2.1 focuses on Driver Experience and Operational Intelligence while reusing existing production infrastructure. Its documented progression includes:
 
-### Sprint 2.3 - Location Material Configuration
-- per-location material availability
-- hours
-- capacity
-- temporary suspension
-- material-specific instructions
+- Driver Rewards Experience
+- Driver Dashboard Intelligence
+- Owner Operational Intelligence
+- Admin Intelligence Foundation
 
-### Sprint 2.4 - Driver Material Workflow
-- driver selects job type/material
-- eligible location matching
-- material-aware check-in
-- material-specific photo requirements
+This summary does not change sprint scope. Detailed milestones, exclusions, and validation requirements remain governed by the sprint document. Material Marketplace capabilities remain product direction and backlog unless separately approved.
 
-### Sprint 2.5 - Material-Aware Dashboards
-- owner material KPIs
-- driver material KPIs
-- admin material KPIs
-- reporting by material
+## 16. Future Strategic Direction
 
-## 16. Long-Term Vision
+Platform Strategy defines the directional progression from Verified Transactions through Verified Data, Operational Intelligence, a Recovered-Material Marketplace, Enterprise SaaS, Government Intelligence, and the future Construction Circular Economy Index. This progression is not an automatic sprint sequence and does not change the active Sprint 2.1 roadmap.
 
-CreteXchange may expand into:
+Those layers are strategic direction only. They do not represent current implementation, approved sprint work, commercial commitments, or available product capabilities.
 
-- quarries
-- landfills
-- transfer stations
-- recycling centers
-- aggregate plants
-- asphalt plants
-- municipal recycling
-- environmental cleanup
-- enterprise accounts
-- ERP integration
-- scale tickets
-- electronic manifests
-- AI material recommendations
-- capacity forecasting
-- regional marketplace analytics
+The staged [Long-Term Roadmap](../vision/long-term-roadmap.md), [Platform Definition](../vision/construction-circular-economy-intelligence-platform.md), and [Research Roadmap](../research/research-roadmap.md) provide supporting detail. Research plans are proposed work, not implemented models, scientific results, or production features.
+
+The current launch model remains unchanged: drivers locate participating facilities, document eligible drops, facilities verify eligible transactions, driver rewards and the current transaction workflow remain the immediate focus, and the current $5 platform fee applies per verified load drop under governing architecture and implemented rules.
 
 ## 17. Product Principles
 
@@ -236,11 +222,13 @@ CreteXchange may expand into:
 
 ## 19. New Chat Kickoff Prompt
 
-> We are continuing development of CreteXchange. Use `docs/project/project-context.md` as onboarding context and follow the documentation hierarchy. Before making recommendations or implementation plans, treat CTX-STD-001, the applicable CTX-ARCH documents, `docs/product/product-decisions.md`, and `docs/development-protocol.md` as authoritative. We are currently beginning Phase 2 material marketplace development.
+> We are continuing development of CreteXchange. Read Platform Vision for the enduring North Star, Platform Strategy for long-term direction, and Project Context for current implementation and sprint context. Follow CTX-STD-001, the applicable CTX-ARCH documents, Product Decisions, Data Strategy, relevant Business Architecture documents, and the Development Protocol. Do not treat future strategic capabilities as implemented or expand current sprint scope without approval.
 
 ## 20. Maintenance Rules
 
 - Update this document when project phase, sprint roadmap, or high-level product direction changes.
 - Do not duplicate detailed architecture.
+- Do not duplicate Platform Strategy; reference it for long-term direction.
+- Clearly distinguish current implementation from future strategy.
 - Link to authoritative documents instead.
 - Keep it concise enough for fast onboarding.

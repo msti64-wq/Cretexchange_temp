@@ -32,6 +32,18 @@ This section documents product direction, user-facing priorities, and the decisi
 - Competitive differentiation notes
 - Product glossary and shared terminology
 
+## Canonical References
+
+- [Product Decisions](./product-decisions.md)
+- [Data Strategy](./data-strategy.md)
+- [Platform Vision](../vision/platform-vision.md)
+- [Platform Strategy](../vision/platform-strategy.md)
+- [Long-Term Roadmap](../vision/long-term-roadmap.md)
+- [Business Architecture](../business/README.md)
+- [Research Program](../research/README.md)
+
+Vision, business, and research documents must distinguish current production, approved near-term scope, future strategy, and proposed research. Product notes do not authorize implementation outside approved sprint scope.
+
 ## Maintenance Note
 
 Keep product notes outcome-focused and user-facing. Record decisions here when they change how the product should behave or what users should expect.

@@ -44,4 +44,4 @@ Planned future areas:
 
 - [Volume 01 - Executive Overview](./VOLUME_01_EXECUTIVE_OVERVIEW.md)
 - [Volume 02 - Engineering Manual](./VOLUME_02_ENGINEERING_MANUAL.md)
-- [CreteXchange Development Protocol](../CRETEXCHANGE_DEVELOPMENT_PROTOCOL.md)
+- [CreteXchange Development Protocol](../development-protocol.md)

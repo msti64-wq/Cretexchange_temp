@@ -4,7 +4,7 @@
 
 Use the current development protocol as the operating standard for every session:
 
-- [CreteXchange Development Protocol](../CRETEXCHANGE_DEVELOPMENT_PROTOCOL.md)
+- [CreteXchange Development Protocol](../development-protocol.md)
 
 ## Repository Standards
 
@@ -112,4 +112,3 @@ Stop and verify before continuing when:
 ## Notes
 
 This manual describes current operational practice. It should be updated when the production repo, deployment flow, billing behavior, or design-system standards materially change.
-

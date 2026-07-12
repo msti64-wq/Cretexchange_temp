@@ -8,6 +8,8 @@
 **Effective Date:** July 2026  
 **Purpose:** Define the complete driver operational architecture, workflows, KPIs, dashboard behavior, location discovery model, check-in lifecycle, rewards model, wallet relationship, and future extensibility for all driver-facing functionality.
 
+**Strategic Context:** [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](../product/data-strategy.md), [Business Model](../business/business-model.md), and [Customer Value Framework](../business/customer-value-framework.md) provide long-term platform, data, and customer-value context. This document remains authoritative for driver implementation; these references do not redesign architecture or make future capabilities current functionality.
+
 ## 1. Purpose
 
 The driver portal is the field operations workspace for concrete, washout, and future material recovery drivers.

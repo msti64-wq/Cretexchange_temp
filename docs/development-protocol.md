@@ -6,9 +6,14 @@ The Development Protocol is the required execution workflow for every engineerin
 
 Governance is layered as follows:
 
+- Platform Vision defines why CreteXchange exists.
+- Platform Strategy defines long-term strategic direction.
+- Project Context defines current implementation and delivery context.
 - CTX-STD-001 governs engineering standards.
 - Architecture documents govern implementation.
 - Product Decisions govern business direction.
+- Data Strategy governs strategic data value and protection.
+- Business architecture guides customer-value and monetization evaluation without overriding standards or architecture.
 - ADRs govern technical decisions.
 - Business Rules govern operational behavior.
 
@@ -17,15 +22,21 @@ This protocol is the operational guide for how to work. It does not duplicate th
 ## Governance Hierarchy
 
 ```text
-docs/README.md
+Platform Vision
+↓
+Platform Strategy
+↓
+Project Context
 ↓
 CTX-STD-001 — CreteXchange Platform Standards
 ↓
-CTX-ARCH-001 through CTX-ARCH-005
-↓
-Architecture Decision Records
+Applicable CTX-ARCH Documents
 ↓
 Product Decisions
+↓
+Data Strategy
+↓
+Relevant Business Architecture Documents
 ↓
 Development Protocol
 ↓
@@ -33,6 +44,8 @@ Sprint Tasks
 ↓
 Implementation
 ```
+
+Applicable ADRs and Business Rules remain authoritative within their governed technical and operational domains and are discovered before implementation.
 
 ## Mandatory Codex Preflight Check
 
@@ -84,6 +97,7 @@ If verification fails, report the mismatch and wait for instructions.
 
 Before implementation, identify:
 
+- applicable Platform Strategy direction
 - applicable standards document
 - governing architecture document(s)
 - applicable ADRs
@@ -112,6 +126,9 @@ If the source of truth is unclear, stop and audit before implementing.
 
 Before writing code:
 
+- [ ] Read Platform Vision
+- [ ] Read Platform Strategy
+- [ ] Read Project Context and the active sprint document
 - [ ] Read CTX-STD-001
 - [ ] Read governing architecture documents
 - [ ] Read applicable ADRs
@@ -131,7 +148,7 @@ Before writing code:
    - Stop immediately if incorrect.
 
 2. Governance Discovery
-   - Identify the governing standard, architecture, ADRs, product decisions, and business rules.
+   - Identify the relevant strategic direction, governing standard, architecture, ADRs, product decisions, and business rules.
    - Identify canonical helpers, APIs, and database entities.
    - Confirm the source of truth before touching implementation.
 
@@ -180,6 +197,7 @@ Before writing code:
 
 ## Implementation Rules
 
+- Align approved work with Platform Vision and Platform Strategy without expanding the sprint.
 - Reuse existing canonical helpers.
 - Never duplicate financial calculations.
 - Never duplicate business rules.
@@ -189,7 +207,24 @@ Before writing code:
 - Keep runtime changes focused and minimal.
 - Do not create alternate calculations when a canonical helper exists.
 
+## Strategic Alignment and Sprint Scope
+
+- Sprint work should support the long-term Construction Circular Economy Intelligence Platform where practical.
+- Strategic alignment does not authorize future capabilities, new architecture, schema changes, or additional sprint scope.
+- Project Context and the approved sprint document define current delivery scope.
+- Future strategy must be described as future until separately approved, architected, implemented, and validated.
+- Prefer work that strengthens verified transactions, data quality, operational usefulness, and reusable platform foundations within the approved task.
+- Record strategically useful but unapproved ideas as roadmap recommendations rather than implementing them.
+- Do not distort a current operational requirement merely to resemble a future platform layer.
+- Significant feature proposals must identify the customer, value delivered, likely revenue or strategic benefit, required data, privacy implications, and whether the scope is current or future.
+
 ## Documentation Rules
+
+If long-term strategic direction changes:
+- Update Platform Strategy and applicable Product Decisions before changing roadmap guidance.
+
+If the enduring purpose changes:
+- Update Platform Vision first.
 
 If architecture changes:
 - Update architecture first.
@@ -268,4 +303,3 @@ Stop implementation and recommend documentation or architecture updates before p
 - Engineering standards belong in CTX-STD-001.
 - Architecture belongs in CTX-ARCH documents.
 - The protocol references those documents rather than duplicating them.
-

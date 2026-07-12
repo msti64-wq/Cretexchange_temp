@@ -8,6 +8,8 @@
 **Effective Date:** July 2026  
 **Purpose:** Authoritative material architecture for taxonomy, operational behavior, financial direction, settlement models, pricing, capacity, compliance, reporting, and extensibility.
 
+**Strategic Context:** [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](../product/data-strategy.md), [Business Model](../business/business-model.md), and [Customer Value Framework](../business/customer-value-framework.md) provide long-term circular-economy, marketplace, data, and customer-value context. This document remains authoritative for material implementation; these references do not redesign architecture or make future capabilities current functionality.
+
 ## 1. Purpose
 
 CreteXchange is a configurable material exchange platform. This document defines how materials are modeled, priced, routed, settled, reported, and expanded across the platform.

@@ -8,6 +8,8 @@
 **Effective Date:** July 2026  
 **Purpose:** Define the complete admin operational architecture for platform oversight, user management, financial supervision, billing reconciliation, owner/driver support, compliance, reporting, configuration, auditability, and future enterprise administration.
 
+**Strategic Context:** [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](../product/data-strategy.md), [Business Model](../business/business-model.md), and [Customer Value Framework](../business/customer-value-framework.md) provide long-term enterprise, intelligence, data, and customer-value context. This document remains authoritative for admin implementation; these references do not redesign architecture or make future capabilities current functionality.
+
 ## 1. Purpose
 
 The admin portal is the platform control center for oversight and governance.

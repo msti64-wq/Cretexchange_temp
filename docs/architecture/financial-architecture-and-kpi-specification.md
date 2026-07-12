@@ -8,6 +8,8 @@
 **Effective Date:** July 2026  
 **Purpose:** authoritative financial architecture and KPI specification
 
+**Strategic Context:** [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](../product/data-strategy.md), [Business Model](../business/business-model.md), and [Customer Value Framework](../business/customer-value-framework.md) describe long-term platform, data, revenue, and customer-value direction. This document remains authoritative for implemented financial behavior; these references do not redesign architecture, and future revenue categories require separate architecture and approval.
+
 ## 1. Purpose
 
 This document is the authoritative source for CreteXchange financial behavior and reporting. It defines:

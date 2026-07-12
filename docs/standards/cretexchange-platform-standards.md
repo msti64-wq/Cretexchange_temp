@@ -11,10 +11,14 @@
 
 This document defines the mandatory engineering, architectural, operational, documentation, financial, security, UI, API, and development standards governing every component of the CreteXchange platform.
 
-This document supersedes implementation preferences and serves as the primary governance document for all future development.
+Within the direction established by Platform Vision and Platform Strategy, this document supersedes implementation preferences and serves as the primary engineering governance document for future development.
 
 ## Reference Documents
 
+- Platform Vision - `docs/vision/platform-vision.md`
+- Platform Strategy - `docs/vision/platform-strategy.md`
+- Project Context - `docs/project/project-context.md`
+- Business Architecture - `docs/business/README.md` (supporting customer-value and monetization guidance; does not override this standard or CTX-ARCH documents)
 - CTX-ARCH-001 - Financial Architecture & KPI Specification
 - CTX-ARCH-002 - Owner Operations Architecture
 - CTX-ARCH-003 - Driver Operations Architecture
@@ -219,4 +223,3 @@ Decision: Architecture and governance documentation must be updated before signi
 
 ### ADR-030 - Architecture Compliance Required
 Decision: All major components must remain compliant with the governing architecture and standards documents.
-

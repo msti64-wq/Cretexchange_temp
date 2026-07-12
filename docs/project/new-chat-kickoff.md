@@ -15,14 +15,20 @@ The repository contains the current project documentation.
 Before making recommendations or implementation plans, treat the following documents as authoritative in this order:
 
 1. docs/vision/platform-vision.md
-2. docs/project/project-context.md
-3. docs/standards/cretexchange-platform-standards.md - CTX-STD-001
-4. Applicable CTX-ARCH documents
-5. docs/product/product-decisions.md
-6. docs/product/data-strategy.md
-7. docs/development-protocol.md
+2. docs/vision/platform-strategy.md
+3. docs/project/project-context.md
+4. docs/standards/cretexchange-platform-standards.md - CTX-STD-001
+5. Applicable CTX-ARCH documents
+6. docs/product/product-decisions.md
+7. docs/product/data-strategy.md
+8. Relevant docs/business documents, beginning with docs/business/README.md and docs/business/business-model.md
+9. docs/development-protocol.md
 
 Assume all previous architectural decisions remain in force unless we explicitly decide to change them.
+
+Use Platform Vision as the enduring North Star, Platform Strategy as the long-term roadmap, and Project Context as the current implementation and sprint context. Use relevant business architecture documents for customer-value and monetization analysis, but do not let them override standards or architecture. Do not treat future strategic capabilities as implemented or expand approved sprint scope without explicit authorization.
+
+For research, funding, grant, environmental-method, or commercialization tasks, also load docs/research/README.md and only the relevant linked research documents. Treat research questions, hypotheses, prototypes, opportunity classes, and roadmaps as proposed until separately approved and validated.
 
 Do not restate the documentation unless I ask. Instead, use it as the source of truth and help me continue the current sprint.
 

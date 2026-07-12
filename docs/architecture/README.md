@@ -4,6 +4,8 @@
 
 This section documents the technical architecture of CreteXchange.
 
+[Platform Strategy](../vision/platform-strategy.md), [Data Strategy](../product/data-strategy.md), [Business Model](../business/business-model.md), and [Customer Value Framework](../business/customer-value-framework.md) provide long-term strategic, data, and customer-value context. CTX-ARCH documents remain authoritative for implementation within their domains; these references do not redesign architecture, authorize sprint work, or imply that future capabilities are implemented.
+
 ## What Belongs Here
 
 - System architecture

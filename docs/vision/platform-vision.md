@@ -1,266 +1,55 @@
-# CreteXchange
-## A Construction Operations Platform
+# CreteXchange Platform Vision
 
 ## Purpose
 
-This document is the canonical strategic vision for CreteXchange.
+This document is the canonical, long-lived strategic North Star for CreteXchange. It answers one question:
 
-Every future product decision should align with this vision.
+> Why does CreteXchange exist?
 
-## Scope
+## Why CreteXchange Exists
 
-This document defines long-term strategic direction only.
+Construction material movement is fragmented across drivers, contractors, property owners, recovery facilities, recyclers, and public stakeholders. Operational decisions are often made with incomplete information, valuable materials are lost from productive use, and trusted evidence is difficult to assemble.
 
-It does not define implementation details, API contracts, database schemas, sprint planning, or release execution steps.
-
-## Intended Audience
-
-This document is intended for product leadership, architecture reviewers, operations stakeholders, and implementation contributors who need the platform's strategic direction.
-
-## Relationships
-
-- Relationship to Project Context: `docs/project/project-context.md` summarizes the current implementation state, while this document defines the long-term direction.
-- Relationship to Product Decisions: `docs/product/product-decisions.md` captures product-level decisions that should remain aligned with this vision.
-- Relationship to Architecture Documents: `CTX-ARCH` documents define how major domains are implemented in a way that supports this vision.
+CreteXchange exists to improve the discovery, recovery, reuse, movement, verification, and measurement of construction materials through a trusted operational network.
 
 ## Vision
 
-CreteXchange will become the leading digital Construction Operations Platform by connecting people, construction materials, locations, recovery facilities, and financial services into one intelligent ecosystem that improves efficiency, sustainability, profitability, and operational excellence.
+> To become the trusted intelligence platform that enables recoverable construction materials to be discovered, verified, reused, measured, and continuously improved throughout their lifecycle.
+
+The long-term North Star is the Construction Circular Economy Intelligence Platform: a trusted network that helps the construction ecosystem coordinate field operations, verify material transactions, improve circular outcomes, and turn reliable activity data into useful intelligence.
 
 ## Mission
 
-Simplify construction field operations by intelligently connecting drivers, contractors, property owners, recovery facilities, recyclers, and administrators through one unified platform.
+> To accelerate the transition toward a circular construction economy by intelligently connecting people, businesses, materials, and environmental data within a trusted digital ecosystem.
 
-The marketplace is only one capability of the overall platform.
+## Enduring Commitments
 
-## Platform Identity
+CreteXchange should:
 
-CreteXchange has evolved from a Concrete Washout Marketplace into a Construction Operations Platform.
+- improve real construction operations
+- keep field workflows practical and accessible
+- treat drivers as professionals and owners as operating partners
+- make recovery and reuse economically useful
+- preserve trustworthy, explainable data
+- grow through configuration, verification, and responsible intelligence
+- protect financial integrity, privacy, security, and participant trust
 
-The platform now supports:
+## North Star Principle
 
-- Ready-Mix Operations
-- Concrete Washout
-- Material Recovery
-- Driver Rewards
-- Financial Services
-- Business Intelligence
-- Owner Operations Management
+Every significant capability should improve a real operational outcome for at least one participant and strengthen the trusted network for the wider construction circular economy.
 
-This evolution reflects a broader operating model where CreteXchange is no longer just a destination-finding marketplace. It is the coordination layer for multiple construction workflows, materials, and business outcomes.
+## Document Boundaries
 
-## Platform Pillars
+This vision is implementation-independent. It does not define current features, release commitments, APIs, schemas, financial rules, or sprint scope.
 
-### 1. Construction Operations
+- [Platform Strategy](./platform-strategy.md) defines the authoritative long-term strategic roadmap.
+- [Mission and Values](./mission-and-values.md) defines the working mission, vision, and enduring design principles.
+- [Long-Term Roadmap](./long-term-roadmap.md) presents the strategy as directional stages and validation gates.
+- [Platform Definition](./construction-circular-economy-intelligence-platform.md) describes the long-term platform model and its explicit current/future boundaries.
+- [Project Context](../project/project-context.md) defines the current implementation and active delivery context.
+- [Product Decisions](../product/product-decisions.md) formalize durable product choices.
+- [Data Strategy](../product/data-strategy.md) governs the strategic use and protection of data.
+- [Business Architecture](../business/README.md) guides customer-value and monetization evaluation without overriding standards or architecture.
+- `CTX-STD-001` and the [applicable architecture documents](../architecture/README.md) govern standards and implementation architecture.
 
-Support the core field workflows that keep construction work moving, including delivery, washout, recovery, and site coordination.
-
-### 2. Intelligent Location Network
-
-Connect drivers and operators to the right locations based on workflow needs, accepted materials, operating hours, incentives, and operational readiness.
-
-### 3. Driver Operations
-
-Help drivers complete work quickly, safely, and with minimal friction through clear field workflows, job context, rewards, and navigation support.
-
-### 4. Owner Operations Management
-
-Give owners the tools to configure locations, acceptance rules, incentives, and operational preferences while understanding how their sites perform.
-
-### 5. Business Intelligence
-
-Convert operational events into insight so participants can understand performance, demand, growth opportunities, and environmental outcomes.
-
-### 6. Financial Services
-
-Support wallet, payout, tip, balance, and reward-related financial workflows that make the platform operationally useful.
-
-## Platform Personas
-
-### Ready-Mix Drivers
-
-Success means completing deliveries efficiently, finding approved washout locations quickly, and keeping the workday moving without delay.
-
-### Material Recovery Drivers
-
-Success means moving loads to the best accepted destination based on material type, distance, incentive, and operational fit.
-
-### Contractors
-
-Success means finding reliable field support, reducing downtime, and getting construction work and recovery tasks completed on schedule.
-
-### Property Owners
-
-Success means receiving the right traffic, managing accepted materials, improving site utilization, and learning where their locations create value.
-
-### Recovery Facilities
-
-Success means receiving matched loads that fit capacity, acceptance rules, and operational requirements.
-
-### Recyclers
-
-Success means efficiently processing recoverable materials and participating in a network that improves sustainability and throughput.
-
-### Platform Administrators
-
-Success means operating the system with clear visibility into activity, market demand, operational exceptions, and growth opportunities.
-
-## Construction Workflows
-
-### Ready-Mix
-
-Batch Plant
-
-↓
-
-Fresh Concrete Delivery
-
-↓
-
-Washout
-
-↓
-
-Return to Plant
-
-### Material Recovery
-
-Construction Site
-
-↓
-
-Demolition / Site Preparation
-
-↓
-
-Recoverable Materials
-
-↓
-
-Recovery Facility
-
-↓
-
-Return
-
-Future job types will expand naturally from these core workflows.
-
-## Job Types
-
-Job Types define workflow.
-
-Materials describe the load.
-
-Initial Job Types:
-
-- Ready-Mix Delivery
-- Demolition
-- Site Preparation
-- Material Recovery
-
-Job types are the operational context used to guide driver intent and future platform behavior.
-
-## Material Catalog
-
-The Material Catalog is a core platform concept that defines what can be transported, accepted, recovered, or processed.
-
-Examples:
-
-- Broken Concrete
-- Returned Concrete
-- Brick
-- Asphalt
-- Rock
-- Sand
-- Gravel
-- Rebar
-- Mixed Demolition
-- Other
-
-Materials should eventually become admin-managed instead of hard-coded.
-
-## Owner Recovery Profiles
-
-Future owner capabilities should define recovery profiles for each location.
-
-These profiles may include:
-
-- Recovery Services
-- Accepted Materials
-- Tips
-- Fees
-- Capacity
-- Operational Rules
-- Special Instructions
-- Future intelligent matching
-
-## Business Intelligence
-
-CreteXchange should generate long-term analytics that help each participant understand performance and opportunity.
-
-Areas of intelligence include:
-
-- Driver Analytics
-- Owner Analytics
-- Material Analytics
-- Regional Demand
-- Market Growth
-- Environmental Impact
-- Exports
-- Marketing Automation
-- AI Recommendations
-
-## Guiding Principles
-
-- Operations First
-- Keep Field Work Simple
-- Data Creates Value
-- Sustainability Matters
-- Drivers Are Professionals
-- Owners Are Partners
-- Platform Before Features
-- Intelligence Before Complexity
-
-## Governance
-
-CreteXchange is governed through:
-
-- Vision
-- Product
-- Operations
-- Architecture
-- Governance
-- Implementation
-- Validation
-
-Governance protects long-term platform consistency by ensuring major work remains aligned across strategy, product intent, operational reality, technical design, and delivery quality.
-
-## Long-Term Vision
-
-CreteXchange will become the digital operating system for construction field operations.
-
-Over time, the platform should help recommend:
-
-- Best destination
-- Lowest cost
-- Highest incentive
-- Shortest wait
-- Best environmental outcome
-- Most profitable decision
-
-## Definition of Success
-
-Success is measured by improving operations for every participant.
-
-This includes:
-
-- Drivers
-- Owners
-- Contractors
-- Recovery Facilities
-- Administrators
-- Future AI
-
-## 15. North Star Principle
-
-Every feature added to CreteXchange should improve construction operations for at least one participant while generating data that creates additional value for the entire ecosystem.
+Future capabilities named in Platform Strategy are aspirations until separately approved, architected, scheduled, implemented, and validated.

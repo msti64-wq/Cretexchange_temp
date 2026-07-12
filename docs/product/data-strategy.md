@@ -8,12 +8,49 @@ Completed washouts, tips, check-ins, reward entries, and recycling activity shou
 
 ## 2. Relationship to Canonical Documents
 
-- Platform Vision defines the long-term strategic direction for CreteXchange.
-- Project Context summarizes the current implementation state and sprint roadmap.
-- Product Decisions capture business direction and product intent.
-- CTX-ARCH documents define the authoritative operational, financial, owner, driver, admin, and material mechanics that the data strategy must reflect.
+- [Platform Vision](../vision/platform-vision.md) defines why CreteXchange exists.
+- [Platform Strategy](../vision/platform-strategy.md) defines the authoritative long-term strategic roadmap, including the progression from Verified Transactions to verified intelligence and the future Construction Circular Economy Index.
+- [Project Context](../project/project-context.md) summarizes the current implementation state and sprint roadmap.
+- [Product Decisions](./product-decisions.md) capture business direction and product intent.
+- [CTX-ARCH documents](../architecture/README.md) define the authoritative operational, financial, owner, driver, admin, and material mechanics that the data strategy must reflect.
+- [Business Model](../business/business-model.md) describes how participant and customer value may develop.
+- [Revenue Architecture](../business/revenue-architecture.md) governs evaluation of possible data-related revenue, subject to privacy and licensing controls.
+- [Customer Value Framework](../business/customer-value-framework.md) requires proposals to identify value, required data, and privacy implications.
 
-## 3. Stakeholder Value
+This document governs how data creates value and how that value should be protected. It references Platform Strategy rather than duplicating the strategic roadmap.
+
+## 3. Strategic Data Assets
+
+CreteXchange's long-term data advantage should come from verified, well-defined transaction networks rather than from collecting data without operational context.
+
+Strategic data assets may include:
+
+- the verified transaction network and its operational event history
+- material-flow data linking governed origins, destinations, materials, quantities, and outcomes
+- location and capacity data with time, source, and coverage context
+- verification confidence, evidence, provenance, and exception history
+- future marketplace behavior, including appropriately governed supply, demand, matching, and completion patterns
+- operational patterns across participation, timing, routing, facility use, and recovery workflows
+- regional intelligence potential built from sufficiently representative, aggregated, and anonymized data
+- governed relationships among participants, materials, locations, and outcomes
+- evidence and provenance associated with transaction lifecycles
+- longitudinal activity, capacity, demand, and participation patterns
+- role-aware aggregates and benchmarks
+- future governed circular-economy measures derived from documented methodologies
+
+These assets become defensible when they are difficult to reproduce without a trusted operating network. Their value depends on:
+
+- clear definitions and canonical sources of truth
+- transaction and identity verification
+- data quality and lineage
+- privacy, authorization, and appropriate aggregation
+- consistent historical interpretation
+- explainable calculations and methodologies
+- participant value, not extraction alone
+
+Current production data remains limited to implemented workflows and current architecture. Enterprise intelligence, government intelligence, external data products, and the Construction Circular Economy Index are future strategy until separately approved and implemented.
+
+## 4. Stakeholder Value
 
 ### Driver
 
@@ -41,7 +78,7 @@ Completed washouts, tips, check-ins, reward entries, and recycling activity shou
 - Market expansion opportunities
 - Owner marketing opportunities
 
-## 4. Event-to-Insight Map
+## 5. Event-to-Insight Map
 
 | Event | Driver | Owner | Admin | Platform |
 | --- | --- | --- | --- | --- |
@@ -53,7 +90,7 @@ Completed washouts, tips, check-ins, reward entries, and recycling activity shou
 | Prize fulfilled | Shows reward delivery status | Shows successful reward outcome for the site ecosystem | Tracks fulfillment efficiency | Supports customer experience and operational performance |
 | Rubble drop-off, future | Could show another type of earned activity | Could show recycling-driven engagement | Could measure recycling participation | Could support sustainability and routing analytics |
 
-## 5. Future Admin Marketing / Insights Page
+## 6. Future Admin Marketing / Insights Page
 
 CreteXchange should eventually include an admin-facing marketing and insights page showing:
 
@@ -66,7 +103,7 @@ CreteXchange should eventually include an admin-facing marketing and insights pa
 - Regional performance
 - Monthly trends
 
-## 6. Export Requirements
+## 7. Export Requirements
 
 The future admin insights page should support:
 
@@ -77,7 +114,7 @@ The future admin insights page should support:
 - Regional filters
 - Monthly summaries
 
-## 7. Future Owner Outreach Automation
+## 8. Future Owner Outreach Automation
 
 Future capability should include:
 
@@ -88,15 +125,29 @@ Future capability should include:
 - Recommendations to improve driver attraction
 - Opt-in or controlled rollout
 
-## 8. Guardrails
+## 9. Guardrails
 
-- Do not expose private driver personal information unnecessarily.
-- Aggregate data where possible.
+- Obtain participant consent or another approved lawful basis for data uses that require it.
+- Limit collection and use to explicit, documented purposes.
+- Apply role-based access and least-privilege controls.
+- Minimize collection, use, and retention to approved purposes.
+- Protect personal, operational, and commercially confidential information.
+- Aggregate and anonymize data where appropriate, especially for government, regional, research, benchmarking, or public outputs.
+- Define retention and deletion rules appropriate to operational, audit, legal, and analytical needs.
+- Preserve auditability, provenance, and data lineage.
+- Define ownership, permitted-use, and licensing terms before data sharing or commercialization.
+- Do not sell, license, or disclose company-specific information without proper authorization.
 - Avoid public rankings that shame owners.
 - Use rankings as constructive business intelligence.
 - Respect privacy, security, and role permissions.
+- Preserve provenance and data lineage for published or commercial intelligence.
+- Do not present estimates, inferences, or incomplete coverage as verified facts.
+- Distinguish verified, corroborated, reported, estimated, and modeled data in analytical or published outputs.
+- Ensure environmental claims are evidence-based, traceable to sources and methodology, and appropriately qualified.
+- Make data licensing subject to consent, privacy, confidentiality, ownership, licensing, aggregation, anonymization, and disclosure controls.
+- Do not imply that future intelligence products or index methodologies exist before approval and validation.
 
-## 9. Relationship to Driver Rewards
+## 10. Relationship to Driver Rewards
 
 Reward tickets should show the activity and location where they were earned.
 

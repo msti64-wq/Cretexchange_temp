@@ -143,7 +143,7 @@
 
 ## PD-023 - Product Traceability
 
-**Decision:** Every significant feature should be traceable from Platform Vision through implementation.
+**Decision:** Every significant feature should be traceable from Platform Vision and, where long-term direction applies, Platform Strategy through implementation.
 
 **Rationale:** Traceability protects long-term quality and makes it easier to understand why a feature exists and how it fits the platform.
 
@@ -151,7 +151,7 @@
 
 **Implications:**
 
-- Product decisions should link back to the platform vision.
+- Product decisions should link back to Platform Vision and applicable Platform Strategy direction.
 - Implementation should connect back to product and operational intent.
 - Future contributors should be able to follow the decision trail.
 
@@ -294,3 +294,260 @@
 - Sprint planning should prioritize driver-facing operational intelligence features.
 - Existing rewards, wallet, notification, GPS, location, and Stripe infrastructure should be reused wherever practical.
 - New Sprint 2.1 implementation tasks should avoid duplicate business logic and update documentation as appropriate.
+
+## PD-035 - Construction Circular Economy Intelligence Platform
+
+**Context:** CreteXchange needs a durable long-term identity that connects its concrete washout launch to broader construction-material recovery and intelligence without implying that future capabilities exist today.
+
+**Decision:** CreteXchange's long-term strategic direction is to become the Construction Circular Economy Intelligence Platform while preserving the current concrete washout and verified-drop launch model as the initial operational and revenue foundation.
+
+**Rationale:** Driver-to-facility discovery and verified concrete washouts establish a focused operational pattern for trusted participation, transaction volume, facility relationships, recovery data, liquidity, data quality, and credibility. A durable platform identity keeps future growth centered on discovery, recovery, reuse, movement, verification, and measurement rather than disconnected features.
+
+**Status:** Active
+
+**Date:** 2026-07-11
+
+**Current Implications:**
+
+- Long-term product direction should connect operational utility, transaction verification, material recovery, and intelligence.
+- Product language must distinguish implemented capabilities from future strategic direction.
+- Current architecture and stable workflows should be extended deliberately rather than replaced by a strategy-driven rewrite.
+- Platform Strategy is the canonical roadmap for this evolution.
+
+**Current Scope:** The launch foundation is driver-to-facility discovery, verified concrete washouts and approved material-recovery drops, trusted participation, the $5 platform fee per verified drop, verification, duplicate prevention, owner confirmation, dispute controls, and operational data from real transactions. Current production implementation remains the concrete washout foundation defined by Project Context and applicable CTX-ARCH documents; broader recovery workflows require approval and implementation.
+
+**Future Scope:** Broader recovered-material commerce, multi-material networks, Enterprise SaaS, government intelligence, premium intelligence, and index capabilities require separate Product Decisions, architecture, governance, implementation, and validation.
+
+**Deferred Implications:** Research models, broader marketplaces, enterprise and public-sector products, and national benchmarking remain deferred until validation and separate approval.
+
+**Explicit Non-Goals:** This decision does not change Sprint 2.1, implement a new workflow, modify architecture, approve a revenue stream, or claim that the complete platform exists.
+
+**Guardrails:** Do not replace or disrupt the current launch model without an explicit Product Decision. Do not treat the North Star as permission to expand an approved sprint or describe future capabilities as implemented.
+
+**Related Documents:** [Platform Vision](../vision/platform-vision.md), [Platform Strategy](../vision/platform-strategy.md), [Project Context](../project/project-context.md), [Business Model](../business/business-model.md).
+
+## PD-036 - Multi-Revenue Platform Strategy
+
+**Context:** The verified-drop network creates value for several participants, but long-term platform sustainability should not depend on charging only one transaction type or imposing friction on users who generate network value.
+
+**Decision:** CreteXchange adopts a stakeholder-value and layered platform-economics model: identify who receives measurable value, charge an appropriate beneficiary where justified, keep network-generating participation low-friction, and support multiple complementary revenue streams rather than relying exclusively on the $5-per-verified-drop fee.
+
+**Rationale:** A trusted operational network may create distinct value through transactions, enterprise software, governed intelligence, public-sector programs, benchmarks, and approved financial services. Diversification can support durable platform economics when each revenue stream is tied to real participant value.
+
+**Status:** Active
+
+**Date:** 2026-07-11
+
+**Current Implications:**
+
+- Potential revenue categories should remain modular, transparent, and governed.
+- Financial behavior must continue to follow CTX-ARCH-001 and canonical accounting sources.
+- Strategic revenue ideas must not be embedded in operational calculations before approval.
+- Pricing, billing, tax, regulatory, and revenue-recognition questions require explicit decisions.
+
+**Current Scope:** The current $5 platform fee per verified drop remains the initial revenue foundation. Existing production revenue and payment behavior remains unchanged and is governed by current financial architecture and implemented business rules.
+
+**Future Scope:** Potential categories include facility subscriptions, marketplace fees, Enterprise SaaS, government and regional services, premium intelligence, integrations, governed licensing, research, and legally appropriate referrals. None is authorized for implementation by this decision alone.
+
+**Deferred Implications:** Specific pricing, packaging, subscriptions, commissions, professional services, public-sector agreements, data licensing, and index products remain deferred pending customer evidence and explicit approval.
+
+**Explicit Non-Goals:** This decision does not alter current billing, accounting, wallet, payout, reward, or Stripe behavior and does not approve any future revenue layer for implementation.
+
+**Guardrails:** Charge parties receiving measurable value while keeping participation friction low for drivers and other network-value generators. Do not reduce liquidity, alter canonical billing, sell confidential company-specific information, or introduce a revenue stream without approval.
+
+**Related Documents:** [Platform Strategy](../vision/platform-strategy.md), [Revenue Architecture](../business/revenue-architecture.md), [Customer Value Framework](../business/customer-value-framework.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md).
+
+## PD-037 - Verified Transaction Network First
+
+**Decision:** The verified transaction network must be validated before the platform overbuilds advanced intelligence, marketplace, enterprise, government, or index capabilities.
+
+**Rationale:** Intelligence and market coordination are only defensible when underlying identities, activities, locations, evidence, and outcomes are reliable. Verification creates participant trust and a durable data advantage.
+
+**Status:** Active
+
+**Implications:**
+
+- Transaction lifecycle, identity, provenance, evidence, and exception handling should remain explicit.
+- Failed verification and ambiguous records must not silently become trusted data.
+- New workflow types should define what verification means before contributing to strategic analytics.
+- Marketplace growth should strengthen rather than dilute data quality.
+
+**Current Scope:** Current production workflows and their existing verification mechanisms remain unchanged. The immediate work is to validate participation, transaction quality, trusted facility relationships, and repeatable operations within approved scope.
+
+**Future Scope:** Broader material transactions and intelligence products should build on governed verification standards approved for each domain after the initial network is validated.
+
+**Guardrails:** Do not infer trusted data from failed or ambiguous verification. Do not use long-term opportunity to justify premature marketplace, analytical, or index implementation.
+
+**Related Documents:** [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](./data-strategy.md), [Platform Flywheel](../business/platform-flywheel.md), [Customer Value Framework](../business/customer-value-framework.md).
+
+## PD-038 - Strategic Data Governance Principles
+
+**Decision:** Operational data must be governed through participant consent, role-based access, data minimization, confidentiality, aggregation, anonymization, retention, auditability, ownership terms, and licensing controls.
+
+**Rationale:** Data becomes a competitive advantage only when participants and decision-makers can trust its meaning and use. Poorly governed data creates operational, legal, reputational, and analytical risk.
+
+**Status:** Active
+
+**Implications:**
+
+- Canonical sources and data lineage must be preserved.
+- Personal and commercially sensitive data should be minimized and protected.
+- Aggregates, estimates, and inferred outcomes must be labeled accurately.
+- Published or commercial intelligence requires documented coverage, methodology, and access controls.
+- Participant value and legitimate use should guide data-product decisions.
+- Environmental claims must be evidence-based, traceable, and qualified.
+- Company-specific information must not be disclosed or sold without proper authorization.
+
+**Current Scope:** Existing authorization, privacy, architecture, and data-handling rules remain in force. This decision does not create a data product, sharing program, or new collection requirement.
+
+**Future Scope:** Enterprise, government, research, licensing, benchmark, and index uses require separate governance, legal, security, methodology, and product approval.
+
+**Guardrails:** Collect and retain only data justified by an approved purpose. Apply access and disclosure controls before reuse. Data licensing remains subject to consent, privacy, ownership, licensing, confidentiality, aggregation, and anonymization requirements.
+
+**Related Documents:** [Data Strategy](./data-strategy.md), [Platform Strategy](../vision/platform-strategy.md), [Revenue Architecture](../business/revenue-architecture.md), [Customer Value Framework](../business/customer-value-framework.md).
+
+## PD-039 - Construction Circular Economy Index
+
+**Context:** A sufficiently representative and governed transaction network may eventually support benchmarking, but premature index claims would create methodological, privacy, environmental-claim, and reputational risk.
+
+**Decision:** CreteXchange recognizes the Construction Circular Economy Index (`CCEI`) as a proposed future analytical product that must distinguish reported, corroborated, verified, estimated, and modeled data. It is not a current implemented capability, and the name remains subject to future legal and branding review.
+
+**Rationale:** A credible index could help industry and public stakeholders understand material movement, recovery participation, regional capacity, operational efficiency, and circular-economy progress. Its value depends on trust, coverage, and methodological discipline.
+
+**Status:** Active
+
+**Date:** 2026-07-11
+
+**Current Implications:**
+
+- Index inputs must be traceable to governed definitions and verified data.
+- Coverage limitations, uncertainty, methodology, revisions, and conflicts of interest must be transparent.
+- Published measures must identify sources, confidence, and qualification language.
+- Participant privacy and commercially sensitive information must be protected through aggregation and access controls.
+- Index publication, licensing, benchmarking, or policy use requires independent approval and validation.
+
+**Current Scope:** No Construction Circular Economy Index, score, benchmark methodology, publication process, or index product is currently implemented or approved for release.
+
+**Future Scope:** Index development may begin only after the platform has sufficient representative coverage and approved methodology, governance, legal review, architecture, product scope, and validation.
+
+**Deferred Implications:** Scorecards, reports, sponsored studies, benchmarking subscriptions, recognition programs, and licensed index products remain deferred.
+
+**Explicit Non-Goals:** This decision does not establish a score, methodology, environmental result, official benchmark, published ranking, or approved commercial index product.
+
+**Guardrails:** Do not merge different confidence classes, overstate coverage, expose confidential participant information, or make unsupported environmental or performance claims. Disclose methodology, limitations, revisions, funding, and conflicts.
+
+**Related Documents:** [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](./data-strategy.md), [Investment Thesis](../business/investment-thesis.md), [Strategic Data Governance Principles (PD-038)](#pd-038---strategic-data-governance-principles).
+
+## PD-040 - Customer Value Framework
+
+**Decision:** Every significant platform capability must identify its primary customer, value delivered, paying party, potential revenue model, strategic objective, data required, privacy implications, and current or future status.
+
+**Rationale:** A platform serving many participants can drift into feature accumulation or charge the users who create network value. Explicit customer and value analysis ties product investment to evidence, clarifies who should pay, protects participation, and surfaces data and governance requirements before implementation.
+
+**Status:** Active
+
+**Implications:**
+
+- Major proposals should identify secondary beneficiaries and measurable evidence of value in addition to the required decision fields.
+- Revenue may come from a different party than the user performing the operational workflow.
+- Non-revenue strategic benefits must still be explicit and tied to an approved objective.
+- Product proposals must distinguish implemented functionality, approved near-term scope, future strategy, and exploratory options.
+- Required data and privacy implications must be evaluated before collection, reuse, integration, or commercialization.
+
+**Current Scope:** This decision adds a proposal and planning requirement only. It does not authorize a feature, pricing change, data collection, revenue stream, or sprint expansion.
+
+**Future Scope:** Approved product templates, roadmap reviews, investment decisions, and business-model validation may incorporate the framework after documentation and workflow approval.
+
+**Guardrails:** Do not treat a completed framework as approval. Preserve the current $5 verified-drop foundation, low-friction driver participation, canonical architecture, privacy, and approved sprint scope.
+
+**Related Documents:** [Customer Value Framework](../business/customer-value-framework.md), [Revenue Architecture](../business/revenue-architecture.md), [Platform Strategy](../vision/platform-strategy.md), [Development Protocol](../development-protocol.md).
+
+## PD-041 - Preserve the Verified-Drop Launch Model
+
+**Context:** Long-term marketplace, research, enterprise, government, and intelligence opportunities could distract from or unintentionally alter the operational model currently being validated.
+
+**Decision:** Preserve the current launch model—driver discovery of participating washout and recycling facilities, documented eligible drops, facility verification, driver rewards, current transaction controls, and the $5 platform fee per verified load drop—until an explicit Product Decision authorizes a change.
+
+**Rationale:** The launch model is the current participation, trust, transaction, revenue, and data-generation foundation. Changing it before validation would introduce operational and financial risk and weaken the evidence needed for later strategy.
+
+**Status:** Active
+
+**Date:** 2026-07-11
+
+**Current Implications:**
+
+- Driver rewards and the current transaction workflow remain the immediate product focus.
+- Current financial behavior remains governed by CTX-ARCH-001, CTX-ARCH-005, and implemented canonical rules.
+- Documentation must identify broader recovery workflows and revenue models as future unless they are separately approved and implemented.
+
+**Deferred Implications:** Other transaction fees, marketplace economics, subscriptions, Enterprise SaaS, professional services, public-sector agreements, intelligence products, and index products remain deferred.
+
+**Explicit Non-Goals:** This decision does not change pricing configuration, billing logic, driver incentives, rewards, wallet or payout behavior, Stripe behavior, APIs, schemas, or Sprint 2.1.
+
+**Current Scope:** Documentation and roadmap protection of the implemented concrete washout launch foundation.
+
+**Future Scope:** A later Product Decision may change the launch economics or workflow only with customer evidence, architecture, financial definitions, transition planning, and approved delivery scope.
+
+**Guardrails:** Strategy documents cannot alter canonical accounting. The phrase “verified drop” must be interpreted through current implemented statuses and applicable architecture, not as a new billing rule.
+
+**Related Documents:** [Project Context](../project/project-context.md), [Platform Strategy](../vision/platform-strategy.md), [Platform Economics](../research/platform-economics.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md), [CTX-ARCH-005](../architecture/material-management-architecture.md).
+
+## PD-042 - Research and Grant-Readiness Program
+
+**Context:** Evidence-confidence scoring, material classification, constraint-aware matching, anomaly detection, geospatial recommendations, and environmental measurement contain technical and methodological uncertainty that ordinary product development cannot resolve by assertion.
+
+**Decision:** Establish a continuing research and grant-readiness documentation program supporting technical validation, NSF and other aligned opportunities, controlled pilots, university collaboration, public-sector and industry partnerships, commercialization diligence, and responsible reporting.
+
+**Rationale:** A reusable program improves research quality and funding readiness while separating hypotheses, prototypes, validation, and scientific results from current production claims.
+
+**Status:** Active — Documentation Program; Research Execution Not Yet Approved
+
+**Date:** 2026-07-11
+
+**Current Implications:**
+
+- Maintain research questions, hypotheses, methods, data governance, pilot readiness, commercialization, funding, and advisory-board documentation.
+- Verify every current funding opportunity through official sources before action.
+- Clearly label research artifacts as proposed, draft, validated, inconclusive, or complete.
+
+**Deferred Implications:** Grant submission, funded research, data collection, model development, field pilots, production integration, and commercialization remain subject to opportunity-specific approval, partners, resources, and governance.
+
+**Explicit Non-Goals:** This decision does not assert program eligibility, funding, scientific novelty, model performance, environmental impact, partner commitment, or production readiness.
+
+**Current Scope:** Documentation, readiness assessment, partner planning, and preliminary research design only.
+
+**Future Scope:** Separately approved proposals and studies may execute bounded research under applicable legal, ethical, privacy, security, publication, and architecture controls.
+
+**Guardrails:** Research access must be purpose-limited and authorized. Negative and inconclusive findings must be reported accurately. Research work must not change production behavior without the normal Product Decision and architecture process.
+
+**Related Documents:** [Research Program](../research/README.md), [Grant-Readiness Roadmap](../research/grant-readiness-roadmap.md), [NSF Project Pitch](../research/nsf-project-pitch.md), [NSF Phase I Research Plan](../research/nsf-phase1-research-plan.md).
+
+## PD-043 - Defer Project Atlas Naming
+
+**Context:** `Project Atlas` is being considered as an internal transformation-program name, but no trademark, market-conflict, legal, domain, or brand-architecture review has been completed.
+
+**Decision:** Defer adoption of `Project Atlas` as an official program name pending trademark, legal, market-conflict, and branding review. CreteXchange remains the product name; Construction Circular Economy Intelligence Platform remains the long-term platform description; and `CCEI` remains the proposed index name subject to its own review.
+
+**Rationale:** Premature adoption could create legal conflict, brand confusion, migration cost, or inconsistent authoritative documentation.
+
+**Status:** Active — Name Deferred
+
+**Date:** 2026-07-11
+
+**Current Implications:**
+
+- Use `Project Atlas` only when necessary to describe the provisional candidate and label it as provisional.
+- Do not use it in product UI, public claims, legal agreements, repository naming, or authoritative program titles.
+- Consider alternative names during the review.
+
+**Deferred Implications:** Trademark applications, domains, visual identity, public launch, program renaming, and market positioning remain deferred.
+
+**Explicit Non-Goals:** This decision does not reserve, clear, register, endorse, or adopt the name and does not rename CreteXchange or the Construction Circular Economy Intelligence Platform.
+
+**Current Scope:** Documentation control and a future-action requirement only.
+
+**Future Scope:** A separately approved naming decision may follow documented legal and market review.
+
+**Guardrails:** Avoid shorthand that could imply official adoption. Record search jurisdiction, classes, markets, domains, alternatives, and legal advice before a naming decision.
+
+**Related Documents:** [Mission and Values](../vision/mission-and-values.md), [Platform Definition](../vision/construction-circular-economy-intelligence-platform.md), [Research Program](../research/README.md).
