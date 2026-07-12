@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, Package, DollarSign, Pencil, Check, X } from "lucide-react";
+import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, Package, DollarSign, Pencil, Check, X, Activity } from "lucide-react";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
 import { formatCentsToDollars, formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -141,13 +141,76 @@ export default function OwnerLocations() {
     return payload;
   }, []);
 
-  const { data: locations, isLoading } = useQuery<any[]>({
-    queryKey: ['/api/owners/locations'],
-  });
-
   const ownerRecord = (user as any)?.roleData || {};
   const membershipState = resolveOwnerMembershipState(ownerRecord);
   const locationAccessState = resolveOwnerLocationAccessState(ownerRecord, user as any);
+
+  const { data: locations, isLoading, isError: isLocationsError } = useQuery<any[]>({
+    queryKey: ['/api/owners/locations'],
+    enabled: membershipState.dashboardAccessAllowed,
+  });
+
+  const {
+    data: ownerActivities,
+    isLoading: isOwnerActivitiesLoading,
+    isError: isOwnerActivitiesError,
+  } = useQuery<any[]>({
+    queryKey: ['/api/owners/activities?dateRange=all'],
+    refetchInterval: 30000,
+    enabled: membershipState.dashboardAccessAllowed,
+  });
+  const ownerLocationRows = Array.isArray(locations) ? locations : [];
+  const ownerActivityRows = Array.isArray(ownerActivities) ? ownerActivities : [];
+
+  const locationActivitySummary = ownerLocationRows.map((location: any) => {
+    const activityRows = ownerActivityRows.filter((activity: any) => String(activity?.location?.id ?? activity?.locationId ?? "") === String(location.id));
+    const driverVisitCounts = activityRows.reduce<Record<string, number>>((acc, activity: any) => {
+      const driverKey = activity?.driver?.user?.id ?? activity?.driver?.id ?? activity?.driverId;
+      if (!driverKey) return acc;
+      acc[driverKey] = (acc[driverKey] || 0) + 1;
+      return acc;
+    }, {});
+    const recentWindowStart = new Date();
+    recentWindowStart.setDate(recentWindowStart.getDate() - 7);
+    const recentActivityRows = activityRows.filter((activity: any) => {
+      const activityDate = new Date(activity?.checkInTime ?? activity?.createdAt ?? 0);
+      return !Number.isNaN(activityDate.getTime()) && activityDate >= recentWindowStart;
+    });
+    return {
+      location,
+      activityCount: activityRows.length,
+      recentActivityCount: recentActivityRows.length,
+      uniqueDriverCount: Object.keys(driverVisitCounts).length,
+      repeatDriverCount: Object.values(driverVisitCounts).filter((count) => count > 1).length,
+      recentActivityPresent: recentActivityRows.length > 0,
+    };
+  });
+
+  const activeLocationCount = ownerLocationRows.filter((location: any) => location?.isActive).length;
+  const visibleLocationCount = ownerLocationRows.filter((location: any) => location?.isVisible).length;
+  const configuredIncentiveRates = ownerLocationRows
+    .map((location: any) => {
+      if (location?.rate === null || location?.rate === undefined || location?.rate === "") {
+        return null;
+      }
+      const resolved = resolveLocationDriverTipRateCents(location?.rate);
+      return Number.isFinite(resolved) ? resolved : null;
+    })
+    .filter((value): value is number => value !== null);
+  const averageConfiguredIncentiveCents = configuredIncentiveRates.length > 0
+    ? Math.round(configuredIncentiveRates.reduce((sum: number, value) => sum + value, 0) / configuredIncentiveRates.length)
+    : null;
+  const topLocationCandidate = [...locationActivitySummary].sort((a, b) => b.activityCount - a.activityCount)[0] || null;
+  const topLocationByActivity = topLocationCandidate && topLocationCandidate.activityCount > 0
+    ? topLocationCandidate
+    : null;
+  const locationsWithRecentActivity = locationActivitySummary.filter((entry) => entry.recentActivityPresent).length;
+  const ownerLocationIntelligenceEmpty = membershipState.dashboardAccessAllowed
+    && !isLocationsError
+    && !isOwnerActivitiesError
+    && !isOwnerActivitiesLoading
+    && !ownerLocationRows.length
+    && !ownerActivityRows.length;
 
   const addLocationMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -897,34 +960,113 @@ export default function OwnerLocations() {
           </div>
         )}
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard title={t("owner.locations.total")} className="text-center">
-            <div className="text-2xl font-bold text-primary" data-testid="text-total-locations">
-              {Array.isArray(locations) ? locations.length : 0}
+        {membershipState.dashboardAccessAllowed && !isLocationsError && (
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-semibold">Location Intelligence</h2>
+                <p className="text-sm text-muted-foreground">Location configuration plus clearly labeled activity-derived metrics.</p>
+              </div>
+              <Badge variant="outline" className="text-xs uppercase tracking-[0.14em]">
+                Existing data only
+              </Badge>
             </div>
-            <div className="text-xs text-muted-foreground">{t("common.locations")}</div>
-          </StatCard>
 
-          <StatCard title={t("common.active")} className="text-center">
-            <div className="text-2xl font-bold text-green-600" data-testid="text-active-locations">
-              {Array.isArray(locations) ? locations.filter((l: any) => l.isActive && l.isVisible).length : 0}
-            </div>
-            <div className="text-xs text-muted-foreground">{t("owner.locations.visible")}</div>
-          </StatCard>
+            {ownerLocationIntelligenceEmpty ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                  <Activity className="h-10 w-10 text-muted-foreground" />
+                  <div className="space-y-1">
+                    <p className="font-semibold">No location intelligence yet</p>
+                    <p className="max-w-lg text-sm text-muted-foreground">
+                      Add locations and capture activity to surface activity totals, driver attraction, repeat drivers, incentive averages, and engagement indicators.
+                    </p>
+                  </div>
+                  <Button variant="outline" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+                    Review locations
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {isOwnerActivitiesError && (
+                  <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+                    <div>
+                      <p className="text-sm font-semibold">Activity intelligence is temporarily unavailable</p>
+                      <p className="text-xs opacity-80">Location configuration remains available; activity-derived metrics are shown as unavailable.</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void queryClient.refetchQueries({ queryKey: ['/api/owners/activities?dateRange=all'] })}
+                    >
+                      Retry activity
+                    </Button>
+                  </div>
+                )}
 
-          <StatCard title={t("owner.locations.avgRate")} className="text-center">
-            <div className="text-2xl font-bold text-accent" data-testid="text-avg-rate">
-              {Array.isArray(locations) && locations.length > 0 ? 
-                formatCurrency(
-                  locations.reduce((sum: number, l: any) => sum + Number(l.rate), 0) / locations.length
-                ) : 
-                formatCurrency(0)
-              }
-            </div>
-            <div className="text-xs text-muted-foreground">{t("owner.locations.perWashout")}</div>
-          </StatCard>
-        </div>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <StatCard title="Location Status" className="text-center">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-2xl font-bold text-green-600" data-testid="text-active-locations">
+                          {activeLocationCount}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Active</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-primary" data-testid="text-visible-locations">
+                          {visibleLocationCount}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Visible</div>
+                      </div>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground" data-testid="text-total-locations">
+                      {`${ownerLocationRows.length} total locations`}
+                    </div>
+                  </StatCard>
+
+                  <StatCard title="Top Location" className="text-center">
+                    <div className="truncate text-lg font-bold text-primary" data-testid="text-top-location">
+                      {isOwnerActivitiesLoading ? "Loading…" : isOwnerActivitiesError ? "—" : topLocationByActivity?.location?.name || "—"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {isOwnerActivitiesLoading
+                        ? "Loading activity-derived ranking"
+                        : isOwnerActivitiesError
+                          ? "Activity-derived ranking unavailable"
+                          : topLocationByActivity
+                            ? `${topLocationByActivity.activityCount} activity-derived visit${topLocationByActivity.activityCount === 1 ? "" : "s"}`
+                            : "No activity-derived visits yet"}
+                    </div>
+                  </StatCard>
+
+                  <StatCard title="Average Incentive" className="text-center">
+                    <div className="text-2xl font-bold text-accent" data-testid="text-average-incentive">
+                      {averageConfiguredIncentiveCents !== null ? formatCentsToDollars(averageConfiguredIncentiveCents) : "—"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {configuredIncentiveRates.length > 0 ? "Average configured incentive" : "No configured rates yet"}
+                    </div>
+                  </StatCard>
+
+                  <StatCard title="Recent Activity" className="text-center">
+                    <div className="text-2xl font-bold text-secondary" data-testid="text-recent-location-activity">
+                      {isOwnerActivitiesLoading ? "…" : isOwnerActivitiesError ? "—" : locationsWithRecentActivity}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {isOwnerActivitiesLoading
+                        ? "Loading activity-derived recency"
+                        : isOwnerActivitiesError
+                          ? "Activity-derived recency unavailable"
+                          : "Locations with activity-derived visits in the last 7 days"}
+                    </div>
+                  </StatCard>
+                </div>
+              </>
+            )}
+          </section>
+        )}
 
         {/* Location List */}
         <div className="space-y-3">
@@ -933,7 +1075,23 @@ export default function OwnerLocations() {
             {t("owner.locations.myLocations")}
           </h2>
 
-          {!Array.isArray(locations) || locations.length === 0 ? (
+          {isLocationsError ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                <Building2 className="h-12 w-12 text-muted-foreground" />
+                <div className="space-y-1">
+                  <p className="font-semibold">Unable to load locations</p>
+                  <p className="text-sm text-muted-foreground">Retry to restore the existing location management workflows.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => void queryClient.refetchQueries({ queryKey: ['/api/owners/locations'] })}
+                >
+                  Retry locations
+                </Button>
+              </CardContent>
+            </Card>
+          ) : !Array.isArray(locations) || locations.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -945,16 +1103,46 @@ export default function OwnerLocations() {
               </CardContent>
             </Card>
           ) : (
-            Array.isArray(locations) ? locations.map((location: any, index: number) => (
+            Array.isArray(locations) ? locations.map((location: any, index: number) => {
+              const activitySummary = locationActivitySummary.find((entry) => String(entry.location.id) === String(location.id));
+              const configuredDriverIncentiveCents = location?.rate !== null && location?.rate !== undefined && location?.rate !== ""
+                ? resolveLocationDriverTipRateCents(location.rate)
+                : null;
+              const activityMetricValue = (value: number) => {
+                if (isOwnerActivitiesLoading) return "…";
+                if (isOwnerActivitiesError) return "—";
+                return value;
+              };
+              const recentActivityBadge = isOwnerActivitiesLoading
+                ? "Loading activity"
+                : isOwnerActivitiesError
+                  ? "Activity unavailable"
+                  : activitySummary?.recentActivityPresent
+                    ? "Recent activity"
+                    : "No recent activity";
+              return (
               <Card key={location.id} className="hover:shadow-md transition-shadow" data-testid={`card-location-${index}`}>
                 <CardContent className="p-4">
                   <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-lg" data-testid={`text-location-name-${index}`}>
                             {location.name}
                           </h3>
+                          <Badge variant={location.isActive ? "default" : "secondary"}>
+                            {location.isActive ? (
+                              <>
+                                <CheckCircle className="mr-1 h-3 w-3" />
+                                {t("common.active")}
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="mr-1 h-3 w-3" />
+                                {t("owner.billing.inactive")}
+                              </>
+                            )}
+                          </Badge>
                           <Badge variant={location.isVisible ? "default" : "secondary"}>
                             {location.isVisible ? (
                               <>
@@ -967,6 +1155,13 @@ export default function OwnerLocations() {
                                 {t("owner.locations.hidden")}
                               </>
                             )}
+                          </Badge>
+                          <Badge
+                            variant={activitySummary?.recentActivityPresent && !isOwnerActivitiesLoading && !isOwnerActivitiesError ? "default" : "secondary"}
+                            data-testid={`status-location-recent-activity-${index}`}
+                          >
+                            <Activity className="mr-1 h-3 w-3" />
+                            {recentActivityBadge}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground" data-testid={`text-location-address-${index}`}>
@@ -982,9 +1177,48 @@ export default function OwnerLocations() {
                             {location.description}
                           </p>
                         )}
+                        <div className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-4">
+                          <div className="rounded-xl border border-border bg-muted/20 px-3 py-2">
+                            <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Activity</div>
+                            <div className="mt-1 text-base font-semibold" data-testid={`text-location-activity-count-${index}`}>
+                              {activityMetricValue(activitySummary?.activityCount ?? 0)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Activity-derived total</div>
+                          </div>
+                          <div className="rounded-xl border border-border bg-muted/20 px-3 py-2">
+                            <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Recent</div>
+                            <div className="mt-1 text-base font-semibold" data-testid={`text-location-recent-activity-count-${index}`}>
+                              {activityMetricValue(activitySummary?.recentActivityCount ?? 0)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Activity-derived · last 7 days</div>
+                          </div>
+                          <div className="rounded-xl border border-border bg-muted/20 px-3 py-2">
+                            <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Unique drivers</div>
+                            <div className="mt-1 text-base font-semibold" data-testid={`text-location-unique-drivers-${index}`}>
+                              {activityMetricValue(activitySummary?.uniqueDriverCount ?? 0)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              <div data-testid={`text-location-repeat-drivers-${index}`}>
+                                {isOwnerActivitiesLoading
+                                  ? "Loading repeat drivers"
+                                  : isOwnerActivitiesError
+                                    ? "Repeat drivers unavailable"
+                                    : `Repeat drivers: ${activitySummary?.repeatDriverCount ?? 0}`}
+                              </div>
+                              <div>Activity-derived</div>
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-border bg-muted/20 px-3 py-2">
+                            <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Incentive</div>
+                            <div className="mt-1 text-base font-semibold">
+                              {configuredDriverIncentiveCents !== null ? formatCentsToDollars(configuredDriverIncentiveCents) : "—"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Configured rate</div>
+                          </div>
+                        </div>
                       </div>
                       
-                      <div className="text-right">
+                      <div className="w-full lg:w-auto lg:text-right">
                         {editingRateLocationId === location.id ? (
                           <div className="flex items-center gap-2">
                             <div className="relative">
@@ -1030,7 +1264,7 @@ export default function OwnerLocations() {
                             onClick={() => handleStartEditRate(location)}
                             data-testid={`clickable-rate-${index}`}
                           >
-                            <div className="flex items-center gap-1 justify-end">
+                            <div className="flex items-center gap-1 lg:justify-end">
                               <div className="text-xl font-bold text-accent" data-testid={`text-location-rate-${index}`}>
                                 {formatCurrency(Number(location.rate))}
                               </div>
@@ -1117,7 +1351,7 @@ export default function OwnerLocations() {
                   </div>
                 </CardContent>
               </Card>
-            )) : null
+            )}) : null
           )}
         </div>
       </main>
