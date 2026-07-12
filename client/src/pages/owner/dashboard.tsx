@@ -13,7 +13,7 @@ import { DashboardEmptyState } from "@/components/DashboardEmptyState";
 import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { DebugPanel } from "@/components/DebugPanel";
-import { Users, DollarSign, MapPin, Clock, ImageIcon, Check, X, MessageCircle, Phone, Building2, ChevronRight, Gauge, MapPinned, Loader2, ShieldAlert, Activity } from "lucide-react";
+import { Users, DollarSign, MapPin, Clock, ImageIcon, Check, X, MessageCircle, Phone, Building2, ChevronRight, Gauge, MapPinned, Loader2, ShieldAlert, Activity, Search, TrendingUp, UserRoundCheck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -140,6 +140,9 @@ export default function OwnerDashboard() {
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
   const [approvalDriverTipDrafts, setApprovalDriverTipDrafts] = useState<Record<string, string>>({});
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | '90days' | 'all'>('today');
+  const [driverSearch, setDriverSearch] = useState("");
+  const [driverFilter, setDriverFilter] = useState<'all' | 'new' | 'repeat' | 'recent'>('all');
+  const [driverSort, setDriverSort] = useState<'most_active' | 'recent_visit' | 'name'>('most_active');
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const ownerRecord = (user as any)?.roleData || {};
@@ -446,6 +449,114 @@ export default function OwnerDashboard() {
   const ownerIntelligenceLoading = isDashboardLoading || isAllActivitiesLoading || isOwnerLocationsLoading;
   const hasOwnerIntelligenceData = ownerActivityCount > 0 || ownerLocationRows.length > 0;
 
+  // Driver Intelligence is operational-only. It intentionally uses approved activity rows,
+  // not payment, wallet, Stripe, or settlement records.
+  const selectedRangeApprovedActivities = recentActivities.filter((activity: any) => (
+    bucketOwnerWashoutStatus(activity?.status) === "approved"
+  ));
+  const allApprovedActivities = ownerActivityRows.filter((activity: any) => (
+    bucketOwnerWashoutStatus(activity?.status) === "approved"
+  ));
+  const selectedRangeApprovedActivityIds = new Set(selectedRangeApprovedActivities.map((activity: any) => String(activity?.id)));
+  const approvedActivitiesByDriver = selectedRangeApprovedActivities.reduce<Record<string, any[]>>((acc, activity: any) => {
+    const driverKey = activity?.driver?.user?.id ?? activity?.driver?.id ?? activity?.driverId;
+    if (!driverKey) return acc;
+    const key = String(driverKey);
+    (acc[key] ||= []).push(activity);
+    return acc;
+  }, {});
+  const allApprovedActivitiesByDriver = allApprovedActivities.reduce<Record<string, any[]>>((acc, activity: any) => {
+    const driverKey = activity?.driver?.user?.id ?? activity?.driver?.id ?? activity?.driverId;
+    if (!driverKey) return acc;
+    const key = String(driverKey);
+    (acc[key] ||= []).push(activity);
+    return acc;
+  }, {});
+  const getActivityTime = (activity: any) => {
+    const time = new Date(activity?.checkInTime ?? activity?.createdAt ?? 0).getTime();
+    return Number.isFinite(time) ? time : 0;
+  };
+  const driverIntelligenceRows = Object.entries(approvedActivitiesByDriver).map(([driverId, activities]) => {
+    const sortedActivities = [...activities].sort((left, right) => getActivityTime(left) - getActivityTime(right));
+    const allDriverActivities = [...(allApprovedActivitiesByDriver[driverId] || [])]
+      .sort((left, right) => getActivityTime(left) - getActivityTime(right));
+    const locationVisits = activities.reduce<Record<string, { name: string; count: number }>>((acc, activity: any) => {
+      const locationKey = String(activity?.location?.id ?? activity?.locationId ?? "unknown");
+      const locationName = activity?.location?.name || "Unknown location";
+      if (!acc[locationKey]) acc[locationKey] = { name: locationName, count: 0 };
+      acc[locationKey].count += 1;
+      return acc;
+    }, {});
+    const favoriteLocation = Object.values(locationVisits)
+      .sort((left, right) => right.count - left.count || left.name.localeCompare(right.name))[0] || null;
+    const latestActivity = sortedActivities[sortedActivities.length - 1] || null;
+    const driverUser = latestActivity?.driver?.user || latestActivity?.driver || {};
+    const driverName = `${driverUser?.firstName || ""} ${driverUser?.lastName || ""}`.trim()
+      || driverUser?.username
+      || "Unnamed driver";
+    const firstApprovedActivity = allDriverActivities[0] || null;
+    const lastVisitAt = getActivityTime(latestActivity);
+    return {
+      driverId,
+      driverName,
+      visitCount: activities.length,
+      favoriteLocation: favoriteLocation?.name || "—",
+      favoriteLocationCount: favoriteLocation?.count || 0,
+      lastVisitAt,
+      isNew: !!firstApprovedActivity && selectedRangeApprovedActivityIds.has(String(firstApprovedActivity.id)),
+      isRepeat: activities.length > 1,
+      isRecent: lastVisitAt > 0 && lastVisitAt >= Date.now() - 7 * 24 * 60 * 60 * 1000,
+    };
+  });
+  const totalUniqueDrivers = driverIntelligenceRows.length;
+  const newDriverCount = driverIntelligenceRows.filter((driver) => driver.isNew).length;
+  const selectedRangeRepeatDriverCount = driverIntelligenceRows.filter((driver) => driver.isRepeat).length;
+  const recentDriverCount = driverIntelligenceRows.filter((driver) => driver.isRecent).length;
+  const visitsPerDriver = totalUniqueDrivers > 0
+    ? selectedRangeApprovedActivities.length / totalUniqueDrivers
+    : 0;
+  const mostActiveDriver = [...driverIntelligenceRows]
+    .sort((left, right) => right.visitCount - left.visitCount || left.driverName.localeCompare(right.driverName))[0] || null;
+  const driverConcentrationPercent = mostActiveDriver && selectedRangeApprovedActivities.length > 0
+    ? Math.round((mostActiveDriver.visitCount / selectedRangeApprovedActivities.length) * 100)
+    : 0;
+  const driverLoyaltyPercent = totalUniqueDrivers > 0
+    ? Math.round((selectedRangeRepeatDriverCount / totalUniqueDrivers) * 100)
+    : 0;
+  const driverActivityTrendData = Object.values(selectedRangeApprovedActivities.reduce<Record<string, { label: string; sortTime: number; visits: number }>>((acc, activity: any) => {
+    const activityTime = getActivityTime(activity);
+    if (!activityTime) return acc;
+    const activityDate = new Date(activityTime);
+    const key = activityDate.toISOString().slice(0, 10);
+    if (!acc[key]) {
+      acc[key] = {
+        label: activityDate.toLocaleDateString(language === "es" ? "es-US" : "en-US", { month: "short", day: "numeric" }),
+        sortTime: activityTime,
+        visits: 0,
+      };
+    }
+    acc[key].visits += 1;
+    return acc;
+  }, {}))
+    .sort((left, right) => left.sortTime - right.sortTime)
+    .slice(-12);
+  const normalizedDriverSearch = driverSearch.trim().toLocaleLowerCase();
+  const filteredDriverIntelligenceRows = driverIntelligenceRows
+    .filter((driver) => {
+      const matchesSearch = !normalizedDriverSearch
+        || `${driver.driverName} ${driver.favoriteLocation}`.toLocaleLowerCase().includes(normalizedDriverSearch);
+      const matchesFilter = driverFilter === "all"
+        || (driverFilter === "new" && driver.isNew)
+        || (driverFilter === "repeat" && driver.isRepeat)
+        || (driverFilter === "recent" && driver.isRecent);
+      return matchesSearch && matchesFilter;
+    })
+    .sort((left, right) => {
+      if (driverSort === "recent_visit") return right.lastVisitAt - left.lastVisitAt || right.visitCount - left.visitCount;
+      if (driverSort === "name") return left.driverName.localeCompare(right.driverName);
+      return right.visitCount - left.visitCount || right.lastVisitAt - left.lastVisitAt;
+    });
+
   const platformFeeExposureCents = Number(weekStats?.platformFeesOwedCents || 0);
   const driverIncentiveExposureCents = Number(weekStats?.driverTipTotalCents || 0);
   const ownerChargeExposureCents = Number(weekStats?.ownerChargeTotalCents || (platformFeeExposureCents + driverIncentiveExposureCents));
@@ -725,6 +836,203 @@ export default function OwnerDashboard() {
                 data-testid="text-owner-site-engagement"
               />
             </div>
+          )}
+        </section>
+
+        {/* Driver Intelligence — approved activity analytics only */}
+        <section className="space-y-3">
+          <DSSectionHeader
+            title="Driver Intelligence"
+            description="Operational analytics from approved activity in the selected date range. These metrics do not represent payments, wallet value, or payouts."
+            actions={<DSStatusChip tone="neutral">{dateRange}</DSStatusChip>}
+          />
+          {isAllActivitiesLoading ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {[1, 2, 3, 4, 5].map((item) => (
+                <DSCard key={item} padding="md" className="space-y-3">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-3 w-32" />
+                </DSCard>
+              ))}
+            </div>
+          ) : selectedRangeApprovedActivities.length === 0 ? (
+            <DashboardEmptyState
+              title="No approved driver activity in this range"
+              description="Driver Intelligence appears after approved activity is available for the selected date range."
+              icon={Users}
+              toneClassName="bg-slate-50 text-foreground dark:bg-slate-950/30 dark:text-foreground"
+              action={
+                <Button variant="outline" size="sm" onClick={() => setDateRange("30days")}>
+                  View 30 days
+                </Button>
+              }
+              dataTestId="empty-driver-intelligence"
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <DSKpiCard
+                  label="Unique Drivers"
+                  value={totalUniqueDrivers}
+                  detail="Approved activity in selected range"
+                  accentTone="info"
+                  data-testid="text-driver-intelligence-unique"
+                />
+                <DSKpiCard
+                  label="New Drivers"
+                  value={newDriverCount}
+                  detail="First approved activity occurred in this range"
+                  accentTone="success"
+                  data-testid="text-driver-intelligence-new"
+                />
+                <DSKpiCard
+                  label="Repeat Drivers"
+                  value={selectedRangeRepeatDriverCount}
+                  detail="More than one approved activity in this range"
+                  accentTone="warning"
+                  data-testid="text-driver-intelligence-repeat"
+                />
+                <DSKpiCard
+                  label="Visits per Driver"
+                  value={visitsPerDriver.toFixed(1)}
+                  detail={`${selectedRangeApprovedActivities.length} approved activity visit${selectedRangeApprovedActivities.length === 1 ? "" : "s"}`}
+                  accentTone="accent"
+                  data-testid="text-driver-intelligence-visits-per-driver"
+                />
+                <DSKpiCard
+                  label="Recent Drivers"
+                  value={recentDriverCount}
+                  detail="Last approved visit within 7 days"
+                  accentTone="border"
+                  data-testid="text-driver-intelligence-recent"
+                />
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+                <DSCard padding="lg">
+                  <DSSectionHeader
+                    title="Activity Trend"
+                    description="Approved activity by active day in the selected range."
+                    actions={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
+                  />
+                  <ChartContainer
+                    config={{ visits: { label: "Approved visits", color: "#0EA5E9" } }}
+                    className="mt-3 h-[220px] w-full"
+                  >
+                    <BarChart data={driverActivityTrendData} margin={{ left: -18, right: 8, top: 8 }}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }} />
+                      <YAxis hide />
+                      <ChartTooltip
+                        content={<ChartTooltipContent hideLabel formatter={(value) => `${Number(value)} approved visit${Number(value) === 1 ? "" : "s"}`} />}
+                      />
+                      <Bar dataKey="visits" fill="#0EA5E9" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </DSCard>
+
+                <DSCard padding="lg">
+                  <DSSectionHeader title="Driver Engagement" description="Operational concentration and loyalty signals." />
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Most Active</p>
+                      <p className="mt-2 truncate text-lg font-semibold tracking-tight" data-testid="text-driver-intelligence-most-active">
+                        {mostActiveDriver?.driverName || "—"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">{mostActiveDriver ? `${mostActiveDriver.visitCount} approved visit${mostActiveDriver.visitCount === 1 ? "" : "s"}` : "No activity"}</p>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver Concentration</p>
+                      <p className="mt-2 text-2xl font-semibold tracking-tight" data-testid="text-driver-intelligence-concentration">{driverConcentrationPercent}%</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Share of approved visits from the most active driver</p>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver Loyalty</p>
+                      <p className="mt-2 text-2xl font-semibold tracking-tight" data-testid="text-driver-intelligence-loyalty">{driverLoyaltyPercent}%</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Unique drivers with repeat activity in this range</p>
+                    </div>
+                  </div>
+                </DSCard>
+              </div>
+
+              <DSCard padding="lg">
+                <DSSectionHeader
+                  title="Driver Activity Directory"
+                  description="Search and filter approved driver activity without exposing financial or payout data."
+                  actions={<UserRoundCheck className="h-4 w-4 text-muted-foreground" />}
+                />
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_150px_170px]">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={driverSearch}
+                      onChange={(event) => setDriverSearch(event.target.value)}
+                      placeholder="Search driver or favorite location"
+                      className="pl-9"
+                      data-testid="input-driver-intelligence-search"
+                    />
+                  </div>
+                  <Select value={driverFilter} onValueChange={(value) => setDriverFilter(value as typeof driverFilter)}>
+                    <SelectTrigger data-testid="select-driver-intelligence-filter"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All drivers</SelectItem>
+                      <SelectItem value="new">New drivers</SelectItem>
+                      <SelectItem value="repeat">Repeat drivers</SelectItem>
+                      <SelectItem value="recent">Recent drivers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={driverSort} onValueChange={(value) => setDriverSort(value as typeof driverSort)}>
+                    <SelectTrigger data-testid="select-driver-intelligence-sort"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="most_active">Most active</SelectItem>
+                      <SelectItem value="recent_visit">Latest visit</SelectItem>
+                      <SelectItem value="name">Driver name</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {filteredDriverIntelligenceRows.length === 0 ? (
+                  <div className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                    No approved drivers match the current search and filters.
+                  </div>
+                ) : (
+                  <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
+                    <table className="w-full min-w-[700px] text-sm">
+                      <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                        <tr>
+                          <th className="px-4 py-3 font-semibold">Driver</th>
+                          <th className="px-4 py-3 font-semibold">Visits</th>
+                          <th className="px-4 py-3 font-semibold">Favorite Location</th>
+                          <th className="px-4 py-3 font-semibold">Last Visit</th>
+                          <th className="px-4 py-3 font-semibold">Activity</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {filteredDriverIntelligenceRows.slice(0, 25).map((driver) => (
+                          <tr key={driver.driverId} className="bg-card">
+                            <td className="px-4 py-3 font-medium text-foreground">{driver.driverName}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{driver.visitCount}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{driver.favoriteLocation}{driver.favoriteLocationCount > 1 ? ` (${driver.favoriteLocationCount})` : ""}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{driver.lastVisitAt ? new Date(driver.lastVisitAt).toLocaleDateString(language === "es" ? "es-US" : "en-US") : "—"}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1.5">
+                                {driver.isNew && <DSStatusChip tone="success">New</DSStatusChip>}
+                                {driver.isRepeat && <DSStatusChip tone="warning">Repeat</DSStatusChip>}
+                                {driver.isRecent && <DSStatusChip tone="info">Recent</DSStatusChip>}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Showing up to 25 of {filteredDriverIntelligenceRows.length} approved driver record{filteredDriverIntelligenceRows.length === 1 ? "" : "s"} in the selected range.
+                </p>
+              </DSCard>
+            </>
           )}
         </section>
 
