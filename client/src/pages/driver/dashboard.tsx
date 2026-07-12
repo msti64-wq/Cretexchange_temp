@@ -18,6 +18,7 @@ import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { apiRequest } from "@/lib/queryClient";
+import { getDriverPayoutStatus, getDriverPayoutStatusLabel } from "@/lib/driverPayoutSettings";
 import { formatDistanceToNow } from "date-fns";
 
 type DriverDashboardStatsRange = "today" | "week" | "month";
@@ -51,13 +52,14 @@ interface DriverTermsStatus {
 }
 
 interface DriverStripeAccountStatus {
-  hasConnectedAccount?: boolean;
-  status?: string;
-  chargesEnabled?: boolean;
-  payoutsEnabled?: boolean;
-  detailsSubmitted?: boolean;
-  disabled?: string | null;
-  message?: string | null;
+  hasAccount: boolean;
+  status: "not_started" | "setup_started" | "action_required" | "payout_ready" | "payouts_ready" | "status_unavailable" | "account_conflict";
+  onboardingComplete?: boolean | null;
+  payoutsEnabled?: boolean | null;
+  chargesEnabled?: boolean | null;
+  detailsSubmitted?: boolean | null;
+  payoutReady?: boolean | null;
+  errorState?: { code?: string; retryable?: boolean; supportRequired?: boolean } | null;
 }
 
 interface DriverDebitCardStatus {
@@ -313,8 +315,8 @@ export default function DriverDashboard() {
     refetchInterval: 60000,
   });
 
-  const { data: stripeAccountStatus, isLoading: stripeAccountStatusLoading } = useQuery<DriverStripeAccountStatus>({
-    queryKey: ['/api/stripe/connect/account-status'],
+  const { data: stripeAccountStatus, isLoading: stripeAccountStatusLoading, isError: stripeAccountStatusError } = useQuery<DriverStripeAccountStatus>({
+    queryKey: ['/api/drivers/stripe-status'],
     refetchInterval: 60000,
   });
 
@@ -496,14 +498,15 @@ export default function DriverDashboard() {
     authUser?.roleData?.truckNumber,
   );
   const termsAccepted = Boolean(termsStatus?.hasAgreed || authUser?.roleData?.hasAgreedToTerms);
-  const stripeReady = Boolean(
-    stripeAccountStatus?.status === "active" ||
-    (stripeAccountStatus?.chargesEnabled && stripeAccountStatus?.payoutsEnabled && stripeAccountStatus?.detailsSubmitted),
-  );
+  const stripePresentationStatus = stripeAccountStatusError
+    ? "status_unavailable"
+    : getDriverPayoutStatus(stripeAccountStatus);
+  const stripeReady = stripePresentationStatus === "payout_ready";
   const debitCardState = debitCardStatus?.hasRequested
     ? (debitCardStatus.status || debitCardStatus.cardStatus || "requested")
     : "not requested";
-  const accountReady = profileReady && termsAccepted && stripeReady;
+  const accountReady = profileReady && termsAccepted;
+  const stripeStatusUnavailable = stripePresentationStatus === "status_unavailable";
   const unreadNotifications = unreadNotificationsData?.notifications || [];
   const unreadNotificationCount = unreadNotificationsData?.count ?? unreadNotifications.length;
   const topUnreadNotifications = unreadNotifications.slice(0, 3);
@@ -823,9 +826,9 @@ export default function DriverDashboard() {
                       </DSStatusChip>
                     </div>
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
-                      <span className="text-muted-foreground">Stripe ready</span>
-                      <DSStatusChip tone={stripeReady ? "success" : "warning"} size="sm">
-                        {stripeReady ? "Ready" : stripeAccountStatus?.status || "Setup needed"}
+                      <span className="text-muted-foreground">Stripe payouts (optional)</span>
+                      <DSStatusChip tone={stripeStatusUnavailable ? "neutral" : stripeReady ? "success" : "warning"} size="sm">
+                        {getDriverPayoutStatusLabel(stripePresentationStatus)}
                       </DSStatusChip>
                     </div>
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">

@@ -20,14 +20,14 @@ interface DriverPayoutSettingsProps {
 }
 
 function getStatusBadgeVariant(status: string) {
-  if (status === "payouts_ready") return "default";
+  if (status === "payout_ready") return "default";
   if (status === "setup_started" || status === "action_required") return "secondary";
   return "outline";
 }
 
 function getTranslatedPayoutStatusLabel(status: string, t: (key: string) => string) {
   switch (status) {
-    case "payouts_ready":
+    case "payout_ready":
       return t("driver.payout.payoutsReady");
     case "action_required":
       return t("driver.payout.actionRequired");
@@ -35,6 +35,12 @@ function getTranslatedPayoutStatusLabel(status: string, t: (key: string) => stri
       return t("driver.payout.resumeOnboarding");
     case "payouts_disabled":
       return t("driver.payout.payoutsDisabled");
+    case "loading":
+      return t("common.loading");
+    case "status_unavailable":
+      return t("driver.payout.statusUnavailable");
+    case "account_conflict":
+      return t("driver.payout.accountConflict");
     case "not_started":
     default:
       return t("driver.payout.notStarted");
@@ -43,9 +49,12 @@ function getTranslatedPayoutStatusLabel(status: string, t: (key: string) => stri
 
 function getTranslatedPayoutMessage(status: string, featureEnabled: boolean, t: (key: string) => string) {
   if (!featureEnabled) return t("driver.payout.disabledMessage");
-  if (status === "payouts_ready") return t("driver.payout.readyMessage");
+  if (status === "loading") return t("common.loading");
+  if (status === "payout_ready") return t("driver.payout.readyMessage");
   if (status === "setup_started") return t("driver.payout.startedMessage");
   if (status === "action_required") return t("driver.payout.actionRequiredMessage");
+  if (status === "status_unavailable") return t("driver.payout.statusUnavailableMessage");
+  if (status === "account_conflict") return t("driver.payout.accountConflictMessage");
   return t("driver.payout.notStartedMessage");
 }
 
@@ -146,7 +155,9 @@ export function DriverPayoutSettings({
   const state = resolveDriverPayoutSettingsState({
     featureEnabled,
     featureLoading: featureLoading || requirementsLoading,
-    requirements,
+    requirements: requirementsError
+      ? { hasAccount: Boolean(requirements?.hasAccount), status: "status_unavailable" }
+      : requirements,
     isBusy,
   });
 
@@ -164,9 +175,11 @@ export function DriverPayoutSettings({
     refreshStatus();
   };
 
-  const statusIcon = state.status === "payouts_ready"
+  const statusIcon = state.status === "payout_ready"
     ? <CheckCircle2 className="h-5 w-5 text-green-600" />
-    : <AlertCircle className="h-5 w-5 text-muted-foreground" />;
+    : state.status === "loading"
+      ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      : <AlertCircle className="h-5 w-5 text-muted-foreground" />;
 
   const primaryTestId = state.primaryAction.action === "connect_bank_account"
     ? "button-driver-connect-bank-account"
