@@ -5515,6 +5515,91 @@ test("activity photo route returns signed GET URLs for authorized viewers when S
   else process.env.PRIVATE_OBJECT_DIR = originalEnv.PRIVATE_OBJECT_DIR;
 });
 
+test("driver locations require driver role and omit owner payment and identity fields", async () => {
+  const { app, gets } = createRouteRegistry();
+
+  await withPatchedStorage(
+    {
+      getUser: async (userId: string) => makeUser({ id: userId, role: userId === "driver_user_1" ? "driver" : "owner" }),
+      getActiveLocations: async () => ([{
+        id: "location_1",
+        ownerId: "owner_row_1",
+        name: "Safe Location",
+        rate: "5.00",
+        owner: {
+          id: "owner_row_1",
+          companyName: "Safe Owner",
+          taxId: "secret-tax-id",
+          stripeCustomerId: "cus_secret",
+          user: {
+            firstName: "Owner",
+            lastName: "One",
+            email: "owner@example.com",
+            phone: "555-0100",
+            passwordHash: "secret-hash",
+            stripeConnectAccountId: "acct_secret",
+          },
+        },
+      }]),
+      getLocationMaterialIntents: async () => [],
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/drivers/locations");
+      assert.equal(typeof route, "function");
+
+      const ownerRes = createResponse();
+      await route!({ user: { id: "owner_user_1" } }, ownerRes);
+      assert.equal(ownerRes.statusCode, 403);
+
+      const driverRes = createResponse();
+      await route!({ user: { id: "driver_user_1" } }, driverRes);
+      assert.equal(driverRes.statusCode, 200);
+      const body = driverRes.body as Array<Record<string, any>>;
+      assert.equal(body[0].owner.companyName, "Safe Owner");
+      assert.equal(body[0].owner.user.firstName, "Owner");
+      assert.equal(body[0].owner.taxId, undefined);
+      assert.equal(body[0].owner.stripeCustomerId, undefined);
+      assert.equal(body[0].owner.user.email, undefined);
+      assert.equal(body[0].owner.user.phone, undefined);
+      assert.equal(body[0].owner.user.passwordHash, undefined);
+      assert.equal(body[0].owner.user.stripeConnectAccountId, undefined);
+    },
+  );
+});
+
+test("notification read route scopes updates to the authenticated user", async () => {
+  const { app, puts } = createRouteRegistry();
+  const calls: Array<{ notificationId: string; userId: string }> = [];
+
+  await withPatchedStorage(
+    {
+      markNotificationAsRead: async (notificationId: string, userId: string) => {
+        calls.push({ notificationId, userId });
+        return userId === "driver_user_1"
+          ? { id: notificationId, userId, isRead: true }
+          : undefined;
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = puts.get("/api/notifications/:id/read");
+      assert.equal(typeof route, "function");
+
+      const ownedRes = createResponse();
+      await route!({ user: { id: "driver_user_1" }, params: { id: "notification_1" } }, ownedRes);
+      assert.equal(ownedRes.statusCode, 200);
+      assert.deepEqual(calls[0], { notificationId: "notification_1", userId: "driver_user_1" });
+
+      const foreignRes = createResponse();
+      await route!({ user: { id: "driver_user_2" }, params: { id: "notification_1" } }, foreignRes);
+      assert.equal(foreignRes.statusCode, 404);
+    },
+  );
+});
+
 test("create-with-photos applies ACL metadata for location owners", async () => {
   const { app, posts } = createRouteRegistry();
   const originalTrySetObjectEntityAclPolicy = ObjectStorageService.prototype.trySetObjectEntityAclPolicy;
@@ -7215,6 +7300,7 @@ test("driver locations endpoint returns active visible owner locations", async (
 
   await withPatchedStorage(
     {
+      getUser: async () => makeUser({ id: "driver_user_1", role: "driver" }),
       getActiveLocations: async () => ([
         {
           id: "location_1",

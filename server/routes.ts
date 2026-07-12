@@ -3794,6 +3794,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/drivers/locations', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== "driver") {
+        return res.status(403).json({ message: "Driver access required" });
+      }
       const locations = await storage.getActiveLocations();
       
       // Enrich locations with material intents for the rubble-service UI
@@ -3813,15 +3817,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
               })
             );
             
+            const { owner, ...driverSafeLocation } = location;
             return {
-              ...location,
-              materialIntents: materialsWithDetails
+              ...driverSafeLocation,
+              owner: owner ? {
+                id: owner.id,
+                companyName: owner.companyName || null,
+                user: owner.user ? {
+                  firstName: owner.user.firstName,
+                  lastName: owner.user.lastName,
+                } : null,
+              } : null,
+              materialIntents: materialsWithDetails,
             };
           } catch (error) {
             console.error(`Error fetching materials for location ${location.id}:`, error);
+            const { owner, ...driverSafeLocation } = location;
             return {
-              ...location,
-              materialIntents: []
+              ...driverSafeLocation,
+              owner: owner ? {
+                id: owner.id,
+                companyName: owner.companyName || null,
+                user: owner.user ? {
+                  firstName: owner.user.firstName,
+                  lastName: owner.user.lastName,
+                } : null,
+              } : null,
+              materialIntents: [],
             };
           }
         })
@@ -9765,7 +9787,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const notification = await storage.markNotificationAsRead(id);
+      const notification = await storage.markNotificationAsRead(id, req.user.id);
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
       res.json(notification);
     } catch (error: any) {
       console.error("Error marking notification as read:", error);
