@@ -10,7 +10,7 @@ import { buildOwnerBillingReceivablesOverview } from "../server/ownerBillingRece
 import { buildOwnerWashoutBillingLedgerFromPayments, buildOwnerWashoutBillingPreview } from "../server/billing/ownerWashoutLedger";
 import { calculateOwnerWashoutBillingLedger, resolveBillingPolicy, validateOwnerBillingAmount } from "../shared/billingPolicy";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
-import { inspectLocationDriverIncentiveTipCents, resolveLocationDriverIncentiveTipCents } from "../shared/locationBilling";
+import { inspectLocationDriverTipRateCents, resolveLocationDriverTipRateCents } from "../shared/locationBilling";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import { buildWashoutLedgerRepairPlan } from "../shared/washoutLedgerRepair";
 import { buildWashoutBillingVerificationReport } from "../shared/washoutBillingVerification";
@@ -137,12 +137,12 @@ test("billing policy resolver treats blank and null as defaults and zero as an o
   assert.equal(positivePolicy.perWashoutFeeCents, 125);
 });
 
-test("driver incentive tip helper treats blank as zero and positive values as cents", () => {
-  assert.equal(resolveLocationDriverIncentiveTipCents(undefined), 0);
-  assert.equal(resolveLocationDriverIncentiveTipCents(null), 0);
-  assert.equal(resolveLocationDriverIncentiveTipCents("0.00"), 0);
-  assert.equal(resolveLocationDriverIncentiveTipCents("1.75"), 175);
-  assert.equal(resolveLocationDriverIncentiveTipCents(175), 175);
+test("driver incentive tip helper treats blank as zero and rate values as dollars", () => {
+  assert.equal(resolveLocationDriverTipRateCents(undefined), 0);
+  assert.equal(resolveLocationDriverTipRateCents(null), 0);
+  assert.equal(resolveLocationDriverTipRateCents("0.00"), 0);
+  assert.equal(resolveLocationDriverTipRateCents("1.75"), 175);
+  assert.equal(resolveLocationDriverTipRateCents(175), 17500);
 });
 
 test("driver Stripe payouts feature flag is defined and disabled by default", () => {
@@ -1251,27 +1251,27 @@ test("money normalization converts dollars and cents exactly once", () => {
   assert.equal(normalizeMoneyToCents(500, "cents"), 500);
 });
 
-test("driver incentive tip helper normalizes decimal values to cents", () => {
-  assert.equal(resolveLocationDriverIncentiveTipCents("0.01"), 1);
-  assert.equal(resolveLocationDriverIncentiveTipCents(0.01), 1);
-  assert.equal(resolveLocationDriverIncentiveTipCents("1"), 1);
-  assert.equal(resolveLocationDriverIncentiveTipCents(1), 1);
+test("driver incentive tip helper normalizes dollar values to cents", () => {
+  assert.equal(resolveLocationDriverTipRateCents("0.01"), 1);
+  assert.equal(resolveLocationDriverTipRateCents(0.01), 1);
+  assert.equal(resolveLocationDriverTipRateCents("1"), 100);
+  assert.equal(resolveLocationDriverTipRateCents(1), 100);
 });
 
 test("driver incentive tip inspection preserves enabled state and rejects sub-cent positive values", () => {
-  const disabled = inspectLocationDriverIncentiveTipCents(undefined);
+  const disabled = inspectLocationDriverTipRateCents(undefined);
   assert.equal(disabled.driverTipEnabled, false);
   assert.equal(disabled.normalizedDriverTipCents, 0);
 
-  const fromDecimal = inspectLocationDriverIncentiveTipCents(0.01);
+  const fromDecimal = inspectLocationDriverTipRateCents(0.01);
   assert.equal(fromDecimal.driverTipEnabled, true);
   assert.equal(fromDecimal.normalizedDriverTipCents, 1);
 
-  const fromString = inspectLocationDriverIncentiveTipCents("0.01");
+  const fromString = inspectLocationDriverTipRateCents("0.01");
   assert.equal(fromString.driverTipEnabled, true);
   assert.equal(fromString.normalizedDriverTipCents, 1);
 
-  assert.throws(() => inspectLocationDriverIncentiveTipCents(0.0001), /at least \$0\.01/);
+  assert.throws(() => inspectLocationDriverTipRateCents(0.0001), /at least \$0\.01/);
 });
 
 test("billing ledger parses payment processing fee dollars into cents exactly once", () => {
