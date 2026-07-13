@@ -28,6 +28,7 @@ import {
   filterAdminPlatformActivityRange,
   type PlatformActivityRange,
 } from "@/lib/adminPlatformActivity";
+import { buildAdminMarketplaceHealth } from "@/lib/adminMarketplaceHealth";
 
 function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
   return (
@@ -112,6 +113,28 @@ function PlatformActivitySkeleton() {
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 10 }).map((_, index) => (
+          <Card key={index} className="rounded-2xl border-border/70 bg-muted/30">
+            <CardContent className="space-y-3 p-4">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-7 w-16" />
+              <Skeleton className="h-3 w-36" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </DashboardSectionCard>
+  );
+}
+
+function MarketplaceHealthSkeleton() {
+  return (
+    <DashboardSectionCard
+      title="Marketplace Health & Readiness"
+      description="Loading facility configuration and activity participation."
+      icon={<Building className="h-4 w-4 text-teal-600" />}
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, index) => (
           <Card key={index} className="rounded-2xl border-border/70 bg-muted/30">
             <CardContent className="space-y-3 p-4">
               <Skeleton className="h-3 w-28" />
@@ -411,6 +434,15 @@ export default function AdminDashboard() {
   );
   const selectedActivityAvailable = Boolean(selectedActivityRows);
   const activityErrors = [activityTodayError, activityWeekError, activityMonthError].filter(Boolean);
+  const marketplaceHealth = buildAdminMarketplaceHealth(
+    locationsGrowthAvailable ? locationsData : undefined,
+    selectedActivityRows,
+  );
+  const selectedActivityError = activityRange === "today"
+    ? activityTodayError
+    : activityRange === "last_7_days"
+      ? activityWeekError
+      : activityMonthError;
   const allMessages = Array.isArray(messages) ? messages : [];
   const unreadMessages = allMessages.filter((message: any) => message.status === "unread").length;
   const activeMessages = allMessages.filter((message: any) => message.status !== "resolved").length;
@@ -1187,6 +1219,183 @@ export default function AdminDashboard() {
                   <Button type="button" variant="outline" onClick={() => { window.location.href = "/reports"; }} data-testid="button-platform-activity-reports">View reports</Button>
                   <Button type="button" variant="outline" onClick={() => { window.location.href = "/locations"; }} data-testid="button-platform-activity-locations">Review locations</Button>
                   <Button type="button" variant="outline" onClick={() => { window.location.href = "/users"; }} data-testid="button-platform-activity-users">Review users</Button>
+                </div>
+              </div>
+            </div>
+          </DashboardSectionCard>
+        )}
+
+        {locationsLoading || (activityRange === "today" ? activityTodayLoading : activityRange === "last_7_days" ? activityWeekLoading : activityMonthLoading) ? (
+          <MarketplaceHealthSkeleton />
+        ) : (
+          <DashboardSectionCard
+            title="Marketplace Health & Readiness"
+            description="Facility configuration, geographic coverage, and verified operational participation. Readiness means active and visible configuration only."
+            icon={<Building className="h-4 w-4 text-teal-600" />}
+            badge={<Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">Operational only</Badge>}
+            dataTestId="section-marketplace-health"
+          >
+            {(locationsError || selectedActivityError) && (
+              <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  {locationsError && selectedActivityError
+                    ? "Facility configuration and activity participation data are unavailable."
+                    : locationsError
+                      ? "Facility configuration data is unavailable. Verified participation remains available where reported."
+                      : "Verified participation data is unavailable. Facility configuration remains available."}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (locationsError) void refetchLocations();
+                    if (activityRange === "today" && activityTodayError) void refetchActivityToday();
+                    if (activityRange === "last_7_days" && activityWeekError) void refetchActivityWeek();
+                    if (activityRange === "last_30_days" && activityMonthError) void refetchActivityMonth();
+                  }}
+                  data-testid="button-retry-marketplace-health"
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            <div className="mb-4 rounded-2xl border border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+              Activity-derived participation and utilization use the Platform Activity range: <span className="font-medium text-foreground">{activityRange === "today" ? "Today" : activityRange === "last_7_days" ? "Last 7 Days" : "Last 30 Days"}</span>.
+            </div>
+
+            {marketplaceHealth.totalLocations !== null && marketplaceHealth.totalLocations > 0 && marketplaceHealth.driverAccessibleLocations === 0 && (
+              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200">
+                No driver-accessible facilities are configured. Utilization is unavailable until at least one facility is both active and visible.
+              </div>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <DashboardMetricCard
+                title="Driver-Accessible Facilities"
+                value={marketplaceHealth.driverAccessibleLocations ?? "—"}
+                helper={marketplaceHealth.marketplaceReadinessPercentage === null
+                  ? "Active and visible configuration"
+                  : `${marketplaceHealth.marketplaceReadinessPercentage}% of configured facilities`}
+                icon={CheckCircle}
+                toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+                dataTestId="metric-marketplace-ready-facilities"
+              />
+              <DashboardMetricCard
+                title="Active Facilities"
+                value={marketplaceHealth.activeLocations ?? "—"}
+                helper="Active configuration state only"
+                icon={Building}
+                toneClassName="bg-teal-50 text-teal-600 dark:bg-teal-950/30 dark:text-teal-300"
+                dataTestId="metric-marketplace-active-facilities"
+              />
+              <DashboardMetricCard
+                title="Visible Facilities"
+                value={marketplaceHealth.visibleLocations ?? "—"}
+                helper="Visible configuration state only"
+                icon={Building}
+                toneClassName="bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-300"
+                dataTestId="metric-marketplace-visible-facilities"
+              />
+              <DashboardMetricCard
+                title="Configuration Follow-up"
+                value={marketplaceHealth.locationsNeedingConfiguration ?? "—"}
+                helper="Facilities not both active and visible"
+                icon={Clock}
+                toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
+                dataTestId="metric-marketplace-configuration-follow-up"
+              />
+              <DashboardMetricCard
+                title="Verified Facility Participation"
+                value={marketplaceHealth.verifiedParticipatingLocations ?? "—"}
+                helper="Facilities represented by verified activity in selected range"
+                icon={PackageCheck}
+                toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+                dataTestId="metric-marketplace-verified-participation"
+              />
+              <DashboardMetricCard
+                title="Utilized Ready Facilities"
+                value={marketplaceHealth.utilizedReadyLocations ?? "—"}
+                helper={marketplaceHealth.readyLocationUtilizationPercentage === null
+                  ? marketplaceHealth.driverAccessibleLocations === 0
+                    ? "Unavailable: no driver-accessible facilities"
+                    : "Ready facilities with verified activity"
+                  : `${marketplaceHealth.readyLocationUtilizationPercentage}% of ready facilities`}
+                icon={PackageCheck}
+                toneClassName="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300"
+                dataTestId="metric-marketplace-utilized-ready-facilities"
+              />
+              <DashboardMetricCard
+                title="Ready Without Verified Activity"
+                value={marketplaceHealth.readyLocationsWithoutVerifiedActivity ?? "—"}
+                helper="Activity-derived follow-up in selected range"
+                icon={Clock}
+                toneClassName="bg-slate-100 text-slate-600 dark:bg-slate-900/50 dark:text-slate-300"
+                dataTestId="metric-marketplace-ready-without-activity"
+              />
+              <DashboardMetricCard
+                title="Configured Facilities"
+                value={marketplaceHealth.totalLocations ?? "—"}
+                helper="Existing facility configuration records"
+                icon={Building}
+                toneClassName="bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300"
+                dataTestId="metric-marketplace-configured-facilities"
+              />
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+              {marketplaceHealth.totalLocations === 0 ? (
+                <DashboardEmptyState
+                  title="No facilities configured"
+                  description="Marketplace readiness and coverage will appear when facilities are configured."
+                  icon={Building}
+                  toneClassName="bg-teal-950/30 text-teal-300"
+                  dataTestId="empty-marketplace-health"
+                />
+              ) : marketplaceHealth.cityRegions.length > 0 || marketplaceHealth.stateRegions.length > 0 ? (
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+                  <p className="text-sm font-semibold text-foreground">Ready facility coverage</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{marketplaceHealth.cityCoverage ?? 0} unique cities and {marketplaceHealth.stateCoverage ?? 0} unique states across active and visible facilities.</p>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Cities</p>
+                      <div className="mt-2 space-y-2">
+                        {marketplaceHealth.cityRegions.slice(0, 5).map((entry) => (
+                          <div key={entry.label} className="flex items-center justify-between gap-3 text-sm">
+                            <span className="truncate text-foreground">{entry.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">States</p>
+                      <div className="mt-2 space-y-2">
+                        {marketplaceHealth.stateRegions.slice(0, 5).map((entry) => (
+                          <div key={entry.label} className="flex items-center justify-between gap-3 text-sm">
+                            <span className="truncate text-foreground">{entry.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <DashboardEmptyState
+                  title={locationsGrowthAvailable ? "Ready facility geography unavailable" : "Facility coverage unavailable"}
+                  description={locationsGrowthAvailable
+                    ? "Active and visible facility records do not currently include usable city or state coverage."
+                    : "Retry facility configuration data to view marketplace coverage."}
+                  icon={ShieldAlert}
+                  toneClassName="bg-amber-950/30 text-amber-300"
+                />
+              )}
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+                <p className="text-sm font-semibold text-foreground">Marketplace readiness guidance</p>
+                <p className="mt-1 text-sm text-muted-foreground">Use existing operations views to review facility configuration and verified activity. These are operational signals, not capacity, compliance, payment, or settlement determinations.</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                  <Button type="button" variant="outline" onClick={() => { window.location.href = "/locations"; }} data-testid="button-marketplace-health-locations">Review facilities</Button>
+                  <Button type="button" variant="outline" onClick={() => { window.location.href = "/reports"; }} data-testid="button-marketplace-health-reports">Review verified activity</Button>
                 </div>
               </div>
             </div>
