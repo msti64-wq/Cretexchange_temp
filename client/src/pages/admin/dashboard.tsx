@@ -22,6 +22,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 import { ShieldAlert, UsersRound } from "lucide-react";
 import { buildAdminPlatformGrowth, type PlatformGrowthRange } from "@/lib/adminPlatformGrowth";
+import { buildAdminTrustVerification } from "@/lib/adminTrustVerification";
 
 function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
   return (
@@ -75,6 +76,28 @@ function PlatformGrowthSkeleton() {
   );
 }
 
+function TrustVerificationSkeleton() {
+  return (
+    <DashboardSectionCard
+      title="Trust & Verification"
+      description="Loading operational verification signals."
+      icon={<ShieldAlert className="h-4 w-4 text-indigo-600" />}
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 7 }).map((_, index) => (
+          <Card key={index} className="rounded-2xl border-border/70 bg-muted/30">
+            <CardContent className="space-y-3 p-4">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-7 w-16" />
+              <Skeleton className="h-3 w-36" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </DashboardSectionCard>
+  );
+}
+
 export default function AdminDashboard() {
   const { toast } = useToast();
   const { logout, user } = useAuth();
@@ -107,6 +130,30 @@ export default function AdminDashboard() {
     refetch: refetchLocations,
   } = useQuery<any[]>({
     queryKey: ["/api/admin/locations"],
+    retry: false,
+  });
+
+  const {
+    data: trustReportData,
+    isLoading: trustReportLoading,
+    error: trustReportError,
+    refetch: refetchTrustReport,
+  } = useQuery<any>({
+    queryKey: ["/api/reports/owner", "trust-verification", "all"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/reports/owner?dateRange=all", { method: "GET" });
+      return response.json();
+    },
+    retry: false,
+  });
+
+  const {
+    data: autoApprovalStats,
+    isLoading: autoApprovalStatsLoading,
+    error: autoApprovalStatsError,
+    refetch: refetchAutoApprovalStats,
+  } = useQuery<any>({
+    queryKey: ["/api/admin/auto-approval/stats"],
     retry: false,
   });
 
@@ -266,6 +313,12 @@ export default function AdminDashboard() {
     (total, bucket) => total + bucket.drivers + bucket.owners,
     0,
   );
+  const trustActivitiesAvailable = Array.isArray(trustReportData?.rows);
+  const trustVerification = buildAdminTrustVerification(
+    trustActivitiesAvailable ? trustReportData.rows : undefined,
+    autoApprovalStats,
+  );
+  const trustDistributionCount = trustVerification.distribution.reduce((total, item) => total + item.count, 0);
   const allMessages = Array.isArray(messages) ? messages : [];
   const unreadMessages = allMessages.filter((message: any) => message.status === "unread").length;
   const activeMessages = allMessages.filter((message: any) => message.status !== "resolved").length;
@@ -697,6 +750,141 @@ export default function AdminDashboard() {
                   </Button>
                 </div>
               </div>
+            </div>
+          </DashboardSectionCard>
+        )}
+
+        {trustReportLoading && autoApprovalStatsLoading ? (
+          <TrustVerificationSkeleton />
+        ) : (
+          <DashboardSectionCard
+            title="Trust & Verification"
+            description="Operational verification pipeline status. Verified is an accepted activity status, not a payment or settlement result."
+            icon={<ShieldAlert className="h-4 w-4 text-indigo-600" />}
+            badge={<Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">Operational only</Badge>}
+            dataTestId="section-trust-verification"
+          >
+            {(trustReportError || autoApprovalStatsError) && (
+              <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  {trustReportError && autoApprovalStatsError
+                    ? "Verification activity and review-aging data could not be loaded."
+                    : trustReportError
+                      ? "Verification activity data could not be loaded. Review-aging data remains available."
+                      : "Review-aging data could not be loaded. Verification activity data remains available."}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (trustReportError) void refetchTrustReport();
+                    if (autoApprovalStatsError) void refetchAutoApprovalStats();
+                  }}
+                  data-testid="button-retry-trust-verification"
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <DashboardMetricCard
+                title="Verified Activities"
+                value={trustVerification.verified ?? "—"}
+                helper="Persisted verified activity status"
+                icon={CheckCircle}
+                toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+                dataTestId="metric-trust-verified"
+              />
+              <DashboardMetricCard
+                title="Pending Review"
+                value={trustVerification.pending ?? "—"}
+                helper="Persisted activities awaiting review"
+                icon={Clock}
+                toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
+                dataTestId="metric-trust-pending"
+              />
+              <DashboardMetricCard
+                title="Rejected Activities"
+                value={trustVerification.rejected ?? "—"}
+                helper="Persisted explicitly rejected status"
+                icon={ShieldAlert}
+                toneClassName="bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-300"
+                dataTestId="metric-trust-rejected"
+              />
+              <DashboardMetricCard
+                title="Review Backlog"
+                value={trustVerification.reviewBacklog ?? "—"}
+                helper="Current pending operational workload"
+                icon={Clock}
+                toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
+                dataTestId="metric-trust-review-backlog"
+              />
+              <DashboardMetricCard
+                title="Over 24 Hours"
+                value={trustVerification.olderThan24h ?? "—"}
+                helper="Pending activities past 24-hour threshold"
+                icon={Clock}
+                toneClassName="bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
+                dataTestId="metric-trust-over-24-hours"
+              />
+              <DashboardMetricCard
+                title="Over 48 Hours"
+                value={trustVerification.olderThan48h ?? "—"}
+                helper="Pending activities past 48-hour threshold"
+                icon={Clock}
+                toneClassName="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
+                dataTestId="metric-trust-over-48-hours"
+              />
+              <DashboardMetricCard
+                title="Over 72 Hours"
+                value={trustVerification.olderThan72h ?? "—"}
+                helper="Pending activities past 72-hour threshold"
+                icon={ShieldAlert}
+                toneClassName="bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-300"
+                dataTestId="metric-trust-over-72-hours"
+              />
+            </div>
+
+            <div className="mt-5">
+              {trustActivitiesAvailable && trustDistributionCount > 0 ? (
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-foreground">Current verification distribution</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Current persisted activity-status mix; this is not a historical trend.</p>
+                  </div>
+                  <ChartContainer
+                    config={{
+                      count: { label: "Activities", color: "var(--color-count)" },
+                    }}
+                    className="h-[220px] w-full"
+                  >
+                    <BarChart data={trustVerification.distribution} margin={{ left: -18, right: 8, top: 8 }}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                      <YAxis hide allowDecimals={false} />
+                      <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                      <Bar dataKey="count" fill="var(--color-count)" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+              ) : trustActivitiesAvailable ? (
+                <DashboardEmptyState
+                  title="No verification activity to summarize"
+                  description="Verified, pending, and rejected activities will appear here when report data is available."
+                  icon={ShieldAlert}
+                  toneClassName="bg-indigo-950/30 text-indigo-300"
+                  dataTestId="empty-trust-verification"
+                />
+              ) : (
+                <DashboardEmptyState
+                  title="Verification activity unavailable"
+                  description="Retry verification activity data to view the current operational distribution."
+                  icon={ShieldAlert}
+                  toneClassName="bg-amber-950/30 text-amber-300"
+                />
+              )}
             </div>
           </DashboardSectionCard>
         )}
