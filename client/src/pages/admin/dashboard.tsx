@@ -23,6 +23,11 @@ import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 import { ShieldAlert, UsersRound } from "lucide-react";
 import { buildAdminPlatformGrowth, type PlatformGrowthRange } from "@/lib/adminPlatformGrowth";
 import { buildAdminTrustVerification } from "@/lib/adminTrustVerification";
+import {
+  buildAdminPlatformActivity,
+  filterAdminPlatformActivityRange,
+  type PlatformActivityRange,
+} from "@/lib/adminPlatformActivity";
 
 function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
   return (
@@ -98,12 +103,35 @@ function TrustVerificationSkeleton() {
   );
 }
 
+function PlatformActivitySkeleton() {
+  return (
+    <DashboardSectionCard
+      title="Platform Activity"
+      description="Loading operational network activity."
+      icon={<UsersRound className="h-4 w-4 text-cyan-600" />}
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 10 }).map((_, index) => (
+          <Card key={index} className="rounded-2xl border-border/70 bg-muted/30">
+            <CardContent className="space-y-3 p-4">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-7 w-16" />
+              <Skeleton className="h-3 w-36" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </DashboardSectionCard>
+  );
+}
+
 export default function AdminDashboard() {
   const { toast } = useToast();
   const { logout, user } = useAuth();
   const queryClient = useQueryClient();
   const [dateRange, setDateRange] = useState("30");
   const [growthRange, setGrowthRange] = useState<PlatformGrowthRange>("last_30_days");
+  const [activityRange, setActivityRange] = useState<PlatformActivityRange>("last_30_days");
   const [messageSearchTerm, setMessageSearchTerm] = useState("");
   const [showResolvedMessages, setShowResolvedMessages] = useState(false);
 
@@ -154,6 +182,48 @@ export default function AdminDashboard() {
     refetch: refetchAutoApprovalStats,
   } = useQuery<any>({
     queryKey: ["/api/admin/auto-approval/stats"],
+    retry: false,
+  });
+
+  const {
+    data: activityTodayData,
+    isLoading: activityTodayLoading,
+    error: activityTodayError,
+    refetch: refetchActivityToday,
+  } = useQuery<any>({
+    queryKey: ["/api/reports/owner", "platform-activity", "today"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/reports/owner?dateRange=today", { method: "GET" });
+      return response.json();
+    },
+    retry: false,
+  });
+
+  const {
+    data: activityWeekData,
+    isLoading: activityWeekLoading,
+    error: activityWeekError,
+    refetch: refetchActivityWeek,
+  } = useQuery<any>({
+    queryKey: ["/api/reports/owner", "platform-activity", "weekly"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/reports/owner?dateRange=weekly", { method: "GET" });
+      return response.json();
+    },
+    retry: false,
+  });
+
+  const {
+    data: activityMonthData,
+    isLoading: activityMonthLoading,
+    error: activityMonthError,
+    refetch: refetchActivityMonth,
+  } = useQuery<any>({
+    queryKey: ["/api/reports/owner", "platform-activity", "monthly"],
+    queryFn: async () => {
+      const response = await apiRequest("/api/reports/owner?dateRange=monthly", { method: "GET" });
+      return response.json();
+    },
     retry: false,
   });
 
@@ -319,6 +389,28 @@ export default function AdminDashboard() {
     autoApprovalStats,
   );
   const trustDistributionCount = trustVerification.distribution.reduce((total, item) => total + item.count, 0);
+  const activityTodayRows = Array.isArray(activityTodayData?.rows) ? activityTodayData.rows : undefined;
+  const activityWeekRows = Array.isArray(activityWeekData?.rows) ? activityWeekData.rows : undefined;
+  const activityMonthRows = Array.isArray(activityMonthData?.rows) ? activityMonthData.rows : undefined;
+  const totalOwnerCount = Array.isArray(usersData?.owners) ? usersData.owners.length : undefined;
+  const todayActivityRows = filterAdminPlatformActivityRange(activityTodayRows, "today");
+  const weekActivityRows = filterAdminPlatformActivityRange(activityWeekRows, "last_7_days");
+  const monthActivityRows = filterAdminPlatformActivityRange(activityMonthRows, "last_30_days");
+  const todayPlatformActivity = buildAdminPlatformActivity(todayActivityRows, locationsGrowthAvailable ? locationsData : undefined, totalOwnerCount);
+  const weekPlatformActivity = buildAdminPlatformActivity(weekActivityRows, locationsGrowthAvailable ? locationsData : undefined, totalOwnerCount);
+  const monthPlatformActivity = buildAdminPlatformActivity(monthActivityRows, locationsGrowthAvailable ? locationsData : undefined, totalOwnerCount);
+  const selectedActivityRows = activityRange === "today"
+    ? todayActivityRows
+    : activityRange === "last_7_days"
+      ? weekActivityRows
+      : monthActivityRows;
+  const selectedPlatformActivity = buildAdminPlatformActivity(
+    selectedActivityRows,
+    locationsGrowthAvailable ? locationsData : undefined,
+    totalOwnerCount,
+  );
+  const selectedActivityAvailable = Boolean(selectedActivityRows);
+  const activityErrors = [activityTodayError, activityWeekError, activityMonthError].filter(Boolean);
   const allMessages = Array.isArray(messages) ? messages : [];
   const unreadMessages = allMessages.filter((message: any) => message.status === "unread").length;
   const activeMessages = allMessages.filter((message: any) => message.status !== "resolved").length;
@@ -885,6 +977,218 @@ export default function AdminDashboard() {
                   toneClassName="bg-amber-950/30 text-amber-300"
                 />
               )}
+            </div>
+          </DashboardSectionCard>
+        )}
+
+        {activityTodayLoading && activityWeekLoading && activityMonthLoading ? (
+          <PlatformActivitySkeleton />
+        ) : (
+          <DashboardSectionCard
+            title="Platform Activity"
+            description="Operational throughput and participation across the network. Activity is not payment, revenue, or settlement status."
+            icon={<UsersRound className="h-4 w-4 text-cyan-600" />}
+            badge={<Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">Operational only</Badge>}
+            action={
+              <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                {([
+                  ["today", "Today"],
+                  ["last_7_days", "Last 7 Days"],
+                  ["last_30_days", "Last 30 Days"],
+                ] as const).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    size="sm"
+                    variant={activityRange === value ? "default" : "outline"}
+                    onClick={() => setActivityRange(value)}
+                    data-testid={`button-platform-activity-range-${value}`}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            }
+            dataTestId="section-platform-activity"
+          >
+            {activityErrors.length > 0 && (
+              <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+                <p>Some activity data is unavailable. Confirmed operational metrics remain visible.</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (activityTodayError) void refetchActivityToday();
+                    if (activityWeekError) void refetchActivityWeek();
+                    if (activityMonthError) void refetchActivityMonth();
+                  }}
+                  data-testid="button-retry-platform-activity"
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <DashboardMetricCard
+                title="Verified Activities"
+                value={selectedPlatformActivity.verifiedActivities ?? "—"}
+                helper="Verified activity status in selected period"
+                icon={CheckCircle}
+                toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+                dataTestId="metric-platform-activity-verified"
+              />
+              <DashboardMetricCard
+                title="Activities Today"
+                value={todayPlatformActivity.totalActivities ?? "—"}
+                helper="All persisted activity statuses today"
+                icon={Clock}
+                toneClassName="bg-sky-50 text-sky-600 dark:bg-sky-950/30 dark:text-sky-300"
+                dataTestId="metric-platform-activity-today"
+              />
+              <DashboardMetricCard
+                title="Activities Last 7 Days"
+                value={weekPlatformActivity.totalActivities ?? "—"}
+                helper="All persisted activity statuses in the last 7 days"
+                icon={Clock}
+                toneClassName="bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-300"
+                dataTestId="metric-platform-activity-week"
+              />
+              <DashboardMetricCard
+                title="Activities Last 30 Days"
+                value={monthPlatformActivity.totalActivities ?? "—"}
+                helper="All persisted activity statuses in the last 30 days"
+                icon={Clock}
+                toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+                dataTestId="metric-platform-activity-month"
+              />
+              <DashboardMetricCard
+                title="Active Drivers"
+                value={selectedPlatformActivity.activeDrivers ?? "—"}
+                helper="Unique drivers with activity in selected period"
+                icon={UsersRound}
+                toneClassName="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300"
+                dataTestId="metric-platform-activity-active-drivers"
+              />
+              <DashboardMetricCard
+                title="Active Owners"
+                value={selectedPlatformActivity.activeOwners ?? "—"}
+                helper="Owners with activity in selected period"
+                icon={Building}
+                toneClassName="bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300"
+                dataTestId="metric-platform-activity-active-owners"
+              />
+              <DashboardMetricCard
+                title="Owners Without Activity"
+                value={selectedPlatformActivity.ownersWithoutActivity ?? "—"}
+                helper="Registered owners without selected-period activity"
+                icon={Clock}
+                toneClassName="bg-slate-100 text-slate-600 dark:bg-slate-900/50 dark:text-slate-300"
+                dataTestId="metric-platform-activity-inactive-owners"
+              />
+              <DashboardMetricCard
+                title="Participating Locations"
+                value={selectedPlatformActivity.participatingLocations ?? "—"}
+                helper={selectedPlatformActivity.participatingLocationPercentage === null
+                  ? "Locations receiving verified activity"
+                  : `${selectedPlatformActivity.participatingLocationPercentage}% of configured locations`}
+                icon={Building}
+                toneClassName="bg-teal-50 text-teal-600 dark:bg-teal-950/30 dark:text-teal-300"
+                dataTestId="metric-platform-activity-locations"
+              />
+              <DashboardMetricCard
+                title="Reward Entries"
+                value={selectedPlatformActivity.rewardEntries ?? "—"}
+                helper="Existing reward-entry indicator in selected period"
+                icon={Ticket}
+                toneClassName="bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-300"
+                dataTestId="metric-platform-activity-reward-entries"
+              />
+              <DashboardMetricCard
+                title="Reward Participants"
+                value={selectedPlatformActivity.rewardDrivers ?? "—"}
+                helper="Drivers with a reward entry in selected period"
+                icon={Gift}
+                toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
+                dataTestId="metric-platform-activity-reward-drivers"
+              />
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+              {selectedActivityAvailable && selectedPlatformActivity.verifiedTrend.length > 0 ? (
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-foreground">Daily verified activity</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Verified activity in the selected period; no missing-day values are fabricated.</p>
+                  </div>
+                  <ChartContainer
+                    config={{ count: { label: "Verified activities", color: "var(--color-count)" } }}
+                    className="h-[240px] w-full"
+                  >
+                    <BarChart data={selectedPlatformActivity.verifiedTrend} margin={{ left: -18, right: 8, top: 8 }}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
+                      <YAxis hide allowDecimals={false} />
+                      <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                      <Bar dataKey="count" fill="var(--color-count)" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+              ) : selectedActivityAvailable && selectedPlatformActivity.totalActivities === 0 ? (
+                <DashboardEmptyState
+                  title="No platform activity yet"
+                  description="Operational activity and participation summaries will appear when the network records activity."
+                  icon={UsersRound}
+                  toneClassName="bg-cyan-950/30 text-cyan-300"
+                  dataTestId="empty-platform-activity"
+                />
+              ) : (
+                <DashboardEmptyState
+                  title={selectedActivityAvailable ? "No verified activity trend" : "Activity trend unavailable"}
+                  description={selectedActivityAvailable
+                    ? "Verified activity will appear here when reported activity reaches the verified status."
+                    : "Retry report data to view recent verified activity."}
+                  icon={ShieldAlert}
+                  toneClassName="bg-amber-950/30 text-amber-300"
+                />
+              )}
+
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+                <p className="text-sm font-semibold text-foreground">Geographic activity</p>
+                <p className="mt-1 text-sm text-muted-foreground">Verified activity by configured city and state in the selected period.</p>
+                {selectedActivityAvailable && (selectedPlatformActivity.activityByCity.length > 0 || selectedPlatformActivity.activityByState.length > 0) ? (
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Top cities</p>
+                      <div className="mt-2 space-y-2">
+                        {selectedPlatformActivity.activityByCity.slice(0, 3).map((entry) => (
+                          <div key={entry.label} className="flex items-center justify-between gap-3 text-sm">
+                            <span className="truncate text-foreground">{entry.label}</span><span className="font-semibold text-muted-foreground">{entry.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Top states</p>
+                      <div className="mt-2 space-y-2">
+                        {selectedPlatformActivity.activityByState.slice(0, 3).map((entry) => (
+                          <div key={entry.label} className="flex items-center justify-between gap-3 text-sm">
+                            <span className="truncate text-foreground">{entry.label}</span><span className="font-semibold text-muted-foreground">{entry.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-muted-foreground">No verified location geography is available for this period.</p>
+                )}
+                <div className="mt-5 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+                  <Button type="button" variant="outline" onClick={() => { window.location.href = "/reports"; }} data-testid="button-platform-activity-reports">View reports</Button>
+                  <Button type="button" variant="outline" onClick={() => { window.location.href = "/locations"; }} data-testid="button-platform-activity-locations">Review locations</Button>
+                  <Button type="button" variant="outline" onClick={() => { window.location.href = "/users"; }} data-testid="button-platform-activity-users">Review users</Button>
+                </div>
+              </div>
             </div>
           </DashboardSectionCard>
         )}
