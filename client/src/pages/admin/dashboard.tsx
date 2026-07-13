@@ -21,6 +21,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { LogoutButton } from "@/components/LogoutButton";
 import logoImage from "@assets/cretexchange-logo-white-transparent.png";
 import { ShieldAlert, UsersRound } from "lucide-react";
+import { buildAdminPlatformGrowth, type PlatformGrowthRange } from "@/lib/adminPlatformGrowth";
 
 function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
   return (
@@ -52,11 +53,34 @@ function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" 
   );
 }
 
+function PlatformGrowthSkeleton() {
+  return (
+    <DashboardSectionCard
+      title="Platform Growth"
+      description="Loading account and location growth signals."
+      icon={<UsersRound className="h-4 w-4 text-sky-600" />}
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 12 }).map((_, index) => (
+          <Card key={index} className="rounded-2xl border-border/70 bg-muted/30">
+            <CardContent className="space-y-3 p-4">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-7 w-16" />
+              <Skeleton className="h-3 w-36" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </DashboardSectionCard>
+  );
+}
+
 export default function AdminDashboard() {
   const { toast } = useToast();
   const { logout, user } = useAuth();
   const queryClient = useQueryClient();
   const [dateRange, setDateRange] = useState("30");
+  const [growthRange, setGrowthRange] = useState<PlatformGrowthRange>("last_30_days");
   const [messageSearchTerm, setMessageSearchTerm] = useState("");
   const [showResolvedMessages, setShowResolvedMessages] = useState(false);
 
@@ -64,6 +88,26 @@ export default function AdminDashboard() {
     queryKey: ['/api/admin/dashboard'],
     retry: false,
     refetchInterval: 30000,
+  });
+
+  const {
+    data: usersData,
+    isLoading: usersLoading,
+    error: usersError,
+    refetch: refetchUsers,
+  } = useQuery<any>({
+    queryKey: ["/api/admin/users"],
+    retry: false,
+  });
+
+  const {
+    data: locationsData,
+    isLoading: locationsLoading,
+    error: locationsError,
+    refetch: refetchLocations,
+  } = useQuery<any[]>({
+    queryKey: ["/api/admin/locations"],
+    retry: false,
   });
 
   const { data: messages, isLoading: messagesLoading } = useQuery<any>({
@@ -190,6 +234,38 @@ export default function AdminDashboard() {
   const monthPlatformRevenueValue = formatCentsToDollars(monthStats?.platformWashoutRevenueCents ?? 0);
   const lotteryTicketValue = lotteryMetricsError ? "—" : (weekStats?.lotteryTicketCount ?? 0);
   const lotteryDriverValue = lotteryMetricsError ? "—" : (weekStats?.lotteryDriverCount ?? 0);
+  const adminGrowthUsers = [
+    ...(usersData?.drivers || []).map((entry: any) => ({
+      id: entry.users?.id,
+      role: "driver",
+      createdAt: entry.users?.createdAt,
+      isActive: entry.users?.isActive,
+    })),
+    ...(usersData?.owners || []).map((entry: any) => ({
+      id: entry.users?.id,
+      role: "owner",
+      createdAt: entry.users?.createdAt,
+      isActive: entry.users?.isActive,
+      ownerApproved: entry.owners?.isApproved,
+    })),
+    ...(usersData?.admins || []).map((entry: any) => ({
+      id: entry.id,
+      role: entry.role,
+      createdAt: entry.createdAt,
+      isActive: entry.isActive,
+    })),
+  ].filter((entry) => entry.id);
+  const usersGrowthAvailable = Array.isArray(usersData?.drivers) && Array.isArray(usersData?.owners) && Array.isArray(usersData?.admins);
+  const locationsGrowthAvailable = Array.isArray(locationsData);
+  const growth = buildAdminPlatformGrowth(
+    adminGrowthUsers,
+    locationsGrowthAvailable ? locationsData : [],
+    growthRange,
+  );
+  const registrationCount = growth.registrationBuckets.reduce(
+    (total, bucket) => total + bucket.drivers + bucket.owners,
+    0,
+  );
   const allMessages = Array.isArray(messages) ? messages : [];
   const unreadMessages = allMessages.filter((message: any) => message.status === "unread").length;
   const activeMessages = allMessages.filter((message: any) => message.status !== "resolved").length;
@@ -411,6 +487,218 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+        )}
+
+        {usersLoading || locationsLoading ? (
+          <PlatformGrowthSkeleton />
+        ) : (
+          <DashboardSectionCard
+            title="Platform Growth"
+            description="Account and location growth. Registration counts are not activity, participation, revenue, or settlement metrics."
+            icon={<UsersRound className="h-4 w-4 text-sky-600" />}
+            badge={<Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">Operational</Badge>}
+            action={
+              <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                {([
+                  ["today", "Today"],
+                  ["last_7_days", "7 days"],
+                  ["last_30_days", "30 days"],
+                  ["current_month", "This month"],
+                ] as const).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    size="sm"
+                    variant={growthRange === value ? "default" : "outline"}
+                    onClick={() => setGrowthRange(value)}
+                    data-testid={`button-platform-growth-range-${value}`}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            }
+            dataTestId="section-platform-growth"
+          >
+            {(usersError || locationsError) && (
+              <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm text-amber-900 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  {usersError && locationsError
+                    ? "Account and location growth data could not be loaded."
+                    : usersError
+                      ? "Account growth data could not be loaded. Location counts remain available."
+                      : "Location growth data could not be loaded. Account counts remain available."}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (usersError) void refetchUsers();
+                    if (locationsError) void refetchLocations();
+                  }}
+                  data-testid="button-retry-platform-growth"
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <DashboardMetricCard
+                title="Total Users"
+                value={usersGrowthAvailable ? growth.totalUsers : "—"}
+                helper="Registered accounts across platform roles"
+                icon={Users}
+                toneClassName="bg-sky-50 text-sky-600 dark:bg-sky-950/30 dark:text-sky-300"
+                dataTestId="metric-platform-growth-total-users"
+              />
+              <DashboardMetricCard
+                title="Total Drivers"
+                value={usersGrowthAvailable ? growth.totalDrivers : "—"}
+                helper="Registered driver accounts"
+                icon={UsersRound}
+                toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+                dataTestId="metric-platform-growth-total-drivers"
+              />
+              <DashboardMetricCard
+                title="Total Owners"
+                value={usersGrowthAvailable ? growth.totalOwners : "—"}
+                helper="Registered owner accounts"
+                icon={Building}
+                toneClassName="bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300"
+                dataTestId="metric-platform-growth-total-owners"
+              />
+              <DashboardMetricCard
+                title="Active Driver Accounts"
+                value={usersGrowthAvailable ? growth.activeDrivers : "—"}
+                helper="Account status only; not an activity metric"
+                icon={CheckCircle}
+                toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+                dataTestId="metric-platform-growth-active-driver-accounts"
+              />
+              <DashboardMetricCard
+                title="Active Owner Accounts"
+                value={usersGrowthAvailable ? growth.activeOwners : "—"}
+                helper="Account status only; not an activity metric"
+                icon={CheckCircle}
+                toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+                dataTestId="metric-platform-growth-active-owner-accounts"
+              />
+              <DashboardMetricCard
+                title="Inactive Accounts"
+                value={usersGrowthAvailable ? growth.inactiveDriverAccounts + growth.inactiveOwnerAccounts : "—"}
+                helper="Inactive driver and owner account status"
+                icon={Clock}
+                toneClassName="bg-slate-100 text-slate-600 dark:bg-slate-900/50 dark:text-slate-300"
+                dataTestId="metric-platform-growth-inactive-accounts"
+              />
+              <DashboardMetricCard
+                title="Total Locations"
+                value={locationsGrowthAvailable ? growth.totalLocations : "—"}
+                helper="Configured platform locations"
+                icon={Building}
+                toneClassName="bg-teal-50 text-teal-600 dark:bg-teal-950/30 dark:text-teal-300"
+                dataTestId="metric-platform-growth-total-locations"
+              />
+              <DashboardMetricCard
+                title="Active Locations"
+                value={locationsGrowthAvailable ? growth.activeLocations : "—"}
+                helper="Locations with active configuration enabled"
+                icon={CheckCircle}
+                toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
+                dataTestId="metric-platform-growth-active-locations"
+              />
+              <DashboardMetricCard
+                title="Visible Locations"
+                value={locationsGrowthAvailable ? growth.visibleLocations : "—"}
+                helper="Locations currently visible to users"
+                icon={Building}
+                toneClassName="bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-300"
+                dataTestId="metric-platform-growth-visible-locations"
+              />
+              <DashboardMetricCard
+                title="Pending Owner Approvals"
+                value={usersGrowthAvailable ? growth.pendingOwnerApprovals : "—"}
+                helper="Owner accounts where isApproved is not true"
+                icon={Clock}
+                toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300"
+                dataTestId="metric-platform-growth-pending-owner-approvals"
+              />
+              <DashboardMetricCard
+                title="New Drivers"
+                value={usersGrowthAvailable ? growth.newDrivers : "—"}
+                helper="Driver accounts registered in the selected range"
+                icon={UsersRound}
+                trend={growthRange === "today" ? "Today" : "Registration cohort"}
+                toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+                dataTestId="metric-platform-growth-new-drivers"
+              />
+              <DashboardMetricCard
+                title="New Owners"
+                value={usersGrowthAvailable ? growth.newOwners : "—"}
+                helper="Owner accounts registered in the selected range"
+                icon={Users}
+                trend={growthRange === "today" ? "Today" : "Registration cohort"}
+                toneClassName="bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300"
+                dataTestId="metric-platform-growth-new-owners"
+              />
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+              {usersGrowthAvailable && registrationCount > 0 ? (
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-foreground">Account registrations</p>
+                    <p className="mt-1 text-xs text-muted-foreground">New driver and owner accounts by registration date in the selected range.</p>
+                  </div>
+                  <ChartContainer
+                    config={{
+                      drivers: { label: "Drivers", color: "hsl(var(--chart-1))" },
+                      owners: { label: "Owners", color: "hsl(var(--chart-2))" },
+                    }}
+                    className="h-[240px] w-full"
+                  >
+                    <BarChart data={growth.registrationBuckets} margin={{ left: -18, right: 8, top: 8 }}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={20} />
+                      <YAxis hide allowDecimals={false} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="drivers" fill="var(--color-drivers)" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="owners" fill="var(--color-owners)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+              ) : usersGrowthAvailable ? (
+                <DashboardEmptyState
+                  title="No account registrations in this range"
+                  description="Try a longer range to view new driver and owner account registrations."
+                  icon={UsersRound}
+                  toneClassName="bg-sky-950/30 text-sky-300"
+                  dataTestId="empty-platform-growth-registrations"
+                />
+              ) : (
+                <DashboardEmptyState
+                  title="Account registrations unavailable"
+                  description="Retry account growth data to view registration cohorts."
+                  icon={ShieldAlert}
+                  toneClassName="bg-amber-950/30 text-amber-300"
+                />
+              )}
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+                <p className="text-sm font-semibold text-foreground">Growth drill-downs</p>
+                <p className="mt-1 text-sm text-muted-foreground">Open existing management views for account and location detail.</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                  <Button type="button" variant="outline" onClick={() => { window.location.href = "/users"; }} data-testid="button-platform-growth-users">
+                    Manage users and approvals
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => { window.location.href = "/locations"; }} data-testid="button-platform-growth-locations">
+                    Review locations
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DashboardSectionCard>
         )}
 
         {/* Operations Snapshot */}
