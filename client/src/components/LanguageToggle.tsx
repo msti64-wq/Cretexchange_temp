@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 
 interface LanguageToggleProps {
   className?: string;
+  labelMode?: "compact" | "full";
 }
 
 const LANGUAGE_OPTIONS: Array<{ value: AppLanguage; shortKey: string; labelKey: string }> = [
@@ -10,7 +11,7 @@ const LANGUAGE_OPTIONS: Array<{ value: AppLanguage; shortKey: string; labelKey: 
   { value: "es", shortKey: "language.esShort", labelKey: "language.spanish" },
 ];
 
-export function LanguageToggle({ className }: LanguageToggleProps) {
+export function LanguageToggle({ className, labelMode = "compact" }: LanguageToggleProps) {
   const { language, setLanguage, t } = useLanguage();
 
   return (
@@ -24,7 +25,9 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
     >
       {LANGUAGE_OPTIONS.map((option, index) => {
         const active = language === option.value;
-        const label = option.value === "es" ? t(option.labelKey) : t(option.shortKey);
+        const label = labelMode === "full"
+          ? (option.value === "en" ? "English" : "Español")
+          : (option.value === "es" ? t(option.labelKey) : t(option.shortKey));
 
         return (
           <div key={option.value} className="flex items-center">

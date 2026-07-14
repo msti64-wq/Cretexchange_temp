@@ -1,197 +1,116 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Truck, Building2, Shield, ArrowRight } from "lucide-react";
-import { useState } from "react";
 import { Link } from "wouter";
-import logoImage from "@assets/cretexchange-logo-transparent.png";
+import {
+  Building2,
+  CheckCircle2,
+  MapPin,
+  Network,
+  Route,
+  Truck,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { LanguageDocumentMetadata } from "@/components/LanguageDocumentMetadata";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { PublicHeader } from "@/components/PublicHeader";
+import { useLanguage } from "@/lib/i18n";
+import { PUBLIC_LANDING_ROUTES } from "@/lib/publicLanding";
+
+const VALUE_CONCEPTS = [
+  { key: "public.value.driver", icon: Route },
+  { key: "public.value.facility", icon: Building2 },
+  { key: "public.value.verification", icon: CheckCircle2 },
+] as const;
 
 export default function Landing() {
-  const [selectedRole, setSelectedRole] = useState<'driver' | 'owner' | null>(null);
-
-  const handleGetStarted = (role: 'driver' | 'owner') => {
-    window.location.href = `/register/${role}`;
-  };
+  const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
-      {/* Header */}
-      <header className="p-6 border-b bg-card/50 backdrop-blur">
-        <div className="container mx-auto flex items-center justify-between">
-          <img 
-            src={logoImage}
-            alt="CreteXchange - Streamlining Concrete Connections"
-            className="w-32 h-32 object-contain"
-          />
-          <Button 
-            onClick={() => window.location.href = '/login'}
-            data-testid="button-login"
-            className="bg-primary hover:bg-primary/90"
-          >
-            Sign In
-          </Button>
-        </div>
-      </header>
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+      <LanguageDocumentMetadata />
+      <PublicHeader />
 
-      {/* Hero Section */}
-      <main className="container mx-auto px-6 py-16">
-        <div className="text-center mb-16">
-          {/* Desktop Message */}
-          <div className="hidden md:block">
-            <h2 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
-              From Washout to Reuse — The Smarter Concrete Connection
-            </h2>
-            <p className="text-xl text-muted-foreground mb-12 max-w-4xl mx-auto">
-              CreteXchange simplifies how concrete truck drivers and site owners manage material disposal and recycling. Whether you need a verified washout location to clean out your drum or a recycling site to drop off concrete rubble, CreteXchange connects you instantly. Our platform helps drivers earn money, track site activity, and promote environmental sustainability — transforming waste into opportunity while ensuring every job stays compliant and efficient.
-            </p>
-          </div>
+      <main>
+        <section className="gradient-bg border-b border-slate-800 text-slate-100">
+          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] lg:items-center lg:gap-12 lg:py-24">
+            <div className="min-w-0">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-sky-300">
+                {t("public.hero.eyebrow")}
+              </p>
+              <h1 className="max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                {t("public.hero.headline")}
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg sm:leading-8">
+                {t("public.hero.supporting")}
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Button asChild size="lg" className="min-h-12 bg-sky-500 text-slate-950 hover:bg-sky-400 motion-reduce:transition-none">
+                  <Link href={PUBLIC_LANDING_ROUTES.driverRegistration}>{t("public.hero.driverCta")}</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="min-h-12 border-slate-500 bg-slate-900/40 text-white hover:bg-slate-800 hover:text-white motion-reduce:transition-none">
+                  <Link href={PUBLIC_LANDING_ROUTES.facilityRegistration}>{t("public.hero.facilityCta")}</Link>
+                </Button>
+                <Button asChild size="lg" variant="ghost" className="min-h-12 text-slate-100 hover:bg-white/10 hover:text-white motion-reduce:transition-none">
+                  <a href={PUBLIC_LANDING_ROUTES.valuePropositionAnchor}>{t("public.hero.learnMore")}</a>
+                </Button>
+              </div>
+            </div>
 
-          {/* Mobile Message */}
-          <div className="block md:hidden">
-            <h2 className="text-3xl font-bold text-foreground mb-6">
-              From Washout to Reuse — The Smarter Concrete Connection
-            </h2>
-            <p className="text-lg text-muted-foreground mb-12 max-w-xl mx-auto">
-              Connecting drivers to verified washout and recycling locations — streamlining concrete cleanup, disposal, and reuse.
-            </p>
-          </div>
-          
-          {/* Role Selection */}
-          <div className="max-w-4xl mx-auto mb-12">
-            <h3 className="text-2xl font-semibold text-foreground mb-8 text-center">
-              Choose your path to get started:
-            </h3>
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card 
-                className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
-                  selectedRole === 'driver' ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/30'
-                }`}
-                onClick={() => setSelectedRole('driver')}
-              >
-                <CardHeader className="text-center pb-4">
-                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Truck className="w-10 h-10 text-primary" />
+            <div className="relative mx-auto w-full max-w-lg" aria-label={t("public.hero.visualLabel")}>
+              <div className="overflow-hidden rounded-3xl border border-white/15 bg-slate-900/45 p-5 shadow-2xl shadow-slate-950/30 backdrop-blur sm:p-7">
+                <div aria-hidden="true" className="relative min-h-56 overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.28),_transparent_42%),linear-gradient(145deg,_rgba(15,23,42,0.86),_rgba(19,78,74,0.72))] sm:min-h-72">
+                  <div className="absolute inset-x-7 top-8 flex items-center justify-between text-sky-200/90">
+                    <Building2 className="h-10 w-10" />
+                    <Network className="h-8 w-8" />
+                    <Truck className="h-10 w-10" />
                   </div>
-                  <CardTitle className="text-2xl">I'm a Driver</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <p className="text-muted-foreground mb-6">
-                    Find concrete recycling locations, earn money, and track your activities
-                  </p>
-                  <Button 
-                    className="w-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleGetStarted('driver');
-                    }}
-                    data-testid="button-start-driver"
-                  >
-                    Get Started as Driver
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card 
-                className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
-                  selectedRole === 'owner' ? 'ring-2 ring-secondary bg-secondary/5' : 'hover:bg-muted/30'
-                }`}
-                onClick={() => setSelectedRole('owner')}
-              >
-                <CardHeader className="text-center pb-4">
-                  <div className="w-20 h-20 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Building2 className="w-10 h-10 text-secondary" />
+                  <div className="absolute inset-x-10 top-[42%] border-t border-dashed border-sky-300/50" />
+                  <div className="absolute left-[22%] top-[39%] h-3 w-3 rounded-full bg-sky-300 shadow-[0_0_0_6px_rgba(125,211,252,0.16)]" />
+                  <div className="absolute right-[22%] top-[39%] h-3 w-3 rounded-full bg-teal-300 shadow-[0_0_0_6px_rgba(94,234,212,0.16)]" />
+                  <div className="absolute inset-x-7 bottom-7 flex items-center justify-between text-xs font-medium text-slate-200">
+                    <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-sky-300" /> {t("public.hero.participatingLocation")}</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-teal-300" /> {t("public.hero.verifiedActivity")}</span>
                   </div>
-                  <CardTitle className="text-2xl">I'm a Location Owner</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <p className="text-muted-foreground mb-6">
-                    Manage locations, set rates, and process payments
-                  </p>
-                  <Button 
-                    className="w-full"
-                    variant="secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleGetStarted('owner');
-                    }}
-                    data-testid="button-start-owner"
-                  >
-                    Get Started as Owner
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </CardContent>
-              </Card>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-slate-300">{t("public.hero.visualLabel")}</p>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <Card className="text-center hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Truck className="w-8 h-8 text-primary" />
-              </div>
-              <CardTitle className="text-xl">For Drivers</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-muted-foreground">
-                <li>• Find nearby concrete recycling locations</li>
-                <li>• Track your daily earnings</li>
-                <li>• GPS-enabled check-ins</li>
-                <li>• Photo verification system</li>
-                <li>• Automated weekly payments</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Building2 className="w-8 h-8 text-secondary" />
-              </div>
-              <CardTitle className="text-xl">For Location Owners</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-muted-foreground">
-                <li>• Manage multiple locations</li>
-                <li>• Set custom washout rates</li>
-                <li>• Monitor driver activity</li>
-                <li>• Verify completed washouts</li>
-                <li>• Automated payment processing</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8 text-accent" />
-              </div>
-              <CardTitle className="text-xl">Compliance & Security</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-muted-foreground">
-                <li>• Environmental compliance tracking</li>
-                <li>• Secure payment processing</li>
-                <li>• Photo documentation</li>
-                <li>• Activity history exports</li>
-                <li>• Real-time GPS verification</li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-
+        <section id="value-proposition" className="scroll-mt-4 border-b border-border bg-card px-4 py-12 sm:px-6 sm:py-16" aria-labelledby="value-proposition-heading">
+          <div className="mx-auto max-w-6xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("public.value.eyebrow")}</p>
+            <h2 id="value-proposition-heading" className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+              {t("public.value.heading")}
+            </h2>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
+              {t("public.value.supporting")}
+            </p>
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              {VALUE_CONCEPTS.map(({ key, icon: Icon }) => (
+                <Card key={key} className="border-border/80 bg-background shadow-sm">
+                  <CardContent className="flex min-h-32 flex-col justify-center p-5">
+                    <Icon aria-hidden="true" className="mb-4 h-6 w-6 text-primary" />
+                    <h3 className="text-lg font-semibold">{t(key)}</h3>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t bg-card/50 backdrop-blur py-8">
-        <div className="container mx-auto px-6 text-center text-muted-foreground">
-          <p>&copy; 2025 V8 Industries LLC. All rights reserved.</p>
-          <div className="mt-2">
-            <Link href="/privacy-policy" className="text-sm hover:text-primary underline">
-              Privacy Policy
+      <footer className="border-t border-slate-800 bg-slate-950 px-4 py-7 text-slate-300 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p>{t("public.footer.copyright", { year: new Date().getFullYear() })}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href={PUBLIC_LANDING_ROUTES.privacy} className="rounded-md underline underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
+              {t("public.footer.privacy")}
             </Link>
+            <Link href={PUBLIC_LANDING_ROUTES.login} className="rounded-md underline underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
+              {t("public.header.login")}
+            </Link>
+            <LanguageToggle labelMode="full" />
           </div>
         </div>
       </footer>
