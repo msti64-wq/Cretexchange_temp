@@ -44,6 +44,7 @@ test("public landing uses the approved existing registration and navigation rout
   assert.equal(PUBLIC_LANDING_ROUTES.facilityRegistration, "/register/owner");
   assert.equal(PUBLIC_LANDING_ROUTES.login, "/login");
   assert.equal(PUBLIC_LANDING_ROUTES.valuePropositionAnchor, "#value-proposition");
+  assert.equal(PUBLIC_LANDING_ROUTES.howItWorksAnchor, "#how-it-works");
 });
 
 test("public landing foundation avoids legacy payment and settlement marketing", () => {
@@ -62,7 +63,76 @@ test("landing source has one page-level heading and semantic route CTAs", () => 
   assert.match(source, /<Link href=\{PUBLIC_LANDING_ROUTES\.driverRegistration\}/);
   assert.match(source, /<Link href=\{PUBLIC_LANDING_ROUTES\.facilityRegistration\}/);
   assert.match(source, /<a href=\{PUBLIC_LANDING_ROUTES\.valuePropositionAnchor\}/);
+  assert.match(source, /id="how-it-works"/);
+  assert.match(
+    readFileSync(new URL("../client/src/components/PublicHeader.tsx", import.meta.url), "utf8"),
+    /href=\{PUBLIC_LANDING_ROUTES\.howItWorksAnchor\}/,
+  );
   assert.doesNotMatch(source, /onClick=\{\(\) => setSelectedRole/);
+});
+
+test("core landing narrative provides the approved bilingual value, trust, and onboarding content", () => {
+  for (const language of ["en", "es"] as const) {
+    assert.ok(translate("public.value.driver", language).trim().length > 0);
+    assert.ok(translate("public.value.facility", language).trim().length > 0);
+    assert.ok(translate("public.value.verification", language).trim().length > 0);
+    assert.ok(translate("public.trust.verified", language).trim().length > 0);
+    assert.ok(translate("public.trust.facilities", language).trim().length > 0);
+    assert.ok(translate("public.trust.professionals", language).trim().length > 0);
+    assert.ok(translate("public.trust.visibility", language).trim().length > 0);
+
+    for (const step of [1, 2, 3, 4]) {
+      assert.ok(translate(`public.how.step${step}Title`, language).trim().length > 0);
+      assert.ok(translate(`public.how.step${step}Supporting`, language).trim().length > 0);
+    }
+  }
+
+  assert.equal(translations.en["public.value.driver"], "Keep Projects Moving");
+  assert.equal(translations.en["public.value.facility"], "Connect with Participating Drivers");
+  assert.equal(translations.en["public.value.verification"], "Why Verification Matters");
+});
+
+test("core landing narrative uses approved registration routes and public Facility terminology", () => {
+  const source = readFileSync(new URL("../client/src/pages/landing.tsx", import.meta.url), "utf8");
+
+  assert.match(source, /PUBLIC_LANDING_ROUTES\.driverRegistration/);
+  assert.match(source, /PUBLIC_LANDING_ROUTES\.facilityRegistration/);
+  assert.equal(translations.en["public.facility.heading"], "Built for Participating Facilities");
+  assert.equal(translations.en["public.facility.benefitVerification"], "Verify operational activity");
+  assert.equal(translations.es["public.facility.benefitVerification"], "Verifique la actividad operativa");
+  assert.notEqual(translate("public.facility.benefitVerification", "en"), "public.facility.benefitVerification");
+  assert.notEqual(translate("public.facility.benefitVerification", "es"), "public.facility.benefitVerification");
+  assert.equal(PUBLIC_LANDING_ROUTES.facilityRegistration, "/register/owner");
+  assert.doesNotMatch(
+    PUBLIC_LANDING_TRANSLATION_KEYS.flatMap((key) => [translations.en[key], translations.es[key]]).join(" "),
+    /Location Owner/i,
+  );
+});
+
+test("How It Works preserves the approved ordered four-step contract", () => {
+  assert.deepEqual(
+    [
+      translations.en["public.how.step1Title"],
+      translations.en["public.how.step2Title"],
+      translations.en["public.how.step3Title"],
+      translations.en["public.how.step4Title"],
+    ],
+    [
+      "Join the Network",
+      "Complete Your Profile",
+      "Connect Through Verified Activity",
+      "Keep Projects Moving",
+    ],
+  );
+});
+
+test("core landing narrative makes only current operational claims", () => {
+  const publicCopy = PUBLIC_LANDING_TRANSLATION_KEYS
+    .flatMap((key) => [translations.en[key], translations.es[key]])
+    .join(" ");
+
+  assert.doesNotMatch(publicCopy, /guaranteed (availability|acceptance|revenue|driver volume)|compliance|regulatory|payment|settlement|earnings|stripe|wallet|treasury|government reporting/i);
+  assert.doesNotMatch(publicCopy, /\bAI\b|government intelligence|circular economy index|marketplace exclusivity/i);
 });
 
 test("saved language preference defaults safely and preserves supported values", () => {

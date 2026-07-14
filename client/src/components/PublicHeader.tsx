@@ -19,7 +19,7 @@ export function PublicHeader() {
         </Link>
 
         <nav aria-label="Public navigation" className="flex w-full flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3 sm:w-auto sm:border-t-0 sm:pt-0">
-          <a href={PUBLIC_LANDING_ROUTES.valuePropositionAnchor} className="rounded-md px-2 py-2 text-sm text-slate-200 underline-offset-4 hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
+          <a href={PUBLIC_LANDING_ROUTES.howItWorksAnchor} className="rounded-md px-2 py-2 text-sm text-slate-200 underline-offset-4 hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
             {t("public.header.howItWorks")}
           </a>
           <LanguageToggle labelMode="full" className="h-10 shrink-0" />
