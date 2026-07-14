@@ -232,3 +232,7 @@ The current launch model remains unchanged: drivers locate participating facilit
 - Clearly distinguish current implementation from future strategy.
 - Link to authoritative documents instead.
 - Keep it concise enough for fast onboarding.
+
+## 21. Facility Operational Access Policy
+
+[PD-050 — Facility Operational Access and Billing Readiness](../product/PD-050-facility-operational-access-and-billing-readiness.md) is authoritative for approved Facility operational location access: saved-payment-method readiness is separate from location-management authorization. The implementation remains pending the authorized Level 3 remediation; PD-050 does not change financial behavior.

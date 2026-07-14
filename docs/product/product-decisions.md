@@ -551,3 +551,17 @@
 **Guardrails:** Avoid shorthand that could imply official adoption. Record search jurisdiction, classes, markets, domains, alternatives, and legal advice before a naming decision.
 
 **Related Documents:** [Mission and Values](../vision/mission-and-values.md), [Platform Definition](../vision/construction-circular-economy-intelligence-platform.md), [Research Program](../research/README.md).
+
+## PD-050 - Facility Operational Access and Billing Readiness
+
+**Decision:** The authoritative policy is documented in [PD-050 — Facility Operational Access and Billing Readiness](./PD-050-facility-operational-access-and-billing-readiness.md). An approved, operationally complete Facility may create, edit, activate, and manage participating locations without a saved payment method. Operational authorization and financial readiness are separate lifecycle states.
+
+**Status:** Active
+
+**Date:** 2026-07-14
+
+**Current Scope:** Product policy only. Authorized Level 3 remediation is required before the legacy location payment-method gate changes in implementation.
+
+**Guardrails:** Preserve authentication, administrative approval, profile completeness, ownership validation, address and location eligibility, active/visible controls, verification requirements, and auditability. Do not introduce a hidden override, administrative bypass, or financial mutation.
+
+**Related Documents:** [PD-050 — Facility Operational Access and Billing Readiness](./PD-050-facility-operational-access-and-billing-readiness.md), [Project Context](../project/project-context.md), [CTX-UX-003](../ux/CTX-UX-003-first-time-user-journey-and-pilot-readiness.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md), [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [PD-045 — Canonical Driver Settlement Rail](#pd-045---canonical-driver-settlement-rail).
