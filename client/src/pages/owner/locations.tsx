@@ -21,7 +21,6 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { useAuth } from "@/hooks/useAuth";
-import { resolveOwnerMembershipState } from "@shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "@shared/ownerLocationAccess";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -142,12 +141,11 @@ export default function OwnerLocations() {
   }, []);
 
   const ownerRecord = (user as any)?.roleData || {};
-  const membershipState = resolveOwnerMembershipState(ownerRecord);
   const locationAccessState = resolveOwnerLocationAccessState(ownerRecord, user as any);
 
   const { data: locations, isLoading, isError: isLocationsError } = useQuery<any[]>({
     queryKey: ['/api/owners/locations'],
-    enabled: membershipState.dashboardAccessAllowed,
+    enabled: locationAccessState.canManageLocations,
   });
 
   const {
@@ -157,7 +155,7 @@ export default function OwnerLocations() {
   } = useQuery<any[]>({
     queryKey: ['/api/owners/activities?dateRange=all'],
     refetchInterval: 30000,
-    enabled: membershipState.dashboardAccessAllowed,
+    enabled: locationAccessState.canManageLocations,
   });
   const ownerLocationRows = Array.isArray(locations) ? locations : [];
   const ownerActivityRows = Array.isArray(ownerActivities) ? ownerActivities : [];
@@ -205,7 +203,7 @@ export default function OwnerLocations() {
     ? topLocationCandidate
     : null;
   const locationsWithRecentActivity = locationActivitySummary.filter((entry) => entry.recentActivityPresent).length;
-  const ownerLocationIntelligenceEmpty = membershipState.dashboardAccessAllowed
+  const ownerLocationIntelligenceEmpty = locationAccessState.canManageLocations
     && !isLocationsError
     && !isOwnerActivitiesError
     && !isOwnerActivitiesLoading
@@ -554,15 +552,15 @@ export default function OwnerLocations() {
                 size="sm" 
                 data-testid="button-add-location" 
                 className="bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
-                disabled={!membershipState.dashboardAccessAllowed}
-                title={!membershipState.dashboardAccessAllowed
-                  ? membershipState.accountStatusMessage || t("owner.dashboard.accountPendingReview")
+                disabled={!locationAccessState.canManageLocations}
+                title={!locationAccessState.canManageLocations
+                  ? locationAccessState.blockingMessage || t("owner.dashboard.accountPendingReview")
                   : ""}
                 onClick={() => {
-                  if (!membershipState.dashboardAccessAllowed) {
+                  if (!locationAccessState.canManageLocations) {
                     toast({
                       title: t("owner.locations.accountReviewRequired"),
-                      description: membershipState.accountStatusMessage || t("owner.dashboard.accountPendingReview"),
+                      description: locationAccessState.blockingMessage || t("owner.dashboard.accountPendingReview"),
                       variant: "destructive",
                     });
                   }
@@ -943,13 +941,7 @@ export default function OwnerLocations() {
       </header>
 
       <main className="p-4 space-y-4">
-        {!membershipState.dashboardAccessAllowed && membershipState.accountStatusMessage && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/20">
-            <p className="text-sm text-amber-800 dark:text-amber-200">{membershipState.accountStatusMessage}</p>
-          </div>
-        )}
-
-        {membershipState.dashboardAccessAllowed && !locationAccessState.canManageLocations && locationAccessState.blockingMessage && (
+        {!locationAccessState.canManageLocations && locationAccessState.blockingMessage && (
           <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm dark:border-sky-900/40 dark:bg-sky-950/20">
             <p className="text-sm text-sky-800 dark:text-sky-200">{locationAccessState.blockingMessage}</p>
             {locationAccessState.missingProfileFieldLabels.length > 0 && (
@@ -960,7 +952,7 @@ export default function OwnerLocations() {
           </div>
         )}
 
-        {membershipState.dashboardAccessAllowed && !isLocationsError && (
+        {locationAccessState.canManageLocations && !isLocationsError && (
           <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -1096,7 +1088,11 @@ export default function OwnerLocations() {
               <CardContent className="text-center py-8">
                 <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-4">{t("owner.locations.noLocationsYet")}</p>
-                <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-first-location">
+                <Button
+                  onClick={() => setIsAddDialogOpen(true)}
+                  disabled={!locationAccessState.canManageLocations}
+                  data-testid="button-add-first-location"
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   {t("owner.locations.addFirstLocation")}
                 </Button>

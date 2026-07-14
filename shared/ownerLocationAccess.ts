@@ -1,7 +1,7 @@
 export interface OwnerLocationAccessState {
   profileCompleted: boolean;
-  paymentMethodOnFile: boolean;
-  locationSetupOverride: boolean;
+  approvalCompleted: boolean;
+  accessStatus: "operationally_ready" | "profile_incomplete" | "approval_pending" | "membership_blocked" | "access_denied";
   canManageLocations: boolean;
   missingProfileFields: string[];
   missingProfileFieldLabels: string[];
@@ -104,8 +104,8 @@ function formatMissingOwnerProfileFieldLabels(missingFields: string[]): string[]
 
 export function resolveOwnerLocationAccessState(owner: {
   profileCompleted?: boolean | null;
-  locationSetupOverride?: boolean | null;
-  stripePaymentMethodId?: string | null;
+  isApproved?: boolean | null;
+  membershipStatus?: string | null;
   companyName?: string | null;
   businessLicense?: string | null;
   taxId?: string | null;
@@ -122,63 +122,68 @@ export function resolveOwnerLocationAccessState(owner: {
   const profileCompleted = isOwnerProfileComplete(owner, user);
   const missingProfileFields = getMissingOwnerProfileFields(owner, user);
   const missingProfileFieldLabels = formatMissingOwnerProfileFieldLabels(missingProfileFields);
-  const paymentMethodOnFile = Boolean(owner?.stripePaymentMethodId);
-  const locationSetupOverride = Boolean(owner?.locationSetupOverride);
+  const membershipStatus = owner?.membershipStatus || null;
+  const membershipBlocked = membershipStatus === "expired" || membershipStatus === "suspended";
+  // Location-management approval is explicit administrative approval. Legacy
+  // membership labels can still block access where an active policy requires
+  // it, but they do not substitute for Facility approval.
+  const approvalCompleted = owner?.isApproved === true;
 
-  if (locationSetupOverride) {
+  if (!owner || !user) {
     return {
       profileCompleted,
-      paymentMethodOnFile,
-      locationSetupOverride,
-      missingProfileFields,
-      missingProfileFieldLabels,
-      canManageLocations: true,
-    };
-  }
-
-  if (profileCompleted && paymentMethodOnFile) {
-    return {
-      profileCompleted,
-      paymentMethodOnFile,
-      locationSetupOverride,
-      missingProfileFields,
-      missingProfileFieldLabels,
-      canManageLocations: true,
-    };
-  }
-
-  if (!profileCompleted && !paymentMethodOnFile) {
-    return {
-      profileCompleted,
-      paymentMethodOnFile,
-      locationSetupOverride,
+      approvalCompleted: false,
+      accessStatus: "access_denied",
       missingProfileFields,
       missingProfileFieldLabels,
       canManageLocations: false,
-      blockingMessage: `To set up washout locations, please complete your owner profile (${missingProfileFieldLabels.join(", ")}) and add a payment method.`,
+      blockingMessage: "Facility access could not be confirmed. Please sign in again or contact support.",
+    };
+  }
+
+  if (membershipBlocked) {
+    return {
+      profileCompleted,
+      approvalCompleted,
+      accessStatus: "membership_blocked",
+      missingProfileFields,
+      missingProfileFieldLabels,
+      canManageLocations: false,
+      blockingMessage: "Your Facility account is not currently available for location management. Please contact support.",
+    };
+  }
+
+  if (!approvalCompleted) {
+    return {
+      profileCompleted,
+      approvalCompleted,
+      accessStatus: "approval_pending",
+      missingProfileFields,
+      missingProfileFieldLabels,
+      canManageLocations: false,
+      blockingMessage: "Your Facility account is awaiting administrative approval before location management is available.",
     };
   }
 
   if (!profileCompleted) {
     return {
       profileCompleted,
-      paymentMethodOnFile,
-      locationSetupOverride,
+      approvalCompleted,
+      accessStatus: "profile_incomplete",
       missingProfileFields,
       missingProfileFieldLabels,
       canManageLocations: false,
-      blockingMessage: `Please complete your owner profile before setting up washout locations. Missing: ${missingProfileFieldLabels.join(", ")}.`,
+      blockingMessage: `Please complete your Facility profile before setting up locations. Missing: ${missingProfileFieldLabels.join(", ")}.`,
     };
   }
 
   return {
     profileCompleted,
-    paymentMethodOnFile,
-    locationSetupOverride,
+    approvalCompleted,
+    accessStatus: "operationally_ready",
     missingProfileFields,
     missingProfileFieldLabels,
-    canManageLocations: false,
-    blockingMessage: "Please add a payment method before setting up washout locations.",
+    canManageLocations: true,
   };
 }
 

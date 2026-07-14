@@ -1848,11 +1848,10 @@ test("owner can create location with default driver tip and no monthly billing r
         userId: "owner_user_1",
         companyName: "Alpha Concrete",
         membershipStatus: "active",
-        isApproved: false,
+        isApproved: true,
         stripePaymentMethodId: "pm_123",
         stripeCustomerId: "cus_123",
         profileCompleted: true,
-        locationSetupOverride: false,
         businessLicense: "BL-100",
         taxId: "12-3456789",
       }),
@@ -1917,8 +1916,25 @@ test("owner can update location rate without affecting lottery settings", async 
       getOwner: async () => ({
         id: "owner_1",
         userId: "owner_user_1",
+        isApproved: true,
+        profileCompleted: true,
+        companyName: "Alpha Concrete",
+        businessLicense: "BL-100",
+        taxId: "12-3456789",
         useCustomBillingModel: false,
         customWashoutRate: null,
+      }),
+      getUser: async () => ({
+        id: "owner_user_1",
+        role: "owner",
+        firstName: "Olivia",
+        lastName: "Owner",
+        email: "olivia@example.com",
+        phone: "555-0100",
+        street: "1 Main St",
+        city: "Austin",
+        state: "TX",
+        zip: "78701",
       }),
       getWashoutLocation: async () => ({
         id: "location_1",
@@ -1985,8 +2001,7 @@ test("auth user response includes derived owner profile completion state", async
         taxId: "12-3456789",
         stripePaymentMethodId: "pm_123",
         membershipStatus: "active",
-        isApproved: false,
-        locationSetupOverride: false,
+        isApproved: true,
       }),
     },
     async () => {
@@ -2004,10 +2019,11 @@ test("auth user response includes derived owner profile completion state", async
       );
 
       assert.equal(res.statusCode, 200);
-      const body = res.body as { roleData?: { profileCompleted?: boolean; missingProfileFields?: string[]; missingProfileFieldLabels?: string[]; canManageLocations?: boolean; paymentMethodOnFile?: boolean } };
+      const body = res.body as { roleData?: { profileCompleted?: boolean; approvalCompleted?: boolean; locationAccessStatus?: string; missingProfileFields?: string[]; missingProfileFieldLabels?: string[]; canManageLocations?: boolean } };
       assert.equal(body.roleData?.profileCompleted, true);
+      assert.equal(body.roleData?.approvalCompleted, true);
+      assert.equal(body.roleData?.locationAccessStatus, "operationally_ready");
       assert.equal(body.roleData?.canManageLocations, true);
-      assert.equal(body.roleData?.paymentMethodOnFile, true);
       assert.deepEqual(body.roleData?.missingProfileFields, []);
     },
   );
@@ -2026,8 +2042,7 @@ test("owner add location returns missing profile fields when blocked", async () 
         taxId: "",
         stripePaymentMethodId: "pm_123",
         membershipStatus: "active",
-        isApproved: false,
-        locationSetupOverride: false,
+        isApproved: true,
       }),
       getUser: async () => ({
         id: "owner_user_1",

@@ -1770,6 +1770,19 @@ function extractIPv4(req: any): string | null {
   return null;
 }
 
+async function getOwnerLocationOperationalAccess(userId: string) {
+  const [owner, user] = await Promise.all([
+    storage.getOwner(userId),
+    storage.getUser(userId),
+  ]);
+
+  return {
+    owner,
+    user,
+    accessState: resolveOwnerLocationAccessState(owner, user),
+  };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Installation guide routes (with and without .html extension)
   const serveInstallationGuide = async (req: any, res: any) => {
@@ -2215,10 +2228,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           roleData = {
             ...ownerData,
             profileCompleted: ownerProfileState.profileCompleted,
+            approvalCompleted: ownerProfileState.approvalCompleted,
+            locationAccessStatus: ownerProfileState.accessStatus,
             missingProfileFields: ownerProfileState.missingProfileFields,
             missingProfileFieldLabels: ownerProfileState.missingProfileFieldLabels,
-            paymentMethodOnFile: ownerProfileState.paymentMethodOnFile,
-            locationSetupOverride: ownerProfileState.locationSetupOverride,
             canManageLocations: ownerProfileState.canManageLocations,
             locationSetupBlockingMessage: ownerProfileState.blockingMessage || null,
           };
@@ -4636,8 +4649,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/owners/locations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const owner = await storage.getOwner(userId);
-      const user = await storage.getUser(userId);
+      const { owner, user, accessState: locationAccessState } = await getOwnerLocationOperationalAccess(userId);
       const authRole = req.user?.role || user?.role || null;
 
       console.info("Owner location create route called:", {
@@ -4661,29 +4673,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const membershipState = resolveOwnerMembershipState(owner);
-      if (!membershipState.dashboardAccessAllowed) {
-        return res.status(403).json({
-          message: membershipState.accountStatusMessage || "Your owner account is not yet approved.",
-        });
-      }
-
-      const locationAccessState = resolveOwnerLocationAccessState(owner, user);
       console.info("Owner location access resolved:", {
         userId,
         ownerId: owner.id,
         profileCompleted: locationAccessState.profileCompleted,
-        paymentMethodOnFile: locationAccessState.paymentMethodOnFile,
+        approvalCompleted: locationAccessState.approvalCompleted,
+        accessStatus: locationAccessState.accessStatus,
         canManageLocations: locationAccessState.canManageLocations,
         missingFields: locationAccessState.missingProfileFields,
       });
       if (!locationAccessState.canManageLocations) {
         return res.status(403).json({
-          message: locationAccessState.blockingMessage || "Please complete your owner profile and add a payment method before setting up washout locations.",
+          message: locationAccessState.blockingMessage || "Your Facility is not ready for location management.",
           missingFields: locationAccessState.missingProfileFields,
           missingFieldLabels: locationAccessState.missingProfileFieldLabels,
           profileCompleted: locationAccessState.profileCompleted,
-          paymentMethodOnFile: locationAccessState.paymentMethodOnFile,
+          approvalCompleted: locationAccessState.approvalCompleted,
+          locationAccessStatus: locationAccessState.accessStatus,
         });
       }
 
@@ -4772,10 +4778,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/owners/locations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const owner = await storage.getOwner(userId);
+      const { owner, user, accessState: locationAccessState } = await getOwnerLocationOperationalAccess(userId);
       
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!locationAccessState.canManageLocations) {
+        return res.status(403).json({
+          message: locationAccessState.blockingMessage || "Your Facility is not ready for location management.",
+          locationAccessStatus: locationAccessState.accessStatus,
+          missingFields: locationAccessState.missingProfileFields,
+          missingFieldLabels: locationAccessState.missingProfileFieldLabels,
+        });
       }
 
       const locations = await storage.getLocationsByOwner(owner.id);
@@ -4792,9 +4811,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       
       // Get owner information
-      const owner = await storage.getOwner(userId);
+      const { owner, user, accessState: locationAccessState } = await getOwnerLocationOperationalAccess(userId);
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!locationAccessState.canManageLocations) {
+        return res.status(403).json({
+          message: locationAccessState.blockingMessage || "Your Facility is not ready for location management.",
+          locationAccessStatus: locationAccessState.accessStatus,
+        });
       }
 
       // Verify the location exists and belongs to this owner
@@ -4829,9 +4859,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const userId = req.user.id;
       
-      const owner = await storage.getOwner(userId);
+      const { owner, user, accessState: locationAccessState } = await getOwnerLocationOperationalAccess(userId);
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!locationAccessState.canManageLocations) {
+        return res.status(403).json({
+          message: locationAccessState.blockingMessage || "Your Facility is not ready for location management.",
+          locationAccessStatus: locationAccessState.accessStatus,
+        });
       }
 
       // Verify the location belongs to this owner
@@ -4884,9 +4925,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const userId = req.user.id;
       
-      const owner = await storage.getOwner(userId);
+      const { owner, user, accessState: locationAccessState } = await getOwnerLocationOperationalAccess(userId);
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!locationAccessState.canManageLocations) {
+        return res.status(403).json({
+          message: locationAccessState.blockingMessage || "Your Facility is not ready for location management.",
+          locationAccessStatus: locationAccessState.accessStatus,
+        });
       }
 
       // Verify the location belongs to this owner
@@ -4921,9 +4973,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const userId = req.user.id;
       
-      const owner = await storage.getOwner(userId);
+      const { owner, user, accessState: locationAccessState } = await getOwnerLocationOperationalAccess(userId);
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
+      }
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!locationAccessState.canManageLocations) {
+        return res.status(403).json({
+          message: locationAccessState.blockingMessage || "Your Facility is not ready for location management.",
+          locationAccessStatus: locationAccessState.accessStatus,
+        });
       }
 
       // Verify the location belongs to this owner before deleting
@@ -10491,7 +10554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST create a location on behalf of an owner (admin override — skips CC/Stripe checks)
+  // POST create a location on behalf of an operationally eligible Facility.
   app.post('/api/admin/locations', isAuthenticated, async (req: any, res) => {
     try {
       const adminUser = await storage.getUser(req.user.id);
@@ -10507,6 +10570,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const owner = await storage.getOwnerById(ownerId);
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
+      }
+
+      const facilityUser = await storage.getUser(owner.userId);
+      if (!facilityUser) {
+        return res.status(404).json({ message: "Facility user not found" });
+      }
+
+      const locationAccessState = resolveOwnerLocationAccessState(owner, facilityUser);
+      if (!locationAccessState.canManageLocations) {
+        return res.status(403).json({
+          message: locationAccessState.blockingMessage || "The Facility is not ready for location management.",
+          locationAccessStatus: locationAccessState.accessStatus,
+          missingFields: locationAccessState.missingProfileFields,
+          missingFieldLabels: locationAccessState.missingProfileFieldLabels,
+        });
       }
 
       // Validate core location fields (lat/lng optional — will be geocoded)

@@ -57,7 +57,6 @@ function makeOwner(id: string, user: User, companyName: string): Owner {
     acceptsOwnerPayments: false,
     membershipStatus: "active",
     profileCompleted: true,
-    locationSetupOverride: false,
     annualMembershipEnabledOverride: null,
     monthlyLocationDuesEnabledOverride: null,
     membershipFeeOverride: null,

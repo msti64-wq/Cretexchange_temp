@@ -12,8 +12,6 @@ function makeOwner(overrides: Record<string, unknown> = {}) {
     subscriptionStatus: "inactive",
     walletStatus: "active",
     profileCompleted: true,
-    locationSetupOverride: false,
-    stripePaymentMethodId: "pm_123",
     companyName: "Alpha Concrete",
     businessLicense: "BL-100",
     taxId: "12-3456789",
@@ -66,14 +64,14 @@ test("suspended owner sees contact admin message", () => {
   assert.match(state.accountStatusMessage || "", /contact an administrator/i);
 });
 
-test("active owner missing card can see dashboard but cannot manage locations", () => {
+test("approved, complete Facility can manage locations without a payment method", () => {
   const owner = makeOwner({ membershipStatus: "active", stripePaymentMethodId: null });
   const membershipState = resolveOwnerMembershipState(owner);
   const locationState = resolveOwnerLocationAccessState(owner, makeUser());
 
   assert.equal(membershipState.dashboardAccessAllowed, true);
-  assert.equal(locationState.canManageLocations, false);
-  assert.match(locationState.blockingMessage || "", /add a payment method/i);
+  assert.equal(locationState.canManageLocations, true);
+  assert.equal(locationState.accessStatus, "operationally_ready");
 });
 
 test("incomplete owner profile is blocked with missing field labels", () => {
@@ -91,10 +89,28 @@ test("incomplete owner profile is blocked with missing field labels", () => {
   assert.match(locationState.blockingMessage || "", /Missing:/i);
 });
 
-test("complete owner profile with card on file can manage locations", () => {
+test("unapproved and malformed Facility records are denied safely", () => {
+  const unapproved = resolveOwnerLocationAccessState(makeOwner({ isApproved: false, membershipStatus: "pending_review" }), makeUser());
+  const activeMembershipWithoutApproval = resolveOwnerLocationAccessState(makeOwner({ isApproved: false, membershipStatus: "active" }), makeUser());
+  const missingOwner = resolveOwnerLocationAccessState(null, makeUser());
+  const missingUser = resolveOwnerLocationAccessState(makeOwner(), null);
+
+  assert.equal(unapproved.canManageLocations, false);
+  assert.equal(unapproved.accessStatus, "approval_pending");
+  assert.equal(activeMembershipWithoutApproval.canManageLocations, false);
+  assert.equal(activeMembershipWithoutApproval.accessStatus, "approval_pending");
+  assert.equal(missingOwner.canManageLocations, false);
+  assert.equal(missingOwner.accessStatus, "access_denied");
+  assert.equal(missingUser.canManageLocations, false);
+  assert.equal(missingUser.accessStatus, "access_denied");
+});
+
+test("payment-method presence does not alter operational location access", () => {
+  const withoutPaymentMethod = resolveOwnerLocationAccessState(makeOwner({ stripePaymentMethodId: null }), makeUser());
   const owner = makeOwner({ stripePaymentMethodId: "pm_123" });
   const locationState = resolveOwnerLocationAccessState(owner, makeUser());
 
+  assert.equal(withoutPaymentMethod.canManageLocations, true);
   assert.equal(locationState.canManageLocations, true);
   assert.equal(locationState.missingProfileFields.length, 0);
 });
@@ -112,8 +128,8 @@ test("column and lithic legacy fields are not required for location setup", () =
   assert.equal(locationState.canManageLocations, true);
 });
 
-test("waived owner with profile complete and card on file can manage locations", () => {
-  const owner = makeOwner({ membershipStatus: "waived", locationSetupOverride: false, stripePaymentMethodId: "pm_123" });
+test("waived approved Facility with a complete profile can manage locations", () => {
+  const owner = makeOwner({ membershipStatus: "waived", stripePaymentMethodId: null });
   const membershipState = resolveOwnerMembershipState(owner);
   const locationState = resolveOwnerLocationAccessState(owner, makeUser());
 

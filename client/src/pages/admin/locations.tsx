@@ -484,9 +484,9 @@ export default function AdminLocations() {
       <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) form.reset(); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Location on Behalf of Owner</DialogTitle>
+            <DialogTitle>Add Location on Behalf of Facility</DialogTitle>
             <DialogDescription>
-              Admin override — no CC or Stripe checks. The address will be geocoded automatically.
+              The Facility must be approved and have a complete operational profile. Financial readiness is separate. The address will be geocoded automatically.
             </DialogDescription>
           </DialogHeader>
 
