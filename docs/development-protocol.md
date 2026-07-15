@@ -139,6 +139,144 @@ Before writing code:
 - [ ] Identify configuration-first opportunities
 - [ ] Complete Source of Truth Verification
 
+## Risk-Based Validation Policy
+
+Validation must remain responsible, proportionate to risk, and conscious of processing cost. Use the least expensive validation that provides reasonable confidence without reducing safeguards for authentication, authorization, payments, wallets, financial calculations, sensitive data, database integrity, migrations, deployment, or release reliability.
+
+Assign a validation level before work begins. Increase the level when scope or risk grows. An approved task, governing architecture document, migration plan, security requirement, or release checklist may require additional validation beyond the minimum described here.
+
+Existing documentation that generically requires broad commands for every implementation task is interpreted through this policy: run those commands at the checkpoint required by the assigned level, not after every intermediate edit. Explicit task-specific or release-specific validation requirements remain in force and may raise, but not reduce, the required safeguards.
+
+### Level 1 — Low-Risk Isolated Change
+
+Examples include:
+
+- text or label correction
+- documentation update
+- minor styling change
+- small accessibility fix
+- isolated single-component adjustment
+- nonfunctional copy or layout change
+
+Use:
+
+- inspection of the affected file and diff
+- targeted type validation when available and relevant
+- a targeted test only when applicable
+- manual verification of the affected screen or document
+- `git diff` and `git diff --check` where relevant
+
+Do not automatically run:
+
+- a full build
+- the full test suite
+- broad repository scans
+- dependency audits
+
+Run a broader command only when the changed code reasonably affects shared compilation or build behavior.
+
+### Level 2 — Feature-Area Change
+
+Examples include:
+
+- Driver Dashboard
+- Driver Rewards
+- Location discovery
+- Driver Activity
+- Notifications
+- Profile workflow
+- Owner Locations
+- a small feature-specific API change
+
+Use:
+
+- targeted code inspection
+- type checking when TypeScript contracts are affected
+- focused tests for the changed feature
+- a manual walkthrough of the affected flow
+- one build after the feature-area batch is complete
+
+Avoid:
+
+- rerunning successful broad checks after every edit
+- full-suite execution for each small subtask
+- repeated builds when no build-sensitive code changed
+
+### Level 3 — High-Risk Change
+
+Examples include:
+
+- authentication or authorization
+- payments or Stripe
+- wallet balances or financial calculations
+- database schema or migrations
+- shared storage
+- privacy or sensitive information
+- security configuration
+- deployment configuration
+
+Use:
+
+- a full type check
+- a full build
+- the full test suite when executable
+- relevant focused security, financial, access-control, or migration tests
+- transactional or database-backed tests where required
+- explicit failure, retry, and idempotency testing
+
+If the full suite has a known baseline failure:
+
+- do not rerun it repeatedly during intermediate edits
+- run focused tests during implementation
+- run the full suite once at the appropriate checkpoint
+- compare against the documented baseline
+- report current-only regressions separately
+
+### Level 4 — Release, Merge, Deployment, or Demo Checkpoint
+
+After the related work is complete, run the full validation suite once:
+
+```bash
+npm run check
+npm run build
+npm run test
+```
+
+Also run:
+
+- `git diff --check`
+- relevant release and security checks
+- migration validation where applicable
+- a manual smoke test of critical workflows
+
+Do not repeat a successful command unless a later change could reasonably affect its result.
+
+### Cost-Awareness Rules
+
+1. Preserve prior successful validation results when affected code has not changed.
+2. Do not rerun successful broad checks solely for reassurance.
+3. Prefer inspection and focused tests during intermediate implementation.
+4. Group related fixes into a focused implementation batch.
+5. Run the full build once after a Level 2 feature batch, not after every edit.
+6. Run the full suite once at a Level 3 or Level 4 checkpoint unless a specific failure requires another run.
+7. Explain why any additional broad or repeated command is necessary before running it.
+8. Do not run dependency audits, repository-wide exploratory scans, or unrelated checks without a specific risk-based reason.
+9. Do not treat documentation or cosmetic changes like financial or security changes.
+10. Make validation effort proportional to change scope, security risk, financial risk, data-integrity risk, shared dependencies affected, and release importance.
+
+### Validation Reporting
+
+Every task report must include:
+
+- assigned validation level
+- reason for the level
+- targeted checks run
+- broad commands run
+- approximate number of broad commands run
+- checks intentionally omitted and why they were unnecessary
+- prior successful results reused
+- whether a Level 4 checkpoint remains outstanding
+
 ## Standard Development Workflow
 
 1. Preflight
@@ -171,8 +309,9 @@ Before writing code:
    - Follow governing architecture and standards documents.
 
 6. Validate
-   - Run `npm run check`.
-   - Run `npm run build`.
+   - Apply the assigned validation level and use proportionate checks.
+   - Prefer focused tests during implementation and broad validation at the appropriate checkpoint.
+   - Preserve prior successful results when affected code has not changed.
    - Add appropriate tests where applicable.
 
 7. Post-Implementation Audit
@@ -240,14 +379,16 @@ If implementation introduces a new technical pattern:
 
 ## Testing Requirements
 
-Every implementation should verify:
+Every implementation must follow the Risk-Based Validation Policy. The selected validation level determines when `npm run check`, `npm run build`, `npm run test`, focused tests, database-backed tests, and manual verification are required.
 
-- `npm run check`
-- `npm run build`
-- appropriate tests where applicable
-- no TypeScript errors
+Regardless of level, validation must provide reasonable confidence that the change introduces:
+
+- no relevant TypeScript errors
 - no duplicated logic
 - no conflicting calculations
+- no regression in the affected workflow
+
+High-risk financial, security, data-integrity, migration, deployment, and release work retains the stronger safeguards defined by Levels 3 and 4.
 
 ## Git Workflow
 
@@ -268,6 +409,10 @@ Every completed task should report:
 - Business Rules referenced
 - Source of Truth verified
 - Validation completed
+- Assigned validation level and rationale
+- Broad commands run and checks intentionally omitted
+- Prior successful validation results reused
+- Whether a Level 4 checkpoint remains outstanding
 - Scope confirmation
 
 ## Architecture Compliance Verification

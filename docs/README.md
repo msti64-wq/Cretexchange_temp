@@ -1,6 +1,22 @@
 # CreteXchange Documentation Library
 
-This is the primary landing page for CreteXchange documentation. Read this first before making changes to the platform.
+This is the canonical entry point for CreteXchange documentation. New contributors and Codex sessions should begin here, then follow the authoritative hierarchy before proposing, planning, or implementing a change.
+
+## Project Overview
+
+CreteXchange is a trusted construction-materials operations platform. Its current foundation supports practical Driver, participating Facility, and Platform Operations workflows around verified operational activity. Its long-term mission is the Construction Circular Economy Intelligence Platform: helping the ecosystem discover, verify, recover, reuse, measure, and improve construction-material movement.
+
+Current implementation, approved scope, and future strategy must remain distinct. No documentation or implementation may represent a future capability as current merely because it appears on a roadmap.
+
+## Where to Start
+
+1. Read [Platform Vision](./vision/platform-vision.md) and [Platform Strategy](./vision/platform-strategy.md) for the enduring mission and long-term direction.
+2. Read [Project Context](./project/project-context.md) for current implementation and approved delivery context.
+3. Read [Development Protocol](./development-protocol.md) before planning or changing work.
+4. Read the applicable standards, architecture, Product Decisions, UX specification, and sprint document for the feature area.
+5. Identify the canonical source of truth before implementation. If it is unclear, audit first.
+
+This README is a navigation and governance guide. It does not replace the authorities it links to.
 
 The platform follows:
 
@@ -26,6 +42,8 @@ The canonical documentation order of precedence is:
 
 Supporting, historical, or archived documents must not override this hierarchy.
 
+For day-to-day implementation, the operational reading sequence begins with Project Context and the Development Protocol after Vision and Strategy have established the governing direction. Lower-level artifacts—UX specifications, roadmaps, runbooks, sprint plans, tests, and implementation code—must not contradict higher-level authorities.
+
 Platform Vision defines why CreteXchange exists. Platform Strategy defines the authoritative long-term strategic roadmap. Project Context defines the current implementation and approved delivery context. Strategy does not supersede implementation architecture or authorize sprint work.
 
 Business documents guide customer-value, business-model, and monetization decisions. They do not override Platform Standards, CTX-ARCH documents, implemented business rules, or approved sprint scope.
@@ -40,6 +58,11 @@ Research documents define proposed hypotheses, validation plans, grant readiness
   - [Construction Circular Economy Intelligence Platform](./vision/construction-circular-economy-intelligence-platform.md)
 - [Platform Strategy](./vision/platform-strategy.md)
 - [Project Context](./project/project-context.md)
+  - [Sprint Roadmap](./project/sprint-roadmap.md)
+  - [Epic Roadmap](./project/epic-roadmap.md)
+  - [Sprint 2.1](./project/sprints/sprint-2.1.md)
+  - [Sprint 2.1.4 — Admin Intelligence Foundation / Platform Operations Center](./project/sprints/sprint-2.1.4.md)
+  - [Sprint 2.2 — MVP Operational Readiness](./project/sprints/sprint-2.2.md)
 - [Platform Standards](./standards/cretexchange-platform-standards.md)
 - [Architecture Library](./architecture/README.md)
 - [Product Decisions](./product/product-decisions.md)
@@ -64,6 +87,46 @@ Research documents define proposed hypotheses, validation plans, grant readiness
   - [Research Roadmap](./research/research-roadmap.md)
   - [Advisory Board Plan](./research/advisory-board-plan.md)
 - [Development Protocol](./development-protocol.md)
+
+## Documentation Families
+
+| Family | Purpose | Audience | When to update | Examples |
+| --- | --- | --- | --- | --- |
+| Project Context | Current implementation state, active scope, and delivery context | All contributors | When current phase, implementation context, or approved sprint context changes | [Project Context](./project/project-context.md) |
+| Development Protocol | Required execution, preflight, source-of-truth, and validation workflow | Contributors and Codex | When the engineering workflow or validation policy changes | [Development Protocol](./development-protocol.md), [New Chat Kickoff](./project/new-chat-kickoff.md) |
+| CTX-STD | Mandatory platform engineering standards | Engineering and reviewers | When a durable engineering standard changes | [CTX-STD-001](./standards/cretexchange-platform-standards.md) |
+| CTX-ARCH | Implementation architecture, source-of-truth boundaries, and domain contracts | Engineering, architecture, and reviewers | Before or with an approved architecture change | [Architecture Library](./architecture/README.md) |
+| PD | Durable product policy and operational rules | Product, Operations, Engineering | When a product-policy decision is made or revised | [Product Decisions](./product/product-decisions.md), [PD-050](./product/PD-050-facility-operational-access-and-billing-readiness.md) |
+| CTX-UX | Experience architecture for future interfaces | Product, Design, Engineering, Operations | Before a material experience enhancement or when a durable UX contract changes | [CTX-UX-005](./ux/CTX-UX-005-driver-dashboard-experience.md) |
+| Runbooks | Authorized operational support and recovery guidance | Platform Operations and pilot support | When approved procedures, ownership, or escalation paths change | [Assisted-Pilot Operations Runbook](./project/pilot/assisted-pilot-operations-runbook.md) |
+| Roadmaps | Directional sequencing and milestone context | Product and planning | When priorities or completed phases change | [Sprint Roadmap](./project/sprint-roadmap.md), [Epic Roadmap](./project/epic-roadmap.md) |
+| Sprint Plans | Approved delivery objectives, phases, scope, and validation | Delivery teams | At sprint start, transition, and closeout | [Sprint 2.2](./project/sprints/sprint-2.2.md) |
+| Testing | Executable behavioral evidence for implementation | Engineering and reviewers | With behavior changes or test-harness maintenance | `tests/`, focused feature tests, validation recorded by the Development Protocol |
+
+Before implementation, documentation should exist for the governing product policy and architecture. Create or update a UX specification when the change establishes a durable experience contract. Do not use a roadmap, runbook, test, or code path to override an applicable standard, architecture document, or Product Decision.
+
+## Current UX Architecture
+
+| UX specification | Current purpose |
+| --- | --- |
+| [CTX-UX-001](./ux/CTX-UX-001-first-impression-and-onboarding-experience.md) | Defines the first impression and foundational onboarding experience. |
+| [CTX-UX-002](./ux/CTX-UX-002-landing-page-content-information-architecture-and-wireframe-specification.md) | Defines public landing-page content, information architecture, and wireframe direction. |
+| [CTX-UX-003](./ux/CTX-UX-003-first-time-user-journey-and-pilot-readiness.md) | Defines first-time journeys, pilot readiness, friction mapping, and TFVA boundaries. |
+| [CTX-UX-004](./ux/CTX-UX-004-first-time-user-onboarding-experience.md) | Defines detailed Driver and Facility onboarding through first verified activity. |
+| [CTX-UX-005](./ux/CTX-UX-005-driver-dashboard-experience.md) | Defines the Driver Dashboard as an operational command center and next-action experience. |
+| [CTX-UX-006](./ux/CTX-UX-006-facility-workspace-experience.md) | Defines the Facility Workspace for location management, fair Driver review, and operational readiness. |
+| [CTX-UX-007](./ux/CTX-UX-007-platform-operations-center-experience.md) | Defines the overall Platform Operations Center workspace for marketplace health, queues, alerts, and support. |
+| [CTX-UX-008](./ux/CTX-UX-008-administrative-activity-review-experience.md) | Defines the dedicated administrative activity-investigation experience under PD-052. |
+
+## Active Product Decisions
+
+Product Decisions define durable business policy and operational rules. They do not implement a feature by themselves.
+
+| Decision | Policy summary |
+| --- | --- |
+| [PD-050](./product/PD-050-facility-operational-access-and-billing-readiness.md) | Separates Facility operational authorization from financial readiness; a payment method is not an operational location-management prerequisite. |
+| [PD-051](./product/PD-051-driver-activity-and-payment-lifecycle.md) | Separates operational activity verification from payment, wallet, schedule, and settlement presentation. |
+| [PD-052](./product/PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md) | Governs evidence-based, neutral, least-privilege administrative review and marketplace-trust policy. |
 
 ## Archived References
 
@@ -94,6 +157,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | CTX-ARCH-003 | Driver Operations Architecture | Defines driver workflows, location discovery, activity lifecycle, wallet visibility, and driver KPI behavior. | Approved |
 | CTX-ARCH-004 | Admin Operations Architecture | Defines admin oversight, support, reconciliation, platform configuration, and administrative governance. | Approved |
 | CTX-ARCH-005 | Material Management Architecture | Defines material taxonomy, financial direction, settlement models, pricing, capacity, and extensibility. | Approved |
+| CTX-ARCH-006 | Driver Incentive and Financial Settlement Architecture | Defines the immutable incentive snapshot, owner charge, payment obligation, wallet-authoritative settlement, Stripe payout, idempotency, recovery, and financial reporting contract. | Approved; PD-045 Active; runtime remediation pending |
 
 ## Standards Library
 
@@ -112,6 +176,106 @@ Reference:
 ## Architecture Decision Records
 
 ADRs capture technical decisions that guide implementation. They record the rationale behind important architecture choices and provide durable context for future development.
+
+## Development Workflow
+
+Follow the [Development Protocol](./development-protocol.md) for every change. The normal delivery sequence is:
+
+```text
+Research
+↓
+Architecture / Product Decision (if needed)
+↓
+UX Specification (if needed)
+↓
+Implementation
+↓
+Focused Validation
+↓
+Narrow Audit
+↓
+Small Commit
+↓
+Push
+↓
+Deployment
+```
+
+Not every task needs every artifact: a small implementation within established policy may not need new research, architecture, or UX documentation. A material new policy, source-of-truth boundary, or participant experience should be documented before code is changed. Preserve working-tree integrity throughout: inspect existing changes, avoid broad cleanup, and do not mix unrelated work into a feature commit.
+
+## Validation Levels
+
+The [Development Protocol](./development-protocol.md#risk-based-validation-policy) defines the required validation level.
+
+| Level | Appropriate for | Expected validation |
+| --- | --- | --- |
+| Level 1 | Documentation, copy, isolated styling, or low-risk local changes | Inspection, relevant targeted checks, links/whitespace where applicable, and diff review. |
+| Level 2 | A feature-area change such as Driver, Facility, or Platform Operations experience work | Targeted inspection, focused tests, type validation where relevant, manual walkthrough, and one build after the batch. |
+| Level 3 | Security, privacy, authorization, payments, wallets, settlement, schemas, migrations, or shared storage | Full typecheck and build, focused high-risk tests, and full-suite checkpoint where executable. |
+
+Apply the least expensive validation that provides responsible confidence. Explicit release, security, financial, migration, or deployment requirements may raise the level.
+
+## Branching and Commit Philosophy
+
+- Keep commits small and limited to one concern.
+- Stage only approved files and approved hunks; use selective staging for mixed files.
+- Do not stage unrelated working-tree changes, formatting churn, generated output, or another feature’s cleanup.
+- Use a clean worktree when required work cannot be safely separated from unrelated hunks.
+- Run a narrow pre-commit audit against the staged patch.
+- Push only after the intended patch and validation results are confirmed.
+
+This preserves reviewability, rollback safety, and the integrity of shared worktrees.
+
+## Pilot Philosophy
+
+CreteXchange pilot work follows these operating principles:
+
+- **Operational truth:** describe the current operational state accurately.
+- **Financial separation:** verification, configured incentives, wallet information, payments, and settlement retain distinct meanings.
+- **Evidence-based review:** review activity fairly from authorized evidence and recorded workflow context.
+- **Marketplace trust:** protect Drivers, participating Facilities, and marketplace integrity through transparent, proportionate operations.
+- **Driver-first:** reduce field friction and Time to First Verified Activity without bypassing evidence or eligibility.
+- **Facility fairness:** separate Facility operational access from financial readiness and support timely, impartial review.
+- **Platform neutrality:** Platform Operations acts under authorized policy rather than favoring a participant.
+
+## Future Roadmap
+
+Near-term implementation should follow approved sprint scope and the applicable UX specifications. Major experience areas include:
+
+- Driver Dashboard — [CTX-UX-005](./ux/CTX-UX-005-driver-dashboard-experience.md)
+- Facility Workspace — [CTX-UX-006](./ux/CTX-UX-006-facility-workspace-experience.md)
+- Platform Operations Center — [CTX-UX-007](./ux/CTX-UX-007-platform-operations-center-experience.md)
+- Administrative Activity Review — [CTX-UX-008](./ux/CTX-UX-008-administrative-activity-review-experience.md)
+- Marketplace Trust — [PD-052](./product/PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md)
+- Pilot completion and operational readiness — [Sprint 2.2](./project/sprints/sprint-2.2.md)
+
+These documents guide planning; they do not independently authorize implementation or expand current sprint scope.
+
+## Quick Reference
+
+| If you need to… | Read… |
+| --- | --- |
+| Understand current project state or active delivery scope | [Project Context](./project/project-context.md) |
+| Plan or implement a change | [Development Protocol](./development-protocol.md) and the applicable architecture document |
+| Change the Driver Dashboard | [CTX-UX-005](./ux/CTX-UX-005-driver-dashboard-experience.md) and [CTX-ARCH-003](./architecture/driver-operations-architecture.md) |
+| Change participating Facility approval or operational location access | [PD-050](./product/PD-050-facility-operational-access-and-billing-readiness.md) and [CTX-UX-006](./ux/CTX-UX-006-facility-workspace-experience.md) |
+| Change activity, payment, wallet, or settlement presentation | [PD-051](./product/PD-051-driver-activity-and-payment-lifecycle.md) and [CTX-ARCH-006](./architecture/driver-incentive-and-financial-settlement-architecture.md) |
+| Change marketplace trust or administrative-review policy | [PD-052](./product/PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md) |
+| Review evidence or plan a dedicated investigation experience | [CTX-UX-008](./ux/CTX-UX-008-administrative-activity-review-experience.md) |
+| Change Platform Operations workspace behavior | [CTX-UX-007](./ux/CTX-UX-007-platform-operations-center-experience.md) |
+| Understand sprint or milestone sequencing | [Sprint Roadmap](./project/sprint-roadmap.md) and [Epic Roadmap](./project/epic-roadmap.md) |
+
+## Guiding Principles
+
+- Operational-first
+- Truth before convenience
+- Marketplace trust
+- Evidence over assumption
+- Least privilege
+- Accessibility
+- Bilingual readiness
+- Incremental delivery
+- Small, auditable changes
 
 ## Documentation Dependency Diagram
 

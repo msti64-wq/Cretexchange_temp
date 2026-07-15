@@ -36,7 +36,7 @@ These statements describe current product direction, not a claim that every broa
 - Phase 1 Financial Foundation and Dashboard Reconciliation is complete.
 - Governance Framework v1.0 is complete.
 - Phase 2 is in progress.
-- Current sprint scope is defined by `docs/project/sprints/sprint-2.1.md` and remains separate from the long-term strategic roadmap.
+- Sprint 2.1 is complete. Current sprint scope is defined by `docs/project/sprints/sprint-2.2.md` and remains separate from the long-term strategic roadmap.
 
 ## 4. Governing Documentation Hierarchy
 
@@ -88,6 +88,9 @@ Defines admin oversight, support, reconciliation, configuration, auditability, c
 ### CTX-ARCH-005 - Material Management Architecture
 Defines the global material catalog, financial direction, settlement models, pricing, capacity, compliance, and material KPI behavior. It is the authority for material-specific behavior.
 
+### CTX-ARCH-006 - Driver Incentive and Financial Settlement Architecture
+Defines the server-accepted immutable driver-incentive snapshot, approval-time payment obligation, owner-charge formula, settlement exclusivity, wallet/Stripe relationship, idempotency, recovery, historical treatment, and financial reporting contract. It specializes CTX-ARCH-001 for driver incentive and settlement behavior. Active PD-045 makes the Driver Wallet the canonical driver settlement ledger and Stripe Connect the external payout rail. Existing mixed Stripe-plus-wallet approval behavior is not the approved target and requires separately authorized remediation.
+
 ## 6. Platform Standards
 
 CTX-STD-001 is the mandatory engineering and development standard for the platform. It establishes:
@@ -122,6 +125,9 @@ CTX-ARCH-001 defines a financially conservative model:
 - owner charge = `amount + processing_fee`
 - wallet balance is ledger-based, not activity earnings
 - activity, payments, and wallet ledgers are separate systems of record
+- accepted driver incentive is frozen at the Server-Accepted Check-In Submission under CTX-ARCH-006
+- owner charge uses the frozen incentive plus the applicable platform fee exactly once
+- one driver incentive may create only one withdrawable economic entitlement
 
 ## 9. Owner Operations Summary
 
@@ -131,9 +137,9 @@ CTX-ARCH-002 defines owners as operators of facilities, not just locations. Owne
 
 CTX-ARCH-003 defines driver workflows as mobile-first. Drivers use sticky job type selection, material selection, eligible location discovery, check-in, photo capture, and activity submission. Activity earnings, paid history, and wallet balance remain separate, and rewards are additive rather than replacements for incentives.
 
-## 11. Admin Operations Summary
+## 11. Platform Operations Center Summary
 
-CTX-ARCH-004 defines admin as the platform control tower. Admins oversee users, owners, drivers, locations, billing, reconciliation, materials, rewards, compliance, feature flags, and reporting. Administrative actions require auditability and separation of duties.
+CTX-ARCH-004 defines admin as the platform control tower. The preferred architectural term for the evolving administrator intelligence experience is the **Platform Operations Center**; existing implementation names may continue to use “Admin Dashboard” until a separately approved UX cleanup. Admins oversee users, owners, drivers, locations, billing, reconciliation, materials, rewards, compliance, feature flags, and reporting. Administrative actions require auditability and separation of duties.
 
 ## 12. Material Management Summary
 
@@ -170,23 +176,27 @@ Known caution:
 
 - driver wallet and Stripe payout behavior should be treated separately from activity earnings and receivables
 - historical bad financial rows may require reconciliation and should not be charged without review
+- active PD-045 selects the Driver Wallet as the canonical settlement ledger and Stripe Connect as the external payout rail; current mixed behavior requires separately approved remediation
 
 ## 15. Current Sprint Roadmap
 
-The canonical active sprint document is `docs/project/sprints/sprint-2.1.md`.
+The [Sprint 2.1](./sprints/sprint-2.1.md) closeout is complete: Driver Rewards, Driver Dashboard Intelligence, Owner Operational Intelligence, and the [Platform Operations Center](./sprints/sprint-2.1.4.md) were delivered within approved scope. [Sprint 2.2 — MVP Operational Readiness](./sprints/sprint-2.2.md) is the current delivery focus for first production-user readiness.
+
+[Sprint Roadmap](./sprint-roadmap.md) provides directional milestone sequencing, and [Epic Roadmap](./epic-roadmap.md) organizes related bodies of work. Neither document authorizes implementation or overrides the governing documentation hierarchy.
 
 Sprint 2.1 focuses on Driver Experience and Operational Intelligence while reusing existing production infrastructure. Its documented progression includes:
 
-- Driver Rewards Experience
-- Driver Dashboard Intelligence
-- Owner Operational Intelligence
-- Admin Intelligence Foundation
+- completed Driver Rewards Experience
+- completed Driver Dashboard Intelligence
+- completed Owner Operational Intelligence
+- completed Platform Operations Center foundation
+- MVP Operational Readiness for first production users
 
 This summary does not change sprint scope. Detailed milestones, exclusions, and validation requirements remain governed by the sprint document. Material Marketplace capabilities remain product direction and backlog unless separately approved.
 
 ## 16. Future Strategic Direction
 
-Platform Strategy defines the directional progression from Verified Transactions through Verified Data, Operational Intelligence, a Recovered-Material Marketplace, Enterprise SaaS, Government Intelligence, and the future Construction Circular Economy Index. This progression is not an automatic sprint sequence and does not change the active Sprint 2.1 roadmap.
+Platform Strategy defines the directional progression from Verified Transactions through Verified Data, Operational Intelligence, a Recovered-Material Marketplace, Enterprise SaaS, Government Intelligence, and the future Construction Circular Economy Index. This progression is not an automatic sprint sequence and does not change the active Sprint 2.2 roadmap.
 
 Those layers are strategic direction only. They do not represent current implementation, approved sprint work, commercial commitments, or available product capabilities.
 

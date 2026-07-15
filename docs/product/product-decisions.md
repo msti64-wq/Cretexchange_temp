@@ -552,6 +552,120 @@
 
 **Related Documents:** [Mission and Values](../vision/mission-and-values.md), [Platform Definition](../vision/construction-circular-economy-intelligence-platform.md), [Research Program](../research/README.md).
 
+## PD-044 - Driver Incentive Snapshot Timing
+
+**Context:** A driver check-in can span arrival, evidence capture, submission, validation, and durable activity creation. Using a mutable location rate after acceptance or trusting a client-submitted amount creates financial and data-lineage risk.
+
+**Decision:** The configured driver incentive is frozen at the Server-Accepted Check-In Submission: after authentication, transaction/location eligibility, required evidence, and financial configuration validation, immediately before the transactional activity insert. `washout_activities.amount` is the immutable dollar-denominated agreed incentive snapshot for the accepted activity.
+
+**Rationale:** Completed server acceptance is durable and auditable, while arrival signals and drafts may be stale or fail validation. Freezing at acceptance prevents later location changes from altering the agreement and removes client authority over the financial amount.
+
+**Status:** Active
+
+**Date:** 2026-07-12
+
+**Implications:** Authenticated driver identity, initial activity status, and acceptance timestamp are server-authoritative. Approval, payment creation, owner billing, settlement, reporting, and KPIs consume the frozen snapshot rather than current location configuration.
+
+**Current Scope:** Architecture and test contract only. Existing audited runtime conflicts are not represented as remediated.
+
+**Guardrails:** Do not recompute accepted transactions from a later location rate. Do not treat historical client-controlled amounts as automatically trusted.
+
+**Related Documents:** [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md), [Data Strategy](./data-strategy.md).
+
+## PD-045 - Canonical Driver Settlement Rail
+
+**Context:** CTX-ARCH-001 permits Stripe Connect or wallet settlement depending on the configured payout path, while the financial audit found paths capable of creating both an external transfer and internal wallet value for one incentive.
+
+**Decision:** The CreteXchange Driver Wallet is the canonical settlement ledger for driver incentives. Stripe Connect is the external payout rail used to withdraw or disburse wallet funds. A driver incentive may create only one withdrawable entitlement.
+
+**Rationale:** The platform already presents wallet pending and available balances to drivers. A wallet-authoritative model provides one internal ledger for obligations, settlement state, retries, reversals, reporting, and reconciliation. Direct Stripe transfer at owner approval plus a wallet credit can duplicate compensation. Separating the internal settlement ledger from the external payout rail improves auditability and recovery and supports future payout schedules, payout methods, holds, disputes, and other financial rails without changing the underlying driver entitlement.
+
+**Status:** Active
+
+**Date:** 2026-07-12
+
+**Current Scope:** Applies to verified driver incentives arising from washout or material-recovery activity. Owner approval creates the payment obligation. Owner billing funds the platform's obligation. The driver incentive is credited exactly once to the canonical wallet ledger. Stripe Connect is used only to disburse wallet funds. Platform fees remain separate from driver incentives. Existing runtime behavior must be remediated and validated before it is represented as compliant.
+
+**Future Scope:** Additional payout rails and scheduled, automatic, or driver-initiated withdrawals may be supported. Other material-recovery transactions may use the same settlement architecture. Future marketplace seller settlements require separate Product Decisions where their entitlement model differs.
+
+**Guardrails:** Do not directly transfer an incentive through Stripe during approval if that incentive is also credited to the wallet. Do not credit the wallet after an incentive has already been directly settled through another rail. Wallet balance changes require corresponding ledger transactions, and wallet ledger writes must be atomic and idempotent. Stripe payout requests must reference the canonical wallet debit or withdrawal record. Stripe failures must not reduce wallet value unless the payout state is safely recoverable. A payout retry must not create a second debit or Stripe transfer. Activity verification must not be labeled as payment completion. Platform fees must never enter the driver wallet. No historical transaction may be re-settled solely because this architecture changed.
+
+**Implications:** Immediate Stripe destination transfers from owner approval must be removed or disabled for driver incentives. Approval creates a payment obligation and wallet entitlement, not a direct external payout. Pending and available wallet states require a separately approved transition rule. Scheduled settlement must create compatible pending-ledger records. Driver withdrawal through Stripe must be idempotent and reconciled. Reporting must distinguish driver incentive, platform fee, owner charge, wallet settlement state, and external Stripe payout state.
+
+**Related Documents:** [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md), [CTX-ARCH-003](../architecture/driver-operations-architecture.md), [Project Context](../project/project-context.md), [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](./data-strategy.md).
+
+## PD-046 - Zero-Incentive Payment Representation
+
+**Context:** A location may intentionally configure a zero driver incentive while the approved transaction still owes a platform fee and requires idempotent financial reporting.
+
+**Decision:** Approval of an otherwise eligible zero-incentive activity creates one payment obligation with `payments.amount = 0.00` and the applicable platform fee. The owner is charged only the platform fee. No driver transfer or wallet value is created. The eligible reward entry remains amount-independent.
+
+**Rationale:** A zero-dollar payment row preserves the one-obligation-per-activity relationship, owner-charge components, reporting lineage, and idempotency without fabricating driver value.
+
+**Status:** Active
+
+**Date:** 2026-07-12
+
+**Current Scope:** Architecture and test contract only; no runtime or schema change is authorized.
+
+**Guardrails:** Do not omit the owner-charge representation, infer a non-zero incentive, or create a zero-value transfer/wallet credit.
+
+**Related Documents:** [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md).
+
+## PD-047 - Driver Earnings and KPI Definitions
+
+**Context:** Pending activity, approved obligations, paid settlement, and wallet balance answer different business questions. Unqualified earnings labels can imply payment before settlement.
+
+**Decision:** Driver financial KPIs must distinguish Pending Review, Approved Incentives, Pending Earnings, Paid, Lifetime Paid, Wallet Pending, and Wallet Available. Pending activities are not earnings; verified activity does not prove payment; paid totals require canonical settlement evidence; wallet balances derive only from the wallet ledger. Avoid unqualified `Total Earned` when unpaid approvals are included.
+
+**Rationale:** Honest labels protect driver trust and prevent activity, payment, settlement, and wallet values from being double-counted or conflated.
+
+**Status:** Active
+
+**Date:** 2026-07-12
+
+**Current Scope:** Architecture, reporting, and future UI/test contract. Existing UI is not represented as compliant until remediated and validated.
+
+**Guardrails:** Do not add a payment amount and a derived alias of the same incentive. Do not display `verified` as `paid`.
+
+**Related Documents:** [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [CTX-ARCH-003](../architecture/driver-operations-architecture.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md).
+
+## PD-048 - Historical Financial Record Treatment
+
+**Context:** Historical activity amounts may have been client-controlled and therefore do not all carry the provenance of a server-authoritative snapshot.
+
+**Decision:** Preserve historical records, qualify uncertain activity amounts as legacy/unverified, quarantine uncertain unbilled records from automatic billing, and use an existing canonical payment as the financial reporting source when present. Do not recompute history from current location rates. Once money moved, changes require transaction-level reconciliation and an auditable correction or reversal.
+
+**Rationale:** Silent recomputation destroys provenance and can create retroactive charges or payouts unsupported by the original agreement.
+
+**Status:** Active
+
+**Date:** 2026-07-12
+
+**Current Scope:** Documentation and future reconciliation policy. No migration, backfill, or production repair is authorized.
+
+**Guardrails:** Require data inventory, evidence, dry run, idempotency, authorization, and rollback/reconciliation planning before historical repair.
+
+**Related Documents:** [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [Data Strategy](./data-strategy.md), [Strategic Data Governance Principles (PD-038)](#pd-038---strategic-data-governance-principles).
+
+## PD-049 - Financial Idempotency and Recovery Requirements
+
+**Context:** External charges, local payment creation, wallet updates, rewards, webhooks, and retries can fail at different boundaries. Ordinary status checks alone do not prevent duplicate financial side effects.
+
+**Decision:** Every approved activity, owner charge, driver settlement, wallet credit, reward entry, and Stripe operation must have a stable semantic identity and produce at most one active outcome under repeat or concurrent execution. External success followed by local failure must be recoverable under the same idempotency key without creating another charge or transfer. Balance and wallet-transaction writes must be atomic.
+
+**Rationale:** Financial integrity requires deterministic recovery, not merely best-effort duplicate checks.
+
+**Status:** Active
+
+**Date:** 2026-07-12
+
+**Current Scope:** Architecture and mandatory test contract. Future schema constraints or idempotency records require separate data inventory and migration approval.
+
+**Guardrails:** Preserve audit history, support dry-run reconciliation, deduplicate webhooks, inspect unknown Stripe outcomes before retry, and never mutate a balance before securing the unique ledger source.
+
+**Related Documents:** [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md), [CTX-STD-001](../standards/cretexchange-platform-standards.md).
+
 ## PD-050 - Facility Operational Access and Billing Readiness
 
 **Decision:** The authoritative policy is documented in [PD-050 — Facility Operational Access and Billing Readiness](./PD-050-facility-operational-access-and-billing-readiness.md). An approved, operationally complete Facility may create, edit, activate, and manage participating locations without a saved payment method. Operational authorization and financial readiness are separate lifecycle states.

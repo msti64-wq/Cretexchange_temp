@@ -10,6 +10,8 @@
 
 **Strategic Context:** [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](../product/data-strategy.md), [Business Model](../business/business-model.md), and [Customer Value Framework](../business/customer-value-framework.md) describe long-term platform, data, revenue, and customer-value direction. This document remains authoritative for implemented financial behavior; these references do not redesign architecture, and future revenue categories require separate architecture and approval.
 
+**Specialized Contract:** [CTX-ARCH-006](./driver-incentive-and-financial-settlement-architecture.md) defines the more specific driver-incentive snapshot, approval obligation, wallet-authoritative settlement, Stripe payout, idempotency, recovery, and reporting contract. CTX-ARCH-001 remains the general financial authority; CTX-ARCH-006 and active PD-045 govern within that specialized domain. Runtime remediation remains separately scoped and is not represented as complete.
+
 ## 1. Purpose
 
 This document is the authoritative source for CreteXchange financial behavior and reporting. It defines:
@@ -102,7 +104,8 @@ Driver compensation is transferred or credited according to the configured payou
 
 Financial impact:
 - driver payout liability is settled
-- wallet ledger or Stripe transfer may record the payout
+- exactly one selected settlement rail records the withdrawable entitlement
+- a Stripe transfer and a withdrawable wallet credit must not both represent the same driver incentive
 
 ### Historical Payment
 Completed financial records remain as history.
@@ -112,6 +115,8 @@ Financial impact:
 - historical reporting and audits can reference the record
 
 ## 5. Washout Status Definitions
+
+Canonical stored activity values are `pending`, `verified`, and `rejected`. The table also documents legacy or presentation terms that must normalize at an API/presentation boundary under CTX-ARCH-006; payment states such as paid or settled are not activity statuses.
 
 | Status | Operational Meaning | Financial Meaning | Dashboard Treatment |
 | --- | --- | --- | --- |
@@ -131,7 +136,8 @@ Financial impact:
 Current production Neon source of truth:
 
 - `washout_activities` = operational activity history
-- `washout_locations.rate` = owner-posted driver incentive / fallback source
+- `washout_locations.rate` = current owner-posted driver incentive configuration before accepted submission
+- `washout_activities.amount` = immutable accepted driver-incentive snapshot for records governed by CTX-ARCH-006
 - `payments.amount` = driver incentive / payout amount
 - `payments.processing_fee` = platform fee
 - `payments.washout_service_fee` = legacy compatibility field
@@ -153,7 +159,7 @@ Production payments reporting and runtime billing must not rely on missing Neon 
 - **Platform Fee** = `payments.processing_fee`
 - **Owner Charge** = `payments.amount + payments.processing_fee`
 - **Current Receivables** = approved billable owner charges not yet collected
-- **Pending Review Potential Charges** = pending washouts × configured platform fee + resolved driver incentive
+- **Pending Review Potential Charges** = pending washouts × configured platform fee + frozen accepted driver incentive
 - **Wallet Balance** = wallet ledger balance, not activity earnings
 
 ## 8. Dashboard KPI Catalog
@@ -163,10 +169,10 @@ Production payments reporting and runtime billing must not rely on missing Neon 
 | KPI | Audience | Business Meaning | Source | Calculation | Includes | Excludes | Changes When |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Site Visits Today | Driver | Today’s operational stops | `dailyStats.visits` | Count of today’s activities | Today’s activity rows | Historical rows outside today | New check-ins or activity sync |
-| Today Earnings | Driver | Today’s net activity-based earnings | `dailyStats.earnings` less rejected adjustments | Activity sum net of rejected washouts | Activity amounts for today | Non-activity payouts | Activity review status changes |
+| Today Approved Incentives | Driver | Driver obligations approved today, whether settled or pending | Approved payment obligations in today’s reporting window | Sum canonical `payments.amount` once | Approved payment obligations | Pending/rejected activities, platform fees, duplicate tip aliases | Approval/payment obligation changes |
 | Recent Billable Washouts | Driver | Billable washout activity in recent activity view | Recent activities filtered to billable statuses | Count of `verified`, `approved`, `completed` activities | Billable activities | Rejected / pending statuses | Recent activity refresh |
-| 7-day Paid Washouts | Driver | Paid washout count from payment history | `weeklyStats.totalWashouts` or payment rows | Payment-row count in the selected period | Payment rows | Activities without payment rows | Payment creation or payout posting |
-| Total Paid Net | Driver | Actual paid/payout history | Payment history endpoint | Sum of paid records | Payment records | Unpaid receivables | Stripe or wallet settlement |
+| 7-day Paid Washouts | Driver | Settled washout count from payment history | Canonical payments plus selected-rail settlement evidence | Settled payment count in the selected period | Settled payment obligations | Unsettled payments and activities without payment rows | Driver settlement posting |
+| Total Paid Net | Driver | Actual settled driver-incentive history | Canonical payments plus selected-rail settlement evidence | Sum settled `payments.amount` once | Settled driver incentives | Unpaid obligations, platform fees, derived tip aliases | Stripe or wallet settlement |
 | Wallet Balance | Driver | Available wallet balance | `wallet_transactions` / `driver_wallets` | Ledger balance | Posted wallet credits | Activity earnings not yet credited | Wallet transaction posting |
 
 ### Owner Dashboard
@@ -207,17 +213,19 @@ Production payments reporting and runtime billing must not rely on missing Neon 
 
 ## 10. Data Lineage
 
-Driver check-in  
-→ `washout_activities`  
-→ owner review  
-→ billable status  
-→ canonical billing receivables summary  
-→ `payments`  
-→ Stripe `PaymentIntent`  
-→ Stripe transfer  
-→ `wallet_transactions`  
-→ `driver_wallets`  
-→ reports/dashboards
+```text
+Driver check-in
+→ washout_activities
+→ owner review
+→ billable status
+→ canonical billing receivables summary
+→ payments
+→ owner collection through Stripe PaymentIntent
+→ atomic Driver Wallet entitlement
+→ Wallet Pending to Wallet Available under an approved funding rule
+→ Stripe Connect payout of a canonical wallet withdrawal
+→ reports and dashboards
+```
 
 ## 11. Stripe and Wallet Architecture
 
@@ -226,13 +234,17 @@ Driver check-in
   - Stripe collects the owner amount
   - platform fee and driver incentive are represented in the payment model
 - Driver transfer lifecycle:
-  - driver incentive may be transferred through Stripe Connect or credited to wallet ledger depending on the configured payout path
+  - the Driver Wallet is the canonical settlement ledger under active PD-045
+  - Stripe Connect disburses a canonical wallet withdrawal and does not create an approval-time entitlement
+  - one payment creates only one withdrawable economic entitlement
+  - existing mixed Stripe-plus-wallet approval behavior must be remediated before it is represented as compliant
 - Stripe Connect relationship:
-  - Stripe is the external collection/transfer rail
+  - Stripe is the external owner-collection and driver-payout rail
   - it is not the system of record for dashboard calculations
 - Wallet ledger relationship:
   - `wallet_transactions` is the authoritative wallet ledger
   - `driver_wallets` stores the driver’s wallet balance state
+  - platform fees never enter the driver wallet
 - Wallet balance is not the same as activity earnings because earnings can exist before posting or payout.
 - Payment history is not the same as receivables because historical paid records and current receivables are different financial states.
 

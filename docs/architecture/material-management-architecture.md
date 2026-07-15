@@ -10,6 +10,8 @@
 
 **Strategic Context:** [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](../product/data-strategy.md), [Business Model](../business/business-model.md), and [Customer Value Framework](../business/customer-value-framework.md) provide long-term circular-economy, marketplace, data, and customer-value context. This document remains authoritative for material implementation; these references do not redesign architecture or make future capabilities current functionality.
 
+**Driver Incentive Contract:** For an approved `OWNER_PAYS_PROVIDER` transaction using the current driver-incentive model, [CTX-ARCH-006](./driver-incentive-and-financial-settlement-architecture.md) governs snapshot timing, owner-charge components, settlement exclusivity, idempotency, and reporting. CTX-ARCH-005 continues to govern material financial direction and configured settlement model.
+
 ## 1. Purpose
 
 CreteXchange is a configurable material exchange platform. This document defines how materials are modeled, priced, routed, settled, reported, and expanded across the platform.

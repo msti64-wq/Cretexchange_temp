@@ -10,6 +10,8 @@
 
 **Strategic Context:** [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](../product/data-strategy.md), [Business Model](../business/business-model.md), and [Customer Value Framework](../business/customer-value-framework.md) provide long-term platform, data, and customer-value context. This document remains authoritative for driver implementation; these references do not redesign architecture or make future capabilities current functionality.
 
+**Financial Contract:** [CTX-ARCH-006](./driver-incentive-and-financial-settlement-architecture.md) governs the accepted driver-incentive snapshot, approval obligation, driver settlement, wallet/Stripe exclusivity, financial statuses, and driver earnings terminology. This reference does not claim the audited runtime conflicts are already remediated.
+
 ## 1. Purpose
 
 The driver portal is the field operations workspace for concrete, washout, and future material recovery drivers.
@@ -200,16 +202,13 @@ Photo requirements may include:
 
 ## 11. Activity History
 
-### Statuses
+### Canonical stored activity statuses
 
 - pending
-- submitted
 - verified
-- approved
-- completed
 - rejected
-- declined
-- cancelled/canceled
+
+Legacy or presentation-only terms such as `submitted`, `approved`, `completed`, `declined`, and `cancelled/canceled` may be normalized at an API or presentation boundary under CTX-ARCH-006. `paid` and `settled` are not activity statuses.
 
 ### Driver-facing meaning
 
@@ -220,7 +219,7 @@ Photo requirements may include:
 - **Rejected activity**
   - Activity is non-billable and should remain visible in history.
 - **Paid activity**
-  - Activity has a completed financial lifecycle.
+  - Presentation concept for an activity linked to independent settled-payment evidence; it must not be inferred from activity status.
 - **Reward activity**
   - Activity generated or contributed to rewards.
 
@@ -235,14 +234,14 @@ Photo requirements may include:
 - Update trigger: new activity or refreshed dashboard data.
 - Relationship to CTX-ARCH-001: operational only, not financial.
 
-### Today Earnings
-- Purpose: show today’s earned activity value.
-- Source: activity-based earnings.
-- Calculation: activity earnings net of rejected adjustments.
-- Included statuses: approved / billable activity.
-- Excluded statuses: rejected or non-billable activity.
-- Update trigger: activity creation or review status changes.
-- Relationship to CTX-ARCH-001: uses financial values only for display, not as receivables.
+### Today Approved Incentives
+- Purpose: show driver obligations approved today, whether settled or pending.
+- Source: canonical approved payment obligations.
+- Calculation: sum `payments.amount` once for obligations in today’s reporting window.
+- Included statuses: approved payment obligations.
+- Excluded statuses: pending/rejected activities, platform fees, and duplicate tip aliases.
+- Update trigger: approval or payment-obligation changes.
+- Relationship to CTX-ARCH-001 and CTX-ARCH-006: approved obligation is distinct from paid settlement.
 
 ### Recent Billable Washouts
 - Purpose: show recent billable activity count.
@@ -254,20 +253,20 @@ Photo requirements may include:
 - Relationship to CTX-ARCH-001: billable activity is separate from paid history.
 
 ### 7-day Paid Washouts
-- Purpose: show payment-row-backed washout count.
-- Source: payment history or payment-derived weekly stats.
-- Calculation: count of paid washout records.
-- Included statuses: completed paid records.
-- Excluded statuses: activities without payment rows.
-- Update trigger: payment creation or settlement.
+- Purpose: show settlement-backed washout count.
+- Source: canonical payments plus selected-rail settlement evidence.
+- Calculation: count of settled driver payment obligations.
+- Included statuses: settled payment records.
+- Excluded statuses: unsettled payments and activities without payment rows.
+- Update trigger: driver settlement.
 - Relationship to CTX-ARCH-001: paid history, not current receivables.
 
 ### Total Paid Net
 - Purpose: show recorded payment history net value.
-- Source: payment history.
-- Calculation: sum of paid records.
-- Included statuses: payment rows and settled payouts.
-- Excluded statuses: unpaid receivables.
+- Source: canonical payments plus selected-rail settlement evidence.
+- Calculation: sum settled `payments.amount` once.
+- Included statuses: settled driver incentives.
+- Excluded statuses: unpaid obligations, platform fees, and derived aliases of `payments.amount`.
 - Update trigger: payment or payout posting.
 - Relationship to CTX-ARCH-001: historical payments only.
 
@@ -276,7 +275,7 @@ Photo requirements may include:
 - Source: wallet ledger.
 - Calculation: wallet transaction balance.
 - Included: posted ledger credits and debits.
-- Excluded: unposted activity earnings.
+- Excluded: unposted payment obligations and direct Stripe-paid amounts when wallet is not the selected rail.
 - Update trigger: wallet transaction posting.
 - Relationship to CTX-ARCH-001: wallet is separate from activity earnings.
 
@@ -289,14 +288,14 @@ Photo requirements may include:
 - Update trigger: reward entry creation.
 - Relationship to CTX-ARCH-001: additive to financial model, not a substitute.
 
-### Rejected Adjustments
-- Purpose: show rejected activity deductions.
+### Rejected Activity Value
+- Purpose: show the operational value recorded on rejected activities without treating it as an earning or deduction.
 - Source: rejected activity history.
-- Calculation: sum of rejected adjustments.
+- Calculation: sum frozen activity snapshots for contextual display only.
 - Included: rejected / declined / cancelled activities.
 - Excluded: billable activities.
 - Update trigger: activity status changes.
-- Relationship to CTX-ARCH-001: activity adjustment, not a receivable.
+- Relationship to CTX-ARCH-001 and CTX-ARCH-006: rejected value is not a receivable, payment, earning, or wallet adjustment.
 
 ## 13. Driver Wallet Relationship
 
@@ -305,6 +304,9 @@ Photo requirements may include:
 - Wallet updates only when `wallet_transactions` and `driver_wallets` update.
 - Paid history is separate from earned activity.
 - Stripe / Connect payout status is separate from activity approval.
+- The Driver Wallet is the canonical driver settlement ledger under active PD-045.
+- Stripe Connect disburses canonical wallet withdrawals and does not create an independent approval-time entitlement.
+- A legacy direct Stripe-settled incentive must not also become withdrawable wallet value; runtime remediation remains separately scoped.
 
 ## 14. Driver Rewards
 

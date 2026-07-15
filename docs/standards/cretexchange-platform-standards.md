@@ -24,6 +24,7 @@ Within the direction established by Platform Vision and Platform Strategy, this 
 - CTX-ARCH-003 - Driver Operations Architecture
 - CTX-ARCH-004 - Admin Operations Architecture
 - CTX-ARCH-005 - Material Management Architecture
+- CTX-ARCH-006 - Driver Incentive and Financial Settlement Architecture
 
 ## 1. Platform Philosophy
 

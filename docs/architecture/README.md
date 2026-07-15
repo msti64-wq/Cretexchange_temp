@@ -24,6 +24,17 @@ This section documents the technical architecture of CreteXchange.
 - Changelog entries or release summaries
 - Active development notes that belong in engineering docs
 
+## Canonical Architecture Documents
+
+| Document ID | Title | Domain | Status |
+| --- | --- | --- | --- |
+| CTX-ARCH-001 | [Financial Architecture & KPI Specification](./financial-architecture-and-kpi-specification.md) | Financial lifecycle, billing, receivables, wallet, Stripe/payment lifecycle, reporting, and KPIs | Approved |
+| CTX-ARCH-002 | [Owner Operations Architecture](./owner-operations-architecture.md) | Owner configuration, location operations, approval, capacity, and owner KPIs | Approved |
+| CTX-ARCH-003 | [Driver Operations Architecture](./driver-operations-architecture.md) | Driver workflows, location discovery, activity, wallet visibility, rewards, and driver KPIs | Approved |
+| CTX-ARCH-004 | [Admin Operations Architecture](./admin-operations-architecture.md) | Administrative oversight, support, reconciliation, and governance | Approved |
+| CTX-ARCH-005 | [Material Management Architecture](./material-management-architecture.md) | Material taxonomy, financial direction, settlement models, pricing, and capacity | Approved |
+| CTX-ARCH-006 | [Driver Incentive and Financial Settlement Architecture](./driver-incentive-and-financial-settlement-architecture.md) | Incentive snapshot, financial obligation, owner charge, wallet settlement, Stripe payout, idempotency, and recovery | Approved; PD-045 Active; runtime remediation pending |
+
 ## Planned Contents
 
 - High-level system diagrams

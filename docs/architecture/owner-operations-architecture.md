@@ -10,6 +10,8 @@
 
 **Strategic Context:** [Platform Strategy](../vision/platform-strategy.md), [Data Strategy](../product/data-strategy.md), [Business Model](../business/business-model.md), and [Customer Value Framework](../business/customer-value-framework.md) provide long-term platform, data, and customer-value context. This document remains authoritative for owner implementation; these references do not redesign architecture or make future capabilities current functionality.
 
+**Financial Contract:** [CTX-ARCH-006](./driver-incentive-and-financial-settlement-architecture.md) governs the immutable incentive snapshot, approval-time payment obligation, owner-charge components, billing-adapter source order, idempotency, and driver settlement exclusivity.
+
 ## 1. Purpose
 
 The owner portal is the operational control center for every registered washout or material location.
