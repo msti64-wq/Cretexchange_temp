@@ -1814,8 +1814,20 @@ export class DatabaseStorage implements IStorage {
         verifiedAt: new Date(),
         updatedAt: new Date()
       })
-      .where(eq(washoutActivities.id, activityId))
+      // Compare-and-set prevents concurrent owner/manual/auto verification from
+      // producing duplicate downstream side effects.
+      .where(and(
+        eq(washoutActivities.id, activityId),
+        eq(washoutActivities.status, "pending"),
+      ))
       .returning();
+
+    if (!activity) {
+      const error = new Error("Washout activity is no longer pending") as Error & { code?: string };
+      error.code = "WASHOUT_ACTIVITY_NOT_PENDING";
+      throw error;
+    }
+
     return activity;
   }
 
@@ -2053,19 +2065,6 @@ export class DatabaseStorage implements IStorage {
           throw new Error(`Owner for location ${activity.locationId} not found`);
         }
 
-        // Calculate payment amounts (same logic as manual approval)
-        const driverAmount = parseFloat(activity.amount);
-        const systemSettings = await this.getSystemSettings();
-        const platformFee = owner.customPlatformFee !== null && owner.customPlatformFee !== undefined
-          ? resolvePlatformFeeCents(owner.customPlatformFee) / 100
-          : resolvePlatformFeeCents(systemSettings?.platformWashoutFee) / 100;
-        const driverTip = normalizeMoneyToCents(location.rate, "dollars") / 100;
-        const ownerCharge = driverAmount + platformFee + driverTip;
-
-        // Calculate business date
-        const now = new Date();
-        const businessDate = now.toISOString().split('T')[0];
-
         // Auto-verify the activity with system as verifier
         const verifiedActivity = await this.verifyWashoutActivity(activity.id, 'system-auto-approval');
 
@@ -2090,26 +2089,13 @@ export class DatabaseStorage implements IStorage {
           console.error(`❌ Failed to create lottery entry for auto-approved washout ${activity.id}:`, lotteryError);
         }
         
-        // Create pending payment (will be processed in next batch)
-        const payment = await this.createPayment({
-          activityId: activity.id,
-          driverId: activity.driverId,
-          ownerId: owner.id,
-          amount: driverAmount.toString(),
-          processingFee: platformFee.toFixed(2),
-          washoutServiceFee: driverTip.toFixed(2),
-          tipAmountCents: normalizeMoneyToCents(driverTip, "dollars"),
-          status: 'pending',
-          businessDate,
-        });
-
-        console.log(`   ✅ Auto-approved with payment ${payment.id} (status: pending)`, {
+        // Auto-approval is operational only. A future canonical obligation flow must
+        // establish frozen amounts and idempotency before any financial record exists.
+        console.log(`   ✅ Auto-approved operational activity`, {
           ownerId: owner.id,
           activityId: activity.id,
           driverId: activity.driverId,
-          ownerCharge,
-          platformFee,
-          driverTip,
+          status: verifiedActivity.status,
         });
         results.approved++;
         
