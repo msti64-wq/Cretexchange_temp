@@ -19,6 +19,8 @@ import { useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { apiRequest } from "@/lib/queryClient";
 import { getDriverPayoutStatus, getDriverPayoutStatusLabel } from "@/lib/driverPayoutSettings";
+import { useDriverPaymentLifecycle } from "@/hooks/useDriverPaymentLifecycle";
+import { DriverLifecycleSummary } from "@/components/driver/DriverLifecycleSummary";
 import { formatDistanceToNow } from "date-fns";
 
 type DriverDashboardStatsRange = "today" | "week" | "month";
@@ -342,15 +344,18 @@ export default function DriverDashboard() {
     refetchInterval: 300000,
   });
 
-  const { data: paymentHistory } = useQuery({
-    queryKey: ['/api/payments/driver-history'],
-    refetchInterval: 60000, // Refresh every minute
-  });
+  const driverLifecycle = useDriverPaymentLifecycle();
 
-  const { data: walletBalance, isLoading: walletBalanceLoading } = useQuery<DriverWalletBalance>({
+  const { data: walletBalance, isLoading: walletBalanceLoading, isError: walletBalanceError, refetch: refetchWalletBalance } = useQuery<DriverWalletBalance>({
     queryKey: ['/api/wallet/balance'],
     refetchInterval: 30000,
   });
+
+  const refreshDashboardData = () => {
+    void refetch();
+    driverLifecycle.refresh();
+    void refetchWalletBalance();
+  };
 
   const { data: lotteryEntries, isLoading: lotteryEntriesLoading, error: lotteryEntriesError } = useQuery<any[]>({
     queryKey: ['/api/drivers/lottery-entries'],
@@ -446,7 +451,6 @@ export default function DriverDashboard() {
 
   // Extract data with proper null checks and type annotation
   const dailyStats = (dashboardData as any)?.dailyStats || null;
-  const weeklyStats = (dashboardData as any)?.weeklyStats || null;
   const recentActivities = (dashboardData as any)?.recentActivities || null;
   const lotteryStatus = (dashboardData as any)?.lotteryStatus || null;
   const lotteryEntryCount = lotteryStatus?.driverEntryCount ?? ((dashboardData as any)?.lotteryEntryCount || 0);
@@ -456,26 +460,6 @@ export default function DriverDashboard() {
     ? `${currentDrawing.monthName} ${currentDrawing.lotteryYear}`
     : lotteryStatus?.currentDrawingMessage || t("driver.dashboard.monthlyLottery");
 
-  // Calculate rejected washouts and their total amount
-  const rejectedWashouts = recentActivities?.filter((activity: any) => 
-    (activity.washout_activities?.status || activity.status) === 'rejected'
-  ) || [];
-  
-  const rejectedTotal = rejectedWashouts.reduce((total: number, activity: any) => {
-    return total + Number(activity.washout_activities?.amount || activity.amount || 0);
-  }, 0);
-  const paidWashoutsThisWeek = weeklyStats?.totalWashouts || 0;
-  const billableRecentWashouts = Array.isArray(recentActivities)
-    ? recentActivities.filter((activity: any) => isBillableWashoutStatus(activity.washout_activities?.status || activity.status)).length
-    : 0;
-
-  // Calculate adjusted earnings (total minus rejected)
-  const adjustedDailyEarnings = (dailyStats?.earnings || 0) - rejectedTotal;
-  const weeklyEarnings = weeklyStats?.totalEarnings || 0;
-  const weeklyNetEarnings = weeklyEarnings - rejectedTotal;
-  const totalPaid = Array.isArray(paymentHistory) ? paymentHistory.reduce((sum: number, payment: any) => 
-    sum + Number(payment.amount || 0) + Number((payment.tipAmountCents || 0) / 100), 0
-  ) : 0;
   const latestActivity = Array.isArray(recentActivities) && recentActivities.length > 0 ? recentActivities[0] : null;
   const latestLocationName = latestActivity?.washout_locations?.name || latestActivity?.location?.name || t("driver.dashboard.latestStop");
   const latestLocationAddress = latestActivity
@@ -483,7 +467,6 @@ export default function DriverDashboard() {
       || latestActivity.location?.address
       || formatAddress(latestActivity.washout_locations || latestActivity.location || {}))
     : "";
-  const latestActivityAmount = Number(latestActivity?.washout_activities?.amount || latestActivity?.amount || 0);
   const latestActivityStatus = latestActivity ? (latestActivity.washout_activities?.status || latestActivity.status) : null;
   const activeJobType = getJobTypeMeta(jobType);
   const profileReady = Boolean(
@@ -730,9 +713,6 @@ export default function DriverDashboard() {
                     )}
                   </div>
                   <div className="min-w-0 text-left sm:text-right">
-                    <p className="break-words text-2xl font-semibold tracking-tight text-primary">
-                      {formatCurrency(latestActivityAmount)}
-                    </p>
                     <div className={`mt-1 inline-flex max-w-full whitespace-normal break-words rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] ${
                       latestActivityStatus === 'verified'
                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
@@ -788,6 +768,7 @@ export default function DriverDashboard() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4">
+            <DriverLifecycleSummary lifecycle={driverLifecycle.lifecycle} isLoading={driverLifecycle.isLoading} paymentError={driverLifecycle.paymentError} onViewActivity={() => setLocation('/activity')} variant="dashboard" />
             <DSCard padding="md" elevated className="min-h-[260px] border-border/70">
               <div className="flex h-full flex-col gap-4">
                 <div className="flex items-start justify-between gap-3">
@@ -811,6 +792,8 @@ export default function DriverDashboard() {
                     <Skeleton className="h-4 w-32 bg-muted" />
                     <Skeleton className="h-4 w-28 bg-muted" />
                   </div>
+                ) : walletBalanceError ? (
+                  <div className="rounded-2xl border border-destructive/40 bg-background/70 p-4"><p className="text-sm font-medium text-foreground">Wallet balance unavailable</p><p className="mt-1 text-sm text-muted-foreground">Open Wallet to retry.</p></div>
                 ) : (
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
@@ -951,30 +934,13 @@ export default function DriverDashboard() {
                   <>
                     <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Available Balance
+                        Wallet Balance
                       </p>
                       <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-dashboard-available-balance">
                         {formatCurrency(walletBalance?.availableBalance || 0)}
                       </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                          Pending
-                        </p>
-                        <p className="mt-1 font-semibold text-foreground">
-                          {formatCurrency(walletBalance?.pendingBalance || 0)}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                          Total
-                        </p>
-                        <p className="mt-1 font-semibold text-foreground">
-                          {formatCurrency(walletBalance?.totalBalance || 0)}
-                        </p>
-                      </div>
-                    </div>
+                    <p className="text-sm text-muted-foreground">Wallet balance is shown separately from activity review and payment status.</p>
                   </>
                 )}
 
@@ -1251,41 +1217,20 @@ export default function DriverDashboard() {
               variant="outline"
               size="sm"
               className="h-auto min-h-9 w-full !whitespace-normal sm:w-auto"
-              onClick={() => refetch()}
+              onClick={refreshDashboardData}
               data-testid="button-refresh-dashboard"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               {t("driver.dashboard.refresh")}
             </Button>
           </div>
-          <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <DSKpiCard
               label="Site Visits Today"
               value={dailyStats?.visits || 0}
               detail={t("driver.dashboard.completedToday")}
               accentTone="info"
               data-testid="text-daily-visits"
-            />
-            <DSKpiCard
-              label="Today Earnings Net"
-              value={formatCurrency(adjustedDailyEarnings)}
-              detail={rejectedTotal > 0 ? t("driver.dashboard.rejectedAmountShort", { amount: formatCurrency(rejectedTotal) }) : t("driver.dashboard.netOfRejected")}
-              accentTone="success"
-              data-testid="text-daily-earnings"
-            />
-            <DSKpiCard
-              label={t("driver.dashboard.sevenDayNet")}
-              value={formatCurrency(weeklyNetEarnings)}
-              detail={`7-day Paid Washouts: ${paidWashoutsThisWeek}`}
-              accentTone="warning"
-              data-testid="text-net-earnings"
-            />
-            <DSKpiCard
-              label="Total Paid Net"
-              value={formatCurrency(totalPaid)}
-              detail={t("driver.dashboard.recordedPaymentHistory")}
-              accentTone="accent"
-              data-testid="text-total-paid"
             />
           </div>
         </section>
@@ -1294,7 +1239,7 @@ export default function DriverDashboard() {
         <DSCard padding="sm" elevated>
           <DSSectionHeader
             title="Today's Activity"
-            description="Today's washouts and earnings at a glance."
+            description="Today's operational activity at a glance."
             actions={
               <Button
                 variant="outline"
@@ -1309,18 +1254,10 @@ export default function DriverDashboard() {
               }
             />
           <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="grid min-w-0 flex-1 grid-cols-1 gap-2">
               <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
                 <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Site Visits Today</p>
                 <p className="break-words text-xl font-semibold text-foreground" data-testid="text-today-visits">{dailyStats?.visits || 0}</p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
-                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Today Earnings Net</p>
-                <p className="break-words text-xl font-semibold text-primary" data-testid="text-today-earnings">{formatCurrency(adjustedDailyEarnings)}</p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
-                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Recent Billable Washouts</p>
-                <p className="truncate text-sm font-semibold text-foreground">{billableRecentWashouts}</p>
               </div>
             </div>
             <Button

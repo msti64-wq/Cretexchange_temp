@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,8 @@ import {
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLanguage } from "@/lib/i18n";
+import { useDriverPaymentLifecycle } from "@/hooks/useDriverPaymentLifecycle";
+import { DriverLifecycleSummary } from "@/components/driver/DriverLifecycleSummary";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
 
 interface WalletBalance {
@@ -63,7 +66,9 @@ interface ColumnOnboardingStatus {
 
 export default function DriverWallet() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const { language } = useLanguage();
+  const driverLifecycle = useDriverPaymentLifecycle();
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
@@ -258,6 +263,7 @@ export default function DriverWallet() {
   const refreshAllData = () => {
     refetchBalance();
     refetchTransactions();
+    driverLifecycle.refresh();
     refetchColumnStatus();
     toast({
       title: "Data Refreshed",
@@ -320,7 +326,7 @@ export default function DriverWallet() {
         {/* Page Header */}
         <DSSectionHeader
           title="My Wallet"
-          description="Manage your earnings and withdrawals"
+          description="Manage your wallet and withdrawal settings"
           actions={
             <Button
               variant="outline"
@@ -335,10 +341,9 @@ export default function DriverWallet() {
           }
         />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <DSKpiCard label="Available Balance" value={formatCurrency(walletBalance?.availableBalance || 0)} detail="Available to withdraw" accentTone="success" data-testid="text-available-balance" />
-          <DSKpiCard label="Pending" value={formatCurrency(walletBalance?.pendingBalance || 0)} detail="Pending" accentTone="warning" data-testid="text-pending-balance" />
-          <DSKpiCard label="Total Earned" value={formatCurrency(walletBalance?.totalEarnings || 0)} detail="Total earned from washouts" accentTone="accent" data-testid="text-total-earnings" />
+        <DriverLifecycleSummary lifecycle={driverLifecycle.lifecycle} isLoading={driverLifecycle.isLoading} paymentError={driverLifecycle.paymentError} onViewActivity={() => setLocation('/activity')} variant="wallet" />
+        <div className="grid grid-cols-1 gap-3">
+          <DSKpiCard label="Wallet Balance" value={formatCurrency(walletBalance?.availableBalance || 0)} detail="Shown separately from activity and payment status" accentTone="success" data-testid="text-available-balance" />
         </div>
 
         {/* Bank Account Status */}
