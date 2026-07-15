@@ -16,9 +16,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import StripeVerificationStatus from "@/components/StripeVerificationStatus";
 import { LogoutButton } from "@/components/LogoutButton";
+import { useLanguage } from "@/lib/i18n";
+import { resolveFacilityOperationalReadiness } from "@/lib/pilotOnboarding";
+import { resolveOwnerLocationAccessState } from "@shared/ownerLocationAccess";
 
 export default function OwnerProfile() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { logout } = useAuth();
   const [, setLocation] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
@@ -34,6 +38,12 @@ export default function OwnerProfile() {
 
   const { data: user, isLoading, refetch } = useQuery<any>({
     queryKey: ['/api/auth/user'],
+  });
+  const owner = user?.roleData;
+  const locationAccessState = resolveOwnerLocationAccessState(owner, user);
+  const { data: facilityLocations = [] } = useQuery<any[]>({
+    queryKey: ['/api/owners/locations'],
+    enabled: locationAccessState.canManageLocations,
   });
 
   // Fetch Stripe requirements
@@ -230,7 +240,11 @@ export default function OwnerProfile() {
     );
   }
 
-  const owner = user?.roleData;
+  const operationalReadiness = resolveFacilityOperationalReadiness({
+    owner,
+    user,
+    locations: facilityLocations,
+  });
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -245,7 +259,7 @@ export default function OwnerProfile() {
               <h1 className="font-semibold text-lg" data-testid="text-user-name">
                 {user?.firstName} {user?.lastName}
               </h1>
-              <p className="text-white/80 text-sm">Location Owner</p>
+              <p className="text-white/80 text-sm">Facility Operator</p>
             </div>
           </div>
           <LogoutButton
@@ -259,7 +273,7 @@ export default function OwnerProfile() {
       </header>
       
       <div className="p-4 space-y-4">
-        {/* Account Status */}
+        {/* Operational readiness intentionally excludes payment and payout status. */}
         <Card>
           <CardContent className="p-6 text-center">
             <div className="flex items-center justify-center mb-4">
@@ -274,52 +288,63 @@ export default function OwnerProfile() {
               )}
             </div>
             <h2 className="text-xl font-semibold mb-2">
-              Account Status
+              {t("pilot.facility.readinessTitle")}
             </h2>
             <Badge 
               variant={owner?.isApproved ? "default" : "secondary"}
               className="mb-4"
               data-testid="badge-approval-status"
             >
-              {owner?.isApproved ? 'Approved' : 'Pending Approval'}
+              {owner?.isApproved ? t("pilot.facility.approved") : t("pilot.facility.approvalPending")}
             </Badge>
             
             {!owner?.isApproved && (
-              <div className="text-sm text-muted-foreground mb-4">
-                Your account is pending admin approval. You can add locations after approval.
+              <div className="space-y-2 text-sm text-muted-foreground" data-testid="text-facility-approval-pending">
+                <p className="font-medium text-foreground">{t("pilot.facility.registrationComplete")}</p>
+                <p>{t("pilot.facility.platformOperations")}</p>
+                <p>{t("pilot.facility.prepareWhileWaiting")}</p>
+                <p>{t("pilot.facility.afterApproval")}</p>
+                <p>{t("pilot.facility.delayedSupport")}</p>
               </div>
             )}
 
-            <Badge 
-              variant={owner?.isApproved ? "default" : "secondary"}
-              data-testid="badge-membership-status"
-            >
-              Membership: {owner?.isApproved ? 'Active' : 'Pending Payment'}
-            </Badge>
-            
-            {!owner?.isApproved && (
-              <div className="mt-4 space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Complete your one-time $15.00 membership payment to activate your account.
-                </p>
-                <Button 
-                  onClick={() => setLocation('/subscribe')}
-                  data-testid="button-pay-membership"
-                >
-                  Pay Membership Fee
+            {locationAccessState.canManageLocations && !operationalReadiness.hasLocation && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-muted-foreground">{t("pilot.facility.firstLocationHelp")}</p>
+                <Button onClick={() => setLocation('/locations')} data-testid="button-create-first-facility-location">
+                  {t("pilot.facility.createFirstLocation")}
                 </Button>
               </div>
             )}
-            
             {owner?.isApproved && (
-              <p className="text-sm text-muted-foreground mt-4">
-                $1.00/month per active location is automatically deducted from your wallet.
-              </p>
+              <ul className="mt-5 space-y-2 text-left text-sm" data-testid="list-facility-operational-readiness">
+                {[
+                  [t("pilot.facility.profileComplete"), operationalReadiness.profileComplete],
+                  [t("pilot.facility.firstLocation"), operationalReadiness.hasLocation],
+                  [t("pilot.facility.activeLocation"), operationalReadiness.hasActiveLocation],
+                  [t("pilot.facility.visibleLocation"), operationalReadiness.hasVisibleLocation],
+                  [t("pilot.facility.operatingInfo"), operationalReadiness.hasOperatingInfo],
+                ].map(([label, complete]) => (
+                  <li key={String(label)} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
+                    <span>{label}</span>
+                    <Badge variant={complete ? "default" : "secondary"}>{complete ? t("pilot.facility.complete") : t("pilot.facility.notComplete")}</Badge>
+                  </li>
+                ))}
+              </ul>
             )}
           </CardContent>
         </Card>
 
-        {/* Stripe Verification Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("pilot.facility.separateAccountSetup")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">{t("pilot.facility.separateAccountSetupHelp")}</p>
+          </CardContent>
+        </Card>
+
+        {/* Financial account setup remains separate from operational readiness. */}
         <StripeVerificationStatus userRole="owner" />
 
         <form onSubmit={handleSubmit} className="space-y-4">

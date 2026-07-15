@@ -5,6 +5,9 @@ import { WashoutForm } from "@/components/WashoutForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MapPin, AlertCircle } from "lucide-react";
+import { createSubmissionConfirmationRecord } from "@/lib/pilotOnboarding";
+
+const SUBMISSION_CONFIRMATION_SESSION_KEY = "cretexchange.driver.submission-confirmation";
 
 export default function DriverCheckIn() {
   const { locationId } = useParams();
@@ -22,8 +25,21 @@ export default function DriverCheckIn() {
     enabled: !!locationId,
   });
 
-  const handleSuccess = () => {
-    setLocation('/activity');
+  const handleSuccess = (activityId?: string) => {
+    const record = createSubmissionConfirmationRecord(activityId);
+    if (!record) {
+      setLocation('/activity');
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(SUBMISSION_CONFIRMATION_SESSION_KEY, JSON.stringify(record));
+    } catch {
+      // A confirmed submission remains available in Activity even when browser
+      // session storage is unavailable; the confirmation panel stays hidden.
+    }
+
+    setLocation(`/activity?submittedActivityId=${encodeURIComponent(record.activityId)}`);
   };
 
   if (isLoading) {
@@ -49,9 +65,7 @@ export default function DriverCheckIn() {
             <CardContent className="text-center py-8">
               <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h2 className="text-lg font-semibold mb-2">Location Not Found</h2>
-              <p className="text-muted-foreground mb-4">
-                The washout location you're looking for doesn't exist or is no longer available.
-              </p>
+              <p className="text-muted-foreground mb-4">The washout location you're looking for doesn't exist or is no longer available.</p>
               <Button onClick={() => setLocation('/locations')} data-testid="button-back-to-locations">
                 <MapPin className="w-4 h-4 mr-2" />
                 Browse Locations

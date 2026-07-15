@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DriverHeader } from "@/components/DriverHeader";
@@ -11,6 +12,29 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
+import { resolveSubmittedActivityConfirmation, type SubmissionConfirmationRecord } from "@/lib/pilotOnboarding";
+
+const SUBMISSION_CONFIRMATION_SESSION_KEY = "cretexchange.driver.submission-confirmation";
+
+function readSubmissionConfirmationRecord(): SubmissionConfirmationRecord | null {
+  try {
+    const rawRecord = window.sessionStorage.getItem(SUBMISSION_CONFIRMATION_SESSION_KEY);
+    if (!rawRecord) return null;
+
+    const record = JSON.parse(rawRecord) as SubmissionConfirmationRecord;
+    return typeof record?.activityId === "string" && Number.isFinite(record?.createdAt) ? record : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearSubmissionConfirmationRecord() {
+  try {
+    window.sessionStorage.removeItem(SUBMISSION_CONFIRMATION_SESSION_KEY);
+  } catch {
+    // Session storage can be unavailable in privacy-restricted browser contexts.
+  }
+}
 
 function formatDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -71,11 +95,14 @@ function DateFilterButton({
 
 export default function DriverActivity() {
   const { t, language } = useLanguage();
+  const [currentPath, setLocation] = useLocation();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [isSubmissionConfirmationDismissed, setIsSubmissionConfirmationDismissed] = useState(false);
+  const submittedActivityId = new URLSearchParams(currentPath.split("?")[1] || "").get("submittedActivityId");
 
   // Build URLs with query parameters instead of path parameters
   const activitiesUrl = `/api/drivers/activities${startDate || endDate ? '?' : ''}${
@@ -101,6 +128,19 @@ export default function DriverActivity() {
     queryKey: [paymentsUrl],
     staleTime: 0, // Always fetch fresh data  
   });
+
+  const submittedActivityConfirmation = resolveSubmittedActivityConfirmation({
+    referencedActivityId: submittedActivityId,
+    record: readSubmissionConfirmationRecord(),
+    activities,
+  });
+  const showSubmissionConfirmation = Boolean(submittedActivityConfirmation) && !isSubmissionConfirmationDismissed;
+
+  const dismissSubmissionConfirmation = () => {
+    clearSubmissionConfirmationRecord();
+    setIsSubmissionConfirmationDismissed(true);
+    setLocation("/activity");
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -176,6 +216,32 @@ export default function DriverActivity() {
       <DriverHeader />
       
       <div className="p-4 space-y-4">
+        {showSubmissionConfirmation && (
+          <DSCard
+            padding="lg"
+            className="border-sky-300 bg-sky-50 dark:border-sky-900/60 dark:bg-sky-950/30"
+            data-testid="panel-submission-confirmation"
+          >
+            <DSSectionHeader
+              title={t("pilot.submission.title")}
+              description={t("pilot.submission.message")}
+            />
+            <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+              <p>{t("pilot.submission.pendingReview")}</p>
+              <p>{t("pilot.submission.next")}</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4"
+              onClick={dismissSubmissionConfirmation}
+              data-testid="button-dismiss-submission-confirmation"
+            >
+              {t("pilot.submission.dismiss")}
+            </Button>
+          </DSCard>
+        )}
+
         {/* Stats Summary */}
         <div className="grid grid-cols-2 gap-3">
           <DSKpiCard label={t("driver.activity.totalWashouts")} value={stats.totalActivities} detail={t("driver.activity.totalWashouts")} accentTone="info" data-testid="text-total-activities" />
