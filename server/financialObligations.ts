@@ -4,6 +4,8 @@ import { resolveConfiguredWashoutPlatformFeeCents } from "../shared/billingPolic
 import { formatCentsToDollars } from "../shared/money";
 import { db } from "./db";
 
+export const CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND = "canonical_verified_activity_v1";
+
 export type FinancialObligationPayment = {
   id: string;
   activityId: string;
@@ -18,6 +20,7 @@ export type FinancialObligationPayment = {
   stripePaymentIntentId?: string | null;
   stripeTransferId?: string | null;
   stripeChargeId?: string | null;
+  obligationKind?: string | null;
   obligationCreatedBy?: string | null;
   obligationCreationReason?: string | null;
 };
@@ -144,7 +147,7 @@ function assertExistingObligation(existing: FinancialObligationPayment[]): Finan
   if (existing.length > 1) {
     throw new FinancialObligationError("duplicate_financial_obligation", "Multiple payment rows already reference this activity; reconciliation is required");
   }
-  if (existing[0].status !== "pending") {
+  if (existing[0].status !== "pending" || existing[0].obligationKind !== CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND) {
     throw new FinancialObligationError("existing_financial_state_requires_review", "Existing payment is not a canonical unpaid obligation; reconciliation is required");
   }
   return existing[0];
@@ -224,6 +227,7 @@ export async function createFinancialObligationForVerifiedActivity(
       stripePaymentIntentId: null,
       stripeTransferId: null,
       stripeChargeId: null,
+      obligationKind: CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND,
       obligationCreatedBy: context.actorUserId || null,
       obligationCreationReason: context.reason || null,
     };

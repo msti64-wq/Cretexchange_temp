@@ -78,6 +78,12 @@ import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags"
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import { createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole } from "./financialObligations";
 import {
+  createAdminFinancialDiscoveryHandler,
+  listCanonicalFinancialExceptions,
+  listUnbatchedCanonicalObligations,
+  listVerifiedActivitiesWithoutCanonicalObligations,
+} from "./financialDiscovery";
+import {
   authorizeAndFenceFinancialExecutionRequest,
   buildNoDriverWalletBalanceResponse,
   buildReadOnlyDriverWalletBalanceResponse,
@@ -5380,6 +5386,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Failed to create financial obligation" });
     }
   });
+
+  // Phase 3B.1 discovery is deliberately read-only. These queues classify
+  // canonical and legacy financial records without creating obligations,
+  // batches, wallet entries, provider requests, or reconciliation changes.
+  app.get('/api/admin/financial-obligations/missing', isAuthenticated, createAdminFinancialDiscoveryHandler({
+    getUser: (userId) => storage.getUser(userId),
+    list: listVerifiedActivitiesWithoutCanonicalObligations,
+    route: 'GET /api/admin/financial-obligations/missing',
+  }) as any);
+
+  app.get('/api/admin/financial-obligations/unbatched', isAuthenticated, createAdminFinancialDiscoveryHandler({
+    getUser: (userId) => storage.getUser(userId),
+    list: listUnbatchedCanonicalObligations,
+    route: 'GET /api/admin/financial-obligations/unbatched',
+  }) as any);
+
+  app.get('/api/admin/financial-obligations/exceptions', isAuthenticated, createAdminFinancialDiscoveryHandler({
+    getUser: (userId) => storage.getUser(userId),
+    list: listCanonicalFinancialExceptions,
+    route: 'GET /api/admin/financial-obligations/exceptions',
+  }) as any);
 
   app.post('/api/admin/payments/process-awaiting-driver-stripe', isAuthenticated, async (req: any, res) => {
     try {

@@ -12,6 +12,7 @@ process.env.PUBLIC_OBJECT_SEARCH_PATHS = "public";
 
 const {
   FinancialObligationError,
+  CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND,
   createFinancialObligationForVerifiedActivity,
   isPlatformFinancialOperationsRole,
   parseFrozenActivityIncentiveCents,
@@ -36,6 +37,7 @@ type StoredPayment = {
   stripeChargeId?: string | null;
   obligationCreatedBy?: string | null;
   obligationCreationReason?: string | null;
+  obligationKind?: string | null;
 };
 
 function repositoryFixture(options: {
@@ -47,7 +49,12 @@ function repositoryFixture(options: {
   systemFee?: string | null;
   existing?: StoredPayment[];
 } = {}) {
-  const records = [...(options.existing || [])];
+  const records = (options.existing || []).map((record) => ({
+    ...record,
+    obligationKind: Object.prototype.hasOwnProperty.call(record, "obligationKind")
+      ? record.obligationKind
+      : CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND,
+  }));
   let nextId = 1;
   const activity = options.activity === null ? null : {
     id: "activity_1",
@@ -130,6 +137,7 @@ test("creates one unpaid obligation from the verified activity's frozen amount",
 
   assert.equal(result.created, true);
   assert.equal(result.obligation.status, "pending");
+  assert.equal(result.obligation.obligationKind, CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND);
   assert.equal(result.obligation.amount, "12.34");
   assert.equal(result.obligation.processingFee, "5.00");
   assert.equal(result.obligation.washoutServiceFee, "12.34");
@@ -211,6 +219,7 @@ test("is idempotent for a canonical pending obligation and rejects legacy duplic
   assert.equal(fixture.records.length, 1);
 
   await expectCode(createFinancialObligationForVerifiedActivity("activity_1", repositoryFixture({ existing: [{ ...first.obligation, status: "paid" }] }).repository), "existing_financial_state_requires_review");
+  await expectCode(createFinancialObligationForVerifiedActivity("activity_1", repositoryFixture({ existing: [{ ...first.obligation, obligationKind: null }] }).repository), "existing_financial_state_requires_review");
   await expectCode(createFinancialObligationForVerifiedActivity("activity_1", repositoryFixture({ existing: [first.obligation, { ...first.obligation, id: "duplicate" }] }).repository), "duplicate_financial_obligation");
 });
 

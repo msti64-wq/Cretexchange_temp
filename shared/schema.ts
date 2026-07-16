@@ -428,6 +428,9 @@ export const payments = pgTable("payments", {
   // Batch tracking fields for daily billing
   batchId: varchar("batch_id").references(() => billingBatches.id),
   businessDate: varchar("business_date"), // YYYY-MM-DD format for the business day
+  // Explicitly identifies the non-executing Phase 2 obligation model. Legacy
+  // payment rows remain null and must never become canonical by inference.
+  obligationKind: varchar("obligation_kind"),
   obligationCreatedBy: varchar("obligation_created_by").references(() => users.id, { onDelete: "set null" }),
   obligationCreationReason: text("obligation_creation_reason"),
   paidAt: timestamp("paid_at"),
@@ -438,6 +441,7 @@ export const payments = pgTable("payments", {
   // The database constraint is the concurrency boundary; do not replace it with
   // an application-only existence check.
   oneObligationPerActivity: uniqueIndex("uniq_payments_activity_obligation").on(table.activityId),
+  canonicalDiscoveryIndex: index("idx_payments_obligation_kind_status_created").on(table.obligationKind, table.status, table.createdAt),
 }));
 
 // Pending washout payments for hourly batch processing
