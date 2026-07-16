@@ -10,6 +10,7 @@ import {
   decimal,
   boolean,
   integer,
+  check,
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -507,13 +508,123 @@ export const billingBatches = pgTable("billing_batches", {
   failureReason: text("failure_reason"),
   retryCount: integer("retry_count").notNull().default(0),
   metadata: jsonb("metadata"),
+  // Canonical financial draft fields. Legacy rows remain null and continue to
+  // use their legacy execution-oriented fields; canonical code must never infer
+  // this model from `status` or `batch_id` alone.
+  batchModelVersion: varchar("batch_model_version"),
+  canonicalReference: varchar("canonical_reference"),
+  canonicalState: varchar("canonical_state"),
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  cadence: varchar("cadence"),
+  revision: integer("revision"),
+  idempotencyKey: varchar("idempotency_key"),
+  frozenDriverIncentiveCents: integer("frozen_driver_incentive_cents"),
+  frozenPlatformFeeCents: integer("frozen_platform_fee_cents"),
+  frozenFacilityChargeCents: integer("frozen_facility_charge_cents"),
+  exceptionCount: integer("exception_count"),
+  canonicalCreatedBy: varchar("canonical_created_by").references(() => users.id, { onDelete: "set null" }),
+  canonicalCreationReason: text("canonical_creation_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
-  // Unique constraint: one batch per owner per business date
+  // Existing legacy daily uniqueness remains unchanged. A legacy date collision
+  // is a safe construction conflict; it never reclassifies or merges records.
   uniqueBatchPerDay: uniqueIndex("uniq_billing_batches_owner_date").on(table.ownerId, table.businessDate),
   // Index for efficient queries by status and date
   statusDateIndex: index("idx_billing_batches_status_date").on(table.status, table.businessDate),
+  canonicalReferenceUnique: uniqueIndex("uniq_billing_batches_canonical_reference").on(table.canonicalReference),
+  canonicalIdempotencyUnique: uniqueIndex("uniq_billing_batches_canonical_idempotency").on(table.idempotencyKey),
+  canonicalFacilityPeriodRevisionUnique: uniqueIndex("uniq_billing_batches_canonical_facility_period_revision").on(table.ownerId, table.batchModelVersion, table.periodStart, table.revision),
+  canonicalStatePeriodIndex: index("idx_billing_batches_canonical_state_period").on(table.batchModelVersion, table.canonicalState, table.periodStart),
+  canonicalFrozenTotalsCheck: check("chk_billing_batches_canonical_frozen_totals", sql`
+    ${table.batchModelVersion} IS NULL OR ${table.batchModelVersion} <> 'canonical_financial_batch_v1' OR (
+      ${table.canonicalReference} IS NOT NULL AND ${table.canonicalState} IN ('draft', 'ready_for_review', 'approved', 'cancelled')
+      AND ${table.periodStart} IS NOT NULL AND ${table.periodEnd} IS NOT NULL AND ${table.periodEnd} > ${table.periodStart}
+      AND ${table.cadence} = 'weekly' AND ${table.revision} IS NOT NULL AND ${table.revision} > 0
+      AND ${table.frozenDriverIncentiveCents} IS NOT NULL AND ${table.frozenDriverIncentiveCents} >= 0
+      AND ${table.frozenPlatformFeeCents} IS NOT NULL AND ${table.frozenPlatformFeeCents} >= 0
+      AND ${table.frozenFacilityChargeCents} = ${table.frozenDriverIncentiveCents} + ${table.frozenPlatformFeeCents}
+      AND ${table.paymentCount} >= 0 AND ${table.exceptionCount} >= 0
+    )
+  `),
+}));
+
+// Canonical membership retains claim and release history independently from the
+// legacy `payments.batch_id` compatibility field. Only an active membership
+// claims an obligation for a canonical draft.
+export const financialBatchMemberships = pgTable("financial_batch_memberships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id").notNull().references(() => billingBatches.id, { onDelete: "restrict" }),
+  paymentId: varchar("payment_id").notNull().references(() => payments.id, { onDelete: "restrict" }),
+  state: varchar("state").notNull(),
+  joinedAt: timestamp("joined_at").notNull().defaultNow(),
+  joinedBy: varchar("joined_by").references(() => users.id, { onDelete: "set null" }),
+  joinReason: text("join_reason").notNull(),
+  releasedAt: timestamp("released_at"),
+  releasedBy: varchar("released_by").references(() => users.id, { onDelete: "set null" }),
+  releaseReason: text("release_reason"),
+  frozenDriverIncentiveCents: integer("frozen_driver_incentive_cents").notNull(),
+  frozenPlatformFeeCents: integer("frozen_platform_fee_cents").notNull(),
+  frozenFacilityChargeCents: integer("frozen_facility_charge_cents").notNull(),
+  batchRevision: integer("batch_revision").notNull(),
+}, (table) => ({
+  activePaymentMembershipUnique: uniqueIndex("uniq_financial_batch_memberships_active_payment")
+    .on(table.paymentId)
+    .where(sql`${table.state} = 'active'`),
+  batchStateIndex: index("idx_financial_batch_memberships_batch_state").on(table.batchId, table.state),
+  frozenTotalsCheck: check("chk_financial_batch_memberships_frozen_totals", sql`
+    ${table.state} IN ('active', 'released')
+    AND ${table.frozenDriverIncentiveCents} >= 0
+    AND ${table.frozenPlatformFeeCents} >= 0
+    AND ${table.frozenFacilityChargeCents} = ${table.frozenDriverIncentiveCents} + ${table.frozenPlatformFeeCents}
+    AND ${table.batchRevision} > 0
+  `),
+}));
+
+// Canonical batch history is append-only. Later phases may add more event types,
+// but Phase 3B.2 records only draft construction and membership claims.
+export const financialBatchAuditEvents = pgTable("financial_batch_audit_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id").notNull().references(() => billingBatches.id, { onDelete: "restrict" }),
+  eventType: varchar("event_type").notNull(),
+  actorId: varchar("actor_id").references(() => users.id, { onDelete: "set null" }),
+  actorRole: varchar("actor_role").notNull(),
+  reason: text("reason").notNull(),
+  priorState: varchar("prior_state"),
+  newState: varchar("new_state").notNull(),
+  revision: integer("revision").notNull(),
+  obligationCount: integer("obligation_count").notNull(),
+  frozenDriverIncentiveCents: integer("frozen_driver_incentive_cents").notNull(),
+  frozenPlatformFeeCents: integer("frozen_platform_fee_cents").notNull(),
+  frozenFacilityChargeCents: integer("frozen_facility_charge_cents").notNull(),
+  safeMetadata: jsonb("safe_metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  batchCreatedIndex: index("idx_financial_batch_audit_events_batch_created").on(table.batchId, table.createdAt),
+  frozenTotalsCheck: check("chk_financial_batch_audit_events_frozen_totals", sql`
+    ${table.obligationCount} >= 0
+    AND ${table.frozenDriverIncentiveCents} >= 0
+    AND ${table.frozenPlatformFeeCents} >= 0
+    AND ${table.frozenFacilityChargeCents} = ${table.frozenDriverIncentiveCents} + ${table.frozenPlatformFeeCents}
+    AND ${table.revision} > 0
+  `),
+}));
+
+// Exception rows preserve a non-repairing, least-privilege record when an
+// authorized construction attempt encounters a material financial conflict.
+export const financialBatchExceptions = pgTable("financial_batch_exceptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id").references(() => billingBatches.id, { onDelete: "restrict" }),
+  paymentId: varchar("payment_id").references(() => payments.id, { onDelete: "restrict" }),
+  category: varchar("category").notNull(),
+  safeReference: varchar("safe_reference").notNull(),
+  status: varchar("status").notNull().default("open"),
+  safeMetadata: jsonb("safe_metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  statusCreatedIndex: index("idx_financial_batch_exceptions_status_created").on(table.status, table.createdAt),
+  paymentCategoryIndex: index("idx_financial_batch_exceptions_payment_category").on(table.paymentId, table.category),
 }));
 
 // Fees ledger for monthly recurring fees (location and subscription fees)

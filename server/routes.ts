@@ -84,6 +84,11 @@ import {
   listVerifiedActivitiesWithoutCanonicalObligations,
 } from "./financialDiscovery";
 import {
+  createAdminFinancialBatchDetailHandler,
+  createAdminFinancialBatchDraftHandler,
+  createAdminFinancialBatchListHandler,
+} from "./financialBatchDrafts";
+import {
   authorizeAndFenceFinancialExecutionRequest,
   buildNoDriverWalletBalanceResponse,
   buildReadOnlyDriverWalletBalanceResponse,
@@ -5407,6 +5412,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     list: listCanonicalFinancialExceptions,
     route: 'GET /api/admin/financial-obligations/exceptions',
   }) as any);
+
+  // Phase 3B.2 canonical batch routes govern non-executing draft construction
+  // and inspection only. Canonical state, not legacy billing batch status,
+  // controls these routes; no route calls a provider or payment executor.
+  const financialBatchDependencies = { getUser: (userId: string) => storage.getUser(userId) };
+  app.get('/api/admin/financial-batches', isAuthenticated, createAdminFinancialBatchListHandler(financialBatchDependencies) as any);
+  app.get('/api/admin/financial-batches/:id', isAuthenticated, createAdminFinancialBatchDetailHandler(financialBatchDependencies) as any);
+  app.post('/api/admin/financial-batches', isAuthenticated, createAdminFinancialBatchDraftHandler(financialBatchDependencies) as any);
 
   app.post('/api/admin/payments/process-awaiting-driver-stripe', isAuthenticated, async (req: any, res) => {
     try {
