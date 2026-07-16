@@ -76,6 +76,7 @@ import {
 } from "../shared/paymentAccounting";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
+import { createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole } from "./financialObligations";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import {
   buildDriverReport,
@@ -5312,6 +5313,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error rejecting activity:", error);
       res.status(500).json({ message: "Failed to reject activity" });
+    }
+  });
+
+  // Financial obligation creation is deliberately separate from Facility review.
+  // Only Platform Operations may record an unpaid obligation for an already
+  // verified activity. The canonical service does not execute a payment.
+  app.post('/api/admin/financial-obligations/activities/:id', isAuthenticated, async (req: any, res) => {
+    const user = await storage.getUser(req.user.id);
+    if (!user || !isPlatformFinancialOperationsRole(user.role)) {
+      return res.status(403).json({ message: "Platform Operations access required" });
+    }
+
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    if (!reason || reason.length > 500) {
+      return res.status(422).json({ message: "A concise obligation-creation reason is required" });
+    }
+
+    try {
+      const result = await createFinancialObligationForVerifiedActivity(req.params.id, undefined, {
+        actorUserId: user.id,
+        reason,
+      });
+      console.info("[FINANCIAL_OBLIGATION_RECORDED]", {
+        actorUserId: user.id,
+        activityId: req.params.id,
+        obligationId: result.obligation.id,
+        created: result.created,
+        status: result.obligation.status,
+      });
+      return res.status(result.created ? 201 : 200).json({
+        obligation: {
+          id: result.obligation.id,
+          activityId: result.obligation.activityId,
+          status: result.obligation.status,
+          driverIncentiveCents: result.driverIncentiveCents,
+          platformFeeCents: result.platformFeeCents,
+          facilityChargeCents: result.facilityChargeCents,
+        },
+        created: result.created,
+      });
+    } catch (error) {
+      if (error instanceof FinancialObligationError) {
+        const status = error.code === "activity_not_found" ? 404
+          : error.code === "duplicate_financial_obligation" || error.code === "existing_financial_state_requires_review" ? 409
+          : 422;
+        return res.status(status).json({ message: error.message, code: error.code });
+      }
+      console.error("Failed to create financial obligation", { activityId: req.params.id, error });
+      return res.status(500).json({ message: "Failed to create financial obligation" });
     }
   });
 

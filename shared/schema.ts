@@ -428,10 +428,17 @@ export const payments = pgTable("payments", {
   // Batch tracking fields for daily billing
   batchId: varchar("batch_id").references(() => billingBatches.id),
   businessDate: varchar("business_date"), // YYYY-MM-DD format for the business day
+  obligationCreatedBy: varchar("obligation_created_by").references(() => users.id, { onDelete: "set null" }),
+  obligationCreationReason: text("obligation_creation_reason"),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  // A payment row is the canonical financial obligation for exactly one activity.
+  // The database constraint is the concurrency boundary; do not replace it with
+  // an application-only existence check.
+  oneObligationPerActivity: uniqueIndex("uniq_payments_activity_obligation").on(table.activityId),
+}));
 
 // Pending washout payments for hourly batch processing
 export const pendingWashoutPayments = pgTable("pending_washout_payments", {
