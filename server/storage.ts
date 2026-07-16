@@ -119,6 +119,7 @@ import {
 import { db } from "./db";
 import { summarizeDatabaseError } from "./dbErrors";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
+import { assertLegacyFinancialExecutionRetired, isLegacyFinancialExecutionFenced, logFinancialExecutionDenied } from "./financialExecutionPolicy";
 import { resolvePlatformFeeCents, resolveConfiguredWashoutPlatformFeeCents, type OwnerBillingLedger } from "../shared/billingPolicy";
 import { normalizeMoneyToCents } from "../shared/money";
 import {
@@ -4662,6 +4663,7 @@ export class DatabaseStorage implements IStorage {
     paymentCount: number,
     billingSettings: { billingCadence: string; billingCutoffTime: string; billingTimezone: string }
   ): Promise<string> {
+    assertLegacyFinancialExecutionRetired("facility_collection", "storage.createStripePaymentIntent");
     const stripe = await this.getStripeInstance();
     if (!stripe) {
       throw new Error('Stripe not available');
@@ -5268,6 +5270,9 @@ export class DatabaseStorage implements IStorage {
     }>;
     errors: string[];
   }> {
+    if (!options.dryRun) {
+      assertLegacyFinancialExecutionRetired("facility_collection", "storage.repairMissingVerifiedWashoutPayments");
+    }
     const result = {
       ownersChecked: 0,
       approvedWashoutsChecked: 0,
@@ -5894,6 +5899,21 @@ export class DatabaseStorage implements IStorage {
 
   // Daily batch processing implementation
   async processDailyBatches(cutoffDate?: string): Promise<{ processed: number; failed: number; errors: string[] }> {
+    // Phase 3A: the legacy scheduler is not a canonical execution rail. Fence
+    // it before it can select, claim, create, or mutate financial records.
+    if (isLegacyFinancialExecutionFenced()) {
+      logFinancialExecutionDenied({
+        operation: "storage.processDailyBatches",
+        category: "scheduler",
+        reason: "legacy_scheduler_retired_pending_canonical_collection",
+      });
+      return {
+        processed: 0,
+        failed: 0,
+        errors: ["Financial execution is disabled; legacy daily batch processing is retired."],
+      };
+    }
+
     const results = {
       processed: 0,
       failed: 0,
@@ -6646,6 +6666,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async processPendingFees(): Promise<{ processed: number; failed: number; errors: string[] }> {
+    // This legacy fee processor debits owner wallet balances and creates
+    // transactions. It has no canonical execution authorization boundary.
+    assertLegacyFinancialExecutionRetired("facility_collection", "storage.processPendingFees");
+
     const results = {
       processed: 0,
       failed: 0,

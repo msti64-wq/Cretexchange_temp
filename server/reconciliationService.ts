@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { assertLegacyFinancialExecutionRetired } from './financialExecutionPolicy';
 import { db } from './db';
 import {
   balanceReconciliations,
@@ -38,6 +39,7 @@ export interface ReconciliationResult {
 }
 
 export async function performBalanceReconciliation(triggeredBy?: string): Promise<ReconciliationResult> {
+  assertLegacyFinancialExecutionRetired("facility_collection", "reconciliation.performBalanceReconciliation");
   console.log('\n========== BALANCE RECONCILIATION STARTED ==========\n');
   
   // Create reconciliation record
@@ -236,6 +238,10 @@ export async function resolveDiscrepancy(
   resolvedBy: string,
   resolutionNotes: string
 ) {
+  // Resolving a reconciliation record changes financial audit state. Retain
+  // historical records for inspection, but do not permit legacy mutation.
+  assertLegacyFinancialExecutionRetired("facility_collection", "reconciliation.resolveDiscrepancy");
+
   await db.update(reconciliationDiscrepancies)
     .set({
       resolved: true,
@@ -278,6 +284,7 @@ export async function performPaymentReconciliation(
   endDate?: Date,
   limit: number = 100
 ): Promise<PaymentReconciliationResult> {
+  assertLegacyFinancialExecutionRetired("facility_collection", "reconciliation.performPaymentReconciliation");
   console.log('\n========== PAYMENT RECONCILIATION STARTED ==========\n');
   
   const result: PaymentReconciliationResult = {
@@ -446,6 +453,7 @@ export async function performBatchReconciliation(
   endDate?: Date,
   limit: number = 50
 ): Promise<BatchReconciliationResult> {
+  assertLegacyFinancialExecutionRetired("facility_collection", "reconciliation.performBatchReconciliation");
   console.log('\n========== BATCH RECONCILIATION STARTED ==========\n');
   
   const result: BatchReconciliationResult = {
@@ -563,6 +571,7 @@ export async function syncPaymentFromStripe(paymentId: string): Promise<{
   changes: string[];
   error?: string;
 }> {
+  assertLegacyFinancialExecutionRetired("facility_collection", "reconciliation.syncPaymentFromStripe");
   const changes: string[] = [];
 
   try {

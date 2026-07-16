@@ -11,6 +11,7 @@ import {
   getPaymentPlatformFeeCents,
 } from "../shared/paymentAccounting";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
+import { isLegacyFinancialExecutionFenced, logFinancialExecutionDenied } from "./financialExecutionPolicy";
 
 type BillingBatch = any;
 type Payment = any;
@@ -915,6 +916,26 @@ async function processSingleOwnerBillingRun(
 export async function processOwnerBillingRun(
   options: ProcessOwnerBillingRunOptions
 ): Promise<OwnerBillingRunSummary> {
+  // Phase 3A: this legacy selector/executor cannot become an alternate
+  // collection rail. Return before reading or mutating financial records.
+  if (isLegacyFinancialExecutionFenced()) {
+    logFinancialExecutionDenied({
+      operation: "processOwnerBillingRun",
+      category: "facility_collection",
+      actorUserId: options.triggeredByAdminId || null,
+      reference: options.ownerId || null,
+      reason: "legacy_owner_billing_run_fenced_pending_canonical_collection",
+    });
+    return {
+      runs: [],
+      processed: 0,
+      failed: 0,
+      skipped: 0,
+      totalAmountCents: 0,
+      totalWashoutCount: 0,
+    };
+  }
+
   const { ownerId, startDate, endDate, storage, stripeClient } = options;
 
   const runResults: OwnerBillingRunResult[] = [];

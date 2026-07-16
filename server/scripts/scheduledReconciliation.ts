@@ -20,13 +20,20 @@
  *   Timeout: 5 minutes
  */
 
-import { 
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import {
   performBalanceReconciliation, 
   performPaymentReconciliation, 
   performBatchReconciliation 
 } from "../reconciliationService";
+import {
+  isLegacyFinancialExecutionFenced,
+  logFinancialExecutionDenied,
+  resolveFinancialExecutionAccess,
+} from "../financialExecutionPolicy";
 
-interface ReconciliationJobResult {
+export interface ReconciliationJobResult {
   startTime: string;
   endTime: string;
   durationMs: number;
@@ -49,10 +56,47 @@ interface ReconciliationJobResult {
   };
   overallHealth: 'HEALTHY' | 'NEEDS_ATTENTION' | 'CRITICAL';
   errors: string[];
+  disabled?: boolean;
 }
 
-async function runScheduledReconciliation(): Promise<ReconciliationJobResult> {
+const defaultDependencies = {
+  resolveFinancialExecutionAccess,
+  isLegacyFinancialExecutionFenced,
+  logFinancialExecutionDenied,
+  performBalanceReconciliation,
+  performPaymentReconciliation,
+  performBatchReconciliation,
+};
+
+export async function runScheduledReconciliation(
+  dependencies: typeof defaultDependencies = defaultDependencies,
+): Promise<ReconciliationJobResult> {
   const startTime = new Date();
+  const collectionAccess = dependencies.resolveFinancialExecutionAccess("facility_collection");
+  const settlementAccess = dependencies.resolveFinancialExecutionAccess("driver_settlement");
+  // Reconciliation can affect both Facility and Driver economic state. The
+  // retained scheduler is permanently fenced until canonical reconciliation is
+  // separately designed, even if a future canonical rail is enabled.
+  if (!collectionAccess.allowed || !settlementAccess.allowed || dependencies.isLegacyFinancialExecutionFenced()) {
+    dependencies.logFinancialExecutionDenied({
+      operation: "server/scripts/scheduledReconciliation",
+      category: "scheduler",
+      reason: "legacy_reconciliation_scheduler_retired_pending_canonical_reconciliation",
+    });
+    return {
+      startTime: startTime.toISOString(),
+      endTime: startTime.toISOString(),
+      durationMs: 0,
+      success: false,
+      balance: { accountsChecked: 0, discrepanciesFound: 0, totalAmountDiscrepancy: '0.00' },
+      payments: { paymentsChecked: 0, discrepanciesFound: 0, missingInStripe: 0, amountMismatches: 0, statusMismatches: 0 },
+      batches: { batchesChecked: 0, discrepanciesFound: 0 },
+      overallHealth: 'CRITICAL',
+      errors: ["Financial execution is disabled; legacy scheduled reconciliation is retired."],
+      disabled: true,
+    };
+  }
+
   console.log('\n╔════════════════════════════════════════════════════════════════╗');
   console.log('║       SCHEDULED RECONCILIATION JOB - STARTING                  ║');
   console.log('╚════════════════════════════════════════════════════════════════╝');
@@ -92,7 +136,7 @@ async function runScheduledReconciliation(): Promise<ReconciliationJobResult> {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     try {
-      const balanceResult = await performBalanceReconciliation(undefined);
+      const balanceResult = await dependencies.performBalanceReconciliation(undefined);
       result.balance = {
         accountsChecked: balanceResult.accountsChecked,
         discrepanciesFound: balanceResult.discrepanciesFound,
@@ -113,7 +157,7 @@ async function runScheduledReconciliation(): Promise<ReconciliationJobResult> {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
-      const paymentResult = await performPaymentReconciliation(sevenDaysAgo, undefined, 200);
+      const paymentResult = await dependencies.performPaymentReconciliation(sevenDaysAgo, undefined, 200);
       result.payments = {
         paymentsChecked: paymentResult.paymentsChecked,
         discrepanciesFound: paymentResult.discrepanciesFound,
@@ -142,7 +186,7 @@ async function runScheduledReconciliation(): Promise<ReconciliationJobResult> {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      const batchResult = await performBatchReconciliation(thirtyDaysAgo, undefined, 100);
+      const batchResult = await dependencies.performBatchReconciliation(thirtyDaysAgo, undefined, 100);
       result.batches = {
         batchesChecked: batchResult.batchesChecked,
         discrepanciesFound: batchResult.discrepanciesFound
@@ -207,8 +251,9 @@ async function runScheduledReconciliation(): Promise<ReconciliationJobResult> {
   return result;
 }
 
-// Main execution
-runScheduledReconciliation()
+// Main execution. Imports are intentionally inert so focused tests can inject
+// disabled dependencies without starting a production scheduler.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) runScheduledReconciliation()
   .then(async (result) => {
     const { db } = await import("../db");
     try {
@@ -218,7 +263,7 @@ runScheduledReconciliation()
     } catch (e) {
     }
     
-    if (result.overallHealth !== 'HEALTHY') {
+    if (!result.disabled && result.overallHealth !== 'HEALTHY') {
       process.exit(1);
     }
     process.exit(0);

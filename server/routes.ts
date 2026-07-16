@@ -77,6 +77,12 @@ import {
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import { createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole } from "./financialObligations";
+import {
+  authorizeAndFenceFinancialExecutionRequest,
+  buildNoDriverWalletBalanceResponse,
+  buildReadOnlyDriverWalletBalanceResponse,
+  retireFinancialExecutionRequest as retireFinancialExecutionRoute,
+} from "./financialExecutionPolicy";
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import {
   buildDriverReport,
@@ -2089,6 +2095,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/billing/batches/:batchId/retry", "facility_collection");
+
       const { batchId } = req.params;
       const batch = await storage.getBillingBatch(batchId);
       
@@ -2119,6 +2127,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (cronKey !== process.env.CRON_JOB_SECRET) {
         return res.status(401).json({ message: "Invalid cron job authentication" });
       }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/system/daily-batch-job", "scheduler");
 
       console.log('🕐 Starting scheduled daily batch processing...');
       
@@ -2942,6 +2952,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only drivers can request payouts" });
       }
 
+      return retireFinancialExecutionRoute(req, res, "POST /api/driver/payout", "driver_settlement");
+
       const driver = await storage.getDriver(userId);
       if (!driver) {
         return res.status(404).json({ message: "Driver profile not found" });
@@ -3045,6 +3057,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Routes to either credit card or Treasury wallet payment based on feature flag
   app.post('/api/payments/process-washout', isAuthenticated, async (req: any, res) => {
     try {
+      return retireFinancialExecutionRoute(req, res, "POST /api/payments/process-washout");
+
       const { activityId } = req.body;
       
       if (!activityId) {
@@ -3268,6 +3282,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Only admins can trigger batch processing" });
       }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/payments/process-batch");
 
       console.log('🔄 Starting batch payment processing...');
 
@@ -5372,6 +5388,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/payments/process-awaiting-driver-stripe");
+
       const paymentId = typeof req.body?.paymentId === 'string' ? req.body.paymentId : null;
       const awaitingPayments: any[] = paymentId
         ? [await storage.getPaymentById(paymentId)].filter(Boolean)
@@ -6408,6 +6426,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create Stripe payment intent for $15.00 membership fee
   app.post('/api/owners/create-membership-payment', isAuthenticated, async (req: any, res) => {
     try {
+      return await authorizeAndFenceFinancialExecutionRequest(req, res, {
+        loadUser: (userId) => storage.getUser(userId),
+        allowedRoles: ['owner'],
+        deniedMessage: "Owner access required",
+        operation: "POST /api/owners/create-membership-payment",
+        category: "facility_collection",
+        retired: false,
+      });
+
       console.log('🔍 [MEMBERSHIP] Starting membership payment creation for user:', req.user?.id);
       
       const userId = req.user.id;
@@ -6447,10 +6474,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
 
           if (successfulMembershipPayment) {
-            console.log('❌ [MEMBERSHIP] Duplicate payment prevented! Found existing payment:', successfulMembershipPayment.id);
+            const existingPaymentId = successfulMembershipPayment?.id;
+            console.log('❌ [MEMBERSHIP] Duplicate payment prevented! Found existing payment:', existingPaymentId);
             return res.status(400).json({ 
               message: "Membership fee already paid. Please contact support if you believe this is an error.",
-              existingPaymentId: successfulMembershipPayment.id
+              existingPaymentId
             });
           }
         } catch (error) {
@@ -6531,6 +6559,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Owner subscription activation (requires Stripe payment verification)
   app.post('/api/owners/subscribe', isAuthenticated, async (req: any, res) => {
     try {
+      return await authorizeAndFenceFinancialExecutionRequest(req, res, {
+        loadUser: (userId) => storage.getUser(userId),
+        allowedRoles: ['owner'],
+        deniedMessage: "Owner access required",
+        operation: "POST /api/owners/subscribe",
+        category: "facility_collection",
+        retired: false,
+      });
+
       console.log("Owner subscription request started for user:", req.user.id);
       
       const userId = req.user.id;
@@ -6749,6 +6786,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment handling for additional features
   app.post('/api/payments/create-payment-intent', isAuthenticated, async (req: any, res) => {
     try {
+      return retireFinancialExecutionRoute(req, res, "POST /api/payments/create-payment-intent", "facility_collection");
+
       console.log("Payment request - processing via Stripe");
       
       const { amount } = req.body;
@@ -6779,6 +6818,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/payments/process-payout");
 
       const { driverId, amount } = req.body;
       const driver = await storage.getDriver(driverId);
@@ -7144,7 +7185,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let balance = owner.walletBalance || '0.00';
       let status = owner.walletStatus || 'pending_verification';
 
-      // If owner has Stripe Treasury account, fetch live balance and sync to database
+      // This is a read-only wallet view. It may display a provider balance when
+      // available, but must never synchronize or repair local economic state.
       if (owner.stripeTreasuryAccountId && owner.stripeConnectAccountId) {
         try {
           const treasuryBalance = await stripeService.getTreasuryBalance({
@@ -7155,22 +7197,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (treasuryBalance) {
             // Convert from cents to dollars
             balance = (treasuryBalance.balance / 100).toFixed(2);
-            
-            // Sync the balance to database if it differs
-            const currentBalance = parseFloat(owner.walletBalance || '0');
-            const treasuryBalanceDollars = parseFloat(balance);
-            if (treasuryBalanceDollars !== currentBalance) {
-              await db
-                .update(owners)
-                .set({
-                  walletBalance: balance,
-                  walletStatus: 'active',
-                  updatedAt: new Date()
-                })
-                .where(eq(owners.id, owner.id));
-              
-              console.log(`💰 Stripe Treasury balance synced: $${currentBalance} -> $${treasuryBalanceDollars}`);
-            }
             
             status = 'active';
           }
@@ -7367,8 +7393,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/owners/wallet/sync', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'owner') {
+        return res.status(403).json({ message: "Owner access required" });
+      }
+
+      // This applies a provider balance to local economic state, so it awaits
+      // canonical reconciliation and wallet-authoritative settlement.
+      return retireFinancialExecutionRoute(req, res, "POST /api/owners/wallet/sync", "facility_collection", false);
+
       const owner = await storage.getOwner(userId);
-      
       if (!owner) {
         return res.status(404).json({ message: "Owner not found" });
       }
@@ -8976,6 +9010,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/owners/wallet/simulate-funding - Simulate wallet funding for testing (development only)
   app.post('/api/owners/wallet/simulate-funding', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'owner') {
+        return res.status(403).json({ message: "Owner access required" });
+      }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/owners/wallet/simulate-funding", "facility_collection");
+
       // Only allow in development/local mode - fail closed in production or deployments
       const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT === 'true';
       if (isProduction) {
@@ -9048,6 +9089,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/owners/wallet/simulate-settlement - Simulate ACH settlement (sandbox only)
   app.post('/api/owners/wallet/simulate-settlement', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== 'owner') {
+        return res.status(403).json({ message: "Owner access required" });
+      }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/owners/wallet/simulate-settlement", "driver_settlement");
+
       const userId = req.user.id;
       const { transferId } = req.body;
       const owner = await storage.getOwner(userId);
@@ -9320,6 +9368,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/process-weekly-payouts");
 
       console.log("Processing weekly payouts...");
 
@@ -12329,12 +12379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // No Stripe Treasury account yet, use local wallet balance
         const wallet = await storage.getDriverWallet(driver.id);
         if (!wallet) {
-          await storage.createDriverWallet({
-            driverId: driver.id,
-            availableBalance: "0.00",
-            pendingBalance: "0.00"
-          });
-          availableBalance = 0;
+          return res.json(buildNoDriverWalletBalanceResponse());
         } else {
           availableBalance = parseFloat(wallet.availableBalance);
         }
@@ -12343,12 +12388,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate pending balance dynamically from activities with status='pending'
       const dynamicPendingBalance = await storage.calculatePendingBalance(driver.id);
 
-      res.json({
+      res.json(buildReadOnlyDriverWalletBalanceResponse({
         availableBalance: availableBalance,
         pendingBalance: dynamicPendingBalance,
-        totalBalance: availableBalance + dynamicPendingBalance,
         balanceSource: balanceSource // 'column' or 'local' for debugging
-      });
+      }));
     } catch (error) {
       console.error("Error getting wallet balance:", error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -12448,6 +12492,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user?.role !== 'driver') {
         return res.status(403).json({ message: "Driver access required" });
       }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/wallet/withdraw", "driver_settlement");
 
       const driver = await storage.getDriver(userId);
       if (!driver) {
@@ -12674,6 +12720,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
+
+      return retireFinancialExecutionRoute(req, res, "PATCH /api/admin/withdrawals/:id", "driver_settlement");
 
       const withdrawalId = req.params.id;
       
@@ -14248,6 +14296,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { businessDate, dryRun = false, ownerId, startDate, endDate, runType } = req.body;
+      if (!dryRun) {
+        return retireFinancialExecutionRoute(req, res, "POST /api/admin/billing/process-batches", "facility_collection");
+      }
       const cutoffDate = businessDate || new Date().toISOString().split('T')[0];
 
       console.log(`🔄 Admin triggered ${dryRun ? 'DRY RUN' : 'manual'} batch processing for ${cutoffDate}`);
@@ -14412,6 +14463,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Super admin access required" });
       }
+
+      return retireFinancialExecutionRoute(
+        req,
+        res,
+        "POST /api/admin/fees/:id/retry",
+        "facility_collection",
+      );
 
       const { id } = req.params;
       const fee = await storage.getFeeLedgerEntry(id);
@@ -16157,6 +16215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/reconciliation/run", "reconciliation");
+
       const { performBalanceReconciliation } = await import('./reconciliationService');
       
       console.log(`🔍 Manual reconciliation triggered by ${user.username}`);
@@ -16228,6 +16288,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/reconciliation/discrepancy/:id/resolve", "reconciliation");
+
       const { resolutionNotes } = req.body;
       if (!resolutionNotes) {
         return res.status(400).json({ message: 'Resolution notes required' });
@@ -16254,6 +16316,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/reconciliation/run-daily", "reconciliation");
+
       const { performBalanceReconciliation } = await import('./reconciliationService');
       
       console.log(`🔍 Daily reconciliation triggered by ${user.username}`);
@@ -16276,6 +16340,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user || user.role !== 'super_admin') {
         return res.status(403).json({ message: 'Super admin access required' });
       }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/reconciliation/test-discrepancy", "reconciliation");
 
       // Find users with Stripe Connect accounts (these are the ones being reconciled)
       const driverUsers = await db
@@ -16370,6 +16436,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Super admin access required' });
       }
 
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/reconciliation/payments", "reconciliation");
+
       const { startDate, endDate, limit } = req.body;
       
       const { performPaymentReconciliation } = await import('./reconciliationService');
@@ -16402,6 +16470,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { ownerId, startDate, endDate, dryRun = false } = req.body || {};
       const dryRunEnabled = dryRun === true || dryRun === "true";
+      if (!dryRunEnabled) {
+        return retireFinancialExecutionRoute(req, res, "POST /api/admin/reconciliation/repair-washout-payments", "reconciliation");
+      }
 
       const result = await storage.repairMissingVerifiedWashoutPayments({
         ownerId: ownerId ? String(ownerId) : undefined,
@@ -16434,6 +16505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Super admin access required' });
       }
 
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/reconciliation/batches", "reconciliation");
+
       const { startDate, endDate, limit } = req.body;
       
       const { performBatchReconciliation } = await import('./reconciliationService');
@@ -16463,6 +16536,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user || user.role !== 'super_admin') {
         return res.status(403).json({ message: 'Super admin access required' });
       }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/reconciliation/sync-payment/:paymentId", "reconciliation");
 
       const { paymentId } = req.params;
       
@@ -16496,6 +16571,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user || user.role !== 'super_admin') {
         return res.status(403).json({ message: 'Super admin access required' });
       }
+
+      // Existing reconciliation helpers can correct local financial state, so
+      // this is disabled until a separate inspection-only service exists.
+      return retireFinancialExecutionRoute(req, res, "GET /api/admin/reconciliation/full-audit", "reconciliation", false);
 
       const { 
         performBalanceReconciliation, 
@@ -16565,10 +16644,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/test/stripe-connect-payment - Test Stripe Connect Destination Charges
   app.post('/api/test/stripe-connect-payment', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.id);
-      if (!user || user.role !== 'super_admin') {
-        return res.status(403).json({ message: 'Super admin access required for testing' });
-      }
+      return await authorizeAndFenceFinancialExecutionRequest(req, res, {
+        loadUser: (userId) => storage.getUser(userId),
+        allowedRoles: ['super_admin'],
+        deniedMessage: "Super admin access required for testing",
+        operation: "POST /api/test/stripe-connect-payment",
+        category: "facility_collection",
+      });
 
       console.log('\n========== STRIPE CONNECT PAYMENT FLOW TEST ==========\n');
 
@@ -16614,7 +16696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get owner's default payment method
-      const customer = await stripe.customers.retrieve(ownerUser.stripeCustomerId);
+      const customer: any = await stripe.customers.retrieve(ownerUser.stripeCustomerId);
       if (!customer.deleted && customer.invoice_settings?.default_payment_method) {
         console.log('✅ Owner has default payment method:', customer.invoice_settings.default_payment_method);
       } else {
@@ -16761,6 +16843,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user || user.role !== 'super_admin') {
         return res.status(403).json({ message: 'Super admin access required for discrepancy injection' });
       }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/test/reconciliation/inject-discrepancy", "reconciliation");
 
       const { username, amountCents } = req.body;
       

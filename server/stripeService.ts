@@ -27,6 +27,7 @@
  */
 
 import Stripe from 'stripe';
+import { assertLegacyFinancialExecutionRetired } from './financialExecutionPolicy';
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -777,6 +778,7 @@ export async function fundFinancialAccountACH(params: {
     [key: string]: any;
   };
 }): Promise<Stripe.Treasury.InboundTransfer> {
+  assertLegacyFinancialExecutionRetired("facility_collection", "stripe.fundFinancialAccountACH");
   try {
     const inboundTransfer = await stripe.treasury.inboundTransfers.create(
       {
@@ -817,6 +819,7 @@ export async function payoutFromFinancialAccount(params: {
   amount: number; // in cents
   description: string;
 }): Promise<Stripe.Treasury.OutboundPayment> {
+  assertLegacyFinancialExecutionRetired("driver_settlement", "stripe.payoutFromFinancialAccount");
   try {
     const outboundPayment = await stripe.treasury.outboundPayments.create(
       {
@@ -856,6 +859,7 @@ export async function createACHTransfer(params: {
   };
   description: string;
 }): Promise<{ id: string; transferId: string }> {
+  assertLegacyFinancialExecutionRetired("driver_settlement", "stripe.createACHTransfer");
   const paymentMethod = await createBankAccountPaymentMethod({
     connectedAccountId: params.connectedAccountId,
     bankAccount: {
@@ -913,6 +917,7 @@ export async function transferBetweenFinancialAccounts(params: {
     [key: string]: any;
   };
 }): Promise<Stripe.Treasury.OutboundTransfer> {
+  assertLegacyFinancialExecutionRetired("driver_settlement", "stripe.transferBetweenFinancialAccounts");
   try {
     const outboundTransfer = await stripe.treasury.outboundTransfers.create(
       {
@@ -1251,6 +1256,7 @@ export async function processWashoutPaymentViaCard(params: {
   activityId?: string; // Link to specific washout activity
   locationId?: string; // Link to specific location
 }): Promise<Stripe.PaymentIntent> {
+  assertLegacyFinancialExecutionRetired("facility_collection", "stripe.processWashoutPaymentViaCard");
   try {
     const totalAmount = params.washoutAmount + params.platformFee;
 
@@ -1335,6 +1341,7 @@ export async function processWashoutPayment(params: {
   transfer: Stripe.Treasury.OutboundTransfer;
   platformFeeTransfer: Stripe.Treasury.OutboundTransfer;
 }> {
+  assertLegacyFinancialExecutionRetired("facility_collection", "stripe.processWashoutPayment");
   try {
     // 1. Transfer washout payment from owner to driver with CLEAR LABELING
     const transfer = await transferBetweenFinancialAccounts({
@@ -1401,6 +1408,7 @@ export async function createMembershipPaymentIntent(params: {
   paymentMethodId?: string;
   metadata?: Record<string, string>;
 }): Promise<Stripe.PaymentIntent> {
+  assertLegacyFinancialExecutionRetired("facility_collection", "stripe.createMembershipPaymentIntent");
   try {
     const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: params.amount,
@@ -1458,6 +1466,7 @@ export async function chargeMonthlyLocationFee(params: {
   locationName: string;
   metadata?: Record<string, string>;
 }): Promise<Stripe.PaymentIntent> {
+  assertLegacyFinancialExecutionRetired("facility_collection", "stripe.chargeMonthlyLocationFee");
   try {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: params.amount,
@@ -1506,6 +1515,7 @@ export async function createWalletFundingPayment(params: {
   autoConfirm?: boolean; // Optional - set to false to allow 3DS on frontend
   metadata?: Record<string, string>;
 }): Promise<Stripe.PaymentIntent> {
+  assertLegacyFinancialExecutionRetired("facility_collection", "stripe.createWalletFundingPayment");
   try {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: params.amount,

@@ -22,6 +22,7 @@
  */
 
 import { db } from "../db";
+import { isLegacyFinancialExecutionFenced, logFinancialExecutionDenied } from "../financialExecutionPolicy";
 import { DatabaseStorage } from "../storage";
 
 interface BatchProcessingResult {
@@ -44,6 +45,26 @@ interface BatchProcessingResult {
 
 async function runScheduledBatchProcessing(): Promise<BatchProcessingResult> {
   const startTime = new Date();
+  // Phase 3A: this legacy scheduled executor is permanently retired before
+  // it can construct storage or select any financial records.
+  if (isLegacyFinancialExecutionFenced()) {
+    logFinancialExecutionDenied({
+      operation: "server/scripts/scheduledBatchProcessing",
+      category: "scheduler",
+      reason: "legacy_scheduler_retired_pending_canonical_collection",
+    });
+    return {
+      startTime: startTime.toISOString(),
+      endTime: startTime.toISOString(),
+      durationMs: 0,
+      success: false,
+      processed: 0,
+      failed: 0,
+      errors: ["Financial execution is disabled; legacy scheduled batch processing is retired."],
+      details: [],
+    };
+  }
+
   console.log('\n╔════════════════════════════════════════════════════════════════╗');
   console.log('║       SCHEDULED BATCH PROCESSING JOB - STARTING                ║');
   console.log('╚════════════════════════════════════════════════════════════════╝');

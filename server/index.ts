@@ -3,6 +3,7 @@ import { execSync } from "node:child_process";
 import { installConsoleRedaction } from "../shared/logRedaction";
 import { setupVite, serveStatic, log } from "./vite";
 import { getStorageSelection } from "./objectStorage";
+import { logFinancialExecutionPolicyStartup } from "./financialExecutionPolicy";
 
 installConsoleRedaction();
 
@@ -186,6 +187,7 @@ app.use((req, res, next) => {
 // Enhanced startup function with comprehensive error handling
 async function startApplication() {
   try {
+    logFinancialExecutionPolicyStartup();
     const { registerRoutes } = await import("./routes");
     const server = await registerRoutes(app);
     const { logBillingSchemaGuard } = await import("./billingSchemaGuard");
