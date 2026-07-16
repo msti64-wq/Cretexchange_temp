@@ -63,6 +63,7 @@ Research documents define proposed hypotheses, validation plans, grant readiness
   - [Sprint 2.1](./project/sprints/sprint-2.1.md)
   - [Sprint 2.1.4 — Admin Intelligence Foundation / Platform Operations Center](./project/sprints/sprint-2.1.4.md)
   - [Sprint 2.2 — MVP Operational Readiness](./project/sprints/sprint-2.2.md)
+  - [PB-001 — CreteXchange Pilot Baseline v1.0](./project/pilot/PB-001-cretexchange-pilot-baseline-v1.0.md)
 - [Platform Standards](./standards/cretexchange-platform-standards.md)
 - [Architecture Library](./architecture/README.md)
 - [Product Decisions](./product/product-decisions.md)
@@ -127,6 +128,7 @@ Product Decisions define durable business policy and operational rules. They do 
 | [PD-050](./product/PD-050-facility-operational-access-and-billing-readiness.md) | Separates Facility operational authorization from financial readiness; a payment method is not an operational location-management prerequisite. |
 | [PD-051](./product/PD-051-driver-activity-and-payment-lifecycle.md) | Separates operational activity verification from payment, wallet, schedule, and settlement presentation. |
 | [PD-052](./product/PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md) | Governs evidence-based, neutral, least-privilege administrative review and marketplace-trust policy. |
+| [PD-053](./product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) | Governs canonical weekly financial-batch review, approval, exceptions, and Phase 3B non-execution. |
 
 ## Archived References
 
@@ -158,6 +160,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | CTX-ARCH-004 | Admin Operations Architecture | Defines admin oversight, support, reconciliation, platform configuration, and administrative governance. | Approved |
 | CTX-ARCH-005 | Material Management Architecture | Defines material taxonomy, financial direction, settlement models, pricing, capacity, and extensibility. | Approved |
 | CTX-ARCH-006 | Driver Incentive and Financial Settlement Architecture | Defines the immutable incentive snapshot, owner charge, payment obligation, wallet-authoritative settlement, Stripe payout, idempotency, recovery, and financial reporting contract. | Approved; PD-045 Active; runtime remediation pending |
+| CTX-ARCH-007 | [Canonical Financial Batch Architecture](./architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) | Defines canonical batch identity, frozen membership/totals, audit, discovery queues, legacy isolation, and Phase 3B non-execution. | Approved architecture direction; implementation pending |
 
 ## Standards Library
 
@@ -260,10 +263,17 @@ These documents guide planning; they do not independently authorize implementati
 | Change the Driver Dashboard | [CTX-UX-005](./ux/CTX-UX-005-driver-dashboard-experience.md) and [CTX-ARCH-003](./architecture/driver-operations-architecture.md) |
 | Change participating Facility approval or operational location access | [PD-050](./product/PD-050-facility-operational-access-and-billing-readiness.md) and [CTX-UX-006](./ux/CTX-UX-006-facility-workspace-experience.md) |
 | Change activity, payment, wallet, or settlement presentation | [PD-051](./product/PD-051-driver-activity-and-payment-lifecycle.md) and [CTX-ARCH-006](./architecture/driver-incentive-and-financial-settlement-architecture.md) |
+| Change canonical financial batches | [CTX-ARCH-007](./architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) and [PD-053](./product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) |
+| Review financial pilot readiness | [PB-001](./project/pilot/PB-001-cretexchange-pilot-baseline-v1.0.md) |
+| Change Platform Operations financial queues | [CTX-UX-007](./ux/CTX-UX-007-platform-operations-center-experience.md) and [CTX-ARCH-007](./architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) |
 | Change marketplace trust or administrative-review policy | [PD-052](./product/PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md) |
 | Review evidence or plan a dedicated investigation experience | [CTX-UX-008](./ux/CTX-UX-008-administrative-activity-review-experience.md) |
 | Change Platform Operations workspace behavior | [CTX-UX-007](./ux/CTX-UX-007-platform-operations-center-experience.md) |
 | Understand sprint or milestone sequencing | [Sprint Roadmap](./project/sprint-roadmap.md) and [Epic Roadmap](./project/epic-roadmap.md) |
+
+## Current financial-processing sequence
+
+Phase 1 keeps Facility verification operational-only. Phase 2 creates canonical pending obligations without execution. Phase 3A disables legacy financial execution. [CTX-ARCH-007](./architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) and [PD-053](./product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) define the pending non-executing Phase 3B batch-governance boundary. Payment-enabled testing remains blocked until later approved architecture, migration, reconciliation, and pilot-baseline gates are complete.
 
 ## Guiding Principles
 

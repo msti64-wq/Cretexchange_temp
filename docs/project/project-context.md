@@ -246,3 +246,7 @@ The current launch model remains unchanged: drivers locate participating facilit
 ## 21. Facility Operational Access Policy
 
 [PD-050 — Facility Operational Access and Billing Readiness](../product/PD-050-facility-operational-access-and-billing-readiness.md) is authoritative for approved Facility operational location access: saved-payment-method readiness is separate from location-management authorization. The implementation remains pending the authorized Level 3 remediation; PD-050 does not change financial behavior.
+
+## 22. Canonical Financial Batch Governance
+
+[CTX-ARCH-007](../architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) is the canonical non-executing financial batch architecture, and [PD-053](../product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) is Active for assisted-pilot batch policy. Phase 3B implementation remains pending. Phase 3A financial execution remains disabled; no batch construction, review, or approval authorizes collection, settlement, wallet entitlement, or provider execution.

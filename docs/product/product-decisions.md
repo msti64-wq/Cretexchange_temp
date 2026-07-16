@@ -679,3 +679,13 @@
 **Guardrails:** Preserve authentication, administrative approval, profile completeness, ownership validation, address and location eligibility, active/visible controls, verification requirements, and auditability. Do not introduce a hidden override, administrative bypass, or financial mutation.
 
 **Related Documents:** [PD-050 — Facility Operational Access and Billing Readiness](./PD-050-facility-operational-access-and-billing-readiness.md), [Project Context](../project/project-context.md), [CTX-UX-003](../ux/CTX-UX-003-first-time-user-journey-and-pilot-readiness.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md), [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [PD-045 — Canonical Driver Settlement Rail](#pd-045---canonical-driver-settlement-rail).
+
+## PD-053 - Canonical Financial Batch Lifecycle and Approval Policy
+
+**Decision:** [PD-053](./PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) governs canonical weekly Facility periods, batch construction, review, approval, cancellation, Platform Operations authority, zero-fee waivers, late obligations, exception handling, and strict Phase 3B non-execution.
+
+**Status:** Active
+
+**Scope:** Assisted-pilot product and operational policy only. It does not authorize Facility collection, Driver settlement, wallet entitlement, provider execution, reconciliation mutation, migration, or production-data repair.
+
+**Related Documents:** [CTX-ARCH-007](../architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md), [PD-051](./PD-051-driver-activity-and-payment-lifecycle.md), [PB-001](../project/pilot/PB-001-cretexchange-pilot-baseline-v1.0.md), and [Assisted-Pilot Operations Runbook](../project/pilot/assisted-pilot-operations-runbook.md).

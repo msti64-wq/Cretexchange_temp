@@ -205,3 +205,9 @@ For every issue, explain the current operational status plainly, identify the ne
 ## Closeout
 
 Record the final participant-facing status, the authorized action taken, any escalation, and whether the issue delayed TFVA. Use recurring patterns to prioritize approved UX remediation; do not introduce new analytics or data collection through this runbook.
+
+## Phase 3B financial-batch review boundary
+
+When [PD-053](../../product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) is implemented under [CTX-ARCH-007](../../architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md), Platform Operations reviews missing obligations, unbatched canonical obligations, draft batches, and quarantined exceptions through authorized queues. The manual process stops after a separately reasoned batch approval.
+
+Approval does not mean paid, scheduled, collected, wallet-funded, or settled. No money moves, and legacy execution routes remain prohibited. Escalate totals mismatch, missing/duplicate obligations, invalid timezone, legacy records, or any request to execute or repair financial data through the separately authorized process.
