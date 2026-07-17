@@ -247,6 +247,8 @@ Likely migration families are:
 
 Migration planning must cover legacy nullability/defaults, read-only duplicate preflights, existing-batch classification, rollback, table-lock risk, PostgreSQL staging validation, and ordered deployment. Migration 0020 remains undeployed and this document does not authorize any migration deployment.
 
+For the canonical-obligation uniqueness replacement, deployment is an explicitly approved operator procedure. The exact partial unique index is created and validated concurrently while the historical global activity index remains, which intentionally keeps canonical creation fail-closed in the transitional state. Only after a fresh catalog preflight, valid/ready predicate verification, and a separate approval checkpoint may the proven global index be retired concurrently. A push or application restart must not be treated as migration execution: application deployment and PostgreSQL migration execution are separate controls. Any failure leaves canonical creation disabled; recovery must preserve the partial duplicate boundary and must not reclassify, delete, or rewrite legacy rows.
+
 ## 26. Test architecture
 
 Isolated native Node suites must cover discovery queues, canonical construction, lifecycle transitions, membership concurrency, privacy projections, non-execution, legacy isolation, webhook rejection, and Phase 1/2/3A regressions.

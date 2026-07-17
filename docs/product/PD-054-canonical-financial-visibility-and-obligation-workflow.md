@@ -156,3 +156,13 @@ ORDER BY obligation_kind;
 ```
 
 Migration `0020` can be reconsidered only after this preflight, duplicate classification, disposable/staging PostgreSQL validation, and separate deployment approval. Any duplicate non-null `activity_id` stops the migration process.
+
+## Canonical uniqueness replacement deployment boundary
+
+The replacement of historical global `payments(activity_id)` uniqueness with the canonical-only partial unique boundary is an operator-run PostgreSQL change, not an application-startup action. Migration `0024_replace_global_payment_activity_uniqueness_with_canonical_partial.sql` must be run only after a fresh, approved target-database preflight proves the expected valid global index, no duplicate canonical obligations, and the required audit/discriminator columns. It creates the partial index and deliberately stops in the safe transitional state. Migration `0025_retire_global_payment_activity_uniqueness.sql` is a separately approved finalization command.
+
+The operator sequence is deliberately nontransactional: create the exact canonical partial unique index concurrently; verify it is unique, valid, ready, and has the approved predicate; confirm application creation remains fail-closed while the historical global index remains; then, under a separate explicit command and approval checkpoint, retire the proven global index concurrently. `CREATE INDEX CONCURRENTLY` and `DROP INDEX CONCURRENTLY` must never be wrapped in a transaction block.
+
+Pushing a repository commit may auto-deploy the application, but it does not itself authorize or execute this migration. The repository start command has no migration hook; the migration must remain a separate, explicitly approved operator action. The synthetic rehearsal bootstrap is guarded for dedicated `financial_validation_*` databases and must never be invoked by deployment or against a shared database.
+
+If partial-index creation or verification fails, the global index remains and creation stays disabled. If the global index has been retired but capability detection does not report the final canonical-ready state, stop creation, inspect the catalog predicate and application health, and use a separately approved concurrent recovery step rather than creating obligations. After the final state is verified, one selected-record, non-executing acceptance test may create exactly one canonical obligation and one idempotent retry; it must confirm queue deltas and the absence of provider, wallet, charge, payout, settlement, batch-execution, or paid evidence. No legacy row may be converted, deleted, or used for that test.
