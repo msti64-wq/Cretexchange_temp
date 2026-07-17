@@ -9862,12 +9862,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin payments endpoint (super admin only)
+  // Read-only legacy payment analytics for Platform Operations. This does not
+  // expose canonical obligation or batch truth.
   app.get('/api/admin/payments', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Super admin access required" });
+      if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Platform Operations access required" });
       }
 
       const { startDate, endDate } = req.query;
@@ -9876,15 +9877,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const end = endDate ? new Date(new Date(endDate as string).getTime() + 24 * 60 * 60 * 1000 - 1) : undefined;
 
       const payments = await storage.getAllPayments(start, end);
-      res.json(payments);
+      res.json(payments.map((payment: any) => ({
+        amount: payment.amount ?? null,
+        status: payment.status ?? null,
+        createdAt: payment.createdAt ?? null,
+      })));
     } catch (error) {
-      const safeError = summarizeDatabaseError(error);
-      console.error("[ADMIN_PAYMENTS] query failed", {
-        startDate: req.query.startDate || null,
-        endDate: req.query.endDate || null,
-        ...safeError,
-      });
-      res.json([]);
+      console.error("[ADMIN_LEGACY_PAYMENTS] query failed");
+      res.status(500).json({ message: "Legacy payment records are unavailable" });
     }
   });
 
@@ -12124,124 +12124,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      type BillingSettingsOwner = {
-        ownerId: string;
-        companyName: string;
-        username: string;
-        billingCadence: string;
-        billingCutoffTime: string;
-        billingTimezone: string;
-        billingDayOfWeek: number;
-      };
-      type BillingBatchSummary = {
-        id: string;
-        ownerId: string;
-        businessDate?: string | null;
-        totalAmount?: string | null;
-        paymentCount?: number | null;
-        status?: string | null;
-        stripePaymentIntentId?: string | null;
-        failureReason?: string | null;
-        metadata?: Record<string, unknown> | null;
-        updatedAt?: Date | string | null;
-        createdAt?: Date | string | null;
-        completedAt?: Date | string | null;
-      };
-
       const billingSettings = await storage.getAllOwnersBillingSettings();
-      const immediateOwners = billingSettings.filter((ownerSetting: BillingSettingsOwner) => ownerSetting.billingCadence === "immediate");
-      const billingOverview = await buildOwnerBillingReceivablesOverview(storage);
-      const immediateOwnerSummaries = billingOverview.owners;
-
-      const immediateBillingHistory = (await Promise.all(
-        immediateOwners.map(async (ownerSetting: BillingSettingsOwner) => {
-          const batches = await storage.getBillingBatchesByOwner(ownerSetting.ownerId);
-          return batches.map((batch: BillingBatchSummary) => {
-            const batchMetadata = batch.metadata && typeof batch.metadata === "object"
-              ? batch.metadata as Record<string, unknown>
-              : {};
-            return {
-              batchId: batch.id,
-              ownerId: ownerSetting.ownerId,
-              companyName: ownerSetting.companyName,
-              username: ownerSetting.username,
-              billingCadence: ownerSetting.billingCadence,
-              date: batch.updatedAt || batch.completedAt || batch.createdAt || null,
-              amountCents: Math.round(Number(batch.totalAmount || 0) * 100),
-              washoutCount: Number(batch.paymentCount || 0),
-              status: batch.status,
-              stripePaymentIntentId: batch.stripePaymentIntentId || null,
-              stripeChargeId: typeof batchMetadata.stripeChargeId === "string" ? batchMetadata.stripeChargeId : null,
-              failureReason: batch.failureReason || null,
-            };
-          });
-        })
-      ))
-        .flat()
-        .sort((a: { date: Date | string | null }, b: { date: Date | string | null }) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
-        .slice(0, 25);
-
-      const immediateBillingSummary = {
-        ...billingOverview.summary,
-        paidBatchCount: immediateOwnerSummaries.filter((row) => row.lastBillingStatus === "completed").length,
-        failedBatchCount: immediateOwnerSummaries.filter((row) => row.lastBillingStatus === "failed").length,
-      };
-
-      console.log("[ADMIN_BILLING] immediate billing owners summary", {
-        ownerCount: immediateBillingSummary.ownerCount,
-        approvedWashoutCount: immediateBillingSummary.approvedWashoutCount,
-        platformFeesOwedCents: immediateBillingSummary.platformFeesOwedCents,
-        platformFeesPaidCents: immediateBillingSummary.platformFeesPaidCents,
-        historyCount: immediateBillingHistory.length,
-      });
-      const immediateBillingOwnerChargeCents = Number(immediateBillingSummary.ownerChargeTotalCents || 0);
-      console.log("[ADMIN_BILLING] receivables parity", {
-        billingPageReceivablesCents: immediateBillingOwnerChargeCents,
-        dashboardReceivablesCents: immediateBillingOwnerChargeCents,
-        differenceCents: 0,
-      });
-      logReportingReconciliation("/api/admin/billing/settings", {
-        platformRevenueCents: Number(immediateBillingSummary.platformFeesPaidCents || 0),
-        ownerReceivablesCents: immediateBillingOwnerChargeCents,
-        paidReceivablesCents: Number(immediateBillingSummary.platformFeesPaidCents || 0),
-        driverTipTotalCents: Number(immediateBillingSummary.driverTipTotalCents || 0),
-        driverTransferredCents: Number(immediateBillingSummary.driverTransferTotalCents || 0),
-        needsReviewCents: Number(immediateBillingSummary.needsReviewCents || 0),
-      });
-      
       res.json({
-        owners: billingSettings,
-        billingCadenceOptions: [
-          { value: 'immediate', label: 'Immediate (real-time processing)' },
-          { value: 'daily', label: 'Daily (batch at end of day)' },
-          { value: 'weekly', label: 'Weekly (batch at end of week)' },
-          { value: 'monthly', label: 'Monthly (batch at end of month)' }
-        ],
-        dayOfWeekOptions: [
-          { value: 0, label: 'Sunday' },
-          { value: 1, label: 'Monday' },
-          { value: 2, label: 'Tuesday' },
-          { value: 3, label: 'Wednesday' },
-          { value: 4, label: 'Thursday' },
-          { value: 5, label: 'Friday' },
-          { value: 6, label: 'Saturday' }
-        ],
-        timezoneOptions: [
-          'America/New_York',
-          'America/Chicago',
-          'America/Denver',
-          'America/Los_Angeles',
-          'America/Phoenix',
-          'America/Anchorage',
-          'Pacific/Honolulu'
-        ],
-        immediateBillingOwners: immediateOwnerSummaries,
-        immediateBillingHistory,
-        immediateBillingSummary,
+        owners: billingSettings.map((setting: any) => ({
+          billingCadence: setting.billingCadence ?? null,
+          billingCutoffTime: setting.billingCutoffTime ?? null,
+          billingTimezone: setting.billingTimezone ?? null,
+          billingDayOfWeek: setting.billingDayOfWeek ?? null,
+        })),
       });
     } catch (error: any) {
-      console.error("Error fetching billing settings:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch billing settings" });
+      console.error("[ADMIN_LEGACY_BILLING_SETTINGS] query failed");
+      res.status(500).json({ message: "Legacy billing configuration is unavailable" });
     }
   });
 
@@ -14406,30 +14300,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== MONTHLY FEE LEDGER ADMIN ENDPOINTS ====================
 
-  // Get all fee ledger entries with filtering (super admin only)
+  // Read-only legacy fee-ledger diagnostics for Platform Operations.
   app.get('/api/admin/fees/ledger', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Super admin access required" });
+      if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Platform Operations access required" });
       }
 
       const { status = 'pending' } = req.query;
       const fees = await storage.getFeeLedgerEntriesByStatus(status as string);
-      
-      res.json(fees);
+      res.json(fees.map((fee: any) => ({
+        amountCents: fee.amountCents ?? 0,
+        periodStart: fee.periodStart ?? null,
+        periodEnd: fee.periodEnd ?? null,
+        status: fee.status ?? null,
+      })));
     } catch (error) {
-      console.error("Error fetching fee ledger:", error);
-      res.status(500).json({ message: "Failed to fetch fee ledger" });
+      console.error("[ADMIN_LEGACY_FEE_LEDGER] query failed");
+      res.status(500).json({ message: "Legacy fee ledger is unavailable" });
     }
   });
 
-  // Get fee summary statistics (super admin only) - MUST come before /:id route
+  // Read-only legacy fee-ledger totals. They are not canonical platform fees.
   app.get('/api/admin/fees/summary', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Super admin access required" });
+      if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Platform Operations access required" });
       }
 
       const pendingFees = await storage.getFeeLedgerEntriesByStatus('pending') as FeeLedger[];
@@ -14554,13 +14452,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Manual fee generation (super admin only - for testing)
+  // Phase 3A/CTX-ARCH-007: legacy fee generation is not a canonical financial
+  // operation. It must remain retired so no legacy ledger rows can be created.
   app.post('/api/admin/fees/generate', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
-      if (user?.role !== 'super_admin') {
-        return res.status(403).json({ message: "Super admin access required" });
+      if (user?.role !== 'super_admin' && user?.role !== 'admin') {
+        return res.status(403).json({ message: "Platform Operations access required" });
       }
+
+      return retireFinancialExecutionRoute(req, res, "POST /api/admin/fees/generate", "facility_collection");
 
       const { billingDate } = req.body;
       const date = billingDate || new Date().toISOString().split('T')[0];

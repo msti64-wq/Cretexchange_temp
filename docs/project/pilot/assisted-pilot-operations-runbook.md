@@ -228,3 +228,7 @@ Use the Financial Workspace only as an authorized Platform Operations console fo
 10. If a source is unavailable, an action fails, a record is stale, totals disagree, actor information is absent, or an exception requires repair, stop and escalate. Do not substitute a zero value, retry a financial execution path, or use a legacy payment route.
 
 Approval remains a separate, reasoned lifecycle decision. It never authorizes execution. Legacy payment and execution routes remain prohibited until separately approved and enabled under the governing financial architecture.
+
+## Legacy financial surfaces
+
+`/payments`, `/fees`, and `/billing-settings` are read-only historical views during the assisted pilot. They are not canonical evidence of an obligation, batch state, Driver entitlement, collection, payment, or settlement. Operators must not generate legacy fees, run legacy billing, retry legacy financial records, or interpret legacy statuses as canonical states. Use **Financial Workspace** for authorized canonical obligation and batch review; no payment execution occurs from any of these legacy pages.
