@@ -2,6 +2,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drivers, owners, payments, users, washoutActivities, washoutLocations } from "../shared/schema";
 import { db } from "./db";
 import { CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND, isPlatformFinancialOperationsRole } from "./financialObligations";
+import { createFinancialWorkspaceSelectionToken } from "./financialWorkspaceSelection";
 
 export const FINANCIAL_DISCOVERY_MAX_PAGE_SIZE = 100;
 const FINANCIAL_DISCOVERY_SCAN_LIMIT = 1000;
@@ -278,6 +279,7 @@ export async function listVerifiedActivitiesWithoutCanonicalObligations(
     items.push({
       reference: safeReference("activity", activity.id),
       activityReference: safeReference("activity", activity.id),
+      selectionToken: createFinancialWorkspaceSelectionToken(activity.id),
       verificationTimestamp: validDate(activity.verifiedAt)?.toISOString() || null,
       ageSeconds: ageSeconds(activity.verifiedAt, now),
       frozenDriverIncentiveCents: strictDollarCents(activity.amount),

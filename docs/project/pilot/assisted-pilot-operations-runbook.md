@@ -218,7 +218,7 @@ Use the Financial Workspace only as an authorized Platform Operations console fo
 
 1. Confirm that you are signed in as an authorized Admin or Super Admin. Do not attempt to use this workspace from a Driver, Facility, or Owner account.
 2. Review **Missing Obligations** and confirm the verified activity, Facility, Driver, age, location, and stated reason in the authorized operational source before taking any action.
-3. If authorized to create an obligation, enter an existing activity reference from an authorized source and a concise operational reason. The temporary reference is used only for that request; it is not saved by the workspace, does not grant authority, and the backend independently validates eligibility and relationships.
+3. Select a Missing Obligations record, review its server-derived components, select **Missing canonical obligation**, and enter meaningful supporting detail. Verify the canonical queue after creation. Do not manually enter references or change amounts; escalate exceptions instead.
 4. Review **Unbatched Obligations** for frozen Driver incentive, Platform fee, Facility total, and age. Do not infer that any displayed value has been collected, paid, or settled.
 5. If authorized to create a draft batch, enter an existing Facility reference, select the intended weekly period anchor, and provide a concise operational reason. Review the returned frozen totals, membership count, billing period, and timezone before proceeding.
 6. Review **Financial Exceptions** as read-only information. Do not repair, retry, reclassify, or alter an exception from the workspace; escalate it through the separately authorized process.

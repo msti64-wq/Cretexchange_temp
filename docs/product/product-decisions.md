@@ -689,3 +689,7 @@
 **Scope:** Assisted-pilot product and operational policy only. It does not authorize Facility collection, Driver settlement, wallet entitlement, provider execution, reconciliation mutation, migration, or production-data repair.
 
 **Related Documents:** [CTX-ARCH-007](../architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md), [PD-051](./PD-051-driver-activity-and-payment-lifecycle.md), [PB-001](../project/pilot/PB-001-cretexchange-pilot-baseline-v1.0.md), and [Assisted-Pilot Operations Runbook](../project/pilot/assisted-pilot-operations-runbook.md).
+
+## PD-054 - Canonical Financial Visibility and Obligation Workflow
+
+**Decision:** [PD-054](./PD-054-canonical-financial-visibility-and-obligation-workflow.md) defines the sole canonical non-executing financial destination, single verified-activity obligation model, structured creation reason, and truthful canonical visibility.

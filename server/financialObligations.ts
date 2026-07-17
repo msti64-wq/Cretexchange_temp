@@ -5,6 +5,8 @@ import { formatCentsToDollars } from "../shared/money";
 import { db } from "./db";
 
 export const CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND = "canonical_verified_activity_v1";
+export const CANONICAL_OBLIGATION_REASON_CATEGORIES = ["missing_canonical_obligation"] as const;
+export type CanonicalObligationReasonCategory = typeof CANONICAL_OBLIGATION_REASON_CATEGORIES[number];
 
 export type FinancialObligationPayment = {
   id: string;
@@ -70,6 +72,7 @@ export class FinancialObligationError extends Error {
       | "owner_not_found"
       | "invalid_frozen_activity_amount"
       | "invalid_platform_fee"
+      | "invalid_creation_reason"
       | "duplicate_financial_obligation"
       | "existing_financial_state_requires_review",
     message: string,
@@ -88,10 +91,10 @@ export function isPlatformFinancialOperationsRole(role: unknown): boolean {
  * allowing a money helper's fallback to turn bad input into a small obligation.
  */
 export function parseFrozenActivityIncentiveCents(value: unknown): number {
-  return parseStrictDollarCents(value, "invalid_frozen_activity_amount", "Verified activity has an invalid frozen driver incentive", "Verified activity has no frozen driver incentive");
+  return parseFrozenDollarCents(value, "invalid_frozen_activity_amount", "Verified activity has an invalid frozen driver incentive", "Verified activity has no frozen driver incentive");
 }
 
-function parseStrictDollarCents(
+export function parseFrozenDollarCents(
   value: unknown,
   code: "invalid_frozen_activity_amount" | "invalid_platform_fee",
   invalidMessage: string,
@@ -114,6 +117,23 @@ function parseStrictDollarCents(
   return cents;
 }
 
+/** Server-controlled, bounded audit wording for the only currently safe category. */
+export function buildCanonicalObligationCreationReason(category: unknown, supportingDetail: unknown): string {
+  if (!CANONICAL_OBLIGATION_REASON_CATEGORIES.includes(category as CanonicalObligationReasonCategory)) {
+    throw new FinancialObligationError("invalid_creation_reason", "Use an approved obligation-creation reason category");
+  }
+  const detail = typeof supportingDetail === "string" ? supportingDetail.trim().replace(/\s+/g, " ") : "";
+  const vague = ["manual entry", "billing issue", "create it", "adjustment", "correction", "missing", "fix", "fee"];
+  const words = detail.split(/\s+/).filter(Boolean);
+  const providerIdentifier = /\b(?:pi|pm|cus|acct|ch|tr)_[A-Za-z0-9_]+\b/i;
+  const normalized = detail.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const onlyVagueLanguage = vague.reduce((remaining, phrase) => remaining.replaceAll(phrase, " "), normalized).replace(/\s+/g, "").length === 0;
+  if (detail.length < 20 || detail.length > 420 || onlyVagueLanguage || words.length < 4 || providerIdentifier.test(detail) || /[<>]/.test(detail) || detail.startsWith("[")) {
+    throw new FinancialObligationError("invalid_creation_reason", "Provide meaningful supporting detail without provider identifiers");
+  }
+  return `[${category}] ${detail}`;
+}
+
 function hasConfiguredValue(value: unknown): boolean {
   return value !== null && value !== undefined && value !== "";
 }
@@ -126,10 +146,10 @@ function resolveFrozenPlatformFeeCents(
   // fallbacks for general billing views. Obligation creation must not turn a
   // malformed or negative authoritative configuration into a zero-dollar fee.
   const ownerFeeCents = hasConfiguredValue(ownerCustomPlatformFee)
-    ? parseStrictDollarCents(ownerCustomPlatformFee, "invalid_platform_fee", "Applicable platform fee configuration is invalid")
+    ? parseFrozenDollarCents(ownerCustomPlatformFee, "invalid_platform_fee", "Applicable platform fee configuration is invalid")
     : null;
   const systemFeeCents = hasConfiguredValue(systemPlatformWashoutFee)
-    ? parseStrictDollarCents(systemPlatformWashoutFee, "invalid_platform_fee", "Applicable platform fee configuration is invalid")
+    ? parseFrozenDollarCents(systemPlatformWashoutFee, "invalid_platform_fee", "Applicable platform fee configuration is invalid")
     : null;
   const resolved = resolveConfiguredWashoutPlatformFeeCents({
     ownerCustomPlatformFee,
@@ -163,6 +183,33 @@ function fromExisting(obligation: FinancialObligationPayment): FinancialObligati
     platformFeeCents,
     facilityChargeCents: driverIncentiveCents + platformFeeCents,
   };
+}
+
+/** Read-only eligibility and frozen-component preview. It never records an obligation. */
+export async function previewFinancialObligationForVerifiedActivity(
+  activityId: string,
+  repository: FinancialObligationRepository = databaseFinancialObligationRepository,
+): Promise<Pick<FinancialObligationResult, "driverIncentiveCents" | "platformFeeCents" | "facilityChargeCents">> {
+  return repository.transaction(async (tx) => {
+    const existing = assertExistingObligation(await tx.findPaymentsByActivityId(activityId));
+    if (existing) {
+      const resolved = fromExisting(existing);
+      return resolved;
+    }
+    const activity = await tx.findActivityById(activityId);
+    if (!activity) throw new FinancialObligationError("activity_not_found", "Activity not found");
+    if (activity.status !== "verified") throw new FinancialObligationError("activity_not_verified", "Only verified activities may create a financial obligation");
+    const [driver, location] = await Promise.all([tx.findDriverById(activity.driverId), tx.findLocationById(activity.locationId)]);
+    if (!driver) throw new FinancialObligationError("driver_not_found", "Verified activity has no valid driver");
+    if (!location) throw new FinancialObligationError("location_not_found", "Verified activity has no valid facility location");
+    const [owner, settings] = await Promise.all([tx.findOwnerById(location.ownerId), tx.findSystemSettings()]);
+    if (!owner || owner.id !== location.ownerId) throw new FinancialObligationError("owner_not_found", "Verified activity has no valid facility owner");
+    const driverIncentiveCents = parseFrozenActivityIncentiveCents(activity.amount);
+    const platformFeeCents = resolveFrozenPlatformFeeCents(owner.customPlatformFee, settings?.platformWashoutFee);
+    const facilityChargeCents = driverIncentiveCents + platformFeeCents;
+    if (!Number.isSafeInteger(facilityChargeCents)) throw new FinancialObligationError("invalid_platform_fee", "Facility charge exceeds safe integer cents");
+    return { driverIncentiveCents, platformFeeCents, facilityChargeCents };
+  });
 }
 
 /**

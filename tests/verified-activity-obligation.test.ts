@@ -16,6 +16,7 @@ const {
   createFinancialObligationForVerifiedActivity,
   isPlatformFinancialOperationsRole,
   parseFrozenActivityIncentiveCents,
+  buildCanonicalObligationCreationReason,
 } = await import("../server/financialObligations");
 const { storage } = await import("../server/storage");
 const { registerRoutes } = await import("../server/routes");
@@ -152,6 +153,15 @@ test("creates one unpaid obligation from the verified activity's frozen amount",
   assert.deepEqual(fixture.calls, { stripe: 0, transfer: 0, payout: 0, billing: 0, wallet: 0, withdrawal: 0, insert: 1 });
 });
 
+test("PD-054 accepts only the safe structured reason category and server-controlled prefix", () => {
+  assert.equal(buildCanonicalObligationCreationReason("missing_canonical_obligation", "Reviewed the queue and found no conflicting canonical obligation."), "[missing_canonical_obligation] Reviewed the queue and found no conflicting canonical obligation.");
+  assert.match(buildCanonicalObligationCreationReason("missing_canonical_obligation", "Revisé la cola y no encontré una obligación canónica en conflicto."), /^\[missing_canonical_obligation\]/);
+  for (const detail of ["fix", "billing issue", "fix, FIX; fix! fix", "too short", "Reviewed pi_secret_123 and found no conflict in this activity.", "<script>alert(1)</script> reviewed this queue item properly"]) {
+    assert.throws(() => buildCanonicalObligationCreationReason("missing_canonical_obligation", detail), FinancialObligationError);
+  }
+  assert.throws(() => buildCanonicalObligationCreationReason("adjustment", "Reviewed the queue and found no conflicting canonical obligation."), FinancialObligationError);
+});
+
 test("uses authoritative owner fee precedence and does not add it to the driver incentive", async () => {
   const fixture = repositoryFixture({ ownerFee: "2.50", systemFee: "9.99" });
   const result = await createFinancialObligationForVerifiedActivity("activity_1", fixture.repository);
@@ -234,7 +244,7 @@ test("concurrent generation produces one obligation and no side records", async 
   assert.deepEqual(fixture.calls, { stripe: 0, transfer: 0, payout: 0, billing: 0, wallet: 0, withdrawal: 0, insert: 2 });
 });
 
-test("financial obligation generation is admin-only and keeps Phase 1 verification outside the service", () => {
+test("financial obligation generation is admin-only and legacy raw-activity creation is fenced", () => {
   assert.equal(isPlatformFinancialOperationsRole("admin"), true);
   assert.equal(isPlatformFinancialOperationsRole("super_admin"), true);
   assert.equal(isPlatformFinancialOperationsRole("owner"), false);
@@ -246,13 +256,14 @@ test("financial obligation generation is admin-only and keeps Phase 1 verificati
   const handler = routes.slice(start, end === -1 ? undefined : end);
   assert.match(handler, /isAuthenticated/);
   assert.match(handler, /isPlatformFinancialOperationsRole/);
-  assert.match(handler, /obligation-creation reason is required/);
+  assert.match(handler, /selected_record_required/);
+  assert.doesNotMatch(handler, /createFinancialObligationForVerifiedActivity/);
   for (const forbidden of ["paymentIntents.create", "charges.create", "transfers.create", "payouts.create", "processDailyBatches", "processOwnerBillingRun", "adjustDriverWalletBalance", "createWalletTransaction", "createWithdrawal"]) {
     assert.doesNotMatch(handler, new RegExp(forbidden.replace(/[.()]/g, "\\$&")));
   }
 });
 
-test("the registered route retains authentication, rejects participant roles, and requires a reason before service execution", { concurrency: false }, async () => {
+test("the retired raw-ID route retains authentication, rejects participant roles, and performs no creation", { concurrency: false }, async () => {
   const [authMiddleware, handler] = await getObligationRoute();
   const unauthenticated = createResponse();
   let nextCalled = false;
@@ -268,15 +279,16 @@ test("the registered route retains authentication, rejects participant roles, an
   for (const role of ["driver", "owner"] as const) {
     await withStoragePatch({ getUser: async () => ({ id: `${role}_1`, role }) }, async () => {
       const response = createResponse();
-      await handler({ user: { id: `${role}_1` }, params: { id: "activity_1" }, body: { reason: "review" } }, response);
+      await handler({ user: { id: `${role}_1` }, params: { id: "activity_1" }, body: { reasonCategory: "missing_canonical_obligation", supportingDetail: "Reviewed the queue and found no conflicting canonical obligation." } }, response);
       assert.equal(response.statusCode, 403);
     });
   }
 
   await withStoragePatch({ getUser: async () => ({ id: "admin_1", role: "admin" }) }, async () => {
     const response = createResponse();
-    await handler({ user: { id: "admin_1" }, params: { id: "activity_1" }, body: { reason: "   " } }, response);
-    assert.equal(response.statusCode, 422);
+    await handler({ user: { id: "admin_1" }, params: { id: "activity_1" }, body: { reasonCategory: "missing_canonical_obligation", supportingDetail: "fix" } }, response);
+    assert.equal(response.statusCode, 410);
+    assert.deepEqual(response.body, { message: "Use a selected Missing Obligations record to create a canonical obligation.", code: "selected_record_required" });
   });
 });
 

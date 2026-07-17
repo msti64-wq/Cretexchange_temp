@@ -15,6 +15,7 @@ const {
   listVerifiedActivitiesWithoutCanonicalObligations,
   parseFinancialDiscoveryFilters,
 } = await import("../server/financialDiscovery");
+const { createFinancialWorkspaceSelectionToken, resolveFinancialWorkspaceSelectionToken } = await import("../server/financialWorkspaceSelection");
 
 const NOW = new Date("2026-07-16T12:00:00.000Z");
 
@@ -97,6 +98,18 @@ test("includes only exactly verified activities with no financial row in the mis
   assert.equal(result.items.length, 1);
   assert.equal(result.items[0].classification, "missing_canonical_obligation");
   assert.equal(result.items[0].activityReference, "activity_oldest");
+  assert.equal(resolveFinancialWorkspaceSelectionToken((result.items[0] as any).selectionToken, NOW.getTime()), "oldest");
+});
+
+test("selected Missing Obligations tokens are opaque, activity-bound, tamper-safe, and expire", () => {
+  const issuedAt = NOW.getTime();
+  const token = createFinancialWorkspaceSelectionToken("activity_private_uuid", issuedAt);
+  assert.ok(token);
+  assert.equal(token?.includes("activity_private_uuid"), false);
+  assert.equal(resolveFinancialWorkspaceSelectionToken(token, issuedAt), "activity_private_uuid");
+  assert.equal(resolveFinancialWorkspaceSelectionToken(`${token}x`, issuedAt), null);
+  assert.equal(resolveFinancialWorkspaceSelectionToken(token, issuedAt + (15 * 60 * 1000)), null);
+  assert.equal(resolveFinancialWorkspaceSelectionToken(token, issuedAt + (15 * 60 * 1000) + 1), null);
 });
 
 test("legacy, unknown, duplicate, malformed, and relationship-conflicted financial rows are exceptions, not missing work", async () => {

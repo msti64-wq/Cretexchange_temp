@@ -76,7 +76,9 @@ import {
 } from "../shared/paymentAccounting";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
-import { createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole } from "./financialObligations";
+import { buildCanonicalObligationCreationReason, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
+import { resolveFinancialWorkspaceSelectionToken } from "./financialWorkspaceSelection";
+import { getCanonicalFinancialVisibilitySummary } from "./canonicalFinancialVisibility";
 import {
   createAdminFinancialDiscoveryHandler,
   listCanonicalFinancialExceptions,
@@ -5347,50 +5349,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Financial obligation creation is deliberately separate from Facility review.
   // Only Platform Operations may record an unpaid obligation for an already
   // verified activity. The canonical service does not execute a payment.
+  const financialObligationErrorResponse = (error: unknown, res: any) => {
+    if (error instanceof FinancialObligationError) {
+      const status = error.code === "activity_not_found" ? 404
+        : error.code === "duplicate_financial_obligation" || error.code === "existing_financial_state_requires_review" ? 409
+        : 422;
+      return res.status(status).json({ message: error.message, code: error.code });
+    }
+    // Do not log activity identity, selection tokens, provider values, or raw
+    // database errors from this operator-facing route.
+    console.error("Financial obligation service is unavailable");
+    return res.status(500).json({ message: "Financial obligation service is unavailable" });
+  };
+  const requireFinancialOperationsActor = async (req: any, res: any) => {
+    const user = await storage.getUser(req.user.id);
+    if (!user || !isPlatformFinancialOperationsRole(user.role)) {
+      res.status(403).json({ message: "Platform Operations access required" });
+      return null;
+    }
+    return user;
+  };
+
+  // Selection tokens are opaque and short-lived: this keeps raw activity IDs
+  // out of the operator UI while the server remains authoritative.
+  app.get('/api/admin/financial-obligations/preview/:selectionToken', isAuthenticated, async (req: any, res) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    const activityId = resolveFinancialWorkspaceSelectionToken(req.params.selectionToken);
+    if (!activityId) return res.status(422).json({ message: "The selected record is unavailable. Refresh Missing Obligations and try again.", code: "invalid_selection" });
+    try {
+      return res.json(await previewFinancialObligationForVerifiedActivity(activityId));
+    } catch (error) {
+      return financialObligationErrorResponse(error, res);
+    }
+  });
+
+  app.post('/api/admin/financial-obligations/create', isAuthenticated, async (req: any, res) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    const activityId = resolveFinancialWorkspaceSelectionToken(req.body?.selectionToken);
+    if (!activityId) return res.status(422).json({ message: "The selected record is unavailable. Refresh Missing Obligations and try again.", code: "invalid_selection" });
+    if (["amount", "processingFee", "driverIncentiveCents", "platformFeeCents", "facilityChargeCents"].some((key) => Object.prototype.hasOwnProperty.call(req.body || {}, key))) {
+      return res.status(422).json({ message: "Financial components are derived by the server", code: "client_amount_override" });
+    }
+    try {
+      const reason = buildCanonicalObligationCreationReason(req.body?.reasonCategory, req.body?.supportingDetail);
+      const result = await createFinancialObligationForVerifiedActivity(activityId, undefined, { actorUserId: user.id, reason });
+      return res.status(result.created ? 201 : 200).json({ obligation: { status: result.obligation.status, driverIncentiveCents: result.driverIncentiveCents, platformFeeCents: result.platformFeeCents, facilityChargeCents: result.facilityChargeCents }, created: result.created });
+    } catch (error) {
+      return financialObligationErrorResponse(error, res);
+    }
+  });
+
+  // Retired: permitting a caller-supplied activity ID would bypass the
+  // selected Missing Obligations workflow. It deliberately performs no lookup.
   app.post('/api/admin/financial-obligations/activities/:id', isAuthenticated, async (req: any, res) => {
     const user = await storage.getUser(req.user.id);
     if (!user || !isPlatformFinancialOperationsRole(user.role)) {
       return res.status(403).json({ message: "Platform Operations access required" });
     }
+    return res.status(410).json({ message: "Use a selected Missing Obligations record to create a canonical obligation.", code: "selected_record_required" });
+  });
 
-    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
-    if (!reason || reason.length > 500) {
-      return res.status(422).json({ message: "A concise obligation-creation reason is required" });
-    }
-
-    try {
-      const result = await createFinancialObligationForVerifiedActivity(req.params.id, undefined, {
-        actorUserId: user.id,
-        reason,
-      });
-      console.info("[FINANCIAL_OBLIGATION_RECORDED]", {
-        actorUserId: user.id,
-        activityId: req.params.id,
-        obligationId: result.obligation.id,
-        created: result.created,
-        status: result.obligation.status,
-      });
-      return res.status(result.created ? 201 : 200).json({
-        obligation: {
-          id: result.obligation.id,
-          activityId: result.obligation.activityId,
-          status: result.obligation.status,
-          driverIncentiveCents: result.driverIncentiveCents,
-          platformFeeCents: result.platformFeeCents,
-          facilityChargeCents: result.facilityChargeCents,
-        },
-        created: result.created,
-      });
-    } catch (error) {
-      if (error instanceof FinancialObligationError) {
-        const status = error.code === "activity_not_found" ? 404
-          : error.code === "duplicate_financial_obligation" || error.code === "existing_financial_state_requires_review" ? 409
-          : 422;
-        return res.status(status).json({ message: error.message, code: error.code });
-      }
-      console.error("Failed to create financial obligation", { activityId: req.params.id, error });
-      return res.status(500).json({ message: "Failed to create financial obligation" });
-    }
+  app.get('/api/admin/financial-workspace/summary', isAuthenticated, async (req: any, res) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    try { return res.json(await getCanonicalFinancialVisibilitySummary()); }
+    catch { console.error("Canonical financial summary is unavailable"); return res.status(503).json({ message: "Canonical financial records are unavailable" }); }
   });
 
   // Phase 3B.1 discovery is deliberately read-only. These queues classify

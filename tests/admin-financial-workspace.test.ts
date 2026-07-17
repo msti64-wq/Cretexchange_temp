@@ -71,7 +71,12 @@ test("workspace translations have complete English and Spanish operational equiv
   const keys = [
     "financialWorkspace.title",
     "financialWorkspace.temporary.notice",
-    "financialWorkspace.action.createObligation",
+    "financialWorkspace.action.createVerifiedObligation",
+    "financialWorkspace.obligation.type",
+    "financialWorkspace.reasonCategory",
+    "financialWorkspace.summary.title",
+    "financialWorkspace.unavailableCanonical",
+    "financialWorkspace.validation.previewUnavailable",
     "financialWorkspace.action.createDraft",
     "financialWorkspace.action.review",
     "financialWorkspace.action.approve",
@@ -124,7 +129,9 @@ test("workspace page limits network access to canonical discovery and lifecycle 
     "/api/admin/financial-obligations/missing",
     "/api/admin/financial-obligations/unbatched",
     "/api/admin/financial-obligations/exceptions",
-    "/api/admin/financial-obligations/activities/",
+    "/api/admin/financial-obligations/create",
+    "/api/admin/financial-obligations/preview",
+    "/api/admin/financial-workspace/summary",
     "/api/admin/financial-batches",
     "ready-for-review",
   ]) assert.match(source, new RegExp(endpoint.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -143,6 +150,18 @@ test("workspace keeps manual references request-local and maps backend failures 
   assert.match(source, /financialWorkspace\.validation\.referenceInvalid/);
   assert.doesNotMatch(source, /description:\s*error\.message/);
   assert.doesNotMatch(source, /localStorage|sessionStorage|console\.|window\.location/);
+});
+
+test("PD-054 workspace creation is selected-record only, fixed-type, bilingual, and non-executing", async () => {
+  const source = await readFile(new URL("../client/src/pages/admin/financial-workspace.tsx", import.meta.url), "utf8");
+  assert.match(source, /selectionToken/);
+  assert.match(source, /missing_canonical_obligation/);
+  assert.match(source, /financialWorkspace\.componentExplanation/);
+  assert.match(source, /financialWorkspace\.summary\.approved/);
+  assert.match(source, /financialWorkspace\.validation\.previewUnavailable/);
+  assert.doesNotMatch(source, /activities\/\$\{encodeURIComponent\(reference/);
+  assert.match(translate("financialWorkspace.action.createVerifiedObligation", "es"), /actividad verificada/i);
+  assert.match(translate("financialWorkspace.unavailableCanonical", "en"), /canonical/i);
 });
 
 test("workspace guards denied queries and makes approved lifecycle feedback and cancellation non-executing", async () => {
