@@ -211,3 +211,20 @@ Record the final participant-facing status, the authorized action taken, any esc
 When [PD-053](../../product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) is implemented under [CTX-ARCH-007](../../architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md), Platform Operations reviews missing obligations, unbatched canonical obligations, draft batches, and quarantined exceptions through authorized queues. The manual process stops after a separately reasoned batch approval.
 
 Approval does not mean paid, scheduled, collected, wallet-funded, or settled. No money moves, and legacy execution routes remain prohibited. Escalate totals mismatch, missing/duplicate obligations, invalid timezone, legacy records, or any request to execute or repair financial data through the separately authorized process.
+
+## Platform Operations Financial Workspace (Phase 3B.4)
+
+Use the Financial Workspace only as an authorized Platform Operations console for canonical obligation and batch records. It is non-executing: it does not charge a Facility, pay a Driver, fund a wallet, schedule a payment, settle a batch, call a provider, or repair an exception.
+
+1. Confirm that you are signed in as an authorized Admin or Super Admin. Do not attempt to use this workspace from a Driver, Facility, or Owner account.
+2. Review **Missing Obligations** and confirm the verified activity, Facility, Driver, age, location, and stated reason in the authorized operational source before taking any action.
+3. If authorized to create an obligation, enter an existing activity reference from an authorized source and a concise operational reason. The temporary reference is used only for that request; it is not saved by the workspace, does not grant authority, and the backend independently validates eligibility and relationships.
+4. Review **Unbatched Obligations** for frozen Driver incentive, Platform fee, Facility total, and age. Do not infer that any displayed value has been collected, paid, or settled.
+5. If authorized to create a draft batch, enter an existing Facility reference, select the intended weekly period anchor, and provide a concise operational reason. Review the returned frozen totals, membership count, billing period, and timezone before proceeding.
+6. Review **Financial Exceptions** as read-only information. Do not repair, retry, reclassify, or alter an exception from the workspace; escalate it through the separately authorized process.
+7. Review a batch detail before lifecycle action. Confirm its reference, Facility, period, timezone, revision, frozen totals, membership rows, available actor references, append-only audit events, and the explicitly disclosed detail limits.
+8. For a Draft batch, move it to **Ready for Review** only when the canonical record is ready for separate review. For a Ready for Review batch, approve or cancel only under the approved operational policy and with a concise reason.
+9. For an Approved batch, state and confirm that it is **not executed, not charged, not paid, and not settled** before cancellation. Provide the required cancellation category. Cancellation remains an operational record action, not a financial execution action.
+10. If a source is unavailable, an action fails, a record is stale, totals disagree, actor information is absent, or an exception requires repair, stop and escalate. Do not substitute a zero value, retry a financial execution path, or use a legacy payment route.
+
+Approval remains a separate, reasoned lifecycle decision. It never authorizes execution. Legacy payment and execution routes remain prohibited until separately approved and enabled under the governing financial architecture.

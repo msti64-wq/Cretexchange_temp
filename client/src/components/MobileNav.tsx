@@ -1,4 +1,4 @@
-import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy } from "lucide-react";
+import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy, ClipboardList } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +52,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/", icon: BarChart3, label: "Dashboard" },
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
+          { path: "/financial-workspace", icon: ClipboardList, label: t("financialWorkspace.nav"), testIdLabel: "financial-workspace" },
           { path: "/profile", icon: Settings, label: "Profile" },
         ];
       case "super_admin":
@@ -60,6 +61,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/", icon: BarChart3, label: "Dashboard" },
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
+          { path: "/financial-workspace", icon: ClipboardList, label: t("financialWorkspace.nav"), testIdLabel: "financial-workspace" },
           { path: "/payments", icon: DollarSign, label: "Payments" },
           { path: "/lottery", icon: Trophy, label: "Rewards Program" },
           { path: "/reconciliation", icon: RefreshCw, label: "Reconcile" },

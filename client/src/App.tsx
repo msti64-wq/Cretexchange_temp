@@ -56,6 +56,7 @@ const AdminLottery = lazy(() => import("@/pages/admin/lottery"));
 const AdminRewardsOperations = lazy(() => import("@/pages/admin/rewards-operations"));
 const SuperAdminBillingAuditReport = lazy(() => import("@/pages/super-admin/billing-audit-report"));
 const AdminReports = lazy(() => import("@/pages/admin/reports"));
+const AdminFinancialWorkspace = lazy(() => import("@/pages/admin/financial-workspace"));
 
 // Wrapper components for Register with preselected roles
 const GeneralRegister = (props: RouteComponentProps) => <Register />;
@@ -156,6 +157,7 @@ function Router() {
             <Route path="/users" component={AdminUsers} />
             <Route path="/locations" component={AdminLocations} />
             <Route path="/payments" component={AdminPayments} />
+            <Route path="/financial-workspace" component={AdminFinancialWorkspace} />
             <Route path="/batch-payments" component={AdminBatchPayments} />
             <Route path="/reconciliation" component={AdminReconciliation} />
             <Route path="/subscriptions" component={AdminSubscriptions} />
