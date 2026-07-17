@@ -19,7 +19,8 @@ test("canonical financial visibility is confined to versioned canonical sources 
   assert.match(source, /financialBatchExceptions/);
   assert.match(source, /driverIncentiveCents: valid \? driver : null/);
   assert.doesNotMatch(source, /ownerBillingReceivables|feesLedger|pendingWashoutPayments|treasury|wallet/i);
-  assert.match(source, /isNull\(payments\.stripePaymentIntentId\)/);
+  assert.match(source, /isNull\(payments\.stripeTransferId\)/);
+  assert.doesNotMatch(source, /payments\.stripePaymentIntentId|payments\.stripeChargeId/);
 });
 
 test("summary and selection routes are admin-only non-provider routes", async () => {
@@ -28,5 +29,6 @@ test("summary and selection routes are admin-only non-provider routes", async ()
   assert.match(source, /\/api\/admin\/financial-obligations\/create/);
   assert.match(source, /client_amount_override/);
   assert.match(source, /resolveFinancialWorkspaceSelectionToken/);
-  assert.doesNotMatch(source.slice(source.indexOf("financialObligationErrorResponse"), source.indexOf("// Phase 3B.1 discovery")), /stripe|treasury|wallet|process-payout|process-batch/i);
+  const financialRoutes = source.slice(source.indexOf("financialObligationErrorResponse"), source.indexOf("// Phase 3B.1 discovery"));
+  assert.doesNotMatch(financialRoutes, /stripe(?:Client|Service)|paymentIntents\.create|charges\.create|transfers\.create|treasury|wallet|process-payout|process-batch/i);
 });

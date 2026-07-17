@@ -76,7 +76,8 @@ import {
 } from "../shared/paymentAccounting";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
-import { buildCanonicalObligationCreationReason, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
+import { buildCanonicalObligationCreationReason, createDatabaseFinancialObligationRepository, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
+import { getFinancialSchemaCapabilities } from "./financialSchemaCapabilities";
 import { resolveFinancialWorkspaceSelectionToken } from "./financialWorkspaceSelection";
 import { getCanonicalFinancialVisibilitySummary } from "./canonicalFinancialVisibility";
 import {
@@ -5349,7 +5350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Financial obligation creation is deliberately separate from Facility review.
   // Only Platform Operations may record an unpaid obligation for an already
   // verified activity. The canonical service does not execute a payment.
-  const financialObligationErrorResponse = (error: unknown, res: any) => {
+  const financialObligationErrorResponse = (error: unknown, req: any, res: any, context: { route: string; actorRole?: string; startedAt: number }) => {
     if (error instanceof FinancialObligationError) {
       const status = error.code === "activity_not_found" ? 404
         : error.code === "duplicate_financial_obligation" || error.code === "existing_financial_state_requires_review" ? 409
@@ -5357,8 +5358,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(status).json({ message: error.message, code: error.code });
     }
     // Do not log activity identity, selection tokens, provider values, or raw
-    // database errors from this operator-facing route.
-    console.error("Financial obligation service is unavailable");
+    // database errors from this operator-facing route. The category is enough
+    // to distinguish a runtime schema/service failure from a governed error.
+    console.error("[FINANCIAL_OBLIGATION_UNAVAILABLE]", {
+      route: context.route,
+      stage: "canonical_obligation_repository",
+      errorCategory: error instanceof Error ? error.name || "Error" : "UnknownError",
+      actorRole: context.actorRole || "unknown",
+      requestId: typeof req.id === "string" ? req.id.slice(0, 128) : undefined,
+      durationMs: Date.now() - context.startedAt,
+    });
     return res.status(500).json({ message: "Financial obligation service is unavailable" });
   };
   const requireFinancialOperationsActor = async (req: any, res: any) => {
@@ -5369,22 +5378,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     return user;
   };
+  const financialAuditSchemaUnavailable = (res: any) => res.status(503).json({
+    code: "financial_audit_schema_unavailable",
+    message: "Financial obligation creation is temporarily unavailable because required audit storage is not deployed.",
+  });
+  const canonicalFinancialSchemaUnavailable = (res: any) => res.status(503).json({
+    code: "canonical_financial_schema_unavailable",
+    message: "Canonical financial records are unavailable from the verified schema.",
+  });
+  const requireCanonicalFinancialSchema = (handler: any) => async (req: any, res: any, next: any) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    const capabilities = await getFinancialSchemaCapabilities();
+    if (!capabilities.obligationKindAvailable) return canonicalFinancialSchemaUnavailable(res);
+    return handler(req, res, next);
+  };
+
+  app.get('/api/admin/financial-workspace/capabilities', isAuthenticated, async (req: any, res) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    const capabilities = await getFinancialSchemaCapabilities();
+    return res.json({
+      previewAvailable: capabilities.previewAvailable,
+      creationAvailable: capabilities.creationAvailable,
+      auditSchemaAvailable: capabilities.auditSchemaAvailable,
+      obligationKindAvailable: capabilities.obligationKindAvailable,
+      stripeTransferEvidenceAvailable: capabilities.stripeTransferEvidenceAvailable,
+      stripePaymentIntentEvidenceAvailable: capabilities.stripePaymentIntentEvidenceAvailable,
+      stripeChargeEvidenceAvailable: capabilities.stripeChargeEvidenceAvailable,
+    });
+  });
 
   // Selection tokens are opaque and short-lived: this keeps raw activity IDs
   // out of the operator UI while the server remains authoritative.
   app.get('/api/admin/financial-obligations/preview/:selectionToken', isAuthenticated, async (req: any, res) => {
+    const startedAt = Date.now();
     const user = await requireFinancialOperationsActor(req, res);
     if (!user) return;
     const activityId = resolveFinancialWorkspaceSelectionToken(req.params.selectionToken);
     if (!activityId) return res.status(422).json({ message: "The selected record is unavailable. Refresh Missing Obligations and try again.", code: "invalid_selection" });
     try {
-      return res.json(await previewFinancialObligationForVerifiedActivity(activityId));
+      const capabilities = await getFinancialSchemaCapabilities();
+      return res.json(await previewFinancialObligationForVerifiedActivity(
+        activityId,
+        createDatabaseFinancialObligationRepository({ obligationKindAvailable: capabilities.obligationKindAvailable }),
+      ));
     } catch (error) {
-      return financialObligationErrorResponse(error, res);
+      return financialObligationErrorResponse(error, req, res, { route: "GET /api/admin/financial-obligations/preview", actorRole: user.role, startedAt });
     }
   });
 
   app.post('/api/admin/financial-obligations/create', isAuthenticated, async (req: any, res) => {
+    const startedAt = Date.now();
     const user = await requireFinancialOperationsActor(req, res);
     if (!user) return;
     const activityId = resolveFinancialWorkspaceSelectionToken(req.body?.selectionToken);
@@ -5392,12 +5437,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (["amount", "processingFee", "driverIncentiveCents", "platformFeeCents", "facilityChargeCents"].some((key) => Object.prototype.hasOwnProperty.call(req.body || {}, key))) {
       return res.status(422).json({ message: "Financial components are derived by the server", code: "client_amount_override" });
     }
+    const capabilities = await getFinancialSchemaCapabilities();
+    if (!capabilities.creationAvailable) return financialAuditSchemaUnavailable(res);
     try {
       const reason = buildCanonicalObligationCreationReason(req.body?.reasonCategory, req.body?.supportingDetail);
-      const result = await createFinancialObligationForVerifiedActivity(activityId, undefined, { actorUserId: user.id, reason });
+      const result = await createFinancialObligationForVerifiedActivity(activityId, createDatabaseFinancialObligationRepository({ obligationKindAvailable: true }), { actorUserId: user.id, reason });
       return res.status(result.created ? 201 : 200).json({ obligation: { status: result.obligation.status, driverIncentiveCents: result.driverIncentiveCents, platformFeeCents: result.platformFeeCents, facilityChargeCents: result.facilityChargeCents }, created: result.created });
     } catch (error) {
-      return financialObligationErrorResponse(error, res);
+      return financialObligationErrorResponse(error, req, res, { route: "POST /api/admin/financial-obligations/create", actorRole: user.role, startedAt });
     }
   });
 
@@ -5414,6 +5461,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/financial-workspace/summary', isAuthenticated, async (req: any, res) => {
     const user = await requireFinancialOperationsActor(req, res);
     if (!user) return;
+    const capabilities = await getFinancialSchemaCapabilities();
+    if (!capabilities.obligationKindAvailable) return canonicalFinancialSchemaUnavailable(res);
     try { return res.json(await getCanonicalFinancialVisibilitySummary()); }
     catch { console.error("Canonical financial summary is unavailable"); return res.status(503).json({ message: "Canonical financial records are unavailable" }); }
   });
@@ -5427,28 +5476,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     route: 'GET /api/admin/financial-obligations/missing',
   }) as any);
 
-  app.get('/api/admin/financial-obligations/unbatched', isAuthenticated, createAdminFinancialDiscoveryHandler({
+  app.get('/api/admin/financial-obligations/unbatched', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialDiscoveryHandler({
     getUser: (userId) => storage.getUser(userId),
     list: listUnbatchedCanonicalObligations,
     route: 'GET /api/admin/financial-obligations/unbatched',
-  }) as any);
+  }) as any));
 
-  app.get('/api/admin/financial-obligations/exceptions', isAuthenticated, createAdminFinancialDiscoveryHandler({
+  app.get('/api/admin/financial-obligations/exceptions', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialDiscoveryHandler({
     getUser: (userId) => storage.getUser(userId),
     list: listCanonicalFinancialExceptions,
     route: 'GET /api/admin/financial-obligations/exceptions',
-  }) as any);
+  }) as any));
 
   // Phase 3B.2 canonical batch routes govern non-executing draft construction
   // and inspection only. Canonical state, not legacy billing batch status,
   // controls these routes; no route calls a provider or payment executor.
   const financialBatchDependencies = { getUser: (userId: string) => storage.getUser(userId) };
-  app.get('/api/admin/financial-batches', isAuthenticated, createAdminFinancialBatchListHandler(financialBatchDependencies) as any);
-  app.get('/api/admin/financial-batches/:id', isAuthenticated, createAdminFinancialBatchDetailHandler(financialBatchDependencies) as any);
-  app.post('/api/admin/financial-batches', isAuthenticated, createAdminFinancialBatchDraftHandler(financialBatchDependencies) as any);
-  app.post('/api/admin/financial-batches/:id/ready-for-review', isAuthenticated, createAdminFinancialBatchLifecycleHandler("ready_for_review", financialBatchDependencies) as any);
-  app.post('/api/admin/financial-batches/:id/approve', isAuthenticated, createAdminFinancialBatchLifecycleHandler("approve", financialBatchDependencies) as any);
-  app.post('/api/admin/financial-batches/:id/cancel', isAuthenticated, createAdminFinancialBatchLifecycleHandler("cancel", financialBatchDependencies) as any);
+  app.get('/api/admin/financial-batches', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchListHandler(financialBatchDependencies) as any));
+  app.get('/api/admin/financial-batches/:id', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchDetailHandler(financialBatchDependencies) as any));
+  app.post('/api/admin/financial-batches', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchDraftHandler(financialBatchDependencies) as any));
+  app.post('/api/admin/financial-batches/:id/ready-for-review', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchLifecycleHandler("ready_for_review", financialBatchDependencies) as any));
+  app.post('/api/admin/financial-batches/:id/approve', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchLifecycleHandler("approve", financialBatchDependencies) as any));
+  app.post('/api/admin/financial-batches/:id/cancel', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchLifecycleHandler("cancel", financialBatchDependencies) as any));
 
   app.post('/api/admin/payments/process-awaiting-driver-stripe', isAuthenticated, async (req: any, res) => {
     try {

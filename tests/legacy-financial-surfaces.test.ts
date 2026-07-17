@@ -23,10 +23,13 @@ test("legacy financial translations remain bilingual and point operators to Fina
   assert.match(translate("legacyFinancial.fees.zeroExplanation", "es"), /no tiene filas/i);
 });
 
-test("legacy fee page has no generation, retry, export, or mutation control", async () => {
+test("fees page shows canonical components separately from historical records and has no mutation control", async () => {
   const source = await page("fees");
-  assert.match(source, /legacyFinancial\.fees\.title/);
-  assert.match(source, /role="alert"/);
+  assert.match(source, /financialVisibility\.canonicalFees/);
+  assert.match(source, /financialVisibility\.canonicalIncentives/);
+  assert.match(source, /financialVisibility\.historical/);
+  assert.match(source, /api\/admin\/financial-workspace\/summary/);
+  assert.match(source, /api\/admin\/financial-obligations\/unbatched/);
   assert.match(source, /href="\/financial-workspace"/);
   assert.match(source, /enabled: allowed/);
   assert.doesNotMatch(source, /fees\/generate|useMutation|retryFee|Generate Fees|Export CSV|button-retry|legacyReference|legacy_fee_/i);
@@ -110,14 +113,38 @@ test("legacy surfaces retain clear headings, alerts, and accessible canonical li
   }
 });
 
-test("admin navigation preserves Financial Workspace as the primary destination and labels historical pages", async () => {
+test("admin navigation preserves Financial Workspace as the primary destination and exposes separate fees and billing readiness", async () => {
   const [nav, app] = await Promise.all([
     readFile(new URL("../client/src/components/MobileNav.tsx", import.meta.url), "utf8"),
     readFile(new URL("../client/src/App.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(nav, /path: "\/financial-workspace"[\s\S]*financialWorkspace\.nav/);
   assert.match(nav, /path: "\/payments"[\s\S]*legacyFinancial\.nav\.payments/);
-  assert.match(nav, /path: "\/fees"[\s\S]*legacyFinancial\.nav\.fees/);
-  assert.match(nav, /path: "\/billing-settings"[\s\S]*legacyFinancial\.nav\.billing/);
+  assert.match(nav, /path: "\/fees"[\s\S]*financialVisibility\.fees\.title/);
+  assert.match(nav, /path: "\/billing"[\s\S]*financialVisibility\.billing\.title/);
+  assert.match(app, /path="\/billing" component=\{AdminBilling\}/);
   assert.match(app, /role === 'admin' \|\| \(user as any\)\.role === 'super_admin'/);
+});
+
+test("fees and billing readiness remain read-only, bilingual, and available only to Platform Operations", async () => {
+  const [fees, billing] = await Promise.all([page("fees"), page("billing")]);
+  for (const source of [fees, billing]) {
+    assert.match(source, /isPlatformOperationsRole/);
+    assert.match(source, /enabled: allowed/);
+    assert.match(source, /href="\/financial-workspace"/);
+    assert.doesNotMatch(source, /useMutation|process-payout|process-batch|stripePaymentIntentId|treasury|wallet/i);
+  }
+  assert.match(billing, /financialVisibility\.readiness/);
+  assert.match(billing, /financialVisibility\.blockers/);
+  assert.match(billing, /financialVisibility\.historical/);
+});
+
+test("browser metadata includes the standard mobile capability declaration and login uses current-password autocomplete", async () => {
+  const [html, login] = await Promise.all([
+    readFile(new URL("../client/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../client/src/pages/auth/login.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(html, /name="mobile-web-app-capable" content="yes"/);
+  assert.match(html, /name="apple-mobile-web-app-capable" content="yes"/);
+  assert.match(login, /autoComplete="current-password"/);
 });

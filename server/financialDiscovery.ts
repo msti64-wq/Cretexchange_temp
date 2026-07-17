@@ -35,12 +35,12 @@ type DiscoveryPayment = {
   amount: string | number | null;
   processingFee: string | number | null;
   status: string | null;
-  obligationKind: string | null;
+  obligationKind?: string | null;
   batchId: string | null;
   paidAt: Date | string | null;
   createdAt: Date | string | null;
-  hasExecutionIdentifiers: boolean;
-  obligationCreatedBy: string | null;
+  hasTransferEvidence: boolean;
+  obligationCreatedBy?: string | null;
 };
 
 export type FinancialDiscoveryRecord = {
@@ -158,8 +158,8 @@ function paymentException(record: FinancialDiscoveryRecord): ExceptionRecord | n
   if (!validDate(payment.createdAt)) {
     return { ...record, category: "missing_obligation_timestamp", explanation: "The canonical obligation has no valid creation timestamp.", blocksObligationCreation: true };
   }
-  if (payment.status === "pending" && payment.hasExecutionIdentifiers) {
-    return { ...record, category: "pending_obligation_has_execution_fields", explanation: "A pending canonical obligation contains execution identifiers.", blocksObligationCreation: true };
+  if (payment.status === "pending" && payment.hasTransferEvidence) {
+    return { ...record, category: "pending_obligation_has_transfer_evidence", explanation: "A pending canonical obligation contains transfer evidence.", blocksObligationCreation: true };
   }
   if (payment.status === "pending" && payment.paidAt) {
     return { ...record, category: "pending_obligation_has_paid_timestamp", explanation: "A pending canonical obligation contains a paid timestamp.", blocksObligationCreation: true };
@@ -420,7 +420,7 @@ function displayName(firstName: string | null, lastName: string | null): string 
 function mapRow(row: any): FinancialDiscoveryRecord {
   return {
     activity: row.activityId ? { id: row.activityId, status: row.activityStatus, amount: row.activityAmount, verifiedAt: row.activityVerifiedAt, createdAt: row.activityCreatedAt, driverId: row.activityDriverId, locationId: row.activityLocationId } : null,
-    payment: row.paymentId ? { id: row.paymentId, activityId: row.paymentActivityId, driverId: row.paymentDriverId, ownerId: row.paymentOwnerId, amount: row.paymentAmount, processingFee: row.paymentProcessingFee, status: row.paymentStatus, obligationKind: row.paymentObligationKind, batchId: row.paymentBatchId, paidAt: row.paymentPaidAt, createdAt: row.paymentCreatedAt, hasExecutionIdentifiers: Boolean(row.paymentHasExecutionIdentifiers), obligationCreatedBy: row.paymentCreatedBy } : null,
+    payment: row.paymentId ? { id: row.paymentId, activityId: row.paymentActivityId, driverId: row.paymentDriverId, ownerId: row.paymentOwnerId, amount: row.paymentAmount, processingFee: row.paymentProcessingFee, status: row.paymentStatus, batchId: row.paymentBatchId, paidAt: row.paymentPaidAt, createdAt: row.paymentCreatedAt, hasTransferEvidence: Boolean(row.paymentHasTransferEvidence) } : null,
     driver: row.driverId ? { id: row.driverId, displayName: displayName(row.driverFirstName, row.driverLastName) } : null,
     location: row.locationId ? { id: row.locationId, ownerId: row.locationOwnerId, name: row.locationName } : null,
     facility: row.facilityId ? { id: row.facilityId, name: row.facilityName, billingTimezone: row.facilityBillingTimezone } : null,
@@ -434,8 +434,10 @@ const databaseFinancialDiscoveryRepository: FinancialDiscoveryRepository = {
     if (filters.locationId) activityConditions.push(eq(washoutActivities.locationId, filters.locationId));
     const rows = await db.select({
       activityId: washoutActivities.id, activityStatus: washoutActivities.status, activityAmount: washoutActivities.amount, activityVerifiedAt: washoutActivities.verifiedAt, activityCreatedAt: washoutActivities.createdAt, activityDriverId: washoutActivities.driverId, activityLocationId: washoutActivities.locationId,
-      paymentId: payments.id, paymentActivityId: payments.activityId, paymentDriverId: payments.driverId, paymentOwnerId: payments.ownerId, paymentAmount: payments.amount, paymentProcessingFee: payments.processingFee, paymentStatus: payments.status, paymentObligationKind: payments.obligationKind, paymentBatchId: payments.batchId, paymentPaidAt: payments.paidAt, paymentCreatedAt: payments.createdAt, paymentCreatedBy: payments.obligationCreatedBy,
-      paymentHasExecutionIdentifiers: sql<boolean>`(${payments.stripePaymentIntentId} IS NOT NULL OR ${payments.stripeTransferId} IS NOT NULL OR ${payments.stripeChargeId} IS NOT NULL)`,
+      // `stripe_transfer_id` is migration-proven. The schema has no equivalent
+      // proof for payment-intent or charge columns, so they are never queried.
+      paymentId: payments.id, paymentActivityId: payments.activityId, paymentDriverId: payments.driverId, paymentOwnerId: payments.ownerId, paymentAmount: payments.amount, paymentProcessingFee: payments.processingFee, paymentStatus: payments.status, paymentBatchId: payments.batchId, paymentPaidAt: payments.paidAt, paymentCreatedAt: payments.createdAt,
+      paymentHasTransferEvidence: sql<boolean>`${payments.stripeTransferId} IS NOT NULL`,
       driverId: drivers.id, driverFirstName: users.firstName, driverLastName: users.lastName,
       locationId: washoutLocations.id, locationOwnerId: washoutLocations.ownerId, locationName: washoutLocations.name,
       facilityId: owners.id, facilityName: owners.companyName, facilityBillingTimezone: owners.billingTimezone,

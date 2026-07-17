@@ -51,8 +51,7 @@ function record(overrides: Record<string, unknown> = {}) {
       batchId: null,
       paidAt: null,
       createdAt: "2026-07-15T12:05:00.000Z",
-      hasExecutionIdentifiers: false,
-      obligationCreatedBy: "admin_1",
+      hasTransferEvidence: false,
       ...(overrides.payment as object),
     } : null,
   };
@@ -150,7 +149,7 @@ test("legacy, unknown, non-pending, batch-linked, execution-contaminated, malfor
     record({ activity: { id: "unknown" }, payment: { id: "unknown_p", activityId: "unknown", obligationKind: "other" } }),
     record({ activity: { id: "paid" }, payment: { id: "paid_p", activityId: "paid", status: "paid" } }),
     record({ activity: { id: "batch" }, payment: { id: "batch_p", activityId: "batch", batchId: "legacy_batch" } }),
-    record({ activity: { id: "execution" }, payment: { id: "execution_p", activityId: "execution", hasExecutionIdentifiers: true } }),
+    record({ activity: { id: "execution" }, payment: { id: "execution_p", activityId: "execution", hasTransferEvidence: true } }),
     record({ activity: { id: "fee" }, payment: { id: "fee_p", activityId: "fee", processingFee: "broken" } }),
     record({ activity: { id: "timezone" }, payment: { id: "timezone_p", activityId: "timezone" }, facility: { id: "owner_1", name: "North", billingTimezone: "Not/A_Timezone" } }),
   ];
@@ -159,7 +158,7 @@ test("legacy, unknown, non-pending, batch-linked, execution-contaminated, malfor
   assert.equal(result.items.length, 0);
   const exceptions = await listCanonicalFinancialExceptions(filters(), repo.repository, NOW);
   const categories = new Set(exceptions.items.map((item: any) => item.exceptionCategory));
-  for (const category of ["legacy_payment_conflict", "unknown_obligation_version", "canonical_obligation_not_pending", "unexpected_batch_link", "pending_obligation_has_execution_fields", "invalid_platform_fee", "invalid_facility_billing_timezone"]) {
+  for (const category of ["legacy_payment_conflict", "unknown_obligation_version", "canonical_obligation_not_pending", "unexpected_batch_link", "pending_obligation_has_transfer_evidence", "invalid_platform_fee", "invalid_facility_billing_timezone"]) {
     assert.ok(categories.has(category));
   }
 });
@@ -180,7 +179,7 @@ test("activity no longer verified, missing timestamps, and orphaned payments are
 });
 
 test("responses use whitelisted safe projections and omit provider, bank, notes, evidence, GPS, and contact data", async () => {
-  const poisoned = record({ payment: { stripePaymentIntentId: "pi_secret", bankAccount: "bank_secret", notes: "private" } }) as any;
+  const poisoned = record({ payment: { bankAccount: "bank_secret", notes: "private" } }) as any;
   poisoned.driver.email = "driver@example.com";
   poisoned.driver.phone = "555-0100";
   poisoned.location.latitude = "1";

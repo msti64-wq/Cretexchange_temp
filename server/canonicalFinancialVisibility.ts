@@ -39,9 +39,10 @@ export async function getCanonicalFinancialVisibilitySummary(): Promise<Canonica
         eq(payments.status, "pending"),
         isNull(payments.batchId),
         isNull(payments.paidAt),
-        isNull(payments.stripePaymentIntentId),
+        // Transfer evidence is the only provider-related payments field proven
+        // by repository migration history. Payment-intent and charge fields are
+        // intentionally never selected or filtered here.
         isNull(payments.stripeTransferId),
-        isNull(payments.stripeChargeId),
       )),
     db.select({ state: billingBatches.canonicalState, incentive: billingBatches.frozenDriverIncentiveCents, fee: billingBatches.frozenPlatformFeeCents, facility: billingBatches.frozenFacilityChargeCents })
       .from(billingBatches).where(eq(billingBatches.batchModelVersion, CANONICAL_FINANCIAL_BATCH_MODEL_VERSION)),

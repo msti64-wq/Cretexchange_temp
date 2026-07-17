@@ -141,6 +141,7 @@ export default function Login() {
                 <Label htmlFor="password">Password</Label>
                 <PasswordInput
                   id="password"
+                  autoComplete="current-password"
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}

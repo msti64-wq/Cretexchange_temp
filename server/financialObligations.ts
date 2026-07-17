@@ -19,9 +19,6 @@ export type FinancialObligationPayment = {
   status: string;
   batchId?: string | null;
   paidAt?: Date | null;
-  stripePaymentIntentId?: string | null;
-  stripeTransferId?: string | null;
-  stripeChargeId?: string | null;
   obligationKind?: string | null;
   obligationCreatedBy?: string | null;
   obligationCreationReason?: string | null;
@@ -271,10 +268,10 @@ export async function createFinancialObligationForVerifiedActivity(
       status: "pending",
       batchId: null,
       paidAt: null,
-      stripePaymentIntentId: null,
-      stripeTransferId: null,
-      stripeChargeId: null,
       obligationKind: CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND,
+      // A canonical obligation must retain the server-derived actor and reason.
+      // If the separately approved audit-column migration is absent, the
+      // database rejects creation rather than silently discarding audit data.
       obligationCreatedBy: context.actorUserId || null,
       obligationCreationReason: context.reason || null,
     };
@@ -293,11 +290,37 @@ export async function createFinancialObligationForVerifiedActivity(
   });
 }
 
-const databaseFinancialObligationRepository: FinancialObligationRepository = {
+export function createDatabaseFinancialObligationRepository(options: { obligationKindAvailable: boolean }): FinancialObligationRepository {
+  const paymentFields = {
+    id: payments.id,
+    activityId: payments.activityId,
+    driverId: payments.driverId,
+    ownerId: payments.ownerId,
+    amount: payments.amount,
+    processingFee: payments.processingFee,
+    washoutServiceFee: payments.washoutServiceFee,
+    status: payments.status,
+    batchId: payments.batchId,
+    paidAt: payments.paidAt,
+  };
+  return {
   transaction: (run) => db.transaction(async (tx) => run({
-    findPaymentsByActivityId: async (activityId) => tx.select().from(payments).where(eq(payments.activityId, activityId)) as Promise<FinancialObligationPayment[]>,
+    // The preview projection contains only pre-0020 migration-proven payment
+    // columns. Canonical-kind reads are added only after metadata confirms it.
+    findPaymentsByActivityId: async (activityId) => {
+      if (options.obligationKindAvailable) {
+        return tx.select({ ...paymentFields, obligationKind: payments.obligationKind }).from(payments).where(eq(payments.activityId, activityId)) as unknown as FinancialObligationPayment[];
+      }
+      return tx.select(paymentFields).from(payments).where(eq(payments.activityId, activityId)) as unknown as FinancialObligationPayment[];
+    },
     findActivityById: async (activityId) => {
-      const [activity] = await tx.select().from(washoutActivities).where(eq(washoutActivities.id, activityId));
+      const [activity] = await tx.select({
+        id: washoutActivities.id,
+        driverId: washoutActivities.driverId,
+        locationId: washoutActivities.locationId,
+        status: washoutActivities.status,
+        amount: washoutActivities.amount,
+      }).from(washoutActivities).where(eq(washoutActivities.id, activityId));
       return activity ?? null;
     },
     findDriverById: async (driverId) => {
@@ -319,12 +342,16 @@ const databaseFinancialObligationRepository: FinancialObligationRepository = {
       return settings ?? null;
     },
     insertPendingObligation: async (input) => {
-      const [payment] = await tx
-        .insert(payments)
-        .values(input)
-        .onConflictDoNothing({ target: payments.activityId })
-        .returning();
-      return payment ?? null;
+      if (options.obligationKindAvailable) {
+        const [payment] = await tx.insert(payments).values(input).onConflictDoNothing({ target: payments.activityId }).returning({ ...paymentFields, obligationKind: payments.obligationKind });
+        return payment ? payment as FinancialObligationPayment : null;
+      }
+      // Creation is blocked by the route capability gate. This branch protects
+      // against accidental direct use with a pre-0020 projection.
+      throw new FinancialObligationError("existing_financial_state_requires_review", "Canonical financial creation requires verified schema capability");
     },
-  })),
-};
+  })) };
+}
+
+// Test-only default. Runtime routes always pass metadata-backed capabilities.
+const databaseFinancialObligationRepository = createDatabaseFinancialObligationRepository({ obligationKindAvailable: true });

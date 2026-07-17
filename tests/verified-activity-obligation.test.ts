@@ -33,9 +33,6 @@ type StoredPayment = {
   status: string;
   batchId?: string | null;
   paidAt?: Date | null;
-  stripePaymentIntentId?: string | null;
-  stripeTransferId?: string | null;
-  stripeChargeId?: string | null;
   obligationCreatedBy?: string | null;
   obligationCreationReason?: string | null;
   obligationKind?: string | null;
@@ -132,6 +129,57 @@ async function getObligationRoute() {
   return handlers!;
 }
 
+test("runtime preview repository selects a pre-0020-safe projection and avoids unknown provider columns", () => {
+  const source = readFileSync(new URL("../server/financialObligations.ts", import.meta.url), "utf8");
+  const repository = source.slice(source.indexOf("export function createDatabaseFinancialObligationRepository"));
+  const paymentLookup = repository.slice(repository.indexOf("findPaymentsByActivityId"), repository.indexOf("findActivityById"));
+  assert.match(paymentLookup, /tx\.select\(\{/);
+  assert.doesNotMatch(paymentLookup, /select\(\)\.from\(payments\)/);
+  assert.doesNotMatch(paymentLookup, /obligationCreatedBy:\s*payments\.obligationCreatedBy/);
+  assert.doesNotMatch(paymentLookup, /obligationCreationReason:\s*payments\.obligationCreationReason/);
+  assert.doesNotMatch(paymentLookup, /stripePaymentIntentId:\s*payments\.stripePaymentIntentId/);
+  assert.doesNotMatch(paymentLookup, /stripeChargeId:\s*payments\.stripeChargeId/);
+  assert.match(repository, /onConflictDoNothing\(\{ target: payments\.activityId \}\)/);
+});
+
+test("actual route registration authorizes preview before opaque token resolution and logs only safe runtime metadata", { concurrency: false }, async () => {
+  const gets = new Map<string, Array<(req: any, res: any) => Promise<unknown>>>();
+  const app = { get(path: string, ...handlers: Array<(req: any, res: any) => Promise<unknown>>) { gets.set(path, handlers); }, post() {}, put() {}, delete() {}, patch() {}, use() {} };
+  await registerRoutes(app as never);
+  const handlers = gets.get("/api/admin/financial-obligations/preview/:selectionToken");
+  assert.ok(handlers && handlers.length >= 2);
+  assert.equal(handlers![0], isAuthenticated);
+  await withStoragePatch({ getUser: async () => ({ id: "driver_1", role: "driver" }) }, async () => {
+    const response = createResponse();
+    await handlers![1]({ user: { id: "driver_1" }, params: { selectionToken: "opaque" } }, response);
+    assert.equal(response.statusCode, 403);
+  });
+  const source = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
+  const start = source.indexOf("app.get('/api/admin/financial-obligations/preview/:selectionToken'");
+  const end = source.indexOf("app.post('/api/admin/financial-obligations/create'", start);
+  const route = source.slice(start, end);
+  assert.match(route, /requireFinancialOperationsActor/);
+  assert.match(route, /resolveFinancialWorkspaceSelectionToken/);
+  assert.match(route, /previewFinancialObligationForVerifiedActivity/);
+  assert.match(source, /FINANCIAL_OBLIGATION_UNAVAILABLE/);
+  assert.doesNotMatch(source.slice(source.indexOf("const financialObligationErrorResponse"), start), /selectionToken.*console\.error|console\.error.*selectionToken/);
+});
+
+test("runtime capability reporting is admin-only and creation fails closed before a payment write", () => {
+  const source = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
+  const start = source.indexOf("app.get('/api/admin/financial-workspace/capabilities'");
+  const end = source.indexOf("app.get('/api/admin/financial-obligations/preview", start);
+  const capabilityRoute = source.slice(start, end);
+  const createStart = source.indexOf("app.post('/api/admin/financial-obligations/create'");
+  const createEnd = source.indexOf("app.post('/api/admin/financial-obligations/activities/:id'", createStart);
+  const createRoute = source.slice(createStart, createEnd);
+  assert.match(capabilityRoute, /requireFinancialOperationsActor/);
+  assert.match(capabilityRoute, /creationAvailable/);
+  assert.match(createRoute, /getFinancialSchemaCapabilities/);
+  assert.match(createRoute, /financialAuditSchemaUnavailable/);
+  assert.ok(createRoute.indexOf("financialAuditSchemaUnavailable") < createRoute.indexOf("createFinancialObligationForVerifiedActivity"));
+});
+
 test("creates one unpaid obligation from the verified activity's frozen amount", async () => {
   const fixture = repositoryFixture();
   const result = await createFinancialObligationForVerifiedActivity("activity_1", fixture.repository, { actorUserId: "admin_1", reason: "verified activity review" });
@@ -144,7 +192,6 @@ test("creates one unpaid obligation from the verified activity's frozen amount",
   assert.equal(result.obligation.washoutServiceFee, "12.34");
   assert.equal(result.obligation.batchId, null);
   assert.equal(result.obligation.paidAt, null);
-  assert.equal(result.obligation.stripePaymentIntentId, null);
   assert.equal(result.obligation.obligationCreatedBy, "admin_1");
   assert.equal(result.obligation.obligationCreationReason, "verified activity review");
   assert.equal(result.driverIncentiveCents, 1234);

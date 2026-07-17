@@ -52,6 +52,7 @@ const AdminSettings = lazy(() => import("@/pages/admin/settings"));
 const AdminBatchPayments = lazy(() => import("@/pages/admin/batch-payments"));
 const AdminReconciliation = lazy(() => import("@/pages/admin/reconciliation"));
 const AdminBillingSettings = lazy(() => import("@/pages/admin/billing-settings"));
+const AdminBilling = lazy(() => import("@/pages/admin/billing"));
 const AdminLottery = lazy(() => import("@/pages/admin/lottery"));
 const AdminRewardsOperations = lazy(() => import("@/pages/admin/rewards-operations"));
 const SuperAdminBillingAuditReport = lazy(() => import("@/pages/super-admin/billing-audit-report"));
@@ -164,6 +165,7 @@ function Router() {
             <Route path="/fees" component={AdminFees} />
             <Route path="/feature-flags" component={AdminFeatureFlags} />
             <Route path="/billing-settings" component={AdminBillingSettings} />
+            <Route path="/billing" component={AdminBilling} />
             <Route path="/lottery" component={AdminLottery} />
             <Route path="/rewards/operations" component={AdminRewardsOperations} />
             <Route path="/lottery-dashboard" component={LegacyLotteryDashboardRedirect} />

@@ -77,6 +77,8 @@ test("workspace translations have complete English and Spanish operational equiv
     "financialWorkspace.summary.title",
     "financialWorkspace.unavailableCanonical",
     "financialWorkspace.validation.previewUnavailable",
+    "financialWorkspace.validation.auditSchemaUnavailable",
+    "financialWorkspace.auditSchemaUnavailable",
     "financialWorkspace.action.createDraft",
     "financialWorkspace.action.review",
     "financialWorkspace.action.approve",
@@ -86,6 +88,8 @@ test("workspace translations have complete English and Spanish operational equiv
     "financialWorkspace.action.cancelNonExecuted",
     "financialWorkspace.state.membership_released",
     "financialWorkspace.error.generic",
+    "financialWorkspace.preview.unavailable",
+    "financialWorkspace.preview.retry",
   ];
   for (const key of keys) {
     assert.ok(translations.en[key], `English ${key} is present`);
@@ -121,6 +125,27 @@ test("workspace page renders localized discovery, empty, unavailable, detail, re
   assert.match(source, /financialWorkspace\.detailExceptions/);
   assert.match(source, /stateKey\(batch\.state\)/);
   assert.equal(/stripe|treasury|process-batch|process-payout|scheduler|reconciliation|wallet/i.test(source), false);
+});
+
+test("missing-obligation dialog preserves an administrator escape path when a preview fails", async () => {
+  const source = await readFile(new URL("../client/src/pages/admin/financial-workspace.tsx", import.meta.url), "utf8");
+  assert.match(source, /financialWorkspace\.preview\.unavailable/);
+  assert.match(source, /financialWorkspace\.preview\.retry/);
+  assert.match(source, /onRetryPreview/);
+  assert.match(source, /obligationPreview\.refetch/);
+  assert.match(source, /onEscapeKeyDown/);
+  assert.match(source, /onInteractOutside/);
+  assert.match(source, /financialWorkspace\.action\.cancel/);
+  assert.match(source, /role="alert" aria-live="assertive"/);
+});
+
+test("workspace keeps preview available while fail-closing creation without verified audit storage", async () => {
+  const source = await readFile(new URL("../client/src/pages/admin/financial-workspace.tsx", import.meta.url), "utf8");
+  assert.match(source, /financial-workspace\/capabilities/);
+  assert.match(source, /creationAvailable/);
+  assert.match(source, /financialWorkspace\.auditSchemaUnavailable/);
+  assert.match(source, /financialWorkspace\.validation\.auditSchemaUnavailable/);
+  assert.match(source, /role="alert"/);
 });
 
 test("workspace page limits network access to canonical discovery and lifecycle routes", async () => {
