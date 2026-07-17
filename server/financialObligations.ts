@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { drivers, owners, payments, systemSettings, washoutActivities, washoutLocations } from "../shared/schema";
 import { resolveConfiguredWashoutPlatformFeeCents } from "../shared/billingPolicy";
 import { formatCentsToDollars } from "../shared/money";
@@ -71,6 +71,7 @@ export class FinancialObligationError extends Error {
       | "invalid_platform_fee"
       | "invalid_creation_reason"
       | "duplicate_financial_obligation"
+      | "legacy_financial_record_requires_review"
       | "existing_financial_state_requires_review",
     message: string,
   ) {
@@ -159,15 +160,20 @@ function resolveFrozenPlatformFeeCents(
   return resolved;
 }
 
-function assertExistingObligation(existing: FinancialObligationPayment[]): FinancialObligationPayment | null {
-  if (existing.length === 0) return null;
-  if (existing.length > 1) {
+function resolveExistingCanonicalObligation(existing: FinancialObligationPayment[]): FinancialObligationPayment | null {
+  const canonical = existing.filter((payment) => payment.obligationKind === CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND);
+  const legacy = existing.filter((payment) => payment.obligationKind !== CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND);
+  if (canonical.length > 1) {
     throw new FinancialObligationError("duplicate_financial_obligation", "Multiple payment rows already reference this activity; reconciliation is required");
   }
-  if (existing[0].status !== "pending" || existing[0].obligationKind !== CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND) {
+  if (legacy.length > 0) {
+    throw new FinancialObligationError("legacy_financial_record_requires_review", "A legacy or unclassified payment record is linked to this activity; canonical creation is blocked pending review");
+  }
+  if (canonical.length === 0) return null;
+  if (canonical[0].status !== "pending") {
     throw new FinancialObligationError("existing_financial_state_requires_review", "Existing payment is not a canonical unpaid obligation; reconciliation is required");
   }
-  return existing[0];
+  return canonical[0];
 }
 
 function fromExisting(obligation: FinancialObligationPayment): FinancialObligationResult {
@@ -188,7 +194,7 @@ export async function previewFinancialObligationForVerifiedActivity(
   repository: FinancialObligationRepository = databaseFinancialObligationRepository,
 ): Promise<Pick<FinancialObligationResult, "driverIncentiveCents" | "platformFeeCents" | "facilityChargeCents">> {
   return repository.transaction(async (tx) => {
-    const existing = assertExistingObligation(await tx.findPaymentsByActivityId(activityId));
+    const existing = resolveExistingCanonicalObligation(await tx.findPaymentsByActivityId(activityId));
     if (existing) {
       const resolved = fromExisting(existing);
       return resolved;
@@ -220,7 +226,7 @@ export async function createFinancialObligationForVerifiedActivity(
   context: FinancialObligationCreationContext = {},
 ): Promise<FinancialObligationResult> {
   return repository.transaction(async (tx) => {
-    const existing = assertExistingObligation(await tx.findPaymentsByActivityId(activityId));
+    const existing = resolveExistingCanonicalObligation(await tx.findPaymentsByActivityId(activityId));
     if (existing) return fromExisting(existing);
 
     const activity = await tx.findActivityById(activityId);
@@ -276,7 +282,7 @@ export async function createFinancialObligationForVerifiedActivity(
       obligationCreationReason: context.reason || null,
     };
     const created = await tx.insertPendingObligation(input);
-    const obligation = created ?? assertExistingObligation(await tx.findPaymentsByActivityId(activity.id));
+    const obligation = created ?? resolveExistingCanonicalObligation(await tx.findPaymentsByActivityId(activity.id));
     if (!obligation) {
       throw new FinancialObligationError("duplicate_financial_obligation", "Unable to create or retrieve the canonical financial obligation");
     }
@@ -290,7 +296,7 @@ export async function createFinancialObligationForVerifiedActivity(
   });
 }
 
-export function createDatabaseFinancialObligationRepository(options: { obligationKindAvailable: boolean }): FinancialObligationRepository {
+export function createDatabaseFinancialObligationRepository(options: { obligationKindAvailable: boolean; canonicalPartialIndexAvailable?: boolean }): FinancialObligationRepository {
   const paymentFields = {
     id: payments.id,
     activityId: payments.activityId,
@@ -342,8 +348,13 @@ export function createDatabaseFinancialObligationRepository(options: { obligatio
       return settings ?? null;
     },
     insertPendingObligation: async (input) => {
-      if (options.obligationKindAvailable) {
-        const [payment] = await tx.insert(payments).values(input).onConflictDoNothing({ target: payments.activityId }).returning({ ...paymentFields, obligationKind: payments.obligationKind });
+      if (options.obligationKindAvailable && options.canonicalPartialIndexAvailable !== false) {
+        const [payment] = await tx.insert(payments).values(input).onConflictDoNothing({
+          target: payments.activityId,
+          // The arbiter predicate must be literal SQL, not a bind parameter:
+          // PostgreSQL has to infer the exact partial unique index at plan time.
+          where: sql`${payments.activityId} IS NOT NULL AND ${payments.obligationKind} = ${sql.raw(`'${CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND}'`)}`,
+        }).returning({ ...paymentFields, obligationKind: payments.obligationKind });
         return payment ? payment as FinancialObligationPayment : null;
       }
       // Creation is blocked by the route capability gate. This branch protects
@@ -354,4 +365,4 @@ export function createDatabaseFinancialObligationRepository(options: { obligatio
 }
 
 // Test-only default. Runtime routes always pass metadata-backed capabilities.
-const databaseFinancialObligationRepository = createDatabaseFinancialObligationRepository({ obligationKindAvailable: true });
+const databaseFinancialObligationRepository = createDatabaseFinancialObligationRepository({ obligationKindAvailable: true, canonicalPartialIndexAvailable: true });

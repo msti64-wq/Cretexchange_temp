@@ -78,7 +78,9 @@ test("workspace translations have complete English and Spanish operational equiv
     "financialWorkspace.unavailableCanonical",
     "financialWorkspace.validation.previewUnavailable",
     "financialWorkspace.validation.auditSchemaUnavailable",
+    "financialWorkspace.validation.canonicalCreationUnavailable",
     "financialWorkspace.auditSchemaUnavailable",
+    "financialWorkspace.canonicalUniquenessPending",
     "financialWorkspace.action.createDraft",
     "financialWorkspace.action.review",
     "financialWorkspace.action.approve",
@@ -144,7 +146,9 @@ test("workspace keeps preview available while fail-closing creation without veri
   assert.match(source, /financial-workspace\/capabilities/);
   assert.match(source, /creationAvailable/);
   assert.match(source, /financialWorkspace\.auditSchemaUnavailable/);
-  assert.match(source, /financialWorkspace\.validation\.auditSchemaUnavailable/);
+  assert.match(source, /financialWorkspace\.canonicalUniquenessPending/);
+  assert.match(source, /creationUnavailableReason/);
+  assert.match(source, /financialWorkspace\.validation\.canonicalCreationUnavailable/);
   assert.match(source, /role="alert"/);
 });
 

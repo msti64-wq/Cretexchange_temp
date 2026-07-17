@@ -5382,6 +5382,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     code: "financial_audit_schema_unavailable",
     message: "Financial obligation creation is temporarily unavailable because required audit storage is not deployed.",
   });
+  const canonicalCreationUnavailable = (res: any, capabilities: Awaited<ReturnType<typeof getFinancialSchemaCapabilities>>) => res.status(503).json({
+    code: capabilities.creationUnavailableReason || "canonical_financial_schema_unavailable",
+    message: capabilities.schemaState === "canonical_index_pending"
+      ? "Canonical financial obligation creation is unavailable until the approved canonical uniqueness migration is deployed."
+      : "Canonical financial obligation creation is temporarily unavailable because the verified schema is not in its final compatible state.",
+  });
   const canonicalFinancialSchemaUnavailable = (res: any) => res.status(503).json({
     code: "canonical_financial_schema_unavailable",
     message: "Canonical financial records are unavailable from the verified schema.",
@@ -5403,6 +5409,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       creationAvailable: capabilities.creationAvailable,
       auditSchemaAvailable: capabilities.auditSchemaAvailable,
       obligationKindAvailable: capabilities.obligationKindAvailable,
+      canonicalPartialIndexAvailable: capabilities.canonicalPartialIndexAvailable,
+      globalActivityIndexPresent: capabilities.globalActivityIndexPresent,
+      schemaState: capabilities.schemaState,
+      creationUnavailableReason: capabilities.creationUnavailableReason,
       stripeTransferEvidenceAvailable: capabilities.stripeTransferEvidenceAvailable,
       stripePaymentIntentEvidenceAvailable: capabilities.stripePaymentIntentEvidenceAvailable,
       stripeChargeEvidenceAvailable: capabilities.stripeChargeEvidenceAvailable,
@@ -5421,7 +5431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const capabilities = await getFinancialSchemaCapabilities();
       return res.json(await previewFinancialObligationForVerifiedActivity(
         activityId,
-        createDatabaseFinancialObligationRepository({ obligationKindAvailable: capabilities.obligationKindAvailable }),
+        createDatabaseFinancialObligationRepository({ obligationKindAvailable: capabilities.obligationKindAvailable, canonicalPartialIndexAvailable: capabilities.canonicalPartialIndexAvailable }),
       ));
     } catch (error) {
       return financialObligationErrorResponse(error, req, res, { route: "GET /api/admin/financial-obligations/preview", actorRole: user.role, startedAt });
@@ -5438,10 +5448,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(422).json({ message: "Financial components are derived by the server", code: "client_amount_override" });
     }
     const capabilities = await getFinancialSchemaCapabilities();
-    if (!capabilities.creationAvailable) return financialAuditSchemaUnavailable(res);
+    if (!capabilities.creationAvailable) return capabilities.auditSchemaAvailable && capabilities.obligationKindAvailable ? canonicalCreationUnavailable(res, capabilities) : financialAuditSchemaUnavailable(res);
     try {
       const reason = buildCanonicalObligationCreationReason(req.body?.reasonCategory, req.body?.supportingDetail);
-      const result = await createFinancialObligationForVerifiedActivity(activityId, createDatabaseFinancialObligationRepository({ obligationKindAvailable: true }), { actorUserId: user.id, reason });
+      const result = await createFinancialObligationForVerifiedActivity(activityId, createDatabaseFinancialObligationRepository({ obligationKindAvailable: true, canonicalPartialIndexAvailable: true }), { actorUserId: user.id, reason });
       return res.status(result.created ? 201 : 200).json({ obligation: { status: result.obligation.status, driverIncentiveCents: result.driverIncentiveCents, platformFeeCents: result.platformFeeCents, facilityChargeCents: result.facilityChargeCents }, created: result.created });
     } catch (error) {
       return financialObligationErrorResponse(error, req, res, { route: "POST /api/admin/financial-obligations/create", actorRole: user.role, startedAt });

@@ -34,6 +34,12 @@ This decision authorizes only read-only visibility and non-executing obligation 
 
 Legacy records may be incomplete or inconsistent and are not evidence of a canonical obligation, approval, receivable, charge, payment, collection, settlement, or Driver entitlement.
 
+## Canonical identity and compatibility
+
+Canonical identity is explicit: only a `payments` row whose `obligation_kind` is `canonical_verified_activity_v1` is a canonical verified-activity obligation. A legacy or null-kind row linked to the same activity is not canonical evidence and remains a governed, review-blocked exception; it is neither converted nor deleted by this workflow.
+
+The future database invariant is one canonical obligation per activity, enforced by a canonical-only partial unique index. The current global `payments(activity_id)` uniqueness state is a compatibility state, not proof that the future invariant is deployed. Creation must remain fail-closed until required audit columns, the valid/ready canonical partial index, and removal of the overbroad global index are positively verified. Generic legacy payment writers are not canonical-obligation writers and remain execution-fenced.
+
 ## Operational procedure
 
 1. Open Financial Workspace and review Missing Obligations.

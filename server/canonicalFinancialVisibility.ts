@@ -31,7 +31,7 @@ export function buildCanonicalFinancialMetric(rows: Array<{ incentive: unknown; 
 export async function getCanonicalFinancialVisibilitySummary(): Promise<CanonicalFinancialVisibilitySummary> {
   const [missingRows, obligationRows, batchRows, exceptionRows] = await Promise.all([
     db.select({ activityId: washoutActivities.id, amount: washoutActivities.amount, verifiedAt: washoutActivities.verifiedAt, driverId: drivers.id, locationId: washoutLocations.id, facilityId: owners.id, paymentId: payments.id })
-      .from(washoutActivities).leftJoin(payments, eq(payments.activityId, washoutActivities.id)).leftJoin(drivers, eq(drivers.id, washoutActivities.driverId)).leftJoin(washoutLocations, eq(washoutLocations.id, washoutActivities.locationId)).leftJoin(owners, eq(owners.id, washoutLocations.ownerId)).where(eq(washoutActivities.status, "verified")),
+      .from(washoutActivities).leftJoin(payments, and(eq(payments.activityId, washoutActivities.id), eq(payments.obligationKind, CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND))).leftJoin(drivers, eq(drivers.id, washoutActivities.driverId)).leftJoin(washoutLocations, eq(washoutLocations.id, washoutActivities.locationId)).leftJoin(owners, eq(owners.id, washoutLocations.ownerId)).where(eq(washoutActivities.status, "verified")),
     db.select({ amount: payments.amount, processingFee: payments.processingFee, membershipId: financialBatchMemberships.id })
       .from(payments).leftJoin(financialBatchMemberships, and(eq(financialBatchMemberships.paymentId, payments.id), eq(financialBatchMemberships.state, "active")))
       .where(and(

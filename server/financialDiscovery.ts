@@ -274,7 +274,10 @@ export async function listVerifiedActivitiesWithoutCanonicalObligations(
   for (const group of groupRecords(records)) {
     const record = group[0];
     const activity = record.activity;
-    if (!activity || activity.status !== "verified" || group.some((entry) => entry.payment)) continue;
+    if (!activity || activity.status !== "verified") continue;
+    // A canonical row satisfies the relationship. A legacy row does not: it is
+    // deliberately surfaced by the exception queue and remains review-blocked.
+    if (group.some((entry) => entry.payment?.obligationKind === CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND)) continue;
     if (exceptionForMissingActivity(group, now)) continue;
     items.push({
       reference: safeReference("activity", activity.id),
@@ -420,7 +423,7 @@ function displayName(firstName: string | null, lastName: string | null): string 
 function mapRow(row: any): FinancialDiscoveryRecord {
   return {
     activity: row.activityId ? { id: row.activityId, status: row.activityStatus, amount: row.activityAmount, verifiedAt: row.activityVerifiedAt, createdAt: row.activityCreatedAt, driverId: row.activityDriverId, locationId: row.activityLocationId } : null,
-    payment: row.paymentId ? { id: row.paymentId, activityId: row.paymentActivityId, driverId: row.paymentDriverId, ownerId: row.paymentOwnerId, amount: row.paymentAmount, processingFee: row.paymentProcessingFee, status: row.paymentStatus, batchId: row.paymentBatchId, paidAt: row.paymentPaidAt, createdAt: row.paymentCreatedAt, hasTransferEvidence: Boolean(row.paymentHasTransferEvidence) } : null,
+    payment: row.paymentId ? { id: row.paymentId, activityId: row.paymentActivityId, driverId: row.paymentDriverId, ownerId: row.paymentOwnerId, amount: row.paymentAmount, processingFee: row.paymentProcessingFee, status: row.paymentStatus, obligationKind: row.paymentObligationKind, batchId: row.paymentBatchId, paidAt: row.paymentPaidAt, createdAt: row.paymentCreatedAt, hasTransferEvidence: Boolean(row.paymentHasTransferEvidence) } : null,
     driver: row.driverId ? { id: row.driverId, displayName: displayName(row.driverFirstName, row.driverLastName) } : null,
     location: row.locationId ? { id: row.locationId, ownerId: row.locationOwnerId, name: row.locationName } : null,
     facility: row.facilityId ? { id: row.facilityId, name: row.facilityName, billingTimezone: row.facilityBillingTimezone } : null,
@@ -436,7 +439,7 @@ const databaseFinancialDiscoveryRepository: FinancialDiscoveryRepository = {
       activityId: washoutActivities.id, activityStatus: washoutActivities.status, activityAmount: washoutActivities.amount, activityVerifiedAt: washoutActivities.verifiedAt, activityCreatedAt: washoutActivities.createdAt, activityDriverId: washoutActivities.driverId, activityLocationId: washoutActivities.locationId,
       // `stripe_transfer_id` is migration-proven. The schema has no equivalent
       // proof for payment-intent or charge columns, so they are never queried.
-      paymentId: payments.id, paymentActivityId: payments.activityId, paymentDriverId: payments.driverId, paymentOwnerId: payments.ownerId, paymentAmount: payments.amount, paymentProcessingFee: payments.processingFee, paymentStatus: payments.status, paymentBatchId: payments.batchId, paymentPaidAt: payments.paidAt, paymentCreatedAt: payments.createdAt,
+      paymentId: payments.id, paymentActivityId: payments.activityId, paymentDriverId: payments.driverId, paymentOwnerId: payments.ownerId, paymentAmount: payments.amount, paymentProcessingFee: payments.processingFee, paymentStatus: payments.status, paymentObligationKind: payments.obligationKind, paymentBatchId: payments.batchId, paymentPaidAt: payments.paidAt, paymentCreatedAt: payments.createdAt,
       paymentHasTransferEvidence: sql<boolean>`${payments.stripeTransferId} IS NOT NULL`,
       driverId: drivers.id, driverFirstName: users.firstName, driverLastName: users.lastName,
       locationId: washoutLocations.id, locationOwnerId: washoutLocations.ownerId, locationName: washoutLocations.name,

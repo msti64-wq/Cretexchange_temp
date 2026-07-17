@@ -2113,6 +2113,10 @@ export class DatabaseStorage implements IStorage {
 
   // Payment operations
   async createPayment(payment: InsertPayment & { tipAmountCents?: number | string | null }): Promise<Payment> {
+    // This historical generic writer cannot establish a canonical obligation.
+    // It is permanently fenced so an active flow cannot create an unclassified
+    // `payments` row by bypassing the dedicated canonical service.
+    assertLegacyFinancialExecutionRetired("facility_collection", "storage.createPayment");
     const {
       tipAmountCents,
       deferReason: _deferReason,

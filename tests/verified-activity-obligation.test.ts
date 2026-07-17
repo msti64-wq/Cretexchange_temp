@@ -76,7 +76,7 @@ function repositoryFixture(options: {
         findSystemSettings: async () => options.systemFee === undefined ? { platformWashoutFee: "5.00" } : options.systemFee === null ? null : { platformWashoutFee: options.systemFee },
         insertPendingObligation: async (input: Omit<StoredPayment, "id">) => {
           calls.insert += 1;
-          if (records.some((record) => record.activityId === input.activityId)) return null;
+          if (records.some((record) => record.activityId === input.activityId && record.obligationKind === CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND)) return null;
           const payment: StoredPayment = { ...input, id: `payment_${nextId++}` };
           records.push(payment);
           return payment;
@@ -139,7 +139,9 @@ test("runtime preview repository selects a pre-0020-safe projection and avoids u
   assert.doesNotMatch(paymentLookup, /obligationCreationReason:\s*payments\.obligationCreationReason/);
   assert.doesNotMatch(paymentLookup, /stripePaymentIntentId:\s*payments\.stripePaymentIntentId/);
   assert.doesNotMatch(paymentLookup, /stripeChargeId:\s*payments\.stripeChargeId/);
-  assert.match(repository, /onConflictDoNothing\(\{ target: payments\.activityId \}\)/);
+  assert.match(repository, /onConflictDoNothing\(\{/);
+  assert.match(repository, /target: payments\.activityId/);
+  assert.match(repository, /where: sql`\$\{payments\.activityId\} IS NOT NULL AND \$\{payments\.obligationKind\} = \$\{sql\.raw\(`'\$\{CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND\}'`\)\}`/);
 });
 
 test("actual route registration authorizes preview before opaque token resolution and logs only safe runtime metadata", { concurrency: false }, async () => {
@@ -265,7 +267,7 @@ test("rejects malformed, negative, or fractional-cent authoritative platform fee
   assert.equal(zeroFee.platformFeeCents, 0);
 });
 
-test("is idempotent for a canonical pending obligation and rejects legacy duplicate or processed states", async () => {
+test("is idempotent for a canonical pending obligation and review-blocks legacy-linked records", async () => {
   const fixture = repositoryFixture();
   const first = await createFinancialObligationForVerifiedActivity("activity_1", fixture.repository, { actorUserId: "admin_original", reason: "original review" });
   const repeated = await createFinancialObligationForVerifiedActivity("activity_1", fixture.repository, { actorUserId: "admin_retry", reason: "retry must not overwrite" });
@@ -276,7 +278,7 @@ test("is idempotent for a canonical pending obligation and rejects legacy duplic
   assert.equal(fixture.records.length, 1);
 
   await expectCode(createFinancialObligationForVerifiedActivity("activity_1", repositoryFixture({ existing: [{ ...first.obligation, status: "paid" }] }).repository), "existing_financial_state_requires_review");
-  await expectCode(createFinancialObligationForVerifiedActivity("activity_1", repositoryFixture({ existing: [{ ...first.obligation, obligationKind: null }] }).repository), "existing_financial_state_requires_review");
+  await expectCode(createFinancialObligationForVerifiedActivity("activity_1", repositoryFixture({ existing: [{ ...first.obligation, obligationKind: null }] }).repository), "legacy_financial_record_requires_review");
   await expectCode(createFinancialObligationForVerifiedActivity("activity_1", repositoryFixture({ existing: [first.obligation, { ...first.obligation, id: "duplicate" }] }).repository), "duplicate_financial_obligation");
 });
 

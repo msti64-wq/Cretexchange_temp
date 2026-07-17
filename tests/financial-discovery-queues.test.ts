@@ -85,19 +85,34 @@ function responseSpy() {
   };
 }
 
-test("includes only exactly verified activities with no financial row in the missing-obligation queue", async () => {
+test("includes only exactly verified activities with no canonical obligation in the missing-obligation queue", async () => {
   const fixture = repository([
     record({ activity: { id: "oldest", verifiedAt: "2026-07-10T00:00:00.000Z" } }),
     record({ activity: { id: "pending", status: "pending" } }),
     record({ activity: { id: "rejected", status: "rejected" } }),
     record({ activity: { id: "legacy_alias", status: "approved" } }),
     record({ activity: { id: "canonical" }, payment: { id: "payment_canonical", activityId: "canonical" } }),
+    record({ activity: { id: "legacy" }, payment: { id: "payment_legacy", activityId: "legacy", obligationKind: null } }),
   ]);
   const result = await listVerifiedActivitiesWithoutCanonicalObligations(filters(), fixture.repository, NOW);
   assert.equal(result.items.length, 1);
   assert.equal(result.items[0].classification, "missing_canonical_obligation");
   assert.equal(result.items[0].activityReference, "activity_oldest");
   assert.equal(resolveFinancialWorkspaceSelectionToken((result.items[0] as any).selectionToken, NOW.getTime()), "oldest");
+});
+
+test("database discovery projects and maps obligation kind before classifying legacy-linked activity", async () => {
+  const source = await import("node:fs/promises").then(({ readFile }) => readFile(new URL("../server/financialDiscovery.ts", import.meta.url), "utf8"));
+  assert.match(source, /paymentObligationKind: payments\.obligationKind/);
+  assert.match(source, /obligationKind: row\.paymentObligationKind/);
+  const fixture = repository([record({ activity: { id: "legacy" }, payment: { id: "legacy_payment", activityId: "legacy", obligationKind: null } })]);
+  const [missing, exceptions] = await Promise.all([
+    listVerifiedActivitiesWithoutCanonicalObligations(filters(), fixture.repository, NOW),
+    listCanonicalFinancialExceptions(filters(), fixture.repository, NOW),
+  ]);
+  assert.equal(missing.items.length, 0);
+  assert.equal(exceptions.items[0].exceptionCategory, "legacy_payment_conflict");
+  assert.match(String(exceptions.items[0].explanation), /legacy or unclassified/i);
 });
 
 test("selected Missing Obligations tokens are opaque, activity-bound, tamper-safe, and expire", () => {

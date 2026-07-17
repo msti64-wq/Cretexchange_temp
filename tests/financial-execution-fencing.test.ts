@@ -478,6 +478,15 @@ test("Phase 2 obligation creation remains non-executing and available", () => {
   }
 });
 
+test("generic payment creation is permanently fenced and cannot write an unclassified canonical-looking row", () => {
+  const storage = readFileSync(new URL("../server/storage.ts", import.meta.url), "utf8");
+  const start = storage.indexOf("async createPayment(payment:");
+  const body = storage.slice(start, storage.indexOf("async getPaymentById", start));
+  assert.ok(start >= 0);
+  assert.match(body, /assertLegacyFinancialExecutionRetired\("facility_collection", "storage\.createPayment"\)/);
+  assert.ok(body.indexOf("assertLegacyFinancialExecutionRetired") < body.indexOf("db.insert(payments)"));
+});
+
 test("every exported reconciliation mutation has an internal execution fence", () => {
   const service = readFileSync(new URL("../server/reconciliationService.ts", import.meta.url), "utf8");
   for (const functionName of [

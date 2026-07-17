@@ -438,10 +438,13 @@ export const payments = pgTable("payments", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
-  // A payment row is the canonical financial obligation for exactly one activity.
-  // The database constraint is the concurrency boundary; do not replace it with
-  // an application-only existence check.
-  oneObligationPerActivity: uniqueIndex("uniq_payments_activity_obligation").on(table.activityId),
+  // Only versioned canonical obligations participate in the one-obligation
+  // invariant. Historical and unclassified payment rows are deliberately
+  // outside this future constraint and remain review-blocked by application
+  // policy; they must never be inferred to be canonical.
+  oneCanonicalVerifiedActivityObligation: uniqueIndex("uniq_payments_canonical_verified_activity_obligation")
+    .on(table.activityId)
+    .where(sql`${table.activityId} IS NOT NULL AND ${table.obligationKind} = 'canonical_verified_activity_v1'`),
   canonicalDiscoveryIndex: index("idx_payments_obligation_kind_status_created").on(table.obligationKind, table.status, table.createdAt),
 }));
 

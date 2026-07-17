@@ -28,7 +28,7 @@ It does not authorize Stripe collection, Treasury settlement, PaymentIntents, pa
 
 - **Wallet-authoritative Driver settlement:** a Driver wallet may be credited only by a later authoritative entitlement process, never by activity verification, obligation creation, batch construction, or batch approval.
 - **Separated rails:** Facility collection and Driver settlement are separate future rails. A Facility charge is not Driver compensation.
-- **One obligation per verified activity:** `payments.activity_id` remains the canonical obligation boundary.
+- **One obligation per verified activity:** the canonical boundary is `payments.activity_id` together with `obligation_kind = canonical_verified_activity_v1`; legacy/null-kind rows do not satisfy it.
 - **One active membership per obligation:** an eligible obligation may have one active canonical batch membership only.
 - **Frozen values and membership:** batch totals use obligation snapshots, never mutable rates, settings, or UI calculations.
 - **Append-only history:** important actions and releases are recorded, never overwritten or deleted.
@@ -49,6 +49,8 @@ It does not authorize Stripe collection, Treasury settlement, PaymentIntents, pa
 | future version | A separately defined obligation model | Ineligible until explicitly supported |
 
 The discriminator must be indexed with status and active-membership lookup fields. The Phase 2 obligation service must write `canonical_verified_activity_v1` transactionally. Existing rows remain `legacy`/null unless a separately approved, read-only classification process determines otherwise; no migration may silently reclassify them. Discovery, reports, and construction queries must filter by the discriminator.
+
+The target uniqueness boundary is a valid, ready partial unique index over `payments(activity_id)` where `activity_id IS NOT NULL` and `obligation_kind = 'canonical_verified_activity_v1'`. A pre-existing global activity index is a transitional compatibility state: creation must remain fail-closed until the partial index is verified and the global index is removed under separately approved migration controls. Generic legacy payment writers remain permanently execution-fenced and cannot create canonical obligations.
 
 ## 6. Canonical obligation model
 
