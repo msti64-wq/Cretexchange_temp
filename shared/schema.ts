@@ -525,6 +525,21 @@ export const billingBatches = pgTable("billing_batches", {
   exceptionCount: integer("exception_count"),
   canonicalCreatedBy: varchar("canonical_created_by").references(() => users.id, { onDelete: "set null" }),
   canonicalCreationReason: text("canonical_creation_reason"),
+  // Phase 3B.3 lifecycle metadata. These fields describe governance-only
+  // review decisions; they are not payment, collection, settlement, or
+  // provider execution fields.
+  reviewBy: varchar("review_by").references(() => users.id, { onDelete: "set null" }),
+  reviewRole: varchar("review_role"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewReason: text("review_reason"),
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: "set null" }),
+  approvedRole: varchar("approved_role"),
+  approvedAt: timestamp("approved_at"),
+  approvalReason: text("approval_reason"),
+  cancelledBy: varchar("cancelled_by").references(() => users.id, { onDelete: "set null" }),
+  cancelledRole: varchar("cancelled_role"),
+  cancelledAt: timestamp("cancelled_at"),
+  cancellationReason: text("cancellation_reason"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -537,6 +552,7 @@ export const billingBatches = pgTable("billing_batches", {
   canonicalIdempotencyUnique: uniqueIndex("uniq_billing_batches_canonical_idempotency").on(table.idempotencyKey),
   canonicalFacilityPeriodRevisionUnique: uniqueIndex("uniq_billing_batches_canonical_facility_period_revision").on(table.ownerId, table.batchModelVersion, table.periodStart, table.revision),
   canonicalStatePeriodIndex: index("idx_billing_batches_canonical_state_period").on(table.batchModelVersion, table.canonicalState, table.periodStart),
+  canonicalLifecycleActorIndex: index("idx_billing_batches_canonical_state_updated").on(table.batchModelVersion, table.canonicalState, table.updatedAt),
   canonicalFrozenTotalsCheck: check("chk_billing_batches_canonical_frozen_totals", sql`
     ${table.batchModelVersion} IS NULL OR ${table.batchModelVersion} <> 'canonical_financial_batch_v1' OR (
       ${table.canonicalReference} IS NOT NULL AND ${table.canonicalState} IN ('draft', 'ready_for_review', 'approved', 'cancelled')
@@ -546,6 +562,19 @@ export const billingBatches = pgTable("billing_batches", {
       AND ${table.frozenPlatformFeeCents} IS NOT NULL AND ${table.frozenPlatformFeeCents} >= 0
       AND ${table.frozenFacilityChargeCents} = ${table.frozenDriverIncentiveCents} + ${table.frozenPlatformFeeCents}
       AND ${table.paymentCount} >= 0 AND ${table.exceptionCount} >= 0
+    )
+  `),
+  canonicalLifecycleMetadataCheck: check("chk_billing_batches_canonical_lifecycle_metadata", sql`
+    ${table.batchModelVersion} IS NULL OR ${table.batchModelVersion} <> 'canonical_financial_batch_v1' OR (
+      (${table.canonicalState} NOT IN ('ready_for_review', 'approved') OR (
+        ${table.reviewBy} IS NOT NULL AND ${table.reviewRole} IS NOT NULL AND ${table.reviewedAt} IS NOT NULL AND ${table.reviewReason} IS NOT NULL
+      ))
+      AND (${table.canonicalState} <> 'approved' OR (
+        ${table.approvedBy} IS NOT NULL AND ${table.approvedRole} IS NOT NULL AND ${table.approvedAt} IS NOT NULL AND ${table.approvalReason} IS NOT NULL
+      ))
+      AND (${table.canonicalState} <> 'cancelled' OR (
+        ${table.cancelledBy} IS NOT NULL AND ${table.cancelledRole} IS NOT NULL AND ${table.cancelledAt} IS NOT NULL AND ${table.cancellationReason} IS NOT NULL
+      ))
     )
   `),
 }));

@@ -86,6 +86,7 @@ import {
 import {
   createAdminFinancialBatchDetailHandler,
   createAdminFinancialBatchDraftHandler,
+  createAdminFinancialBatchLifecycleHandler,
   createAdminFinancialBatchListHandler,
 } from "./financialBatchDrafts";
 import {
@@ -5420,6 +5421,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/financial-batches', isAuthenticated, createAdminFinancialBatchListHandler(financialBatchDependencies) as any);
   app.get('/api/admin/financial-batches/:id', isAuthenticated, createAdminFinancialBatchDetailHandler(financialBatchDependencies) as any);
   app.post('/api/admin/financial-batches', isAuthenticated, createAdminFinancialBatchDraftHandler(financialBatchDependencies) as any);
+  app.post('/api/admin/financial-batches/:id/ready-for-review', isAuthenticated, createAdminFinancialBatchLifecycleHandler("ready_for_review", financialBatchDependencies) as any);
+  app.post('/api/admin/financial-batches/:id/approve', isAuthenticated, createAdminFinancialBatchLifecycleHandler("approve", financialBatchDependencies) as any);
+  app.post('/api/admin/financial-batches/:id/cancel', isAuthenticated, createAdminFinancialBatchLifecycleHandler("cancel", financialBatchDependencies) as any);
 
   app.post('/api/admin/payments/process-awaiting-driver-stripe', isAuthenticated, async (req: any, res) => {
     try {
@@ -14106,6 +14110,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return;
             }
 
+            // Canonical Phase 3B batches have no provider linkage. Refuse an
+            // unexpected legacy webhook reference rather than allowing legacy
+            // completion code to mutate governance-only batch history.
+            if (batch.batchModelVersion) {
+              console.warn(`⚠️ [${environment}] Ignoring legacy webhook for non-legacy batch ${batchId}`);
+              return;
+            }
+
             if (batch.status === 'completed') {
               console.log(`ℹ️ [${environment}] Batch ${batchId} already completed - webhook may be duplicate`);
               return;
@@ -14142,16 +14154,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`❌ [${environment}] Batch payment failed for batch ${batchId}, PaymentIntent: ${failedPaymentIntent.id}, Reason: ${failureReason}`);
           
           try {
-            // Update batch status to failed
+            // Read before any legacy mutation so canonical Phase 3B batches
+            // remain unreachable even if an external metadata reference is bad.
+            const batch = await storage.getBillingBatch(batchId);
+            if (batch?.batchModelVersion) {
+              console.warn(`⚠️ [${environment}] Ignoring legacy webhook for non-legacy batch ${batchId}`);
+              return;
+            }
+            // Update only a legacy batch status after the explicit model guard.
             await storage.updateBillingBatchStatus(
-              batchId, 
-              'failed', 
-              failedPaymentIntent.id, 
+              batchId,
+              'failed',
+              failedPaymentIntent.id,
               failureReason
             );
-
-            // Get batch details to notify affected drivers
-            const batch = await storage.getBillingBatch(batchId);
             if (batch) {
               // Get the owner's information for notifications
               const owner = await storage.getOwner(batch.ownerId);

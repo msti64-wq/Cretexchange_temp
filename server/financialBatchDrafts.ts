@@ -18,6 +18,7 @@ import { CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND, isPlatformFinancialOperati
 
 export const CANONICAL_FINANCIAL_BATCH_MODEL_VERSION = "canonical_financial_batch_v1";
 export const CANONICAL_FINANCIAL_BATCH_STATE_DRAFT = "draft";
+export type CanonicalFinancialBatchState = "draft" | "ready_for_review" | "approved" | "cancelled";
 const WEEKLY_CADENCE = "weekly";
 const MAX_REASON_LENGTH = 500;
 
@@ -63,7 +64,7 @@ export type CanonicalFinancialBatch = {
   id: string;
   reference: string;
   ownerId: string;
-  state: "draft";
+  state: CanonicalFinancialBatchState;
   modelVersion: typeof CANONICAL_FINANCIAL_BATCH_MODEL_VERSION;
   period: CanonicalBatchPeriod;
   revision: number;
@@ -75,6 +76,15 @@ export type CanonicalFinancialBatch = {
   createdAt: Date;
   createdBy: string;
   creationReason: string;
+  reviewedBy?: string | null;
+  reviewedAt?: Date | null;
+  reviewReason?: string | null;
+  approvedBy?: string | null;
+  approvedAt?: Date | null;
+  approvalReason?: string | null;
+  cancelledBy?: string | null;
+  cancelledAt?: Date | null;
+  cancellationReason?: string | null;
 };
 
 export type CanonicalBatchMembershipInput = {
@@ -412,6 +422,15 @@ function mapBatch(row: any): CanonicalFinancialBatch {
     createdAt: row.createdAt,
     createdBy: row.canonicalCreatedBy,
     creationReason: row.canonicalCreationReason,
+    reviewedBy: row.reviewBy,
+    reviewedAt: row.reviewedAt,
+    reviewReason: row.reviewReason,
+    approvedBy: row.approvedBy,
+    approvedAt: row.approvedAt,
+    approvalReason: row.approvalReason,
+    cancelledBy: row.cancelledBy,
+    cancelledAt: row.cancelledAt,
+    cancellationReason: row.cancellationReason,
   };
 }
 
@@ -512,6 +531,274 @@ const databaseFinancialBatchDraftRepository: FinancialBatchDraftRepository = {
   },
 };
 
+type CanonicalBatchLifecycleAction = "ready_for_review" | "approve" | "cancel";
+
+export type CanonicalBatchLifecycleRequest = {
+  batchId: string;
+  expectedState: CanonicalFinancialBatchState;
+  reason: string;
+  approvedCancellationConfirmed?: boolean;
+  cancellationCategory?: string;
+};
+
+export class FinancialBatchLifecycleError extends Error {
+  constructor(
+    readonly code:
+      | "FINANCIAL_BATCH_NOT_FOUND"
+      | "FINANCIAL_BATCH_INVALID_STATE"
+      | "FINANCIAL_BATCH_EXCEPTION_BLOCKED"
+      | "FINANCIAL_BATCH_TOTAL_MISMATCH"
+      | "FINANCIAL_BATCH_MEMBERSHIP_MISMATCH"
+      | "FINANCIAL_BATCH_ALREADY_APPROVED"
+      | "FINANCIAL_BATCH_ALREADY_CANCELLED"
+      | "FINANCIAL_BATCH_EXECUTION_CONFLICT"
+      | "FINANCIAL_BATCH_MODEL_UNSUPPORTED"
+      | "FINANCIAL_BATCH_INVALID_REQUEST",
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+type LifecycleBatchRecord = CanonicalFinancialBatch & {
+  legacyStatus: string | null;
+  hasExecutionIdentifiers: boolean;
+  processingStartedAt: Date | null;
+  completedAt: Date | null;
+};
+
+type LifecycleMembership = CanonicalBatchMembershipInput & {
+  id: string;
+  state: string;
+  batchRevision: number;
+};
+
+type FinancialBatchLifecycleTransaction = {
+  findBatch(batchId: string): Promise<LifecycleBatchRecord | null>;
+  listMemberships(batchId: string): Promise<LifecycleMembership[]>;
+  listCandidates(ownerId: string): Promise<CanonicalBatchCandidate[]>;
+  unresolvedExceptionCount(batchId: string): Promise<number>;
+  guardedTransition(input: {
+    batchId: string;
+    expectedState: CanonicalFinancialBatchState;
+    nextState: CanonicalFinancialBatchState;
+    actor: CanonicalBatchDraftContext;
+    reason: string;
+  }): Promise<LifecycleBatchRecord | null>;
+  releaseMemberships(batch: CanonicalFinancialBatch, actor: CanonicalBatchDraftContext, reason: string): Promise<LifecycleMembership[]>;
+  appendEvent(batch: CanonicalFinancialBatch, eventType: string, actor: CanonicalBatchDraftContext, reason: string, priorState: CanonicalFinancialBatchState, safeMetadata?: Record<string, string>): Promise<void>;
+  recordExceptions(batch: CanonicalFinancialBatch, exceptions: CanonicalBatchException[]): Promise<void>;
+};
+
+export type FinancialBatchLifecycleRepository = {
+  transaction<T>(run: (tx: FinancialBatchLifecycleTransaction) => Promise<T>): Promise<T>;
+};
+
+export type CanonicalBatchLifecycleResult = { batch: CanonicalFinancialBatch; transitioned: boolean; releasedMemberships: number };
+
+function lifecycleRequired(value: unknown, name: string, max = MAX_REASON_LENGTH) {
+  if (typeof value !== "string" || !value.trim() || value.trim().length > max) {
+    throw new FinancialBatchLifecycleError("FINANCIAL_BATCH_INVALID_REQUEST", `A valid ${name} is required`);
+  }
+  return value.trim();
+}
+
+function transitionTarget(action: CanonicalBatchLifecycleAction): CanonicalFinancialBatchState {
+  return action === "ready_for_review" ? "ready_for_review" : action === "approve" ? "approved" : "cancelled";
+}
+
+function permittedTransition(from: CanonicalFinancialBatchState, action: CanonicalBatchLifecycleAction) {
+  return (action === "ready_for_review" && from === "draft")
+    || (action === "approve" && from === "ready_for_review")
+    || (action === "cancel" && ["draft", "ready_for_review", "approved"].includes(from));
+}
+
+function lifecycleNextActions(state: CanonicalFinancialBatchState): string[] {
+  if (state === "draft") return ["move_to_review", "cancel"];
+  if (state === "ready_for_review") return ["approve", "cancel"];
+  if (state === "approved") return ["cancel_non_executed"];
+  return [];
+}
+
+function validateLifecycleIntegrity(
+  batch: LifecycleBatchRecord,
+  memberships: LifecycleMembership[],
+  candidates: CanonicalBatchCandidate[],
+  unresolvedExceptions: number,
+) {
+  const issues: CanonicalBatchException[] = [];
+  const add = (paymentId: string | null, category: string) => issues.push({ paymentId, category, safeReference: safeReference("obligation", paymentId) });
+  if (batch.modelVersion !== CANONICAL_FINANCIAL_BATCH_MODEL_VERSION) add(null, "unknown_batch_model");
+  if (!Number.isSafeInteger(batch.revision) || batch.revision < 1) add(null, "invalid_batch_revision");
+  if (batch.hasExecutionIdentifiers || batch.processingStartedAt || batch.completedAt) add(null, "execution_contaminated_batch");
+  if (!memberships.length) add(null, "membership_count_mismatch");
+  const active = memberships.filter((membership) => membership.state === "active");
+  if (active.length !== memberships.length || active.length !== batch.obligationCount) add(null, "membership_count_mismatch");
+  const frozen = totals(active);
+  if (
+    frozen.incentive !== batch.frozenDriverIncentiveCents
+    || frozen.fee !== batch.frozenPlatformFeeCents
+    || frozen.facility !== batch.frozenFacilityChargeCents
+    || frozen.facility !== frozen.incentive + frozen.fee
+  ) add(null, "total_mismatch");
+  const candidateByPayment = new Map(candidates.map((candidate) => [candidate.payment.id, candidate]));
+  for (const membership of active) {
+    if (membership.batchRevision !== batch.revision) {
+      add(membership.paymentId, "membership_revision_mismatch");
+      continue;
+    }
+    const candidate = candidateByPayment.get(membership.paymentId);
+    if (!candidate) {
+      add(membership.paymentId, "missing_obligation_relationship");
+      continue;
+    }
+    // The active membership under inspection is expected. Clear it only for
+    // eligibility re-validation; every other canonical claim is still caught
+    // by the database partial unique index and guarded lifecycle transaction.
+    const classified = classifyCandidate({ ...candidate, activeMembershipId: null }, batch.period);
+    if (classified.exception) add(membership.paymentId, classified.exception.category);
+    if (
+      membership.frozenDriverIncentiveCents !== strictCents(candidate.payment.amount)
+      || membership.frozenPlatformFeeCents !== strictCents(candidate.payment.processingFee)
+    ) add(membership.paymentId, "membership_snapshot_mismatch");
+  }
+  if (unresolvedExceptions > 0) add(null, "unresolved_material_exception");
+  return issues;
+}
+
+function lifecycleErrorFor(batch: LifecycleBatchRecord, issues: CanonicalBatchException[]) {
+  if (batch.modelVersion !== CANONICAL_FINANCIAL_BATCH_MODEL_VERSION) return new FinancialBatchLifecycleError("FINANCIAL_BATCH_MODEL_UNSUPPORTED", "The batch model is not supported");
+  if (issues.some((issue) => issue.category === "execution_contaminated_batch" || issue.category === "execution_contaminated_obligation")) return new FinancialBatchLifecycleError("FINANCIAL_BATCH_EXECUTION_CONFLICT", "The batch has execution evidence and cannot be changed");
+  if (issues.some((issue) => issue.category === "total_mismatch" || issue.category === "membership_snapshot_mismatch")) return new FinancialBatchLifecycleError("FINANCIAL_BATCH_TOTAL_MISMATCH", "Frozen totals do not match canonical membership snapshots");
+  if (issues.some((issue) => issue.category.includes("membership"))) return new FinancialBatchLifecycleError("FINANCIAL_BATCH_MEMBERSHIP_MISMATCH", "Canonical batch membership is inconsistent");
+  return new FinancialBatchLifecycleError("FINANCIAL_BATCH_EXCEPTION_BLOCKED", "The canonical batch has unresolved material exceptions");
+}
+
+/**
+ * Changes only the Phase 3B governance state. It never changes a payment,
+ * wallet, provider, scheduling, collection, settlement, or execution record.
+ */
+export async function transitionCanonicalFinancialBatch(
+  action: CanonicalBatchLifecycleAction,
+  input: CanonicalBatchLifecycleRequest,
+  actor: CanonicalBatchDraftContext,
+  repository: FinancialBatchLifecycleRepository = databaseFinancialBatchLifecycleRepository,
+): Promise<CanonicalBatchLifecycleResult> {
+  if (!isPlatformFinancialOperationsRole(actor.actorRole)) throw new FinancialBatchLifecycleError("FINANCIAL_BATCH_INVALID_REQUEST", "Platform Operations authority is required");
+  const batchId = lifecycleRequired(input.batchId, "batch identifier", 128);
+  const reason = lifecycleRequired(input.reason, "reason");
+  const expectedState = input.expectedState;
+  if (!["draft", "ready_for_review", "approved", "cancelled"].includes(expectedState)) throw new FinancialBatchLifecycleError("FINANCIAL_BATCH_INVALID_REQUEST", "A valid expected state is required");
+  if (action === "cancel" && expectedState === "approved") {
+    if (input.approvedCancellationConfirmed !== true || !input.cancellationCategory || !String(input.cancellationCategory).trim() || String(input.cancellationCategory).trim().length > 100) {
+      throw new FinancialBatchLifecycleError("FINANCIAL_BATCH_INVALID_REQUEST", "Approved cancellation requires explicit confirmation and a reason category");
+    }
+  }
+  const target = transitionTarget(action);
+  return repository.transaction(async (tx) => {
+    const batch = await tx.findBatch(batchId);
+    if (!batch) throw new FinancialBatchLifecycleError("FINANCIAL_BATCH_NOT_FOUND", "Canonical financial batch not found");
+    if (batch.modelVersion !== CANONICAL_FINANCIAL_BATCH_MODEL_VERSION) throw new FinancialBatchLifecycleError("FINANCIAL_BATCH_MODEL_UNSUPPORTED", "The batch model is not supported");
+    if (batch.state === target) return { batch, transitioned: false, releasedMemberships: 0 };
+    if (batch.state === "cancelled") throw new FinancialBatchLifecycleError("FINANCIAL_BATCH_ALREADY_CANCELLED", "Cancelled batches are terminal");
+    if (batch.state === "approved" && action !== "cancel") throw new FinancialBatchLifecycleError("FINANCIAL_BATCH_ALREADY_APPROVED", "Approved batches are immutable");
+    if (batch.state !== expectedState || !permittedTransition(batch.state, action)) throw new FinancialBatchLifecycleError("FINANCIAL_BATCH_INVALID_STATE", "The batch is not in the required lifecycle state");
+    const [memberships, candidates, unresolvedExceptions] = await Promise.all([
+      tx.listMemberships(batch.id), tx.listCandidates(batch.ownerId), tx.unresolvedExceptionCount(batch.id),
+    ]);
+    const issues = validateLifecycleIntegrity(batch, memberships, candidates, unresolvedExceptions);
+    const executionIssue = issues.find((issue) => issue.category === "execution_contaminated_batch" || issue.category === "execution_contaminated_obligation");
+    if (executionIssue) throw lifecycleErrorFor(batch, issues);
+    if (action !== "cancel" && issues.length) throw lifecycleErrorFor(batch, issues);
+    const updated = await tx.guardedTransition({ batchId: batch.id, expectedState, nextState: target, actor, reason });
+    if (!updated) {
+      const raced = await tx.findBatch(batch.id);
+      if (raced?.state === target) return { batch: raced, transitioned: false, releasedMemberships: 0 };
+      throw new FinancialBatchLifecycleError("FINANCIAL_BATCH_INVALID_STATE", "The batch changed concurrently; retry with the current state");
+    }
+    let released: LifecycleMembership[] = [];
+    if (action === "cancel") {
+      // Invalid obligations are released from this cancelled grouping but stay
+      // visible as exceptions. They are never silently reclassified or repaired.
+      const cancellationExceptions = issues.filter((issue) => issue.paymentId !== null);
+      if (cancellationExceptions.length) await tx.recordExceptions(updated, cancellationExceptions);
+      released = await tx.releaseMemberships(updated, actor, reason);
+      for (const membership of released) {
+        await tx.appendEvent(updated, "membership_released", actor, reason, expectedState, { obligationReference: safeReference("obligation", membership.paymentId) });
+      }
+    }
+    await tx.appendEvent(updated, target, actor, reason, expectedState, action === "cancel" && expectedState === "approved" ? { cancellationCategory: String(input.cancellationCategory).trim() } : undefined);
+    return { batch: updated, transitioned: true, releasedMemberships: released.length };
+  });
+}
+
+const databaseFinancialBatchLifecycleRepository: FinancialBatchLifecycleRepository = {
+  transaction: async (run) => db.transaction(async (tx: any) => run({
+    async findBatch(batchId) {
+      const rows = await tx.select({
+        batch: billingBatches,
+        hasExecutionIdentifiers: sql<boolean>`(${billingBatches.stripePaymentIntentId} IS NOT NULL OR ${billingBatches.stripeBatchTransferId} IS NOT NULL)`,
+      }).from(billingBatches).where(eq(billingBatches.id, batchId)).limit(1);
+      if (!rows[0]) return null;
+      return { ...mapBatch(rows[0].batch), legacyStatus: rows[0].batch.status, hasExecutionIdentifiers: Boolean(rows[0].hasExecutionIdentifiers), processingStartedAt: rows[0].batch.processingStartedAt, completedAt: rows[0].batch.completedAt };
+    },
+    async listMemberships(batchId) {
+      const rows = await tx.select().from(financialBatchMemberships).where(eq(financialBatchMemberships.batchId, batchId));
+      return rows.map((row: any) => ({ id: row.id, paymentId: row.paymentId, state: row.state, batchRevision: row.batchRevision, frozenDriverIncentiveCents: row.frozenDriverIncentiveCents, frozenPlatformFeeCents: row.frozenPlatformFeeCents, frozenFacilityChargeCents: row.frozenFacilityChargeCents }));
+    },
+    async listCandidates(ownerId) {
+      const rows = await tx.select({
+        payment: payments, activity: washoutActivities, driver: drivers, location: washoutLocations, facility: owners, activeMembershipId: financialBatchMemberships.id,
+        hasExecutionIdentifiers: sql<boolean>`(${payments.stripePaymentIntentId} IS NOT NULL OR ${payments.stripeTransferId} IS NOT NULL OR ${payments.stripeChargeId} IS NOT NULL)`,
+      }).from(payments)
+        .leftJoin(washoutActivities, eq(washoutActivities.id, payments.activityId))
+        .leftJoin(drivers, eq(drivers.id, payments.driverId))
+        .leftJoin(washoutLocations, eq(washoutLocations.id, washoutActivities.locationId))
+        .leftJoin(owners, eq(owners.id, payments.ownerId))
+        .leftJoin(financialBatchMemberships, and(eq(financialBatchMemberships.paymentId, payments.id), eq(financialBatchMemberships.state, "active")))
+        .where(eq(payments.ownerId, ownerId));
+      return rows.map((row: any) => ({
+        payment: { ...row.payment, hasExecutionIdentifiers: Boolean(row.hasExecutionIdentifiers) }, activity: row.activity, driver: row.driver,
+        location: row.location, facility: row.facility, activeMembershipId: row.activeMembershipId || null,
+      }));
+    },
+    async unresolvedExceptionCount(batchId) {
+      const rows = await tx.select({ count: sql<number>`count(*)` }).from(financialBatchExceptions).where(and(eq(financialBatchExceptions.batchId, batchId), eq(financialBatchExceptions.status, "open")));
+      return Number(rows[0]?.count || 0);
+    },
+    async guardedTransition(input) {
+      const lifecycleFields = input.nextState === "ready_for_review"
+        ? { canonicalState: input.nextState, reviewBy: input.actor.actorUserId, reviewRole: input.actor.actorRole, reviewedAt: new Date(), reviewReason: input.reason, updatedAt: new Date() }
+        : input.nextState === "approved"
+          ? { canonicalState: input.nextState, approvedBy: input.actor.actorUserId, approvedRole: input.actor.actorRole, approvedAt: new Date(), approvalReason: input.reason, updatedAt: new Date() }
+          : { canonicalState: input.nextState, cancelledBy: input.actor.actorUserId, cancelledRole: input.actor.actorRole, cancelledAt: new Date(), cancellationReason: input.reason, updatedAt: new Date() };
+      const rows = await tx.update(billingBatches).set(lifecycleFields).where(and(
+        eq(billingBatches.id, input.batchId),
+        eq(billingBatches.batchModelVersion, CANONICAL_FINANCIAL_BATCH_MODEL_VERSION),
+        eq(billingBatches.canonicalState, input.expectedState),
+      )).returning();
+      if (!rows[0]) return null;
+      return { ...mapBatch(rows[0]), legacyStatus: rows[0].status, hasExecutionIdentifiers: Boolean(rows[0].stripePaymentIntentId || rows[0].stripeBatchTransferId), processingStartedAt: rows[0].processingStartedAt, completedAt: rows[0].completedAt };
+    },
+    async releaseMemberships(batch, actor, reason) {
+      const rows = await tx.update(financialBatchMemberships).set({ state: "released", releasedAt: new Date(), releasedBy: actor.actorUserId, releaseReason: reason }).where(and(eq(financialBatchMemberships.batchId, batch.id), eq(financialBatchMemberships.state, "active"))).returning();
+      return rows.map((row: any) => ({ id: row.id, paymentId: row.paymentId, state: row.state, batchRevision: row.batchRevision, frozenDriverIncentiveCents: row.frozenDriverIncentiveCents, frozenPlatformFeeCents: row.frozenPlatformFeeCents, frozenFacilityChargeCents: row.frozenFacilityChargeCents }));
+    },
+    async appendEvent(batch, eventType, actor, reason, priorState, safeMetadata) {
+      await tx.insert(financialBatchAuditEvents).values({
+        batchId: batch.id, eventType, actorId: actor.actorUserId, actorRole: actor.actorRole, reason,
+        priorState, newState: batch.state, revision: batch.revision, obligationCount: batch.obligationCount,
+        frozenDriverIncentiveCents: batch.frozenDriverIncentiveCents, frozenPlatformFeeCents: batch.frozenPlatformFeeCents,
+        frozenFacilityChargeCents: batch.frozenFacilityChargeCents, safeMetadata: { modelVersion: batch.modelVersion, reference: batch.reference, ...(safeMetadata || {}) },
+      });
+    },
+    async recordExceptions(batch, exceptions) {
+      if (!exceptions.length) return;
+      await tx.insert(financialBatchExceptions).values(exceptions.map((exception) => ({ batchId: batch.id, paymentId: exception.paymentId, category: exception.category, safeReference: exception.safeReference, status: "open", safeMetadata: { source: "canonical_batch_cancellation" } })));
+    },
+  })),
+};
+
 function safeBatchProjection(batch: CanonicalFinancialBatch) {
   return {
     id: batch.id,
@@ -525,7 +812,15 @@ function safeBatchProjection(batch: CanonicalFinancialBatch) {
     frozenPlatformFeeCents: batch.frozenPlatformFeeCents,
     frozenFacilityChargeCents: batch.frozenFacilityChargeCents,
     exceptionCount: batch.exceptionCount,
-    nextAction: "review_draft_only",
+    nextActions: lifecycleNextActions(batch.state),
+    lifecycle: {
+      reviewActorReference: batch.reviewedBy ? safeReference("operator", batch.reviewedBy) : null,
+      reviewedAt: batch.reviewedAt?.toISOString() || null,
+      approvalActorReference: batch.approvedBy ? safeReference("operator", batch.approvedBy) : null,
+      approvedAt: batch.approvedAt?.toISOString() || null,
+      cancellationActorReference: batch.cancelledBy ? safeReference("operator", batch.cancelledBy) : null,
+      cancelledAt: batch.cancelledAt?.toISOString() || null,
+    },
   };
 }
 
@@ -534,6 +829,7 @@ export type FinancialBatchEndpointDependencies = {
   create?: (request: CanonicalBatchDraftRequest, context: CanonicalBatchDraftContext) => Promise<CanonicalBatchDraftResult>;
   list?: (filters: Required<Pick<CanonicalBatchListFilters, "page" | "pageSize">> & Omit<CanonicalBatchListFilters, "page" | "pageSize">) => Promise<CanonicalFinancialBatch[]>;
   detail?: (batchId: string) => ReturnType<typeof getCanonicalFinancialBatchDetail>;
+  transition?: (action: CanonicalBatchLifecycleAction, request: CanonicalBatchLifecycleRequest, actor: CanonicalBatchDraftContext) => Promise<CanonicalBatchLifecycleResult>;
 };
 
 function authorizedActor(user: { id: string; role?: string | null } | null | undefined) {
@@ -616,6 +912,36 @@ export function createAdminFinancialBatchDetailHandler(dependencies: FinancialBa
       });
     } catch {
       return res.status(503).json({ message: "Canonical financial batch service is unavailable", code: "financial_batch_unavailable" });
+    }
+  };
+}
+
+export function createAdminFinancialBatchLifecycleHandler(action: CanonicalBatchLifecycleAction, dependencies: FinancialBatchEndpointDependencies) {
+  return async (req: any, res: any) => {
+    if (!req.user?.id) return res.status(401).json({ message: "Authentication required", code: "AUTHENTICATION_REQUIRED" });
+    const actor = authorizedActor(await dependencies.getUser(req.user.id));
+    if (!actor) return res.status(403).json({ message: "Platform Operations access required", code: "PLATFORM_OPERATIONS_ACCESS_REQUIRED" });
+    try {
+      const body = req.body || {};
+      const result = await (dependencies.transition || transitionCanonicalFinancialBatch)(action, {
+        batchId: req.params?.id,
+        expectedState: body.expectedState,
+        reason: body.reason,
+        approvedCancellationConfirmed: body.approvedCancellationConfirmed === true,
+        cancellationCategory: body.cancellationCategory,
+      }, actor);
+      return res.status(result.transitioned ? 200 : 200).json({
+        batch: safeBatchProjection(result.batch), transitioned: result.transitioned, releasedMemberships: result.releasedMemberships,
+      });
+    } catch (error) {
+      if (error instanceof FinancialBatchLifecycleError) {
+        const status = error.code === "FINANCIAL_BATCH_NOT_FOUND" ? 404
+          : error.code === "FINANCIAL_BATCH_INVALID_REQUEST" ? 400
+            : error.code === "FINANCIAL_BATCH_INVALID_STATE" || error.code === "FINANCIAL_BATCH_ALREADY_APPROVED" || error.code === "FINANCIAL_BATCH_ALREADY_CANCELLED" ? 409 : 422;
+        return res.status(status).json({ message: error.message, code: error.code });
+      }
+      console.error("[CANONICAL_FINANCIAL_BATCH_LIFECYCLE_UNAVAILABLE]", { action, actorUserId: actor.actorUserId, category: error instanceof Error ? error.name : "unknown" });
+      return res.status(503).json({ message: "Canonical financial batch lifecycle service is unavailable", code: "FINANCIAL_BATCH_UNAVAILABLE" });
     }
   };
 }
