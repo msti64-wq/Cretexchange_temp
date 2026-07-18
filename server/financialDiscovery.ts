@@ -1,8 +1,9 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { drivers, owners, payments, users, washoutActivities, washoutLocations } from "../shared/schema";
+import { drivers, financialHistoryRecords, owners, payments, users, washoutActivities, washoutLocations } from "../shared/schema";
 import { db } from "./db";
 import { CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND, isPlatformFinancialOperationsRole } from "./financialObligations";
 import { createFinancialWorkspaceSelectionToken } from "./financialWorkspaceSelection";
+import { HISTORICAL_TEST_DATA_CLASSIFICATION } from "./financialHistory";
 
 export const FINANCIAL_DISCOVERY_MAX_PAGE_SIZE = 100;
 const FINANCIAL_DISCOVERY_SCAN_LIMIT = 1000;
@@ -25,6 +26,7 @@ type DiscoveryActivity = {
   createdAt: Date | string | null;
   driverId: string | null;
   locationId: string | null;
+  financialHistoryClassification?: string | null;
 };
 
 type DiscoveryPayment = {
@@ -191,7 +193,7 @@ function exceptionForMissingActivity(group: FinancialDiscoveryRecord[], now: Dat
   const record = group[0];
   const activity = record.activity;
   const paymentsForActivity = group.filter((entry) => entry.payment);
-  if (!activity || activity.status !== "verified") return null;
+  if (!activity || activity.status !== "verified" || activity.financialHistoryClassification === HISTORICAL_TEST_DATA_CLASSIFICATION) return null;
   if (paymentsForActivity.length > 1) {
     return { ...record, category: "duplicate_activity_linked_financial_rows", explanation: "Multiple financial rows reference one activity.", blocksObligationCreation: true };
   }
@@ -274,7 +276,7 @@ export async function listVerifiedActivitiesWithoutCanonicalObligations(
   for (const group of groupRecords(records)) {
     const record = group[0];
     const activity = record.activity;
-    if (!activity || activity.status !== "verified") continue;
+    if (!activity || activity.status !== "verified" || activity.financialHistoryClassification === HISTORICAL_TEST_DATA_CLASSIFICATION) continue;
     // A canonical row satisfies the relationship. A legacy row does not: it is
     // deliberately surfaced by the exception queue and remains review-blocked.
     if (group.some((entry) => entry.payment?.obligationKind === CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND)) continue;
@@ -303,7 +305,7 @@ export async function listUnbatchedCanonicalObligations(
   const records = await repository.listRecords(filters);
   const items: Array<{ reference: string | null; ageSeconds: number | null } & FinancialDiscoveryItem> = [];
   for (const group of groupRecords(records)) {
-    if (group.length !== 1) continue;
+    if (group.length !== 1 || group[0].activity?.financialHistoryClassification === HISTORICAL_TEST_DATA_CLASSIFICATION) continue;
     const record = group[0];
     const payment = record.payment;
     if (!payment || payment.obligationKind !== CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND || payment.status !== "pending") continue;
@@ -340,6 +342,7 @@ export async function listCanonicalFinancialExceptions(
   const records = await repository.listRecords(filters);
   const exceptions: ExceptionRecord[] = [];
   for (const group of groupRecords(records)) {
+    if (group[0].activity?.financialHistoryClassification === HISTORICAL_TEST_DATA_CLASSIFICATION) continue;
     const groupException = exceptionForMissingActivity(group, now);
     if (groupException) {
       exceptions.push(groupException);
@@ -422,7 +425,7 @@ function displayName(firstName: string | null, lastName: string | null): string 
 
 function mapRow(row: any): FinancialDiscoveryRecord {
   return {
-    activity: row.activityId ? { id: row.activityId, status: row.activityStatus, amount: row.activityAmount, verifiedAt: row.activityVerifiedAt, createdAt: row.activityCreatedAt, driverId: row.activityDriverId, locationId: row.activityLocationId } : null,
+    activity: row.activityId ? { id: row.activityId, status: row.activityStatus, amount: row.activityAmount, verifiedAt: row.activityVerifiedAt, createdAt: row.activityCreatedAt, driverId: row.activityDriverId, locationId: row.activityLocationId, financialHistoryClassification: row.activityFinancialHistoryClassification } : null,
     payment: row.paymentId ? { id: row.paymentId, activityId: row.paymentActivityId, driverId: row.paymentDriverId, ownerId: row.paymentOwnerId, amount: row.paymentAmount, processingFee: row.paymentProcessingFee, status: row.paymentStatus, obligationKind: row.paymentObligationKind, batchId: row.paymentBatchId, paidAt: row.paymentPaidAt, createdAt: row.paymentCreatedAt, hasTransferEvidence: Boolean(row.paymentHasTransferEvidence) } : null,
     driver: row.driverId ? { id: row.driverId, displayName: displayName(row.driverFirstName, row.driverLastName) } : null,
     location: row.locationId ? { id: row.locationId, ownerId: row.locationOwnerId, name: row.locationName } : null,
@@ -436,7 +439,7 @@ const databaseFinancialDiscoveryRepository: FinancialDiscoveryRepository = {
     if (filters.facilityId) activityConditions.push(eq(washoutLocations.ownerId, filters.facilityId));
     if (filters.locationId) activityConditions.push(eq(washoutActivities.locationId, filters.locationId));
     const rows = await db.select({
-      activityId: washoutActivities.id, activityStatus: washoutActivities.status, activityAmount: washoutActivities.amount, activityVerifiedAt: washoutActivities.verifiedAt, activityCreatedAt: washoutActivities.createdAt, activityDriverId: washoutActivities.driverId, activityLocationId: washoutActivities.locationId,
+      activityId: washoutActivities.id, activityStatus: washoutActivities.status, activityAmount: washoutActivities.amount, activityVerifiedAt: washoutActivities.verifiedAt, activityCreatedAt: washoutActivities.createdAt, activityDriverId: washoutActivities.driverId, activityLocationId: washoutActivities.locationId, activityFinancialHistoryClassification: financialHistoryRecords.classification,
       // `stripe_transfer_id` is migration-proven. The schema has no equivalent
       // proof for payment-intent or charge columns, so they are never queried.
       paymentId: payments.id, paymentActivityId: payments.activityId, paymentDriverId: payments.driverId, paymentOwnerId: payments.ownerId, paymentAmount: payments.amount, paymentProcessingFee: payments.processingFee, paymentStatus: payments.status, paymentObligationKind: payments.obligationKind, paymentBatchId: payments.batchId, paymentPaidAt: payments.paidAt, paymentCreatedAt: payments.createdAt,
@@ -445,6 +448,7 @@ const databaseFinancialDiscoveryRepository: FinancialDiscoveryRepository = {
       locationId: washoutLocations.id, locationOwnerId: washoutLocations.ownerId, locationName: washoutLocations.name,
       facilityId: owners.id, facilityName: owners.companyName, facilityBillingTimezone: owners.billingTimezone,
     }).from(washoutActivities)
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = ${HISTORICAL_TEST_DATA_CLASSIFICATION}`)
       .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
       .leftJoin(drivers, eq(drivers.id, washoutActivities.driverId))
       .leftJoin(users, eq(users.id, drivers.userId))

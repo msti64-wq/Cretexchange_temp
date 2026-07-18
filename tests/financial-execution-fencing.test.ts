@@ -391,7 +391,7 @@ test("newly remediated routes delegate to the route-boundary fence before financ
   const walletStart = routes.indexOf("app.get('/api/wallet/balance'");
   const walletEnd = routes.indexOf("app.", walletStart + 30);
   const walletHandler = routes.slice(walletStart, walletEnd === -1 ? undefined : walletEnd);
-  assert.match(walletHandler, /buildNoDriverWalletBalanceResponse/);
+  assert.match(walletHandler, /buildReadOnlyDriverWalletBalanceResponse/);
   assert.doesNotMatch(walletHandler, /storage\.createDriverWallet/);
   assert.doesNotMatch(walletHandler, /walletTransactions/);
 });

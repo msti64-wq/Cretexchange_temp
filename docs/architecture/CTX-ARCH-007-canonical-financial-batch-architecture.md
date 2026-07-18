@@ -54,6 +54,10 @@ The target uniqueness boundary is a valid, ready partial unique index over `paym
 
 ## 6. Canonical obligation model
 
+### Financial-history boundary
+
+[PD-055](../product/PD-055-financial-history-clean-slate-cutoff.md) establishes the clean-slate boundary for internal financial testing: records before July 17, 2026 at 00:00 America/Chicago are retained as explicit historical test data. A classified activity and any related retained legacy financial artifact are not candidates for canonical obligation discovery, creation, batching, totals, exceptions, wallet operations, provider workflows, or execution. The history mapping is not a payment, payout, or batch status. A historical activity returns the `historical_test_activity` business result instead of a legacy-liability exception.
+
 The canonical obligation source is `payments`, with exactly one row per `activity_id`. For a Phase 2 canonical row:
 
 - `amount` is the frozen Driver incentive;

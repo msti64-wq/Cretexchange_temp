@@ -115,6 +115,7 @@ import {
   type InsertLotteryNotification,
   lotteryDrawingWinners,
   lotteryDrawings,
+  financialHistoryRecords,
 } from "@shared/schema";
 import { db } from "./db";
 import { summarizeDatabaseError } from "./dbErrors";
@@ -1585,7 +1586,8 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .where(and(...conditions))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(desc(washoutActivities.checkInTime));
 
     const mappedPayments: any = results.map((row: any) => ({
@@ -1649,7 +1651,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(and(...conditions))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(desc(washoutActivities.checkInTime));
 
     // Query results processed
@@ -1863,7 +1866,8 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(washoutActivities)
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .where(eq(washoutActivities.driverId, driverId))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(washoutActivities.driverId, driverId), isNull(financialHistoryRecords.id)))
       .orderBy(desc(washoutActivities.checkInTime))
       .limit(limit);
     
@@ -1926,7 +1930,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(and(...conditions))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(desc(washoutActivities.checkInTime));
     
     const mappedBatches: any = results.map((row: any) => ({
@@ -2079,7 +2084,11 @@ export class DatabaseStorage implements IStorage {
               ownerId: owner.id,
               entriesEarned: 1,
             });
-            console.log(`🎰 Lottery entry created for auto-approved washout ${activity.id}, entry ID: ${lotteryEntry.id}`);
+            if ((lotteryEntry as any)?.outcome === "historical_reward_suppressed") {
+              console.log(`🎰 Lottery entry suppressed for historical auto-approved washout ${activity.id}`);
+            } else {
+              console.log(`🎰 Lottery entry created for auto-approved washout ${activity.id}, entry ID: ${lotteryEntry.id}`);
+            }
           } else {
             console.log(`🎰 Lottery skipped for auto-approved washout ${activity.id}`, {
               lotteryEnabled,
@@ -2253,7 +2262,8 @@ export class DatabaseStorage implements IStorage {
       .from(payments)
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .where(and(...conditions))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(desc(payments.createdAt));
 
     const mappedBatches: any = results.map((row: any) => ({
@@ -2382,7 +2392,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(drivers, eq(washoutActivities.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .where(and(...conditions))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(desc(payments.createdAt));
 
     const mappedBatches: any = results.map((row: any) => ({
@@ -2717,10 +2728,12 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(owners, eq(payments.ownerId, owners.id))
       .leftJoin(ownerUsers, eq(owners.userId, ownerUsers.id))
       .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
       .where(
         and(
           eq(payments.driverId, driverId),
           inArray(payments.status, ["awaiting_driver_stripe", "pending_driver_onboarding"]),
+          isNull(financialHistoryRecords.id),
         ),
       );
 
@@ -2916,7 +2929,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(ownerUsers, eq(owners.userId, ownerUsers.id))
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .where(and(...conditions))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(desc(payments.createdAt));
 
     const mappedPayments: any = results.map((row: any) => ({
@@ -3439,11 +3453,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getNotificationsByUser(userId: string): Promise<Notification[]> {
-    return await db
+    const rows = await db
       .select()
       .from(notifications)
-      .where(eq(notifications.userId, userId))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'notification' AND ${financialHistoryRecords.recordId} = ${notifications.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(notifications.userId, userId), isNull(financialHistoryRecords.id)))
       .orderBy(desc(notifications.createdAt));
+    return rows.map((row: any) => row.notifications) as Notification[];
   }
 
   async markAllNotificationsAsRead(userId: string): Promise<void> {
@@ -3463,14 +3479,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUnreadNotificationsByUser(userId: string): Promise<Notification[]> {
-    return await db
+    const rows = await db
       .select()
       .from(notifications)
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'notification' AND ${financialHistoryRecords.recordId} = ${notifications.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
       .where(and(
         eq(notifications.userId, userId),
-        eq(notifications.isRead, false)
+        eq(notifications.isRead, false),
+        isNull(financialHistoryRecords.id),
       ))
       .orderBy(desc(notifications.createdAt));
+    return rows.map((row: any) => row.notifications) as Notification[];
   }
 
   async clearNotificationsByType(userId: string, type: string): Promise<void> {
@@ -3997,11 +4016,13 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(walletTransactions.createdAt, endDate));
     }
 
-    return await db
+    const rows = await db
       .select()
       .from(walletTransactions)
-      .where(and(...conditions))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'wallet_transaction' AND ${financialHistoryRecords.recordId} = ${walletTransactions.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(desc(walletTransactions.createdAt));
+    return rows.map((row: any) => row.wallet_transactions) as WalletTransaction[];
   }
 
   async getWalletTransaction(id: string): Promise<WalletTransaction | undefined> {
@@ -5081,7 +5102,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(washoutActivities, eq(payments.activityId, washoutActivities.id))
       .innerJoin(drivers, eq(payments.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(and(...conditions))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(payments.createdAt);
 
     return pendingPayments.map((row: any) => ({
@@ -5198,7 +5220,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
       .leftJoin(payments, eq(payments.activityId, washoutActivities.id))
-      .where(and(...conditions))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(desc(washoutActivities.verifiedAt), desc(washoutActivities.createdAt));
 
     const billedActivityIds = new Set<string>();
@@ -5668,7 +5691,8 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(drivers, eq(payments.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(eq(payments.batchId, batchId))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(payments.batchId, batchId), isNull(financialHistoryRecords.id)))
       .orderBy(payments.createdAt);
 
     return batchPayments.map((row: any) => ({
@@ -7174,15 +7198,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLotteryDrawings(): Promise<any[]> {
-    return await db.select().from(lotteryDrawings).orderBy(desc(lotteryDrawings.drawingDate));
+    // A drawing may span the clean-slate boundary.  It is operationally visible
+    // only when it has at least one entry whose source activity is current; the
+    // callers then receive only the current entries, winners, and fulfillments.
+    const rows = await db
+      .select({ drawing: lotteryDrawings })
+      .from(lotteryDrawings)
+      .innerJoin(
+        driverLotteryEntries,
+        and(
+          eq(driverLotteryEntries.lotteryMonth, lotteryDrawings.lotteryMonth),
+          eq(driverLotteryEntries.lotteryYear, lotteryDrawings.lotteryYear),
+        ),
+      )
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(isNull(financialHistoryRecords.id))
+      .orderBy(desc(lotteryDrawings.drawingDate));
+
+    return Array.from(new Map(rows.map((row: any) => [row.drawing.id, row.drawing])).values());
   }
 
   async getLotteryDrawingByMonthYear(month: number, year: number): Promise<any | undefined> {
-    const [drawing] = await db
-      .select()
-      .from(lotteryDrawings)
-      .where(and(eq(lotteryDrawings.lotteryMonth, month), eq(lotteryDrawings.lotteryYear, year)));
-    return drawing;
+    const drawings = await this.getLotteryDrawings();
+    return drawings.find((drawing: any) => drawing.lotteryMonth === month && drawing.lotteryYear === year);
   }
 
   async createLotteryDrawingWinner(winner: InsertLotteryDrawingWinner): Promise<LotteryDrawingWinner> {
@@ -7213,59 +7252,10 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(drivers, eq(lotteryDrawingWinners.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
       .innerJoin(driverLotteryEntries, eq(lotteryDrawingWinners.entryId, driverLotteryEntries.id))
-      .where(eq(lotteryDrawingWinners.lotteryDrawingId, drawingId))
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(lotteryDrawingWinners.lotteryDrawingId, drawingId), isNull(financialHistoryRecords.id)))
       .orderBy(asc(lotteryDrawingWinners.placeIndex));
-
-    if (results.length === 0) {
-      const [drawing] = await db
-        .select()
-        .from(lotteryDrawings)
-        .where(eq(lotteryDrawings.id, drawingId))
-        .limit(1);
-
-      if (!drawing) {
-        return [];
-      }
-
-      return [
-        drawing.firstPlaceDriverId && drawing.firstPlaceDriverName ? {
-          placeIndex: 1,
-          lotteryDrawingId: drawing.id,
-          driverId: drawing.firstPlaceDriverId,
-          driverName: drawing.firstPlaceDriverName,
-          entryId: null,
-          ticketNumber: drawing.firstPlaceTicketNumber || null,
-          prizeTitle: drawing.firstPrize || null,
-          prizeDescription: null,
-          notificationId: null,
-          createdAt: drawing.createdAt,
-        } : null,
-        drawing.secondPlaceDriverId && drawing.secondPlaceDriverName ? {
-          placeIndex: 2,
-          lotteryDrawingId: drawing.id,
-          driverId: drawing.secondPlaceDriverId,
-          driverName: drawing.secondPlaceDriverName,
-          entryId: null,
-          ticketNumber: drawing.secondPlaceTicketNumber || null,
-          prizeTitle: drawing.secondPrize || null,
-          prizeDescription: null,
-          notificationId: null,
-          createdAt: drawing.createdAt,
-        } : null,
-        drawing.thirdPlaceDriverId && drawing.thirdPlaceDriverName ? {
-          placeIndex: 3,
-          lotteryDrawingId: drawing.id,
-          driverId: drawing.thirdPlaceDriverId,
-          driverName: drawing.thirdPlaceDriverName,
-          entryId: null,
-          ticketNumber: drawing.thirdPlaceTicketNumber || null,
-          prizeTitle: drawing.thirdPrize || null,
-          prizeDescription: null,
-          notificationId: null,
-          createdAt: drawing.createdAt,
-        } : null,
-      ].filter(Boolean);
-    }
 
     return results.map((row) => ({
       ...row.winner,
@@ -7276,17 +7266,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPendingLotteryDrawings(): Promise<any[]> {
-    return await db
-      .select()
-      .from(lotteryDrawings)
-      .where(
-        or(
-          eq(lotteryDrawings.firstPlaceDelivered, false),
-          eq(lotteryDrawings.secondPlaceDelivered, false),
-          eq(lotteryDrawings.thirdPlaceDelivered, false),
-        )
-      )
-      .orderBy(desc(lotteryDrawings.drawingDate));
+    return (await this.getLotteryDrawings()).filter((drawing: any) =>
+      drawing.firstPlaceDelivered === false
+      || drawing.secondPlaceDelivered === false
+      || drawing.thirdPlaceDelivered === false,
+    );
   }
 
   async markLotteryPrizeDelivered(drawingId: string, place: 'first' | 'second' | 'third'): Promise<any> {
@@ -7330,6 +7314,9 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(drivers, eq(lotteryDrawingWinners.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
       .innerJoin(driverLotteryEntries, eq(lotteryDrawingWinners.entryId, driverLotteryEntries.id))
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(isNull(financialHistoryRecords.id))
       .orderBy(desc(lotteryDrawingWinners.createdAt));
 
     const winnersByDrawing = new Map<string, any[]>();
@@ -7354,45 +7341,9 @@ export class DatabaseStorage implements IStorage {
         };
       }
 
-      const legacyWinners = [
-        drawing.firstPlaceDriverId && drawing.firstPlaceDriverName ? {
-          placeIndex: 1,
-          driverId: drawing.firstPlaceDriverId,
-          driverName: drawing.firstPlaceDriverName,
-          entryId: null,
-          ticketNumber: drawing.firstPlaceTicketNumber || null,
-          prizeTitle: drawing.firstPrize || null,
-          prizeDescription: null,
-          notificationId: null,
-          createdAt: drawing.createdAt,
-        } : null,
-        drawing.secondPlaceDriverId && drawing.secondPlaceDriverName ? {
-          placeIndex: 2,
-          driverId: drawing.secondPlaceDriverId,
-          driverName: drawing.secondPlaceDriverName,
-          entryId: null,
-          ticketNumber: drawing.secondPlaceTicketNumber || null,
-          prizeTitle: drawing.secondPrize || null,
-          prizeDescription: null,
-          notificationId: null,
-          createdAt: drawing.createdAt,
-        } : null,
-        drawing.thirdPlaceDriverId && drawing.thirdPlaceDriverName ? {
-          placeIndex: 3,
-          driverId: drawing.thirdPlaceDriverId,
-          driverName: drawing.thirdPlaceDriverName,
-          entryId: null,
-          ticketNumber: drawing.thirdPlaceTicketNumber || null,
-          prizeTitle: drawing.thirdPrize || null,
-          prizeDescription: null,
-          notificationId: null,
-          createdAt: drawing.createdAt,
-        } : null,
-      ].filter(Boolean);
-
       return {
         ...drawing,
-        winners: legacyWinners,
+        winners: [],
       };
     });
   }
@@ -7410,6 +7361,7 @@ export class DatabaseStorage implements IStorage {
         participantNotification,
       })
       .from(driverLotteryEntries)
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
       .innerJoin(
         lotteryDrawings,
         and(
@@ -7434,7 +7386,8 @@ export class DatabaseStorage implements IStorage {
           eq(participantNotification.notificationKind, "participant"),
         ),
       )
-      .where(eq(driverLotteryEntries.driverId, driverId))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(driverLotteryEntries.driverId, driverId), isNull(financialHistoryRecords.id)))
       .orderBy(desc(lotteryDrawings.drawingDate), desc(driverLotteryEntries.createdAt), asc(lotteryDrawingWinners.placeIndex));
 
     const historyByDrawing = new Map<string, any>();
@@ -7499,7 +7452,10 @@ export class DatabaseStorage implements IStorage {
       .from(lotteryDrawingFulfillments)
       .innerJoin(lotteryDrawingWinners, eq(lotteryDrawingFulfillments.lotteryDrawingWinnerId, lotteryDrawingWinners.id))
       .innerJoin(lotteryDrawings, eq(lotteryDrawingFulfillments.lotteryDrawingId, lotteryDrawings.id))
-      .where(eq(lotteryDrawingFulfillments.driverId, driverId))
+      .innerJoin(driverLotteryEntries, eq(lotteryDrawingFulfillments.entryId, driverLotteryEntries.id))
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(lotteryDrawingFulfillments.driverId, driverId), isNull(financialHistoryRecords.id)))
       .orderBy(desc(lotteryDrawingFulfillments.updatedAt), desc(lotteryDrawingFulfillments.createdAt));
 
     const resolveTrackingStatus = (fulfillment: typeof lotteryDrawingFulfillments.$inferSelect) => {
@@ -7604,14 +7560,17 @@ export class DatabaseStorage implements IStorage {
       .from(lotteryDrawingFulfillments)
       .innerJoin(lotteryDrawingWinners, eq(lotteryDrawingFulfillments.lotteryDrawingWinnerId, lotteryDrawingWinners.id))
       .innerJoin(lotteryDrawings, eq(lotteryDrawingFulfillments.lotteryDrawingId, lotteryDrawings.id))
+      .innerJoin(driverLotteryEntries, eq(lotteryDrawingFulfillments.entryId, driverLotteryEntries.id))
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
       .innerJoin(drivers, eq(lotteryDrawingFulfillments.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
       .leftJoin(prizeCatalog, eq(lotteryDrawingFulfillments.prizeCatalogId, prizeCatalog.id))
-      .leftJoin(fulfilledByUser, eq(lotteryDrawingFulfillments.fulfilledBy, fulfilledByUser.id));
+      .leftJoin(fulfilledByUser, eq(lotteryDrawingFulfillments.fulfilledBy, fulfilledByUser.id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`);
 
     const results = conditions.length > 0
-      ? await query.where(and(...conditions)).orderBy(desc(lotteryDrawingFulfillments.createdAt))
-      : await query.orderBy(desc(lotteryDrawingFulfillments.createdAt));
+      ? await query.where(and(...conditions, isNull(financialHistoryRecords.id))).orderBy(desc(lotteryDrawingFulfillments.createdAt))
+      : await query.where(isNull(financialHistoryRecords.id)).orderBy(desc(lotteryDrawingFulfillments.createdAt));
 
     return results.map((row: any) => ({
       ...row.fulfillment,
@@ -7640,11 +7599,14 @@ export class DatabaseStorage implements IStorage {
       .from(lotteryDrawingFulfillments)
       .innerJoin(lotteryDrawingWinners, eq(lotteryDrawingFulfillments.lotteryDrawingWinnerId, lotteryDrawingWinners.id))
       .innerJoin(lotteryDrawings, eq(lotteryDrawingFulfillments.lotteryDrawingId, lotteryDrawings.id))
+      .innerJoin(driverLotteryEntries, eq(lotteryDrawingFulfillments.entryId, driverLotteryEntries.id))
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
       .innerJoin(drivers, eq(lotteryDrawingFulfillments.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
       .leftJoin(prizeCatalog, eq(lotteryDrawingFulfillments.prizeCatalogId, prizeCatalog.id))
       .leftJoin(fulfilledByUser, eq(lotteryDrawingFulfillments.fulfilledBy, fulfilledByUser.id))
-      .where(eq(lotteryDrawingFulfillments.id, id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(lotteryDrawingFulfillments.id, id), isNull(financialHistoryRecords.id)))
       .limit(1);
 
     if (!record) {
@@ -7671,8 +7633,12 @@ export class DatabaseStorage implements IStorage {
         changedByUser,
       })
       .from(lotteryDrawingFulfillmentHistory)
+      .innerJoin(lotteryDrawingFulfillments, eq(lotteryDrawingFulfillmentHistory.fulfillmentId, lotteryDrawingFulfillments.id))
+      .innerJoin(driverLotteryEntries, eq(lotteryDrawingFulfillments.entryId, driverLotteryEntries.id))
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
       .innerJoin(changedByUser, eq(lotteryDrawingFulfillmentHistory.changedBy, changedByUser.id))
-      .where(eq(lotteryDrawingFulfillmentHistory.fulfillmentId, fulfillmentId))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(lotteryDrawingFulfillmentHistory.fulfillmentId, fulfillmentId), isNull(financialHistoryRecords.id)))
       .orderBy(desc(lotteryDrawingFulfillmentHistory.changedAt));
 
     return results.map((row: any) => ({
@@ -7835,6 +7801,22 @@ export class DatabaseStorage implements IStorage {
 
   // Driver lottery entries operations
   async createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<DriverLotteryEntry> {
+    // This is the write-side program boundary. It intentionally precedes the
+    // duplicate lookup and every ticket-number write so a pre-cutoff activity
+    // cannot become an active-program reward through approval, retry, or replay.
+    const [historicalSource] = await db
+      .select({ id: financialHistoryRecords.id })
+      .from(financialHistoryRecords)
+      .where(and(
+        eq(financialHistoryRecords.recordType, "washout_activity"),
+        eq(financialHistoryRecords.recordId, entry.activityId),
+        eq(financialHistoryRecords.classification, "historical_test_data"),
+      ))
+      .limit(1);
+    if (historicalSource) {
+      return { outcome: "historical_reward_suppressed", created: false, code: "historical_test_activity" } as unknown as DriverLotteryEntry;
+    }
+
     const [existingEntry] = await db
       .select()
       .from(driverLotteryEntries)
@@ -7960,11 +7942,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLotteryNotificationsByDrawing(drawingId: string): Promise<LotteryNotification[]> {
-    return await db
+    const rows = await db
       .select()
       .from(lotteryNotifications)
-      .where(eq(lotteryNotifications.lotteryDrawingId, drawingId))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'lottery_notification' AND ${financialHistoryRecords.recordId} = ${lotteryNotifications.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(lotteryNotifications.lotteryDrawingId, drawingId), isNull(financialHistoryRecords.id)))
       .orderBy(desc(lotteryNotifications.createdAt));
+    return rows.map((row: any) => row.lottery_notifications) as LotteryNotification[];
   }
 
   async getLotteryNotificationSummary(drawingId: string): Promise<{
@@ -7981,16 +7965,20 @@ export class DatabaseStorage implements IStorage {
         participantNotificationsSentAt: sql<Date | null>`MAX(CASE WHEN ${lotteryNotifications.notificationKind} = 'participant' THEN ${lotteryNotifications.sentAt} ELSE NULL END)`,
       })
       .from(lotteryNotifications)
-      .where(eq(lotteryNotifications.lotteryDrawingId, drawingId));
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'lottery_notification' AND ${financialHistoryRecords.recordId} = ${lotteryNotifications.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(lotteryNotifications.lotteryDrawingId, drawingId), isNull(financialHistoryRecords.id)));
     return summary;
   }
 
   async getDriverLotteryEntries(driverId: string): Promise<DriverLotteryEntry[]> {
-    return await db
+    const rows = await db
       .select()
       .from(driverLotteryEntries)
-      .where(eq(driverLotteryEntries.driverId, driverId))
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(eq(driverLotteryEntries.driverId, driverId), isNull(financialHistoryRecords.id)))
       .orderBy(desc(driverLotteryEntries.createdAt));
+    return rows.map((row: any) => row.driver_lottery_entries) as DriverLotteryEntry[];
   }
 
   async getDriverLotteryEntriesWithDetails(driverId: string, month?: number, year?: number): Promise<any[]> {
@@ -8019,7 +8007,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(owners, eq(driverLotteryEntries.ownerId, owners.id))
       .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
       .innerJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
-      .where(and(...conditions))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(desc(driverLotteryEntries.createdAt));
 
     return results.map((result) => ({
@@ -8044,11 +8033,14 @@ export class DatabaseStorage implements IStorage {
         totalEntries: sql<number>`COALESCE(SUM(${driverLotteryEntries.entriesEarned}), 0)::integer`,
       })
       .from(driverLotteryEntries)
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
       .where(and(
         eq(driverLotteryEntries.driverId, driverId),
         eq(driverLotteryEntries.lotteryMonth, currentMonth),
         eq(driverLotteryEntries.lotteryYear, currentYear),
-        eq(driverLotteryEntries.isArchived, false)
+        eq(driverLotteryEntries.isArchived, false),
+        isNull(financialHistoryRecords.id),
       ));
     return result?.totalEntries ?? 0;
   }
@@ -8060,7 +8052,8 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(driverLotteryEntries.lotteryMonth, month),
         eq(driverLotteryEntries.lotteryYear, year),
-        eq(driverLotteryEntries.isArchived, false)
+        eq(driverLotteryEntries.isArchived, false),
+        sql`NOT EXISTS (SELECT 1 FROM financial_history_records h WHERE h.record_type = 'washout_activity' AND h.record_id = ${driverLotteryEntries.activityId} AND h.classification = 'historical_test_data')`,
       ));
     return result.rowCount ?? 0;
   }
@@ -8074,6 +8067,9 @@ export class DatabaseStorage implements IStorage {
         totalEntries: sql<number>`COALESCE(SUM(${driverLotteryEntries.entriesEarned}), 0)::integer`,
       })
       .from(driverLotteryEntries)
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(isNull(financialHistoryRecords.id))
       .groupBy(driverLotteryEntries.lotteryMonth, driverLotteryEntries.lotteryYear, driverLotteryEntries.isArchived)
       .orderBy(desc(driverLotteryEntries.lotteryYear), desc(driverLotteryEntries.lotteryMonth));
     return results.map(r => ({
@@ -8107,7 +8103,8 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(drivers.userId, users.id))
       .innerJoin(owners, eq(driverLotteryEntries.ownerId, owners.id))
       .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .orderBy(desc(driverLotteryEntries.createdAt));
 
     return results.map(r => ({
@@ -8137,7 +8134,9 @@ export class DatabaseStorage implements IStorage {
       .from(driverLotteryEntries)
       .innerJoin(drivers, eq(driverLotteryEntries.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .innerJoin(washoutActivities, eq(driverLotteryEntries.activityId, washoutActivities.id))
+      .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = 'historical_test_data'`)
+      .where(and(...conditions, isNull(financialHistoryRecords.id)))
       .groupBy(driverLotteryEntries.driverId, users.firstName, users.lastName, drivers.payoutPreference, drivers.payoutPreferenceNote)
       .orderBy(desc(sql`SUM(${driverLotteryEntries.entriesEarned})`));
 

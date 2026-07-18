@@ -72,4 +72,8 @@ test("transitional and incomplete metadata states remain controlled", () => {
   const unavailable = deriveFinancialSchemaCapabilities([], [], false);
   assert.equal(unavailable.creationAvailable, false);
   assert.equal(unavailable.schemaState, "metadata_unavailable");
+  const historyMissing = deriveFinancialSchemaCapabilities(requiredColumns, [canonicalIndex], true, false);
+  assert.equal(historyMissing.creationAvailable, false);
+  assert.equal(historyMissing.schemaState, "financial_history_schema_missing");
+  assert.equal(historyMissing.creationUnavailableReason, "financial_history_schema_unavailable");
 });

@@ -150,7 +150,13 @@ class RobustPool {
   }
 
   private startHealthCheck() {
-    setInterval(async () => {
+    // Focused unit tests intentionally supply an unreachable placeholder URL.
+    // Do not leave a production reconnect timer alive in that process.
+    if (process.env.NODE_ENV === 'test') {
+      return;
+    }
+
+    const healthCheckTimer = setInterval(async () => {
       if (!this.isReconnecting) {
         const isHealthy = await this.healthCheck();
         if (!isHealthy) {
@@ -159,6 +165,7 @@ class RobustPool {
         }
       }
     }, 30000); // Check every 30 seconds
+    healthCheckTimer.unref();
   }
 
   async query(text: string, params?: any[], retries = 2): Promise<any> {

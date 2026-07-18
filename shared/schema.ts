@@ -345,6 +345,29 @@ export const washoutActivities = pgTable("washout_activities", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Explicit, append-only classification for finite historical test data. This
+// intentionally does not overload activity, payment, payout, or batch state.
+// A missing row means current operational data; only an approved migration may
+// record the historical-test classification.
+export const financialHistoryRecords = pgTable("financial_history_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  recordType: varchar("record_type").notNull(),
+  recordId: varchar("record_id").notNull(),
+  classification: varchar("classification").notNull(),
+  cutoffKey: varchar("cutoff_key").notNull(),
+  classificationReason: text("classification_reason").notNull(),
+  classifiedAt: timestamp("classified_at").notNull().defaultNow(),
+}, (table) => ({
+  recordUnique: uniqueIndex("uniq_financial_history_records_type_id").on(table.recordType, table.recordId),
+  classificationIndex: index("idx_financial_history_records_classification").on(table.classification, table.recordType),
+  classificationCheck: check("chk_financial_history_records_classification", sql`${table.classification} = 'historical_test_data'`),
+  // The mapping is deliberately generic enough to preserve the complete
+  // activity-derived incentive and rewards chain without changing source
+  // records. A lottery drawing is intentionally not classified as a whole:
+  // a period can contain both historical and current entries.
+  recordTypeCheck: check("chk_financial_history_records_type", sql`${table.recordType} IN ('washout_activity', 'payment', 'billing_batch', 'owner_wallet_transaction', 'fee_ledger', 'pending_washout_payment', 'washout_payment_batch', 'wallet_transaction', 'withdrawal', 'driver_lottery_entry', 'lottery_drawing_winner', 'lottery_drawing_fulfillment', 'lottery_notification', 'notification')`),
+}));
+
 // NEW: Clean photo table with referential integrity
 export const washoutPhotos = pgTable("washout_photos", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -23,6 +23,7 @@ import {
   lotteryDrawingWinners,
   lotteryDrawingFulfillments,
   lotteryNotifications,
+  financialHistoryRecords,
 } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
@@ -31,7 +32,7 @@ import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucke
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
 import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema, insertPrizeCatalogSchema, updatePrizeCatalogSchema, prizeCatalogInventoryAdjustmentTypeValues, updateLotteryDrawingFulfillmentStatusRequestSchema, updateLotteryDrawingFulfillmentNotesRequestSchema, updateLotteryDrawingFulfillmentTrackingRequestSchema, lotteryFulfillmentStatusValues } from "@shared/schema";
 import type { Driver, FeeLedger, FeatureFlag, LocationMaterialIntent, Notification, Owner, OwnerFundingSource, Payment, PendingWashoutPayment, User, WalletTransaction, WashoutActivity, WashoutLocation, WashoutPhoto, Withdrawal } from "@shared/schema";
-import { eq, sql, desc, and, isNotNull, inArray } from "drizzle-orm";
+import { eq, sql, asc, desc, and, isNotNull, inArray } from "drizzle-orm";
 import { z } from "zod";
 import * as stripeService from "./stripeService";
 import stripeClient from "./stripeService";
@@ -98,6 +99,19 @@ import {
   buildReadOnlyDriverWalletBalanceResponse,
   retireFinancialExecutionRequest as retireFinancialExecutionRoute,
 } from "./financialExecutionPolicy";
+
+/** Current-program incentive/reward APIs fail closed until the append-only
+ * history mapping exists. Operational check-in and review paths do not call
+ * this guard and therefore remain available during a migration outage. */
+async function requireCurrentProgramHistorySchema(res: any): Promise<boolean> {
+  const capabilities = await getFinancialSchemaCapabilities();
+  if (capabilities.financialHistorySchemaAvailable) return true;
+  res.status(503).json({
+    code: "financial_history_schema_unavailable",
+    message: "Current incentive and reward information is temporarily unavailable while historical-program protections are unavailable.",
+  });
+  return false;
+}
 import { getOwnerStripeBillingSetup } from "../shared/ownerStripeBillingSetup";
 import {
   buildDriverReport,
@@ -1295,6 +1309,15 @@ async function awardLotteryEntryForApprovedWashout(params: {
       ownerId,
       entriesEarned: 1,
     });
+    if ((lotteryEntry as any)?.outcome === "historical_reward_suppressed") {
+      console.log(`🎰 Lottery entry suppressed for historical activity ${activityId} from ${source}`, {
+        activityId,
+        ownerId,
+        driverId,
+        source,
+      });
+      return { created: false, reason: "historical_reward_suppressed" as const };
+    }
     console.log(`🎰 Lottery entry created for washout ${activityId} from ${source}`, {
       activityId,
       ownerId,
@@ -3730,6 +3753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/drivers/dashboard', isAuthenticated, async (req: any, res) => {
     try {
       setBillingNoCacheHeaders(res);
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
@@ -4009,6 +4033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/drivers/activities', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
@@ -4031,6 +4056,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/drivers/payments', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
@@ -5396,7 +5422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = await requireFinancialOperationsActor(req, res);
     if (!user) return;
     const capabilities = await getFinancialSchemaCapabilities();
-    if (!capabilities.obligationKindAvailable) return canonicalFinancialSchemaUnavailable(res);
+    if (!capabilities.obligationKindAvailable || !capabilities.financialHistorySchemaAvailable) return canonicalFinancialSchemaUnavailable(res);
     return handler(req, res, next);
   };
 
@@ -5409,6 +5435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       creationAvailable: capabilities.creationAvailable,
       auditSchemaAvailable: capabilities.auditSchemaAvailable,
       obligationKindAvailable: capabilities.obligationKindAvailable,
+      financialHistorySchemaAvailable: capabilities.financialHistorySchemaAvailable,
       canonicalPartialIndexAvailable: capabilities.canonicalPartialIndexAvailable,
       globalActivityIndexPresent: capabilities.globalActivityIndexPresent,
       schemaState: capabilities.schemaState,
@@ -5429,6 +5456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!activityId) return res.status(422).json({ message: "The selected record is unavailable. Refresh Missing Obligations and try again.", code: "invalid_selection" });
     try {
       const capabilities = await getFinancialSchemaCapabilities();
+      if (!capabilities.financialHistorySchemaAvailable) return canonicalFinancialSchemaUnavailable(res);
       return res.json(await previewFinancialObligationForVerifiedActivity(
         activityId,
         createDatabaseFinancialObligationRepository({ obligationKindAvailable: capabilities.obligationKindAvailable, canonicalPartialIndexAvailable: capabilities.canonicalPartialIndexAvailable }),
@@ -5448,10 +5476,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(422).json({ message: "Financial components are derived by the server", code: "client_amount_override" });
     }
     const capabilities = await getFinancialSchemaCapabilities();
-    if (!capabilities.creationAvailable) return capabilities.auditSchemaAvailable && capabilities.obligationKindAvailable ? canonicalCreationUnavailable(res, capabilities) : financialAuditSchemaUnavailable(res);
+    if (!capabilities.creationAvailable) {
+      if (!capabilities.financialHistorySchemaAvailable || (capabilities.auditSchemaAvailable && capabilities.obligationKindAvailable)) return canonicalCreationUnavailable(res, capabilities);
+      return financialAuditSchemaUnavailable(res);
+    }
     try {
       const reason = buildCanonicalObligationCreationReason(req.body?.reasonCategory, req.body?.supportingDetail);
       const result = await createFinancialObligationForVerifiedActivity(activityId, createDatabaseFinancialObligationRepository({ obligationKindAvailable: true, canonicalPartialIndexAvailable: true }), { actorUserId: user.id, reason });
+      if (!("obligation" in result)) return res.status(200).json({ outcome: result.outcome, created: false, code: result.code });
       return res.status(result.created ? 201 : 200).json({ obligation: { status: result.obligation.status, driverIncentiveCents: result.driverIncentiveCents, platformFeeCents: result.platformFeeCents, facilityChargeCents: result.facilityChargeCents }, created: result.created });
     } catch (error) {
       return financialObligationErrorResponse(error, req, res, { route: "POST /api/admin/financial-obligations/create", actorRole: user.role, startedAt });
@@ -5472,7 +5504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = await requireFinancialOperationsActor(req, res);
     if (!user) return;
     const capabilities = await getFinancialSchemaCapabilities();
-    if (!capabilities.obligationKindAvailable) return canonicalFinancialSchemaUnavailable(res);
+    if (!capabilities.obligationKindAvailable || !capabilities.financialHistorySchemaAvailable) return canonicalFinancialSchemaUnavailable(res);
     try { return res.json(await getCanonicalFinancialVisibilitySummary()); }
     catch { console.error("Canonical financial summary is unavailable"); return res.status(503).json({ message: "Canonical financial records are unavailable" }); }
   });
@@ -7009,6 +7041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/payments/driver-history', isAuthenticated, async (req: any, res) => {
     try {
       setBillingNoCacheHeaders(res);
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const userId = req.user.id;
       const driver = await storage.getDriver(userId);
       
@@ -9439,6 +9472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/notifications - Get all notifications for current user
   app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const userId = req.user.id;
       const notifications = await storage.getNotificationsByUser(userId);
       res.json(notifications);
@@ -9451,6 +9485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/notifications/unread - Get unread notifications count
   app.get('/api/notifications/unread', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const userId = req.user.id;
       const unreadNotifications = await storage.getUnreadNotificationsByUser(userId);
       res.json({ count: unreadNotifications.length, notifications: unreadNotifications });
@@ -10383,6 +10418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get this driver's individual lottery entries (with location/owner details)
   app.get('/api/drivers/lottery-entries', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'driver') {
         return res.status(403).json({ message: "Driver access required" });
@@ -10405,6 +10441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Shared lottery status endpoint for drivers/admins
   app.get('/api/lottery/status', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (!user || !['driver', 'admin', 'super_admin'].includes(user.role)) {
         return res.status(403).json({ message: "Access denied" });
@@ -10435,6 +10472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/drivers/lottery-history', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'driver') {
         return res.status(403).json({ message: "Driver access required" });
@@ -10455,6 +10493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/drivers/lottery-fulfillment-history', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'driver') {
         return res.status(403).json({ message: "Driver access required" });
@@ -10476,6 +10515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Alias for driver-owned lottery entries
   app.get('/api/lottery/entries', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'driver') {
         return res.status(403).json({ message: "Driver access required" });
@@ -10496,11 +10536,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== RESTRICTED HISTORICAL INCENTIVE AUDIT ==========
+  // This deliberately exposes aggregate classification evidence only. Current
+  // Driver/Facility APIs never accept a query parameter to opt into history.
+  app.get('/api/admin/financial-history/incentives', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!isPlatformFinancialOperationsRole(user?.role)) {
+        return res.status(403).json({ message: "Platform Operations access required" });
+      }
+      const capabilities = await getFinancialSchemaCapabilities();
+      if (!capabilities.financialHistorySchemaAvailable) {
+        return res.status(503).json({ code: "financial_history_schema_unavailable", message: "Historical incentive audit data is unavailable until the classification schema is installed." });
+      }
+      const rows = await db
+        .select({ recordType: financialHistoryRecords.recordType, count: sql<number>`COUNT(*)::integer` })
+        .from(financialHistoryRecords)
+        .where(eq(financialHistoryRecords.classification, "historical_test_data"))
+        .groupBy(financialHistoryRecords.recordType)
+        .orderBy(asc(financialHistoryRecords.recordType));
+      res.json({
+        scope: "historical_test_data_audit_only",
+        cutoff: "2026-07-17 00:00:00 America/Chicago",
+        records: rows.map((row) => ({ recordType: row.recordType, count: Number(row.count || 0) })),
+      });
+    } catch (error: any) {
+      console.error("Error loading historical incentive audit summary:", error);
+      res.status(500).json({ message: "Failed to load historical incentive audit summary" });
+    }
+  });
+
   // ========== ADMIN LOTTERY MANAGEMENT ENDPOINTS ==========
 
   // Combined admin lottery overview
   app.get('/api/admin/lottery', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10620,6 +10691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Preview a monthly prize drawing without persisting winners
   app.post('/api/admin/lottery/drawings/preview', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10678,6 +10750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Return the winners for a completed drawing
   app.get('/api/admin/lottery/drawings/:id/winners', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10695,6 +10768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Return historical drawings with nested winners
   app.get('/api/admin/lottery/drawings/history', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10710,6 +10784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/admin/rewards/fulfillment/:id/history', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10725,6 +10800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/admin/rewards/fulfillment/:id', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10744,6 +10820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/admin/rewards/fulfillment', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10788,6 +10865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/rewards/fulfillment/:id/status', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10814,6 +10892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/rewards/fulfillment/:id/notes', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10844,6 +10923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/rewards/fulfillment/:id/tracking', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10890,6 +10970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all lottery entries with driver details (admin/super admin)
   app.get('/api/admin/lottery/entries', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10910,6 +10991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get lottery entry totals per driver (admin/super admin)
   app.get('/api/admin/lottery/totals', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10930,6 +11012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all lottery months with status (admin/super admin)
   app.get('/api/admin/lottery/months', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -10946,6 +11029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Archive/close a lottery month (super admin only)
   app.post('/api/admin/lottery/archive', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Super admin access required" });
@@ -10974,52 +11058,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send lottery winner notification to a driver (admin/super admin)
   app.post('/api/admin/lottery/notify-winner', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const { driverId, message, month, year, prize } = req.body;
-      if (!driverId || !message) {
-        return res.status(400).json({ message: "Driver ID and message are required" });
+      const { driverId, message, month, year } = req.body;
+      if (!driverId || !message || !month || !year) {
+        return res.status(400).json({ message: "Driver, message, drawing month, and drawing year are required" });
       }
 
       if (message.length > 2000) {
         return res.status(400).json({ message: "Message cannot exceed 2000 characters" });
       }
 
-      if (prize && prize.length > 200) {
-        return res.status(400).json({ message: "Prize description cannot exceed 200 characters" });
+      const drawing = await storage.getLotteryDrawingByMonthYear(Number(month), Number(year));
+      if (!drawing) {
+        return res.status(404).json({ message: "No current-program drawing was found for this period" });
       }
 
-      const driver = await storage.getDriverById(driverId);
-      if (!driver) {
-        return res.status(404).json({ message: "Driver not found" });
+      const winners = await storage.getLotteryDrawingWinners(drawing.id);
+      const winner = winners.find((candidate: any) => candidate.driverId === driverId);
+      if (!winner || !winner.entryId) {
+        return res.status(409).json({
+          code: "winner_not_current_program_eligible",
+          message: "The driver is not a current-program winner for this drawing.",
+        });
       }
 
-      const driverUser = await storage.getUser(driver.userId);
+      const driverUser = winner.driver?.user || await storage.getUser((await storage.getDriverById(driverId))?.userId || "");
       if (!driverUser) {
         return res.status(404).json({ message: "Driver user not found" });
       }
 
-      const monthName = month ? new Date(2000, month - 1, 1).toLocaleDateString('en-US', { month: 'long' }) : '';
-      const title = prize 
-        ? `Congratulations! You won ${prize} in the ${monthName} ${year || ''} Monthly Prize Drawing!`
-        : `Reward Winner Notification`;
+      const monthName = new Date(2000, Number(month) - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+      const title = winner.prizeTitle
+        ? `Congratulations! You won ${winner.prizeTitle} in the ${monthName} ${year} Monthly Prize Drawing!`
+        : "Reward Winner Notification";
 
-      await storage.createNotification({
-        userId: driver.userId,
+      const notification = await storage.createLotteryNotificationOnce({
+        lotteryDrawingId: drawing.id,
+        lotteryMonth: Number(month),
+        lotteryYear: Number(year),
+        userId: driverUser.id,
+        driverId,
+        notificationKind: "winner",
+        place: winner.placeIndex ?? null,
         title,
         message,
-        type: 'lottery_winner',
-        data: { month, year, prize, sentBy: user.username },
+        data: { entryId: winner.entryId, sentBy: user.id, source: "manual_current_program_winner" },
       });
 
-      console.log(`🎉 Reward winner notification sent to driver ${driverId} by ${user.username}`);
+      if (!notification.created) {
+        return res.status(409).json({
+          code: "winner_notification_already_generated",
+          message: "A winner notification has already been generated for this driver and drawing.",
+        });
+      }
+
+      console.log(`🎉 Reward winner notification sent to current-program winner by ${user.id}`);
       
       res.json({ 
-        message: `Winner notification sent to ${driverUser.firstName} ${driverUser.lastName}`,
-        driverName: `${driverUser.firstName} ${driverUser.lastName}`,
+        message: "Winner notification created.",
       });
     } catch (error: any) {
       console.error("Error sending lottery winner notification:", error);
@@ -11126,6 +11227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Execute a lottery drawing for a given month/year (admin/super_admin)
   app.post('/api/admin/lottery/execute', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -11527,6 +11629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all past lottery drawings (admin/super_admin)
   app.get('/api/admin/lottery/drawings', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -11541,6 +11644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get drawings with undelivered prizes (admin/super_admin)
   app.get('/api/admin/lottery/drawings/pending', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -11555,6 +11659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mark a specific prize as delivered (admin/super_admin)
   app.put('/api/admin/lottery/drawings/:id/mark-delivered', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const user = await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -11563,6 +11668,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { place } = req.body;
       if (!['first', 'second', 'third'].includes(place)) {
         return res.status(400).json({ message: "Place must be 'first', 'second', or 'third'" });
+      }
+      const drawing = (await storage.getLotteryDrawings()).find((candidate: any) => candidate.id === id);
+      if (!drawing) {
+        return res.status(404).json({ message: "Current-program drawing not found" });
       }
       const updated = await storage.markLotteryPrizeDelivered(id, place);
       res.json({ message: "Prize marked as delivered", drawing: updated });
@@ -12366,6 +12475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/wallet/balance - Get driver's current wallet balance
   app.get('/api/wallet/balance', isAuthenticated, async (req: any, res) => {
     try {
+      if (!await requireCurrentProgramHistorySchema(res)) return;
       const userId = req.user.id;
       const user = await storage.getUser(userId);
       
@@ -12378,42 +12488,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver profile not found" });
       }
 
-      let availableBalance = 0;
-      let balanceSource = 'local';
-
-      // Get balance from Stripe Treasury (system of record)
-      if (driver.stripeTreasuryAccountId && driver.stripeConnectAccountId) {
-        try {
-          const treasuryBalance = await stripeService.getTreasuryBalance({
-            connectedAccountId: driver.stripeConnectAccountId,
-            financialAccountId: driver.stripeTreasuryAccountId,
-          });
-          // Stripe Treasury balance is in cents, convert to dollars
-          availableBalance = treasuryBalance.balance / 100;
-          balanceSource = 'stripe';
-        } catch (stripeError) {
-          console.error('Error fetching Stripe Treasury balance, falling back to local:', stripeError);
-          // Fall back to local wallet if Stripe fails
-          const wallet = await storage.getDriverWallet(driver.id);
-          availableBalance = wallet ? parseFloat(wallet.availableBalance) : 0;
-        }
-      } else {
-        // No Stripe Treasury account yet, use local wallet balance
-        const wallet = await storage.getDriverWallet(driver.id);
-        if (!wallet) {
-          return res.json(buildNoDriverWalletBalanceResponse());
-        } else {
-          availableBalance = parseFloat(wallet.availableBalance);
-        }
-      }
-
-      // Calculate pending balance dynamically from activities with status='pending'
-      const dynamicPendingBalance = await storage.calculatePendingBalance(driver.id);
-
+      // Legacy wallet aggregates cannot be safely separated from retained
+      // historical test data. Canonical obligations do not create wallet
+      // entitlement in this phase, so preserve truth by returning unavailable
+      // rather than presenting a mixed historical/current balance.
       res.json(buildReadOnlyDriverWalletBalanceResponse({
-        availableBalance: availableBalance,
-        pendingBalance: dynamicPendingBalance,
-        balanceSource: balanceSource // 'column' or 'local' for debugging
+        availableBalance: 0,
+        pendingBalance: 0,
+        balanceSource: "current_program_unavailable",
+        walletState: "not_created",
       }));
     } catch (error) {
       console.error("Error getting wallet balance:", error);

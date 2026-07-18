@@ -1,12 +1,13 @@
 import { pool } from "./db";
 import { CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND } from "./financialObligations";
 
-export type FinancialSchemaState = "metadata_unavailable" | "audit_columns_missing" | "canonical_index_pending" | "transitional" | "canonical_ready";
+export type FinancialSchemaState = "metadata_unavailable" | "financial_history_schema_missing" | "audit_columns_missing" | "canonical_index_pending" | "transitional" | "canonical_ready";
 export type FinancialSchemaCapabilities = {
   previewAvailable: true;
   schemaMetadataAvailable: boolean;
   auditSchemaAvailable: boolean;
   obligationKindAvailable: boolean;
+  financialHistorySchemaAvailable: boolean;
   canonicalPartialIndexAvailable: boolean;
   globalActivityIndexPresent: boolean;
   schemaState: FinancialSchemaState;
@@ -34,7 +35,7 @@ export function isExactCanonicalObligationPredicate(value: unknown): boolean {
   return normalized === `activity_idisnotnullandobligation_kind=${CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND}`;
 }
 
-export function deriveFinancialSchemaCapabilities(columnNames: Iterable<string>, indexes: IndexMetadata[], metadataAvailable = true): FinancialSchemaCapabilities {
+export function deriveFinancialSchemaCapabilities(columnNames: Iterable<string>, indexes: IndexMetadata[], metadataAvailable = true, financialHistorySchemaAvailable = true): FinancialSchemaCapabilities {
   const columns = new Set(columnNames);
   const auditSchemaAvailable = columns.has("obligation_created_by") && columns.has("obligation_creation_reason");
   const obligationKindAvailable = columns.has("obligation_kind");
@@ -50,10 +51,12 @@ export function deriveFinancialSchemaCapabilities(columnNames: Iterable<string>,
     && Number(index.key_count) === 1
     && isExactlyActivityId(index.first_key));
   const schemaState: FinancialSchemaState = !metadataAvailable ? "metadata_unavailable"
+    : !financialHistorySchemaAvailable ? "financial_history_schema_missing"
     : !auditSchemaAvailable || !obligationKindAvailable ? "audit_columns_missing"
       : !canonicalPartialIndexAvailable ? "canonical_index_pending"
         : globalActivityIndexPresent ? "transitional" : "canonical_ready";
   const creationUnavailableReason = schemaState === "canonical_ready" ? null
+    : schemaState === "financial_history_schema_missing" ? "financial_history_schema_unavailable"
     : schemaState === "canonical_index_pending" ? "canonical_uniqueness_migration_pending"
       : schemaState === "transitional" ? "canonical_uniqueness_migration_transitional"
         : schemaState === "audit_columns_missing" ? "canonical_audit_schema_unavailable" : "schema_metadata_unavailable";
@@ -62,6 +65,7 @@ export function deriveFinancialSchemaCapabilities(columnNames: Iterable<string>,
     schemaMetadataAvailable: metadataAvailable,
     auditSchemaAvailable,
     obligationKindAvailable,
+    financialHistorySchemaAvailable,
     canonicalPartialIndexAvailable,
     globalActivityIndexPresent,
     schemaState,
@@ -76,13 +80,16 @@ export function deriveFinancialSchemaCapabilities(columnNames: Iterable<string>,
 /** Reads PostgreSQL metadata only. Creation is fail-closed until the final partial-index state is proven. */
 export async function getFinancialSchemaCapabilities(): Promise<FinancialSchemaCapabilities> {
   try {
-    const [columnResult, indexResult] = await Promise.all([
+    const [columnResult, indexResult, tableResult] = await Promise.all([
       pool.query(`SELECT column_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2 AND column_name = ANY($3::text[])`, ["public", "payments", [...PAYMENT_COLUMNS]]),
       pool.query(`SELECT indexrel.relname AS index_name, i.indisunique AS is_unique, i.indisvalid AS is_valid, i.indisready AS is_ready, i.indnkeyatts AS key_count, pg_get_indexdef(i.indexrelid, 1, true) AS first_key, pg_get_expr(i.indpred, i.indrelid) AS predicate FROM pg_class table_rel JOIN pg_namespace ns ON ns.oid = table_rel.relnamespace JOIN pg_index i ON i.indrelid = table_rel.oid JOIN pg_class indexrel ON indexrel.oid = i.indexrelid WHERE ns.nspname = $1 AND table_rel.relname = $2`, ["public", "payments"]),
+      pool.query(`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = $1 AND table_name = $2) AS available`, ["public", "financial_history_records"]),
     ]);
     return deriveFinancialSchemaCapabilities(
       columnResult.rows.map((row: { column_name?: unknown }) => String(row.column_name || "")),
       indexResult.rows,
+      true,
+      Boolean(tableResult.rows[0]?.available),
     );
   } catch {
     return deriveFinancialSchemaCapabilities([], [], false);

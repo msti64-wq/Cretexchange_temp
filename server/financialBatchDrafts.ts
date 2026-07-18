@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import {
   billingBatches,
@@ -6,6 +6,7 @@ import {
   financialBatchAuditEvents,
   financialBatchExceptions,
   financialBatchMemberships,
+  financialHistoryRecords,
   owners,
   payments,
   users,
@@ -15,6 +16,7 @@ import {
 import { formatCentsToDollars } from "../shared/money";
 import { db } from "./db";
 import { CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND, isPlatformFinancialOperationsRole } from "./financialObligations";
+import { HISTORICAL_TEST_DATA_CLASSIFICATION } from "./financialHistory";
 
 export const CANONICAL_FINANCIAL_BATCH_MODEL_VERSION = "canonical_financial_batch_v1";
 export const CANONICAL_FINANCIAL_BATCH_STATE_DRAFT = "draft";
@@ -450,11 +452,12 @@ const databaseFinancialBatchDraftRepository: FinancialBatchDraftRepository = {
         hasExecutionIdentifiers: sql<boolean>`(${payments.stripePaymentIntentId} IS NOT NULL OR ${payments.stripeTransferId} IS NOT NULL OR ${payments.stripeChargeId} IS NOT NULL)`,
       }).from(payments)
         .leftJoin(washoutActivities, eq(washoutActivities.id, payments.activityId))
+        .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = ${HISTORICAL_TEST_DATA_CLASSIFICATION}`)
         .leftJoin(drivers, eq(drivers.id, payments.driverId))
         .leftJoin(washoutLocations, eq(washoutLocations.id, washoutActivities.locationId))
         .leftJoin(owners, eq(owners.id, payments.ownerId))
         .leftJoin(financialBatchMemberships, and(eq(financialBatchMemberships.paymentId, payments.id), eq(financialBatchMemberships.state, "active")))
-        .where(eq(payments.ownerId, ownerId));
+        .where(and(eq(payments.ownerId, ownerId), isNull(financialHistoryRecords.id)));
       return rows.map((row: any) => ({
         payment: { ...row.payment, hasExecutionIdentifiers: Boolean(row.hasExecutionIdentifiers) }, activity: row.activity, driver: row.driver,
         location: row.location, facility: row.facility, activeMembershipId: row.activeMembershipId || null,

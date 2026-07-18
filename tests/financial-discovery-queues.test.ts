@@ -115,6 +115,14 @@ test("database discovery projects and maps obligation kind before classifying le
   assert.match(String(exceptions.items[0].explanation), /legacy or unclassified/i);
 });
 
+test("explicit historical test records remain queryable in storage but are excluded from current queues and exceptions", async () => {
+  const historical = record({ activity: { financialHistoryClassification: "historical_test_data" }, payment: { obligationKind: null } });
+  const repo = repository([historical]);
+  assert.equal((await listVerifiedActivitiesWithoutCanonicalObligations(filters(), repo.repository, NOW)).items.length, 0);
+  assert.equal((await listUnbatchedCanonicalObligations(filters(), repo.repository, NOW)).items.length, 0);
+  assert.equal((await listCanonicalFinancialExceptions(filters(), repo.repository, NOW)).items.length, 0);
+});
+
 test("selected Missing Obligations tokens are opaque, activity-bound, tamper-safe, and expire", () => {
   const issuedAt = NOW.getTime();
   const token = createFinancialWorkspaceSelectionToken("activity_private_uuid", issuedAt);

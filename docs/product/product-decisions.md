@@ -693,3 +693,11 @@
 ## PD-054 - Canonical Financial Visibility and Obligation Workflow
 
 **Decision:** [PD-054](./PD-054-canonical-financial-visibility-and-obligation-workflow.md) defines the sole canonical non-executing financial destination, single verified-activity obligation model, structured creation reason, and truthful canonical visibility.
+
+## PD-055 - Financial History Clean-Slate Cutoff
+
+**Decision:** [PD-055](./PD-055-financial-history-clean-slate-cutoff.md) classifies internal testing through July 16, 2026 America/Chicago as retained historical test data and begins current canonical financial and incentive-program operations on July 17, 2026 America/Chicago.
+
+**Status:** Active policy; production classification remains separately gated.
+
+**Guardrails:** Historical records are retained, never treated as unpaid external liabilities, never automatically converted to canonical obligations, and are excluded from current canonical queues, financial totals, batches, reward entries, leaderboard/lifetime totals, drawing eligibility, and actionable notifications.

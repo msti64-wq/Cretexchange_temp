@@ -1,8 +1,9 @@
 import { eq, sql } from "drizzle-orm";
-import { drivers, owners, payments, systemSettings, washoutActivities, washoutLocations } from "../shared/schema";
+import { drivers, financialHistoryRecords, owners, payments, systemSettings, washoutActivities, washoutLocations } from "../shared/schema";
 import { resolveConfiguredWashoutPlatformFeeCents } from "../shared/billingPolicy";
 import { formatCentsToDollars } from "../shared/money";
 import { db } from "./db";
+import { HISTORICAL_TEST_DATA_CLASSIFICATION, isHistoricalTestClassification } from "./financialHistory";
 
 export const CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND = "canonical_verified_activity_v1";
 export const CANONICAL_OBLIGATION_REASON_CATEGORIES = ["missing_canonical_obligation"] as const;
@@ -30,6 +31,7 @@ export type FinancialObligationActivity = {
   locationId: string;
   status: string;
   amount: string | number | null;
+  financialHistoryClassification?: string | null;
 };
 
 export type FinancialObligationRepository = {
@@ -52,6 +54,12 @@ export type FinancialObligationResult = {
   driverIncentiveCents: number;
   platformFeeCents: number;
   facilityChargeCents: number;
+};
+
+export type HistoricalTestActivityResult = {
+  outcome: "historical_test_activity";
+  created: false;
+  code: "historical_test_activity";
 };
 
 export type FinancialObligationCreationContext = {
@@ -77,6 +85,10 @@ export class FinancialObligationError extends Error {
   ) {
     super(message);
   }
+}
+
+function historicalTestActivityResult(): HistoricalTestActivityResult {
+  return { outcome: "historical_test_activity", created: false, code: "historical_test_activity" };
 }
 
 export function isPlatformFinancialOperationsRole(role: unknown): boolean {
@@ -192,15 +204,16 @@ function fromExisting(obligation: FinancialObligationPayment): FinancialObligati
 export async function previewFinancialObligationForVerifiedActivity(
   activityId: string,
   repository: FinancialObligationRepository = databaseFinancialObligationRepository,
-): Promise<Pick<FinancialObligationResult, "driverIncentiveCents" | "platformFeeCents" | "facilityChargeCents">> {
+): Promise<Pick<FinancialObligationResult, "driverIncentiveCents" | "platformFeeCents" | "facilityChargeCents"> | HistoricalTestActivityResult> {
   return repository.transaction(async (tx) => {
+    const activity = await tx.findActivityById(activityId);
+    if (!activity) throw new FinancialObligationError("activity_not_found", "Activity not found");
+    if (isHistoricalTestClassification(activity.financialHistoryClassification)) return historicalTestActivityResult();
     const existing = resolveExistingCanonicalObligation(await tx.findPaymentsByActivityId(activityId));
     if (existing) {
       const resolved = fromExisting(existing);
       return resolved;
     }
-    const activity = await tx.findActivityById(activityId);
-    if (!activity) throw new FinancialObligationError("activity_not_found", "Activity not found");
     if (activity.status !== "verified") throw new FinancialObligationError("activity_not_verified", "Only verified activities may create a financial obligation");
     const [driver, location] = await Promise.all([tx.findDriverById(activity.driverId), tx.findLocationById(activity.locationId)]);
     if (!driver) throw new FinancialObligationError("driver_not_found", "Verified activity has no valid driver");
@@ -224,15 +237,18 @@ export async function createFinancialObligationForVerifiedActivity(
   activityId: string,
   repository: FinancialObligationRepository = databaseFinancialObligationRepository,
   context: FinancialObligationCreationContext = {},
-): Promise<FinancialObligationResult> {
+): Promise<FinancialObligationResult | HistoricalTestActivityResult> {
   return repository.transaction(async (tx) => {
-    const existing = resolveExistingCanonicalObligation(await tx.findPaymentsByActivityId(activityId));
-    if (existing) return fromExisting(existing);
-
     const activity = await tx.findActivityById(activityId);
     if (!activity) {
       throw new FinancialObligationError("activity_not_found", "Activity not found");
     }
+    // Explicit history is a normal terminal business outcome, not a legacy
+    // liability exception. It has no write side effect and cannot enter a
+    // canonical queue, batch, wallet, or provider workflow.
+    if (isHistoricalTestClassification(activity.financialHistoryClassification)) return historicalTestActivityResult();
+    const existing = resolveExistingCanonicalObligation(await tx.findPaymentsByActivityId(activityId));
+    if (existing) return fromExisting(existing);
     if (activity.status !== "verified") {
       throw new FinancialObligationError("activity_not_verified", "Only verified activities may create a financial obligation");
     }
@@ -326,7 +342,10 @@ export function createDatabaseFinancialObligationRepository(options: { obligatio
         locationId: washoutActivities.locationId,
         status: washoutActivities.status,
         amount: washoutActivities.amount,
-      }).from(washoutActivities).where(eq(washoutActivities.id, activityId));
+        financialHistoryClassification: financialHistoryRecords.classification,
+      }).from(washoutActivities)
+        .leftJoin(financialHistoryRecords, sql`${financialHistoryRecords.recordType} = 'washout_activity' AND ${financialHistoryRecords.recordId} = ${washoutActivities.id} AND ${financialHistoryRecords.classification} = ${HISTORICAL_TEST_DATA_CLASSIFICATION}`)
+        .where(eq(washoutActivities.id, activityId));
       return activity ?? null;
     },
     findDriverById: async (driverId) => {

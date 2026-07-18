@@ -18,6 +18,7 @@ export type BillableWashout = {
   driverTipCents?: number | string | null;
   driverTipOverrideCents?: number | string | null;
   alreadyBilled?: boolean;
+  historicalTestData?: boolean;
 };
 
 export type ResolvedDriverTipForWashout = {
@@ -66,6 +67,7 @@ export type ReportingLedgerPayment = {
   stripePaymentIntentId?: string | null;
   stripeTransferId?: string | null;
   stripeChargeId?: string | null;
+  historicalTestData?: boolean;
 };
 
 export type ReportingLedgerSummary = {
@@ -222,7 +224,7 @@ export function buildOwnerWashoutBillingLedgerFromBillableWashouts(params: {
   allowAdminOverride?: boolean;
   immediateBilling?: boolean;
 }): OwnerBillingLedger {
-  const billable = params.washouts.filter((washout) => washout.ownerId === params.ownerId && !washout.alreadyBilled);
+  const billable = params.washouts.filter((washout) => washout.ownerId === params.ownerId && !washout.alreadyBilled && washout.historicalTestData !== true);
   const washoutActivityIds = billable.map((washout) => washout.id);
   const platformFeeCentsByWashout = billable.map((washout) => normalizeMoneyToCents(washout.platformFeeCents, "auto"));
   const driverTipCentsByWashout = billable.map((washout) => resolveBillableWashoutDriverTipCents(washout));
@@ -268,7 +270,7 @@ export function buildOwnerWashoutBillingLedgerFromPayments(params: {
   allowAdminOverride?: boolean;
   immediateBilling?: boolean;
 }): OwnerBillingLedger {
-  const billablePayments = params.payments.filter((payment) => payment.ownerId === params.ownerId);
+  const billablePayments = params.payments.filter((payment) => payment.ownerId === params.ownerId && payment.historicalTestData !== true);
   const washoutActivityIds = billablePayments.map((payment) => payment.activityId);
   const platformFeeCentsByWashout = billablePayments.map((payment) => getPaymentPlatformFeeCents(payment));
   const driverTipCentsByWashout = billablePayments.map((payment) => getPaymentDriverIncentiveCents(payment));
