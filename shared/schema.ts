@@ -643,6 +643,46 @@ export const financialBatchAuditEvents = pgTable("financial_batch_audit_events",
   `),
 }));
 
+// Canonical provider attempts are deliberately separate from a batch. A batch
+// may retain failed attempts for audit, but a partial unique index allows only
+// one live or successful attempt. Provider responses are never stored here.
+export const canonicalFinancialPaymentAttempts = pgTable("canonical_financial_payment_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id").notNull().references(() => billingBatches.id, { onDelete: "restrict" }),
+  attemptNumber: integer("attempt_number").notNull(),
+  priorAttemptId: varchar("prior_attempt_id"),
+  executionMode: varchar("execution_mode").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: varchar("currency").notNull(),
+  idempotencyKey: varchar("idempotency_key").notNull(),
+  providerObjectId: varchar("provider_object_id"),
+  providerCustomerId: varchar("provider_customer_id"),
+  status: varchar("status").notNull().default("created"),
+  providerErrorCode: varchar("provider_error_code"),
+  providerErrorMessage: varchar("provider_error_message"),
+  initiatedBy: varchar("initiated_by").references(() => users.id, { onDelete: "set null" }),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  processingAt: timestamp("processing_at"),
+  succeededAt: timestamp("succeeded_at"),
+  failedAt: timestamp("failed_at"),
+  cancelledAt: timestamp("cancelled_at"),
+}, (table) => ({
+  batchAttemptUnique: uniqueIndex("uniq_canonical_financial_attempt_batch_number").on(table.batchId, table.attemptNumber),
+  idempotencyUnique: uniqueIndex("uniq_canonical_financial_attempt_idempotency").on(table.idempotencyKey),
+  providerObjectUnique: uniqueIndex("uniq_canonical_financial_attempt_provider_object").on(table.providerObjectId).where(sql`${table.providerObjectId} IS NOT NULL`),
+  oneLiveOrSuccessfulAttempt: uniqueIndex("uniq_canonical_financial_attempt_live_or_successful")
+    .on(table.batchId).where(sql`${table.status} IN ('created', 'processing', 'succeeded')`),
+  stateIndex: index("idx_canonical_financial_attempt_batch_state").on(table.batchId, table.status),
+  validAttemptCheck: check("chk_canonical_financial_attempt_valid", sql`
+    ${table.attemptNumber} > 0
+    AND ${table.amountCents} > 0
+    AND ${table.currency} = 'usd'
+    AND ${table.executionMode} IN ('stripe_test', 'stripe_live')
+    AND ${table.status} IN ('created', 'processing', 'succeeded', 'failed', 'cancelled')
+  `),
+}));
+
 // Exception rows preserve a non-repairing, least-privilege record when an
 // authorized construction attempt encounters a material financial conflict.
 export const financialBatchExceptions = pgTable("financial_batch_exceptions", {

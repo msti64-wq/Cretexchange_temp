@@ -1,6 +1,6 @@
-export type FinancialWorkspaceBatchState = "draft" | "ready_for_review" | "approved" | "cancelled";
+export type FinancialWorkspaceBatchState = "draft" | "ready_for_review" | "approved" | "processing" | "paid" | "failed" | "cancelled";
 
-export type FinancialWorkspaceAction = "move_to_review" | "approve" | "cancel";
+export type FinancialWorkspaceAction = "move_to_review" | "approve" | "execute" | "retry" | "cancel";
 
 export type FinancialBatchProjection = {
   id: string;
@@ -34,19 +34,27 @@ const stateLabels: Record<FinancialWorkspaceBatchState, string> = {
   draft: "Draft",
   ready_for_review: "Ready for Review",
   approved: "Approved",
+  processing: "Processing",
+  paid: "Paid",
+  failed: "Failed",
   cancelled: "Cancelled",
 };
 
 const stateActions: Record<FinancialWorkspaceBatchState, FinancialWorkspaceAction[]> = {
   draft: ["move_to_review", "cancel"],
   ready_for_review: ["approve", "cancel"],
-  approved: ["cancel"],
+  approved: ["execute", "cancel"],
+  processing: [],
+  paid: [],
+  failed: ["retry"],
   cancelled: [],
 };
 
 const actionLabels: Record<FinancialWorkspaceAction, string> = {
   move_to_review: "Move to Review",
   approve: "Approve",
+  execute: "Execute",
+  retry: "Retry",
   cancel: "Cancel",
 };
 
@@ -92,6 +100,9 @@ export function batchStateDescription(state: FinancialWorkspaceBatchState | stri
     case "draft": return "Frozen draft awaiting review.";
     case "ready_for_review": return "Frozen draft available for separate approval.";
     case "approved": return "Approved. Not executed, charged, paid, or settled.";
+    case "processing": return "Provider acceptance is pending authoritative confirmation.";
+    case "paid": return "Provider webhook confirmed this canonical facility collection. Driver settlement remains separate.";
+    case "failed": return "Provider reported failure. A separately authorized retry may use the same frozen total.";
     case "cancelled": return "Historical record. No reopen or edit action is available.";
     default: return "Batch state is unavailable.";
   }
@@ -104,6 +115,10 @@ export function financialWorkspaceAuditEventLabel(eventType: unknown): string {
     case "approved": return "Approved";
     case "cancelled": return "Cancelled";
     case "membership_released": return "Membership Released";
+    case "provider_execution_reserved": return "Execution Reserved";
+    case "provider_execution_retried": return "Execution Retried";
+    case "provider_execution_succeeded": return "Payment Confirmed";
+    case "provider_execution_failed": return "Payment Failed";
     default: return "Unavailable";
   }
 }

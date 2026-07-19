@@ -20,7 +20,7 @@ import { isCurrentFinancialRecord } from "./financialCutoff";
 
 export const CANONICAL_FINANCIAL_BATCH_MODEL_VERSION = "canonical_financial_batch_v1";
 export const CANONICAL_FINANCIAL_BATCH_STATE_DRAFT = "draft";
-export type CanonicalFinancialBatchState = "draft" | "ready_for_review" | "approved" | "cancelled";
+export type CanonicalFinancialBatchState = "draft" | "ready_for_review" | "approved" | "processing" | "paid" | "failed" | "cancelled";
 const WEEKLY_CADENCE = "weekly";
 const MAX_REASON_LENGTH = 500;
 
@@ -106,7 +106,7 @@ export type CanonicalBatchDraftRequest = {
 
 export type CanonicalBatchListFilters = {
   facilityId?: string;
-  state?: "draft" | "ready_for_review" | "approved" | "cancelled";
+  state?: CanonicalFinancialBatchState;
   page?: number;
   pageSize?: number;
 };
@@ -889,7 +889,7 @@ export function createAdminFinancialBatchListHandler(dependencies: FinancialBatc
       const facilityId = req.query?.facilityId;
       if (facilityId !== undefined && (typeof facilityId !== "string" || !facilityId.trim() || facilityId.length > 128)) throw new CanonicalBatchDraftError("invalid_request", "Invalid Facility filter");
       const state = req.query?.state;
-      if (state !== undefined && !["draft", "ready_for_review", "approved", "cancelled"].includes(state)) throw new CanonicalBatchDraftError("invalid_request", "Invalid batch state filter");
+  if (state !== undefined && !["draft", "ready_for_review", "approved", "processing", "paid", "failed", "cancelled"].includes(state)) throw new CanonicalBatchDraftError("invalid_request", "Invalid batch state filter");
       const filters = {
         facilityId: typeof facilityId === "string" ? facilityId.trim() : undefined,
         state: state as CanonicalBatchListFilters["state"],

@@ -188,7 +188,7 @@ export default function AdminFinancialWorkspace() {
   const exceptionItems = extractFinancialWorkspaceItems(exceptions.data);
   const batchItems = Array.isArray(batches.data?.items) ? batches.data.items : null;
   const byState = useMemo(() => ({
-    draft: batchItems?.filter((batch) => batch.state === "draft") || [], ready: batchItems?.filter((batch) => batch.state === "ready_for_review") || [], approved: batchItems?.filter((batch) => batch.state === "approved") || [], cancelled: batchItems?.filter((batch) => batch.state === "cancelled") || [],
+    draft: batchItems?.filter((batch) => batch.state === "draft") || [], ready: batchItems?.filter((batch) => batch.state === "ready_for_review") || [], approved: batchItems?.filter((batch) => batch.state === "approved") || [], processing: batchItems?.filter((batch) => batch.state === "processing") || [], paid: batchItems?.filter((batch) => batch.state === "paid") || [], failed: batchItems?.filter((batch) => batch.state === "failed") || [], cancelled: batchItems?.filter((batch) => batch.state === "cancelled") || [],
   }), [batchItems]);
   const openAction = (nextAction: Action) => { clearAction(); setAction(nextAction); };
 
@@ -211,6 +211,9 @@ export default function AdminFinancialWorkspace() {
       <BatchSection t={t} locale={locale} state="draft" batches={byState.draft} query={batches} onView={setDetailBatchId} onAction={openAction} />
       <BatchSection t={t} locale={locale} state="ready_for_review" batches={byState.ready} query={batches} onView={setDetailBatchId} onAction={openAction} />
       <BatchSection t={t} locale={locale} state="approved" batches={byState.approved} query={batches} onView={setDetailBatchId} onAction={openAction} />
+      <BatchSection t={t} locale={locale} state="processing" batches={byState.processing} query={batches} onView={setDetailBatchId} onAction={openAction} />
+      <BatchSection t={t} locale={locale} state="failed" batches={byState.failed} query={batches} onView={setDetailBatchId} onAction={openAction} />
+      <BatchSection t={t} locale={locale} state="paid" batches={byState.paid} query={batches} onView={setDetailBatchId} onAction={openAction} />
       <BatchSection t={t} locale={locale} state="cancelled" batches={byState.cancelled} query={batches} onView={setDetailBatchId} onAction={openAction} />
     </main>
     <MobileNav role={user?.role} />

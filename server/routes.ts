@@ -102,7 +102,8 @@ import {
   createAdminFinancialBatchLifecycleHandler,
   createAdminFinancialBatchListHandler,
 } from "./financialBatchDrafts";
-import { CanonicalBatchExecutionError, createDatabaseCanonicalBatchExecutionRepository, executeApprovedCanonicalBatch } from "./canonicalBatchExecution";
+import { CanonicalBatchExecutionError, createDatabaseCanonicalBatchExecutionRepository, executeApprovedCanonicalBatch, listCanonicalBatchPaymentAttempts } from "./canonicalBatchExecution";
+import { processCanonicalBatchPaymentIntentEvent } from "./canonicalBatchWebhook";
 import {
   authorizeAndFenceFinancialExecutionRequest,
   buildNoDriverWalletBalanceResponse,
@@ -5598,6 +5599,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("[CANONICAL_BATCH_EXECUTION_UNAVAILABLE]", { batchId: req.params.id, actorRole: user.role, errorCategory: error instanceof Error ? error.name : "UnknownError" });
       return res.status(500).json({ code: "FINANCIAL_BATCH_EXECUTION_UNAVAILABLE", message: "Canonical batch execution is unavailable." });
     }
+  }));
+  app.post('/api/admin/financial-batches/:id/retry', isAuthenticated, requireCanonicalFinancialSchema(async (req: any, res: any) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    try {
+      const result = await executeApprovedCanonicalBatch({
+        batchId: req.params.id, actorId: user.id, reason: String(req.body?.reason || ""), retry: true,
+        provider: { createPaymentIntent: async (input) => {
+          const paymentIntent = await stripeService.stripe.paymentIntents.create({ amount: input.amount, currency: input.currency, customer: input.customer, payment_method: input.paymentMethod, confirm: true, metadata: input.metadata }, { idempotencyKey: input.idempotencyKey });
+          return { id: paymentIntent.id };
+        } }, repository: createDatabaseCanonicalBatchExecutionRepository(),
+      });
+      return res.status(202).json({ batchId: result.batchId, status: result.status, executionAttemptId: result.attemptId });
+    } catch (error) {
+      if (error instanceof CanonicalBatchExecutionError) return res.status(error.code === "FINANCIAL_EXECUTION_DISABLED" ? 503 : error.code.includes("NOT_FOUND") ? 404 : error.code.includes("NOT_RETRYABLE") || error.code.includes("INVALID") ? 422 : 409).json({ code: error.code, message: error.message });
+      console.error("[CANONICAL_BATCH_RETRY_UNAVAILABLE]", { batchId: req.params.id, actorRole: user.role, errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      return res.status(500).json({ code: "FINANCIAL_BATCH_RETRY_UNAVAILABLE", message: "Canonical batch retry is unavailable." });
+    }
+  }));
+  app.get('/api/admin/financial-batches/:id/attempts', isAuthenticated, requireCanonicalFinancialSchema(async (req: any, res: any) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    const batchId = String(req.params.id || "").trim();
+    if (!batchId || batchId.length > 128) return res.status(422).json({ code: "FINANCIAL_BATCH_INVALID_REQUEST", message: "A valid batch identifier is required." });
+    return res.json({ items: await listCanonicalBatchPaymentAttempts(batchId) });
   }));
 
   app.post('/api/admin/payments/process-awaiting-driver-stripe', isAuthenticated, async (req: any, res) => {
@@ -14260,6 +14286,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Daily batch payment processing events  
       case 'payment_intent.succeeded':
         const succeededPaymentIntent = event.data.object as Stripe.PaymentIntent;
+        if (succeededPaymentIntent.metadata?.canonicalBatchId) {
+          await processCanonicalBatchPaymentIntentEvent({
+            type: "payment_intent.succeeded", eventId: event.id, providerObjectId: succeededPaymentIntent.id,
+            amountCents: succeededPaymentIntent.amount, currency: succeededPaymentIntent.currency,
+            metadata: succeededPaymentIntent.metadata,
+          });
+          break;
+        }
         
         // Check if this is a batch payment (metadata should contain batchId)
         if (succeededPaymentIntent.metadata?.batchId) {
@@ -14309,6 +14343,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       case 'payment_intent.payment_failed':
         const failedPaymentIntent = event.data.object as Stripe.PaymentIntent;
+        if (failedPaymentIntent.metadata?.canonicalBatchId) {
+          await processCanonicalBatchPaymentIntentEvent({
+            type: "payment_intent.payment_failed", eventId: event.id, providerObjectId: failedPaymentIntent.id,
+            amountCents: failedPaymentIntent.amount, currency: failedPaymentIntent.currency,
+            metadata: failedPaymentIntent.metadata,
+            errorCode: failedPaymentIntent.last_payment_error?.code || undefined,
+            errorMessage: failedPaymentIntent.last_payment_error?.message || undefined,
+          });
+          break;
+        }
         
         // Check if this is a batch payment
         if (failedPaymentIntent.metadata?.batchId) {
