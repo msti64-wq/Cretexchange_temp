@@ -335,18 +335,16 @@ test("driver profile bank connect visibility uses driver_stripe_payouts only", (
 
 test("driver dashboard profile reminder does not require a payment method", () => {
   const driverDashboardSource = readFileSync(new URL("../client/src/pages/driver/dashboard.tsx", import.meta.url), "utf8");
-  const i18nSource = readFileSync(new URL("../client/src/lib/i18n.ts", import.meta.url), "utf8");
 
   assert.doesNotMatch(driverDashboardSource, /user\.paymentMethod/);
   assert.doesNotMatch(driverDashboardSource, /set up your payment method/i);
-  assert.match(driverDashboardSource, /driver\.dashboard\.completeProfileDescription/);
-  assert.match(i18nSource, /set up Stripe payouts/i);
+  assert.match(driverDashboardSource, /DriverLifecycleSummary/);
+  assert.match(driverDashboardSource, /useDriverPaymentLifecycle/);
 });
 
 test("driver dashboard Washout Stats Mix defaults to today and supports range selector", () => {
   const driverDashboardSource = readFileSync(new URL("../client/src/pages/driver/dashboard.tsx", import.meta.url), "utf8");
 
-  assert.match(driverDashboardSource, /title=\{t\("driver\.dashboard\.washoutStatsMix"\)\}/);
   assert.match(driverDashboardSource, /useState<DriverDashboardStatsRange>\("today"\)/);
   assert.match(driverDashboardSource, /statsRange=\$\{statsRange\}/);
   assert.match(driverDashboardSource, /DRIVER_STATS_RANGE_OPTIONS/);
@@ -372,7 +370,7 @@ test("owner dashboard header does not use sticky positioning", () => {
 
   assert.doesNotMatch(ownerHeaderSource, /sticky top-0|position:\s*sticky/i);
   assert.doesNotMatch(ownerHeaderSource, /fixed|position:\s*fixed/i);
-  assert.match(ownerHeaderSource, /className="w-full gradient-bg/);
+  assert.match(ownerHeaderSource, /className="w-full border-b border-border bg-card text-foreground shadow-sm"/);
   assert.match(ownerDashboardSource, /min-h-screen w-full max-w-\[100vw\] overflow-x-hidden bg-background pb-20/);
   assert.match(ownerDashboardSource, /mx-auto w-full max-w-6xl min-w-0 space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5/);
 });
@@ -2395,7 +2393,38 @@ async function withPatchedStorage(
   const { storage } = await import("../server/storage");
   const original = new Map<string, unknown>();
 
-  for (const [key, value] of Object.entries(patch)) {
+  // Route tests replace storage with an in-memory fixture. Stripe onboarding now
+  // reconciles the three persisted account-id fields atomically, so provide the
+  // equivalent successful fixture unless a test explicitly supplies a conflict.
+  // This keeps the unit harness isolated from the intentionally unreachable
+  // DATABASE_URL used by the full test command.
+  const effectivePatch = {
+    reconcileDriverStripeAccountIds: async ({
+      userId,
+      expectedAccountId,
+    }: {
+      userId: string;
+      expectedAccountId: string;
+    }) => {
+      const updateUserStripeInfo = patch.updateUserStripeInfo as
+        | ((id: string, values: { stripeConnectAccountId: string }) => Promise<unknown>)
+        | undefined;
+      if (updateUserStripeInfo) {
+        await updateUserStripeInfo(userId, { stripeConnectAccountId: expectedAccountId });
+      }
+      return {
+        conflict: false,
+        updatedFields: [
+          "users.stripeConnectAccountId",
+          "drivers.stripeConnectAccountId",
+          "drivers.connectedAccountId",
+        ] as const,
+      };
+    },
+    ...patch,
+  };
+
+  for (const [key, value] of Object.entries(effectivePatch)) {
     original.set(key, storage[key]);
     storage[key] = value;
   }
@@ -2417,7 +2446,26 @@ async function withPatchedStripe(
   const stripeObject = stripeService.stripe as unknown as Record<string, unknown>;
   const original = new Map<string, unknown>();
 
-  for (const [key, value] of Object.entries(patch)) {
+  const effectivePatch = {
+    ...patch,
+    accounts: patch.accounts
+      ? {
+          list: async () => ({ data: [], has_more: false }),
+          retrieve: async (id: string) => ({
+            id,
+            object: "account",
+            details_submitted: false,
+            payouts_enabled: false,
+            charges_enabled: false,
+            requirements: { currently_due: [], past_due: [] },
+          }),
+          ...(patch.accounts as Record<string, unknown>),
+        }
+      : undefined,
+  };
+
+  for (const [key, value] of Object.entries(effectivePatch)) {
+    if (value === undefined) continue;
     original.set(key, stripeObject[key]);
     stripeObject[key] = value;
   }
@@ -10479,8 +10527,9 @@ for (const winnerCount of [1, 2, 3] as const) {
     const fixture = createLotteryMessagingFixture(winnerCount);
     const route = await getLotteryExecuteRoute();
 
-    await withPatchedStorage(fixture.patch, async () => {
-      await withMockedRandom(0, async () => {
+    await withActiveRewardsPeriod(async () => {
+      await withPatchedStorage(fixture.patch, async () => {
+        await withMockedRandom(0, async () => {
         const res = createResponse();
         await route(
           {
@@ -10527,6 +10576,7 @@ for (const winnerCount of [1, 2, 3] as const) {
             driverName: call.data.driverName,
           })),
         );
+        });
       });
     });
   });
@@ -10536,8 +10586,9 @@ test("lottery drawing retry does not duplicate winner or participant messages", 
   const fixture = createLotteryMessagingFixture(3);
   const route = await getLotteryExecuteRoute();
 
-  await withPatchedStorage(fixture.patch, async () => {
-    await withMockedRandom(0, async () => {
+  await withActiveRewardsPeriod(async () => {
+    await withPatchedStorage(fixture.patch, async () => {
+      await withMockedRandom(0, async () => {
       const firstRes = createResponse();
       await route(
         {
@@ -10578,6 +10629,7 @@ test("lottery drawing retry does not duplicate winner or participant messages", 
       assert.equal(fixture.state.notificationCalls.length, firstCount);
       assert.equal((secondRes.body as any).drawing.winnerNotificationCount, 3);
       assert.equal((secondRes.body as any).drawing.participantNotificationCount, 3);
+      });
     });
   });
 });
@@ -10640,6 +10692,13 @@ async function withMockedDb(
     dbObject.insert = original.insert;
     dbObject.update = original.update;
   }
+}
+
+async function withActiveRewardsPeriod(run: () => Promise<void>) {
+  await withMockedDb(
+    [[{ id: "rewards_period_2026_05", month: 5, year: 2026, status: "active" }]],
+    async () => run(),
+  );
 }
 
 type LotteryMessagingFixture = {

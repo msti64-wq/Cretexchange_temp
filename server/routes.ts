@@ -102,6 +102,7 @@ import {
   createAdminFinancialBatchLifecycleHandler,
   createAdminFinancialBatchListHandler,
 } from "./financialBatchDrafts";
+import { CanonicalBatchExecutionError, createDatabaseCanonicalBatchExecutionRepository, executeApprovedCanonicalBatch } from "./canonicalBatchExecution";
 import {
   authorizeAndFenceFinancialExecutionRequest,
   buildNoDriverWalletBalanceResponse,
@@ -1687,10 +1688,16 @@ async function safelyResolveDriverStripeOnboardingAccount(params: {
     };
   }
 
-  const account = await stripe.accounts.create(
-    buildDriverStripePayoutAccountParams(decision.user, decision.driver),
-    { idempotencyKey: `driver-connect-account-${decision.user.id}` },
-  );
+  let account: Stripe.Account;
+  try {
+    account = await stripe.accounts.create(
+      buildDriverStripePayoutAccountParams(decision.user, decision.driver),
+      { idempotencyKey: `driver-connect-account-${decision.user.id}` },
+    );
+  } catch (error: any) {
+    error.driverStripeOperation = 'account_create';
+    throw error;
+  }
   const reconciliation = await storage.reconcileDriverStripeAccountIds({
     userId: decision.user.id,
     driverId: decision.driver.id,
@@ -4275,7 +4282,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const accountLink = await createDriverStripeOnboardingLink(req, accountResult.accountId);
+      let accountLink: Stripe.AccountLink;
+      try {
+        accountLink = await createDriverStripeOnboardingLink(req, accountResult.accountId);
+      } catch (error: any) {
+        error.driverStripeOperation = 'account_link';
+        throw error;
+      }
       if (!accountLink?.url) {
         console.error('[driver.stripe.status_unavailable]', {
           userId,
@@ -4326,10 +4339,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const safeStripeError = getSafeStripeErrorDetails(error);
       const isConfigError = error?.code === 'DRIVER_STRIPE_ACCOUNT_LINK_CONFIG_INVALID';
       const isProfileError = statusCode === 400 && Array.isArray(error?.missingFields);
+      const isAccountCreateError = error?.driverStripeOperation === 'account_create';
+      const isAccountLinkError = error?.driverStripeOperation === 'account_link';
+      const errorCode = isAccountCreateError
+        ? 'DRIVER_STRIPE_ACCOUNT_CREATE_REJECTED'
+        : isAccountLinkError
+          ? 'DRIVER_STRIPE_ACCOUNT_LINK_REJECTED'
+          : error?.code || (isProfileError
+            ? 'DRIVER_PAYOUT_PROFILE_INCOMPLETE'
+            : 'DRIVER_PAYOUT_SETUP_SESSION_FAILED');
       console.error('[driver.stripe.status_unavailable]', {
         userId: req.user?.id || null,
         source,
-        errorCode: error?.code || (isProfileError ? 'DRIVER_PAYOUT_PROFILE_INCOMPLETE' : 'DRIVER_PAYOUT_SETUP_SESSION_FAILED'),
+        errorCode,
         stripeError: safeStripeError,
       });
       return res.status(statusCode).json({
@@ -4338,13 +4360,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : isConfigError
           ? 'Payout setup is temporarily unavailable. Platform Stripe Connect setup is incomplete.'
           : 'Failed to create onboarding link',
-        code: error?.code || (statusCode === 400
-          ? 'DRIVER_PAYOUT_SETUP_REJECTED'
-          : 'DRIVER_PAYOUT_SETUP_SESSION_FAILED'),
-        reason: error?.reason || (isProfileError ? 'missing_required_profile_fields' : 'driver_payout_setup_session_failed'),
+        code: errorCode,
+        reason: error?.reason || (isAccountCreateError
+          ? 'stripe_account_create_rejected'
+          : isAccountLinkError
+            ? 'stripe_account_link_create_rejected'
+            : isProfileError
+              ? 'missing_required_profile_fields'
+              : 'driver_payout_setup_session_failed'),
         statusCode,
         missingFields: error?.missingFields || [],
         invalidFields: error?.invalidFields || [],
+        stripeError: safeStripeError,
       });
     }
   }
@@ -5536,6 +5563,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/financial-batches/:id/ready-for-review', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchLifecycleHandler("ready_for_review", financialBatchDependencies) as any));
   app.post('/api/admin/financial-batches/:id/approve', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchLifecycleHandler("approve", financialBatchDependencies) as any));
   app.post('/api/admin/financial-batches/:id/cancel', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchLifecycleHandler("cancel", financialBatchDependencies) as any));
+  app.post('/api/admin/financial-batches/:id/execute', isAuthenticated, requireCanonicalFinancialSchema(async (req: any, res: any) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    try {
+      const result = await executeApprovedCanonicalBatch({
+        batchId: req.params.id,
+        actorId: user.id,
+        reason: String(req.body?.reason || ""),
+        provider: {
+          createPaymentIntent: async (input) => {
+            const paymentIntent = await stripeService.stripe.paymentIntents.create({
+              amount: input.amount,
+              currency: input.currency,
+              customer: input.customer,
+              payment_method: input.paymentMethod,
+              confirm: true,
+              metadata: input.metadata,
+            }, { idempotencyKey: input.idempotencyKey });
+            return { id: paymentIntent.id };
+          },
+        },
+        repository: createDatabaseCanonicalBatchExecutionRepository(),
+      });
+      return res.status(202).json({ batchId: result.batchId, status: result.status, executionAttemptId: result.attemptId });
+    } catch (error) {
+      if (error instanceof CanonicalBatchExecutionError) {
+        const status = error.code === "FINANCIAL_EXECUTION_DISABLED" ? 503
+          : error.code.includes("NOT_FOUND") ? 404
+          : error.code.includes("NOT_APPROVED") || error.code.includes("INVALID") || error.code.includes("HISTORICAL") || error.code.includes("PAYMENT_METHOD") ? 422
+          : 409;
+        return res.status(status).json({ code: error.code, message: error.message });
+      }
+      console.error("[CANONICAL_BATCH_EXECUTION_UNAVAILABLE]", { batchId: req.params.id, actorRole: user.role, errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      return res.status(500).json({ code: "FINANCIAL_BATCH_EXECUTION_UNAVAILABLE", message: "Canonical batch execution is unavailable." });
+    }
+  }));
 
   app.post('/api/admin/payments/process-awaiting-driver-stripe', isAuthenticated, async (req: any, res) => {
     try {

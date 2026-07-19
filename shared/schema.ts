@@ -558,7 +558,7 @@ export const billingBatches = pgTable("billing_batches", {
   canonicalLifecycleActorIndex: index("idx_billing_batches_canonical_state_updated").on(table.batchModelVersion, table.canonicalState, table.updatedAt),
   canonicalFrozenTotalsCheck: check("chk_billing_batches_canonical_frozen_totals", sql`
     ${table.batchModelVersion} IS NULL OR ${table.batchModelVersion} <> 'canonical_financial_batch_v1' OR (
-      ${table.canonicalReference} IS NOT NULL AND ${table.canonicalState} IN ('draft', 'ready_for_review', 'approved', 'cancelled')
+      ${table.canonicalReference} IS NOT NULL AND ${table.canonicalState} IN ('draft', 'ready_for_review', 'approved', 'processing', 'paid', 'failed', 'cancelled')
       AND ${table.periodStart} IS NOT NULL AND ${table.periodEnd} IS NOT NULL AND ${table.periodEnd} > ${table.periodStart}
       AND ${table.cadence} = 'weekly' AND ${table.revision} IS NOT NULL AND ${table.revision} > 0
       AND ${table.frozenDriverIncentiveCents} IS NOT NULL AND ${table.frozenDriverIncentiveCents} >= 0

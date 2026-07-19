@@ -269,6 +269,8 @@ export default function AdminLottery() {
   const [inventoryAdjustReason, setInventoryAdjustReason] = useState("");
   const [inventoryAdjustMetadata, setInventoryAdjustMetadata] = useState("");
   const [catalogFormState, setCatalogFormState] = useState<PrizeCatalogFormState>(EMPTY_PRIZE_FORM);
+  const [ticketToMarkIneligible, setTicketToMarkIneligible] = useState<any | null>(null);
+  const [ineligibilityReason, setIneligibilityReason] = useState("");
 
   useEffect(() => {
     setPreviewResult(null);
@@ -301,6 +303,21 @@ export default function AdminLottery() {
       const response = await apiRequest('GET', `/api/admin/lottery/entries?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`);
       return response.json();
     },
+  });
+
+  const markTicketIneligible = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) =>
+      apiRequest("POST", `/api/admin/rewards/tickets/${id}/ineligible`, { reason }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/lottery/entries", selectedMonth, selectedYear] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/lottery/totals", selectedMonth, selectedYear] }),
+      ]);
+      setTicketToMarkIneligible(null);
+      setIneligibilityReason("");
+      toast({ title: "Reward entry marked ineligible" });
+    },
+    onError: (error: Error) => toast({ title: "Could not update reward entry", description: error.message, variant: "destructive" }),
   });
 
   const { data: drawingHistory, isLoading: drawingHistoryLoading } = useQuery<any[]>({
@@ -2045,6 +2062,7 @@ export default function AdminLottery() {
                         <TableHead>Location</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead className="text-right">Entries</TableHead>
+                        <TableHead className="text-right">Eligibility</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -2076,6 +2094,20 @@ export default function AdminLottery() {
                           <TableCell className="text-right">
                             <Badge variant="outline">+{entry.entriesEarned}</Badge>
                           </TableCell>
+                          <TableCell className="text-right">
+                            {entry.eligibilityStatus && entry.eligibilityStatus !== "eligible" ? (
+                              <Badge variant="secondary">{entry.eligibilityStatus}</Badge>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setTicketToMarkIneligible(entry)}
+                                data-testid={`button-mark-ticket-ineligible-${entry.id}`}
+                              >
+                                Mark ineligible
+                              </Button>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -2088,6 +2120,41 @@ export default function AdminLottery() {
           </Card>
         )}
       </main>
+
+      <Dialog open={Boolean(ticketToMarkIneligible)} onOpenChange={(open) => {
+        if (!open) {
+          setTicketToMarkIneligible(null);
+          setIneligibilityReason("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark reward entry ineligible</DialogTitle>
+            <DialogDescription>
+              This entry will remain available for audit, but will not be eligible for a rewards drawing.
+            </DialogDescription>
+          </DialogHeader>
+          <Label className="space-y-2">
+            Reason
+            <Textarea
+              value={ineligibilityReason}
+              onChange={(event) => setIneligibilityReason(event.target.value)}
+              placeholder="Reason for excluding this entry"
+            />
+          </Label>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setTicketToMarkIneligible(null)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!ineligibilityReason.trim() || markTicketIneligible.isPending}
+              onClick={() => ticketToMarkIneligible && markTicketIneligible.mutate({ id: ticketToMarkIneligible.id, reason: ineligibilityReason.trim() })}
+            >
+              Mark ineligible
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={catalogFormOpen} onOpenChange={(open) => {
         setCatalogFormOpen(open);
