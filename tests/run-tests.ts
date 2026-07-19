@@ -351,7 +351,7 @@ test("driver dashboard Washout Stats Mix defaults to today and supports range se
   assert.match(driverDashboardSource, /value: "today", labelKey: "driver\.dashboard\.rangeToday"/);
   assert.match(driverDashboardSource, /value: "week", labelKey: "driver\.dashboard\.rangeWeek"/);
   assert.match(driverDashboardSource, /value: "month", labelKey: "driver\.dashboard\.rangeMonth"/);
-  assert.match(driverDashboardSource, /\{t\(option\.labelKey\)\}/);
+  assert.match(driverDashboardSource, /getDriverStatsRangeLabel\(option\.value, t\)/);
   assert.match(driverDashboardSource, /button-washout-stats-\$\{option\.value\}/);
   assert.match(driverDashboardSource, /text-washout-stats-range-label/);
 });
@@ -375,16 +375,14 @@ test("owner dashboard header does not use sticky positioning", () => {
   assert.match(ownerDashboardSource, /mx-auto w-full max-w-6xl min-w-0 space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5/);
 });
 
-test("billing mutations invalidate canonical dashboard reporting caches", () => {
+test("historical billing page is read-only while live billing surfaces retain no-cache safeguards", () => {
   const billingSettingsSource = readFileSync(new URL("../client/src/pages/admin/billing-settings.tsx", import.meta.url), "utf8");
   const washoutFormSource = readFileSync(new URL("../client/src/components/WashoutForm.tsx", import.meta.url), "utf8");
   const ownerDashboardSource = readFileSync(new URL("../client/src/pages/owner/dashboard.tsx", import.meta.url), "utf8");
   const routesSource = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
 
-  assert.match(billingSettingsSource, /invalidateQueries\(\{ queryKey: \['\/api\/admin\/dashboard'\] \}\)/);
-  assert.match(billingSettingsSource, /invalidateQueries\(\{ queryKey: \['\/api\/owners\/dashboard'\] \}\)/);
-  assert.match(billingSettingsSource, /invalidateQueries\(\{ queryKey: \['\/api\/drivers\/dashboard'\] \}\)/);
-  assert.match(billingSettingsSource, /invalidateQueries\(\{ queryKey: \['\/api\/payments\/driver-history'\] \}\)/);
+  assert.match(billingSettingsSource, /legacyFinancial\.readOnly/);
+  assert.doesNotMatch(billingSettingsSource, /useMutation|apiRequest\("POST"|invalidateQueries/);
   assert.match(washoutFormSource, /invalidateQueries\(\{ queryKey: \['\/api\/admin\/dashboard'\] \}\)/);
   assert.match(washoutFormSource, /invalidateQueries\(\{ queryKey: \['\/api\/admin\/billing\/settings'\] \}\)/);
   assert.match(washoutFormSource, /invalidateQueries\(\{ queryKey: \['\/api\/owners\/billing\/pending-summary'\] \}\)/);
@@ -2454,6 +2452,8 @@ async function withPatchedStripe(
           retrieve: async (id: string) => ({
             id,
             object: "account",
+            email: "test@example.com",
+            metadata: { role: "driver" },
             details_submitted: false,
             payouts_enabled: false,
             charges_enabled: false,
@@ -3890,7 +3890,7 @@ test("driver Stripe onboarding returns missingFields when required profile email
           );
 
           assert.equal(res.statusCode, 400);
-          assert.equal((res.body as { code?: string }).code, "DRIVER_STRIPE_PROFILE_INCOMPLETE");
+          assert.equal((res.body as { code?: string }).code, "DRIVER_PAYOUT_PROFILE_INCOMPLETE");
           assert.equal((res.body as { reason?: string }).reason, "missing_required_profile_fields");
           assert.deepEqual((res.body as { missingFields?: string[] }).missingFields, ["email"]);
         },
@@ -10649,11 +10649,13 @@ async function withMockedDb(
     select: unknown;
     insert: unknown;
     update: unknown;
+    transaction: unknown;
   };
   const original = {
     select: dbObject.select,
     insert: dbObject.insert,
     update: dbObject.update,
+    transaction: dbObject.transaction,
   };
   const mock: DbMock = {
     selectResults: [...selectResults],
@@ -10684,6 +10686,7 @@ async function withMockedDb(
       },
     }),
   });
+  dbObject.transaction = async (run: (tx: typeof dbObject) => Promise<unknown>) => run(dbObject);
 
   try {
     await run(mock);
@@ -10691,6 +10694,7 @@ async function withMockedDb(
     dbObject.select = original.select;
     dbObject.insert = original.insert;
     dbObject.update = original.update;
+    dbObject.transaction = original.transaction;
   }
 }
 

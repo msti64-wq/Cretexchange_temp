@@ -1,11 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
+// Focused tests inject repositories and must never try to connect to a real
+// database when executed independently or alongside other test files.
+process.env.DATABASE_URL ||= "postgres://user:pass@127.0.0.1:1/cretexchange_test";
+
+const {
   REWARDS_PERIOD_CANCELLATION_ANNOUNCEMENT,
   canTransitionRewardsPeriod,
   resolveRewardsPeriodForActivity,
-} from "../server/rewardsPeriods";
+} = await import("../server/rewardsPeriods");
 
 const CUTOFF = "2026-07-17T05:00:00.000Z";
 

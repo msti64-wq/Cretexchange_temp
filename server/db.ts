@@ -176,6 +176,9 @@ class RobustPool {
         return await this.pool.query(text, params);
       } catch (error: any) {
         console.error(`Database query error (attempt ${attempt + 1}/${retries + 1}):`, error.message);
+        if (process.env.NODE_ENV === "test") {
+          throw new Error(`Unexpected test database access: ${error.message}`);
+        }
         
         if (this.isConnectionError(error)) {
           // Trigger reconnection if not already happening
@@ -207,6 +210,9 @@ class RobustPool {
         return await this.pool.connect();
       } catch (error: any) {
         console.error(`Database connect error (attempt ${attempt + 1}/${retries + 1}):`, error.message);
+        if (process.env.NODE_ENV === "test") {
+          throw new Error(`Unexpected test database access: ${error.message}`);
+        }
         
         if (this.isConnectionError(error)) {
           if (!this.isReconnecting) {
