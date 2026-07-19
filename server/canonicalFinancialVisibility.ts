@@ -1,8 +1,9 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { billingBatches, drivers, financialBatchExceptions, financialBatchMemberships, owners, payments, washoutActivities, washoutLocations } from "../shared/schema";
+import { billingBatches, drivers, financialBatchExceptions, financialBatchMemberships, owners, payments, systemSettings, washoutActivities, washoutLocations } from "../shared/schema";
 import { db } from "./db";
 import { CANONICAL_FINANCIAL_BATCH_MODEL_VERSION } from "./financialBatchDrafts";
 import { CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND, parseFrozenDollarCents } from "./financialObligations";
+import { isCurrentFinancialRecord } from "./financialCutoff";
 
 export type CanonicalFinancialMetric = { count: number; driverIncentiveCents: number | null; platformFeeCents: number | null; facilityChargeCents: number | null };
 export type CanonicalFinancialVisibilitySummary = {
@@ -29,11 +30,12 @@ export function buildCanonicalFinancialMetric(rows: Array<{ incentive: unknown; 
 
 /** Read-only aggregate of only versioned canonical records. It never reads legacy ledgers or mutable rates. */
 export async function getCanonicalFinancialVisibilitySummary(): Promise<CanonicalFinancialVisibilitySummary> {
-  const [missingRows, obligationRows, batchRows, exceptionRows] = await Promise.all([
-    db.select({ activityId: washoutActivities.id, amount: washoutActivities.amount, verifiedAt: washoutActivities.verifiedAt, driverId: drivers.id, locationId: washoutLocations.id, facilityId: owners.id, paymentId: payments.id })
+  const [settingsRows, missingRows, obligationRows, batchRows, exceptionRows] = await Promise.all([
+    db.select({ financialHistoryCutoffAt: systemSettings.financialHistoryCutoffAt }).from(systemSettings).limit(1),
+    db.select({ activityId: washoutActivities.id, amount: washoutActivities.amount, verifiedAt: washoutActivities.verifiedAt, createdAt: washoutActivities.createdAt, driverId: drivers.id, locationId: washoutLocations.id, facilityId: owners.id, paymentId: payments.id })
       .from(washoutActivities).leftJoin(payments, and(eq(payments.activityId, washoutActivities.id), eq(payments.obligationKind, CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND))).leftJoin(drivers, eq(drivers.id, washoutActivities.driverId)).leftJoin(washoutLocations, eq(washoutLocations.id, washoutActivities.locationId)).leftJoin(owners, eq(owners.id, washoutLocations.ownerId)).where(eq(washoutActivities.status, "verified")),
-    db.select({ amount: payments.amount, processingFee: payments.processingFee, membershipId: financialBatchMemberships.id })
-      .from(payments).leftJoin(financialBatchMemberships, and(eq(financialBatchMemberships.paymentId, payments.id), eq(financialBatchMemberships.state, "active")))
+    db.select({ amount: payments.amount, processingFee: payments.processingFee, membershipId: financialBatchMemberships.id, activityVerifiedAt: washoutActivities.verifiedAt, activityCreatedAt: washoutActivities.createdAt })
+      .from(payments).innerJoin(washoutActivities, eq(washoutActivities.id, payments.activityId)).leftJoin(financialBatchMemberships, and(eq(financialBatchMemberships.paymentId, payments.id), eq(financialBatchMemberships.state, "active")))
       .where(and(
         eq(payments.obligationKind, CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND),
         eq(payments.status, "pending"),
@@ -44,17 +46,26 @@ export async function getCanonicalFinancialVisibilitySummary(): Promise<Canonica
         // intentionally never selected or filtered here.
         isNull(payments.stripeTransferId),
       )),
-    db.select({ state: billingBatches.canonicalState, incentive: billingBatches.frozenDriverIncentiveCents, fee: billingBatches.frozenPlatformFeeCents, facility: billingBatches.frozenFacilityChargeCents })
-      .from(billingBatches).where(eq(billingBatches.batchModelVersion, CANONICAL_FINANCIAL_BATCH_MODEL_VERSION)),
+    db.select({ batchId: billingBatches.id, state: billingBatches.canonicalState, incentive: billingBatches.frozenDriverIncentiveCents, fee: billingBatches.frozenPlatformFeeCents, facility: billingBatches.frozenFacilityChargeCents, activityVerifiedAt: washoutActivities.verifiedAt, activityCreatedAt: washoutActivities.createdAt })
+      .from(billingBatches).innerJoin(financialBatchMemberships, eq(financialBatchMemberships.batchId, billingBatches.id)).innerJoin(payments, eq(payments.id, financialBatchMemberships.paymentId)).innerJoin(washoutActivities, eq(washoutActivities.id, payments.activityId)).where(eq(billingBatches.batchModelVersion, CANONICAL_FINANCIAL_BATCH_MODEL_VERSION)),
     db.select({ id: financialBatchExceptions.id }).from(financialBatchExceptions).where(eq(financialBatchExceptions.status, "open")),
   ]);
+  const cutoff = settingsRows[0]?.financialHistoryCutoffAt;
   const missingCount = missingRows.filter((row) => {
-    if (row.paymentId || !row.driverId || !row.locationId || !row.facilityId || !validDate(row.verifiedAt)) return false;
+    if (row.paymentId || !row.driverId || !row.locationId || !row.facilityId || !isCurrentFinancialRecord(row, cutoff)) return false;
     try { parseFrozenDollarCents(row.amount, "invalid_frozen_activity_amount", "Invalid canonical amount"); return true; } catch { return false; }
   }).length;
-  const open = obligationRows.filter((row) => !row.membershipId).map((row) => {
+  const open = obligationRows.filter((row) => !row.membershipId && isCurrentFinancialRecord({ verifiedAt: row.activityVerifiedAt, createdAt: row.activityCreatedAt }, cutoff)).map((row) => {
     try { const incentive = parseFrozenDollarCents(row.amount, "invalid_frozen_activity_amount", "Invalid canonical amount"); const fee = parseFrozenDollarCents(row.processingFee, "invalid_platform_fee", "Invalid canonical fee"); return { incentive, fee, facility: incentive + fee }; } catch { return { incentive: null, fee: null, facility: null }; }
   });
-  const batchMetric = (state: string) => buildCanonicalFinancialMetric(batchRows.filter((row) => row.state === state).map((row) => ({ incentive: row.incentive, fee: row.fee, facility: row.facility })));
+  const currentBatches = new Map<string, { row: typeof batchRows[number]; hasHistoricalMember: boolean }>();
+  for (const row of batchRows) {
+    const existing = currentBatches.get(row.batchId);
+    currentBatches.set(row.batchId, {
+      row,
+      hasHistoricalMember: Boolean(existing?.hasHistoricalMember) || !isCurrentFinancialRecord({ verifiedAt: row.activityVerifiedAt, createdAt: row.activityCreatedAt }, cutoff),
+    });
+  }
+  const batchMetric = (state: string) => buildCanonicalFinancialMetric(Array.from(currentBatches.values()).filter(({ row, hasHistoricalMember }) => !hasHistoricalMember && row.state === state).map(({ row }) => ({ incentive: row.incentive, fee: row.fee, facility: row.facility })));
   return { missingObligations: { count: missingCount }, openCanonicalObligations: buildCanonicalFinancialMetric(open), draftBatches: batchMetric("draft"), readyForReview: batchMetric("ready_for_review"), approvedNotExecuted: batchMetric("approved"), exceptions: { count: exceptionRows.length }, generatedAt: new Date().toISOString() };
 }

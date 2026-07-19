@@ -8,6 +8,7 @@ import {
   financialBatchMemberships,
   owners,
   payments,
+  systemSettings,
   users,
   washoutActivities,
   washoutLocations,
@@ -15,6 +16,7 @@ import {
 import { formatCentsToDollars } from "../shared/money";
 import { db } from "./db";
 import { CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND, isPlatformFinancialOperationsRole } from "./financialObligations";
+import { isCurrentFinancialRecord } from "./financialCutoff";
 
 export const CANONICAL_FINANCIAL_BATCH_MODEL_VERSION = "canonical_financial_batch_v1";
 export const CANONICAL_FINANCIAL_BATCH_STATE_DRAFT = "draft";
@@ -53,6 +55,7 @@ export type CanonicalBatchCandidate = {
     locationId: string | null;
     status: string | null;
     verifiedAt: Date | string | null;
+    createdAt?: Date | string | null;
   } | null;
   driver: { id: string } | null;
   location: { id: string; ownerId: string | null; name: string | null } | null;
@@ -146,6 +149,7 @@ export type FinancialBatchDraftRepositoryOperations = {
   findBatchByIdempotencyKey(key: string): Promise<CanonicalFinancialBatch | null>;
   findBatchByFacilityPeriod(ownerId: string, periodStart: Date): Promise<CanonicalFinancialBatch | null>;
   listCandidates(ownerId: string): Promise<CanonicalBatchCandidate[]>;
+  getFinancialHistoryCutoff?(): Promise<Date | string | null | undefined>;
   createDraftBatch(input: CanonicalFinancialBatch & { idempotencyKey: string }): Promise<CanonicalFinancialBatch>;
   claimMemberships(batch: CanonicalFinancialBatch, memberships: CanonicalBatchMembershipInput[], actor: CanonicalBatchDraftContext, reason: string): Promise<void>;
   appendAuditEvents(batch: CanonicalFinancialBatch, memberships: CanonicalBatchMembershipInput[], actor: CanonicalBatchDraftContext, reason: string): Promise<void>;
@@ -317,7 +321,11 @@ export async function createCanonicalFinancialBatchDraft(
     const idempotent = await tx.findBatchByIdempotencyKey(request.idempotencyKey);
     if (idempotent) return { batch: idempotent, created: false, exceptions: [] };
     const candidates = await tx.listCandidates(request.facilityId);
-    const facility = candidates.find((candidate) => candidate.facility?.id === request.facilityId)?.facility;
+    const cutoff = await tx.getFinancialHistoryCutoff?.();
+    const currentCandidates = cutoff == null
+      ? candidates
+      : candidates.filter((candidate) => candidate.activity && isCurrentFinancialRecord(candidate.activity, cutoff));
+    const facility = currentCandidates.find((candidate) => candidate.facility?.id === request.facilityId)?.facility;
     if (!facility) throw new CanonicalBatchDraftError("no_eligible_obligations", "Facility has no discoverable canonical obligations");
     assertTimezone(facility.billingTimezone);
     const period = calculateCanonicalWeeklyPeriod(request.periodAnchor, facility.billingTimezone);
@@ -327,12 +335,12 @@ export async function createCanonicalFinancialBatchDraft(
     // must still fail closed if an undeployed/legacy database contains more
     // than one financial row for an activity. Never claim both rows.
     const activityCounts = new Map<string, number>();
-    for (const candidate of candidates) {
+    for (const candidate of currentCandidates) {
       if (candidate.payment.activityId) {
         activityCounts.set(candidate.payment.activityId, (activityCounts.get(candidate.payment.activityId) || 0) + 1);
       }
     }
-    const classified = candidates.map((candidate) => {
+    const classified = currentCandidates.map((candidate) => {
       const activityId = candidate.payment.activityId;
       if (activityId && (activityCounts.get(activityId) || 0) > 1) {
         return { membership: null, exception: { paymentId: candidate.payment.id, category: "duplicate_activity_linked_financial_rows", safeReference: safeReference("obligation", candidate.payment.id) } };
@@ -436,6 +444,10 @@ function mapBatch(row: any): CanonicalFinancialBatch {
 
 const databaseFinancialBatchDraftRepository: FinancialBatchDraftRepository = {
   transaction: async (run) => db.transaction(async (tx: any) => run({
+    async getFinancialHistoryCutoff() {
+      const [settings] = await tx.select({ financialHistoryCutoffAt: systemSettings.financialHistoryCutoffAt }).from(systemSettings).limit(1);
+      return settings?.financialHistoryCutoffAt;
+    },
     async findBatchByIdempotencyKey(key) {
       const rows = await tx.select().from(billingBatches).where(and(eq(billingBatches.batchModelVersion, CANONICAL_FINANCIAL_BATCH_MODEL_VERSION), eq(billingBatches.idempotencyKey, key))).limit(1);
       return rows[0] ? mapBatch(rows[0]) : null;

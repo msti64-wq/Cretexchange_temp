@@ -5,6 +5,7 @@ import {
   getPaymentOwnerChargeCents,
   getPaymentPlatformFeeCents,
 } from "../../shared/paymentAccounting";
+import { isHistoricalFinancialRecord } from "../financialCutoff";
 
 export type BillableWashout = {
   id: string;
@@ -18,6 +19,8 @@ export type BillableWashout = {
   driverTipCents?: number | string | null;
   driverTipOverrideCents?: number | string | null;
   alreadyBilled?: boolean;
+  verifiedAt?: Date | string | null;
+  createdAt?: Date | string | null;
 };
 
 export type ResolvedDriverTipForWashout = {
@@ -66,6 +69,8 @@ export type ReportingLedgerPayment = {
   stripePaymentIntentId?: string | null;
   stripeTransferId?: string | null;
   stripeChargeId?: string | null;
+  verifiedAt?: Date | string | null;
+  createdAt?: Date | string | null;
 };
 
 export type ReportingLedgerSummary = {
@@ -221,8 +226,13 @@ export function buildOwnerWashoutBillingLedgerFromBillableWashouts(params: {
   washouts: BillableWashout[];
   allowAdminOverride?: boolean;
   immediateBilling?: boolean;
+  financialHistoryCutoffAt?: Date | string | null;
 }): OwnerBillingLedger {
-  const billable = params.washouts.filter((washout) => washout.ownerId === params.ownerId && !washout.alreadyBilled);
+  const billable = params.washouts.filter((washout) => (
+    washout.ownerId === params.ownerId
+    && !washout.alreadyBilled
+    && !isHistoricalFinancialRecord(washout, params.financialHistoryCutoffAt)
+  ));
   const washoutActivityIds = billable.map((washout) => washout.id);
   const platformFeeCentsByWashout = billable.map((washout) => normalizeMoneyToCents(washout.platformFeeCents, "auto"));
   const driverTipCentsByWashout = billable.map((washout) => resolveBillableWashoutDriverTipCents(washout));
@@ -267,8 +277,12 @@ export function buildOwnerWashoutBillingLedgerFromPayments(params: {
   payments: ReportingLedgerPayment[];
   allowAdminOverride?: boolean;
   immediateBilling?: boolean;
+  financialHistoryCutoffAt?: Date | string | null;
 }): OwnerBillingLedger {
-  const billablePayments = params.payments.filter((payment) => payment.ownerId === params.ownerId);
+  const billablePayments = params.payments.filter((payment) => (
+    payment.ownerId === params.ownerId
+    && !isHistoricalFinancialRecord(payment, params.financialHistoryCutoffAt)
+  ));
   const washoutActivityIds = billablePayments.map((payment) => payment.activityId);
   const platformFeeCentsByWashout = billablePayments.map((payment) => getPaymentPlatformFeeCents(payment));
   const driverTipCentsByWashout = billablePayments.map((payment) => getPaymentDriverIncentiveCents(payment));
@@ -429,8 +443,12 @@ export function getDriverTipSummary(
 export function getDriverTipSummaryFromPayments(
   driverId: string,
   payments: ReportingLedgerPayment[],
+  financialHistoryCutoffAt?: Date | string | null,
 ): ReportingDriverTipSummary {
-  const matchingPayments = payments.filter((payment) => payment.driverId === driverId);
+  const matchingPayments = payments.filter((payment) => (
+    payment.driverId === driverId
+    && !isHistoricalFinancialRecord(payment, financialHistoryCutoffAt)
+  ));
   const driverTipTotalCents = matchingPayments.reduce((sum, payment) => sum + getPaymentDriverIncentiveCents(payment), 0);
   const paidPayments = matchingPayments.filter((payment) => {
     const status = String(payment.status || "").toLowerCase();

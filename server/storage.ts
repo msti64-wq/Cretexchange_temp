@@ -142,6 +142,7 @@ import {
   type ReportingLedgerBatch,
 } from "./billing/ownerWashoutLedger";
 import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
+import { currentFinancialActivityCondition } from "./financialCutoff";
 import { eq, and, gte, lte, asc, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
@@ -577,6 +578,18 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  /** Uses the single configured cutoff for all current-program financial reads. */
+  private async currentFinancialActivityCondition() {
+    const [settings] = await db
+      .select({ financialHistoryCutoffAt: systemSettings.financialHistoryCutoffAt })
+      .from(systemSettings)
+      .limit(1);
+    return currentFinancialActivityCondition(
+      washoutActivities.verifiedAt,
+      washoutActivities.createdAt,
+      settings?.financialHistoryCutoffAt,
+    );
+  }
   // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -2194,7 +2207,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPaymentsByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { location: WashoutLocation } })[]> {
-    const conditions = [eq(payments.driverId, driverId)];
+    const conditions = [eq(payments.driverId, driverId), await this.currentFinancialActivityCondition()];
     
     if (startDate) {
       conditions.push(gte(payments.createdAt, startDate));
@@ -2314,7 +2327,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPaymentsByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(Payment & { activity: WashoutActivity & { driver: Driver & { user: User } } })[]> {
-    const conditions = [eq(payments.ownerId, ownerId)];
+    const conditions = [eq(payments.ownerId, ownerId), await this.currentFinancialActivityCondition()];
     
     if (startDate) {
       conditions.push(gte(payments.createdAt, startDate));
@@ -2472,6 +2485,7 @@ export class DatabaseStorage implements IStorage {
     const driverUsers = alias(users, "payment_driver_users");
     const ownerUsers = alias(users, "payment_owner_users");
 
+    const currentActivity = await this.currentFinancialActivityCondition();
     const rows = await db
       .select({
         paymentId: payments.id,
@@ -2542,6 +2556,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .where(and(
         inArray(payments.status, ["awaiting_driver_stripe", "pending_driver_onboarding"]),
+        currentActivity,
       ));
 
     return rows.map((row: any) => ({
@@ -4908,6 +4923,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPendingPaymentsForBatch(ownerId: string, businessDate: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
+    const currentActivity = await this.currentFinancialActivityCondition();
     const pendingPayments = await db
       .select({
         paymentId: payments.id,
@@ -4954,7 +4970,8 @@ export class DatabaseStorage implements IStorage {
           eq(payments.ownerId, ownerId),
           eq(payments.businessDate, businessDate),
           eq(payments.status, 'pending'),
-          isNull(payments.batchId)
+          isNull(payments.batchId),
+          currentActivity,
         )
       )
       .orderBy(payments.createdAt);
@@ -5030,6 +5047,7 @@ export class DatabaseStorage implements IStorage {
       eq(payments.ownerId, ownerId),
       eq(payments.status, 'pending'),
       isNull(payments.batchId),
+      await this.currentFinancialActivityCondition(),
     ];
 
     if (startDate) {
@@ -5165,6 +5183,7 @@ export class DatabaseStorage implements IStorage {
   }>> {
     const conditions = [
       eq(owners.id, ownerId),
+      await this.currentFinancialActivityCondition(),
       or(
         eq(washoutActivities.status, "verified"),
         sql<boolean>`${washoutActivities.status}::text = 'completed'`
@@ -5626,6 +5645,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPaymentsByBatchId(batchId: string): Promise<(Payment & { activity: WashoutActivity; driver: Driver & { user: User } })[]> {
+    const currentActivity = await this.currentFinancialActivityCondition();
     const batchPayments = await db
       .select({
         paymentId: payments.id,
@@ -5668,7 +5688,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(washoutLocations, eq(washoutActivities.locationId, washoutLocations.id))
       .innerJoin(drivers, eq(payments.driverId, drivers.id))
       .innerJoin(users, eq(drivers.userId, users.id))
-      .where(eq(payments.batchId, batchId))
+      .where(and(eq(payments.batchId, batchId), currentActivity))
       .orderBy(payments.createdAt);
 
     return batchPayments.map((row: any) => ({
@@ -6916,10 +6936,12 @@ export class DatabaseStorage implements IStorage {
     const currentSettings = await this.getSystemSettings();
     
     // Update the settings
+    const { financialHistoryCutoffAt, ...rest } = settingsUpdate;
     const [updated] = await db
       .update(systemSettings)
       .set({
-        ...settingsUpdate,
+        ...rest,
+        ...(financialHistoryCutoffAt ? { financialHistoryCutoffAt: new Date(financialHistoryCutoffAt) } : {}),
         updatedAt: new Date(),
         updatedBy,
       })

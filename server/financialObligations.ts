@@ -3,6 +3,7 @@ import { drivers, owners, payments, systemSettings, washoutActivities, washoutLo
 import { resolveConfiguredWashoutPlatformFeeCents } from "../shared/billingPolicy";
 import { formatCentsToDollars } from "../shared/money";
 import { db } from "./db";
+import { isHistoricalFinancialRecord } from "./financialCutoff";
 
 export const CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND = "canonical_verified_activity_v1";
 export const CANONICAL_OBLIGATION_REASON_CATEGORIES = ["missing_canonical_obligation"] as const;
@@ -30,6 +31,8 @@ export type FinancialObligationActivity = {
   locationId: string;
   status: string;
   amount: string | number | null;
+  verifiedAt?: Date | string | null;
+  createdAt?: Date | string | null;
 };
 
 export type FinancialObligationRepository = {
@@ -42,7 +45,7 @@ export type FinancialObligationRepositoryOperations = {
   findDriverById(driverId: string): Promise<{ id: string } | null>;
   findLocationById(locationId: string): Promise<{ id: string; ownerId: string } | null>;
   findOwnerById(ownerId: string): Promise<{ id: string; customPlatformFee?: string | number | null } | null>;
-  findSystemSettings(): Promise<{ platformWashoutFee?: string | number | null } | null>;
+  findSystemSettings(): Promise<{ platformWashoutFee?: string | number | null; financialHistoryCutoffAt?: Date | string | null } | null>;
   insertPendingObligation(input: Omit<FinancialObligationPayment, "id">): Promise<FinancialObligationPayment | null>;
 };
 
@@ -64,6 +67,7 @@ export class FinancialObligationError extends Error {
     readonly code:
       | "activity_not_found"
       | "activity_not_verified"
+      | "historical_activity"
       | "driver_not_found"
       | "location_not_found"
       | "owner_not_found"
@@ -194,18 +198,22 @@ export async function previewFinancialObligationForVerifiedActivity(
   repository: FinancialObligationRepository = databaseFinancialObligationRepository,
 ): Promise<Pick<FinancialObligationResult, "driverIncentiveCents" | "platformFeeCents" | "facilityChargeCents">> {
   return repository.transaction(async (tx) => {
+    const activity = await tx.findActivityById(activityId);
+    if (!activity) throw new FinancialObligationError("activity_not_found", "Activity not found");
+    if (activity.status !== "verified") throw new FinancialObligationError("activity_not_verified", "Only verified activities may create a financial obligation");
+    const settings = await tx.findSystemSettings();
+    if (isHistoricalFinancialRecord(activity, settings?.financialHistoryCutoffAt)) {
+      throw new FinancialObligationError("historical_activity", "Historical activities are available for audit only and cannot create current financial obligations");
+    }
     const existing = resolveExistingCanonicalObligation(await tx.findPaymentsByActivityId(activityId));
     if (existing) {
       const resolved = fromExisting(existing);
       return resolved;
     }
-    const activity = await tx.findActivityById(activityId);
-    if (!activity) throw new FinancialObligationError("activity_not_found", "Activity not found");
-    if (activity.status !== "verified") throw new FinancialObligationError("activity_not_verified", "Only verified activities may create a financial obligation");
     const [driver, location] = await Promise.all([tx.findDriverById(activity.driverId), tx.findLocationById(activity.locationId)]);
     if (!driver) throw new FinancialObligationError("driver_not_found", "Verified activity has no valid driver");
     if (!location) throw new FinancialObligationError("location_not_found", "Verified activity has no valid facility location");
-    const [owner, settings] = await Promise.all([tx.findOwnerById(location.ownerId), tx.findSystemSettings()]);
+    const owner = await tx.findOwnerById(location.ownerId);
     if (!owner || owner.id !== location.ownerId) throw new FinancialObligationError("owner_not_found", "Verified activity has no valid facility owner");
     const driverIncentiveCents = parseFrozenActivityIncentiveCents(activity.amount);
     const platformFeeCents = resolveFrozenPlatformFeeCents(owner.customPlatformFee, settings?.platformWashoutFee);
@@ -226,9 +234,6 @@ export async function createFinancialObligationForVerifiedActivity(
   context: FinancialObligationCreationContext = {},
 ): Promise<FinancialObligationResult> {
   return repository.transaction(async (tx) => {
-    const existing = resolveExistingCanonicalObligation(await tx.findPaymentsByActivityId(activityId));
-    if (existing) return fromExisting(existing);
-
     const activity = await tx.findActivityById(activityId);
     if (!activity) {
       throw new FinancialObligationError("activity_not_found", "Activity not found");
@@ -236,6 +241,12 @@ export async function createFinancialObligationForVerifiedActivity(
     if (activity.status !== "verified") {
       throw new FinancialObligationError("activity_not_verified", "Only verified activities may create a financial obligation");
     }
+    const settings = await tx.findSystemSettings();
+    if (isHistoricalFinancialRecord(activity, settings?.financialHistoryCutoffAt)) {
+      throw new FinancialObligationError("historical_activity", "Historical activities are available for audit only and cannot create current financial obligations");
+    }
+    const existing = resolveExistingCanonicalObligation(await tx.findPaymentsByActivityId(activityId));
+    if (existing) return fromExisting(existing);
 
     const [driver, location] = await Promise.all([
       tx.findDriverById(activity.driverId),
@@ -244,10 +255,7 @@ export async function createFinancialObligationForVerifiedActivity(
     if (!driver) throw new FinancialObligationError("driver_not_found", "Verified activity has no valid driver");
     if (!location) throw new FinancialObligationError("location_not_found", "Verified activity has no valid facility location");
 
-    const [owner, settings] = await Promise.all([
-      tx.findOwnerById(location.ownerId),
-      tx.findSystemSettings(),
-    ]);
+    const owner = await tx.findOwnerById(location.ownerId);
     if (!owner || owner.id !== location.ownerId) {
       throw new FinancialObligationError("owner_not_found", "Verified activity has no valid facility owner");
     }
@@ -326,6 +334,8 @@ export function createDatabaseFinancialObligationRepository(options: { obligatio
         locationId: washoutActivities.locationId,
         status: washoutActivities.status,
         amount: washoutActivities.amount,
+        verifiedAt: washoutActivities.verifiedAt,
+        createdAt: washoutActivities.createdAt,
       }).from(washoutActivities).where(eq(washoutActivities.id, activityId));
       return activity ?? null;
     },
@@ -344,7 +354,7 @@ export function createDatabaseFinancialObligationRepository(options: { obligatio
     // Read-only: unlike storage.getSystemSettings(), this query never inserts a
     // default configuration while recording an obligation.
     findSystemSettings: async () => {
-      const [settings] = await tx.select({ platformWashoutFee: systemSettings.platformWashoutFee }).from(systemSettings).limit(1);
+      const [settings] = await tx.select({ platformWashoutFee: systemSettings.platformWashoutFee, financialHistoryCutoffAt: systemSettings.financialHistoryCutoffAt }).from(systemSettings).limit(1);
       return settings ?? null;
     },
     insertPendingObligation: async (input) => {

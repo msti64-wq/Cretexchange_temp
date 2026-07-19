@@ -42,7 +42,7 @@ function candidate(overrides: Record<string, any> = {}) {
   };
 }
 
-function inMemoryRepository(seed: any[]) {
+function inMemoryRepository(seed: any[], financialHistoryCutoffAt?: string) {
   const batches = new Map<string, any>();
   const idempotency = new Map<string, any>();
   const memberships = new Map<string, any>();
@@ -63,6 +63,7 @@ function inMemoryRepository(seed: any[]) {
           findBatchByIdempotencyKey: async (key: string) => idempotency.get(key) || null,
           findBatchByFacilityPeriod: async (ownerId: string, periodStart: Date) => Array.from(batches.values()).find((batch: any) => batch.ownerId === ownerId && batch.period.start.getTime() === periodStart.getTime()) || null,
           listCandidates: async (ownerId: string) => seed.filter((row) => row.facility?.id === ownerId),
+          getFinancialHistoryCutoff: async () => financialHistoryCutoffAt,
           createDraftBatch: async (input: any) => {
             if (Array.from(batches.values()).some((batch: any) => batch.ownerId === input.ownerId && batch.period.start.getTime() === input.period.start.getTime())) throw new Error("period conflict");
             batches.set(input.id, input); idempotency.set(input.idempotencyKey, input); return input;
@@ -144,6 +145,16 @@ test("Sunday start is included while the following Sunday endpoint is excluded",
   const excluded = inMemoryRepository([candidate({ payment: { id: "at_end", createdAt: period.end.toISOString() } })]);
   await assert.rejects(createCanonicalFinancialBatchDraft(request(), actor, excluded.repo), { code: "material_obligation_exception" });
   assert.equal(excluded.state.exceptions[0].category, "obligation_outside_period");
+});
+
+test("historical obligations are excluded from canonical batch construction", async () => {
+  const historical = candidate({ payment: { id: "historical_payment" }, activity: { id: "historical_activity", verifiedAt: "2026-07-17T04:59:59.000Z" } });
+  const current = candidate({ payment: { id: "current_payment", activityId: "current_activity" }, activity: { id: "current_activity", verifiedAt: "2026-07-17T05:00:00.000Z" } });
+  const fixture = inMemoryRepository([historical, current], "2026-07-17T05:00:00.000Z");
+  const result = await createCanonicalFinancialBatchDraft(request(), actor, fixture.repo);
+  assert.equal(result.batch.obligationCount, 1);
+  assert.equal(fixture.state.memberships.has("historical_payment"), false);
+  assert.equal(fixture.state.memberships.has("current_payment"), true);
 });
 
 test("legacy, unknown, malformed, relationship, timezone, execution, assigned, and out-of-period obligations fail closed and are classified", async () => {

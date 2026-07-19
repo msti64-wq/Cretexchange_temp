@@ -1,8 +1,9 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { drivers, owners, payments, users, washoutActivities, washoutLocations } from "../shared/schema";
+import { drivers, owners, payments, systemSettings, users, washoutActivities, washoutLocations } from "../shared/schema";
 import { db } from "./db";
 import { CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND, isPlatformFinancialOperationsRole } from "./financialObligations";
 import { createFinancialWorkspaceSelectionToken } from "./financialWorkspaceSelection";
+import { isCurrentFinancialRecord } from "./financialCutoff";
 
 export const FINANCIAL_DISCOVERY_MAX_PAGE_SIZE = 100;
 const FINANCIAL_DISCOVERY_SCAN_LIMIT = 1000;
@@ -53,6 +54,7 @@ export type FinancialDiscoveryRecord = {
 
 export type FinancialDiscoveryRepository = {
   listRecords(filters: Pick<FinancialDiscoveryFilters, "facilityId" | "locationId" | "ageOrder">): Promise<FinancialDiscoveryRecord[]>;
+  getFinancialHistoryCutoff?(): Promise<Date | string | null | undefined>;
 };
 
 export type FinancialDiscoveryItem = Record<string, unknown>;
@@ -110,6 +112,13 @@ function hasValidTimezone(value: string | null | undefined): boolean {
   } catch {
     return false;
   }
+}
+
+function isCurrentProgramRecord(record: DiscoveryActivity, cutoff: Date | string | null | undefined): boolean {
+  // Repositories used by focused unit tests may intentionally omit the setting.
+  // Runtime always reads it from system_settings; an absent setting is not
+  // permission to classify a malformed timestamp as current there.
+  return cutoff == null || isCurrentFinancialRecord(record, cutoff);
 }
 
 function relationshipException(record: FinancialDiscoveryRecord): ExceptionRecord | null {
@@ -269,12 +278,12 @@ export async function listVerifiedActivitiesWithoutCanonicalObligations(
   repository: FinancialDiscoveryRepository = databaseFinancialDiscoveryRepository,
   now = new Date(),
 ): Promise<FinancialDiscoveryResponse> {
-  const records = await repository.listRecords(filters);
+  const [records, cutoff] = await Promise.all([repository.listRecords(filters), repository.getFinancialHistoryCutoff?.()]);
   const items: Array<{ reference: string | null; ageSeconds: number | null } & FinancialDiscoveryItem> = [];
   for (const group of groupRecords(records)) {
     const record = group[0];
     const activity = record.activity;
-    if (!activity || activity.status !== "verified") continue;
+    if (!activity || activity.status !== "verified" || !isCurrentProgramRecord(activity, cutoff)) continue;
     // A canonical row satisfies the relationship. A legacy row does not: it is
     // deliberately surfaced by the exception queue and remains review-blocked.
     if (group.some((entry) => entry.payment?.obligationKind === CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND)) continue;
@@ -300,13 +309,14 @@ export async function listUnbatchedCanonicalObligations(
   repository: FinancialDiscoveryRepository = databaseFinancialDiscoveryRepository,
   now = new Date(),
 ): Promise<FinancialDiscoveryResponse> {
-  const records = await repository.listRecords(filters);
+  const [records, cutoff] = await Promise.all([repository.listRecords(filters), repository.getFinancialHistoryCutoff?.()]);
   const items: Array<{ reference: string | null; ageSeconds: number | null } & FinancialDiscoveryItem> = [];
   for (const group of groupRecords(records)) {
     if (group.length !== 1) continue;
     const record = group[0];
     const payment = record.payment;
     if (!payment || payment.obligationKind !== CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND || payment.status !== "pending") continue;
+    if (!record.activity || !isCurrentProgramRecord(record.activity, cutoff)) continue;
     if (paymentException(record)) continue;
     const incentive = strictDollarCents(payment.amount)!;
     const platformFee = strictDollarCents(payment.processingFee)!;
@@ -337,9 +347,10 @@ export async function listCanonicalFinancialExceptions(
   repository: FinancialDiscoveryRepository = databaseFinancialDiscoveryRepository,
   now = new Date(),
 ): Promise<FinancialDiscoveryResponse> {
-  const records = await repository.listRecords(filters);
+  const [records, cutoff] = await Promise.all([repository.listRecords(filters), repository.getFinancialHistoryCutoff?.()]);
   const exceptions: ExceptionRecord[] = [];
   for (const group of groupRecords(records)) {
+    if (group[0].activity && !isCurrentProgramRecord(group[0].activity, cutoff)) continue;
     const groupException = exceptionForMissingActivity(group, now);
     if (groupException) {
       exceptions.push(groupException);
@@ -431,6 +442,10 @@ function mapRow(row: any): FinancialDiscoveryRecord {
 }
 
 const databaseFinancialDiscoveryRepository: FinancialDiscoveryRepository = {
+  async getFinancialHistoryCutoff() {
+    const [settings] = await db.select({ financialHistoryCutoffAt: systemSettings.financialHistoryCutoffAt }).from(systemSettings).limit(1);
+    return settings?.financialHistoryCutoffAt;
+  },
   async listRecords(filters) {
     const activityConditions = [];
     if (filters.facilityId) activityConditions.push(eq(washoutLocations.ownerId, filters.facilityId));

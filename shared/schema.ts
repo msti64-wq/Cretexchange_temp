@@ -1718,6 +1718,7 @@ export const systemSettings = pgTable("system_settings", {
   automaticTaxEnabled: boolean("automatic_tax_enabled").default(false).notNull(),
   // Platform Washout Fee - fee charged per washout transaction (in dollars)
   platformWashoutFee: decimal("platform_washout_fee", { precision: 10, scale: 2 }).default("5.00").notNull(),
+  financialHistoryCutoffAt: timestamp("financial_history_cutoff_at", { withTimezone: true }).notNull().default(sql`'2026-07-17T05:00:00.000Z'::timestamptz`),
   updatedAt: timestamp("updated_at").defaultNow(),
   updatedBy: varchar("updated_by").references(() => users.id), // Track who made the change
 });
@@ -1729,6 +1730,7 @@ export const updateSystemSettingsSchema = z.object({
     .regex(/^\d+(\.\d{1,2})?$/, "Must be a valid decimal number")
     .refine((val) => parseFloat(val) >= 0, "Platform fee must be zero or greater")
     .optional(),
+  financialHistoryCutoffAt: z.string().datetime({ offset: true }).optional(),
 });
 
 export type SystemSettings = typeof systemSettings.$inferSelect;
