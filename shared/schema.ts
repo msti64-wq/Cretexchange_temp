@@ -872,6 +872,11 @@ export const driverLotteryEntries = pgTable("driver_lottery_entries", {
   entriesEarned: integer("entries_earned").notNull().default(1), // Number of lottery tickets earned
   lotteryMonth: integer("lottery_month").notNull(), // 1-12 for the month
   lotteryYear: integer("lottery_year").notNull(), // Year (e.g., 2025)
+  rewardsPeriodId: varchar("rewards_period_id").references(() => rewardsPeriods.id),
+  eligibilityStatus: varchar("eligibility_status").notNull().default("eligible"),
+  ineligibilityReason: text("ineligibility_reason"),
+  eligibilityChangedAt: timestamp("eligibility_changed_at"),
+  eligibilityChangedBy: varchar("eligibility_changed_by").references(() => users.id),
   isArchived: boolean("is_archived").default(false), // True when month is closed
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
@@ -880,6 +885,18 @@ export const driverLotteryEntries = pgTable("driver_lottery_entries", {
   activityIndex: uniqueIndex("uniq_lottery_entries_activity").on(table.activityId), // One entry per activity
   monthYearIndex: index("idx_lottery_entries_month_year").on(table.lotteryMonth, table.lotteryYear),
 }));
+
+export const rewardsPeriods = pgTable("rewards_periods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  month: integer("month").notNull(), year: integer("year").notNull(),
+  status: varchar("status").notNull().default("scheduled"),
+  createdAt: timestamp("created_at").notNull().defaultNow(), createdBy: varchar("created_by").references(() => users.id),
+  activatedAt: timestamp("activated_at"), activatedBy: varchar("activated_by").references(() => users.id),
+  pausedAt: timestamp("paused_at"), pausedBy: varchar("paused_by").references(() => users.id), pauseReason: text("pause_reason"),
+  cancelledAt: timestamp("cancelled_at"), cancelledBy: varchar("cancelled_by").references(() => users.id), cancellationReason: text("cancellation_reason"),
+  completedAt: timestamp("completed_at"), completedBy: varchar("completed_by").references(() => users.id),
+  announcementSentAt: timestamp("announcement_sent_at"), announcementSentBy: varchar("announcement_sent_by").references(() => users.id),
+}, (table) => ({ periodUnique: uniqueIndex("uniq_rewards_periods_month_year").on(table.month, table.year) }));
 
 // Driver Rewards Program prize catalog
 export const prizeCatalogPrizeTypeValues = [

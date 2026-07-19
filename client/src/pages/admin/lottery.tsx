@@ -52,6 +52,7 @@ import { DSStatusChip } from "@/components/design-system/ds-status-chip";
 import { DSTableShell } from "@/components/design-system/ds-table-shell";
 import { DSKpiCard } from "@/components/design-system/ds-kpi-card";
 import { dsTokens } from "@/components/design-system/tokens";
+import { RewardsPeriodControls } from "@/components/admin/RewardsPeriodControls";
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -906,6 +907,7 @@ export default function AdminLottery() {
       </header>
 
       <main className="p-4 space-y-4">
+        <RewardsPeriodControls />
         <Card className="border-border/70 bg-card shadow-sm">
           <CardHeader className="pb-2">
             <DSSectionHeader

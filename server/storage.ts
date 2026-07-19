@@ -558,12 +558,12 @@ export interface IStorage {
   }): Promise<any>;
 
   // Driver lottery entries operations
-  createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<any>;
+  createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number; rewardsPeriodId?: string; lotteryMonth?: number; lotteryYear?: number }): Promise<any>;
   getDriverLotteryEntries(driverId: string): Promise<any[]>;
   getDriverLotteryEntriesWithDetails(driverId: string, month?: number, year?: number): Promise<any[]>;
   getDriverLotteryEntryCount(driverId: string): Promise<number>;
-  getAllDriverLotteryEntries(startDate?: Date, endDate?: Date): Promise<any[]>;
-  getDriverLotteryEntryTotals(month?: number, year?: number): Promise<{ driverId: string; driverName: string; totalEntries: number; payoutPreference: string | null; payoutPreferenceNote: string | null }[]>;
+  getAllDriverLotteryEntries(startDate?: Date, endDate?: Date, options?: { rewardsPeriodId?: string; eligibleOnly?: boolean }): Promise<any[]>;
+  getDriverLotteryEntryTotals(month?: number, year?: number, options?: { rewardsPeriodId?: string; eligibleOnly?: boolean }): Promise<{ driverId: string; driverName: string; totalEntries: number; payoutPreference: string | null; payoutPreferenceNote: string | null }[]>;
   getDriverLotteryEntryByActivity(activityId: string): Promise<any | undefined>;
   archiveLotteryMonth(month: number, year: number): Promise<number>;
   getLotteryMonths(): Promise<{ month: number; year: number; isArchived: boolean; totalEntries: number }[]>;
@@ -7856,7 +7856,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Driver lottery entries operations
-  async createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number }): Promise<DriverLotteryEntry> {
+  async createDriverLotteryEntry(entry: { driverId: string; activityId: string; ownerId: string; entriesEarned?: number; rewardsPeriodId?: string; lotteryMonth?: number; lotteryYear?: number }): Promise<DriverLotteryEntry> {
     const [existingEntry] = await db
       .select()
       .from(driverLotteryEntries)
@@ -7867,8 +7867,8 @@ export class DatabaseStorage implements IStorage {
     }
 
     const now = new Date();
-    const month = now.getMonth() + 1; // 1-12
-    const year = now.getFullYear();
+    const month = entry.lotteryMonth ?? now.getMonth() + 1; // 1-12
+    const year = entry.lotteryYear ?? now.getFullYear();
 
     for (let attempt = 0; attempt < 3; attempt++) {
       // Count all entries for this month/year (including archived) to generate a sequential ticket number
@@ -7895,6 +7895,8 @@ export class DatabaseStorage implements IStorage {
             entriesEarned: entry.entriesEarned ?? 1,
             lotteryMonth: month,
             lotteryYear: year,
+            rewardsPeriodId: entry.rewardsPeriodId ?? null,
+            eligibilityStatus: "eligible",
             isArchived: false,
           })
           .returning();
@@ -8106,13 +8108,19 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getAllDriverLotteryEntries(startDate?: Date, endDate?: Date): Promise<any[]> {
+  async getAllDriverLotteryEntries(startDate?: Date, endDate?: Date, options?: { rewardsPeriodId?: string; eligibleOnly?: boolean }): Promise<any[]> {
     const conditions = [];
     if (startDate) {
       conditions.push(gte(driverLotteryEntries.createdAt, startDate));
     }
     if (endDate) {
       conditions.push(lte(driverLotteryEntries.createdAt, endDate));
+    }
+    if (options?.rewardsPeriodId) {
+      conditions.push(eq(driverLotteryEntries.rewardsPeriodId, options.rewardsPeriodId));
+    }
+    if (options?.eligibleOnly) {
+      conditions.push(eq(driverLotteryEntries.eligibilityStatus, "eligible"));
     }
 
     const results = await db
@@ -8140,11 +8148,17 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getDriverLotteryEntryTotals(month?: number, year?: number): Promise<{ driverId: string; driverName: string; totalEntries: number; payoutPreference: string | null; payoutPreferenceNote: string | null }[]> {
+  async getDriverLotteryEntryTotals(month?: number, year?: number, options?: { rewardsPeriodId?: string; eligibleOnly?: boolean }): Promise<{ driverId: string; driverName: string; totalEntries: number; payoutPreference: string | null; payoutPreferenceNote: string | null }[]> {
     const conditions = [];
     if (month !== undefined && year !== undefined) {
       conditions.push(eq(driverLotteryEntries.lotteryMonth, month));
       conditions.push(eq(driverLotteryEntries.lotteryYear, year));
+    }
+    if (options?.rewardsPeriodId) {
+      conditions.push(eq(driverLotteryEntries.rewardsPeriodId, options.rewardsPeriodId));
+    }
+    if (options?.eligibleOnly) {
+      conditions.push(eq(driverLotteryEntries.eligibilityStatus, "eligible"));
     }
 
     const results = await db

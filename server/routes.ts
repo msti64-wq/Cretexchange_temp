@@ -65,6 +65,16 @@ import {
 import { buildOwnerWashoutBillingLedgerFromPayments, buildOwnerWashoutBillingPreview, getDriverTipSummaryFromPayments } from "./billing/ownerWashoutLedger";
 import { processOwnerBillingRun } from "./ownerBillingRuns";
 import { buildLotteryDrawingPreview, countLotteryPrizeSlots, resolveLotteryEnabled } from "./lottery";
+import {
+  announceCancelledRewardsPeriod,
+  createRewardsPeriod,
+  getActiveRewardsPeriodForActivity,
+  getRewardsPeriodForMonth,
+  listRewardsPeriods,
+  markTicketIneligible,
+  transitionRewardsPeriod,
+  type RewardsPeriodStatus,
+} from "./rewardsPeriods";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
@@ -1248,9 +1258,11 @@ async function awardLotteryEntryForApprovedWashout(params: {
   ownerId: string;
   driverId: string;
   serviceType?: string | null;
+  verifiedAt?: Date | string | null;
+  createdAt?: Date | string | null;
   source: string;
 }) {
-  const { activityId, ownerId, driverId, serviceType, source } = params;
+  const { activityId, ownerId, driverId, serviceType, verifiedAt, createdAt, source } = params;
 
   if (serviceType === 'rubble_dropoff') {
     console.log(`🎰 Lottery skipped for washout ${activityId} from ${source}: ineligible service type`, {
@@ -1288,12 +1300,26 @@ async function awardLotteryEntryForApprovedWashout(params: {
     return { created: false, reason: 'lottery_disabled' as const };
   }
 
+  const rewardsPeriod = await getActiveRewardsPeriodForActivity({ verifiedAt, createdAt });
+  if (!rewardsPeriod) {
+    console.log(`🎰 Lottery skipped for washout ${activityId} from ${source}: no active current rewards period`, {
+      activityId,
+      ownerId,
+      driverId,
+      source,
+    });
+    return { created: false, reason: 'no_active_rewards_period' as const };
+  }
+
   try {
     const lotteryEntry = await storage.createDriverLotteryEntry({
       driverId,
       activityId,
       ownerId,
       entriesEarned: 1,
+      rewardsPeriodId: rewardsPeriod.id,
+      lotteryMonth: rewardsPeriod.month,
+      lotteryYear: rewardsPeriod.year,
     });
     console.log(`🎰 Lottery entry created for washout ${activityId} from ${source}`, {
       activityId,
@@ -5282,6 +5308,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: owner.id,
         driverId: activityDetails.driverId,
         serviceType: activityDetails.serviceType,
+        verifiedAt: approvedActivity?.verifiedAt,
+        createdAt: approvedActivity?.createdAt || activityDetails.createdAt,
         source: 'owner approval',
       });
 
@@ -10498,6 +10526,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== ADMIN LOTTERY MANAGEMENT ENDPOINTS ==========
 
+  // Rewards periods control the active Driver Rewards Program without affecting
+  // ordinary washout submission, verification, billing, or any financial execution.
+  app.get('/api/admin/rewards/periods', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      res.json(await listRewardsPeriods());
+    } catch (error: any) {
+      console.error("Error listing rewards periods:", error);
+      res.status(500).json({ message: "Failed to list rewards periods" });
+    }
+  });
+
+  app.post('/api/admin/rewards/periods', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const month = Number(req.body?.month);
+      const year = Number(req.body?.year);
+      const period = await createRewardsPeriod(month, year, user.id);
+      res.status(201).json(period);
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : "Failed to create rewards period";
+      const status = /invalid|unique/i.test(message) ? 400 : 500;
+      console.error("Error creating rewards period:", error);
+      res.status(status).json({ message });
+    }
+  });
+
+  app.post('/api/admin/rewards/periods/:id/transition', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const status = req.body?.status;
+      if (typeof status !== 'string' || !['scheduled', 'active', 'paused', 'cancelled', 'completed'].includes(status)) {
+        return res.status(400).json({ message: "A valid rewards-period status is required" });
+      }
+      const period = await transitionRewardsPeriod(req.params.id, status as RewardsPeriodStatus, user.id, req.body?.reason);
+      res.json(period);
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : "Failed to transition rewards period";
+      const status = /not found/i.test(message) ? 404 : /invalid|reason|required|already active/i.test(message) ? 400 : 500;
+      console.error("Error transitioning rewards period:", error);
+      res.status(status).json({ message });
+    }
+  });
+
+  app.post('/api/admin/rewards/periods/:id/announce-cancellation', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const period = await announceCancelledRewardsPeriod(req.params.id, user.id);
+      res.json(period);
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : "Failed to announce rewards-period cancellation";
+      const status = /required|not found/i.test(message) ? 400 : 500;
+      console.error("Error announcing rewards-period cancellation:", error);
+      res.status(status).json({ message });
+    }
+  });
+
+  app.post('/api/admin/rewards/tickets/:id/ineligible', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== 'admin' && user?.role !== 'super_admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const entry = await markTicketIneligible(req.params.id, user.id, String(req.body?.reason || ""));
+      res.json(entry);
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : "Failed to mark rewards ticket ineligible";
+      const status = /required|not found/i.test(message) ? 400 : 500;
+      console.error("Error marking rewards ticket ineligible:", error);
+      res.status(status).json({ message });
+    }
+  });
+
   // Combined admin lottery overview
   app.get('/api/admin/lottery', isAuthenticated, async (req: any, res) => {
     try {
@@ -10634,8 +10747,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const startDate = new Date(yearNum, monthNum - 1, 1);
       const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59);
-      const driverTotals = await storage.getDriverLotteryEntryTotals(monthNum, yearNum);
-      const entries = await storage.getAllDriverLotteryEntries(startDate, endDate);
+      const rewardsPeriod = await getRewardsPeriodForMonth(monthNum, yearNum);
+      if (!rewardsPeriod || rewardsPeriod.status !== "active") {
+        return res.status(400).json({ message: "An active rewards period is required before previewing a drawing." });
+      }
+      const periodOptions = { rewardsPeriodId: rewardsPeriod.id, eligibleOnly: true };
+      const driverTotals = await storage.getDriverLotteryEntryTotals(monthNum, yearNum, periodOptions);
+      const entries = await storage.getAllDriverLotteryEntries(startDate, endDate, periodOptions);
       const normalizedPrizes = normalizeLotteryPrizeTierConfigs(Array.isArray(prizes) ? prizes : []);
       const derivedWinnerCount = countLotteryPrizeSlots(normalizedPrizes);
       if (derivedWinnerCount < 1) {
@@ -11181,7 +11299,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const partialExistingDrawing = existing && !existingDrawingIsComplete ? existing : null;
 
       // Get all non-archived entries for this month/year
-      const allEntries = await storage.getDriverLotteryEntryTotals(month, year);
+      const rewardsPeriod = await getRewardsPeriodForMonth(month, year);
+      if (!rewardsPeriod || rewardsPeriod.status !== "active") {
+        return res.status(400).json({ message: "An active rewards period is required before running a drawing." });
+      }
+      const periodOptions = { rewardsPeriodId: rewardsPeriod.id, eligibleOnly: true };
+      const allEntries = await storage.getDriverLotteryEntryTotals(month, year, periodOptions);
       if (!allEntries || allEntries.length === 0) {
         return res.status(400).json({ message: "No entries found for this period" });
       }
@@ -11189,7 +11312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get individual entries to pick winning ticket numbers
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0, 23, 59, 59);
-      const individualEntries = await storage.getAllDriverLotteryEntries(startDate, endDate);
+      const individualEntries = await storage.getAllDriverLotteryEntries(startDate, endDate, periodOptions);
 
       const preview = buildLotteryDrawingPreview({
         entries: individualEntries,

@@ -150,7 +150,7 @@ class RobustPool {
   }
 
   private startHealthCheck() {
-    setInterval(async () => {
+    const healthCheckTimer = setInterval(async () => {
       if (!this.isReconnecting) {
         const isHealthy = await this.healthCheck();
         if (!isHealthy) {
@@ -159,6 +159,10 @@ class RobustPool {
         }
       }
     }, 30000); // Check every 30 seconds
+    // Database health monitoring must not keep local focused tests alive after
+    // their work is complete. A running application still keeps the event loop
+    // active through its HTTP server, so this does not disable production checks.
+    healthCheckTimer.unref?.();
   }
 
   async query(text: string, params?: any[], retries = 2): Promise<any> {
