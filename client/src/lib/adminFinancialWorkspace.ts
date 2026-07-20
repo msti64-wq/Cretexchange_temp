@@ -146,6 +146,12 @@ export function normalizeFinancialWorkspacePeriodAnchor(value: unknown): string 
   return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== normalized ? null : normalized;
 }
 
+/** Selected financial ranges are local calendar dates interpreted by the
+ * Facility timezone on the server. This only validates the date token. */
+export function normalizeFinancialWorkspaceDate(value: unknown): string | null {
+  return normalizeFinancialWorkspacePeriodAnchor(value);
+}
+
 export type FinancialWorkspaceErrorKind = "reference" | "forbidden" | "state" | "conflict" | "reason" | "unavailable" | "generic";
 
 export function financialWorkspaceErrorKind(error: unknown, manualReference = false): FinancialWorkspaceErrorKind {

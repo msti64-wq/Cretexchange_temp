@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import {
   billingBatches,
   drivers,
@@ -99,9 +99,13 @@ export type CanonicalBatchMembershipInput = {
 
 export type CanonicalBatchDraftRequest = {
   facilityId: string;
-  periodAnchor: string;
+  /** Inclusive Facility-local service-date range. Service date is verified_at,
+   * falling back to the qualifying activity's created_at. */
+  fromDate: string;
+  throughDate: string;
   idempotencyKey: string;
   reason: string;
+  selectionHash?: string;
 };
 
 export type CanonicalBatchListFilters = {
@@ -128,6 +132,18 @@ export type CanonicalBatchDraftResult = {
   exceptions: CanonicalBatchException[];
 };
 
+export type CanonicalFinancialBatchPreview = {
+  period: CanonicalBatchPeriod;
+  eligibleCount: number;
+  excludedCount: number;
+  alreadyBatchedCount: number;
+  ineligibleCount: number;
+  frozenDriverIncentiveCents: number;
+  frozenPlatformFeeCents: number;
+  frozenFacilityChargeCents: number;
+  selectionHash: string;
+};
+
 export class CanonicalBatchDraftError extends Error {
   constructor(
     readonly code:
@@ -147,7 +163,7 @@ export class CanonicalBatchDraftError extends Error {
 
 export type FinancialBatchDraftRepositoryOperations = {
   findBatchByIdempotencyKey(key: string): Promise<CanonicalFinancialBatch | null>;
-  findBatchByFacilityPeriod(ownerId: string, periodStart: Date): Promise<CanonicalFinancialBatch | null>;
+  findBatchByFacilityPeriod(ownerId: string, periodStart: Date, periodEnd: Date): Promise<CanonicalFinancialBatch | null>;
   listCandidates(ownerId: string): Promise<CanonicalBatchCandidate[]>;
   getFinancialHistoryCutoff?(): Promise<Date | string | null | undefined>;
   createDraftBatch(input: CanonicalFinancialBatch & { idempotencyKey: string }): Promise<CanonicalFinancialBatch>;
@@ -255,6 +271,43 @@ export function calculateCanonicalWeeklyPeriod(anchor: Date | string, timezone: 
   };
 }
 
+function parseLocalDate(value: unknown, name: string): { year: number; month: number; day: number; key: string } {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new CanonicalBatchDraftError("invalid_request", `Valid ${name} is required`);
+  }
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    throw new CanonicalBatchDraftError("invalid_request", `Valid ${name} is required`);
+  }
+  return { year, month, day, key: value };
+}
+
+/**
+ * Builds an administrator-selected inclusive date range in the Facility's
+ * billing timezone. Its `end` is the exclusive local midnight after throughDate
+ * so daylight-saving changes cannot alter the selected local calendar dates.
+ */
+export function calculateCanonicalDateRangePeriod(fromDate: string, throughDate: string, timezone: string): CanonicalBatchPeriod {
+  assertTimezone(timezone);
+  const from = parseLocalDate(fromDate, "from date");
+  const through = parseLocalDate(throughDate, "through date");
+  const fromOrdinal = Date.UTC(from.year, from.month - 1, from.day);
+  const throughOrdinal = Date.UTC(through.year, through.month - 1, through.day);
+  if (throughOrdinal < fromOrdinal) throw new CanonicalBatchDraftError("invalid_request", "Through date must be on or after from date");
+  const nextDay = new Date(throughOrdinal + 24 * 60 * 60 * 1000);
+  const end = { year: nextDay.getUTCFullYear(), month: nextDay.getUTCMonth() + 1, day: nextDay.getUTCDate() };
+  return {
+    timezone,
+    start: localMidnightInTimezone(from, timezone),
+    end: localMidnightInTimezone(end, timezone),
+    startLocalDate: from.key,
+    endLocalDate: through.key,
+    weekYear: from.year,
+    weekNumber: 0,
+  };
+}
+
 function normalizedRequest(input: CanonicalBatchDraftRequest): CanonicalBatchDraftRequest {
   const required = (value: unknown, name: string, max: number) => {
     if (typeof value !== "string" || !value.trim() || value.trim().length > max) throw new CanonicalBatchDraftError("invalid_request", `Valid ${name} is required`);
@@ -262,9 +315,11 @@ function normalizedRequest(input: CanonicalBatchDraftRequest): CanonicalBatchDra
   };
   return {
     facilityId: required(input.facilityId, "facility", 128),
-    periodAnchor: required(input.periodAnchor, "period anchor", 128),
+    fromDate: required(input.fromDate, "from date", 10),
+    throughDate: required(input.throughDate, "through date", 10),
     idempotencyKey: required(input.idempotencyKey, "idempotency key", 200),
     reason: required(input.reason, "reason", MAX_REASON_LENGTH),
+    selectionHash: input.selectionHash === undefined ? undefined : required(input.selectionHash, "selection hash", 128),
   };
 }
 
@@ -281,8 +336,11 @@ function classifyCandidate(candidate: CanonicalBatchCandidate, period: Canonical
   if (!candidate.activity.locationId || !candidate.location || candidate.activity.locationId !== candidate.location.id) return exception("invalid_location_relationship");
   if (!candidate.facility || candidate.location.ownerId !== candidate.facility.id || payment.ownerId !== candidate.facility.id) return exception("invalid_facility_relationship");
   if (!candidate.facility.billingTimezone || candidate.facility.billingTimezone !== period.timezone) return exception("invalid_facility_timezone");
-  const createdAt = validDate(payment.createdAt);
-  if (!createdAt || createdAt < period.start || createdAt >= period.end) return exception("obligation_outside_period");
+  // No payment, batch, or provider timestamp may silently choose eligibility.
+  // The canonical transaction date is the verified service activity, falling
+  // back only to that activity's created_at when verified_at is unavailable.
+  const serviceDate = validDate(candidate.activity.verifiedAt) || validDate(candidate.activity.createdAt);
+  if (!serviceDate || serviceDate < period.start || serviceDate >= period.end) return exception("obligation_outside_selected_range");
   const incentive = strictCents(payment.amount);
   if (incentive === null) return exception("invalid_frozen_driver_incentive");
   const fee = strictCents(payment.processingFee);
@@ -301,7 +359,68 @@ function totals(memberships: CanonicalBatchMembershipInput[]) {
 }
 
 function makeReference(period: CanonicalBatchPeriod): string {
-  return `CTX-FB-${period.weekYear}-W${String(period.weekNumber).padStart(2, "0")}-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+  return `CTX-FB-${period.startLocalDate.replace(/-/g, "")}-${period.endLocalDate.replace(/-/g, "")}-${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
+type BatchSelection = { period: CanonicalBatchPeriod; memberships: CanonicalBatchMembershipInput[]; exceptions: CanonicalBatchException[]; selectionHash: string };
+
+function hashSelection(period: CanonicalBatchPeriod, memberships: CanonicalBatchMembershipInput[]) {
+  const material = memberships
+    .slice()
+    .sort((a, b) => a.paymentId.localeCompare(b.paymentId))
+    .map((item) => [item.paymentId, item.frozenDriverIncentiveCents, item.frozenPlatformFeeCents, item.frozenFacilityChargeCents].join(":"));
+  return createHash("sha256").update([period.timezone, period.startLocalDate, period.endLocalDate, ...material].join("|")).digest("hex");
+}
+
+async function selectCanonicalBatchCandidates(tx: FinancialBatchDraftRepositoryOperations, request: CanonicalBatchDraftRequest): Promise<BatchSelection> {
+  const candidates = await tx.listCandidates(request.facilityId);
+  const cutoff = await tx.getFinancialHistoryCutoff?.();
+  const currentCandidates = cutoff == null ? candidates : candidates.filter((candidate) => candidate.activity && isCurrentFinancialRecord(candidate.activity, cutoff));
+  const facility = currentCandidates.find((candidate) => candidate.facility?.id === request.facilityId)?.facility;
+  if (!facility) throw new CanonicalBatchDraftError("no_eligible_obligations", "Facility has no discoverable canonical obligations");
+  assertTimezone(facility.billingTimezone);
+  const period = calculateCanonicalDateRangePeriod(request.fromDate, request.throughDate, facility.billingTimezone);
+  const activityCounts = new Map<string, number>();
+  for (const candidate of currentCandidates) {
+    if (candidate.payment.activityId) activityCounts.set(candidate.payment.activityId, (activityCounts.get(candidate.payment.activityId) || 0) + 1);
+  }
+  const classified = currentCandidates.map((candidate) => {
+    const activityId = candidate.payment.activityId;
+    if (activityId && (activityCounts.get(activityId) || 0) > 1) {
+      return { membership: null, exception: { paymentId: candidate.payment.id, category: "duplicate_activity_linked_financial_rows", safeReference: safeReference("obligation", candidate.payment.id) } };
+    }
+    return classifyCandidate(candidate, period);
+  });
+  const memberships = classified.flatMap((entry) => entry.membership ? [entry.membership] : []);
+  const exceptions = classified.flatMap((entry) => entry.exception ? [entry.exception] : []);
+  return { period, memberships, exceptions, selectionHash: hashSelection(period, memberships) };
+}
+
+/** Read-only administrator preview. This function deliberately performs no
+ * provider, wallet, batch, membership, or audit write. */
+export async function previewCanonicalFinancialBatchSelection(
+  input: Pick<CanonicalBatchDraftRequest, "facilityId" | "fromDate" | "throughDate">,
+  context: CanonicalBatchDraftContext,
+  repository: FinancialBatchDraftRepository = databaseFinancialBatchDraftRepository,
+): Promise<CanonicalFinancialBatchPreview> {
+  const request = normalizedRequest({ ...input, idempotencyKey: "preview", reason: "preview" });
+  if (!isPlatformFinancialOperationsRole(context.actorRole)) throw new CanonicalBatchDraftError("invalid_request", "Platform Operations authority is required");
+  return repository.transaction(async (tx) => {
+    const selection = await selectCanonicalBatchCandidates(tx, request);
+    const frozen = totals(selection.memberships);
+    const alreadyBatchedCount = selection.exceptions.filter((item) => ["active_membership_conflict", "legacy_batch_link_conflict"].includes(item.category)).length;
+    return {
+      period: selection.period,
+      eligibleCount: selection.memberships.length,
+      excludedCount: selection.exceptions.length,
+      alreadyBatchedCount,
+      ineligibleCount: selection.exceptions.length - alreadyBatchedCount,
+      frozenDriverIncentiveCents: frozen.incentive,
+      frozenPlatformFeeCents: frozen.fee,
+      frozenFacilityChargeCents: frozen.facility,
+      selectionHash: selection.selectionHash,
+    };
+  });
 }
 
 /**
@@ -320,43 +439,12 @@ export async function createCanonicalFinancialBatchDraft(
   const outcome = await repository.transaction(async (tx) => {
     const idempotent = await tx.findBatchByIdempotencyKey(request.idempotencyKey);
     if (idempotent) return { batch: idempotent, created: false, exceptions: [] };
-    const candidates = await tx.listCandidates(request.facilityId);
-    const cutoff = await tx.getFinancialHistoryCutoff?.();
-    const currentCandidates = cutoff == null
-      ? candidates
-      : candidates.filter((candidate) => candidate.activity && isCurrentFinancialRecord(candidate.activity, cutoff));
-    const facility = currentCandidates.find((candidate) => candidate.facility?.id === request.facilityId)?.facility;
-    if (!facility) throw new CanonicalBatchDraftError("no_eligible_obligations", "Facility has no discoverable canonical obligations");
-    assertTimezone(facility.billingTimezone);
-    const period = calculateCanonicalWeeklyPeriod(request.periodAnchor, facility.billingTimezone);
-    const existing = await tx.findBatchByFacilityPeriod(request.facilityId, period.start);
+    const selection = await selectCanonicalBatchCandidates(tx, request);
+    const { period, memberships, exceptions, selectionHash } = selection;
+    const existing = await tx.findBatchByFacilityPeriod(request.facilityId, period.start, period.end);
     if (existing) return { batch: existing, created: false, exceptions: [] };
-    // Phase 2's database uniqueness is the normal boundary, but construction
-    // must still fail closed if an undeployed/legacy database contains more
-    // than one financial row for an activity. Never claim both rows.
-    const activityCounts = new Map<string, number>();
-    for (const candidate of currentCandidates) {
-      if (candidate.payment.activityId) {
-        activityCounts.set(candidate.payment.activityId, (activityCounts.get(candidate.payment.activityId) || 0) + 1);
-      }
-    }
-    const classified = currentCandidates.map((candidate) => {
-      const activityId = candidate.payment.activityId;
-      if (activityId && (activityCounts.get(activityId) || 0) > 1) {
-        return { membership: null, exception: { paymentId: candidate.payment.id, category: "duplicate_activity_linked_financial_rows", safeReference: safeReference("obligation", candidate.payment.id) } };
-      }
-      return classifyCandidate(candidate, period);
-    });
-    const exceptions = classified.flatMap((entry) => entry.exception ? [entry.exception] : []);
-    const memberships = classified.flatMap((entry) => entry.membership ? [entry.membership] : []);
-    if (exceptions.length) {
-      await tx.recordExceptions(exceptions);
-      // Return normally so the append-only exception rows commit while no batch,
-      // membership, or audit event is written. The public service throws only
-      // after the transaction has closed successfully.
-      return { blocked: true as const, exceptions };
-    }
-    if (!memberships.length) throw new CanonicalBatchDraftError("no_eligible_obligations", "No canonical obligations are eligible for the requested Facility period");
+    if (request.selectionHash && request.selectionHash !== selectionHash) throw new CanonicalBatchDraftError("canonical_batch_conflict", "The selected obligations changed. Refresh the preview before creating the draft.");
+    if (!memberships.length) throw new CanonicalBatchDraftError("no_eligible_obligations", "No canonical obligations are eligible for the selected date range");
     const frozen = totals(memberships);
     if (frozen.facility !== frozen.incentive + frozen.fee || !Number.isSafeInteger(frozen.facility)) {
       throw new CanonicalBatchDraftError("material_obligation_exception", "Frozen batch totals are invalid");
@@ -373,7 +461,7 @@ export async function createCanonicalFinancialBatchDraft(
       frozenDriverIncentiveCents: frozen.incentive,
       frozenPlatformFeeCents: frozen.fee,
       frozenFacilityChargeCents: frozen.facility,
-      exceptionCount: 0,
+      exceptionCount: exceptions.length,
       createdAt: new Date(),
       createdBy: context.actorUserId,
       creationReason: request.reason,
@@ -384,12 +472,10 @@ export async function createCanonicalFinancialBatchDraft(
     } catch (error) {
       throw new CanonicalBatchDraftError("active_membership_conflict", "One or more obligations were claimed concurrently; no draft was created", []);
     }
+    if (exceptions.length) await tx.recordExceptions(exceptions);
     await tx.appendAuditEvents(draft, memberships, context, request.reason);
     return { batch: draft, created: true, exceptions: [] };
   });
-  if ("blocked" in outcome) {
-    throw new CanonicalBatchDraftError("material_obligation_exception", "Canonical batch construction is blocked by material obligation exceptions", outcome.exceptions);
-  }
   return outcome;
 }
 
@@ -452,8 +538,8 @@ const databaseFinancialBatchDraftRepository: FinancialBatchDraftRepository = {
       const rows = await tx.select().from(billingBatches).where(and(eq(billingBatches.batchModelVersion, CANONICAL_FINANCIAL_BATCH_MODEL_VERSION), eq(billingBatches.idempotencyKey, key))).limit(1);
       return rows[0] ? mapBatch(rows[0]) : null;
     },
-    async findBatchByFacilityPeriod(ownerId, periodStart) {
-      const rows = await tx.select().from(billingBatches).where(and(eq(billingBatches.ownerId, ownerId), eq(billingBatches.batchModelVersion, CANONICAL_FINANCIAL_BATCH_MODEL_VERSION), eq(billingBatches.periodStart, periodStart))).limit(1);
+    async findBatchByFacilityPeriod(ownerId, periodStart, periodEnd) {
+      const rows = await tx.select().from(billingBatches).where(and(eq(billingBatches.ownerId, ownerId), eq(billingBatches.batchModelVersion, CANONICAL_FINANCIAL_BATCH_MODEL_VERSION), eq(billingBatches.periodStart, periodStart), eq(billingBatches.periodEnd, periodEnd))).limit(1);
       return rows[0] ? mapBatch(rows[0]) : null;
     },
     async listCandidates(ownerId) {
@@ -839,6 +925,7 @@ function safeBatchProjection(batch: CanonicalFinancialBatch) {
 export type FinancialBatchEndpointDependencies = {
   getUser(userId: string): Promise<{ id: string; role?: string | null } | null | undefined>;
   create?: (request: CanonicalBatchDraftRequest, context: CanonicalBatchDraftContext) => Promise<CanonicalBatchDraftResult>;
+  preview?: (request: Pick<CanonicalBatchDraftRequest, "facilityId" | "fromDate" | "throughDate">, context: CanonicalBatchDraftContext) => Promise<CanonicalFinancialBatchPreview>;
   list?: (filters: Required<Pick<CanonicalBatchListFilters, "page" | "pageSize">> & Omit<CanonicalBatchListFilters, "page" | "pageSize">) => Promise<CanonicalFinancialBatch[]>;
   detail?: (batchId: string) => ReturnType<typeof getCanonicalFinancialBatchDetail>;
   transition?: (action: CanonicalBatchLifecycleAction, request: CanonicalBatchLifecycleRequest, actor: CanonicalBatchDraftContext) => Promise<CanonicalBatchLifecycleResult>;
@@ -857,9 +944,11 @@ export function createAdminFinancialBatchDraftHandler(dependencies: FinancialBat
       const body = req.body || {};
       const result = await (dependencies.create || createCanonicalFinancialBatchDraft)({
         facilityId: body.facilityId,
-        periodAnchor: body.periodAnchor,
+        fromDate: body.fromDate,
+        throughDate: body.throughDate,
         idempotencyKey: req.get?.("Idempotency-Key") || body.idempotencyKey,
         reason: body.reason,
+        selectionHash: body.selectionHash,
       }, actor);
       return res.status(result.created ? 201 : 200).json({ batch: safeBatchProjection(result.batch), created: result.created, exceptions: result.exceptions });
     } catch (error) {
@@ -869,6 +958,27 @@ export function createAdminFinancialBatchDraftHandler(dependencies: FinancialBat
       }
       console.error("[CANONICAL_FINANCIAL_BATCH_DRAFT_UNAVAILABLE]", { actorUserId: actor.actorUserId, category: error instanceof Error ? error.name : "unknown" });
       return res.status(503).json({ message: "Canonical financial batch service is unavailable", code: "financial_batch_unavailable" });
+    }
+  };
+}
+
+export function createAdminFinancialBatchPreviewHandler(dependencies: FinancialBatchEndpointDependencies) {
+  return async (req: any, res: any) => {
+    if (!req.user?.id) return res.status(401).json({ message: "Authentication required", code: "AUTHENTICATION_REQUIRED" });
+    const actor = authorizedActor(await dependencies.getUser(req.user.id));
+    if (!actor) return res.status(403).json({ message: "Platform Operations access required", code: "PLATFORM_OPERATIONS_ACCESS_REQUIRED" });
+    try {
+      const body = req.body || {};
+      const preview = await (dependencies.preview || previewCanonicalFinancialBatchSelection)({
+        facilityId: body.facilityId,
+        fromDate: body.fromDate,
+        throughDate: body.throughDate,
+      }, actor);
+      return res.json(preview);
+    } catch (error) {
+      if (error instanceof CanonicalBatchDraftError) return res.status(error.code === "invalid_request" || error.code === "invalid_facility_timezone" ? 400 : 409).json({ message: error.message, code: error.code });
+      console.error("[CANONICAL_FINANCIAL_BATCH_PREVIEW_UNAVAILABLE]", { category: error instanceof Error ? error.name : "unknown" });
+      return res.status(503).json({ message: "Canonical financial batch preview is unavailable", code: "financial_batch_preview_unavailable" });
     }
   };
 }

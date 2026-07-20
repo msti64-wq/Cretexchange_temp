@@ -9,10 +9,13 @@ const { CANONICAL_VERIFIED_ACTIVITY_OBLIGATION_KIND } = await import("../server/
 const {
   CANONICAL_FINANCIAL_BATCH_MODEL_VERSION,
   CanonicalBatchDraftError,
+  calculateCanonicalDateRangePeriod,
   calculateCanonicalWeeklyPeriod,
   createAdminFinancialBatchDraftHandler,
+  createAdminFinancialBatchPreviewHandler,
   createAdminFinancialBatchListHandler,
   createCanonicalFinancialBatchDraft,
+  previewCanonicalFinancialBatchSelection,
 } = await import("../server/financialBatchDrafts");
 
 const PERIOD_ANCHOR = "2026-07-15T18:00:00.000Z";
@@ -61,7 +64,7 @@ function inMemoryRepository(seed: any[], financialHistoryCutoffAt?: string) {
       try {
         return await run({
           findBatchByIdempotencyKey: async (key: string) => idempotency.get(key) || null,
-          findBatchByFacilityPeriod: async (ownerId: string, periodStart: Date) => Array.from(batches.values()).find((batch: any) => batch.ownerId === ownerId && batch.period.start.getTime() === periodStart.getTime()) || null,
+          findBatchByFacilityPeriod: async (ownerId: string, periodStart: Date, periodEnd: Date) => Array.from(batches.values()).find((batch: any) => batch.ownerId === ownerId && batch.period.start.getTime() === periodStart.getTime() && batch.period.end.getTime() === periodEnd.getTime()) || null,
           listCandidates: async (ownerId: string) => seed.filter((row) => row.facility?.id === ownerId),
           getFinancialHistoryCutoff: async () => financialHistoryCutoffAt,
           createDraftBatch: async (input: any) => {
@@ -89,7 +92,7 @@ function inMemoryRepository(seed: any[], financialHistoryCutoffAt?: string) {
 }
 
 function request(overrides: Record<string, unknown> = {}) {
-  return { facilityId: "owner_1", periodAnchor: PERIOD_ANCHOR, idempotencyKey: "draft-owner-1-week-29", reason: "Create pilot draft after canonical obligation review", ...overrides } as any;
+  return { facilityId: "owner_1", fromDate: "2026-07-12", throughDate: "2026-07-18", idempotencyKey: "draft-owner-1-range-20260712-20260718", reason: "Create pilot draft after canonical obligation review", ...overrides } as any;
 }
 
 const actor = { actorUserId: "admin_1", actorRole: "admin" };
@@ -137,14 +140,50 @@ test("uses Facility-local Sunday boundaries and handles spring and fall DST week
   assert.equal((fall.end.getTime() - fall.start.getTime()) / 3_600_000, 169);
 });
 
-test("Sunday start is included while the following Sunday endpoint is excluded", async () => {
-  const period = calculateCanonicalWeeklyPeriod(PERIOD_ANCHOR, "America/Chicago");
-  const included = candidate({ payment: { id: "at_start", createdAt: period.start.toISOString() } });
+test("selected inclusive boundaries use qualifying activity dates, not payment creation", async () => {
+  const period = calculateCanonicalDateRangePeriod("2026-07-12", "2026-07-18", "America/Chicago");
+  const included = candidate({ payment: { id: "at_start", createdAt: "2026-01-01T00:00:00.000Z" }, activity: { verifiedAt: period.start.toISOString() } });
   const fixture = inMemoryRepository([included]);
   assert.equal((await createCanonicalFinancialBatchDraft(request(), actor, fixture.repo)).batch.obligationCount, 1);
-  const excluded = inMemoryRepository([candidate({ payment: { id: "at_end", createdAt: period.end.toISOString() } })]);
-  await assert.rejects(createCanonicalFinancialBatchDraft(request(), actor, excluded.repo), { code: "material_obligation_exception" });
-  assert.equal(excluded.state.exceptions[0].category, "obligation_outside_period");
+  const excluded = inMemoryRepository([candidate({ payment: { id: "at_end" }, activity: { verifiedAt: period.end.toISOString() } })]);
+  await assert.rejects(createCanonicalFinancialBatchDraft(request(), actor, excluded.repo), { code: "no_eligible_obligations" });
+});
+
+test("verified_at takes precedence, while activity created_at is the explicit fallback service date", async () => {
+  const verifiedBefore = candidate({ payment: { id: "verified_before" }, activity: { verifiedAt: "2026-07-12T04:59:59.000Z", createdAt: "2026-07-13T12:00:00.000Z" } });
+  const createdFallback = candidate({ payment: { id: "created_fallback" }, activity: { verifiedAt: null, createdAt: "2026-07-12T05:00:00.000Z" } });
+  const before = inMemoryRepository([verifiedBefore]);
+  await assert.rejects(createCanonicalFinancialBatchDraft(request(), actor, before.repo), { code: "no_eligible_obligations" });
+  const fallback = inMemoryRepository([createdFallback]);
+  assert.equal((await createCanonicalFinancialBatchDraft(request(), actor, fallback.repo)).batch.obligationCount, 1);
+});
+
+test("administrator preview includes only selected inclusive service dates and reports exclusions without provider work", async () => {
+  const inside = candidate({ payment: { id: "inside", activityId: "activity_inside" }, activity: { id: "activity_inside", verifiedAt: "2026-07-12T05:00:00.000Z" } });
+  const before = candidate({ payment: { id: "before", activityId: "activity_before" }, activity: { id: "activity_before", verifiedAt: "2026-07-12T04:59:59.000Z" } });
+  const after = candidate({ payment: { id: "after", activityId: "activity_after" }, activity: { id: "activity_after", verifiedAt: "2026-07-19T05:00:00.000Z" } });
+  const rejected = candidate({ payment: { id: "rejected", activityId: "activity_rejected" }, activity: { id: "activity_rejected", status: "rejected" } });
+  const assigned = candidate({ payment: { id: "assigned", activityId: "activity_assigned" }, activity: { id: "activity_assigned" }, activeMembershipId: "active_batch_membership" });
+  const fixture = inMemoryRepository([inside, before, after, rejected, assigned]);
+  const preview = await previewCanonicalFinancialBatchSelection({ facilityId: "owner_1", fromDate: "2026-07-12", throughDate: "2026-07-18" }, actor, fixture.repo);
+  assert.equal(preview.eligibleCount, 1);
+  assert.equal(preview.excludedCount, 4);
+  assert.equal(preview.alreadyBatchedCount, 1);
+  assert.equal(preview.ineligibleCount, 3);
+  assert.equal(preview.frozenFacilityChargeCents, 1734);
+  assert.match(preview.selectionHash, /^[a-f0-9]{64}$/);
+  assert.deepEqual(fixture.state.writes, { providers: 0, wallets: 0, execution: 0, legacyBatchLinks: 0 });
+});
+
+test("draft creation freezes the exact server preview selection and rejects a changed selection", async () => {
+  const fixture = inMemoryRepository([candidate()]);
+  const preview = await previewCanonicalFinancialBatchSelection({ facilityId: "owner_1", fromDate: "2026-07-12", throughDate: "2026-07-18" }, actor, fixture.repo);
+  const result = await createCanonicalFinancialBatchDraft(request({ selectionHash: preview.selectionHash }), actor, fixture.repo);
+  assert.equal(result.batch.obligationCount, preview.eligibleCount);
+  assert.equal(result.batch.frozenFacilityChargeCents, preview.frozenFacilityChargeCents);
+  const changed = inMemoryRepository([candidate({ payment: { id: "another_payment" }, activity: { id: "another_activity" } })]);
+  await assert.rejects(createCanonicalFinancialBatchDraft(request({ selectionHash: preview.selectionHash }), actor, changed.repo), { code: "canonical_batch_conflict" });
+  assert.equal(changed.state.memberships.size, 0);
 });
 
 test("historical obligations are excluded from canonical batch construction", async () => {
@@ -157,7 +196,7 @@ test("historical obligations are excluded from canonical batch construction", as
   assert.equal(fixture.state.memberships.has("current_payment"), true);
 });
 
-test("legacy, unknown, malformed, relationship, timezone, execution, assigned, and out-of-period obligations fail closed and are classified", async () => {
+test("invalid and noncanonical obligations are never selected into a date-range draft", async () => {
   const invalids = [
     candidate({ payment: { id: "legacy", obligationKind: null } }),
     candidate({ payment: { id: "unknown", obligationKind: "future_model" } }),
@@ -166,25 +205,19 @@ test("legacy, unknown, malformed, relationship, timezone, execution, assigned, a
     candidate({ payment: { id: "unsafe-amount", amount: "90071992547410.00" } }),
     candidate({ payment: { id: "provider", hasExecutionIdentifiers: true } }),
     candidate({ payment: { id: "assigned" }, activeMembershipId: "membership_1" }),
-    candidate({ payment: { id: "out-period", createdAt: "2026-06-01T12:00:00.000Z" } }),
+    candidate({ payment: { id: "out-period" }, activity: { verifiedAt: "2026-06-01T12:00:00.000Z" } }),
     candidate({ payment: { id: "missing-location" }, location: null }),
     candidate({ payment: { id: "timezone" }, facility: { billingTimezone: "Not/A_Timezone" } }),
     candidate({ payment: { id: "alias-status" }, activity: { status: "approved" } }),
     candidate({ payment: { id: "rejected-status" }, activity: { status: "rejected" } }),
-    candidate({ payment: { id: "malformed-timestamp", createdAt: "not-a-timestamp" } }),
+    candidate({ payment: { id: "malformed-timestamp" }, activity: { verifiedAt: "not-a-timestamp", createdAt: "not-a-timestamp" } }),
   ].map((entry, index) => ({
     ...entry,
     payment: { ...entry.payment, activityId: `invalid_activity_${index}` },
     activity: entry.activity ? { ...entry.activity, id: `invalid_activity_${index}` } : null,
   }));
   const fixture = inMemoryRepository(invalids);
-  await assert.rejects(createCanonicalFinancialBatchDraft(request(), actor, fixture.repo), (error: any) => {
-    assert.ok(error instanceof CanonicalBatchDraftError);
-    assert.equal(error.code, "material_obligation_exception");
-    return true;
-  });
-  const categories = new Set(fixture.state.exceptions.map((item: any) => item.category));
-  for (const category of ["legacy_obligation_kind", "unknown_obligation_version", "invalid_frozen_driver_incentive", "execution_contaminated_obligation", "active_membership_conflict", "obligation_outside_period", "invalid_location_relationship", "invalid_facility_timezone", "activity_no_longer_verified"]) assert.ok(categories.has(category));
+  await assert.rejects(createCanonicalFinancialBatchDraft(request(), actor, fixture.repo), { code: "no_eligible_obligations" });
   assert.equal(fixture.state.batches.size, 0);
   assert.equal(fixture.state.memberships.size, 0);
 });
@@ -193,18 +226,16 @@ test("duplicate financial rows for one activity are quarantined instead of becom
   const first = candidate({ payment: { id: "payment_a", activityId: "duplicate_activity" }, activity: { id: "duplicate_activity" } });
   const second = candidate({ payment: { id: "payment_b", activityId: "duplicate_activity" }, activity: { id: "duplicate_activity" } });
   const fixture = inMemoryRepository([first, second]);
-  await assert.rejects(createCanonicalFinancialBatchDraft(request(), actor, fixture.repo), { code: "material_obligation_exception" });
-  assert.deepEqual(fixture.state.exceptions.map((item: any) => item.category), ["duplicate_activity_linked_financial_rows", "duplicate_activity_linked_financial_rows"]);
+  await assert.rejects(createCanonicalFinancialBatchDraft(request(), actor, fixture.repo), { code: "no_eligible_obligations" });
   assert.equal(fixture.state.memberships.size, 0);
 });
 
 test("an isolated canonical pending obligation is eligible only during its Facility-local period and no zero-fee fallback is invented", async () => {
   const valid = candidate();
   const fixture = inMemoryRepository([valid]);
-  await assert.rejects(createCanonicalFinancialBatchDraft(request({ periodAnchor: "2026-07-26T18:00:00.000Z" }), actor, fixture.repo), { code: "material_obligation_exception" });
+  await assert.rejects(createCanonicalFinancialBatchDraft(request({ fromDate: "2026-07-26", throughDate: "2026-07-26" }), actor, fixture.repo), { code: "no_eligible_obligations" });
   const zeroFee = inMemoryRepository([candidate({ payment: { processingFee: "0.00" } })]);
-  await assert.rejects(createCanonicalFinancialBatchDraft(request(), actor, zeroFee.repo), { code: "material_obligation_exception" });
-  assert.equal(zeroFee.state.exceptions[0].category, "invalid_platform_fee");
+  await assert.rejects(createCanonicalFinancialBatchDraft(request(), actor, zeroFee.repo), { code: "no_eligible_obligations" });
 });
 
 test("draft and list endpoints enforce authorization, bounded filters, and safe draft-only projections", async () => {
@@ -238,4 +269,22 @@ test("draft and list endpoints enforce authorization, bounded filters, and safe 
   await list({ user: { id: "admin" }, query: {} }, validList);
   assert.equal(validList.body.items.length, 25);
   assert.equal(validList.body.pagination.hasMore, true);
+});
+
+test("range preview endpoint is limited to Platform Operations and never invokes creation", async () => {
+  const roles: Record<string, string> = { admin: "admin", driver: "driver" };
+  let previewCalls = 0;
+  const handler = createAdminFinancialBatchPreviewHandler({
+    getUser: async (id) => ({ id, role: roles[id] }),
+    preview: async () => { previewCalls += 1; return { period: calculateCanonicalDateRangePeriod("2026-07-12", "2026-07-18", "America/Chicago"), eligibleCount: 1, excludedCount: 0, alreadyBatchedCount: 0, ineligibleCount: 0, frozenDriverIncentiveCents: 1234, frozenPlatformFeeCents: 500, frozenFacilityChargeCents: 1734, selectionHash: "a".repeat(64) }; },
+  });
+  const makeRes = () => ({ statusCode: 200, body: undefined as any, status(code: number) { this.statusCode = code; return this; }, json(body: any) { this.body = body; return body; } });
+  const denied = makeRes();
+  await handler({ user: { id: "driver" }, body: request() }, denied);
+  assert.equal(denied.statusCode, 403);
+  const allowed = makeRes();
+  await handler({ user: { id: "admin" }, body: request() }, allowed);
+  assert.equal(allowed.statusCode, 200);
+  assert.equal(allowed.body.eligibleCount, 1);
+  assert.equal(previewCalls, 1);
 });

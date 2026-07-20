@@ -29,13 +29,25 @@
 import Stripe from 'stripe';
 import { assertLegacyFinancialExecutionRetired } from './financialExecutionPolicy';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+/**
+ * Provider configuration is intentionally lazy. Financial execution is gated
+ * elsewhere, and an execution-disabled deployment must be able to start
+ * without a Stripe key. Any Stripe-dependent operation gets a clear local
+ * configuration failure instead of making startup depend on a placeholder.
+ */
+export function getConfiguredStripeClient(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key) throw new Error('Stripe is not configured. Set STRIPE_SECRET_KEY before attempting a Stripe operation.');
+  return new Stripe(key, { apiVersion: '2025-08-27.basil' });
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-08-27.basil',
-});
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, property) {
+    const client = getConfiguredStripeClient() as any;
+    const value = client[property];
+    return typeof value === 'function' ? value.bind(client) : value;
+  },
+}) as Stripe;
 
 // ============================================================================
 // STRIPE CONNECT - Connected Accounts

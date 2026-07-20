@@ -99,6 +99,7 @@ import {
 import {
   createAdminFinancialBatchDetailHandler,
   createAdminFinancialBatchDraftHandler,
+  createAdminFinancialBatchPreviewHandler,
   createAdminFinancialBatchLifecycleHandler,
   createAdminFinancialBatchListHandler,
 } from "./financialBatchDrafts";
@@ -5540,6 +5541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const financialBatchDependencies = { getUser: (userId: string) => storage.getUser(userId) };
   app.get('/api/admin/financial-batches', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchListHandler(financialBatchDependencies) as any));
   app.get('/api/admin/financial-batches/:id', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchDetailHandler(financialBatchDependencies) as any));
+  app.post('/api/admin/financial-batches/preview', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchPreviewHandler(financialBatchDependencies) as any));
   app.post('/api/admin/financial-batches', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchDraftHandler(financialBatchDependencies) as any));
   app.post('/api/admin/financial-batches/:id/ready-for-review', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchLifecycleHandler("ready_for_review", financialBatchDependencies) as any));
   app.post('/api/admin/financial-batches/:id/approve', isAuthenticated, requireCanonicalFinancialSchema(createAdminFinancialBatchLifecycleHandler("approve", financialBatchDependencies) as any));
