@@ -5576,7 +5576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : 409;
         return res.status(status).json({ code: error.code, message: error.message });
       }
-      console.error("[CANONICAL_BATCH_EXECUTION_UNAVAILABLE]", { batchId: req.params.id, actorRole: user.role, errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      console.error("[CANONICAL_BATCH_EXECUTION_UNAVAILABLE]", { actorRole: user.role, errorCategory: error instanceof Error ? error.name : "UnknownError" });
       return res.status(500).json({ code: "FINANCIAL_BATCH_EXECUTION_UNAVAILABLE", message: "Canonical batch execution is unavailable." });
     }
   }));
@@ -5594,7 +5594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(202).json({ batchId: result.batchId, status: result.status, executionAttemptId: result.attemptId });
     } catch (error) {
       if (error instanceof CanonicalBatchExecutionError) return res.status(error.code === "FINANCIAL_EXECUTION_DISABLED" ? 503 : error.code.includes("NOT_FOUND") ? 404 : error.code.includes("NOT_RETRYABLE") || error.code.includes("INVALID") ? 422 : 409).json({ code: error.code, message: error.message });
-      console.error("[CANONICAL_BATCH_RETRY_UNAVAILABLE]", { batchId: req.params.id, actorRole: user.role, errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      console.error("[CANONICAL_BATCH_RETRY_UNAVAILABLE]", { actorRole: user.role, errorCategory: error instanceof Error ? error.name : "UnknownError" });
       return res.status(500).json({ code: "FINANCIAL_BATCH_RETRY_UNAVAILABLE", message: "Canonical batch retry is unavailable." });
     }
   }));
