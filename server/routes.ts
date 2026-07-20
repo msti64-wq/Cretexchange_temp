@@ -5375,11 +5375,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const userId = req.user.id;
+      const rawReason = req.body?.reason;
+      if (typeof rawReason !== "string") {
+        return res.status(400).json({ message: "A rejection reason is required." });
+      }
+      const rejectionReason = rawReason.trim().replace(/\s+/g, " ");
+      if (!rejectionReason) {
+        return res.status(400).json({ message: "A rejection reason is required." });
+      }
+      if (rejectionReason.length > 500) {
+        return res.status(400).json({ message: "The rejection reason must be 500 characters or fewer." });
+      }
 
-      const activity = await storage.rejectWashoutActivity(id, userId);
+      const owner = await storage.getOwner(userId);
+      if (!owner) {
+        return res.status(403).json({ message: "Only the facility owner may reject this activity." });
+      }
+      const activityDetails = await storage.getWashoutActivity(id);
+      if (!activityDetails) {
+        return res.status(404).json({ message: "Activity not found." });
+      }
+      const activityLocation = await storage.getWashoutLocation(activityDetails.locationId);
+      if (!activityLocation || activityLocation.ownerId !== owner.id) {
+        return res.status(404).json({ message: "Activity not found." });
+      }
+      if (activityDetails.status !== "pending") {
+        return res.status(409).json({ message: "This activity is no longer awaiting owner review." });
+      }
+
+      const activity = await storage.rejectPendingWashoutActivityForOwner({
+        activityId: id,
+        ownerId: owner.id,
+        rejectedBy: userId,
+        rejectionReason,
+      });
+      if (!activity) {
+        return res.status(409).json({ message: "This activity is no longer awaiting owner review." });
+      }
       res.json(activity);
     } catch (error) {
-      console.error("Error rejecting activity:", error);
+      console.error("[OWNER_ACTIVITY_REJECTION_FAILED]", {
+        errorCategory: error instanceof Error ? error.name : "UnknownError",
+      });
       res.status(500).json({ message: "Failed to reject activity" });
     }
   });

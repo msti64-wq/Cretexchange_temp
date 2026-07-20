@@ -331,6 +331,11 @@ export const washoutActivities = pgTable("washout_activities", {
   notes: text("notes"),
   verifiedBy: varchar("verified_by").references(() => users.id),
   verifiedAt: timestamp("verified_at"),
+  // Rejection audit is intentionally distinct from operational verification.
+  // Existing and pending activities remain valid with these nullable fields.
+  rejectionReason: text("rejection_reason"),
+  rejectedBy: varchar("rejected_by").references(() => users.id, { onDelete: "set null" }),
+  rejectedAt: timestamp("rejected_at"),
   latitude: decimal("latitude", { precision: 9, scale: 6 }),
   longitude: decimal("longitude", { precision: 10, scale: 6 }),
   // Rubble service fields

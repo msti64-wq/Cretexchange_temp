@@ -243,7 +243,12 @@ export interface IStorage {
   getActivitiesByLocation(locationId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { driver: Driver & { user: User } })[]>;
   getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
   verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity>;
-  rejectWashoutActivity(activityId: string, rejectedBy: string): Promise<WashoutActivity>;
+  rejectPendingWashoutActivityForOwner(input: {
+    activityId: string;
+    ownerId: string;
+    rejectedBy: string;
+    rejectionReason: string;
+  }): Promise<WashoutActivity | undefined>;
   updateWashoutActivityStatus(activityId: string, status: string): Promise<WashoutActivity>;
   getRecentActivitiesByDriver(driverId: string, limit?: number): Promise<(WashoutActivity & { location: WashoutLocation })[]>;
   getAllActivities(startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
@@ -1845,16 +1850,36 @@ export class DatabaseStorage implements IStorage {
     return activity;
   }
 
-  async rejectWashoutActivity(activityId: string, rejectedBy: string): Promise<WashoutActivity> {
+  async rejectPendingWashoutActivityForOwner({
+    activityId,
+    ownerId,
+    rejectedBy,
+    rejectionReason,
+  }: {
+    activityId: string;
+    ownerId: string;
+    rejectedBy: string;
+    rejectionReason: string;
+  }): Promise<WashoutActivity | undefined> {
+    const now = new Date();
     const [activity] = await db
       .update(washoutActivities)
-      .set({ 
+      .set({
         status: "rejected",
-        verifiedBy: rejectedBy,
-        verifiedAt: new Date(),
-        updatedAt: new Date()
+        rejectionReason,
+        rejectedBy,
+        rejectedAt: now,
+        updatedAt: now,
       })
-      .where(eq(washoutActivities.id, activityId))
+      .where(and(
+        eq(washoutActivities.id, activityId),
+        eq(washoutActivities.status, "pending"),
+        sql`EXISTS (
+          SELECT 1 FROM ${washoutLocations}
+          WHERE ${washoutLocations.id} = ${washoutActivities.locationId}
+            AND ${washoutLocations.ownerId} = ${ownerId}
+        )`,
+      ))
       .returning();
     return activity;
   }

@@ -515,6 +515,11 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
     "owner.dashboard.approveFailed": "Failed to approve washout",
     "owner.dashboard.rejectSuccess": "Washout rejected",
     "owner.dashboard.rejectFailed": "Failed to reject washout",
+    "owner.dashboard.rejectActivityTitle": "Reject activity",
+    "owner.dashboard.rejectActivityDescription": "Provide a reason for the driver and your activity records.",
+    "owner.dashboard.rejectionReason": "Rejection reason",
+    "owner.dashboard.rejectionReasonRequired": "A rejection reason is required.",
+    "owner.dashboard.rejectionReasonTooLong": "The rejection reason must be 500 characters or fewer.",
 
     "owner.locations.myLocations": "My Locations",
     "owner.locations.manageWashoutSites": "Manage washout sites",
@@ -1350,6 +1355,11 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
     "owner.dashboard.approveFailed": "No se pudo aprobar el lavado",
     "owner.dashboard.rejectSuccess": "Lavado rechazado",
     "owner.dashboard.rejectFailed": "No se pudo rechazar el lavado",
+    "owner.dashboard.rejectActivityTitle": "Rechazar actividad",
+    "owner.dashboard.rejectActivityDescription": "Indique un motivo para el conductor y sus registros de actividad.",
+    "owner.dashboard.rejectionReason": "Motivo del rechazo",
+    "owner.dashboard.rejectionReasonRequired": "Se requiere un motivo de rechazo.",
+    "owner.dashboard.rejectionReasonTooLong": "El motivo de rechazo debe tener 500 caracteres o menos.",
 
     "owner.locations.myLocations": "Mis ubicaciones",
     "owner.locations.manageWashoutSites": "Gestionar sitios de lavado",

@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import https from "node:https";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import Stripe from "stripe";
+import { installDeterministicNetworkGuard } from "./testNetworkGuard";
 import { ObjectStorageService } from "../server/objectStorage";
 import { processOwnerBillingRun } from "../server/ownerBillingRuns";
 import { buildOwnerBillingReceivablesOverview } from "../server/ownerBillingReceivables";
@@ -62,19 +64,18 @@ function createLanguageStorage(initialValues: Record<string, string> = {}): Lang
   };
 }
 
-process.env.NODE_ENV = process.env.NODE_ENV || "test";
-process.env.JWT_SECRET =
-  process.env.JWT_SECRET || "test-only-jwt-secret-32-characters-minimum";
-process.env.SESSION_SECRET =
-  process.env.SESSION_SECRET || "test-only-session-secret";
-process.env.DATABASE_URL =
-  process.env.DATABASE_URL || "postgres://user:pass@127.0.0.1:1/test";
-process.env.STRIPE_SECRET_KEY =
-  process.env.STRIPE_SECRET_KEY || "sk_test_unit_test_secret";
-process.env.PRIVATE_OBJECT_DIR =
-  process.env.PRIVATE_OBJECT_DIR || "private";
-process.env.PUBLIC_OBJECT_SEARCH_PATHS =
-  process.env.PUBLIC_OBJECT_SEARCH_PATHS || "public";
+// The deterministic runner owns its environment. It must never inherit a
+// provider key, Railway configuration, or non-local database target.
+process.env.NODE_ENV = "test";
+process.env.JWT_SECRET = "test-only-jwt-secret-32-characters-minimum";
+process.env.SESSION_SECRET = "test-only-session-secret";
+process.env.DATABASE_URL = "postgres://user:pass@127.0.0.1:1/cretexchange_test";
+process.env.STRIPE_SECRET_KEY = "sk_test_deterministic_no_network";
+process.env.FINANCIAL_EXECUTION_ENABLED = "false";
+for (const key of ["RAILWAY_ENVIRONMENT", "RAILWAY_PROJECT_ID", "RAILWAY_SERVICE_ID", "RAILWAY_STATIC_URL", "RAILWAY_PUBLIC_DOMAIN"]) delete process.env[key];
+process.env.PRIVATE_OBJECT_DIR = "private";
+process.env.PUBLIC_OBJECT_SEARCH_PATHS = "public";
+const restoreDeterministicNetworkGuard = installDeterministicNetworkGuard();
 
 await import("./reports.test.ts");
 await import("./owner-access.test.ts");
@@ -148,6 +149,13 @@ test("driver Stripe payouts feature flag is defined and disabled by default", ()
   const definition = FEATURE_FLAG_DEFINITIONS.find((flag) => flag.key === FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS);
   assert.ok(definition);
   assert.equal(definition?.enabled, false);
+});
+
+test("deterministic network guard blocks external requests before transport", () => {
+  assert.throws(
+    () => https.request("https://api.stripe.com/v1/accounts"),
+    /network guard blocked outbound request to api\.stripe\.com/,
+  );
 });
 
 test("i18n defaults to English", () => {
@@ -5998,8 +6006,17 @@ test("payment webhooks skip already processed Stripe events", async () => {
 });
 
 let failures = 0;
+const deterministicTestFilter = process.env.DETERMINISTIC_TEST_FILTER?.trim().toLowerCase();
+const selectedTests = deterministicTestFilter
+  ? tests.filter(({ name }) => name.toLowerCase().includes(deterministicTestFilter))
+  : tests;
 
-for (const { name, run } of tests) {
+if (deterministicTestFilter && selectedTests.length === 0) {
+  restoreDeterministicNetworkGuard();
+  throw new Error(`No deterministic test matches filter: ${deterministicTestFilter}`);
+}
+
+for (const { name, run } of selectedTests) {
   try {
     await run();
     console.log(`ok - ${name}`);
@@ -6011,9 +6028,11 @@ for (const { name, run } of tests) {
 }
 
 if (failures > 0) {
-  console.error(`${failures}/${tests.length} tests failed`);
+  restoreDeterministicNetworkGuard();
+  console.error(`${failures}/${selectedTests.length} tests failed`);
   process.exit(1);
 }
 
-console.log(`${tests.length} tests passed`);
+restoreDeterministicNetworkGuard();
+console.log(`${selectedTests.length} tests passed`);
 process.exit(0);

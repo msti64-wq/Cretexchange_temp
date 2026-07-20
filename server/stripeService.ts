@@ -41,8 +41,15 @@ export function getConfiguredStripeClient(): Stripe {
   return new Stripe(key, { apiVersion: '2025-08-27.basil' });
 }
 
-export const stripe = new Proxy({} as Stripe, {
-  get(_target, property) {
+// The proxy target also provides a deliberate provider-boundary injection point
+// for deterministic tests. Normal runtime has no target properties, so every
+// operation remains lazily configured exactly as before.
+const stripeProxyTarget = {} as Stripe;
+export const stripe = new Proxy(stripeProxyTarget, {
+  get(target, property, receiver) {
+    if (Reflect.has(target, property)) {
+      return Reflect.get(target, property, receiver);
+    }
     const client = getConfiguredStripeClient() as any;
     const value = client[property];
     return typeof value === 'function' ? value.bind(client) : value;

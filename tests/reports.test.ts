@@ -538,7 +538,7 @@ test("driver daily report includes ticket numbers", async () => {
   assert.equal(report.rows[0].paymentStatus, "paid");
 });
 
-test("driver weekly report includes payment rows and payment status", async () => {
+test("driver weekly report includes payment rows, payment status, and canonical incentive totals", async () => {
   const fixture = createStorageFixture();
   const report = await buildDriverReport(
     fixture.storage as any,
@@ -548,7 +548,9 @@ test("driver weekly report includes payment rows and payment status", async () =
 
   assert.equal(report.rows.length, 4);
   assert.ok(report.rows.some((row) => row.paymentStatus === "paid"));
-  assert.equal(report.summary.totalTips, "5.00");
+  // Canonical payment accounting treats payments.amount as the Driver incentive.
+  // washoutServiceFee is not an additive tip amount.
+  assert.equal(report.summary.totalTips, "280.00");
 });
 
 test("admin owner report spans multiple owners", async () => {
@@ -752,9 +754,11 @@ test("billing audit report builds from minimal safe report fields only", async (
   assert.equal(report.rows[0].ownerCompanyName, "Minimal Owner LLC");
   assert.equal(report.rows[0].driverDisplayName, "Driver One");
   assert.equal(report.rows[0].platformFeeTotal, "0.30");
-  assert.equal(report.rows[0].driverTipRate, "0.70");
+  // Canonical payment accounting uses payments.amount for the Driver incentive;
+  // washoutServiceFee is retained as a legacy component, not a second incentive.
+  assert.equal(report.rows[0].driverTipRate, "5.00");
   assert.equal(report.summary.totalPlatformFeeTotal, "0.30");
-  assert.equal(report.summary.totalDriverTips, "0.70");
+  assert.equal(report.summary.totalDriverTips, "5.00");
 });
 
 test("billing audit report route is registered", async () => {

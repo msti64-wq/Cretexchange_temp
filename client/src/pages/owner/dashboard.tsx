@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import React from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import { useLanguage } from "@/lib/i18n";
 import { formatCentsToDollars } from "@/lib/utils";
 import { normalizeDollarInputToCents } from "@shared/money";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const AUTO_APPROVAL_HOURS = 72;
 
@@ -139,6 +140,10 @@ export default function OwnerDashboard() {
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
   const [approvalDriverTipDrafts, setApprovalDriverTipDrafts] = useState<Record<string, string>>({});
+  const [rejectionTarget, setRejectionTarget] = useState<{ id: string } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionReasonError, setRejectionReasonError] = useState<string | null>(null);
+  const rejectionSubmissionRef = useRef(false);
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | '90days' | 'all'>('today');
   const [driverSearch, setDriverSearch] = useState("");
   const [driverFilter, setDriverFilter] = useState<'all' | 'new' | 'repeat' | 'recent'>('all');
@@ -305,9 +310,10 @@ export default function OwnerDashboard() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: async (activityId: string) => {
+    retry: false,
+    mutationFn: async ({ activityId, reason }: { activityId: string; reason: string }) => {
       try {
-        const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/reject`);
+        const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/reject`, { reason });
         const result = await response.json();
         return result;
       } catch (error) {
@@ -315,23 +321,45 @@ export default function OwnerDashboard() {
         throw error;
       }
     },
-    onSuccess: (data, activityId) => {
-      console.log("Rejection successful:", data);
+    onSuccess: () => {
       toast({ title: t("owner.dashboard.rejectSuccess") });
+      setRejectionTarget(null);
+      setRejectionReason("");
+      setRejectionReasonError(null);
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/owners/billing/pending-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/drivers/dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
       queryClient.invalidateQueries({ predicate: (query) => 
         Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))
       });
     },
-    onError: (error, activityId) => {
-      console.error("Rejection failed:", error);
-      toast({ title: t("owner.dashboard.rejectFailed"), variant: "destructive" });
+    onError: (error) => {
+      const message = parseApiError(error);
+      setRejectionReasonError(message);
+      toast({ title: t("owner.dashboard.rejectFailed"), description: message, variant: "destructive" });
     },
+    onSettled: () => { rejectionSubmissionRef.current = false; },
   });
+
+  const openRejectionDialog = (activityId: string) => {
+    if (rejectMutation.isPending || approveMutation.isPending || rejectionTarget) return;
+    setRejectionTarget({ id: activityId });
+    setRejectionReason("");
+    setRejectionReasonError(null);
+  };
+
+  const submitRejection = () => {
+    const reason = rejectionReason.trim().replace(/\s+/g, " ");
+    if (!reason) {
+      setRejectionReasonError(t("owner.dashboard.rejectionReasonRequired"));
+      return;
+    }
+    if (reason.length > 500) {
+      setRejectionReasonError(t("owner.dashboard.rejectionReasonTooLong"));
+      return;
+    }
+    if (!rejectionTarget || rejectionSubmissionRef.current || rejectMutation.isPending) return;
+    rejectionSubmissionRef.current = true;
+    rejectMutation.mutate({ activityId: rejectionTarget.id, reason });
+  };
 
   // Emergency cache invalidation for phantom activities
   const clearPhantomActivities = () => {
@@ -1418,8 +1446,8 @@ export default function OwnerDashboard() {
                               size="sm"
                               variant="destructive"
                               className="text-xs px-3 h-9 min-w-[70px]"
-                              onClick={() => rejectMutation.mutate(activity.id)}
-                              disabled={rejectMutation.isPending || approveMutation.isPending}
+                              onClick={() => openRejectionDialog(activity.id)}
+                              disabled={rejectMutation.isPending || approveMutation.isPending || rejectionTarget?.id === activity.id}
                               data-testid={`button-reject-${index}`}
                             >
                               <X className="w-4 h-4 mr-1" />
@@ -1509,8 +1537,8 @@ export default function OwnerDashboard() {
                               size="sm"
                               variant="destructive"
                               className="text-xs px-3 h-8"
-                              onClick={() => rejectMutation.mutate(activity.id)}
-                              disabled={rejectMutation.isPending || approveMutation.isPending}
+                              onClick={() => openRejectionDialog(activity.id)}
+                              disabled={rejectMutation.isPending || approveMutation.isPending || rejectionTarget?.id === activity.id}
                               data-testid={`button-reject-${index}`}
                             >
                               <X className="w-4 h-4 mr-1" />
@@ -1604,6 +1632,44 @@ export default function OwnerDashboard() {
         isOpen={isSupportDialogOpen}
         onClose={() => setIsSupportDialogOpen(false)}
       />
+
+      <Dialog open={Boolean(rejectionTarget)} onOpenChange={(open) => {
+        if (!open && !rejectMutation.isPending) {
+          setRejectionTarget(null);
+          setRejectionReason("");
+          setRejectionReasonError(null);
+        }
+      }}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("owner.dashboard.rejectActivityTitle")}</DialogTitle>
+            <DialogDescription>{t("owner.dashboard.rejectActivityDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="owner-rejection-reason" className="text-sm font-medium">
+              {t("owner.dashboard.rejectionReason")}
+            </label>
+            <textarea
+              id="owner-rejection-reason"
+              value={rejectionReason}
+              onChange={(event) => { setRejectionReason(event.target.value); setRejectionReasonError(null); }}
+              disabled={rejectMutation.isPending}
+              maxLength={500}
+              className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              aria-invalid={Boolean(rejectionReasonError)}
+              aria-describedby={rejectionReasonError ? "owner-rejection-reason-error" : undefined}
+            />
+            {rejectionReasonError && <p id="owner-rejection-reason-error" className="text-sm text-destructive">{rejectionReasonError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectionTarget(null)} disabled={rejectMutation.isPending}>{t("common.cancel")}</Button>
+            <Button variant="destructive" onClick={submitRejection} disabled={rejectMutation.isPending} data-testid="button-confirm-reject">
+              {rejectMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {t("common.reject")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
         <DebugPanel
           currentDateRange={dateRange}
