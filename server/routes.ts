@@ -1267,13 +1267,7 @@ async function awardLotteryEntryForApprovedWashout(params: {
   const { activityId, ownerId, driverId, serviceType, verifiedAt, createdAt, source } = params;
 
   if (serviceType === 'rubble_dropoff') {
-    console.log(`🎰 Lottery skipped for washout ${activityId} from ${source}: ineligible service type`, {
-      activityId,
-      ownerId,
-      driverId,
-      serviceType,
-      source,
-    });
+    console.log(`🎰 Lottery skipped: ineligible service type (${source})`);
     return { created: false, reason: 'ineligible_service_type' as const };
   }
 
@@ -1282,34 +1276,20 @@ async function awardLotteryEntryForApprovedWashout(params: {
     const resolution = await resolveLotteryEnabled(storage);
     lotteryEnabled = resolution.enabled;
   } catch (error: any) {
-    console.warn(`🎰 Lottery flag lookup failed for washout ${activityId} from ${source}; defaulting to enabled`, {
-      activityId,
-      ownerId,
-      driverId,
-      source,
-      error: error?.message || String(error),
+    console.warn(`🎰 Lottery flag lookup failed; defaulting to enabled (${source})`, {
+      errorCategory: error instanceof Error ? error.name : "UnknownError",
     });
     lotteryEnabled = true;
   }
 
   if (!lotteryEnabled) {
-    console.log(`🎰 Lottery skipped for washout ${activityId} from ${source}: lottery disabled`, {
-      activityId,
-      ownerId,
-      driverId,
-      source,
-    });
+    console.log(`🎰 Lottery skipped: disabled (${source})`);
     return { created: false, reason: 'lottery_disabled' as const };
   }
 
   const rewardsPeriod = await getActiveRewardsPeriodForActivity({ verifiedAt, createdAt });
   if (!rewardsPeriod) {
-    console.log(`🎰 Lottery skipped for washout ${activityId} from ${source}: no active current rewards period`, {
-      activityId,
-      ownerId,
-      driverId,
-      source,
-    });
+    console.log(`🎰 Lottery skipped: no active current rewards period (${source})`);
     return { created: false, reason: 'no_active_rewards_period' as const };
   }
 
@@ -10625,7 +10605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(await listRewardsPeriods());
     } catch (error: any) {
-      console.error("Error listing rewards periods:", error);
+      console.error("Rewards-period listing failed", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
       res.status(500).json({ message: "Failed to list rewards periods" });
     }
   });
@@ -10643,7 +10623,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       const message = error instanceof Error ? error.message : "Failed to create rewards period";
       const status = /invalid|unique/i.test(message) ? 400 : 500;
-      console.error("Error creating rewards period:", error);
+      console.error("Rewards-period creation failed", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
       res.status(status).json({ message });
     }
   });
@@ -10663,7 +10643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       const message = error instanceof Error ? error.message : "Failed to transition rewards period";
       const status = /not found/i.test(message) ? 404 : /invalid|reason|required|already active/i.test(message) ? 400 : 500;
-      console.error("Error transitioning rewards period:", error);
+      console.error("Rewards-period transition failed", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
       res.status(status).json({ message });
     }
   });
@@ -10679,7 +10659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       const message = error instanceof Error ? error.message : "Failed to announce rewards-period cancellation";
       const status = /required|not found/i.test(message) ? 400 : 500;
-      console.error("Error announcing rewards-period cancellation:", error);
+      console.error("Rewards-period cancellation announcement failed", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
       res.status(status).json({ message });
     }
   });
@@ -10695,7 +10675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       const message = error instanceof Error ? error.message : "Failed to mark rewards ticket ineligible";
       const status = /required|not found/i.test(message) ? 400 : 500;
-      console.error("Error marking rewards ticket ineligible:", error);
+      console.error("Rewards-ticket ineligibility update failed", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
       res.status(status).json({ message });
     }
   });
