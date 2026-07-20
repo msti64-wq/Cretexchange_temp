@@ -17,10 +17,10 @@ import {
 } from "../client/src/lib/adminFinancialWorkspace";
 import { translate, translations } from "../client/src/lib/i18n";
 
-test("financial workspace uses only the canonical non-executing lifecycle actions", () => {
+test("financial workspace exposes only canonical lifecycle actions", () => {
   assert.deepEqual(workspaceBatchActions("draft"), ["move_to_review", "cancel"]);
   assert.deepEqual(workspaceBatchActions("ready_for_review"), ["approve", "cancel"]);
-  assert.deepEqual(workspaceBatchActions("approved"), ["cancel"]);
+  assert.deepEqual(workspaceBatchActions("approved"), ["execute", "cancel"]);
   assert.deepEqual(workspaceBatchActions("cancelled"), []);
   assert.deepEqual(workspaceBatchActions("unknown"), []);
   assert.equal(workspaceBatchStateLabel("ready_for_review"), "Ready for Review");
