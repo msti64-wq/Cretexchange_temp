@@ -1,7 +1,10 @@
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
-import { getDatabaseSslConfiguration } from "./databaseSsl";
+import {
+  getDatabaseConnectionString,
+  getDatabaseSslConfiguration,
+} from "./databaseSsl";
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -26,13 +29,8 @@ class RobustPool {
   }
 
   private createPool(connectionString: string): Pool {
-    // Add sslmode=require to connection string if not present for Neon
-    const secureConnectionString = connectionString.includes('sslmode=') 
-      ? connectionString 
-      : `${connectionString}${connectionString.includes('?') ? '&' : '?'}sslmode=require`;
-
     return new Pool({ 
-      connectionString: secureConnectionString,
+      connectionString: getDatabaseConnectionString(connectionString),
       ssl: getDatabaseSslConfiguration(),
       keepAlive: true,
       max: 10,

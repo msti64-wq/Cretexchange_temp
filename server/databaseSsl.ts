@@ -15,3 +15,15 @@ export function getDatabaseSslConfiguration(
 
   return { rejectUnauthorized: !allowStagingSelfSigned };
 }
+
+/**
+ * node-postgres parses sslmode from a connection string after applying the
+ * explicit Pool options. Removing it ensures the narrowly scoped policy above
+ * remains the single TLS authority. TLS is still enabled by the Pool `ssl`
+ * option in every environment.
+ */
+export function getDatabaseConnectionString(connectionString: string): string {
+  const databaseUrl = new URL(connectionString);
+  databaseUrl.searchParams.delete("sslmode");
+  return databaseUrl.toString();
+}
