@@ -5201,7 +5201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         calculatedEnd: end.toISOString()
       });
 
-      const activities = await storage.getActivitiesByOwner(owner.id, start, end) as WashoutActivity[];
+      const activities = await storage.getActivitiesByOwner(owner.id, start, end) as Array<WashoutActivity & { photoCount: number }>;
       
       console.log('📊 Activities query result:', {
         ownerId: owner.id,
@@ -5212,8 +5212,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }, {} as Record<string, number>),
         sampleActivityIds: activities.slice(0, 3).map(a => a.id),
         allActivityIds: activities.map(a => a.id),
-        activitiesWithPhotos: activities.filter(a => a.photoUrls && a.photoUrls.length > 0)
-          .map(a => ({ id: a.id, photoUrls: a.photoUrls }))
+        activitiesWithPhotos: activities.filter(a => a.photoCount > 0)
+          .map(a => ({ id: a.id, photoCount: a.photoCount }))
       });
 
       res.json(activities);

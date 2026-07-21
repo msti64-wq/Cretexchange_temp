@@ -241,7 +241,7 @@ export interface IStorage {
   getWashoutActivity(id: string): Promise<WashoutActivity | undefined>;
   getActivitiesByDriver(driverId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation })[]>;
   getActivitiesByLocation(locationId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { driver: Driver & { user: User } })[]>;
-  getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
+  getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User }; photoCount: number })[]>;
   verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity>;
   rejectPendingWashoutActivityForOwner(input: {
     activityId: string;
@@ -1643,7 +1643,7 @@ export class DatabaseStorage implements IStorage {
     return mappedActivities;
   }
 
-  async getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]> {
+  async getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User }; photoCount: number })[]> {
     const conditions = [eq(washoutLocations.ownerId, ownerId)];
     
     if (startDate) {
@@ -1670,26 +1670,30 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(washoutActivities.checkInTime));
 
-    // Query results processed
-
-    // Remove post-processing filter - rely on INNER JOIN constraints
-    // Add photo validation to prevent phantom activities with missing photos
-    const mappedResults = await Promise.all(
-      results.map(async (row: any) => {
-        const activity = {
-          ...row.washout_activities,
-          location: row.washout_locations,
-          driver: {
-            ...row.drivers,
-            user: row.users
-          }
-        };
-
-        // Photo validation removed for performance - phantom activities handled by cleanup job
-
-        return activity;
-      })
+    const activityIds = results.map((row: any) => row.washout_activities.id);
+    const photoCounts = activityIds.length === 0
+      ? []
+      : await db
+        .select({
+          activityId: washoutPhotos.activityId,
+          photoCount: count(washoutPhotos.id),
+        })
+        .from(washoutPhotos)
+        .where(inArray(washoutPhotos.activityId, activityIds))
+        .groupBy(washoutPhotos.activityId);
+    const photoCountByActivityId = new Map(
+      photoCounts.map((row) => [row.activityId, Number(row.photoCount)]),
     );
+
+    const mappedResults = results.map((row: any) => ({
+      ...row.washout_activities,
+      photoCount: photoCountByActivityId.get(row.washout_activities.id) || 0,
+      location: row.washout_locations,
+      driver: {
+        ...row.drivers,
+        user: row.users,
+      },
+    }));
 
     return mappedResults;
   }
@@ -2069,83 +2073,13 @@ export class DatabaseStorage implements IStorage {
     const results = {
       approved: 0,
       failed: 0,
-      errors: [] as string[]
+      errors: [] as string[],
     };
 
-    console.log(`\n🤖 ===== AUTO-APPROVAL: Processing activities older than ${hoursOld} hours =====`);
-    
-    // Get all expired pending activities
-    const expiredActivities = await this.getExpiredPendingActivities(hoursOld);
-    
-    if (expiredActivities.length === 0) {
-      console.log(`✅ No expired pending activities found`);
-      return results;
-    }
-
-    console.log(`📋 Found ${expiredActivities.length} activities to auto-approve`);
-
-    for (const activity of expiredActivities) {
-      try {
-        console.log(`\n🔄 Auto-approving activity ${activity.id}:`);
-        console.log(`   - Service: ${activity.serviceType || 'washout'}`);
-        console.log(`   - Driver: ${activity.driver.user.firstName} ${activity.driver.user.lastName}`);
-        console.log(`   - Location: ${activity.location.name}`);
-        console.log(`   - Created: ${activity.createdAt}`);
-        console.log(`   - Amount: $${activity.amount}`);
-
-        // Get the location's owner for payment creation
-        const location = await this.getWashoutLocation(activity.locationId);
-        if (!location) {
-          throw new Error(`Location ${activity.locationId} not found`);
-        }
-
-        const owner = await this.getOwnerById(location.ownerId);
-        if (!owner) {
-          throw new Error(`Owner for location ${activity.locationId} not found`);
-        }
-
-        // Auto-verify the activity with system as verifier
-        const verifiedActivity = await this.verifyWashoutActivity(activity.id, 'system-auto-approval');
-
-        try {
-          const lotteryFlag = await this.getFeatureFlag('lottery_enabled');
-          const lotteryEnabled = lotteryFlag?.enabled ?? false;
-          if (lotteryEnabled && activity.serviceType !== 'rubble_dropoff') {
-            const lotteryEntry = await this.createDriverLotteryEntry({
-              driverId: activity.driverId,
-              activityId: activity.id,
-              ownerId: owner.id,
-              entriesEarned: 1,
-            });
-            console.log(`🎰 Lottery entry created for auto-approved washout ${activity.id}, entry ID: ${lotteryEntry.id}`);
-          } else {
-            console.log(`🎰 Lottery skipped for auto-approved washout ${activity.id}`, {
-              lotteryEnabled,
-              serviceType: activity.serviceType,
-            });
-          }
-        } catch (lotteryError: any) {
-          console.error(`❌ Failed to create lottery entry for auto-approved washout ${activity.id}:`, lotteryError);
-        }
-        
-        // Auto-approval is operational only. A future canonical obligation flow must
-        // establish frozen amounts and idempotency before any financial record exists.
-        console.log(`   ✅ Auto-approved operational activity`, {
-          ownerId: owner.id,
-          activityId: activity.id,
-          driverId: activity.driverId,
-          status: verifiedActivity.status,
-        });
-        results.approved++;
-        
-      } catch (error: any) {
-        console.error(`   ❌ Failed to auto-approve activity ${activity.id}:`, error.message);
-        results.errors.push(`Activity ${activity.id}: ${error.message}`);
-        results.failed++;
-      }
-    }
-
-    console.log(`\n🏁 Auto-approval complete: ${results.approved} approved, ${results.failed} failed`);
+    // Owner review is an explicit operational decision. Automatic verification
+    // is retired: callers may inspect expired work but must not change its state.
+    results.errors.push("Automatic verification is retired; pending washouts require explicit owner approval.");
+    console.warn("Automatic washout verification was skipped", { hoursOld });
     return results;
   }
 

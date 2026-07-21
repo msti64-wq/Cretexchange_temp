@@ -31,8 +31,6 @@ import { normalizeDollarInputToCents } from "@shared/money";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-const AUTO_APPROVAL_HOURS = 72;
-
 function OwnerDashboardSkeleton() {
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20">
@@ -57,23 +55,6 @@ function OwnerDashboardSkeleton() {
       <MobileNav role="owner" />
     </div>
   );
-}
-
-function getTimeUntilAutoApproval(createdAt: string | Date): { hours: number; minutes: number; isExpired: boolean; isUrgent: boolean } {
-  const created = new Date(createdAt);
-  const deadline = new Date(created.getTime() + AUTO_APPROVAL_HOURS * 60 * 60 * 1000);
-  const now = new Date();
-  const remaining = deadline.getTime() - now.getTime();
-  
-  if (remaining <= 0) {
-    return { hours: 0, minutes: 0, isExpired: true, isUrgent: true };
-  }
-  
-  const hours = Math.floor(remaining / (1000 * 60 * 60));
-  const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-  const isUrgent = hours < 24;
-  
-  return { hours, minutes, isExpired: false, isUrgent };
 }
 
 function translateOwnerWashoutStatus(status: string | null | undefined, t: (key: string) => string) {
@@ -1382,20 +1363,6 @@ export default function OwnerDashboard() {
                         <DSStatusChip tone={statusTone(activity.status)} data-testid={`badge-activity-status-${index}`}>
                           {translateOwnerWashoutStatus(activity.status, t)}
                         </DSStatusChip>
-                        {isPendingWashoutApproval(activity.status) && activity.checkInTime && (() => {
-                          const timeLeft = getTimeUntilAutoApproval(activity.checkInTime);
-                          return (
-                            <span 
-                              className={`text-xs font-medium ${timeLeft.isUrgent ? 'text-red-600 dark:text-red-500' : 'text-amber-600 dark:text-amber-500'}`}
-                              data-testid={`text-time-remaining-${index}`}
-                            >
-                              <Clock className="w-3 h-3 inline mr-1" />
-                              {timeLeft.isExpired 
-                                ? t("owner.dashboard.autoApprovingSoon")
-                                : t("owner.dashboard.timeLeft", { hours: timeLeft.hours, minutes: timeLeft.minutes })}
-                            </span>
-                          );
-                        })()}
                       </div>
                       
                       <div className="flex items-center gap-2 justify-end flex-wrap">
@@ -1436,7 +1403,7 @@ export default function OwnerDashboard() {
                           data-testid={`button-view-photos-${index}`}
                         >
                           <ImageIcon className="w-4 h-4 mr-1" />
-                          {t("common.photos")}
+                          {t("common.photos")}{Number(activity.photoCount || 0) > 0 ? ` (${activity.photoCount})` : ""}
                         </Button>
                         
                         {/* Approval buttons for pending washouts */}
@@ -1474,19 +1441,6 @@ export default function OwnerDashboard() {
                         <DSStatusChip tone={statusTone(activity.status)} data-testid={`badge-activity-status-${index}`}>
                           {translateOwnerWashoutStatus(activity.status, t)}
                         </DSStatusChip>
-                        {isPendingWashoutApproval(activity.status) && activity.checkInTime && (() => {
-                          const timeLeft = getTimeUntilAutoApproval(activity.checkInTime);
-                          return (
-                            <span 
-                              className={`text-xs font-medium ${timeLeft.isUrgent ? 'text-red-600 dark:text-red-500' : 'text-amber-600 dark:text-amber-500'}`}
-                            >
-                              <Clock className="w-3 h-3 inline mr-1" />
-                              {timeLeft.isExpired 
-                                ? t("owner.dashboard.autoApprovingSoon")
-                                : t("owner.dashboard.timeLeft", { hours: timeLeft.hours, minutes: timeLeft.minutes })}
-                            </span>
-                          );
-                        })()}
                       </div>
                       
                       <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -1527,7 +1481,7 @@ export default function OwnerDashboard() {
                           data-testid={`button-view-photos-${index}`}
                         >
                           <ImageIcon className="w-4 h-4 mr-1" />
-                          {t("common.photos")}
+                          {t("common.photos")}{Number(activity.photoCount || 0) > 0 ? ` (${activity.photoCount})` : ""}
                         </Button>
                         
                         {/* Approval buttons for pending washouts */}
