@@ -57,7 +57,10 @@ const AdminLottery = lazy(() => import("@/pages/admin/lottery"));
 const AdminRewardsOperations = lazy(() => import("@/pages/admin/rewards-operations"));
 const SuperAdminBillingAuditReport = lazy(() => import("@/pages/super-admin/billing-audit-report"));
 const AdminReports = lazy(() => import("@/pages/admin/reports"));
-const AdminFinancialWorkspace = lazy(() => import("@/pages/admin/financial-workspace"));
+const FinancialOperations = lazy(() => import("@/pages/admin/financial-operations"));
+const FinancialOwnerDetail = lazy(() => import("@/pages/admin/financial-operations").then((module) => ({ default: module.FinancialOwnerDetail })));
+const FinancialBatchDetail = lazy(() => import("@/pages/admin/financial-operations").then((module) => ({ default: module.FinancialBatchDetail })));
+const FinancialAudit = lazy(() => import("@/pages/admin/financial-operations").then((module) => ({ default: module.FinancialAudit })));
 
 // Wrapper components for Register with preselected roles
 const GeneralRegister = (props: RouteComponentProps) => <Register />;
@@ -158,7 +161,11 @@ function Router() {
             <Route path="/users" component={AdminUsers} />
             <Route path="/locations" component={AdminLocations} />
             <Route path="/payments" component={AdminPayments} />
-            <Route path="/financial-workspace" component={AdminFinancialWorkspace} />
+            <Route path="/financial-workspace" component={FinancialOperations} />
+            <Route path="/admin/financial-operations" component={FinancialOperations} />
+            <Route path="/admin/financial-operations/owners/:ownerId" component={FinancialOwnerDetail} />
+            <Route path="/admin/financial-operations/batches/:batchId" component={FinancialBatchDetail} />
+            <Route path="/admin/financial-operations/audit" component={FinancialAudit} />
             <Route path="/batch-payments" component={AdminBatchPayments} />
             <Route path="/reconciliation" component={AdminReconciliation} />
             <Route path="/subscriptions" component={AdminSubscriptions} />

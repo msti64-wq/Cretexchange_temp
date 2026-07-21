@@ -91,6 +91,12 @@ import { getFinancialSchemaCapabilities } from "./financialSchemaCapabilities";
 import { resolveFinancialWorkspaceSelectionToken } from "./financialWorkspaceSelection";
 import { getCanonicalFinancialVisibilitySummary } from "./canonicalFinancialVisibility";
 import {
+  getFinancialOperationsBatch,
+  getFinancialOperationsOverview,
+  getFinancialOperationsOwner,
+  searchFinancialOperationsAudit,
+} from "./financialOperationsReadModel";
+import {
   createAdminFinancialDiscoveryHandler,
   listCanonicalFinancialExceptions,
   listUnbatchedCanonicalObligations,
@@ -5549,6 +5555,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!capabilities.obligationKindAvailable) return canonicalFinancialSchemaUnavailable(res);
     try { return res.json(await getCanonicalFinancialVisibilitySummary()); }
     catch { console.error("Canonical financial summary is unavailable"); return res.status(503).json({ message: "Canonical financial records are unavailable" }); }
+  });
+
+  // Phase 2 Financial Operations is read-only.  These projections deliberately
+  // reuse canonical persisted records and do not call an obligation, batch, or
+  // execution service while an operator is viewing or refreshing the queue.
+  app.get('/api/admin/financial-operations/overview', isAuthenticated, async (req: any, res) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    try { return res.json(await getFinancialOperationsOverview()); }
+    catch { return res.status(503).json({ message: 'Financial Operations data is unavailable.' }); }
+  });
+  app.get('/api/admin/financial-operations/owners', isAuthenticated, async (req: any, res) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    try { const result = await getFinancialOperationsOverview(); return res.json({ items: result.owners, generatedAt: result.generatedAt }); }
+    catch { return res.status(503).json({ message: 'Financial Operations data is unavailable.' }); }
+  });
+  app.get('/api/admin/financial-operations/owners/:ownerId', isAuthenticated, async (req: any, res) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    const ownerId = String(req.params.ownerId || '').trim();
+    if (!ownerId || ownerId.length > 128) return res.status(422).json({ message: 'A valid owner selection is required.' });
+    try { const result = await getFinancialOperationsOwner(ownerId); return result ? res.json(result) : res.status(404).json({ message: 'Owner financial operations record not found.' }); }
+    catch { return res.status(503).json({ message: 'Financial Operations data is unavailable.' }); }
+  });
+  app.get('/api/admin/financial-operations/batches/:batchId', isAuthenticated, async (req: any, res) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    const batchId = String(req.params.batchId || '').trim();
+    if (!batchId || batchId.length > 128) return res.status(422).json({ message: 'A valid batch selection is required.' });
+    try { const result = await getFinancialOperationsBatch(batchId); return result ? res.json(result) : res.status(404).json({ message: 'Financial batch not found.' }); }
+    catch { return res.status(503).json({ message: 'Financial Operations data is unavailable.' }); }
+  });
+  app.get('/api/admin/financial-operations/audit', isAuthenticated, async (req: any, res) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return;
+    try { return res.json(await searchFinancialOperationsAudit({ ownerId: typeof req.query.ownerId === 'string' ? req.query.ownerId : undefined, batchId: typeof req.query.batchId === 'string' ? req.query.batchId : undefined, status: typeof req.query.status === 'string' ? req.query.status : undefined, from: typeof req.query.from === 'string' ? req.query.from : undefined, through: typeof req.query.through === 'string' ? req.query.through : undefined })); }
+    catch { return res.status(503).json({ message: 'Financial audit data is unavailable.' }); }
   });
 
   // Phase 3B.1 discovery is deliberately read-only. These queues classify
