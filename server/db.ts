@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
+import { getDatabaseSslConfiguration } from "./databaseSsl";
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -32,7 +33,7 @@ class RobustPool {
 
     return new Pool({ 
       connectionString: secureConnectionString,
-      ssl: { rejectUnauthorized: true },
+      ssl: getDatabaseSslConfiguration(),
       keepAlive: true,
       max: 10,
       idleTimeoutMillis: 30000,
