@@ -33,7 +33,7 @@ export async function setupAuth(app: Express) {
 
       // Create JWT token
       const token = jwt.sign(
-        { userId: user.id, username: user.username },
+        { userId: user.id, username: user.username, authTokenVersion: user.authTokenVersion ?? 0 },
         JWT_SECRET,
         { expiresIn: "7d" }
       );
@@ -114,7 +114,7 @@ export async function setupAuth(app: Express) {
 
       // Create JWT token
       const token = jwt.sign(
-        { userId: newUser.id, username: newUser.username },
+        { userId: newUser.id, username: newUser.username, authTokenVersion: newUser.authTokenVersion ?? 0 },
         JWT_SECRET,
         { expiresIn: "7d" }
       );
@@ -250,6 +250,11 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
     if (user.isActive === false) {
       console.log(`❌ Auth failed: Inactive user`);
       return res.status(403).json({ message: "Account is inactive" });
+    }
+
+    if ((decoded.authTokenVersion ?? 0) !== (user.authTokenVersion ?? 0)) {
+      console.log("❌ Auth failed: token invalidated");
+      return res.status(401).json({ message: "Your session has expired. Please sign in again." });
     }
 
     console.log(`✅ Auth success: role=${user.role}`);

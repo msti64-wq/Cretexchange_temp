@@ -4,6 +4,8 @@ import {
   owners,
   washoutLocations,
   washoutActivities,
+  ownerActivityApprovalIntents,
+  washoutActivityReviewEvents,
   washoutPhotos,
   payments,
   notifications,
@@ -143,7 +145,7 @@ import {
 } from "./billing/ownerWashoutLedger";
 import { isBillableWashoutForOwnerBilling } from "../shared/washoutApproval";
 import { currentFinancialActivityCondition } from "./financialCutoff";
-import { eq, and, gte, lte, asc, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, gt, gte, lte, asc, desc, sql, count, ne, or, getTableColumns, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
 import type { PhotoFingerprintCandidate } from "@shared/photoFingerprint";
@@ -243,11 +245,44 @@ export interface IStorage {
   getActivitiesByLocation(locationId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { driver: Driver & { user: User } })[]>;
   getActivitiesByOwner(ownerId: string, startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User }; photoCount: number })[]>;
   verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity>;
+  createOwnerActivityApprovalIntent(input: {
+    activityId: string;
+    ownerId: string;
+    actorUserId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void>;
+  verifyWashoutActivityWithApprovalIntent(input: {
+    activityId: string;
+    ownerId: string;
+    actorUserId: string;
+    tokenHash: string;
+    requestId: string;
+    authSessionFingerprint: string;
+    userAgentFingerprint?: string | null;
+    ipFingerprint?: string | null;
+    origin?: string | null;
+    referer?: string | null;
+    deployedCommit?: string | null;
+    actionSource: string;
+    confirmationAcknowledged: boolean;
+  }): Promise<WashoutActivity>;
   rejectPendingWashoutActivityForOwner(input: {
     activityId: string;
     ownerId: string;
     rejectedBy: string;
     rejectionReason: string;
+    audit?: {
+      requestId: string;
+      authSessionFingerprint: string;
+      userAgentFingerprint?: string | null;
+      ipFingerprint?: string | null;
+      origin?: string | null;
+      referer?: string | null;
+      deployedCommit?: string | null;
+      actionSource: string;
+      confirmationAcknowledged: boolean;
+    };
   }): Promise<WashoutActivity | undefined>;
   updateWashoutActivityStatus(activityId: string, status: string): Promise<WashoutActivity>;
   getRecentActivitiesByDriver(driverId: string, limit?: number): Promise<(WashoutActivity & { location: WashoutLocation })[]>;
@@ -1854,38 +1889,162 @@ export class DatabaseStorage implements IStorage {
     return activity;
   }
 
+  async createOwnerActivityApprovalIntent(input: {
+    activityId: string;
+    ownerId: string;
+    actorUserId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    await db.insert(ownerActivityApprovalIntents).values(input);
+  }
+
+  async verifyWashoutActivityWithApprovalIntent(input: {
+    activityId: string;
+    ownerId: string;
+    actorUserId: string;
+    tokenHash: string;
+    requestId: string;
+    authSessionFingerprint: string;
+    userAgentFingerprint?: string | null;
+    ipFingerprint?: string | null;
+    origin?: string | null;
+    referer?: string | null;
+    deployedCommit?: string | null;
+    actionSource: string;
+    confirmationAcknowledged: boolean;
+  }): Promise<WashoutActivity> {
+    return db.transaction(async (tx) => {
+      const now = new Date();
+      const [intent] = await tx
+        .update(ownerActivityApprovalIntents)
+        .set({ consumedAt: now })
+        .where(and(
+          eq(ownerActivityApprovalIntents.activityId, input.activityId),
+          eq(ownerActivityApprovalIntents.ownerId, input.ownerId),
+          eq(ownerActivityApprovalIntents.actorUserId, input.actorUserId),
+          eq(ownerActivityApprovalIntents.tokenHash, input.tokenHash),
+          isNull(ownerActivityApprovalIntents.consumedAt),
+          gt(ownerActivityApprovalIntents.expiresAt, now),
+        ))
+        .returning();
+
+      if (!intent) {
+        const error = new Error("Approval intent is invalid, expired, or already used") as Error & { code?: string };
+        error.code = "WASHOUT_APPROVAL_INTENT_INVALID";
+        throw error;
+      }
+
+      const [activity] = await tx
+        .update(washoutActivities)
+        .set({
+          status: "verified",
+          verifiedBy: input.actorUserId,
+          verifiedAt: now,
+          updatedAt: now,
+        })
+        .where(and(
+          eq(washoutActivities.id, input.activityId),
+          eq(washoutActivities.status, "pending"),
+          sql`EXISTS (
+            SELECT 1 FROM ${washoutLocations}
+            WHERE ${washoutLocations.id} = ${washoutActivities.locationId}
+              AND ${washoutLocations.ownerId} = ${input.ownerId}
+          )`,
+        ))
+        .returning();
+
+      if (!activity) {
+        const error = new Error("Washout activity is no longer pending") as Error & { code?: string };
+        error.code = "WASHOUT_ACTIVITY_NOT_PENDING";
+        throw error;
+      }
+
+      await tx.insert(washoutActivityReviewEvents).values({
+        activityId: input.activityId,
+        previousStatus: "pending",
+        newStatus: "verified",
+        actorUserId: input.actorUserId,
+        ownerId: input.ownerId,
+        requestId: input.requestId,
+        authSessionFingerprint: input.authSessionFingerprint,
+        userAgentFingerprint: input.userAgentFingerprint ?? null,
+        ipFingerprint: input.ipFingerprint ?? null,
+        origin: input.origin ?? null,
+        referer: input.referer ?? null,
+        deployedCommit: input.deployedCommit ?? null,
+        actionSource: input.actionSource,
+        confirmationAcknowledged: input.confirmationAcknowledged,
+      });
+
+      return activity;
+    });
+  }
+
   async rejectPendingWashoutActivityForOwner({
     activityId,
     ownerId,
     rejectedBy,
     rejectionReason,
+    audit,
   }: {
     activityId: string;
     ownerId: string;
     rejectedBy: string;
     rejectionReason: string;
+    audit?: {
+      requestId: string;
+      authSessionFingerprint: string;
+      userAgentFingerprint?: string | null;
+      ipFingerprint?: string | null;
+      origin?: string | null;
+      referer?: string | null;
+      deployedCommit?: string | null;
+      actionSource: string;
+      confirmationAcknowledged: boolean;
+    };
   }): Promise<WashoutActivity | undefined> {
-    const now = new Date();
-    const [activity] = await db
-      .update(washoutActivities)
-      .set({
-        status: "rejected",
-        rejectionReason,
-        rejectedBy,
-        rejectedAt: now,
-        updatedAt: now,
-      })
-      .where(and(
-        eq(washoutActivities.id, activityId),
-        eq(washoutActivities.status, "pending"),
-        sql`EXISTS (
-          SELECT 1 FROM ${washoutLocations}
-          WHERE ${washoutLocations.id} = ${washoutActivities.locationId}
-            AND ${washoutLocations.ownerId} = ${ownerId}
-        )`,
-      ))
-      .returning();
-    return activity;
+    return db.transaction(async (tx) => {
+      const now = new Date();
+      const [activity] = await tx
+        .update(washoutActivities)
+        .set({
+          status: "rejected",
+          rejectionReason,
+          rejectedBy,
+          rejectedAt: now,
+          updatedAt: now,
+        })
+        .where(and(
+          eq(washoutActivities.id, activityId),
+          eq(washoutActivities.status, "pending"),
+          sql`EXISTS (
+            SELECT 1 FROM ${washoutLocations}
+            WHERE ${washoutLocations.id} = ${washoutActivities.locationId}
+              AND ${washoutLocations.ownerId} = ${ownerId}
+          )`,
+        ))
+        .returning();
+      if (!activity || !audit) return activity;
+
+      await tx.insert(washoutActivityReviewEvents).values({
+        activityId,
+        previousStatus: "pending",
+        newStatus: "rejected",
+        actorUserId: rejectedBy,
+        ownerId,
+        requestId: audit.requestId,
+        authSessionFingerprint: audit.authSessionFingerprint,
+        userAgentFingerprint: audit.userAgentFingerprint ?? null,
+        ipFingerprint: audit.ipFingerprint ?? null,
+        origin: audit.origin ?? null,
+        referer: audit.referer ?? null,
+        deployedCommit: audit.deployedCommit ?? null,
+        actionSource: audit.actionSource,
+        confirmationAcknowledged: audit.confirmationAcknowledged,
+      });
+      return activity;
+    });
   }
 
   async updateWashoutActivityStatus(activityId: string, status: string): Promise<WashoutActivity> {

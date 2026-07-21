@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import Stripe from "stripe";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -1824,6 +1825,36 @@ async function getOwnerLocationOperationalAccess(userId: string) {
     user,
     accessState: resolveOwnerLocationAccessState(owner, user),
   };
+}
+
+const ownerApprovalIntentRequestSchema = z.object({
+  intentToken: z.string().min(32).max(256),
+  actionSource: z.literal("owner-dashboard-button"),
+  confirmationAcknowledged: z.literal(true),
+  driverTip: z.string().max(32).optional(),
+  driverTipCents: z.number().int().min(0).max(1_000_000).optional(),
+});
+
+function approvalAuditFingerprint(value: string | undefined): string | null {
+  if (!value) return null;
+  return createHmac("sha256", getJwtSecret()).update(value).digest("hex");
+}
+
+function safeRequestOrigin(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return `${url.protocol}//${url.host}${url.pathname}`.slice(0, 512);
+  } catch {
+    return null;
+  }
+}
+
+function activeDeploymentCommit(): string | null {
+  return process.env.RAILWAY_GIT_COMMIT_SHA
+    || process.env.RAILWAY_DEPLOYMENT_COMMIT_SHA
+    || process.env.GIT_COMMIT_SHA
+    || null;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -5223,10 +5254,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/owners/activities/:id/approval-intent', isAuthenticated, async (req: any, res) => {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    try {
+      if (req.user?.role !== "owner") {
+        return res.status(403).json({ message: "Only facility owners can approve washouts." });
+      }
+
+      const [owner, activity] = await Promise.all([
+        storage.getOwner(userId),
+        storage.getWashoutActivity(id),
+      ]);
+      if (!owner) return res.status(404).json({ message: "Owner not found" });
+      if (!activity) return res.status(404).json({ message: "Activity not found" });
+      if (activity.status !== "pending") {
+        return res.status(409).json({ message: "This washout is no longer awaiting owner approval." });
+      }
+
+      const location = await storage.getWashoutLocation(activity.locationId) as WashoutLocation | undefined;
+      if (!location || location.ownerId !== owner.id) {
+        return res.status(403).json({ message: "This washout does not belong to your location." });
+      }
+
+      const intentToken = randomBytes(32).toString("base64url");
+      await storage.createOwnerActivityApprovalIntent({
+        activityId: activity.id,
+        ownerId: owner.id,
+        actorUserId: userId,
+        tokenHash: approvalAuditFingerprint(intentToken)!,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      });
+
+      return res.status(201).json({ intentToken, expiresInSeconds: 300 });
+    } catch (error) {
+      console.error("Unable to create owner approval intent", summarizeDatabaseError(error, {
+        phase: "owner-approval-intent",
+        table: "owner_activity_approval_intents",
+      }));
+      return res.status(500).json({ message: "Unable to prepare this approval. Please try again." });
+    }
+  });
+
   app.put('/api/owners/activities/:id/verify', isAuthenticated, async (req: any, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     const authRole = req.user?.role || null;
+    const intentPayload = ownerApprovalIntentRequestSchema.safeParse(req.body);
+    if (!intentPayload.success) {
+      return res.status(400).json({
+        message: "Explicit owner approval confirmation is required.",
+        code: "WASHOUT_APPROVAL_INTENT_REQUIRED",
+      });
+    }
     let approvedActivity: WashoutActivity | null = null;
     let approvalResponseMessage = "Washout approved.";
     let approvalResponsePaymentStatus: string | null = null;
@@ -5311,9 +5392,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Approval is an operational compare-and-set transition. It intentionally occurs
-      // before any financial processing because this endpoint does not perform any.
-      const verifiedActivity = await storage.verifyWashoutActivity(id, userId);
+      // This transaction consumes the one-time intent and performs the operational
+      // pending -> verified compare-and-set with an append-only safe audit record.
+      // It intentionally performs no financial processing.
+      const authorization = typeof req.headers?.authorization === "string"
+        ? req.headers.authorization.slice("Bearer ".length)
+        : "";
+      const forwardedFor = typeof req.headers?.["x-forwarded-for"] === "string"
+        ? req.headers["x-forwarded-for"].split(",")[0]?.trim()
+        : undefined;
+      const requestId = randomUUID();
+      res.setHeader?.("X-Request-ID", requestId);
+      const verifiedActivity = await storage.verifyWashoutActivityWithApprovalIntent({
+        activityId: id,
+        ownerId: owner.id,
+        actorUserId: userId,
+        tokenHash: approvalAuditFingerprint(intentPayload.data.intentToken)!,
+        requestId,
+        authSessionFingerprint: approvalAuditFingerprint(authorization) || "missing",
+        userAgentFingerprint: approvalAuditFingerprint(req.headers?.["user-agent"]),
+        ipFingerprint: approvalAuditFingerprint(forwardedFor || req.ip),
+        origin: safeRequestOrigin(req.headers?.origin),
+        referer: safeRequestOrigin(req.headers?.referer),
+        deployedCommit: activeDeploymentCommit(),
+        actionSource: intentPayload.data.actionSource,
+        confirmationAcknowledged: intentPayload.data.confirmationAcknowledged,
+      });
       approvedActivity = verifiedActivity;
       approvalDebugContext.currentStatus = verifiedActivity.status;
       approvalDebugContext.permissionCheckResult = true;
@@ -5341,6 +5445,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error?.code === "WASHOUT_ACTIVITY_NOT_PENDING") {
         return res.status(409).json({
           message: "This washout has already been processed or is not awaiting owner approval.",
+        });
+      }
+      if (error?.code === "WASHOUT_APPROVAL_INTENT_INVALID") {
+        return res.status(409).json({
+          message: "This approval confirmation has expired or was already used. Please review the washout again.",
+          code: "WASHOUT_APPROVAL_INTENT_INVALID",
         });
       }
       const dbError = summarizeDatabaseError(error, {
@@ -5414,6 +5524,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: owner.id,
         rejectedBy: userId,
         rejectionReason,
+        audit: (() => {
+          const authorization = typeof req.headers?.authorization === "string"
+            ? req.headers.authorization.slice("Bearer ".length)
+            : "";
+          const forwardedFor = typeof req.headers?.["x-forwarded-for"] === "string"
+            ? req.headers["x-forwarded-for"].split(",")[0]?.trim()
+            : undefined;
+          const requestId = randomUUID();
+          res.setHeader?.("X-Request-ID", requestId);
+          return {
+            requestId,
+            authSessionFingerprint: approvalAuditFingerprint(authorization) || "missing",
+            userAgentFingerprint: approvalAuditFingerprint(req.headers?.["user-agent"]),
+            ipFingerprint: approvalAuditFingerprint(forwardedFor || req.ip),
+            origin: safeRequestOrigin(req.headers?.origin),
+            referer: safeRequestOrigin(req.headers?.referer),
+            deployedCommit: activeDeploymentCommit(),
+            actionSource: "owner-dashboard-rejection-dialog",
+            confirmationAcknowledged: true,
+          };
+        })(),
       });
       if (!activity) {
         return res.status(409).json({ message: "This activity is no longer awaiting owner review." });

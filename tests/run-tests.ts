@@ -4426,7 +4426,12 @@ test("owner verify rejects washouts outside the owner's locations", async () => 
       await route!(
         {
           params: { id: "activity_1" },
-          user: { id: "user_1" },
+          user: { id: "user_1", role: "owner" },
+          body: {
+            intentToken: "a".repeat(43),
+            actionSource: "owner-dashboard-button",
+            confirmationAcknowledged: true,
+          },
         },
         res,
       );
@@ -4474,7 +4479,12 @@ test("owner verify rejects already processed washouts", async () => {
       await route!(
         {
           params: { id: "activity_1" },
-          user: { id: "user_1" },
+          user: { id: "user_1", role: "owner" },
+          body: {
+            intentToken: "b".repeat(43),
+            actionSource: "owner-dashboard-button",
+            confirmationAcknowledged: true,
+          },
         },
         res,
       );

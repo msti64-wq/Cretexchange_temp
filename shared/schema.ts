@@ -123,6 +123,9 @@ export const users = pgTable("users", {
   stripeCustomerId: varchar("stripe_customer_id"), // For platform-level billing if needed
   stripeConnectBalance: decimal("stripe_connect_balance", { precision: 10, scale: 2 }),
   isActive: boolean("is_active").default(true),
+  // Incrementing this value invalidates all previously issued bearer tokens for
+  // this user without affecting any other account.
+  authTokenVersion: integer("auth_token_version").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -349,6 +352,44 @@ export const washoutActivities = pgTable("washout_activities", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Owner approval is an explicit, single-use operational action. Intent tokens are
+// stored only as hashes so a database read cannot be used to approve an activity.
+export const ownerActivityApprovalIntents = pgTable("owner_activity_approval_intents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
+  ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "cascade" }),
+  actorUserId: varchar("actor_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  consumedAt: timestamp("consumed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("owner_activity_approval_intents_lookup_idx").on(table.activityId, table.ownerId, table.actorUserId, table.expiresAt),
+]);
+
+// This is an append-only operational audit trail. It stores only safe fingerprints,
+// never raw authorization credentials, IP addresses, cookies, or user-agent text.
+export const washoutActivityReviewEvents = pgTable("washout_activity_review_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
+  previousStatus: varchar("previous_status").notNull(),
+  newStatus: varchar("new_status").notNull(),
+  actorUserId: varchar("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  ownerId: varchar("owner_id").references(() => owners.id, { onDelete: "set null" }),
+  requestId: varchar("request_id").notNull(),
+  authSessionFingerprint: varchar("auth_session_fingerprint").notNull(),
+  userAgentFingerprint: varchar("user_agent_fingerprint"),
+  ipFingerprint: varchar("ip_fingerprint"),
+  origin: varchar("origin"),
+  referer: varchar("referer"),
+  deployedCommit: varchar("deployed_commit"),
+  actionSource: varchar("action_source").notNull(),
+  confirmationAcknowledged: boolean("confirmation_acknowledged").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("washout_activity_review_events_activity_created_idx").on(table.activityId, table.createdAt),
+]);
 
 // NEW: Clean photo table with referential integrity
 export const washoutPhotos = pgTable("washout_photos", {

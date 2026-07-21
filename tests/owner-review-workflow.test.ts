@@ -125,7 +125,7 @@ test("automatic verification is retired and only the owner approval route may in
   assert.match(automaticVerification, /Automatic verification is retired/);
   assert.doesNotMatch(automaticVerification, /verifyWashoutActivity\(/);
   assert.match(ownerVerification, /activityDetails\.status !== "pending"/);
-  assert.match(ownerVerification, /storage\.verifyWashoutActivity\(id, userId\)/);
+  assert.match(ownerVerification, /storage\.verifyWashoutActivityWithApprovalIntent\(/);
 });
 
 test("verified and rejected historical records remain outside the pending review queue", () => {

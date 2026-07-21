@@ -125,6 +125,13 @@ export default function OwnerDashboard() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionReasonError, setRejectionReasonError] = useState<string | null>(null);
   const rejectionSubmissionRef = useRef(false);
+  const [approvalTarget, setApprovalTarget] = useState<{
+    id: string;
+    intentToken: string;
+    driverTipDisplay: string;
+    driverTipCents: number;
+  } | null>(null);
+  const approvalIntentRequestRef = useRef(false);
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | '90days' | 'all'>('today');
   const [driverSearch, setDriverSearch] = useState("");
   const [driverFilter, setDriverFilter] = useState<'all' | 'new' | 'repeat' | 'recent'>('all');
@@ -227,11 +234,15 @@ export default function OwnerDashboard() {
 
 
   const approveMutation = useMutation({
-    mutationFn: async ({ activityId, driverTipDisplay, driverTipCents }: { activityId: string; driverTipDisplay: string; driverTipCents: number }) => {
+    retry: false,
+    mutationFn: async ({ activityId, driverTipDisplay, driverTipCents, intentToken }: { activityId: string; driverTipDisplay: string; driverTipCents: number; intentToken: string }) => {
       try {
         const response = await apiRequest("PUT", `/api/owners/activities/${activityId}/verify`, {
           driverTip: driverTipDisplay,
           driverTipCents,
+          intentToken,
+          actionSource: "owner-dashboard-button",
+          confirmationAcknowledged: true,
         });
         const result = await response.json();
         return result;
@@ -271,6 +282,7 @@ export default function OwnerDashboard() {
           ? t("owner.dashboard.approveDeferred")
           : undefined,
       });
+      setApprovalTarget(null);
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/billing/pending-summary'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
@@ -289,6 +301,33 @@ export default function OwnerDashboard() {
       toast({ title: t("owner.dashboard.approveFailed"), description: message, variant: "destructive" });
     },
   });
+
+  const openApprovalDialog = async (activityId: string, driverTipDisplay: string, driverTipCents: number) => {
+    if (approvalIntentRequestRef.current || approveMutation.isPending || rejectMutation.isPending || approvalTarget || rejectionTarget) return;
+    approvalIntentRequestRef.current = true;
+    try {
+      const response = await apiRequest("POST", `/api/owners/activities/${activityId}/approval-intent`);
+      const payload = await response.json();
+      if (!payload || typeof payload.intentToken !== "string") {
+        throw new Error("The server did not return an approval confirmation.");
+      }
+      setApprovalTarget({ id: activityId, intentToken: payload.intentToken, driverTipDisplay, driverTipCents });
+    } catch (error) {
+      toast({ title: t("owner.dashboard.approveFailed"), description: parseApiError(error), variant: "destructive" });
+    } finally {
+      approvalIntentRequestRef.current = false;
+    }
+  };
+
+  const submitApproval = () => {
+    if (!approvalTarget || approveMutation.isPending) return;
+    approveMutation.mutate({
+      activityId: approvalTarget.id,
+      driverTipDisplay: approvalTarget.driverTipDisplay,
+      driverTipCents: approvalTarget.driverTipCents,
+      intentToken: approvalTarget.intentToken,
+    });
+  };
 
   const rejectMutation = useMutation({
     retry: false,
@@ -1423,8 +1462,9 @@ export default function OwnerDashboard() {
                             <Button
                               size="sm"
                               className="text-xs px-3 h-9 min-w-[80px] bg-green-600 hover:bg-green-700"
-                              onClick={() => approveMutation.mutate({ activityId: activity.id, driverTipDisplay, driverTipCents })}
-                              disabled={rejectMutation.isPending || approveMutation.isPending}
+                              type="button"
+                              onClick={() => void openApprovalDialog(activity.id, driverTipDisplay, driverTipCents)}
+                              disabled={rejectMutation.isPending || approveMutation.isPending || approvalIntentRequestRef.current}
                               data-testid={`button-approve-${index}`}
                             >
                               <Check className="w-4 h-4 mr-1" />
@@ -1501,8 +1541,9 @@ export default function OwnerDashboard() {
                             <Button
                               size="sm"
                               className="text-xs px-3 h-8 bg-green-600 hover:bg-green-700"
-                              onClick={() => approveMutation.mutate({ activityId: activity.id, driverTipDisplay, driverTipCents })}
-                              disabled={rejectMutation.isPending || approveMutation.isPending}
+                              type="button"
+                              onClick={() => void openApprovalDialog(activity.id, driverTipDisplay, driverTipCents)}
+                              disabled={rejectMutation.isPending || approveMutation.isPending || approvalIntentRequestRef.current}
                               data-testid={`button-approve-${index}`}
                             >
                               <Check className="w-4 h-4 mr-1" />
@@ -1587,6 +1628,25 @@ export default function OwnerDashboard() {
         onClose={() => setIsSupportDialogOpen(false)}
       />
 
+      <Dialog open={Boolean(approvalTarget)} onOpenChange={(open) => {
+        if (!open && !approveMutation.isPending) setApprovalTarget(null);
+      }}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("owner.dashboard.approveActivityTitle")}</DialogTitle>
+            <DialogDescription>{t("owner.dashboard.approveActivityDescription")}</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t("owner.dashboard.approveActivityConfirmation")}</p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setApprovalTarget(null)} disabled={approveMutation.isPending}>{t("common.cancel")}</Button>
+            <Button type="button" onClick={submitApproval} disabled={approveMutation.isPending} data-testid="button-confirm-approve">
+              {approveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {t("common.approve")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={Boolean(rejectionTarget)} onOpenChange={(open) => {
         if (!open && !rejectMutation.isPending) {
           setRejectionTarget(null);
@@ -1616,8 +1676,8 @@ export default function OwnerDashboard() {
             {rejectionReasonError && <p id="owner-rejection-reason-error" className="text-sm text-destructive">{rejectionReasonError}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectionTarget(null)} disabled={rejectMutation.isPending}>{t("common.cancel")}</Button>
-            <Button variant="destructive" onClick={submitRejection} disabled={rejectMutation.isPending} data-testid="button-confirm-reject">
+            <Button type="button" variant="outline" onClick={() => setRejectionTarget(null)} disabled={rejectMutation.isPending}>{t("common.cancel")}</Button>
+            <Button type="button" variant="destructive" onClick={submitRejection} disabled={rejectMutation.isPending} data-testid="button-confirm-reject">
               {rejectMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t("common.reject")}
             </Button>

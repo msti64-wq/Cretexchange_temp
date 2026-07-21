@@ -83,6 +83,9 @@ test("correct owner rejects a pending activity with server-derived audit fields"
     assert.equal(transitionInput.ownerId, "owner_1");
     assert.equal(transitionInput.rejectedBy, "owner_user_1");
     assert.equal(transitionInput.rejectionReason, "duplicate photo");
+    assert.equal(transitionInput.audit.actionSource, "owner-dashboard-rejection-dialog");
+    assert.equal(transitionInput.audit.confirmationAcknowledged, true);
+    assert.match(transitionInput.audit.authSessionFingerprint, /^(missing|[a-f0-9]{64})$/);
     assert.equal((res.body as any).notes, "driver-authored note");
   });
 });
