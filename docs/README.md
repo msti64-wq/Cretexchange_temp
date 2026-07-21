@@ -1,6 +1,6 @@
 # CreteXchange Documentation Library
 
-This is the canonical entry point for CreteXchange documentation. New contributors and Codex sessions should begin here, then follow the authoritative hierarchy before proposing, planning, or implementing a change.
+This is the official, canonical entry point for all CreteXchange project documentation. Developers, contributors, AI assistants, and automation MUST begin here before making an architectural, operational, or implementation decision.
 
 ## Project Overview
 
@@ -8,12 +8,27 @@ CreteXchange is a trusted construction-materials operations platform. Its curren
 
 Current implementation, approved scope, and future strategy must remain distinct. No documentation or implementation may represent a future capability as current merely because it appears on a roadmap.
 
+## Documentation Hierarchy
+
+For project and implementation decisions, use this reading order:
+
+1. [Documentation Library](./README.md)
+2. [Project Context](./project/project-context.md)
+3. [CTX-STD-001 — CreteXchange Platform Standards](./standards/cretexchange-platform-standards.md)
+4. Applicable [CTX-ARCH documents](./architecture/README.md)
+5. [Product Decisions](./product/product-decisions.md)
+6. [Development Protocol](./development-protocol.md)
+7. [CTX-DEP-001 — Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
+8. [CTX-OPS-001 — Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
+
+Earlier documents take precedence when guidance conflicts. Vision, strategy, UX specifications, runbooks, sprint plans, tests, and implementation code provide essential context within their domains, but they must not override this hierarchy.
+
 ## Where to Start
 
-1. Read [Platform Vision](./vision/platform-vision.md) and [Platform Strategy](./vision/platform-strategy.md) for the enduring mission and long-term direction.
-2. Read [Project Context](./project/project-context.md) for current implementation and approved delivery context.
-3. Read [Development Protocol](./development-protocol.md) before planning or changing work.
-4. Read the applicable standards, architecture, Product Decisions, UX specification, and sprint document for the feature area.
+1. Follow the [Documentation Hierarchy](#documentation-hierarchy) above.
+2. Read [Platform Vision](./vision/platform-vision.md) and [Platform Strategy](./vision/platform-strategy.md) for enduring mission and long-term direction.
+3. Read the applicable UX specification, runbook, and sprint document for the feature area.
+4. For a production release, read [CTX-DEP-001](./standards/CTX-DEP-001-production-deployment-protocol.md) and complete [CTX-OPS-001](./operations/CTX-OPS-001-production-release-checklist.md).
 5. Identify the canonical source of truth before implementation. If it is unclear, audit first.
 
 This README is a navigation and governance guide. It does not replace the authorities it links to.
@@ -28,7 +43,7 @@ The platform follows:
 
 ## Documentation Authority
 
-The canonical documentation order of precedence is:
+The hierarchy above governs current project and implementation decisions. The following durable sources add strategic and business context:
 
 1. `docs/vision/platform-vision.md`
 2. `docs/vision/platform-strategy.md`
@@ -50,6 +65,18 @@ Business documents guide customer-value, business-model, and monetization decisi
 
 Research documents define proposed hypotheses, validation plans, grant readiness, and study governance. They are supporting documents governed by this hierarchy and do not constitute implemented capabilities, scientific results, funding commitments, or sprint authorization.
 
+## Documentation Overview
+
+| Area | Purpose |
+| --- | --- |
+| Project | Current scope, active delivery context, pilot baseline, and roadmap. |
+| Product | Durable product policy, operational rules, and decision records. |
+| Standards | Mandatory engineering and platform controls, including CTX-STD-001 and CTX-DEP-001. |
+| Architecture | Technical source-of-truth boundaries and implementation contracts. |
+| Development Protocol | Required preflight, validation, Git, and implementation workflow. |
+| Deployment | Mandatory production-release controls in CTX-DEP-001. |
+| Operations | The required production-release checklist and durable release record in CTX-OPS-001. |
+
 ## Documentation Navigation
 
 - [Platform Vision](./vision/platform-vision.md)
@@ -65,6 +92,9 @@ Research documents define proposed hypotheses, validation plans, grant readiness
   - [Sprint 2.2 — MVP Operational Readiness](./project/sprints/sprint-2.2.md)
   - [PB-001 — CreteXchange Pilot Baseline v1.0](./project/pilot/PB-001-cretexchange-pilot-baseline-v1.0.md)
 - [Platform Standards](./standards/cretexchange-platform-standards.md)
+  - [CTX-DEP-001 - Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
+- Production Operations
+  - [CTX-OPS-001 - Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
 - [Architecture Library](./architecture/README.md)
 - [Product Decisions](./product/product-decisions.md)
 - [Product Data Strategy](./product/data-strategy.md)
@@ -96,6 +126,7 @@ Research documents define proposed hypotheses, validation plans, grant readiness
 | Project Context | Current implementation state, active scope, and delivery context | All contributors | When current phase, implementation context, or approved sprint context changes | [Project Context](./project/project-context.md) |
 | Development Protocol | Required execution, preflight, source-of-truth, and validation workflow | Contributors and Codex | When the engineering workflow or validation policy changes | [Development Protocol](./development-protocol.md), [New Chat Kickoff](./project/new-chat-kickoff.md) |
 | CTX-STD | Mandatory platform engineering standards | Engineering and reviewers | When a durable engineering standard changes | [CTX-STD-001](./standards/cretexchange-platform-standards.md) |
+| Production Release Governance | Mandatory protocol and operational record for every production deployment | Release operators, approvers, Platform Operations, and engineering | When release controls or required production evidence change | [CTX-DEP-001](./standards/CTX-DEP-001-production-deployment-protocol.md), [CTX-OPS-001](./operations/CTX-OPS-001-production-release-checklist.md) |
 | CTX-ARCH | Implementation architecture, source-of-truth boundaries, and domain contracts | Engineering, architecture, and reviewers | Before or with an approved architecture change | [Architecture Library](./architecture/README.md) |
 | PD | Durable product policy and operational rules | Product, Operations, Engineering | When a product-policy decision is made or revised | [Product Decisions](./product/product-decisions.md), [PD-050](./product/PD-050-facility-operational-access-and-billing-readiness.md) |
 | CTX-UX | Experience architecture for future interfaces | Product, Design, Engineering, Operations | Before a material experience enhancement or when a durable UX contract changes | [CTX-UX-005](./ux/CTX-UX-005-driver-dashboard-experience.md) |
@@ -143,6 +174,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 - Project Context and Sprint Scope
 - Architecture Documents
 - Standards Documents
+- Production Release Governance
 - Product Decisions
 - Data Strategy
 - Business Architecture
@@ -167,6 +199,13 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | Document ID | Title | Purpose |
 | --- | --- | --- |
 | CTX-STD-001 | CreteXchange Platform Standards | Defines mandatory engineering and development standards governing the platform. |
+| CTX-DEP-001 | [Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md) | Defines mandatory controls for source verification, migration discovery and execution, schema verification, deployment, health, smoke testing, reporting, and rollback. |
+| CTX-OPS-001 | [Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md) | Provides the required operational checklist and durable release record for every production deployment. |
+
+## Governance Documents
+
+- [CTX-DEP-001 — Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md): mandatory production source, migration, environment, validation, health, smoke-test, financial-safety, rollback, and completion controls.
+- [CTX-OPS-001 — Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md): the operational checklist and evidence record required to demonstrate a complete production release.
 
 ## Product Decisions
 
@@ -228,6 +267,10 @@ Apply the least expensive validation that provides responsible confidence. Expli
 - Push only after the intended patch and validation results are confirmed.
 
 This preserves reviewability, rollback safety, and the integrity of shared worktrees.
+
+## Documentation Maintenance
+
+Documentation changes MUST accompany material architecture, process, lifecycle, authorization, or release-governance changes. The applicable Project Context, standards, architecture documents, Product Decisions, runbooks, and implementation must remain synchronized. Update this index whenever an authoritative documentation family or navigation path changes.
 
 ## Pilot Philosophy
 

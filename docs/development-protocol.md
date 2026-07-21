@@ -47,6 +47,15 @@ Implementation
 
 Applicable ADRs and Business Rules remain authoritative within their governed technical and operational domains and are discovered before implementation.
 
+## Production Release Governance
+
+All production deployments MUST comply with both of the following mandatory governance documents:
+
+1. [CTX-DEP-001 - Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
+2. [CTX-OPS-001 - Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
+
+CTX-DEP-001 defines the required release controls. CTX-OPS-001 is the operational checklist and release record used to demonstrate that those controls were completed. These documents supplement, and do not override, the applicable Platform Standards, CTX-ARCH documents, Product Decisions, and approved runbooks.
+
 ## Mandatory Codex Preflight Check
 
 Before performing any CreteXchange task, Codex must verify the repository.
