@@ -11,6 +11,7 @@
 - **Related architecture:** [CTX-ARCH-007](./CTX-ARCH-007-canonical-financial-batch-architecture.md)
 - **Related evidence:** [Phase B discovery and requirements](./production-database-migration-discovery-and-requirements.md) and the [closed 0027/0029 release record](../operations/migration-releases/2026-07-22-0027-0029-preflight/draft-release-record.md)
 - **Approval record:** [CTX-ARCH-008 Architecture Approval Record](./approvals/CTX-ARCH-008-architecture-approval-record.md)
+- **Verification evidence:** [Phase F Railway Platform and Database Recovery Verification](./verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md) — evidence only; it does not authorize implementation or production adoption.
 - **ADR status:** No supporting ADR exists. ADR identifier allocation remains a decision required.
 
 ## 1. Executive summary

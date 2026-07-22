@@ -3,6 +3,7 @@
 - **Record ID:** CTX-ARCH-008-AR-2026-07-22
 - **Related architecture:** [CTX-ARCH-008 — Production Database Migration Architecture](../CTX-ARCH-008-production-database-migration-architecture.md)
 - **Related discovery:** [Phase B Discovery and Requirements](../production-database-migration-discovery-and-requirements.md)
+- **Related verification:** [Phase F Railway Platform and Database Recovery Verification](../verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md) — supporting evidence only; it does not satisfy an implementation or production-authorization gate.
 - **Approval status:** **CONDITIONALLY APPROVED — ARCHITECTURAL DIRECTION**
 - **Approval date:** July 22, 2026
 - **Architecture version / commit:** Version 0.1 as reviewed and refined at `f44da63247ed1c023eb697b1ffdb4e3039fdf63e`
