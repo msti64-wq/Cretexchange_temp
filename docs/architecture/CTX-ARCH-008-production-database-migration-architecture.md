@@ -28,7 +28,7 @@ This draft proposes a repository-owned manifest and direct ordered SQL runner, a
 
 ## 3. Goals
 
-This architecture SHALL provide deterministic ordered execution; exactly-once logical application; concurrent-runner prevention; immutable checksum verification; auditable applied-state history; explicit target confirmation; Railway-compatible but Railway-independent operation; fail-closed behavior; financial isolation; recoverability; release gates; legacy reconciliation; testability; and low operational burden suitable for the current team.
+This architecture SHALL provide deterministic ordered execution; exactly-once recorded application for transactionally compatible migrations; at-most-one serialized attempt plus explicit recovery for nontransactional migrations; concurrent-runner prevention; immutable checksum verification; auditable applied-state history; explicit target confirmation; Railway-compatible but Railway-independent operation; fail-closed behavior; financial isolation; recoverability; release gates; legacy reconciliation; testability; and low operational burden suitable for the current team.
 
 ## 4. Non-goals
 
@@ -49,6 +49,7 @@ The following are mandatory:
 9. Application rollback does not reverse a committed database migration; forward remediation is preferred when destructive rollback is unsafe.
 10. Financial execution remains independently fail closed before, during, and after schema activity.
 11. Release evidence and unresolved legacy uncertainty SHALL be retained; no uncertain migration may be silently marked applied.
+12. An applying runner SHALL hold its advisory lock on a dedicated database session for the entire execution boundary; a general application pool connection is not an execution lock owner.
 
 Recommendations, rather than binding decisions, are labeled **DECISION REQUIRED** below.
 
@@ -70,7 +71,7 @@ flowchart LR
   K --> L[Release record and closure]
 ```
 
-Trust boundaries are intentional: repository artifacts are reviewed inputs; the runner is the only proposed execution component; the database ledger/catolog are execution evidence; Railway is a deployment platform whose release-job capabilities remain externally unverified; the application process never receives authority to run ordinary migrations on startup.
+Trust boundaries are intentional: repository artifacts are reviewed inputs; the runner is the only proposed execution component; the database ledger/catalog are execution evidence; Railway is a deployment platform whose release-job capabilities remain externally unverified; the application process never receives authority to run ordinary migrations on startup.
 
 ## 7. Migration lifecycle
 
@@ -116,12 +117,16 @@ Existing duplicate `0001` artifacts and missing identifiers are legacy history. 
 | Identity | immutable primary key, environment, manifest key, filename, SHA-256 algorithm/value, unique environment + manifest key |
 | Source and authority | repository commit SHA, release identifier, operator/release-job identity, execution mode, approval reference |
 | Timing | start/finish timestamps, duration, transaction identifier where usable |
-| Outcome | `planned`, `applying`, `applied`, `failed`, `reconciled`, `skipped`, `not_applicable`, or `remediated`; redacted error summary; remediation reference |
+| Outcome | `planned`, `applying`, `applied`, `failed`, `partially_applied`, `reconciled`, `skipped`, `not_applicable`, or `remediated`; redacted error summary; remediation reference |
 | Evidence | catalog verification reference, reconciliation evidence reference, retained release-record reference |
 
-Identity/checksum/source fields are immutable after insert. Limited operational fields may transition only under the state machine, and corrections are appended through an audit record rather than rewritten. Ledger writes cannot falsely claim atomic completion for autocommit/concurrent SQL: a nontransactional migration is recorded as `applying`, then moves to `applied` only after catalog verification, or `failed`/`partial` evidence is retained for operator review. The runner compares repository manifest, ledger, and expected catalog; any disagreement stops execution.
+Identity/checksum/source fields are immutable after insert. Limited operational fields may transition only under the state machine, and corrections are appended through an audit record rather than rewritten. Ledger writes cannot falsely claim atomic completion for autocommit/concurrent SQL: a nontransactional migration is recorded as `applying`, then moves to `applied` only after catalog verification, or `failed`/`partially_applied` evidence is retained for operator review. The runner compares repository manifest, ledger, and expected catalog; any disagreement stops execution.
 
 Permissions should restrict inserts/state transitions to the migration executor role and read access to approved audit/release roles. Retention follows CTX-DB-001 release-evidence requirements.
+
+### 10.1 Ledger bootstrap
+
+The ledger is itself a schema addition and cannot retroactively prove its own creation. Its bootstrap is a separately approved additive migration release under the existing manual CTX-DB-001 process. The bootstrap release record, its checksum, and catalog verification are the initial evidence; it must not fabricate normal `applied` rows for older files. Only after the ledger exists may the approved reconciliation process add `reconciled`, `skipped`, `not_applicable`, or `cannot determine` history. The exact bootstrap artifact and table name remain **DECISION REQUIRED**.
 
 ## 11. Legacy reconciliation
 
@@ -133,9 +138,9 @@ Initial ledger adoption is a one-time controlled process under the [Legacy Schem
 
 **Recommended draft direction — DECISION REQUIRED:** implement an operator-focused Node/TypeScript executable in the existing stack using direct ordered SQL through `pg`, not Drizzle schema push. Direct SQL preserves the exact reviewed migration files and supports explicit transaction/autocommit behavior. Drizzle may remain development tooling, not the production runner.
 
-Proposed commands are `plan`, `status`, `verify`, `preflight`, `apply`, and `reconcile`. `apply` requires an explicit production confirmation, approved release identifier, expected environment identity, exact commit and checksums, and a noninteractive confirmation flag only when the release mechanism has separately verified authorization. Dry-run reports plan and guards but cannot prove SQL/runtime effects.
+Proposed commands are `plan`, `status`, `verify`, `preflight`, `apply`, and `reconcile`. `apply` requires an explicit production confirmation, approved release identifier, exact commit and checksums, and two independently recorded non-secret target proofs: the execution environment/service identity and the expected database binding or approved database fingerprint. The exact proof mechanism remains **DECISION REQUIRED**. A noninteractive confirmation flag is permitted only when the release mechanism has separately verified authorization. Dry-run reports plan and guards but cannot prove SQL/runtime effects.
 
-The runner SHALL use ordered manifest execution, redacted structured logs, stable failure exit codes, operator/release-job identity, and per-migration timeout policy. It SHALL never derive an environment solely from a branch name or process a repository file absent from the manifest.
+The runner SHALL use a dedicated direct `pg` session for `apply`, ordered manifest execution, redacted structured logs, stable failure exit codes, operator/release-job identity, and per-migration timeout policy. It SHALL acquire and retain the session-level advisory lock before any mutable ledger or schema action, never derive an environment solely from a branch name, and never process a repository file absent from the manifest.
 
 | Condition | Required behavior |
 | --- | --- |
@@ -154,7 +159,7 @@ The runner SHALL acquire one session-level PostgreSQL advisory lock whose scope 
 
 ## 14. Deployment architecture
 
-The intended model is expand-and-contract plus a separately controlled migration step. Repository facts show no startup migration hook; that remains binding. **Unknown:** whether Railway supports a release job, one-off job, or pre-deploy hook suitable for this control. Therefore the approved fallback is a documented, separately authorized operator execution that does not rely on application startup.
+The intended model is expand-and-contract plus a separately controlled migration step. Repository facts show no startup migration hook; that remains binding. A release may deploy compatible application code before a migration only when that version does not require the new schema. Any application version that requires the new schema MUST be gated behind verified migration completion, consistent with CTX-DB-001. **Unknown:** whether Railway supports a release job, one-off job, or pre-deploy hook suitable for this control. Therefore the approved fallback is a documented, separately authorized operator execution that does not rely on application startup.
 
 | Environment | Intended flow |
 | --- | --- |
@@ -235,7 +240,7 @@ One person may hold several roles during the startup phase, but the release reco
 | Runner location/execution | Local operator, Railway release job, one-off job, CI; prefer operator runner until platform verified | Blocking / release authority |
 | SQL execution API | Direct `pg` SQL vs Drizzle-native; recommend direct SQL | Blocking / architecture |
 | Credential separation | Immediate vs staged target state; recommend staged with interim compensating controls | Blocking before production adoption / security |
-| Lock key/timeouts | Stable namespace and approved values | Blocking / architecture + operator |
+| Target-proof mechanism and lock key/timeouts | Dual non-secret environment/database proof; stable namespace and approved values | Blocking / architecture + operator |
 | Reconciliation scope/process | Full initial versus staged cohorts; recommend evidence-led staged reconciliation | Blocking / release authority |
 | Emergency process/operations ownership | Manual controlled vs automated gate | Blocking / operations owner |
 | ADR numbering | Existing ADR sequence vs new CTX-ADR registry | Non-blocking for draft; blocking before ADR creation / governance |
