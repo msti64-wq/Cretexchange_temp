@@ -4,6 +4,7 @@
 - **Related architecture:** [CTX-ARCH-008 — Production Database Migration Architecture](../CTX-ARCH-008-production-database-migration-architecture.md)
 - **Related approval:** [CTX-ARCH-008 Architecture Approval Record](../approvals/CTX-ARCH-008-architecture-approval-record.md)
 - **Related discovery:** [Production Database Migration Discovery and Requirements](../production-database-migration-discovery-and-requirements.md)
+- **Related ADR:** [ADR-031 — Production Database Migration Execution Architecture](../ADR-031-production-database-migration-execution-architecture.md) — decisions only; Phase F findings and their verification status are unchanged.
 - **Status:** **CONDITIONALLY READY FOR ADR — IMPLEMENTATION NOT AUTHORIZED — PRODUCTION ADOPTION NOT AUTHORIZED**
 - **Date:** July 22, 2026
 - **Repository / branch at start:** `cretexchange-phasea-clean` / `feature/cutoff-and-rewards-controls`

@@ -4,6 +4,7 @@
 - **Related architecture:** [CTX-ARCH-008 — Production Database Migration Architecture](../CTX-ARCH-008-production-database-migration-architecture.md)
 - **Related discovery:** [Phase B Discovery and Requirements](../production-database-migration-discovery-and-requirements.md)
 - **Related verification:** [Phase F Railway Platform and Database Recovery Verification](../verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md) — supporting evidence only; it does not satisfy an implementation or production-authorization gate.
+- **Supporting ADR:** [ADR-031 — Production Database Migration Execution Architecture](../ADR-031-production-database-migration-execution-architecture.md) — accepted decision record; implementation and production adoption remain prohibited.
 - **Approval status:** **CONDITIONALLY APPROVED — ARCHITECTURAL DIRECTION**
 - **Approval date:** July 22, 2026
 - **Architecture version / commit:** Version 0.1 as reviewed and refined at `f44da63247ed1c023eb697b1ffdb4e3039fdf63e`
@@ -62,16 +63,16 @@ Implementation remains blocked until all applicable conditions below are approve
 
 | Condition | Destination | Status |
 | --- | --- | --- |
-| Supporting ADR and ADR numbering convention | ADR / governance approval | Required |
+| Supporting ADR and ADR numbering convention | ADR-031 / governance record | Resolved — implementation remains prohibited |
 | Ledger schema/table ownership and bootstrap artifact | ADR / owner approval | Required |
 | Initial legacy-reconciliation scope and evidence standard | ADR / governance approval | Required |
 | Manifest format and checksum workflow | ADR / implementation design | Required |
-| Runner location, execution model, and direct SQL versus Drizzle choice | ADR | Required |
+| Runner architecture, execution model, and direct SQL versus Drizzle choice | ADR-031 | Resolved — invocation mechanism remains deferred and implementation remains prohibited |
 | Credential-separation approach | ADR / security approval | Required |
 | Production-target proof and lock namespace/timeout policy | ADR / implementation design | Required |
 | Emergency migration authority and operations ownership | Operations procedure / owner approval | Required |
-| Railway release-job/controlled-execution options, deployment/rollback, topology/restarts, health behavior, and environment mapping | External platform verification | Not verified |
-| Database credential/grant behavior, backup/PITR evidence, restore process, and staging parity | External platform verification | Not verified |
+| Railway release-job/controlled-execution options, deployment/rollback, topology/restarts, health behavior, and environment mapping | Phase F evidence plus controlled tests / provider confirmation | Partially verified — not sufficient for implementation or production adoption |
+| Database credential/grant behavior, backup/PITR evidence, restore process, and staging parity | Phase F evidence plus controlled tests / provider confirmation | Partially verified — not sufficient for implementation or production adoption |
 | Final implementation-readiness review and explicit scoped authorization | Governance approval | Required |
 
 ## 6. Authorized next work

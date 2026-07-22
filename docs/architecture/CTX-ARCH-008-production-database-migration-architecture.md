@@ -12,7 +12,7 @@
 - **Related evidence:** [Phase B discovery and requirements](./production-database-migration-discovery-and-requirements.md) and the [closed 0027/0029 release record](../operations/migration-releases/2026-07-22-0027-0029-preflight/draft-release-record.md)
 - **Approval record:** [CTX-ARCH-008 Architecture Approval Record](./approvals/CTX-ARCH-008-architecture-approval-record.md)
 - **Verification evidence:** [Phase F Railway Platform and Database Recovery Verification](./verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md) — evidence only; it does not authorize implementation or production adoption.
-- **ADR status:** No supporting ADR exists. ADR identifier allocation remains a decision required.
+- **ADR:** [ADR-031 — Production Database Migration Execution Architecture](./ADR-031-production-database-migration-execution-architecture.md) — accepted as a decision record only; implementation and production adoption remain unauthorized.
 
 ## 1. Executive summary
 
@@ -53,7 +53,7 @@ The following are mandatory:
 11. Release evidence and unresolved legacy uncertainty SHALL be retained; no uncertain migration may be silently marked applied.
 12. An applying runner SHALL hold its advisory lock on a dedicated database session for the entire execution boundary; a general application pool connection is not an execution lock owner.
 
-Recommendations, rather than binding decisions, are labeled **DECISION REQUIRED** below.
+ADR-031 accepts the runner, manifest, ledger, reconciliation, lock, transaction, compatibility, recovery, target-proof, financial-safety, and governance direction. Remaining **DECISION REQUIRED** labels identify implementation detail, controlled-test, or provider/owner-confirmation dependencies; they do not reopen the accepted direction.
 
 ## 6. Proposed logical architecture
 
@@ -112,7 +112,7 @@ Existing duplicate `0001` artifacts and missing identifiers are legacy history. 
 
 ## 10. Migration ledger architecture
 
-**Proposed, pending approval:** a database-owned ledger table in a dedicated, controlled schema or an approved application schema. The final schema/table name is **DECISION REQUIRED**. Suggested logical fields are:
+**Accepted by ADR-031:** execution and reconciliation evidence belongs in a database-owned PostgreSQL ledger. The final schema/table name is **DEFERRED — IMPLEMENTATION DESIGN**. Suggested logical fields are:
 
 | Field group | Proposed contents |
 | --- | --- |
@@ -138,7 +138,7 @@ Initial ledger adoption is a one-time controlled process under the [Legacy Schem
 
 ## 12. Migration runner architecture
 
-**Recommended draft direction — DECISION REQUIRED:** implement an operator-focused Node/TypeScript executable in the existing stack using direct ordered SQL through `pg`, not Drizzle schema push. Direct SQL preserves the exact reviewed migration files and supports explicit transaction/autocommit behavior. Drizzle may remain development tooling, not the production runner.
+**Accepted by ADR-031:** implement an operator-focused Node/TypeScript executable in the existing stack using direct ordered SQL through `pg`, not Drizzle schema push. Direct SQL preserves the exact reviewed migration files and supports explicit transaction/autocommit behavior. Drizzle may remain development tooling, not the production runner. This decision does not authorize implementation.
 
 Proposed commands are `plan`, `status`, `verify`, `preflight`, `apply`, and `reconcile`. `apply` requires an explicit production confirmation, approved release identifier, exact commit and checksums, and two independently recorded non-secret target proofs: the execution environment/service identity and the expected database binding or approved database fingerprint. The exact proof mechanism remains **DECISION REQUIRED**. A noninteractive confirmation flag is permitted only when the release mechanism has separately verified authorization. Dry-run reports plan and guards but cannot prove SQL/runtime effects.
 
@@ -181,7 +181,7 @@ Default migration execution is one transaction per classified compatible migrati
 
 ## 17. Security architecture
 
-Target state: a dedicated migration credential with only approved schema/evidence privileges, distinct from normal runtime credentials. **DECISION REQUIRED:** the timing and available platform support for this separation. Interim operation requires named authorization, least privilege review, explicit environment confirmation, no secret printing, redacted structured logs, and audit identity. Only authorized operators or an approved release job may execute migrations; approvers authorize exact scope and may be the same person in the current single-operator stage only when that role overlap is recorded. Credential rotation and emergency access require operational documentation before production adoption.
+Target state, accepted by ADR-031: a dedicated migration credential with only approved schema/evidence privileges, distinct from normal runtime credentials. Exact grants, timing, and platform availability are **DEFERRED — PLATFORM AND DATABASE VERIFICATION REQUIRED**. Interim operation requires named authorization, least privilege review, explicit environment confirmation, no secret printing, redacted structured logs, and audit identity. Only authorized operators or an approved release job may execute migrations; approvers authorize exact scope and may be the same person in the current single-operator stage only when that role overlap is recorded. Credential rotation and emergency access require operational documentation before production adoption.
 
 ## 18. Financial safety architecture
 

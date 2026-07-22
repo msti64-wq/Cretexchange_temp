@@ -52,6 +52,7 @@ This section documents the technical architecture of CreteXchange.
 - [Production Database Migration Discovery and Requirements](./production-database-migration-discovery-and-requirements.md) — preserved Phase B evidence supporting the CTX-ARCH-008 draft; it is not the architecture decision.
 - [CTX-ARCH-008 Architecture Approval Record](./approvals/CTX-ARCH-008-architecture-approval-record.md) — conditional approval of direction only; implementation and production adoption remain blocked.
 - [CTX-ARCH-008 Railway Platform and Database Recovery Verification](./verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md) — Phase F verification evidence; not architecture, an ADR, implementation authorization, or production authorization.
+- [ADR-031 — Production Database Migration Execution Architecture](./ADR-031-production-database-migration-execution-architecture.md) — accepted decision record; implementation and production adoption remain blocked.
 
 ## Maintenance Note
 

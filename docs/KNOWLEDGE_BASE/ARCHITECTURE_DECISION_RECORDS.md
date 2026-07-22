@@ -43,6 +43,7 @@ This ADR log captures current known production decisions for CreteXchange.
 | ADR-009 | Accepted | 2026-06 | Design-system rollout for production UI primitives |
 | ADR-010 | Accepted | 2026-06 | High-contrast industrial UI standard for dark surfaces |
 | ADR-011 | Accepted | 2026-06 | Documentation-first engineering workflow |
+| ADR-031 | Accepted — implementation not yet authorized | 2026-07-22 | [Production Database Migration Execution Architecture](../architecture/ADR-031-production-database-migration-execution-architecture.md) |
 
 ## ADR Details
 
@@ -167,7 +168,17 @@ This ADR log captures current known production decisions for CreteXchange.
 | Decision | Record current production truth in the Knowledge Base before or alongside implementation work. |
 | Consequences | Engineers can verify the current architecture, operating rules, and production behavior before making changes. |
 
+### ADR-031 - Production Database Migration Execution Architecture
+
+| Field | Value |
+| --- | --- |
+| Decision | Establish the repository-owned manifest, direct-SQL Node/TypeScript runner, PostgreSQL ledger, dedicated-session advisory lock, evidence-based reconciliation, and separately controlled execution architecture. |
+| Status | Accepted — implementation not yet authorized |
+| Date | 2026-07-22 |
+| Context | CTX-ARCH-008 requires a durable production migration model while preserving external platform and recovery unknowns as explicit gates. |
+| Record | [ADR-031 — Production Database Migration Execution Architecture](../architecture/ADR-031-production-database-migration-execution-architecture.md) |
+| Consequences | Implementation, controlled tests, platform confirmation, credential validation, recovery evidence, and production adoption each require separate authorization. |
+
 ## Scope Note
 
 This ADR log captures the known current production decisions that shape the live platform. It should be expanded when a new architectural decision materially changes production behavior.
-
