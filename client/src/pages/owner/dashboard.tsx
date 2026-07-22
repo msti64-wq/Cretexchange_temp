@@ -461,7 +461,7 @@ export default function OwnerDashboard() {
     if (!acc[locationKey]) {
       acc[locationKey] = {
         count: 0,
-        name: activity?.location?.name || "Unknown location",
+        name: activity?.location?.name || t("owner.dashboard.unknownLocation"),
       };
     }
     acc[locationKey].count += 1;
@@ -530,7 +530,7 @@ export default function OwnerDashboard() {
       .sort((left, right) => getActivityTime(left) - getActivityTime(right));
     const locationVisits = activities.reduce<Record<string, { name: string; count: number }>>((acc, activity: any) => {
       const locationKey = String(activity?.location?.id ?? activity?.locationId ?? "unknown");
-      const locationName = activity?.location?.name || "Unknown location";
+      const locationName = activity?.location?.name || t("owner.dashboard.unknownLocation");
       if (!acc[locationKey]) acc[locationKey] = { name: locationName, count: 0 };
       acc[locationKey].count += 1;
       return acc;
@@ -541,7 +541,7 @@ export default function OwnerDashboard() {
     const driverUser = latestActivity?.driver?.user || latestActivity?.driver || {};
     const driverName = `${driverUser?.firstName || ""} ${driverUser?.lastName || ""}`.trim()
       || driverUser?.username
-      || "Unnamed driver";
+      || t("owner.dashboard.unnamedDriver");
     const firstApprovedActivity = allDriverActivities[0] || null;
     const lastVisitAt = getActivityTime(latestActivity);
     return {
@@ -723,19 +723,19 @@ export default function OwnerDashboard() {
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Platform Fees</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.platformFees")}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight">{formatCentsToDollars(billingPlatformFeesTotalCents)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">Current platform receivables for approved washouts</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.platformFeesDescription")}</p>
               </div>
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver Tips</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.driverTips")}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight text-sky-700 dark:text-sky-300">{formatCentsToDollars(billingDriverTipsTotalCents)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">Driver incentive total included in owner charge</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.driverTipsDescription")}</p>
               </div>
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total Owner Charge</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.totalOwnerCharge")}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{formatCentsToDollars(billingOwnerChargeTotalCents)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">Platform fee + driver incentive awaiting review</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.totalOwnerChargeDescription")}</p>
               </div>
             </div>
           </div>
@@ -743,12 +743,12 @@ export default function OwnerDashboard() {
             <DSKpiCard
               label={t("common.washouts")}
               value={billableWashoutCount}
-              detail="Billable washouts in the selected dashboard period"
+              detail={t("owner.dashboard.billableWashoutsDescription")}
               accentTone="info"
               data-testid="text-daily-visits"
             />
             <DSKpiCard
-              label="Pending Review"
+              label={t("owner.dashboard.pendingReview")}
               value={pendingReviewCount}
               detail={
                 <div className="space-y-0.5">
@@ -760,7 +760,7 @@ export default function OwnerDashboard() {
               data-testid="text-pending-payments"
             />
             <DSKpiCard
-              label="Current Receivables"
+              label={t("owner.dashboard.currentReceivables")}
               value={formatCentsToDollars(currentReceivablesCents)}
               detail={
                 <div className="space-y-0.5">
@@ -784,8 +784,8 @@ export default function OwnerDashboard() {
         {/* Owner Intelligence */}
         <section className="space-y-3">
           <DSSectionHeader
-            title="Owner Intelligence"
-            description="Derived from owner activity and location data."
+            title={t("owner.dashboard.ownerIntelligence")}
+            description={t("owner.dashboard.ownerIntelligenceDescription")}
           />
           {ownerIntelligenceLoading ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -802,8 +802,8 @@ export default function OwnerDashboard() {
             </div>
           ) : !hasOwnerIntelligenceData ? (
             <DashboardEmptyState
-              title="No owner intelligence yet"
-              description="Add locations and capture activity to surface driver attraction, repeat visits, incentive averages, and site engagement."
+              title={t("owner.dashboard.noOwnerIntelligence")}
+              description={t("owner.dashboard.noOwnerIntelligenceDescription")}
               icon={Activity}
               action={
                 <Button variant="outline" size="sm" onClick={() => setLocation("/locations")}>
@@ -815,20 +815,20 @@ export default function OwnerDashboard() {
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <DSKpiCard
-                label="Driver Attraction"
+                label={t("owner.dashboard.driverAttraction")}
                 value={ownerActivityCount}
                 detail={
                   <div className="space-y-0.5">
                     <div>{`${ownerActivityUniqueDriverCount} unique driver${ownerActivityUniqueDriverCount === 1 ? "" : "s"}`}</div>
                     <div>{`Recent activity: ${recentActivityCount}`}</div>
-                    <div className="text-xs text-muted-foreground">Derived from owner activity rows</div>
+                    <div className="text-xs text-muted-foreground">{t("owner.dashboard.derivedFromOwnerActivity")}</div>
                   </div>
                 }
                 accentTone="info"
                 data-testid="text-owner-driver-attraction"
               />
               <DSKpiCard
-                label="Repeat Driver Visits"
+                label={t("owner.dashboard.repeatDriverVisits")}
                 value={repeatDriverCount}
                 detail={
                   <div className="space-y-0.5">
@@ -840,44 +840,44 @@ export default function OwnerDashboard() {
                 data-testid="text-owner-repeat-drivers"
               />
               <DSKpiCard
-                label="Average Driver Incentive"
+                label={t("owner.dashboard.averageDriverIncentive")}
                 value={averageConfiguredIncentiveCents !== null ? formatCentsToDollars(averageConfiguredIncentiveCents) : "—"}
                 detail={
                   <div className="space-y-0.5">
                     <div>{configuredLocationTipValues.length > 0
                       ? `${configuredLocationTipValues.length} configured location${configuredLocationTipValues.length === 1 ? "" : "s"}`
-                      : "No configured rates yet"}
+                      : t("owner.dashboard.noConfiguredRates")}
                     </div>
-                    <div className="text-xs text-muted-foreground">Derived from location rate settings</div>
+                    <div className="text-xs text-muted-foreground">{t("owner.dashboard.derivedFromLocationRates")}</div>
                   </div>
                 }
                 accentTone="success"
                 data-testid="text-owner-average-driver-incentive"
               />
               <DSKpiCard
-                label="Washout Counts"
+                label={t("owner.dashboard.washoutCounts")}
                 value={ownerActivityCount}
                 detail={
                   <div className="space-y-0.5">
                     <div>{`${ownerWashoutStatusCounts.approved} approved / ${ownerWashoutStatusCounts.pending} pending / ${ownerWashoutStatusCounts.rejected} rejected`}</div>
                     <div>{`Selected range washouts: ${billableWashoutCount}`}</div>
-                    <div className="text-xs text-muted-foreground">Derived from owner activity data</div>
+                    <div className="text-xs text-muted-foreground">{t("owner.dashboard.derivedFromOwnerActivity")}</div>
                   </div>
                 }
                 accentTone="accent"
                 data-testid="text-owner-washout-counts"
               />
               <DSKpiCard
-                label="Site Engagement Snapshot"
+                label={t("owner.dashboard.siteEngagementSnapshot")}
                 value={activeVisibleLocationCount}
                 detail={
                   <div className="space-y-0.5">
                     <div>{`${recentLocationCount} location${recentLocationCount === 1 ? "" : "s"} with recent activity`}</div>
                     <div>{topLocationByActivity
                       ? `Top location: ${topLocationByActivity.name} (${topLocationByActivity.count})`
-                      : "No activity ranked yet"}
+                      : t("owner.dashboard.noActivityRanked")}
                     </div>
-                    <div className="text-xs text-muted-foreground">{`${ownerLocationRows.length} total locations configured`}</div>
+                    <div className="text-xs text-muted-foreground">{t("owner.dashboard.totalLocationsConfigured", { count: ownerLocationRows.length })}</div>
                   </div>
                 }
                 accentTone="border"
@@ -890,8 +890,8 @@ export default function OwnerDashboard() {
         {/* Driver Intelligence — approved activity analytics only */}
         <section className="space-y-3">
           <DSSectionHeader
-            title="Driver Intelligence"
-            description="Operational analytics from approved activity in the selected date range. These metrics do not represent payments, wallet value, or payouts."
+            title={t("owner.dashboard.driverIntelligence")}
+            description={t("owner.dashboard.driverIntelligenceDescription")}
             actions={<DSStatusChip tone="neutral">{dateRange}</DSStatusChip>}
           />
           {isAllActivitiesLoading ? (
@@ -906,8 +906,8 @@ export default function OwnerDashboard() {
             </div>
           ) : selectedRangeApprovedActivities.length === 0 ? (
             <DashboardEmptyState
-              title="No approved driver activity in this range"
-              description="Driver Intelligence appears after approved activity is available for the selected date range."
+              title={t("owner.dashboard.noApprovedDriverActivity")}
+              description={t("owner.dashboard.noApprovedDriverActivityDescription")}
               icon={Users}
               toneClassName="bg-slate-50 text-foreground dark:bg-slate-950/30 dark:text-foreground"
               action={
@@ -921,37 +921,37 @@ export default function OwnerDashboard() {
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <DSKpiCard
-                  label="Unique Drivers"
+                  label={t("owner.dashboard.uniqueDrivers")}
                   value={totalUniqueDrivers}
-                  detail="Approved activity in selected range"
+                  detail={t("owner.dashboard.approvedActivityInRange")}
                   accentTone="info"
                   data-testid="text-driver-intelligence-unique"
                 />
                 <DSKpiCard
-                  label="New Drivers"
+                  label={t("owner.dashboard.newDrivers")}
                   value={newDriverCount}
-                  detail="First approved activity occurred in this range"
+                  detail={t("owner.dashboard.firstApprovedActivityInRange")}
                   accentTone="success"
                   data-testid="text-driver-intelligence-new"
                 />
                 <DSKpiCard
-                  label="Repeat Drivers"
+                  label={t("owner.dashboard.repeatDrivers")}
                   value={selectedRangeRepeatDriverCount}
-                  detail="More than one approved activity in this range"
+                  detail={t("owner.dashboard.moreThanOneApprovedActivity")}
                   accentTone="warning"
                   data-testid="text-driver-intelligence-repeat"
                 />
                 <DSKpiCard
-                  label="Visits per Driver"
+                  label={t("owner.dashboard.visitsPerDriver")}
                   value={visitsPerDriver.toFixed(1)}
                   detail={`${selectedRangeApprovedActivities.length} approved activity visit${selectedRangeApprovedActivities.length === 1 ? "" : "s"}`}
                   accentTone="accent"
                   data-testid="text-driver-intelligence-visits-per-driver"
                 />
                 <DSKpiCard
-                  label="Recent Drivers"
+                  label={t("owner.dashboard.recentDrivers")}
                   value={recentDriverCount}
-                  detail="Last approved visit within 7 days"
+                  detail={t("owner.dashboard.lastApprovedVisitWithin7Days")}
                   accentTone="border"
                   data-testid="text-driver-intelligence-recent"
                 />
@@ -960,12 +960,12 @@ export default function OwnerDashboard() {
               <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
                 <DSCard padding="lg">
                   <DSSectionHeader
-                    title="Activity Trend"
-                    description="Approved activity by active day in the selected range."
+                    title={t("owner.dashboard.activityTrend")}
+                    description={t("owner.dashboard.activityTrendDescription")}
                     actions={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
                   />
                   <ChartContainer
-                    config={{ visits: { label: "Approved visits", color: "#0EA5E9" } }}
+                    config={{ visits: { label: t("owner.dashboard.approvedVisits"), color: "#0EA5E9" } }}
                     className="mt-3 h-[220px] w-full"
                   >
                     <BarChart data={driverActivityTrendData} margin={{ left: -18, right: 8, top: 8 }}>
@@ -981,24 +981,24 @@ export default function OwnerDashboard() {
                 </DSCard>
 
                 <DSCard padding="lg">
-                  <DSSectionHeader title="Driver Engagement" description="Operational concentration and loyalty signals." />
+                  <DSSectionHeader title={t("owner.dashboard.driverEngagement")} description={t("owner.dashboard.driverEngagementDescription")} />
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Most Active</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.mostActive")}</p>
                       <p className="mt-2 truncate text-lg font-semibold tracking-tight" data-testid="text-driver-intelligence-most-active">
                         {mostActiveDriver?.driverName || "—"}
                       </p>
-                      <p className="mt-1 text-xs text-muted-foreground">{mostActiveDriver ? `${mostActiveDriver.visitCount} approved visit${mostActiveDriver.visitCount === 1 ? "" : "s"}` : "No activity"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{mostActiveDriver ? t("owner.dashboard.approvedVisitCount", { count: mostActiveDriver.visitCount }) : t("owner.dashboard.noActivity")}</p>
                     </div>
                     <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver Concentration</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.driverConcentration")}</p>
                       <p className="mt-2 text-2xl font-semibold tracking-tight" data-testid="text-driver-intelligence-concentration">{driverConcentrationPercent}%</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Share of approved visits from the most active driver</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.driverConcentrationDescription")}</p>
                     </div>
                     <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Driver Loyalty</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.driverLoyalty")}</p>
                       <p className="mt-2 text-2xl font-semibold tracking-tight" data-testid="text-driver-intelligence-loyalty">{driverLoyaltyPercent}%</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Unique drivers with repeat activity in this range</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.driverLoyaltyDescription")}</p>
                     </div>
                   </div>
                 </DSCard>
@@ -1006,8 +1006,8 @@ export default function OwnerDashboard() {
 
               <DSCard padding="lg">
                 <DSSectionHeader
-                  title="Driver Activity Directory"
-                  description="Search and filter approved driver activity without exposing financial or payout data."
+                  title={t("owner.dashboard.driverActivityDirectory")}
+                  description={t("owner.dashboard.driverActivityDirectoryDescription")}
                   actions={<UserRoundCheck className="h-4 w-4 text-muted-foreground" />}
                 />
                 <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_150px_170px]">
@@ -1016,7 +1016,7 @@ export default function OwnerDashboard() {
                     <Input
                       value={driverSearch}
                       onChange={(event) => setDriverSearch(event.target.value)}
-                      placeholder="Search driver or favorite location"
+                      placeholder={t("owner.dashboard.searchDriverOrLocation")}
                       className="pl-9"
                       data-testid="input-driver-intelligence-search"
                     />
@@ -1026,15 +1026,15 @@ export default function OwnerDashboard() {
                     <SelectContent>
                       <SelectItem value="all">All drivers</SelectItem>
                       <SelectItem value="new">New drivers</SelectItem>
-                      <SelectItem value="repeat">Repeat drivers</SelectItem>
-                      <SelectItem value="recent">Recent drivers</SelectItem>
+                      <SelectItem value="repeat">{t("owner.dashboard.repeatDrivers")}</SelectItem>
+                      <SelectItem value="recent">{t("owner.dashboard.recentDrivers")}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={driverSort} onValueChange={(value) => setDriverSort(value as typeof driverSort)}>
                     <SelectTrigger data-testid="select-driver-intelligence-sort"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="most_active">Most active</SelectItem>
-                      <SelectItem value="recent_visit">Latest visit</SelectItem>
+                      <SelectItem value="most_active">{t("owner.dashboard.mostActive")}</SelectItem>
+                      <SelectItem value="recent_visit">{t("owner.dashboard.latestVisit")}</SelectItem>
                       <SelectItem value="name">Driver name</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1049,11 +1049,11 @@ export default function OwnerDashboard() {
                     <table className="w-full min-w-[700px] text-sm">
                       <thead className="bg-muted/40 text-left text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                         <tr>
-                          <th className="px-4 py-3 font-semibold">Driver</th>
-                          <th className="px-4 py-3 font-semibold">Visits</th>
-                          <th className="px-4 py-3 font-semibold">Favorite Location</th>
-                          <th className="px-4 py-3 font-semibold">Last Visit</th>
-                          <th className="px-4 py-3 font-semibold">Activity</th>
+                          <th className="px-4 py-3 font-semibold">{t("common.driver")}</th>
+                          <th className="px-4 py-3 font-semibold">{t("owner.dashboard.visits")}</th>
+                          <th className="px-4 py-3 font-semibold">{t("owner.dashboard.favoriteLocation")}</th>
+                          <th className="px-4 py-3 font-semibold">{t("owner.dashboard.lastVisit")}</th>
+                          <th className="px-4 py-3 font-semibold">{t("owner.dashboard.activity")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -1065,8 +1065,8 @@ export default function OwnerDashboard() {
                             <td className="px-4 py-3 text-muted-foreground">{driver.lastVisitAt ? new Date(driver.lastVisitAt).toLocaleDateString(language === "es" ? "es-US" : "en-US") : "—"}</td>
                             <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1.5">
-                                {driver.isNew && <DSStatusChip tone="success">New</DSStatusChip>}
-                                {driver.isRepeat && <DSStatusChip tone="warning">Repeat</DSStatusChip>}
+                                {driver.isNew && <DSStatusChip tone="success">{t("owner.dashboard.new")}</DSStatusChip>}
+                                {driver.isRepeat && <DSStatusChip tone="warning">{t("owner.dashboard.repeat")}</DSStatusChip>}
                                 {driver.isRecent && <DSStatusChip tone="info">Recent</DSStatusChip>}
                               </div>
                             </td>
@@ -1138,7 +1138,7 @@ export default function OwnerDashboard() {
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Current Receivables</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.currentReceivables")}</p>
                   <p className="mt-2 text-xl font-semibold tracking-tight text-sky-500 dark:text-sky-300" data-testid="text-pending-total">
                     {formatCentsToDollars(currentReceivablesCents)}
                   </p>
@@ -1163,7 +1163,7 @@ export default function OwnerDashboard() {
                 </div>
                 <div className="rounded-2xl border border-border bg-muted/20 p-3 text-center">
                   <p className="text-lg font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{approvedCount}</p>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Billable Washouts</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t("owner.dashboard.billableWashouts")}</p>
                 </div>
               </div>
             </div>
@@ -1266,7 +1266,7 @@ export default function OwnerDashboard() {
                             </div>
                           )}
                           <div className="text-xs text-muted-foreground" data-testid={`text-activity-timestamp-${index}`}>
-                            {new Date(activity.checkInTime).toLocaleDateString(language === "es" ? "es-US" : "en-US")} at {new Date(activity.checkInTime).toLocaleTimeString(language === "es" ? "es-US" : "en-US", {
+                  {new Date(activity.checkInTime).toLocaleDateString(language === "es" ? "es-US" : "en-US")} {t("owner.dashboard.at")} {new Date(activity.checkInTime).toLocaleTimeString(language === "es" ? "es-US" : "en-US", {
                               hour: 'numeric',
                               minute: '2-digit',
                               hour12: true
@@ -1355,7 +1355,7 @@ export default function OwnerDashboard() {
                           </div>
                         )}
                         <div className="text-xs text-muted-foreground" data-testid={`text-activity-timestamp-${index}`}>
-                          {new Date(activity.checkInTime).toLocaleDateString(language === "es" ? "es-US" : "en-US")} at {new Date(activity.checkInTime).toLocaleTimeString(language === "es" ? "es-US" : "en-US", {
+                          {new Date(activity.checkInTime).toLocaleDateString(language === "es" ? "es-US" : "en-US")} {t("owner.dashboard.at")} {new Date(activity.checkInTime).toLocaleTimeString(language === "es" ? "es-US" : "en-US", {
                             hour: 'numeric',
                             minute: '2-digit',
                             hour12: true
