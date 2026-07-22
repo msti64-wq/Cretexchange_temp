@@ -35,7 +35,7 @@ This section documents the technical architecture of CreteXchange.
 | CTX-ARCH-005 | [Material Management Architecture](./material-management-architecture.md) | Material taxonomy, financial direction, settlement models, pricing, and capacity | Approved |
 | CTX-ARCH-006 | [Driver Incentive and Financial Settlement Architecture](./driver-incentive-and-financial-settlement-architecture.md) | Incentive snapshot, financial obligation, owner charge, wallet settlement, Stripe payout, idempotency, and recovery | Approved; PD-045 Active; runtime remediation pending |
 | CTX-ARCH-007 | [Canonical Financial Batch Architecture](./CTX-ARCH-007-canonical-financial-batch-architecture.md) | Canonical obligation versioning, batch identity, weekly periods, frozen membership/totals, append-only audit, discovery queues, legacy isolation, and Phase 3B non-execution | Approved architecture direction; implementation pending |
-| CTX-ARCH-008 | [Production Database Migration Architecture](./CTX-ARCH-008-production-database-migration-architecture.md) | Proposed controlled migration lifecycle, manifest, runner, ledger, reconciliation, release gates, recovery, and evidence model | **Draft — not yet approved for implementation** |
+| CTX-ARCH-008 | [Production Database Migration Architecture](./CTX-ARCH-008-production-database-migration-architecture.md) | Proposed controlled migration lifecycle, manifest, runner, ledger, reconciliation, release gates, recovery, and evidence model | **Conditionally approved — not authorized for implementation** |
 
 ## Planned Contents
 
@@ -50,6 +50,7 @@ This section documents the technical architecture of CreteXchange.
 ## Supporting Architecture Evidence
 
 - [Production Database Migration Discovery and Requirements](./production-database-migration-discovery-and-requirements.md) — preserved Phase B evidence supporting the CTX-ARCH-008 draft; it is not the architecture decision.
+- [CTX-ARCH-008 Architecture Approval Record](./approvals/CTX-ARCH-008-architecture-approval-record.md) — conditional approval of direction only; implementation and production adoption remain blocked.
 
 ## Maintenance Note
 

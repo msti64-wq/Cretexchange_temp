@@ -1,7 +1,7 @@
 # CTX-ARCH-008 — Production Database Migration Architecture
 
 - **Document owner:** V8 Laboratories
-- **Status:** **DRAFT — NOT YET APPROVED FOR IMPLEMENTATION**
+- **Status:** **CONDITIONALLY APPROVED — NOT AUTHORIZED FOR IMPLEMENTATION**
 - **Version:** 0.1
 - **Date:** July 22, 2026
 - **Intended approvers:** Architecture governance owner, release authority, security/operations owner, and business/technical approver
@@ -10,6 +10,7 @@
 - **Related standards:** [CTX-STD-001](../standards/cretexchange-platform-standards.md), [CTX-DB-001](../standards/CTX-DB-001-database-migration-and-schema-governance-standard.md), [CTX-DEP-001](../standards/CTX-DEP-001-production-deployment-protocol.md), and [CTX-OPS-001](../operations/CTX-OPS-001-production-release-checklist.md)
 - **Related architecture:** [CTX-ARCH-007](./CTX-ARCH-007-canonical-financial-batch-architecture.md)
 - **Related evidence:** [Phase B discovery and requirements](./production-database-migration-discovery-and-requirements.md) and the [closed 0027/0029 release record](../operations/migration-releases/2026-07-22-0027-0029-preflight/draft-release-record.md)
+- **Approval record:** [CTX-ARCH-008 Architecture Approval Record](./approvals/CTX-ARCH-008-architecture-approval-record.md)
 - **ADR status:** No supporting ADR exists. ADR identifier allocation remains a decision required.
 
 ## 1. Executive summary
