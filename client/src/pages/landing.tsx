@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LanguageDocumentMetadata } from "@/components/LanguageDocumentMetadata";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PublicHeader } from "@/components/PublicHeader";
+import { CRETEXCHANGE_BRAND } from "@/components/BrandHeaderLogo";
 import { useLanguage } from "@/lib/i18n";
 import { PUBLIC_LANDING_ROUTES } from "@/lib/publicLanding";
 
@@ -86,8 +87,18 @@ export default function Landing() {
 
       <main>
         <section className="gradient-bg border-b border-slate-800 text-slate-100">
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)] lg:items-center lg:gap-12 lg:py-24">
-            <div className="min-w-0">
+          <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:py-16">
+            <div className="mx-auto w-full max-w-5xl">
+              <img
+                src={CRETEXCHANGE_BRAND.primaryHero}
+                alt="CreteXchange — Building Tomorrow. Nothing Wasted."
+                width={985}
+                height={407}
+                className="h-auto w-full object-contain"
+                data-testid="landing-primary-hero-logo"
+              />
+            </div>
+            <div className="mx-auto mt-8 max-w-3xl text-center sm:mt-12">
               <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-sky-300">
                 {t("public.hero.eyebrow")}
               </p>
@@ -107,23 +118,6 @@ export default function Landing() {
                 <Button asChild size="lg" variant="ghost" className="min-h-12 text-slate-100 hover:bg-white/10 hover:text-white motion-reduce:transition-none">
                   <a href={PUBLIC_LANDING_ROUTES.valuePropositionAnchor}>{t("public.hero.learnMore")}</a>
                 </Button>
-              </div>
-            </div>
-
-            <div className="relative mx-auto w-full max-w-lg" aria-label={t("public.hero.visualLabel")}>
-              <div className="overflow-hidden rounded-3xl border border-white/15 bg-slate-900/45 p-5 shadow-2xl shadow-slate-950/30 backdrop-blur sm:p-7">
-                <div aria-hidden="true" className="relative min-h-56 overflow-hidden rounded-2xl border border-white/10 bg-slate-950 sm:min-h-72">
-                  <img
-                    src="/brand/cretexchange-primary-hero-logo.png"
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover object-center"
-                  />
-                  <div className="absolute inset-x-7 bottom-7 flex items-center justify-between text-xs font-medium text-slate-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
-                    <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-sky-300" /> {t("public.hero.participatingLocation")}</span>
-                    <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-teal-300" /> {t("public.hero.verifiedActivity")}</span>
-                  </div>
-                </div>
-                <p className="mt-4 text-sm leading-6 text-slate-300">{t("public.hero.visualLabel")}</p>
               </div>
             </div>
           </div>

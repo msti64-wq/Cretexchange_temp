@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft, Building2, User, Truck } from "lucide-react";
-import logoImage from "@assets/cretexchange-logo-transparent.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { InstallPrompt } from "@/components/InstallPrompt";
 
 export default function Register({ preselectedRole }: { preselectedRole?: 'driver' | 'owner' }) {
@@ -119,11 +119,7 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               Back to Home
             </Button>
           </Link>
-          <img 
-            src={logoImage}
-            alt="CreteXchange - Streamlining Concrete Connections"
-            className="w-32 h-32 object-contain"
-          />
+          <BrandHeaderLogo alt="CreteXchange" />
         </div>
       </header>
 

@@ -10,7 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import logoImage from "@assets/cretexchange-logo-transparent.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 
 export default function Login() {
   const { toast } = useToast();
@@ -105,11 +105,7 @@ export default function Login() {
               Back to Home
             </Button>
           </Link>
-          <img 
-            src={logoImage}
-            alt="CreteXchange - Streamlining Concrete Connections"
-            className="w-32 h-32 object-contain"
-          />
+          <BrandHeaderLogo alt="CreteXchange" />
         </div>
       </header>
 

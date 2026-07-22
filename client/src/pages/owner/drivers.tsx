@@ -9,7 +9,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { Users, Search, Filter, MapPin, Clock, Image as ImageIcon } from "lucide-react";
-import logoImage from "@assets/cretexchange logo_1760644229633.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { isBillableWashoutForOwnerBilling } from "@shared/washoutApproval";
 import { formatLocalizedCurrency, formatLocalizedDate, translateActivityStatus, useLanguage } from "@/lib/i18n";
 
@@ -104,11 +104,7 @@ export default function OwnerDrivers() {
       <header className="gradient-bg text-white p-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <img 
-              src={logoImage}
-              alt={t("owner.drivers.title")}
-              className="w-10 h-10 object-contain bg-white/20 rounded-full p-1"
-            />
+            <BrandHeaderLogo alt={t("owner.drivers.title")} size="compact" />
             <div>
               <h1 className="font-semibold text-lg">{t("owner.drivers.title")}</h1>
               <p className="text-white/80 text-sm">{t("owner.drivers.subtitle")}</p>

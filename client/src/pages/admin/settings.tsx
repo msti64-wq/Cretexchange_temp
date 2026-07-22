@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { Settings, Database, AlertCircle, CheckCircle2, Loader2, FlaskConical, CreditCard, RefreshCw } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import logoImage from "@assets/cretexchange logo_1760644229633.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 
 export default function AdminSettings() {
@@ -264,7 +264,7 @@ export default function AdminSettings() {
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <img src={logoImage} alt="CreteXchange" className="h-8 w-auto" />
+            <BrandHeaderLogo size="compact" />
             <h1 className="text-xl font-bold">System Settings</h1>
           </div>
         </div>

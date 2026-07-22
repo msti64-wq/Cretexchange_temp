@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-import logoImage from "@assets/cretexchange-logo-transparent.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 
 export default function ResetPassword() {
   const { toast } = useToast();
@@ -96,11 +96,7 @@ export default function ResetPassword() {
               Back to Login
             </Button>
           </Link>
-          <img 
-            src={logoImage}
-            alt="CreteXchange - Streamlining Concrete Connections"
-            className="w-32 h-32 object-contain"
-          />
+          <BrandHeaderLogo alt="CreteXchange" />
         </div>
       </header>
 

@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { User, Plus, CreditCard } from "lucide-react";
-import logoImage from "@assets/cretexchange-logo-white-transparent.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -18,13 +18,7 @@ export function OwnerHeader() {
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3 sm:py-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="brand-frame flex h-12 w-12 items-center justify-center rounded-2xl flex-shrink-0 border border-border bg-muted sm:h-14 sm:w-14">
-              <img
-                src={logoImage}
-                alt={t("header.ownerPortal")}
-                className="h-8 w-8 object-contain sm:h-9 sm:w-9"
-              />
-            </div>
+            <BrandHeaderLogo alt={t("header.ownerPortal")} />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Smartphone, Download, X, Share } from "lucide-react";
-import logoImage from "@assets/cretexchange-logo-transparent.png";
+import { BrandCompactMark } from "@/components/BrandHeaderLogo";
 import {
   hasHandledInstallPromptThisSession,
   markInstallPromptHandledThisSession,
@@ -65,7 +65,7 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <img src={logoImage} alt="CreteXchange" className="w-10 h-10 object-contain" />
+            <BrandCompactMark className="h-10" />
             <CardTitle className="text-base">{messaging.title}</CardTitle>
           </div>
           <Button

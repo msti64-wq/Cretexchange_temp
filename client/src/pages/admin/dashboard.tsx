@@ -19,7 +19,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { LogoutButton } from "@/components/LogoutButton";
-import logoImage from "@assets/cretexchange-logo-white-transparent.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { ShieldAlert, UsersRound } from "lucide-react";
 import { buildAdminPlatformGrowth, type PlatformGrowthRange } from "@/lib/adminPlatformGrowth";
 import { buildAdminTrustVerification } from "@/lib/adminTrustVerification";
@@ -459,9 +459,7 @@ export default function AdminDashboard() {
       <header className="sticky top-0 z-40 gradient-bg text-white shadow-[0_24px_60px_-36px_rgba(15,23,42,0.8)] backdrop-blur supports-[backdrop-filter]:backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="brand-frame flex h-12 w-12 items-center justify-center rounded-2xl flex-shrink-0 sm:h-14 sm:w-14">
-              <img src={logoImage} alt="CreteXchange" className="h-8 w-8 object-contain sm:h-9 sm:w-9" />
-            </div>
+            <BrandHeaderLogo />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">

@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import logoPath from "@assets/cretexchange-logo-transparent.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { LegalDocumentViewer, PRIVACY_DOCUMENT_ID } from "@/components/LegalDocumentViewer";
 import { useLanguage } from "@/lib/i18n";
@@ -13,7 +13,7 @@ export default function PrivacyPolicy() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center gap-3">
             <Link href="/" className="flex items-center gap-2">
-              <img src={logoPath} alt="CreteXchange Logo" className="h-12 w-12" />
+              <BrandHeaderLogo alt="CreteXchange" size="compact" />
               <span className="text-xl font-bold">
                 Crete<span className="text-orange-500">X</span>change
               </span>

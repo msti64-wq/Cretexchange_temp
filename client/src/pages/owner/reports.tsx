@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MobileNav } from "@/components/MobileNav";
-import logoImage from "@assets/cretexchange logo_1760644229633.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { ReportExplorer } from "@/components/ReportExplorer";
 import { OWNER_REPORT_COLUMNS } from "@shared/reportColumns";
 import type { ReportRow } from "@shared/reportTypes";
@@ -131,11 +131,7 @@ export default function OwnerReports() {
     <div className="min-h-screen bg-background pb-20">
       <header className="gradient-bg text-white p-4 shadow-lg">
         <div className="flex items-center space-x-3">
-          <img
-            src={logoImage}
-            alt={t("owner.reports.title")}
-            className="w-10 h-10 object-contain bg-white/20 rounded-full p-1"
-          />
+          <BrandHeaderLogo alt={t("owner.reports.title")} size="compact" />
           <div>
             <h1 className="font-semibold text-lg">{t("owner.reports.title")}</h1>
             <p className="text-white/80 text-sm">{t("owner.reports.subtitle")}</p>

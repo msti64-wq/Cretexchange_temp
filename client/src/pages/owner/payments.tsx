@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { DollarSign, Download, Calendar, Filter } from "lucide-react";
-import logoImage from "@assets/cretexchange logo_1760644229633.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { formatAddress } from "@shared/addressUtils";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { formatLocalizedCurrency, formatLocalizedDate, translateActivityStatus, useLanguage } from "@/lib/i18n";
@@ -105,11 +105,7 @@ export default function OwnerPayments() {
       <header className="gradient-bg text-white p-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <img 
-              src={logoImage}
-              alt={t("owner.payments.title")}
-              className="w-10 h-10 object-contain bg-white/20 rounded-full p-1"
-            />
+            <BrandHeaderLogo alt={t("owner.payments.title")} size="compact" />
             <div>
               <h1 className="font-semibold text-lg">{t("owner.payments.title")}</h1>
               <p className="text-white/80 text-sm">{t("owner.payments.subtitle")}</p>

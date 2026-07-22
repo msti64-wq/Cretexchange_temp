@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
 import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, DollarSign, Pencil, Check, X, Activity } from "lucide-react";
-import logoImage from "@assets/cretexchange logo_1760644229633.png";
+import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { formatCentsToDollars, formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatAddress } from "@shared/addressUtils";
@@ -448,11 +448,7 @@ export default function OwnerLocations() {
       <header className="gradient-bg text-white p-4 shadow-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <img 
-              src={logoImage}
-              alt="CreteXchange Logo"
-              className="w-10 h-10 object-contain bg-white/20 rounded-full p-1"
-            />
+            <BrandHeaderLogo alt="CreteXchange" size="compact" />
             <div>
               <h1 className="font-semibold text-lg">{t("owner.locations.myLocations")}</h1>
               <p className="text-white/80 text-sm">{t("owner.locations.manageWashoutSites")}</p>
