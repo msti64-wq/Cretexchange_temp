@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+import { useLanguage } from "@/lib/i18n";
 
 // Safe Stripe.js loader with proper error handling
 let stripePromise: Promise<any> | null = null;
@@ -46,6 +47,7 @@ const SubscribeForm = ({ clientSecret, paymentIntentId, onSuccess }: {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
@@ -54,7 +56,7 @@ const SubscribeForm = ({ clientSecret, paymentIntentId, onSuccess }: {
     setPaymentError(null);
 
     if (!stripe || !elements) {
-      setPaymentError("Payment system is not ready. Please try again.");
+      setPaymentError(t("owner.subscribe.paymentUnavailable"));
       return;
     }
 
@@ -72,14 +74,14 @@ const SubscribeForm = ({ clientSecret, paymentIntentId, onSuccess }: {
       if (error) {
         setPaymentError(error.message || "Payment failed. Please try again.");
         toast({
-          title: "Payment Failed",
+          title: t("common.error"),
           description: error.message,
           variant: "destructive",
         });
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         toast({
-          title: "Payment Successful",
-          description: "Activating your membership...",
+          title: t("common.success"),
+          description: t("owner.subscribe.processing"),
         });
         onSuccess(paymentIntent.id);
       }
@@ -87,7 +89,7 @@ const SubscribeForm = ({ clientSecret, paymentIntentId, onSuccess }: {
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
       setPaymentError(errorMessage);
       toast({
-        title: "Payment Error",
+        title: t("common.error"),
         description: errorMessage,
         variant: "destructive",
       });
@@ -99,7 +101,7 @@ const SubscribeForm = ({ clientSecret, paymentIntentId, onSuccess }: {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Payment Details</CardTitle>
+        <CardTitle>{t("owner.subscribe.paymentDetails")}</CardTitle>
         <p className="text-sm text-muted-foreground">
           Complete your $15.00 membership payment to activate your account
         </p>
@@ -124,7 +126,7 @@ const SubscribeForm = ({ clientSecret, paymentIntentId, onSuccess }: {
               data-testid="button-complete-payment"
             >
               <CreditCard className="w-5 h-5 mr-2" />
-              {isProcessing ? "Processing Payment..." : "Pay $15.00 & Activate"}
+              {isProcessing ? t("owner.subscribe.processing") : t("owner.subscribe.payActivate")}
             </Button>
           </form>
         </div>
@@ -135,6 +137,7 @@ const SubscribeForm = ({ clientSecret, paymentIntentId, onSuccess }: {
 
 export default function OwnerSubscribe() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "annual">("annual");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -265,8 +268,8 @@ export default function OwnerSubscribe() {
               <Crown className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-lg">Platform Membership</h1>
-              <p className="text-white/80 text-sm">Join CreteXchange</p>
+              <h1 className="font-semibold text-lg">{t("owner.subscribe.title")}</h1>
+              <p className="text-white/80 text-sm">{t("owner.subscribe.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -291,7 +294,7 @@ export default function OwnerSubscribe() {
                       <CardTitle className="flex items-center">
                         {plan.name}
                         {plan.popular && (
-                          <Badge className="ml-2" data-testid="badge-popular">Popular</Badge>
+                          <Badge className="ml-2" data-testid="badge-popular">{t("owner.subscribe.popular")}</Badge>
                         )}
                       </CardTitle>
                       <div className="text-right">
@@ -327,13 +330,13 @@ export default function OwnerSubscribe() {
               data-testid="button-start-subscription"
             >
               <CreditCard className="w-5 h-5 mr-2" />
-              {createPaymentMutation.isPending ? "Setting up payment..." : "Continue to Payment"}
+              {createPaymentMutation.isPending ? t("owner.subscribe.settingUp") : t("owner.subscribe.continue")}
             </Button>
 
             {/* Features Summary */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="font-semibold text-lg mb-4">What you get:</h3>
+                <h3 className="font-semibold text-lg mb-4">{t("owner.subscribe.whatYouGet")}</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center">
                     <Check className="w-4 h-4 text-green-500 mr-2" />
@@ -377,7 +380,7 @@ export default function OwnerSubscribe() {
               <CardContent className="p-8">
                 <div className="text-center space-y-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-sm text-muted-foreground">Loading payment system...</p>
+                  <p className="text-sm text-muted-foreground">{t("owner.subscribe.loadingPayment")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -388,7 +391,7 @@ export default function OwnerSubscribe() {
                   <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                     <div className="flex items-center justify-center space-x-2 mb-3">
                       <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-                      <p className="font-medium text-yellow-700 dark:text-yellow-300">Payment System Unavailable</p>
+                      <p className="font-medium text-yellow-700 dark:text-yellow-300">{t("owner.subscribe.paymentUnavailable")}</p>
                     </div>
                     <p className="text-sm text-yellow-600 dark:text-yellow-400 mb-4">{stripeError}</p>
                     <div className="space-y-2">

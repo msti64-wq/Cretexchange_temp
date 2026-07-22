@@ -779,8 +779,8 @@ export default function OwnerLocations() {
           <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="text-lg font-semibold">Location Intelligence</h2>
-                <p className="text-sm text-muted-foreground">Location configuration plus clearly labeled activity-derived metrics.</p>
+                <h2 className="text-lg font-semibold">{t("owner.locations.intelligence")}</h2>
+                <p className="text-sm text-muted-foreground">{t("owner.locations.intelligenceDescription")}</p>
               </div>
               <Badge variant="outline" className="text-xs uppercase tracking-[0.14em]">
                 Existing data only
@@ -792,7 +792,7 @@ export default function OwnerLocations() {
                 <CardContent className="flex flex-col items-center justify-center gap-3 py-8 text-center">
                   <Activity className="h-10 w-10 text-muted-foreground" />
                   <div className="space-y-1">
-                    <p className="font-semibold">No location intelligence yet</p>
+                    <p className="font-semibold">{t("owner.locations.noIntelligence")}</p>
                     <p className="max-w-lg text-sm text-muted-foreground">
                       Add locations and capture activity to surface activity totals, driver attraction, repeat drivers, incentive averages, and engagement indicators.
                     </p>
@@ -807,7 +807,7 @@ export default function OwnerLocations() {
                 {isOwnerActivitiesError && (
                   <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
                     <div>
-                      <p className="text-sm font-semibold">Activity intelligence is temporarily unavailable</p>
+                      <p className="text-sm font-semibold">{t("owner.locations.activityUnavailable")}</p>
                       <p className="text-xs opacity-80">Location configuration remains available; activity-derived metrics are shown as unavailable.</p>
                     </div>
                     <Button
@@ -821,7 +821,7 @@ export default function OwnerLocations() {
                 )}
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <StatCard title="Location Status" className="text-center">
+                  <StatCard title={t("owner.locations.status")} className="text-center">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <div className="text-2xl font-bold text-green-600" data-testid="text-active-locations">
@@ -841,7 +841,7 @@ export default function OwnerLocations() {
                     </div>
                   </StatCard>
 
-                  <StatCard title="Top Location" className="text-center">
+                  <StatCard title={t("owner.locations.topLocation")} className="text-center">
                     <div className="truncate text-lg font-bold text-primary" data-testid="text-top-location">
                       {isOwnerActivitiesLoading ? "Loading…" : isOwnerActivitiesError ? "—" : topLocationByActivity?.location?.name || "—"}
                     </div>
@@ -856,7 +856,7 @@ export default function OwnerLocations() {
                     </div>
                   </StatCard>
 
-                  <StatCard title="Average Incentive" className="text-center">
+                  <StatCard title={t("owner.locations.averageIncentive")} className="text-center">
                     <div className="text-2xl font-bold text-accent" data-testid="text-average-incentive">
                       {averageConfiguredIncentiveCents !== null ? formatCentsToDollars(averageConfiguredIncentiveCents) : "—"}
                     </div>
@@ -865,7 +865,7 @@ export default function OwnerLocations() {
                     </div>
                   </StatCard>
 
-                  <StatCard title="Recent Activity" className="text-center">
+                  <StatCard title={t("owner.locations.recentActivity")} className="text-center">
                     <div className="text-2xl font-bold text-secondary" data-testid="text-recent-location-activity">
                       {isOwnerActivitiesLoading ? "…" : isOwnerActivitiesError ? "—" : locationsWithRecentActivity}
                     </div>
@@ -998,7 +998,7 @@ export default function OwnerLocations() {
                         )}
                         <div className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-4">
                           <div className="rounded-xl border border-border bg-muted/20 px-3 py-2">
-                            <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Activity</div>
+                            <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t("owner.locations.activity")}</div>
                             <div className="mt-1 text-base font-semibold" data-testid={`text-location-activity-count-${index}`}>
                               {activityMetricValue(activitySummary?.activityCount ?? 0)}
                             </div>
@@ -1012,7 +1012,7 @@ export default function OwnerLocations() {
                             <div className="text-xs text-muted-foreground">Activity-derived · last 7 days</div>
                           </div>
                           <div className="rounded-xl border border-border bg-muted/20 px-3 py-2">
-                            <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Unique drivers</div>
+                            <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{t("owner.locations.uniqueDrivers")}</div>
                             <div className="mt-1 text-base font-semibold" data-testid={`text-location-unique-drivers-${index}`}>
                               {activityMetricValue(activitySummary?.uniqueDriverCount ?? 0)}
                             </div>
@@ -1032,7 +1032,7 @@ export default function OwnerLocations() {
                             <div className="mt-1 text-base font-semibold">
                               {configuredDriverIncentiveCents !== null ? formatCentsToDollars(configuredDriverIncentiveCents) : "—"}
                             </div>
-                            <div className="text-xs text-muted-foreground">Configured rate</div>
+                            <div className="text-xs text-muted-foreground">{t("owner.locations.configuredRate")}</div>
                           </div>
                         </div>
                       </div>

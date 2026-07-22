@@ -10,10 +10,11 @@ import { StatCard } from "@/components/StatCard";
 import { PhotoModal } from "@/components/PhotoModal";
 import { Users, Search, Filter, MapPin, Clock, Image as ImageIcon } from "lucide-react";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
-import { formatCurrency } from "@/lib/utils";
 import { isBillableWashoutForOwnerBilling } from "@shared/washoutApproval";
+import { formatLocalizedCurrency, formatLocalizedDate, translateActivityStatus, useLanguage } from "@/lib/i18n";
 
 export default function OwnerDrivers() {
+  const { t, language } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPeriod, setFilterPeriod] = useState("7");
   const [selectedLocation, setSelectedLocation] = useState("all");
@@ -105,12 +106,12 @@ export default function OwnerDrivers() {
           <div className="flex items-center space-x-3">
             <img 
               src={logoImage}
-              alt="CreteXchange Logo"
+              alt={t("owner.drivers.title")}
               className="w-10 h-10 object-contain bg-white/20 rounded-full p-1"
             />
             <div>
-              <h1 className="font-semibold text-lg">Driver Activity</h1>
-              <p className="text-white/80 text-sm">Monitor driver performance</p>
+              <h1 className="font-semibold text-lg">{t("owner.drivers.title")}</h1>
+              <p className="text-white/80 text-sm">{t("owner.drivers.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -119,27 +120,28 @@ export default function OwnerDrivers() {
       <main className="p-4 space-y-4">
         {/* Summary Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard title="Drivers" className="text-center">
+          <StatCard title={t("common.drivers")} className="text-center">
             <div className="text-2xl font-bold text-primary" data-testid="text-total-drivers">
               {driverList.length}
             </div>
-            <div className="text-xs text-muted-foreground">Active</div>
+            <div className="text-xs text-muted-foreground">{t("owner.drivers.active")}</div>
           </StatCard>
 
-          <StatCard title="Washouts" className="text-center">
+          <StatCard title={t("common.washouts")} className="text-center">
             <div className="text-2xl font-bold text-secondary" data-testid="text-total-washouts">
               {filteredActivities.length}
             </div>
-            <div className="text-xs text-muted-foreground">Activity history</div>
+            <div className="text-xs text-muted-foreground">{t("owner.drivers.activityHistory")}</div>
           </StatCard>
 
-          <StatCard title="Driver Tip Obligations" className="text-center">
+          <StatCard title={t("owner.drivers.tipObligations")} className="text-center">
             <div className="text-2xl font-bold text-accent" data-testid="text-total-pending-charges">
-              {formatCurrency(
-                billableActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0)
+              {formatLocalizedCurrency(
+                billableActivities.reduce((sum: number, activity: any) => sum + Number(activity.amount || 0), 0),
+                language,
               )}
             </div>
-            <div className="text-xs text-muted-foreground">Billable verified/approved washouts only</div>
+            <div className="text-xs text-muted-foreground">{t("owner.drivers.billableOnly")}</div>
           </StatCard>
         </div>
 
@@ -149,13 +151,13 @@ export default function OwnerDrivers() {
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Filters</span>
+                <span className="text-sm font-medium">{t("common.filters")}</span>
               </div>
               
               <div className="relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search drivers..."
+                  placeholder={t("owner.drivers.search")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -165,28 +167,28 @@ export default function OwnerDrivers() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Time Period</label>
+                  <label className="text-sm text-muted-foreground mb-1 block">{t("owner.drivers.timePeriod")}</label>
                   <Select value={filterPeriod} onValueChange={setFilterPeriod}>
                     <SelectTrigger data-testid="select-period">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="7">Last 7 days</SelectItem>
-                      <SelectItem value="14">Last 14 days</SelectItem>
-                      <SelectItem value="30">Last 30 days</SelectItem>
-                      <SelectItem value="90">Last 3 months</SelectItem>
+                      <SelectItem value="7">{t("owner.drivers.lastDays", { count: 7 })}</SelectItem>
+                      <SelectItem value="14">{t("owner.drivers.lastDays", { count: 14 })}</SelectItem>
+                      <SelectItem value="30">{t("owner.drivers.lastDays", { count: 30 })}</SelectItem>
+                      <SelectItem value="90">{t("owner.drivers.lastMonths", { count: 3 })}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Location</label>
+                  <label className="text-sm text-muted-foreground mb-1 block">{t("common.locations")}</label>
                   <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                     <SelectTrigger data-testid="select-location">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Locations</SelectItem>
+                      <SelectItem value="all">{t("owner.drivers.allLocations")}</SelectItem>
                       {Array.isArray(locations) && locations.map((location: any) => (
                         <SelectItem key={location.id} value={location.id}>
                           {location.name}
@@ -204,14 +206,14 @@ export default function OwnerDrivers() {
         <div className="space-y-3">
           <h2 className="text-lg font-semibold flex items-center">
             <Users className="w-5 h-5 mr-2" />
-            Driver Performance
+            {t("owner.drivers.performance")}
           </h2>
 
           {driverList.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No driver activity found for the selected period</p>
+                <p className="text-muted-foreground">{t("owner.drivers.empty")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -224,30 +226,30 @@ export default function OwnerDrivers() {
                         {driverStat.driver.firstName} {driverStat.driver.lastName}
                       </h3>
                       <p className="text-sm text-muted-foreground mb-2" data-testid={`text-driver-employer-${index}`}>
-                        Driver
+                        {t("owner.drivers.driver")}
                       </p>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
                           <span data-testid={`text-last-activity-${index}`}>
-                            Last: {new Date(driverStat.lastActivity).toLocaleDateString()}
+                            {t("owner.drivers.lastActivity", { date: formatLocalizedDate(driverStat.lastActivity, language) })}
                           </span>
                         </div>
                         <div className="flex items-center">
                           <MapPin className="w-4 h-4 mr-1" />
                           <span data-testid={`text-locations-count-${index}`}>
-                            {driverStat.locations.size} location{driverStat.locations.size !== 1 ? 's' : ''}
+                            {t(driverStat.locations.size === 1 ? "owner.drivers.locationCount" : "owner.drivers.locationCount_plural", { count: driverStat.locations.size })}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-xl font-bold text-accent mb-1" data-testid={`text-driver-pending-charges-${index}`}>
-                        {formatCurrency(driverStat.totalPendingCharges)}
+                        {formatLocalizedCurrency(driverStat.totalPendingCharges, language)}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         <span data-testid={`text-driver-washouts-${index}`}>
-                          {driverStat.totalWashouts} washout{driverStat.totalWashouts !== 1 ? 's' : ''}
+                          {t(driverStat.totalWashouts === 1 ? "owner.drivers.washoutCount" : "owner.drivers.washoutCount_plural", { count: driverStat.totalWashouts })}
                         </span>
                       </div>
                     </div>
@@ -262,12 +264,12 @@ export default function OwnerDrivers() {
                       ))}
                       {driverStat.locations.size > 3 && (
                         <Badge variant="outline" className="text-xs">
-                          +{driverStat.locations.size - 3} more
+                          {t("owner.drivers.moreLocations", { count: driverStat.locations.size - 3 })}
                         </Badge>
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Avg: {formatCurrency(driverStat.totalPendingCharges / driverStat.totalWashouts)}
+                      {t("common.average")}: {formatLocalizedCurrency(driverStat.totalPendingCharges / driverStat.totalWashouts, language)}
                     </div>
                   </div>
                 </CardContent>
@@ -278,7 +280,7 @@ export default function OwnerDrivers() {
 
         {/* Recent Activities */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Recent Activity</h2>
+          <h2 className="text-lg font-semibold">{t("owner.drivers.recentActivity")}</h2>
           
           {filteredActivities.slice(0, 10).map((activity: any, index: number) => (
             <div key={activity.id || index} className="p-3 bg-muted/50 rounded-lg" data-testid={`card-activity-${index}`}>
@@ -299,7 +301,7 @@ export default function OwnerDrivers() {
                 
                 <div className="text-right ml-2">
                   <div className="font-semibold text-sm" data-testid={`text-activity-amount-${index}`}>
-                    {formatCurrency(Number(activity.amount || 0))}
+                    {formatLocalizedCurrency(Number(activity.amount || 0), language)}
                   </div>
                 </div>
               </div>
@@ -313,8 +315,7 @@ export default function OwnerDrivers() {
                   className="text-xs"
                   data-testid={`badge-activity-status-${index}`}
                 >
-                  {activity.status === 'verified' ? 'Approved' : 
-                   activity.status === 'pending' ? 'Pending' : 'Rejected'}
+                  {translateActivityStatus(activity.status, t)}
                 </Badge>
                 
                 <div className="flex items-center gap-1">
@@ -333,7 +334,7 @@ export default function OwnerDrivers() {
                     </Button>
                   )}
                   <div className="text-xs text-muted-foreground" data-testid={`text-activity-time-${index}`}>
-                    {new Date(activity.checkInTime).toLocaleDateString()}
+                    {formatLocalizedDate(activity.checkInTime, language)}
                   </div>
                 </div>
               </div>

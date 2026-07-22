@@ -7,7 +7,7 @@ import { OWNER_REPORT_COLUMNS } from "@shared/reportColumns";
 import type { ReportRow } from "@shared/reportTypes";
 import { Card, CardContent } from "@/components/ui/card";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
-import { formatCentsToDollars } from "@/lib/utils";
+import { formatLocalizedCurrency, formatLocalizedDate, useLanguage } from "@/lib/i18n";
 
 function activityStatusBucket(status: string): "approved" | "pending" | "rejected" {
   const normalized = status.toLowerCase();
@@ -27,6 +27,7 @@ function OwnerOperationalInsights({
   locationsLoading: boolean;
   locationsError: boolean;
 }) {
+  const { t, language } = useLanguage();
   const approvedRows = rows.filter((row) => activityStatusBucket(row.washoutStatus) === "approved");
   const approvedByDriver = approvedRows.reduce<Record<string, number>>((acc, row) => {
     if (!row.driverId) return acc;
@@ -39,7 +40,6 @@ function OwnerOperationalInsights({
     return Number.isFinite(time) && time >= Date.now() - 7 * 24 * 60 * 60 * 1000;
   }).length;
   const rewardEntryRows = rows.filter((row) => Boolean(row.ticketNumber));
-  const rewardEntryFieldAvailable = rows.some((row) => Object.prototype.hasOwnProperty.call(row, "ticketNumber"));
   const locationActivity = rows.reduce<Record<string, { name: string; total: number; approved: number; rewards: number }>>((acc, row) => {
     const key = row.locationId || row.locationName || "unknown";
     if (!acc[key]) acc[key] = { name: row.locationName || "Unknown location", total: 0, approved: 0, rewards: 0 };
@@ -55,7 +55,7 @@ function OwnerOperationalInsights({
     const date = new Date(row.checkInTime || 0);
     if (Number.isNaN(date.getTime())) return acc;
     const key = `${date.getFullYear()}-${date.getMonth()}`;
-    if (!acc[key]) acc[key] = { label: date.toLocaleDateString("en-US", { month: "short", year: "numeric" }), count: 0 };
+    if (!acc[key]) acc[key] = { label: formatLocalizedDate(date, language, { month: "short", year: "numeric" }), count: 0 };
     acc[key].count += 1;
     return acc;
   }, {})).sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
@@ -64,7 +64,7 @@ function OwnerOperationalInsights({
     const cents = rate === null || rate === undefined || rate === "" ? null : resolveLocationDriverTipRateCents(rate);
     return {
       id: location?.id,
-      name: location?.name || "Unnamed location",
+      name: location?.name || t("common.unknown"),
       cents: Number.isFinite(cents) ? cents : null,
     };
   }).sort((left, right) => left.name.localeCompare(right.name));
@@ -74,40 +74,40 @@ function OwnerOperationalInsights({
       <Card>
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div>
-            <h2 className="text-base font-semibold">Location Activity & Reward Entries</h2>
-            <p className="text-sm text-muted-foreground">Reward entries are counted from existing ticket indicators only; ticket numbers are not shown to owners.</p>
+            <h2 className="text-base font-semibold">{t("owner.reports.locationActivity")}</h2>
+            <p className="text-sm text-muted-foreground">{t("owner.reports.rewardEntryHelp")}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-border bg-muted/25 p-3"><p className="text-xs text-muted-foreground">Reward entries generated</p><p className="mt-1 text-2xl font-semibold">{rewardEntryRows.length}</p></div>
-            <div className="rounded-xl border border-border bg-muted/25 p-3"><p className="text-xs text-muted-foreground">Repeat drivers</p><p className="mt-1 text-2xl font-semibold">{repeatDriverCount}</p></div>
-            <div className="rounded-xl border border-border bg-muted/25 p-3"><p className="text-xs text-muted-foreground">Recent activity</p><p className="mt-1 text-2xl font-semibold">{recentActivityCount}</p></div>
+            <div className="rounded-xl border border-border bg-muted/25 p-3"><p className="text-xs text-muted-foreground">{t("owner.reports.rewardEntries")}</p><p className="mt-1 text-2xl font-semibold">{rewardEntryRows.length}</p></div>
+            <div className="rounded-xl border border-border bg-muted/25 p-3"><p className="text-xs text-muted-foreground">{t("owner.reports.repeatDrivers")}</p><p className="mt-1 text-2xl font-semibold">{repeatDriverCount}</p></div>
+            <div className="rounded-xl border border-border bg-muted/25 p-3"><p className="text-xs text-muted-foreground">{t("owner.reports.recentActivity")}</p><p className="mt-1 text-2xl font-semibold">{recentActivityCount}</p></div>
           </div>
           {locationSummaries.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No activity-by-location data matches the current report filters.</p>
+            <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">{t("owner.reports.noLocationActivity")}</p>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border">
               <table className="w-full min-w-[560px] text-sm">
-                <thead className="bg-muted/40 text-left text-xs text-muted-foreground"><tr><th className="px-3 py-2 font-medium">Location</th><th className="px-3 py-2 font-medium">Activity</th><th className="px-3 py-2 font-medium">Approved</th><th className="px-3 py-2 font-medium">Reward entries</th></tr></thead>
+                <thead className="bg-muted/40 text-left text-xs text-muted-foreground"><tr><th className="px-3 py-2 font-medium">{t("common.locations")}</th><th className="px-3 py-2 font-medium">{t("owner.dashboard.activity")}</th><th className="px-3 py-2 font-medium">{t("common.approved")}</th><th className="px-3 py-2 font-medium">{t("owner.reports.rewardEntries")}</th></tr></thead>
                 <tbody className="divide-y divide-border">
                   {locationSummaries.slice(0, 8).map((location) => <tr key={location.name}><td className="px-3 py-2 font-medium">{location.name}</td><td className="px-3 py-2">{location.total}</td><td className="px-3 py-2">{location.approved}</td><td className="px-3 py-2">{location.rewards}</td></tr>)}
                 </tbody>
               </table>
             </div>
           )}
-          <p className="text-xs text-muted-foreground">Top location by approved activity: {topLocation ? `${topLocation.name} (${topLocation.approved})` : "—"}. {!rewardEntryFieldAvailable ? "Reward-entry indicators are unavailable in this report payload." : rewardMonths[0] ? `Most active reward-entry month: ${rewardMonths[0].label} (${rewardMonths[0].count}).` : "No reward-entry indicators in the selected range."}</p>
-          {rewardMonths.length > 0 && <div className="flex flex-wrap gap-2">{rewardMonths.slice(0, 6).map((month) => <span key={month.label} className="rounded-full border border-border bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground">{month.label}: {month.count}</span>)}</div>}
+          <p className="text-xs text-muted-foreground">{topLocation ? t("owner.reports.topLocation", { name: topLocation.name, count: topLocation.approved }) : "—"}</p>
+          {rewardMonths.length > 0 && <div className="flex flex-wrap gap-2">{rewardMonths.slice(0, 6).map((month) => <span key={month.label} className="rounded-full border border-border bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground">{t("owner.reports.rewardMonth", { month: month.label, count: month.count })}</span>)}</div>}
         </CardContent>
       </Card>
 
       <Card>
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div>
-            <h2 className="text-base font-semibold">Configured Driver Incentives</h2>
-            <p className="text-sm text-muted-foreground">Current location configuration only—not activity earnings, wallet value, payment, or settlement.</p>
+            <h2 className="text-base font-semibold">{t("owner.reports.configuredIncentives")}</h2>
+            <p className="text-sm text-muted-foreground">{t("owner.reports.configuredIncentivesHelp")}</p>
           </div>
-          {locationsLoading ? <p className="text-sm text-muted-foreground">Loading location configuration…</p> : locationsError ? <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Location configuration is temporarily unavailable. Activity reporting remains available.</p> : configuredRates.length === 0 ? <p className="text-sm text-muted-foreground">No location configuration is available.</p> : (
+          {locationsLoading ? <p className="text-sm text-muted-foreground">{t("owner.reports.loadingConfiguration")}</p> : locationsError ? <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("owner.reports.configurationUnavailable")}</p> : configuredRates.length === 0 ? <p className="text-sm text-muted-foreground">{t("owner.reports.noConfiguration")}</p> : (
             <div className="space-y-2">
-              {configuredRates.slice(0, 8).map((location) => <div key={location.id || location.name} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 px-3 py-2"><span className="min-w-0 truncate text-sm font-medium">{location.name}</span><span className="shrink-0 text-sm text-muted-foreground">{location.cents === null ? "—" : formatCentsToDollars(location.cents)}</span></div>)}
+              {configuredRates.slice(0, 8).map((location) => <div key={location.id || location.name} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 px-3 py-2"><span className="min-w-0 truncate text-sm font-medium">{location.name}</span><span className="shrink-0 text-sm text-muted-foreground">{location.cents === null ? "—" : formatLocalizedCurrency(location.cents / 100, language)}</span></div>)}
             </div>
           )}
         </CardContent>
@@ -117,6 +117,7 @@ function OwnerOperationalInsights({
 }
 
 export default function OwnerReports() {
+  const { t } = useLanguage();
   const { data: locationsData, isLoading: locationsLoading, isError: locationsError } = useQuery<any[]>({
     queryKey: ["/api/owners/locations"],
     retry: false,
@@ -132,20 +133,20 @@ export default function OwnerReports() {
         <div className="flex items-center space-x-3">
           <img
             src={logoImage}
-            alt="CreteXchange Logo"
+            alt={t("owner.reports.title")}
             className="w-10 h-10 object-contain bg-white/20 rounded-full p-1"
           />
           <div>
-            <h1 className="font-semibold text-lg">Owner Reports</h1>
-            <p className="text-white/80 text-sm">Operational activity, location engagement, and reward-entry reporting</p>
+            <h1 className="font-semibold text-lg">{t("owner.reports.title")}</h1>
+            <p className="text-white/80 text-sm">{t("owner.reports.subtitle")}</p>
           </div>
         </div>
       </header>
 
       <main className="p-4">
         <ReportExplorer
-          title="Owner Report"
-          description="Filter operational activity across your locations. Activity status is distinct from payment and settlement state."
+          title={t("owner.reports.reportTitle")}
+          description={t("owner.reports.reportDescription")}
           endpoint="/api/reports/owner"
           filenamePrefix="owner-report"
           defaultDateRange="weekly"

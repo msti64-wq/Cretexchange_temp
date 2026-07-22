@@ -14,7 +14,6 @@ import { PhotoModal } from "@/components/PhotoModal";
 import { SupportMessageDialog } from "@/components/SupportMessageDialog";
 import { DebugPanel } from "@/components/DebugPanel";
 import { Users, DollarSign, MapPin, Clock, ImageIcon, Check, X, MessageCircle, Phone, Building2, ChevronRight, Gauge, MapPinned, Loader2, ShieldAlert, Activity, Search, TrendingUp, UserRoundCheck } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { OwnerHeader } from "@/components/OwnerHeader";
@@ -25,8 +24,7 @@ import { resolveOwnerMembershipState } from "@shared/ownerMembership";
 import { resolveConfiguredWashoutPlatformFeeCents } from "@shared/billingPolicy";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isBillableWashoutForOwnerBilling, isPendingWashoutApproval } from "@shared/washoutApproval";
-import { useLanguage } from "@/lib/i18n";
-import { formatCentsToDollars } from "@/lib/utils";
+import { formatLocalizedCurrency, useLanguage } from "@/lib/i18n";
 import { normalizeDollarInputToCents } from "@shared/money";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -724,17 +722,17 @@ export default function OwnerDashboard() {
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.platformFees")}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight">{formatCentsToDollars(billingPlatformFeesTotalCents)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight">{formatLocalizedCurrency(billingPlatformFeesTotalCents / 100, language)}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.platformFeesDescription")}</p>
               </div>
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.driverTips")}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-sky-700 dark:text-sky-300">{formatCentsToDollars(billingDriverTipsTotalCents)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-sky-700 dark:text-sky-300">{formatLocalizedCurrency(billingDriverTipsTotalCents / 100, language)}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.driverTipsDescription")}</p>
               </div>
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.totalOwnerCharge")}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{formatCentsToDollars(billingOwnerChargeTotalCents)}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">{formatLocalizedCurrency(billingOwnerChargeTotalCents / 100, language)}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{t("owner.dashboard.totalOwnerChargeDescription")}</p>
               </div>
             </div>
@@ -753,7 +751,7 @@ export default function OwnerDashboard() {
               detail={
                 <div className="space-y-0.5">
                   <div>{`${pendingReviewCount} Washout${pendingReviewCount === 1 ? "" : "s"}`}</div>
-                  <div>{`Potential Charges: ${formatCentsToDollars(pendingReviewPotentialChargesCents)}`}</div>
+                  <div>{t("owner.dashboard.potentialCharges", { amount: formatLocalizedCurrency(pendingReviewPotentialChargesCents / 100, language) })}</div>
                 </div>
               }
               accentTone="warning"
@@ -761,7 +759,7 @@ export default function OwnerDashboard() {
             />
             <DSKpiCard
               label={t("owner.dashboard.currentReceivables")}
-              value={formatCentsToDollars(currentReceivablesCents)}
+              value={formatLocalizedCurrency(currentReceivablesCents / 100, language)}
               detail={
                 <div className="space-y-0.5">
                   <div>{`${approvedCount} Approved Washouts`}</div>
@@ -841,7 +839,7 @@ export default function OwnerDashboard() {
               />
               <DSKpiCard
                 label={t("owner.dashboard.averageDriverIncentive")}
-                value={averageConfiguredIncentiveCents !== null ? formatCentsToDollars(averageConfiguredIncentiveCents) : "—"}
+                value={averageConfiguredIncentiveCents !== null ? formatLocalizedCurrency(averageConfiguredIncentiveCents / 100, language) : "—"}
                 detail={
                   <div className="space-y-0.5">
                     <div>{configuredLocationTipValues.length > 0
@@ -1132,7 +1130,7 @@ export default function OwnerDashboard() {
                     <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.currentMonthActivity")}</p>
                   </div>
                   <span className="text-2xl font-semibold tracking-tight text-sky-500 dark:text-sky-300" data-testid="text-month-total">
-                    {formatCurrency(monthStats?.totalPayments || 0)}
+                    {formatLocalizedCurrency(monthStats?.totalPayments || 0, language)}
                   </span>
                 </div>
               </div>
@@ -1140,7 +1138,7 @@ export default function OwnerDashboard() {
               <div className="rounded-2xl border border-border bg-muted/30 p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("owner.dashboard.currentReceivables")}</p>
                   <p className="mt-2 text-xl font-semibold tracking-tight text-sky-500 dark:text-sky-300" data-testid="text-pending-total">
-                    {formatCentsToDollars(currentReceivablesCents)}
+                    {formatLocalizedCurrency(currentReceivablesCents / 100, language)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">{t("owner.dashboard.awaitingReview")}</p>
                 </div>
@@ -1276,7 +1274,7 @@ export default function OwnerDashboard() {
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-semibold tracking-tight text-accent" data-testid={`text-activity-amount-${index}`}>
-                          {formatCurrency(Number(activity.amount || 0))}
+                          {formatLocalizedCurrency(Number(activity.amount || 0), language)}
                         </div>
                       </div>
                     </div>
@@ -1366,7 +1364,7 @@ export default function OwnerDashboard() {
                     
                     <div className="text-right">
                       <div className="text-lg font-semibold tracking-tight text-accent" data-testid={`text-activity-amount-${index}`}>
-                        {formatCurrency(Number(activity.amount || 0))}
+                        {formatLocalizedCurrency(Number(activity.amount || 0), language)}
                       </div>
                     </div>
                   </div>

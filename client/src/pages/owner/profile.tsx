@@ -58,8 +58,8 @@ export default function OwnerProfile() {
     },
     onSuccess: () => {
       toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
+        title: t("owner.profile.updated"),
+        description: t("owner.profile.updatedDescription"),
       });
       setIsEditing(false);
       refetch();
@@ -73,7 +73,7 @@ export default function OwnerProfile() {
     },
     onError: (error) => {
       toast({
-        title: "Update Failed",
+        title: t("owner.profile.updateFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -87,15 +87,15 @@ export default function OwnerProfile() {
     },
     onSuccess: () => {
       toast({
-        title: "Password Changed",
-        description: "Your password has been successfully updated.",
+        title: t("owner.profile.passwordChanged"),
+        description: t("owner.profile.passwordChangedDescription"),
       });
       setShowChangePassword(false);
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     },
     onError: (error: any) => {
       toast({
-        title: "Password Change Failed",
+        title: t("owner.profile.passwordChangeFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -259,14 +259,14 @@ export default function OwnerProfile() {
               <h1 className="font-semibold text-lg" data-testid="text-user-name">
                 {user?.firstName} {user?.lastName}
               </h1>
-              <p className="text-white/80 text-sm">Facility Operator</p>
+              <p className="text-white/80 text-sm">{t("owner.profile.facilityOperator")}</p>
             </div>
           </div>
           <LogoutButton
             onClick={handleLogout}
             dataTestId="button-logout"
             tone="glass"
-            label="Logout"
+            label={t("common.logout")}
             iconOnlyOnMobile={true}
           />
         </div>
@@ -364,7 +364,7 @@ export default function OwnerProfile() {
                     onClick={() => setIsEditing(!isEditing)}
                     data-testid="button-edit-profile"
                   >
-                    {isEditing ? "Cancel" : "Edit"}
+                    {isEditing ? t("common.cancel") : t("common.edit")}
                   </Button>
                 </div>
               </CardTitle>
@@ -372,7 +372,7 @@ export default function OwnerProfile() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">{t("owner.profile.firstName")}</Label>
                   <Input
                     id="firstName"
                     value={formData.firstName}
@@ -382,7 +382,7 @@ export default function OwnerProfile() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">{t("owner.profile.lastName")}</Label>
                   <Input
                     id="lastName"
                     value={formData.lastName}
@@ -394,7 +394,7 @@ export default function OwnerProfile() {
               </div>
               
               <div>
-                <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t("common.email")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -406,7 +406,7 @@ export default function OwnerProfile() {
               </div>
               
               <div>
-                <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">{t("owner.profile.phoneNumber")}</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
@@ -417,7 +417,7 @@ export default function OwnerProfile() {
               </div>
               
               <div>
-                <Label htmlFor="street">Street Address</Label>
+                <Label htmlFor="street">{t("owner.profile.streetAddress")}</Label>
                 <Input
                   id="street"
                   value={formData.street}
@@ -429,7 +429,7 @@ export default function OwnerProfile() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="city">City</Label>
+                  <Label htmlFor="city">{t("common.city")}</Label>
                   <Input
                     id="city"
                     value={formData.city}
@@ -440,7 +440,7 @@ export default function OwnerProfile() {
                 </div>
 
                 <div>
-                  <Label htmlFor="state">State</Label>
+                  <Label htmlFor="state">{t("common.state")}</Label>
                   <Input
                     id="state"
                     value={formData.state}
@@ -453,7 +453,7 @@ export default function OwnerProfile() {
               </div>
 
               <div>
-                <Label htmlFor="zip">ZIP Code</Label>
+                <Label htmlFor="zip">{t("common.zipCode")}</Label>
                 <Input
                   id="zip"
                   value={formData.zip}
@@ -484,7 +484,7 @@ export default function OwnerProfile() {
               </div>
 
               <div>
-                <Label htmlFor="dateOfBirth">Date of Birth (Required)</Label>
+                <Label htmlFor="dateOfBirth">{t("owner.profile.dateOfBirth")}</Label>
                 <Input
                   id="dateOfBirth"
                   type="date"
@@ -499,7 +499,7 @@ export default function OwnerProfile() {
               </div>
 
               <div>
-                <Label htmlFor="ssnLast4">Last 4 Digits of SSN (Required)</Label>
+                <Label htmlFor="ssnLast4">{t("owner.profile.ssnLast4")}</Label>
                 <Input
                   id="ssnLast4"
                   type="text"
@@ -516,7 +516,7 @@ export default function OwnerProfile() {
               </div>
 
               <div>
-                <Label htmlFor="businessWebsite">Business Website (Required)</Label>
+                <Label htmlFor="businessWebsite">{t("owner.profile.businessWebsite")}</Label>
                 <Input
                   id="businessWebsite"
                   type="url"
@@ -549,11 +549,11 @@ export default function OwnerProfile() {
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Change Password</DialogTitle>
+                      <DialogTitle>{t("owner.profile.changePassword")}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleChangePassword} className="space-y-4">
                       <div>
-                        <Label htmlFor="currentPassword">Current Password</Label>
+                        <Label htmlFor="currentPassword">{t("owner.profile.currentPassword")}</Label>
                         <div className="relative">
                           <Input
                             id="currentPassword"
@@ -576,7 +576,7 @@ export default function OwnerProfile() {
                       </div>
 
                       <div>
-                        <Label htmlFor="newPassword">New Password</Label>
+                        <Label htmlFor="newPassword">{t("owner.profile.newPassword")}</Label>
                         <div className="relative">
                           <Input
                             id="newPassword"
@@ -603,7 +603,7 @@ export default function OwnerProfile() {
                       </div>
 
                       <div>
-                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                        <Label htmlFor="confirmPassword">{t("owner.profile.confirmPassword")}</Label>
                         <div className="relative">
                           <Input
                             id="confirmPassword"
@@ -642,7 +642,7 @@ export default function OwnerProfile() {
                           disabled={changePasswordMutation.isPending}
                           data-testid="button-save-password"
                         >
-                          {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
+                          {changePasswordMutation.isPending ? t("owner.profile.changing") : t("owner.profile.changePassword")}
                         </Button>
                       </div>
                     </form>
@@ -652,8 +652,8 @@ export default function OwnerProfile() {
             </CardHeader>
             <CardContent>
               <div className="text-sm text-muted-foreground">
-                <p>Keep your account secure by using a strong password.</p>
-                <p className="mt-1">Last updated: Never</p>
+                <p>{t("owner.profile.passwordHelp")}</p>
+                <p className="mt-1">{t("owner.profile.lastUpdatedNever")}</p>
               </div>
             </CardContent>
           </Card>
@@ -668,7 +668,7 @@ export default function OwnerProfile() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="companyName">Company Name</Label>
+                <Label htmlFor="companyName">{t("owner.profile.companyName")}</Label>
                 <Input
                   id="companyName"
                   value={formData.companyName}
@@ -679,7 +679,7 @@ export default function OwnerProfile() {
               </div>
               
               <div>
-                <Label htmlFor="businessLicense">Business License Number</Label>
+                <Label htmlFor="businessLicense">{t("owner.profile.businessLicense")}</Label>
                 <Input
                   id="businessLicense"
                   value={formData.businessLicense}
@@ -690,7 +690,7 @@ export default function OwnerProfile() {
               </div>
               
               <div>
-                <Label htmlFor="taxId">Tax ID</Label>
+                <Label htmlFor="taxId">{t("owner.profile.taxId")}</Label>
                 <Input
                   id="taxId"
                   value={formData.taxId}
@@ -712,7 +712,7 @@ export default function OwnerProfile() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="paymentMethod">Payment Method for Drivers</Label>
+                <Label htmlFor="paymentMethod">{t("owner.profile.paymentMethod")}</Label>
                 <Select 
                   value={formData.paymentMethod}
                   onValueChange={(value) => setFormData({...formData, paymentMethod: value})}
@@ -722,8 +722,8 @@ export default function OwnerProfile() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ach">ACH Transfer</SelectItem>
-                    <SelectItem value="credit_card">Credit Card</SelectItem>
+                    <SelectItem value="ach">{t("owner.profile.ach")}</SelectItem>
+                    <SelectItem value="credit_card">{t("owner.profile.creditCard")}</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -741,7 +741,7 @@ export default function OwnerProfile() {
               data-testid="button-save-profile"
             >
               <Save className="w-4 h-4 mr-2" />
-              {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+              {updateProfileMutation.isPending ? t("common.saving") : t("owner.profile.saveChanges")}
             </Button>
           )}
         </form>

@@ -23,13 +23,14 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { apiRequest } from "@/lib/queryClient";
-import { formatCurrency } from "@/lib/utils";
+import { formatLocalizedCurrency, formatLocalizedDate, translateActivityStatus, useLanguage } from "@/lib/i18n";
 import { OwnerColumnOnboardingDialog } from "@/components/OwnerColumnOnboardingDialog";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
 
 export default function OwnerWallet() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { t, language } = useLanguage();
   const [showFundDialog, setShowFundDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showOnboardingDialog, setShowOnboardingDialog] = useState(false);
@@ -423,8 +424,8 @@ export default function OwnerWallet() {
               <Wallet className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-semibold text-lg">Wallet Dashboard</h1>
-              <p className="text-white/80 text-sm">Payment Account</p>
+              <h1 className="font-semibold text-lg">{t("owner.wallet.title")}</h1>
+              <p className="text-white/80 text-sm">{t("owner.wallet.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -432,9 +433,9 @@ export default function OwnerWallet() {
 
       <main className="p-4 space-y-6">
         <DSSectionHeader
-          eyebrow="Owner Wallet"
-          title="Financial overview"
-          description="Current balance, spend trends, and transaction history."
+          eyebrow={t("owner.wallet.title")}
+          title={t("owner.wallet.overview")}
+          description={t("owner.wallet.overviewDescription")}
           actions={
             <div className="flex items-center gap-2">
               <DSStatusChip tone={(walletData as any)?.status === "active" ? "success" : "neutral"}>
@@ -447,7 +448,7 @@ export default function OwnerWallet() {
                 data-testid="button-settings"
               >
                 <Settings className="w-4 h-4 mr-2" />
-                Settings
+                {t("owner.wallet.settings")}
               </Button>
             </div>
           }
@@ -465,9 +466,9 @@ export default function OwnerWallet() {
                 <div className="flex items-start space-x-3">
                   <AlertTriangle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-orange-900 dark:text-orange-100">Low Balance Alert</h3>
+                    <h3 className="font-semibold text-orange-900 dark:text-orange-100">{t("owner.wallet.lowBalance")}</h3>
                     <p className="text-sm text-orange-700 dark:text-orange-200 mt-1">
-                      Your wallet balance ({formatCurrency(balance)}) is below your threshold of {formatCurrency(threshold)}. 
+                      {t("owner.wallet.currentBalance")} ({formatLocalizedCurrency(balance, language)}) {formatLocalizedCurrency(threshold, language)}.
                       {(walletData as any)?.autoTopupEnabled ? (
                         <span className="font-medium"> Auto top-up is enabled.</span>
                       ) : (
@@ -506,9 +507,9 @@ export default function OwnerWallet() {
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-blue-100 text-sm">Current Balance</p>
+                  <p className="text-blue-100 text-sm">{t("owner.wallet.currentBalance")}</p>
                   <h2 className="text-3xl font-bold" data-testid="text-wallet-balance">
-                    {formatCurrency((walletData as any)?.balance || 0)}
+                    {formatLocalizedCurrency((walletData as any)?.balance || 0, language)}
                   </h2>
                 </div>
                 <Wallet className="w-8 h-8 text-blue-200" />
@@ -546,19 +547,19 @@ export default function OwnerWallet() {
             <div className="space-y-4">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Auto Top-up</span>
+                  <span className="text-sm text-muted-foreground">{t("owner.wallet.autoTopup")}</span>
                   <DSStatusChip tone={(walletData as any)?.autoTopupEnabled ? "success" : "neutral"}>
-                    {(walletData as any)?.autoTopupEnabled ? 'Enabled' : 'Disabled'}
+                    {(walletData as any)?.autoTopupEnabled ? t("common.enabled") : t("common.disabled")}
                   </DSStatusChip>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Low Balance Alert</span>
+                  <span className="text-sm text-muted-foreground">{t("owner.wallet.lowBalance")}</span>
                   <span className="text-sm font-medium">
                     ${(walletData as any)?.lowBalanceThreshold || 100}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Funding Sources</span>
+                  <span className="text-sm text-muted-foreground">{t("owner.wallet.fundingSources")}</span>
                   <span className="text-sm font-medium">
                     {(fundingSources as any[])?.length || 0} connected
                   </span>
@@ -594,10 +595,10 @@ export default function OwnerWallet() {
         {/* Analytics Cards */}
         {analytics && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <DSKpiCard label="Total Funded" value={formatCurrency((analytics as any)?.totalFunded || 0)} accentTone="success" />
-            <DSKpiCard label="Total Spent" value={formatCurrency((analytics as any)?.totalSpent || 0)} accentTone="danger" />
-            <DSKpiCard label="Avg Monthly" value={formatCurrency((analytics as any)?.avgMonthlySpend || 0)} accentTone="info" />
-            <DSKpiCard label="Transactions" value={(analytics as any)?.transactionCount || 0} accentTone="accent" />
+            <DSKpiCard label={t("owner.wallet.totalFunded")} value={formatLocalizedCurrency((analytics as any)?.totalFunded || 0, language)} accentTone="success" />
+            <DSKpiCard label={t("owner.wallet.totalSpent")} value={formatLocalizedCurrency((analytics as any)?.totalSpent || 0, language)} accentTone="danger" />
+            <DSKpiCard label={t("owner.wallet.averageMonthly")} value={formatLocalizedCurrency((analytics as any)?.avgMonthlySpend || 0, language)} accentTone="info" />
+            <DSKpiCard label={t("owner.wallet.transactions")} value={(analytics as any)?.transactionCount || 0} accentTone="accent" />
           </div>
         )}
 
@@ -612,7 +613,7 @@ export default function OwnerWallet() {
                     Low Wallet Balance
                   </h3>
                   <p className="text-sm text-amber-700 dark:text-amber-300">
-                    Your wallet balance is below the {formatCurrency(parseFloat((walletData as any)?.lowBalanceThreshold || 100))} threshold. 
+                    {t("owner.wallet.currentBalance")} {formatLocalizedCurrency(parseFloat((walletData as any)?.lowBalanceThreshold || 100), language)}.
                     Consider funding your wallet to avoid payment delays.
                   </p>
                 </div>
@@ -622,8 +623,8 @@ export default function OwnerWallet() {
 
         {/* Transaction History */}
         <DSTableShell
-          title="Transaction History"
-          description="Completed owner charges, funding, and wallet adjustments."
+          title={t("owner.wallet.transactionHistory")}
+          description={t("owner.wallet.transactionHistoryDescription")}
           actions={
             <div className="flex items-center space-x-2">
               <Select value={dateRange} onValueChange={(value: any) => setDateRange(value)}>
@@ -631,10 +632,10 @@ export default function OwnerWallet() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="7days">Last 7 days</SelectItem>
-                  <SelectItem value="30days">Last 30 days</SelectItem>
-                  <SelectItem value="90days">Last 90 days</SelectItem>
-                  <SelectItem value="all">All time</SelectItem>
+                  <SelectItem value="7days">{t("owner.wallet.lastDays", { count: 7 })}</SelectItem>
+                  <SelectItem value="30days">{t("owner.wallet.lastDays", { count: 30 })}</SelectItem>
+                  <SelectItem value="90days">{t("owner.wallet.lastDays", { count: 90 })}</SelectItem>
+                  <SelectItem value="all">{t("owner.wallet.allTime")}</SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="outline" size="sm" data-testid="button-export">
@@ -647,7 +648,7 @@ export default function OwnerWallet() {
             {!(transactions as any[])?.length ? (
               <div className="text-center py-8">
                 <RefreshCw className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="font-medium mb-2">No Transactions</h3>
+                <h3 className="font-medium mb-2">{t("owner.wallet.noTransactions")}</h3>
                 <p className="text-muted-foreground">
                   No transactions found for the selected time period.
                 </p>
@@ -668,9 +669,9 @@ export default function OwnerWallet() {
                            `${transaction.transactionType.charAt(0).toUpperCase() + transaction.transactionType.slice(1)}`}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {new Date(transaction.createdAt).toLocaleDateString()} {new Date(transaction.createdAt).toLocaleTimeString()} • 
+                          {formatLocalizedDate(transaction.createdAt, language, { dateStyle: "medium", timeStyle: "short" })} •
                           <DSStatusChip tone="neutral" className="ml-2">
-                            {transaction.status}
+                            {translateActivityStatus(transaction.status, t)}
                           </DSStatusChip>
                         </div>
                       </div>
@@ -679,7 +680,7 @@ export default function OwnerWallet() {
                       <div className={`text-right ${getTransactionColor(transaction.transactionType)}`}>
                         <div className="font-semibold">
                           {transaction.transactionType === 'funding' ? '+' : '-'}
-                          {formatCurrency(transaction.amount)}
+                          {formatLocalizedCurrency(transaction.amount, language)}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {transaction.externalTransactionId && 
@@ -710,7 +711,7 @@ export default function OwnerWallet() {
       <Dialog open={showFundDialog} onOpenChange={setShowFundDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Fund Wallet</DialogTitle>
+            <DialogTitle>{t("owner.wallet.fundWallet")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Test Mode Banner */}
@@ -719,7 +720,7 @@ export default function OwnerWallet() {
                 <div className="flex items-start space-x-3">
                   <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-semibold text-blue-900 dark:text-blue-100">Test Mode</h4>
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-100">{t("owner.wallet.testMode")}</h4>
                     <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                       Stripe Treasury is not available in sandbox. This will simulate wallet funding for testing purposes only.
                     </p>
@@ -729,11 +730,11 @@ export default function OwnerWallet() {
             )}
             
             <div>
-              <Label htmlFor="amount">Amount</Label>
+              <Label htmlFor="amount">{t("common.amount")}</Label>
               <Input
                 id="amount"
                 type="number"
-                placeholder="Enter amount"
+                placeholder={t("owner.wallet.enterAmount")}
                 value={fundAmount}
                 onChange={(e) => setFundAmount(e.target.value)}
                 data-testid="input-fund-amount"
@@ -742,10 +743,10 @@ export default function OwnerWallet() {
             
             {(walletData as any)?.stripeTreasuryAccountId && (
               <div>
-                <Label htmlFor="fundingSource">Funding Source</Label>
+                <Label htmlFor="fundingSource">{t("owner.wallet.fundingSources")}</Label>
                 <Select value={selectedFundingSource} onValueChange={setSelectedFundingSource}>
                   <SelectTrigger data-testid="select-funding-source">
-                    <SelectValue placeholder="Select funding source" />
+                    <SelectValue placeholder={t("owner.wallet.selectFundingSource")} />
                   </SelectTrigger>
                   <SelectContent>
                     {((fundingSources as any[]) || []).map((source: any) => (
@@ -775,9 +776,9 @@ export default function OwnerWallet() {
                 data-testid="button-confirm-fund"
               >
                 {(fundWalletMutation.isPending || simulateFundingMutation.isPending) 
-                  ? "Processing..." 
+                  ? t("owner.wallet.processing")
                   : (walletData as any)?.stripeTreasuryAccountId 
-                    ? "Fund Wallet" 
+                    ? t("owner.wallet.fundWallet")
                     : "Simulate Funding (Test)"}
               </Button>
               <Button
@@ -785,7 +786,7 @@ export default function OwnerWallet() {
                 onClick={() => setShowFundDialog(false)}
                 data-testid="button-cancel-fund"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -796,11 +797,11 @@ export default function OwnerWallet() {
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Wallet Settings</DialogTitle>
+            <DialogTitle>{t("owner.wallet.settings")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="threshold">Low Balance Threshold ($)</Label>
+              <Label htmlFor="threshold">{t("owner.wallet.lowBalanceThreshold")}</Label>
               <Input
                 id="threshold"
                 type="number"
@@ -818,11 +819,11 @@ export default function OwnerWallet() {
                 onChange={(e) => setSettingsData({...settingsData, autoTopupEnabled: e.target.checked})}
                 data-testid="checkbox-auto-topup"
               />
-              <Label htmlFor="autoTopup">Enable Auto Top-up</Label>
+              <Label htmlFor="autoTopup">{t("owner.wallet.enableAutoTopup")}</Label>
             </div>
             {settingsData.autoTopupEnabled && (
               <div>
-                <Label htmlFor="topupAmount">Auto Top-up Amount ($)</Label>
+                <Label htmlFor="topupAmount">{t("owner.wallet.autoTopupAmount")}</Label>
                 <Input
                   id="topupAmount"
                   type="number"
@@ -839,14 +840,14 @@ export default function OwnerWallet() {
                 disabled={updateWalletSettingsMutation.isPending}
                 data-testid="button-save-settings"
               >
-                {updateWalletSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+                {updateWalletSettingsMutation.isPending ? t("common.saving") : t("owner.wallet.saveSettings")}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setShowSettingsDialog(false)}
                 data-testid="button-cancel-settings"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>

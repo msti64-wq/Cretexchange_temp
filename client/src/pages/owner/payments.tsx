@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { DollarSign, Download, Calendar, Filter, TrendingUp } from "lucide-react";
+import { DollarSign, Download, Calendar, Filter } from "lucide-react";
 import logoImage from "@assets/cretexchange logo_1760644229633.png";
-import { formatCentsToDollars, formatCurrency } from "@/lib/utils";
 import { formatAddress } from "@shared/addressUtils";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
+import { formatLocalizedCurrency, formatLocalizedDate, translateActivityStatus, useLanguage } from "@/lib/i18n";
 
 export default function OwnerPayments() {
+  const { t, language } = useLanguage();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -106,12 +107,12 @@ export default function OwnerPayments() {
           <div className="flex items-center space-x-3">
             <img 
               src={logoImage}
-              alt="CreteXchange Logo"
+              alt={t("owner.payments.title")}
               className="w-10 h-10 object-contain bg-white/20 rounded-full p-1"
             />
             <div>
-              <h1 className="font-semibold text-lg">Payment History</h1>
-              <p className="text-white/80 text-sm">Driver payment records</p>
+              <h1 className="font-semibold text-lg">{t("owner.payments.title")}</h1>
+              <p className="text-white/80 text-sm">{t("owner.payments.subtitle")}</p>
             </div>
           </div>
         </div>
@@ -120,35 +121,35 @@ export default function OwnerPayments() {
       <main className="p-4 space-y-4">
         {/* Summary Stats */}
         <div className="grid grid-cols-2 gap-4">
-          <StatCard title="Total Paid" className="text-center">
+          <StatCard title={t("owner.payments.totalPaid")} className="text-center">
             <div className="text-2xl font-bold text-primary" data-testid="text-total-paid">
-              {formatCurrency(stats.totalPayments)}
+              {formatLocalizedCurrency(stats.totalPayments, language)}
             </div>
-            <div className="text-xs text-muted-foreground">To Drivers + Tips</div>
+            <div className="text-xs text-muted-foreground">{t("owner.payments.toDriversAndTips")}</div>
           </StatCard>
 
-          <StatCard title="Total Fees" className="text-center">
+          <StatCard title={t("owner.payments.totalFees")} className="text-center">
             <div className="text-2xl font-bold text-secondary" data-testid="text-total-fees">
-              {formatCurrency(stats.totalFees)}
+              {formatLocalizedCurrency(stats.totalFees, language)}
             </div>
-            <div className="text-xs text-muted-foreground">Platform fees per washout (default $5.00)</div>
+            <div className="text-xs text-muted-foreground">{t("owner.payments.platformFees")}</div>
           </StatCard>
         </div>
 
         {/* Additional Stats */}
         <div className="grid grid-cols-2 gap-4">
-          <StatCard title="Completed" className="text-center">
+          <StatCard title={t("common.completed")} className="text-center">
             <div className="text-xl font-bold text-green-600" data-testid="text-completed-payments">
               {stats.completedCount}
             </div>
-            <div className="text-xs text-muted-foreground">Payments</div>
+            <div className="text-xs text-muted-foreground">{t("owner.payments.payments")}</div>
           </StatCard>
 
-          <StatCard title="Pending" className="text-center">
+          <StatCard title={t("common.pending")} className="text-center">
             <div className="text-xl font-bold text-yellow-600" data-testid="text-pending-payments">
               {stats.pendingCount}
             </div>
-            <div className="text-xs text-muted-foreground">Payments</div>
+            <div className="text-xs text-muted-foreground">{t("owner.payments.payments")}</div>
           </StatCard>
         </div>
 
@@ -158,12 +159,12 @@ export default function OwnerPayments() {
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Filters</span>
+                <span className="text-sm font-medium">{t("common.filters")}</span>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Start Date</label>
+                  <label className="text-sm text-muted-foreground mb-1 block">{t("common.startDate")}</label>
                   <Input
                     type="date"
                     value={startDate}
@@ -174,7 +175,7 @@ export default function OwnerPayments() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">End Date</label>
+                  <label className="text-sm text-muted-foreground mb-1 block">{t("common.endDate")}</label>
                   <Input
                     type="date"
                     value={endDate}
@@ -193,7 +194,7 @@ export default function OwnerPayments() {
                   onClick={() => setFilterStatus("all")}
                   data-testid="button-filter-all"
                 >
-                  All
+                  {t("common.all")}
                 </Button>
                 <Button 
                   size="sm"
@@ -201,7 +202,7 @@ export default function OwnerPayments() {
                   onClick={() => setFilterStatus("completed")}
                   data-testid="button-filter-completed"
                 >
-                  Completed
+                  {t("common.completed")}
                 </Button>
                 <Button 
                   size="sm"
@@ -209,7 +210,7 @@ export default function OwnerPayments() {
                   onClick={() => setFilterStatus("pending")}
                   data-testid="button-filter-pending"
                 >
-                  Pending
+                  {t("common.pending")}
                 </Button>
               </div>
 
@@ -221,7 +222,7 @@ export default function OwnerPayments() {
                 data-testid="button-export"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Export to CSV
+                {t("common.exportCsv")}
               </Button>
             </div>
           </CardContent>
@@ -231,14 +232,14 @@ export default function OwnerPayments() {
         <div className="space-y-3">
           <h2 className="text-lg font-semibold flex items-center">
             <Calendar className="w-5 h-5 mr-2" />
-            Payment History
+            {t("owner.payments.title")}
           </h2>
 
           {filteredActivities.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No payments found for the selected period</p>
+                <p className="text-muted-foreground">{t("owner.payments.empty")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -265,23 +266,19 @@ export default function OwnerPayments() {
                       )}
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span data-testid={`text-activity-date-${index}`}>
-                          🕒 {new Date(activity.checkInTime).toLocaleDateString()} at {new Date(activity.checkInTime).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true
-                          })}
+                          🕒 {formatLocalizedDate(activity.checkInTime, language, { dateStyle: "medium", timeStyle: "short" })}
                         </span>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="text-xl font-bold text-foreground mb-1" data-testid={`text-payment-amount-${index}`}>
-                        {formatCurrency(Number(activity.amount || 0))}
+                        {formatLocalizedCurrency(Number(activity.amount || 0), language)}
                       </div>
                       <div className="text-xs text-muted-foreground mb-2" data-testid={`text-platform-fee-${index}`}>
-                        Platform Fee: {formatCurrency(5.00)} (default)
+                        {t("owner.payments.platformFee")}: {formatLocalizedCurrency(5.00, language)} ({t("owner.payments.default")})
                       </div>
                       <div className="text-xs text-muted-foreground mb-2" data-testid={`text-driver-tip-${index}`}>
-                        Driver Tip: {formatCentsToDollars(resolveLocationDriverTipRateCents(activity.location?.rate))}
+                        {t("owner.payments.driverTip")}: {formatLocalizedCurrency(resolveLocationDriverTipRateCents(activity.location?.rate) / 100, language)}
                       </div>
                       <Badge 
                         variant={
@@ -290,8 +287,7 @@ export default function OwnerPayments() {
                         }
                         data-testid={`badge-payment-status-${index}`}
                       >
-                        {activity.status === 'verified' ? 'Paid' : 
-                         activity.status === 'pending' ? 'Pending Payment' : 'Rejected'}
+                        {activity.status === 'pending' ? t("owner.payments.pendingPayment") : translateActivityStatus(activity.status, t)}
                       </Badge>
                     </div>
                   </div>
@@ -300,7 +296,7 @@ export default function OwnerPayments() {
                   {(activity.photoUrls?.length > 0) && (
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div className="text-sm text-muted-foreground">
-                        Driver verification photos available
+                        {t("owner.payments.photosAvailable")}
                       </div>
                       <Button
                         variant="outline"
@@ -308,28 +304,28 @@ export default function OwnerPayments() {
                         className="text-xs h-8 px-3"
                         data-testid={`button-view-photos-${index}`}
                       >
-                        View Photos ({activity.photoUrls.length})
+                        {t("common.viewPhotos")} ({activity.photoUrls.length})
                       </Button>
                     </div>
                   )}
 
                   <div className="flex items-center justify-between pt-3 border-t border-border">
                     <div className="text-sm text-muted-foreground">
-                      Platform fee per washout
+                      {t("owner.payments.platformFees")}
                     </div>
                     <div className="text-sm">
                       <span className="font-semibold text-red-600" data-testid={`text-total-fees-${index}`}>
-                        {formatCurrency(5.00)}
+                        {formatLocalizedCurrency(5.00, language)}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-2">
                     <div className="text-sm text-muted-foreground">
-                      Net amount to driver
+                      {t("owner.payments.netToDriver")}
                     </div>
                     <div className="text-sm">
                       <span className="font-semibold text-green-600" data-testid={`text-net-amount-${index}`}>
-                        {formatCurrency(Number(activity.amount || 0) + (resolveLocationDriverTipRateCents(activity.location?.rate) / 100))}
+                        {formatLocalizedCurrency(Number(activity.amount || 0) + (resolveLocationDriverTipRateCents(activity.location?.rate) / 100), language)}
                       </span>
                     </div>
                   </div>

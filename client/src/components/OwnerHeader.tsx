@@ -21,7 +21,7 @@ export function OwnerHeader() {
             <div className="brand-frame flex h-12 w-12 items-center justify-center rounded-2xl flex-shrink-0 border border-border bg-muted sm:h-14 sm:w-14">
               <img
                 src={logoImage}
-                alt="CreteXchange - Streamlining Concrete Connections"
+                alt={t("header.ownerPortal")}
                 className="h-8 w-8 object-contain sm:h-9 sm:w-9"
               />
             </div>

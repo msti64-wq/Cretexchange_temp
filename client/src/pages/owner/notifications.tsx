@@ -6,9 +6,12 @@ import { ArrowLeft, Bell, Check, AlertTriangle, Info, DollarSign } from "lucide-
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
+import { useLanguage } from "@/lib/i18n";
 
 export default function OwnerNotifications() {
   const [, setLocation] = useLocation();
+  const { t, language } = useLanguage();
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['/api/notifications'],
@@ -59,12 +62,13 @@ export default function OwnerNotifications() {
               onClick={() => setLocation('/dashboard')}
               className="text-white hover:bg-white/20 p-2"
               data-testid="button-back"
+              aria-label={t("common.back")}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="font-semibold text-lg">Notifications</h1>
-              <p className="text-white/80 text-sm">Stay updated on important events</p>
+              <h1 className="font-semibold text-lg">{t("owner.notifications.title")}</h1>
+              <p className="text-white/80 text-sm">{t("owner.notifications.subtitle")}</p>
             </div>
           </div>
           <Bell className="w-6 h-6" />
@@ -87,10 +91,10 @@ export default function OwnerNotifications() {
             <CardContent className="p-12 text-center">
               <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                No notifications
+                {t("owner.notifications.emptyTitle")}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                You're all caught up! You'll see notifications here when there's important information.
+                {t("owner.notifications.emptyDescription")}
               </p>
             </CardContent>
           </Card>
@@ -115,11 +119,14 @@ export default function OwnerNotifications() {
                         <div className="flex items-center space-x-2">
                           {!notification.isRead && (
                             <Badge variant="default" className="bg-blue-600 text-white">
-                              New
+                              {t("owner.notifications.unread")}
                             </Badge>
                           )}
                           <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                            {formatDistanceToNow(new Date(notification.createdAt), {
+                              addSuffix: true,
+                              locale: language === "es" ? es : undefined,
+                            })}
                           </span>
                         </div>
                       </div>
@@ -136,7 +143,7 @@ export default function OwnerNotifications() {
                           data-testid={`button-mark-read-${notification.id}`}
                         >
                           <Check className="w-4 h-4 mr-1" />
-                          Mark as read
+                          {t("owner.notifications.markRead")}
                         </Button>
                       )}
                     </div>
