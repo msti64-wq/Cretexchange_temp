@@ -196,6 +196,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | CTX-ARCH-005 | Material Management Architecture | Defines material taxonomy, financial direction, settlement models, pricing, capacity, and extensibility. | Approved |
 | CTX-ARCH-006 | Driver Incentive and Financial Settlement Architecture | Defines the immutable incentive snapshot, owner charge, payment obligation, wallet-authoritative settlement, Stripe payout, idempotency, recovery, and financial reporting contract. | Approved; PD-045 Active; runtime remediation pending |
 | CTX-ARCH-007 | [Canonical Financial Batch Architecture](./architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) | Defines canonical batch identity, frozen membership/totals, audit, discovery queues, legacy isolation, and Phase 3B non-execution. | Approved architecture direction; implementation pending |
+| CTX-ARCH-008 | [Production Database Migration Discovery and Requirements](./architecture/CTX-ARCH-008-production-database-migration-discovery-and-requirements.md) | Records repository-grounded discovery, requirements, options, risks, and unresolved decisions for a future controlled migration architecture. | Discovery package; not an approved implementation architecture |
 
 ## Standards Library
 
