@@ -185,6 +185,11 @@ export const drivers = pgTable("drivers", {
   // Lottery prize payout preference
   payoutPreference: varchar("payout_preference").default("bank_transfer"), // 'bank_transfer' | 'gift_card' | 'other_prize'
   payoutPreferenceNote: varchar("payout_preference_note"), // Optional detail for 'other_prize'
+  // Operational driver context only. This is the canonical persisted material
+  // selection used by location discovery; it does not create an activity or
+  // carry any financial meaning.
+  activeMaterialSlug: varchar("active_material_slug").references(() => materials.slug, { onDelete: "set null" }),
+  activeMaterialUpdatedAt: timestamp("active_material_updated_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

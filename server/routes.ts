@@ -3912,19 +3912,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/drivers/materials/catalog', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== "driver") return res.status(403).json({ message: "Driver access required" });
+      const catalog = await storage.getAllMaterials();
+      res.json(catalog.filter((material: any) => material.isActive !== false && !material.retiredAt));
+    } catch (error) {
+      console.error("Error fetching driver material catalog:", error);
+      res.status(500).json({ message: "Failed to fetch material catalog" });
+    }
+  });
+
+  app.get('/api/drivers/material-intent', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== "driver") return res.status(403).json({ message: "Driver access required" });
+      const driver = await storage.getDriver(req.user.id);
+      if (!driver) return res.status(404).json({ message: "Driver not found" });
+      const material = driver.activeMaterialSlug ? await storage.getMaterialBySlug(driver.activeMaterialSlug) : null;
+      res.json({ materialSlug: material && (material as any).isActive !== false && !(material as any).retiredAt ? material.slug : null, material: material && (material as any).isActive !== false && !(material as any).retiredAt ? material : null });
+    } catch (error) {
+      console.error("Error fetching driver material intent:", error);
+      res.status(500).json({ message: "Failed to fetch driver material intent" });
+    }
+  });
+
+  app.put('/api/drivers/material-intent', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (user?.role !== "driver") return res.status(403).json({ message: "Driver access required" });
+      const driver = await storage.getDriver(req.user.id);
+      if (!driver) return res.status(404).json({ message: "Driver not found" });
+      const materialSlug = typeof req.body?.materialSlug === "string" ? req.body.materialSlug.trim() : "";
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(materialSlug)) return res.status(400).json({ message: "A valid material selection is required" });
+      const material = await storage.getMaterialBySlug(materialSlug);
+      if (!material || (material as any).isActive === false || (material as any).retiredAt) return res.status(409).json({ message: "This material is not currently available" });
+      const updated = await storage.updateDriver(driver.id, { activeMaterialSlug: material.slug, activeMaterialUpdatedAt: new Date() } as any);
+      res.json({ materialSlug: updated.activeMaterialSlug, material });
+    } catch (error) {
+      console.error("Error updating driver material intent:", error);
+      res.status(500).json({ message: "Failed to update driver material intent" });
+    }
+  });
+
   app.get('/api/drivers/locations', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.id);
       if (user?.role !== "driver") {
         return res.status(403).json({ message: "Driver access required" });
       }
-      const locations = await storage.getActiveLocations();
+      const materialSlug = typeof req.query?.materialSlug === "string" ? req.query.materialSlug.trim() : "";
+      if (materialSlug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(materialSlug)) {
+        return res.status(400).json({ message: "Invalid material selection" });
+      }
+      const selectedMaterial = materialSlug ? await storage.getMaterialBySlug(materialSlug) : null;
+      if (materialSlug && (!selectedMaterial || (selectedMaterial as any).isActive === false || (selectedMaterial as any).retiredAt)) {
+        return res.status(400).json({ message: "Selected material is not currently available" });
+      }
+      const locations = materialSlug
+        ? await storage.getActiveLocationsAcceptingMaterial(materialSlug)
+        : await storage.getActiveLocations();
+
+      if (materialSlug) {
+        return res.json((locations as any[]).map((item: any) => {
+          const { materialIntent, owner, ...driverSafeLocation } = item;
+          return {
+            ...driverSafeLocation,
+            owner: owner ? { id: owner.id, companyName: owner.companyName || null, user: owner.user ? { firstName: owner.user.firstName, lastName: owner.user.lastName } : null } : null,
+            materialIntents: [{ ...materialIntent, material: selectedMaterial }],
+            matchedMaterial: { slug: selectedMaterial!.slug, displayName: selectedMaterial!.displayName },
+          };
+        }));
+      }
       
       // Enrich locations with material intents for the rubble-service UI
       const locationsWithMaterials = await Promise.all(
         locations.map(async (location: any) => {
           try {
-            const materialIntents = await storage.getLocationMaterialIntents(location.id);
+            const materialIntents = await storage.getLocationMaterialIntents(location.id) || [];
             
             // Get material details for each intent
             const materialsWithDetails = await Promise.all(

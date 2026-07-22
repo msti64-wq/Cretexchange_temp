@@ -4,13 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { useLocation } from "wouter";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { LocationMap } from "@/components/LocationMap";
-import { MapPin, Search, Navigation, Clock, Trash2, Package } from "lucide-react";
+import { MapPin, Search, Navigation, Clock, Package } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { getCurrentLocation } from "@/lib/gps";
 import { formatAddress } from "@shared/addressUtils";
@@ -18,6 +16,8 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { useLanguage } from "@/lib/i18n";
+import { apiRequest } from "@/lib/queryClient";
+import { DriverMaterialIntentSelector, driverMaterialIntentKey, type DriverMaterialIntent } from "@/components/driver/DriverMaterialIntentSelector";
 
 export default function DriverLocations() {
   const [, setLocation] = useLocation();
@@ -26,7 +26,6 @@ export default function DriverLocations() {
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"distance" | "rate">("distance");
-  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
 
   // Check if enhanced location creation (Google Maps) is enabled
   const { enabled: isMapEnabled } = useFeatureFlag(FEATURE_FLAGS.ENHANCED_LOCATION_CREATION);
@@ -34,14 +33,15 @@ export default function DriverLocations() {
   // Check if rubble service is enabled
   const { enabled: isRubbleServiceEnabled } = useFeatureFlag(FEATURE_FLAGS.RUBBLE_SERVICE);
 
-  // Fetch available materials for rubble service
-  const { data: materials = [] } = useQuery<any[]>({
-    queryKey: ['/api/materials'],
-    enabled: isRubbleServiceEnabled,
+  const { data: materialIntent, isLoading: isIntentLoading } = useQuery<DriverMaterialIntent>({
+    queryKey: driverMaterialIntentKey,
+    queryFn: async () => (await apiRequest("GET", "/api/drivers/material-intent")).json(),
   });
-
-  const { data: locations, isLoading } = useQuery({
-    queryKey: ['/api/drivers/locations'],
+  const activeMaterialSlug = materialIntent?.materialSlug || null;
+  const { data: locations, isLoading, isError, refetch } = useQuery({
+    queryKey: ["/api/drivers/locations", activeMaterialSlug],
+    queryFn: async () => activeMaterialSlug ? (await apiRequest("GET", `/api/drivers/locations?materialSlug=${encodeURIComponent(activeMaterialSlug)}`)).json() : [],
+    enabled: Boolean(activeMaterialSlug),
   });
 
   useEffect(() => {
@@ -119,7 +119,7 @@ export default function DriverLocations() {
     }
   }) : [];
 
-  if (isLoading) {
+  if (isIntentLoading || (activeMaterialSlug && isLoading)) {
     return (
       <div className="dark min-h-screen bg-background text-foreground">
         <DriverHeader />
@@ -175,70 +175,7 @@ export default function DriverLocations() {
           </div>
         </div>
 
-        {/* Material Selection for Rubble Service */}
-        {isRubbleServiceEnabled && materials && materials.length > 0 && (
-          <Card className="border-border/70 bg-card/90">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Trash2 className="w-5 h-5 text-accent" />
-                <h3 className="font-semibold">{t("driver.locations.dropOffQuestion")}</h3>
-              </div>
-              <p className="text-sm text-foreground/75 mb-4">
-                {t("driver.locations.dropOffHelp")}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {materials.map((material: any) => (
-                  <div key={material.id} className="flex items-start space-x-2">
-                    <Checkbox
-                      id={`material-${material.id}`}
-                      checked={selectedMaterials.includes(material.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedMaterials([...selectedMaterials, material.id]);
-                        } else {
-                          setSelectedMaterials(selectedMaterials.filter(id => id !== material.id));
-                        }
-                      }}
-                      data-testid={`checkbox-material-${material.slug}`}
-                    />
-                    <Label
-                      htmlFor={`material-${material.id}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                    >
-                      <div>
-                        <div className="font-medium">{material.displayName || material.display_name}</div>
-                        {material.synonyms && material.synonyms.length > 0 && (
-                          <div className="text-xs text-foreground/65 mt-0.5">
-                            {t("driver.locations.examples", { examples: material.synonyms.join(', ') })}
-                          </div>
-                        )}
-                      </div>
-                    </Label>
-                  </div>
-                ))}
-              </div>
-              {selectedMaterials.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-border/70">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-foreground/70">
-                      {selectedMaterials.length === 1
-                        ? t("driver.locations.materialSelected", { count: selectedMaterials.length })
-                        : t("driver.locations.materialsSelected", { count: selectedMaterials.length })}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedMaterials([])}
-                      data-testid="button-clear-materials"
-                    >
-                      {t("driver.locations.clearAll")}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        <DriverMaterialIntentSelector compact />
 
         {/* Location Error Message */}
         {locationError && (
@@ -265,6 +202,7 @@ export default function DriverLocations() {
           </Card>
         )}
 
+        {!activeMaterialSlug ? <Card className="border-border/70 bg-card/90"><CardContent className="py-8 text-center"><Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="font-medium">{t("driver.material.selectionRequired")}</p><p className="mt-1 text-sm text-muted-foreground">{t("driver.material.selectionRequiredHelp")}</p></CardContent></Card> : <>
         {/* Location List */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -274,11 +212,13 @@ export default function DriverLocations() {
             </Badge>
           </div>
 
-          {filteredAndSortedLocations.length === 0 ? (
+          {isError ? (
+            <Card className="border-border/70 bg-card/90"><CardContent className="py-8 text-center"><p className="text-foreground/75">{t("driver.locations.loadFailed")}</p><Button className="mt-3" onClick={() => refetch()}>{t("common.retry")}</Button></CardContent></Card>
+          ) : filteredAndSortedLocations.length === 0 ? (
             <Card className="border-border/70 bg-card/90">
               <CardContent className="text-center py-8">
                 <MapPin className="w-12 h-12 text-foreground/65 mx-auto mb-4" />
-                <p className="text-foreground/75">{t("driver.locations.noLocationsFound")}</p>
+                <p className="text-foreground/75">{t("driver.material.noMatchingLocations", { material: materialIntent?.material?.displayName || "" })}</p>
               </CardContent>
             </Card>
           ) : (
@@ -376,6 +316,7 @@ export default function DriverLocations() {
                       </div>
                     </div>
                   )}
+                  {item.matchedMaterial && <Badge variant="secondary" className="mb-3">{t("driver.material.accepts", { material: item.matchedMaterial.displayName })}</Badge>}
 
                   <div className="flex gap-2">
                     <Button 
@@ -404,7 +345,7 @@ export default function DriverLocations() {
               );
             })
           )}
-        </div>
+        </div></>}
       </div>
 
       <MobileNav role="driver" />

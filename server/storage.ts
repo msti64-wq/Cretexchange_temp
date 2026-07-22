@@ -215,6 +215,7 @@ export interface IStorage {
   getWashoutLocation(id: string): Promise<WashoutLocation | undefined>;
   getLocationsByOwner(ownerId: string): Promise<WashoutLocation[]>;
   getActiveLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]>;
+  getActiveLocationsAcceptingMaterial(materialSlug: string): Promise<Array<(WashoutLocation & { owner: Owner & { user: User } }) & { materialIntent: LocationMaterialIntent }>>;
   updateLocationVisibility(locationId: string, isVisible: boolean): Promise<WashoutLocation>;
   updateLocationRate(locationId: string, rate: string): Promise<WashoutLocation>;
   updateLocation(locationId: string, ownerId: string, locationData: Partial<InsertWashoutLocation>): Promise<WashoutLocation>;
@@ -1424,6 +1425,29 @@ export class DatabaseStorage implements IStorage {
     }
 
     return mappedLocations;
+  }
+
+  async getActiveLocationsAcceptingMaterial(materialSlug: string): Promise<Array<(WashoutLocation & { owner: Owner & { user: User } }) & { materialIntent: LocationMaterialIntent }>> {
+    const results = await db
+      .select()
+      .from(locationMaterialIntents)
+      .innerJoin(washoutLocations, eq(locationMaterialIntents.locationId, washoutLocations.id))
+      .innerJoin(owners, eq(washoutLocations.ownerId, owners.id))
+      .innerJoin(users, eq(owners.userId, users.id))
+      .where(and(eq(locationMaterialIntents.materialSlug, materialSlug), eq(locationMaterialIntents.active, true)))
+      .orderBy(washoutLocations.name);
+
+    return (results as any[]).flatMap((row) => {
+      const location = row.washout_locations as WashoutLocation;
+      const owner = row.owners as Owner;
+      const visibilityState = resolveDriverLocationVisibilityState(location, owner);
+      if (!visibilityState.visibleToDrivers) return [];
+      return [{
+        ...location,
+        owner: { ...owner, user: row.users as User },
+        materialIntent: row.location_material_intents as LocationMaterialIntent,
+      }];
+    });
   }
 
   async updateLocationVisibility(locationId: string, isVisible: boolean): Promise<WashoutLocation> {
