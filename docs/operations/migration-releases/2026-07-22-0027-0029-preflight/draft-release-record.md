@@ -103,6 +103,71 @@ authorized, existing-owner-session-only read-only check of
 ranges plus safe selected-record detail reads, followed by an evidence-only
 record update. No schema or application repair is currently indicated.
 
+## Phase 3.6 final release-closure validation
+
+### Authorized scope and method
+
+- Phase 3.6 was limited to authenticated, read-only production application
+  validation; aggregate-only database verification in a `BEGIN READ ONLY`
+  session; and this append-only release-record update. No migration, DDL, DML,
+  deployment, Railway configuration change, application-code change, or push
+  was authorized or performed.
+- Existing browser sessions only were used. No credential, token, cookie,
+  password, account, record, or financial action was created, modified,
+  exposed, or reset.
+
+### Existing Owner report validation
+
+- **Not completed — test-environment limitation.** The available authenticated
+  production session was `super_admin`; no existing authorized Owner-role
+  session was available. To preserve that authenticated administrative session
+  and avoid credential handling or account mutation, no login or role switch
+  was attempted.
+- Therefore the Owner Dashboard and its Today, Weekly, Monthly, and All report
+  routes were not invoked in Phase 3.6. No HTTP 500, HTTP 503, missing-schema,
+  console, network, or database error can be attributed to those uninvoked
+  Owner-role reads. This is not evidence of an Owner application failure.
+
+### Financial detail read validation
+
+- **Financial Owner Detail — passed.** An existing owner selected from the
+  Super Admin Financial Operations queue rendered the read-only owner detail
+  view with approved activity, obligation state, owner metrics, and audit
+  sections. The browser-console error count was zero. No action control was
+  selected or invoked; the view performed no provider, payment-attempt,
+  settlement, collection, or financial write.
+- **Billing Batch Detail — not completed — record-availability limitation.**
+  The selected owner detail reported zero canonical open batches and exposed no
+  canonical batch-detail link. The aggregate `billing_batches` count remains
+  three, but no existing record was presented as a canonical Financial
+  Operations batch that could be opened without fabricating an identifier or
+  creating a batch. No batch creation or state transition was attempted.
+
+### No-write comparison
+
+- A fresh aggregate-only query ran in a PostgreSQL `BEGIN READ ONLY`
+  transaction (`transaction_read_only = on`) with statement and lock timeouts,
+  followed by `ROLLBACK`.
+- Phase 3.5 baseline and Phase 3.6 result match exactly: `rewards_periods = 0`,
+  `driver_lottery_entries = 30`,
+  `canonical_financial_payment_attempts = 0`, and `billing_batches = 3`.
+  Lottery eligibility and rewards-period assignment counts remain zero. No
+  lock waits or active queries over 30 seconds were observed.
+- No provider activity, financial execution, payment-attempt creation,
+  collection, settlement, payout, wallet action, or database write occurred.
+
+### Closure decision
+
+**OPEN — VALIDATION INCOMPLETE.** The successful Financial Owner Detail read
+and unchanged aggregate counts add no evidence of a migration defect. Formal
+release closure remains gated by two non-destructive checks: an existing
+Owner-role session must load the Dashboard and Today/Weekly/Monthly/All reports,
+and an existing canonical batch must be opened through the Financial Operations
+Batch Detail view. Classify the remaining gap as **test environment / available
+authenticated-session and record availability**, not as an authentication,
+authorization, backend, frontend, or database defect. No Phase 4 remediation
+or production incident is indicated unless one of those pending reads fails.
+
 ## Recovery decision
 
 There is no approved schema rollback in this package. If either migration fails, stop, preserve the error and catalog evidence, and choose a separately reviewed forward repair. Application rollback is permissible only after verifying compatibility with the actual catalog state. Do not drop newly created schema objects or delete data as an improvised rollback.
