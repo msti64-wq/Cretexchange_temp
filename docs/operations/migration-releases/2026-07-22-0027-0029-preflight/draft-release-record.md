@@ -1,11 +1,14 @@
 # Production Release Record — 0027 and 0029
 
-> **EXECUTION COMPLETE — RELEASE CLOSURE PENDING**
+> **OPEN — VALIDATION INCOMPLETE**
 
 Both approved additive migrations committed in production during the authorized
-window. This record does not mark the release closed: authenticated read-only
-application smoke coverage and the full 15-minute post-migration observation
-remain required before final production sign-off.
+window. Phase 3.5 completed the available Super Admin read-only checks and a
+continuous post-migration observation. This record remains open because no
+existing authorized owner session was available for the required owner-role
+report smoke test and record-specific Financial Operations owner/batch detail
+routes were not invoked. No credentials were requested, exposed, reset, or
+created.
 
 | Field | Draft record |
 | --- | --- |
@@ -51,11 +54,54 @@ remain required before final production sign-off.
 
 ## Final decision
 
-**Execution succeeded; release closure is pending.** Do not represent this release
-as fully complete until the outstanding authenticated read-only smoke checks and
-the full 15-minute observation are recorded. No rollback is indicated by the
-catalog or health evidence. If a later defect is found, use a separately
-reviewed forward repair; do not drop the newly created objects or delete data.
+**Phase 3 execution succeeded; Phase 3.5 closure remains open.** Do not represent
+this release as fully complete until the outstanding owner-role read-only report
+smoke and record-specific Financial Operations detail reads are recorded. No
+rollback is indicated by the catalog or health evidence. If a later defect is
+found, use a separately reviewed forward repair; do not drop the newly created
+objects or delete data.
+
+## Phase 3.5 release-closure evidence
+
+### Authorization and identity
+
+- Phase 3.5 was authorized by Michael Loren Stiger as operator and business/technical approver. It authorized read-only production checks, authenticated read-only application checks, observation, release-record updates, and a local documentation-only commit.
+- The production Railway service remains on the `main` source at application SHA `15616fd11a621cf88e7d49b43039a9804e7ab656`. The active deployment was successful; no deployment occurred during Phase 3.5.
+- The Phase 2 preflight commit `33ea336fa985512e550727bb8e4027cc93357555` and Phase 3 evidence commit `26a108f10f105f7fa076ffaabf47ee00e6d867fc` are present in the local release worktree.
+
+### Current catalog and safety verification
+
+- A fresh `BEGIN READ ONLY` session confirmed `transaction_read_only = on` and was rolled back. Current catalog verification reports 18 `rewards_periods` columns, all five lottery eligibility columns, a valid/ready lottery eligibility index, 20 payment-attempt columns, all five valid/ready payment-attempt indexes, and the expected payment-attempt check constraint.
+- The existing frozen-total check and canonical partial payment-activity uniqueness index remain valid. The retired legacy global payment-activity index remains absent.
+- Baseline and post-test aggregates matched exactly: zero rewards periods, 30 lottery entries, zero assigned rewards periods, zero non-default eligibility values, zero canonical payment attempts, three billing batches, zero lock waits, and zero active queries over 30 seconds.
+- All four execution flags (`FINANCIAL_EXECUTION_ENABLED`, `FINANCIAL_EXECUTION_PRODUCTION_ENABLED`, `FACILITY_COLLECTION_EXECUTION_ENABLED`, and `DRIVER_SETTLEMENT_EXECUTION_ENABLED`) are absent in the production service. Application policy treats absence as a false, fail-closed state. No execution worker is enabled.
+
+### Authenticated read-only smoke evidence
+
+- Authentication method: an existing secure production browser session authenticated as `super_admin`; no credential, token, cookie, or header was exposed or stored.
+- Super Admin: the Admin Dashboard loaded Trust & Verification and Platform Activity with populated operational data and no browser-console errors. Those panels exercise the owner-report read model for `all`, `today`, `weekly`, and `monthly` date ranges through the current application code.
+- Super Admin: the Rewards Program page loaded a valid rewards-period zero state, lottery totals, completed drawing history, and other read-only list content. Server logs recorded HTTP 200 for `GET /api/admin/rewards/periods`, `GET /api/admin/lottery/drawings/history`, and `GET /api/admin/lottery/totals`.
+- Super Admin: Financial Operations overview loaded its summary and owner action queue; the read-only audit page loaded its intentional zero state. Server logs recorded HTTP 200 for `GET /api/admin/financial-operations/overview` and `GET /api/admin/financial-operations/audit`. Record-specific `owners/:ownerId` and `batches/:batchId` reads were not invoked because the closure activity did not use production record selections. No creation, batch, approval, retry, provider, or execution control was invoked.
+- Owner role: **not tested**. No existing authorized owner session was available, and Phase 3.5 did not authorize credential handling, account creation, or password reset. This is a test-environment/credential limitation, not a schema or authorization failure.
+
+### Observation and no-write verification
+
+- Continuous observation: July 22, 2026, 10:23:47–10:40:31 America/Chicago (more than 15 minutes).
+- Beginning, midpoint, and end checks found the application responsive with the affected dashboard panels loaded. Browser-console error count was zero.
+- Available Railway log review found zero HTTP 500 and HTTP 503 observations, no missing `rewards_periods`, lottery eligibility-column, or `canonical_financial_payment_attempts` error, and no restart indication.
+- Post-test aggregate verification matched the baseline exactly. No rewards-period, eligibility, lottery, payment-attempt, batch, payout, wallet, settlement, or provider record was created by the tests.
+- No provider call, financial execution, migration, DDL, production DML, application deployment, Railway configuration change, source-code change, or push occurred during Phase 3.5.
+
+### Closure classification and follow-up
+
+**OPEN — VALIDATION INCOMPLETE.** The migrations and all available Super Admin
+read-only schema-dependent paths are healthy, but `CTX-DEP-001`/`CTX-OPS-001`
+closure requires the owner-role report smoke and direct read-only Financial
+Operations owner/batch detail checks. The next action is a separately
+authorized, existing-owner-session-only read-only check of
+`GET /api/reports/owner` for the supported today, weekly, monthly, and all-time
+ranges plus safe selected-record detail reads, followed by an evidence-only
+record update. No schema or application repair is currently indicated.
 
 ## Recovery decision
 
