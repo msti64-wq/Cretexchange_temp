@@ -6,7 +6,7 @@
 
 **Rationale:** This turns CreteXchange from a transaction marketplace into an intelligence platform that helps drivers, owners, and administrators make better decisions.
 
-**Status:** Active
+**Status:** Superseded by PD-055 for current location matching.
 
 **Implications:**
 
@@ -91,7 +91,7 @@
 
 **Rationale:** A lightweight local-only preference is the lowest-risk way to establish the workflow boundary between ready-mix / washout and material recovery before committing to database-backed persistence.
 
-**Status:** Active
+**Status:** Superseded by PD-055 for current location matching.
 
 **Implications:**
 
@@ -693,3 +693,28 @@
 ## PD-054 - Canonical Financial Visibility and Obligation Workflow
 
 **Decision:** [PD-054](./PD-054-canonical-financial-visibility-and-obligation-workflow.md) defines the sole canonical non-executing financial destination, single verified-activity obligation model, structured creation reason, and truthful canonical visibility.
+
+## PD-055 - Canonical Driver Material Intent
+
+**Decision:** A driver has one persisted active system-catalog material for
+current location discovery. The Driver Dashboard owns the selection; Locations
+consumes it and does not maintain an independent material selector or silently
+default a material.
+
+**Rationale:** A durable, shared operational context prevents conflicting
+driver choices and ensures that facility acceptance is applied consistently by
+the server.
+
+**Status:** Active
+
+**Implications:**
+
+- Only active, non-retired global catalog materials are selectable as driver intent.
+- Location discovery returns only visible, eligible facilities with an active
+  matching system-material association.
+- Facility-scoped custom materials remain local owner configuration and are not
+  silently converted into global driver choices.
+- This decision does not set pricing, payment eligibility, financial direction,
+  wallet value, settlement, or provider execution.
+
+**Related Documents:** [CTX-ARCH-003](../architecture/driver-operations-architecture.md), [CTX-ARCH-005](../architecture/material-management-architecture.md), and [PD-015](#pd-015---owner-material-acceptance).

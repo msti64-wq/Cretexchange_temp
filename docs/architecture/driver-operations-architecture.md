@@ -102,24 +102,26 @@ Driver Login
 - **Activity History**
   - The record remains in history for review, reporting, and auditability.
 
-## 5. Driver Job Types
+## 5. Driver Material Intent
 
-- Ready-Mix / Washout
-- Material Recovery
-- Rubble / Demolition
-- Dirt / Fill
-- Asphalt / Aggregate
-- Both / Ask Each Shift
+The active driver material is the canonical current operational context for
+location discovery. It is a single, persisted selection from the active global
+material catalog, stored as `drivers.active_material_slug` and changed only by
+the driver. It is not a price, payment preference, wallet entitlement, or a
+claim that a facility will accept a load.
 
-### Sticky job type behavior
+The Driver Dashboard owns the selector. The Locations experience consumes the
+same persisted intent and MUST NOT maintain a separate selector, URL-only
+state, or a silent Concrete default. A driver who has not selected a material
+is prompted to select one before matching locations are displayed.
 
-- Driver selection should persist until changed.
-- Ready-mix drivers should not be forced to reselect every login.
-- Future matching should use job type.
+The old local three-option job-type control is superseded for current location
+matching. Broader operating-mode taxonomy remains product direction; it does
+not substitute for the persisted material intent.
 
 ## 6. Material Selection
 
-Future material selection should support:
+The active global catalog supports, and may grow to support:
 
 - washout
 - returned concrete
@@ -135,7 +137,9 @@ Future material selection should support:
 - mixed demolition
 - other
 
-Material selection will eventually filter eligible locations.
+Each driver has one active material at a time. Changing it is durable across
+devices and sessions. Retired or inactive catalog materials cannot be selected
+or used to discover locations.
 
 ## 7. Location Discovery and Matching
 
@@ -153,7 +157,11 @@ Owner configuration affects driver location discovery through:
 - GPS proximity
 - operating status
 
-Future matching should hide or de-prioritize locations that do not accept the selected material.
+Location discovery filters on the server using the driver's selected active
+system material and an active `location_material_intents` association. The
+filter preserves existing location visibility and eligibility rules. A facility
+custom material remains facility-scoped and is not silently promoted into the
+driver's global selectable catalog.
 
 ## 8. Site Detail Experience
 

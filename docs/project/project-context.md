@@ -135,7 +135,7 @@ CTX-ARCH-002 defines owners as operators of facilities, not just locations. Owne
 
 ## 10. Driver Operations Summary
 
-CTX-ARCH-003 defines driver workflows as mobile-first. Drivers use sticky job type selection, material selection, eligible location discovery, check-in, photo capture, and activity submission. Activity earnings, paid history, and wallet balance remain separate, and rewards are additive rather than replacements for incentives.
+CTX-ARCH-003 defines driver workflows as mobile-first. Drivers use one persisted active material selection, server-filtered eligible location discovery, check-in, photo capture, and activity submission. Activity earnings, paid history, and wallet balance remain separate, and rewards are additive rather than replacements for incentives.
 
 ## 11. Platform Operations Center Summary
 
@@ -143,7 +143,7 @@ CTX-ARCH-004 defines admin as the platform control tower. The preferred architec
 
 ## 12. Material Management Summary
 
-CTX-ARCH-005 defines a global material catalog and owner/location material configuration. The current approved phase provides operational facility acceptance configuration only: an owner can select standardized catalog materials or create facility-scoped custom materials, with active state and instructions. Existing washout locations are backfilled with Concrete Washout without changing activities or financial records. Financial directions such as `OWNER_PAYS_PROVIDER`, `PROVIDER_PAYS_OWNER`, `NO_CHARGE`, and `QUOTE_REQUIRED`, settlement models, material pricing, driver matching, capacity, and material KPIs remain separately governed and are not enabled by this phase.
+CTX-ARCH-005 defines a global material catalog and owner/location material configuration. The current approved phases provide operational facility acceptance configuration plus one persisted driver active system-material intent. Locations consume that same intent through server-side filtering to facilities with an active matching association; facility-scoped custom materials remain non-global. Existing washout locations are backfilled with Concrete Washout without changing activities or financial records. Financial directions such as `OWNER_PAYS_PROVIDER`, `PROVIDER_PAYS_OWNER`, `NO_CHARGE`, and `QUOTE_REQUIRED`, settlement models, material pricing, capacity, and material KPIs remain separately governed and are not enabled by this phase.
 
 ## 13. Current Technical Stack
 

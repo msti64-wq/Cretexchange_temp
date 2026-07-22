@@ -118,14 +118,33 @@ material.
 
 Phase 1 supports acceptance state, custom category/description, and owner
 instructions. It deliberately does **not** implement material pricing,
-financial direction, settlement, driver matching, capacity, restrictions, or
-provider execution. Those capabilities remain governed by the relevant later
-sections of this architecture and their separately approved Product Decisions.
+financial direction, settlement, capacity, restrictions, or provider execution.
+Those capabilities remain governed by the relevant later sections of this
+architecture and their separately approved Product Decisions.
 
 Existing washout locations receive the active `concrete-washout` catalog
 association through an idempotent backfill. The backfill does not rewrite
 activities or change owner, driver, payment, wallet, billing, or settlement
 records.
+
+### Phase 2 Driver Material Intent and Matching
+
+Phase 2 introduces a single persisted driver operational intent:
+`drivers.active_material_slug`. It references one active system-catalog
+material and is selected from the Driver Dashboard. It is neither a financial
+attribute nor a facility acceptance guarantee.
+
+The Locations experience consumes this same persisted intent. Its discovery
+API accepts the selected catalog slug and returns only locations whose active
+system-material association matches that slug, while retaining the existing
+location visibility and eligibility rules. The client MUST NOT independently
+choose materials for location discovery, use only URL-local state, or default
+to Concrete when no selection exists.
+
+Facility-scoped custom materials remain valid owner configuration and audit
+data. They are not global catalog records and therefore are not independently
+selectable as the Phase 2 driver intent. This phase does not alter pricing,
+financial direction, settlement, capacity, provider execution, or reporting.
 
 ## 7. Material Financial Direction
 
