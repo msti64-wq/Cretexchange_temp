@@ -1,19 +1,19 @@
 # Production Release Record — 0027 and 0029
 
-> **OPEN — VALIDATION INCOMPLETE**
+> **CLOSED — SUCCESSFUL**
 
 Both approved additive migrations committed in production during the authorized
 window. Phase 3.5 completed the available Super Admin read-only checks and a
-continuous post-migration observation. This record remains open because no
-existing authorized owner session was available for the required owner-role
-report smoke test and record-specific Financial Operations owner/batch detail
-routes were not invoked. No credentials were requested, exposed, reset, or
-created.
+continuous post-migration observation. Initial closure was deferred pending an
+existing authorized Owner session and selected-record detail validation. Owner
+functional acceptance subsequently passed; Canonical Batch Detail is now a
+documented non-blocking deferred validation because no qualifying production
+record exists. No credentials were requested, exposed, reset, or created.
 
-| Field | Draft record |
+| Field | Release record |
 | --- | --- |
 | Release record ID | `CTX-DB-PR-2026-07-22-0027-0029` |
-| Status | Migrations committed and catalog-verified; final release closure pending. |
+| Status | **CLOSED — SUCCESSFUL**; migrations committed, catalog-verified, and production functional acceptance completed. |
 | Environment | Production — Railway application database identity verified by a matching non-secret database fingerprint. |
 | Business reason | Restore the missing rewards-period and canonical payment-attempt schema required by already-deployed application paths. |
 | Repository / branch | `msti64-wq/Cretexchange_temp` / `main` deployment source. |
@@ -241,6 +241,50 @@ reporting portion of the production migration incident may be closed. The
 overall 0027/0029 release record remains open only for the previously recorded,
 separate read-only canonical Batch Detail validation; no application defect is
 indicated by its current record-availability limitation.
+
+## Phase A final release closure
+
+### Release closure decision
+
+**CLOSED — SUCCESSFUL.** Migrations 0027 and 0029 were applied exactly once
+and verified through production catalog, health, aggregate, Super Admin, and
+Owner functional evidence. The schema-drift paths affected by the incident now
+operate correctly. No unresolved migration, schema, application, or reporting
+defect remains.
+
+### Completed functional and safety evidence
+
+- **Owner functional acceptance:** Passed. The Owner Dashboard and Today,
+  Weekly, Monthly, and All Time reports rendered successfully with the recorded
+  HTTP 200, summary, sorting, navigation, refresh, authorization, and
+  consistency results.
+- **Super Admin validation:** Passed. Trust & Verification, Platform Activity,
+  Financial Operations overview, Financial audit, Rewards Periods, Lottery
+  History, Lottery Totals, and Financial Owner Detail all completed their
+  recorded read-only validations successfully.
+- **No-write confirmation:** Production aggregate counts remained unchanged:
+  `rewards_periods = 0`, `driver_lottery_entries = 30`,
+  `canonical_financial_payment_attempts = 0`, and `billing_batches = 3`.
+- **Financial safety:** Execution remained fail closed. No provider, payment,
+  collection, settlement, payout, wallet, batch execution, or other financial
+  operation occurred during release validation.
+
+### Canonical Batch Detail deferred validation
+
+Read-only Canonical Batch Detail validation was not completed because production
+did not contain a qualifying canonical batch record. No synthetic financial
+record was created solely for release testing. This is a deferred, non-blocking
+validation and is not a migration, application, or schema defect. Validate the
+detail route when the first legitimate canonical batch becomes available or
+during a separately authorized financial-feature acceptance test.
+
+### Incident and follow-up disposition
+
+- No Phase 4 reporting remediation is required.
+- The production incident is closed.
+- The next body of work is Production Database Migration Architecture:
+  begin `CTX-ARCH-001`, then create the supporting CTX-ADR that records
+  adoption of the selected governance architecture.
 
 ## Recovery decision
 
