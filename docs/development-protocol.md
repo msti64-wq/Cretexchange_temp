@@ -131,6 +131,12 @@ Before modifying any existing feature, explicitly answer:
 
 If the source of truth is unclear, stop and audit before implementing.
 
+## Database Migration and Schema Governance
+
+Any schema or migration change MUST follow [CTX-DB-001 — Database Migration and Schema Governance Standard](./standards/CTX-DB-001-database-migration-and-schema-governance-standard.md). The repository migration directory, Drizzle configuration, or a successful application deployment is not proof that a migration executed in the target database.
+
+Before a production schema change, complete the [Production Database Migration Preflight Checklist](./operations/production-database-migration-preflight-checklist.md), use the [Database Migration Release Procedure](./operations/database-migration-release-procedure.md), and create a [Database Migration Release Record](./operations/database-migration-release-record-template.md). Production migration execution is separately approved from read-only preflight and application deployment.
+
 ## Mandatory Preflight Checklist
 
 Before writing code:

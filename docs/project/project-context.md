@@ -38,6 +38,10 @@ These statements describe current product direction, not a claim that every broa
 - Phase 2 is in progress.
 - Sprint 2.1 is complete. Current sprint scope is defined by `docs/project/sprints/sprint-2.2.md` and remains separate from the long-term strategic roadmap.
 
+## Database Migration Governance
+
+Production schema changes are governed by [CTX-DB-001](../standards/CTX-DB-001-database-migration-and-schema-governance-standard.md), [CTX-DEP-001](../standards/CTX-DEP-001-production-deployment-protocol.md), and [CTX-OPS-001](../operations/CTX-OPS-001-production-release-checklist.md). Application deployment and migration execution are separate controls; a release is not complete until applicable schema verification succeeds.
+
 ## 4. Governing Documentation Hierarchy
 
 Authoritative order:

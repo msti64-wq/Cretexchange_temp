@@ -15,11 +15,12 @@ For project and implementation decisions, use this reading order:
 1. [Documentation Library](./README.md)
 2. [Project Context](./project/project-context.md)
 3. [CTX-STD-001 — CreteXchange Platform Standards](./standards/cretexchange-platform-standards.md)
-4. Applicable [CTX-ARCH documents](./architecture/README.md)
-5. [Product Decisions](./product/product-decisions.md)
-6. [Development Protocol](./development-protocol.md)
-7. [CTX-DEP-001 — Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
-8. [CTX-OPS-001 — Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
+4. [CTX-DB-001 — Database Migration and Schema Governance Standard](./standards/CTX-DB-001-database-migration-and-schema-governance-standard.md) when a schema or migration change is in scope
+5. Applicable [CTX-ARCH documents](./architecture/README.md)
+6. [Product Decisions](./product/product-decisions.md)
+7. [Development Protocol](./development-protocol.md)
+8. [CTX-DEP-001 — Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
+9. [CTX-OPS-001 — Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
 
 Earlier documents take precedence when guidance conflicts. Vision, strategy, UX specifications, runbooks, sprint plans, tests, and implementation code provide essential context within their domains, but they must not override this hierarchy.
 
@@ -93,7 +94,9 @@ Research documents define proposed hypotheses, validation plans, grant readiness
   - [PB-001 — CreteXchange Pilot Baseline v1.0](./project/pilot/PB-001-cretexchange-pilot-baseline-v1.0.md)
 - [Platform Standards](./standards/cretexchange-platform-standards.md)
   - [CTX-DEP-001 - Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
+- [CTX-DB-001 - Database Migration and Schema Governance Standard](./standards/CTX-DB-001-database-migration-and-schema-governance-standard.md)
 - Production Operations
+  - [Operations Library](./operations/README.md)
   - [CTX-OPS-001 - Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
 - [Architecture Library](./architecture/README.md)
 - [Product Decisions](./product/product-decisions.md)
@@ -200,6 +203,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | --- | --- | --- |
 | CTX-STD-001 | CreteXchange Platform Standards | Defines mandatory engineering and development standards governing the platform. |
 | CTX-DEP-001 | [Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md) | Defines mandatory controls for source verification, migration discovery and execution, schema verification, deployment, health, smoke testing, reporting, and rollback. |
+| CTX-DB-001 | [Database Migration and Schema Governance Standard](./standards/CTX-DB-001-database-migration-and-schema-governance-standard.md) | Defines mandatory schema-change, migration-ledger, compatibility, verification, repair, and drift-prevention controls. |
 | CTX-OPS-001 | [Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md) | Provides the required operational checklist and durable release record for every production deployment. |
 
 ## Governance Documents

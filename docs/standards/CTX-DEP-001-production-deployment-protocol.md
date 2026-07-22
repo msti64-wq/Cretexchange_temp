@@ -17,7 +17,7 @@ This protocol applies to every production release, including application changes
 
 ## Governance
 
-This protocol operates under [CTX-STD-001 - CreteXchange Platform Standards](./cretexchange-platform-standards.md), the [Development Protocol](../development-protocol.md), applicable CTX-ARCH documents, Product Decisions, and approved runbooks. It does not authorize a change that those governing documents prohibit.
+This protocol operates under [CTX-STD-001 - CreteXchange Platform Standards](./cretexchange-platform-standards.md), [CTX-DB-001 - Database Migration and Schema Governance Standard](./CTX-DB-001-database-migration-and-schema-governance-standard.md), the [Development Protocol](../development-protocol.md), applicable CTX-ARCH documents, Product Decisions, and approved runbooks. It does not authorize a change that those governing documents prohibit.
 
 The release operator SHALL use [CTX-OPS-001 - Production Release Checklist](../operations/CTX-OPS-001-production-release-checklist.md) to record completion of this protocol. Where a release affects financial processing, the operator MUST also apply the operational-before-financial boundaries in [PD-051](../product/PD-051-driver-activity-and-payment-lifecycle.md) and the applicable canonical financial architecture, including [CTX-ARCH-007](../architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) where batch behavior is in scope.
 
@@ -40,7 +40,7 @@ The deployment target MUST be verified from the production service configuration
 
 ## Migration Discovery (Mandatory)
 
-Before every production deployment, the operator MUST discover all migrations introduced between the current production commit and the release commit. Discovery MUST include migrations that are not invoked automatically by application startup.
+Before every production deployment, the operator MUST discover all migrations introduced between the current production commit and the release commit. Discovery MUST include migrations that are not invoked automatically by application startup. Schema changes SHALL also follow the [Production Database Migration Preflight Checklist](../operations/production-database-migration-preflight-checklist.md) and the [Database Migration Release Procedure](../operations/database-migration-release-procedure.md).
 
 For each discovered migration, the operator SHALL record its identifier, checksum, purpose, execution method, prerequisites, rollback or recovery posture, and post-execution verification. A release MAY NOT represent a migration as applied merely because the application build or container deployment succeeded.
 

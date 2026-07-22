@@ -9,7 +9,7 @@
 
 ## Purpose
 
-This checklist is the required operational release record for every CreteXchange production deployment. It implements [CTX-DEP-001 - Production Deployment Protocol](../standards/CTX-DEP-001-production-deployment-protocol.md) without replacing the governing standards, architecture, Product Decisions, or approved runbooks.
+This checklist is the required operational release record for every CreteXchange production deployment. It implements [CTX-DEP-001 - Production Deployment Protocol](../standards/CTX-DEP-001-production-deployment-protocol.md) and [CTX-DB-001 - Database Migration and Schema Governance Standard](../standards/CTX-DB-001-database-migration-and-schema-governance-standard.md) without replacing the governing standards, architecture, Product Decisions, or approved runbooks.
 
 ## Use
 
@@ -63,6 +63,7 @@ Complete every applicable item during the release. Record evidence by link, sani
 - [ ] Migrations run only against the intended production database.
 - [ ] Execution result and any required read-only preflight are recorded.
 - [ ] Unexpected preconditions, duplicate conditions, or errors caused a stop and escalation.
+- [ ] The separate Database Migration Release Record is complete for every production migration.
 
 ## Schema Validation
 
