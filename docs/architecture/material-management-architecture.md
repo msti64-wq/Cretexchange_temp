@@ -100,6 +100,33 @@ Each material shall define:
 - Photo Requirements
 - Compliance Requirements
 
+### Phase 1 Facility Material Configuration
+
+The first implemented phase uses one standardized `materials` catalog and a
+facility-scoped `location_material_intents` association. A system material has a
+stable slug, canonical name, category, description, active or retired state,
+display order, and optional future icon reference. An owner-defined custom
+material is stored only on its facility association; it never silently becomes
+a global catalog entry.
+
+A facility association contains exactly one identity: either a system-material
+slug or a nonblank custom name. The same system material may be assigned to many
+facilities but only once per facility. Custom names are unique per facility
+case-insensitively. Associations retain actor and timestamp fields and are
+deactivated rather than destructively removed when an owner stops accepting a
+material.
+
+Phase 1 supports acceptance state, custom category/description, and owner
+instructions. It deliberately does **not** implement material pricing,
+financial direction, settlement, driver matching, capacity, restrictions, or
+provider execution. Those capabilities remain governed by the relevant later
+sections of this architecture and their separately approved Product Decisions.
+
+Existing washout locations receive the active `concrete-washout` catalog
+association through an idempotent backfill. The backfill does not rewrite
+activities or change owner, driver, payment, wallet, billing, or settlement
+records.
+
 ## 7. Material Financial Direction
 
 Each material must define one financial direction:

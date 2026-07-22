@@ -59,7 +59,7 @@
 
 ## PD-014 - Material Catalog
 
-**Decision:** Recoverable materials should eventually be represented by a catalog rather than hard-coded UI logic.
+**Decision:** Recoverable materials are represented by a canonical catalog rather than hard-coded UI logic.
 
 **Rationale:** A catalog makes material handling extensible, consistent, and easier to reuse across drivers, owners, and admin workflows.
 
@@ -67,13 +67,13 @@
 
 **Implications:**
 
-- Material names, status, and eligibility should become data-driven over time.
+- Material names, status, and eligibility are data-driven through stable catalog entries.
 - UI should read from catalog values instead of fixed labels wherever practical.
 - Owner and driver workflows can evolve without repeated hard-coded edits.
 
 ## PD-015 - Owner Material Acceptance
 
-**Decision:** Owners should be able to define which materials each location accepts, along with tips, fees, restrictions, and instructions.
+**Decision:** Owners can define which materials each location accepts through standardized catalog entries or facility-scoped custom materials. Tips, fees, restrictions, and advanced instructions require separately approved phases.
 
 **Rationale:** Acceptance rules are central to matching drivers with the right recovery destination and to making the marketplace operationally useful.
 
@@ -81,7 +81,7 @@
 
 **Implications:**
 
-- Location setup should eventually include material acceptance controls.
+- Location setup includes owner-scoped material acceptance controls; custom materials remain local to the selected facility.
 - Driver matching should be able to respect location acceptance rules.
 - Analytics can use acceptance data to identify market gaps and opportunities.
 

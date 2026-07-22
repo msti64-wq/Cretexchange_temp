@@ -143,7 +143,7 @@ CTX-ARCH-004 defines admin as the platform control tower. The preferred architec
 
 ## 12. Material Management Summary
 
-CTX-ARCH-005 defines a global material catalog and owner/location material configuration. Materials can be configured with financial directions such as `OWNER_PAYS_PROVIDER`, `PROVIDER_PAYS_OWNER`, `NO_CHARGE`, and `QUOTE_REQUIRED`. Settlement models include platform managed, direct settlement, ACH, check, cash, invoice, purchase order, and existing account. The default platform fee is $5.00 per completed material transaction unless exempted, and platform revenue is independent of material economics. Material KPIs apply across owner, driver, admin, and reporting dashboards.
+CTX-ARCH-005 defines a global material catalog and owner/location material configuration. The current approved phase provides operational facility acceptance configuration only: an owner can select standardized catalog materials or create facility-scoped custom materials, with active state and instructions. Existing washout locations are backfilled with Concrete Washout without changing activities or financial records. Financial directions such as `OWNER_PAYS_PROVIDER`, `PROVIDER_PAYS_OWNER`, `NO_CHARGE`, and `QUOTE_REQUIRED`, settlement models, material pricing, driver matching, capacity, and material KPIs remain separately governed and are not enabled by this phase.
 
 ## 13. Current Technical Stack
 

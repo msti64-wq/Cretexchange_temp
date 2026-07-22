@@ -153,6 +153,19 @@ The system should maintain a material catalog rather than hard-code material nam
 
 The catalog is extensible and should grow with platform support for new material classes and regions.
 
+### Implemented Facility Configuration Boundary
+
+Facility operators manage accepted materials through the existing facility
+management surface. They can add active standardized catalog materials or a
+facility-scoped custom material, record optional instructions, and activate or
+deactivate acceptance. The server derives the operator and facility ownership
+from the authenticated user; client-supplied owner identity is never trusted.
+
+This implementation is intentionally limited to operational acceptance
+configuration. Material-specific pricing, driver matching, capacity, restrictions,
+and financial processing remain deferred. Deactivating a material preserves the
+facility association for audit and history.
+
 ## 7. Material Acceptance Rules
 
 Each material can be configured as:
