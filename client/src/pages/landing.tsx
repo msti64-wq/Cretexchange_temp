@@ -7,7 +7,6 @@ import {
   Eye,
   ListChecks,
   MapPin,
-  Network,
   Route,
   ShieldCheck,
   Truck,
@@ -113,16 +112,13 @@ export default function Landing() {
 
             <div className="relative mx-auto w-full max-w-lg" aria-label={t("public.hero.visualLabel")}>
               <div className="overflow-hidden rounded-3xl border border-white/15 bg-slate-900/45 p-5 shadow-2xl shadow-slate-950/30 backdrop-blur sm:p-7">
-                <div aria-hidden="true" className="relative min-h-56 overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.28),_transparent_42%),linear-gradient(145deg,_rgba(15,23,42,0.86),_rgba(19,78,74,0.72))] sm:min-h-72">
-                  <div className="absolute inset-x-7 top-8 flex items-center justify-between text-sky-200/90">
-                    <Building2 className="h-10 w-10" />
-                    <Network className="h-8 w-8" />
-                    <Truck className="h-10 w-10" />
-                  </div>
-                  <div className="absolute inset-x-10 top-[42%] border-t border-dashed border-sky-300/50" />
-                  <div className="absolute left-[22%] top-[39%] h-3 w-3 rounded-full bg-sky-300 shadow-[0_0_0_6px_rgba(125,211,252,0.16)]" />
-                  <div className="absolute right-[22%] top-[39%] h-3 w-3 rounded-full bg-teal-300 shadow-[0_0_0_6px_rgba(94,234,212,0.16)]" />
-                  <div className="absolute inset-x-7 bottom-7 flex items-center justify-between text-xs font-medium text-slate-200">
+                <div aria-hidden="true" className="relative min-h-56 overflow-hidden rounded-2xl border border-white/10 bg-slate-950 sm:min-h-72">
+                  <img
+                    src="/brand/cretexchange-primary-hero-logo.png"
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover object-center"
+                  />
+                  <div className="absolute inset-x-7 bottom-7 flex items-center justify-between text-xs font-medium text-slate-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
                     <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-sky-300" /> {t("public.hero.participatingLocation")}</span>
                     <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-teal-300" /> {t("public.hero.verifiedActivity")}</span>
                   </div>

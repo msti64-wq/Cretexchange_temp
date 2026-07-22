@@ -1,6 +1,6 @@
 // CreteXchange Service Worker — versioned caching for icon auto-updates
 // Bump this version any time icons or key assets change
-const CACHE_VERSION = 'cx-v3';
+const CACHE_VERSION = 'cx-v4';
 const ICON_CACHE = `${CACHE_VERSION}-icons`;
 
 const ICON_URLS = [
@@ -9,11 +9,13 @@ const ICON_URLS = [
   '/icons/icon-128x128.png',
   '/icons/icon-144x144.png',
   '/icons/icon-152x152.png',
+  '/icons/icon-180x180.png',
   '/icons/icon-192x192.png',
   '/icons/icon-384x384.png',
   '/icons/icon-512x512.png',
   '/cretexchange-icon-192.png',
   '/cretexchange-icon-512.png',
+  '/brand/cretexchange-app-icon-1024.png',
   '/manifest.json',
 ];
 
