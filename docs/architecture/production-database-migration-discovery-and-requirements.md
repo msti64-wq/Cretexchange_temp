@@ -1,6 +1,7 @@
-# CTX-ARCH-008 — Production Database Migration Discovery and Requirements
+# Production Database Migration Discovery and Requirements
 
-- **Status:** Discovery and requirements package — not an approved implementation architecture
+- **Status:** Supporting Phase B discovery package — not an approved implementation architecture
+- **Related architecture:** [CTX-ARCH-008 — Production Database Migration Architecture](./CTX-ARCH-008-production-database-migration-architecture.md)
 - **Phase:** B — Production Database Migration Architecture Discovery
 - **Date:** July 22, 2026
 - **Scope:** Repository-grounded analysis only; no database, Railway, staging, or production access was used.
