@@ -168,6 +168,80 @@ authenticated-session and record availability**, not as an authentication,
 authorization, backend, frontend, or database defect. No Phase 4 remediation
 or production incident is indicated unless one of those pending reads fails.
 
+## Phase 3.6A Owner functional acceptance
+
+### Scope and safety
+
+- An existing authenticated production Owner session was used without logging
+  out, changing credentials, creating accounts, creating records, invoking
+  write-capable routes, exporting data, or invoking any financial control.
+- This phase exercised only Owner Dashboard and Owner Report reads, range and
+  sort controls, navigation/refresh behavior, and expected access-denial views.
+  A fresh aggregate-only `BEGIN READ ONLY` query was rolled back after the
+  browser checks.
+
+### Owner Dashboard
+
+- **Passed.** The dashboard rendered its portfolio cards, operational summary,
+  location and activity sections, date selector, navigation, and empty states
+  without a loading failure or browser-console error. The selected daily view
+  correctly displayed zero selected-period activity and the intentional empty
+  state when no current-day washouts existed.
+- Current receivables remain separately labeled as a current approved-washout
+  measure, rather than a selected-day operational count. Its two approved
+  washouts agree with the Owner weekly report's two approved/verified rows and
+  $12.00 current receivable composition; it does not contradict the zero-row
+  Today report.
+
+### Owner report functional results
+
+| Range | Result | Rendered summary | Empty-state behavior |
+| --- | --- | --- | --- |
+| Today | Passed | 0 activity rows; 0 approved, pending, rejected, drivers, and reward entries | Intentional empty table and disabled export controls rendered correctly. |
+| Weekly | Passed | 6 rows; 2 approved/verified; 4 rejected; 1 driver; 1 reward entry | Not applicable; populated table and enabled export controls rendered. |
+| Monthly | Passed | 18 rows; 11 approved/verified; 7 rejected; 2 drivers; 10 reward entries | Not applicable; populated table and enabled export controls rendered. |
+| All Time | Passed | 41 rows; 31 approved/verified; 10 rejected; 2 drivers; 25 reward entries | Not applicable; populated table and enabled export controls rendered. |
+
+- The report response was accepted and rendered by the Owner Report UI in each
+  range: operational summary cards, location insight table, configured-location
+  incentive display, report columns, status formatting, search/filter controls,
+  and row table. No pagination or chart component is part of this Owner report
+  design; all matching rows are intentionally presented in the client-side
+  sorted table.
+- The sort control was changed from newest activity to oldest activity without
+  a failed load, stale render, or console error. Navigation away and back,
+  followed by a refresh, restored the documented weekly default and one valid
+  report view without duplicate rendering or a retry loop.
+- Production request logs showed successful `GET /api/reports/owner` responses
+  with HTTP 200 and observed response timing (one observed request: 694 ms).
+  The tested request set showed no `GET /api/reports/owner` HTTP 500 or HTTP
+  503 entry. Browser-console error and warning count remained zero; no failed
+  report-load state appeared.
+
+### Owner authorization boundaries
+
+- **Passed.** The Owner session was denied access to Financial Operations,
+  Lottery Administration, and the Super Admin billing-audit route. No admin
+  content rendered and no authorization boundary was weakened.
+
+### No-write verification
+
+- The read-only aggregate check again returned `transaction_read_only = on` and
+  was rolled back. Counts remain unchanged: `rewards_periods = 0`,
+  `driver_lottery_entries = 30`,
+  `canonical_financial_payment_attempts = 0`, and `billing_batches = 3`.
+- No rewards period, payment attempt, settlement, provider request, collection,
+  payout, wallet action, or other financial execution occurred.
+
+### Acceptance decision
+
+**PASS — Owner reporting is operating correctly after the 0027/0029 production
+migrations.** No reporting Phase 4 remediation is indicated, and the Owner
+reporting portion of the production migration incident may be closed. The
+overall 0027/0029 release record remains open only for the previously recorded,
+separate read-only canonical Batch Detail validation; no application defect is
+indicated by its current record-availability limitation.
+
 ## Recovery decision
 
 There is no approved schema rollback in this package. If either migration fails, stop, preserve the error and catalog evidence, and choose a separately reviewed forward repair. Application rollback is permissible only after verifying compatibility with the actual catalog state. Do not drop newly created schema objects or delete data as an improvised rollback.
