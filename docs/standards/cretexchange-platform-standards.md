@@ -58,6 +58,13 @@ Within the direction established by Platform Vision and Platform Strategy, this 
 - Business rules are authoritative.
 - Rules are documented before implementation.
 - Business rules are reusable.
+
+## 4.1 Owner Portal Localization
+
+- Every user-visible Owner Portal string MUST use the established application internationalization system; hardcoded user-visible copy is prohibited in owner routes and shared owner components.
+- Canonical API values, database values, enum values, material slugs, and internal identifiers SHALL remain stable and untranslated. Their displayed labels MUST use localized mappings.
+- English and Spanish translation-key structures MUST remain aligned. New owner-facing features SHALL include focused localization coverage for both languages, including dynamic counts, displayed statuses, and user-visible errors or confirmations.
+- Locale selection is global application state and MUST persist through Owner Portal navigation and refresh according to the established language-storage behavior.
 - Business rules are never duplicated.
 
 ## 5. Financial Standards
