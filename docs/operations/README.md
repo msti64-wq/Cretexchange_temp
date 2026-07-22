@@ -12,4 +12,8 @@ This library contains reusable, approved operational procedures, checklists, tem
 - [Legacy Database Schema Reconciliation Procedure](./legacy-database-schema-reconciliation-procedure.md)
 - [Database Migration Release Package Template](./database-migration-release-package-template.md)
 
+## Active preflight packages
+
+- [0027 and 0029 Production Migration Preflight Package](./migration-releases/2026-07-22-0027-0029-preflight/README.md) — **PREFLIGHT ONLY — NOT AUTHORIZATION TO EXECUTE**.
+
 These documents define process and evidence. They do not authorize production DDL, deployment, or financial execution.
