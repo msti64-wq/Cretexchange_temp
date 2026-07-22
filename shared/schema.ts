@@ -420,6 +420,12 @@ export const materials = pgTable("materials", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   slug: varchar("slug").unique().notNull(), // e.g., 'dirt', 'asphalt', 'brick'
   displayName: varchar("display_name").notNull(), // e.g., 'Dirt', 'Asphalt'
+  category: varchar("category"),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  retiredAt: timestamp("retired_at"),
+  displayOrder: integer("display_order").notNull().default(0),
+  iconRef: varchar("icon_ref"),
   synonyms: text("synonyms").array(), // e.g., ['soil', 'topsoil'] for dirt
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -432,6 +438,9 @@ export const locationMaterialIntents = pgTable("location_material_intents", {
   materialSlug: varchar("material_slug").references(() => materials.slug), // null for custom materials
   customLabel: text("custom_label"), // For custom material entries
   materialCustomLabel: text("material_custom_label"),
+  customCategory: varchar("custom_category"),
+  customDescription: text("custom_description"),
+  ownerInstructions: text("owner_instructions"),
   unit: materialUnitEnum("unit").notNull(), // per_load, per_ton, per_cy
   rateCents: integer("rate_cents").notNull().default(0), // Amount owner pays driver; 0 allowed
   driverPayCents: integer("driver_pay_cents"),
@@ -444,6 +453,8 @@ export const locationMaterialIntents = pgTable("location_material_intents", {
   capacityDaily: integer("capacity_daily"), // Optional daily capacity limit
   queueMax: integer("queue_max"), // Optional queue limit
   active: boolean("active").notNull().default(true),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  updatedByUserId: varchar("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

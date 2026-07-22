@@ -78,6 +78,7 @@ import {
 } from "./rewardsPeriods";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
 import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
+import { isValidCustomFacilityMaterialName, normalizeFacilityMaterialLabel } from "../shared/facilityMaterials";
 import { getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
 import { isAwaitingDriverStripePaymentStatus, getDriverStripeSetupMessage } from "../shared/driverPaymentStatus";
 import { normalizeMoneyToCents } from "../shared/money";
@@ -1826,6 +1827,28 @@ async function getOwnerLocationOperationalAccess(userId: string) {
     accessState: resolveOwnerLocationAccessState(owner, user),
   };
 }
+
+const facilityMaterialSystemRequestSchema = z.object({
+  materialSlug: z.string().trim().min(1).max(120),
+  ownerInstructions: z.string().trim().max(2_000).optional().nullable(),
+  active: z.boolean().optional(),
+});
+
+const facilityMaterialCustomRequestSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  category: z.string().trim().max(120).optional().nullable(),
+  description: z.string().trim().max(2_000).optional().nullable(),
+  ownerInstructions: z.string().trim().max(2_000).optional().nullable(),
+  active: z.boolean().optional(),
+});
+
+const facilityMaterialUpdateRequestSchema = z.object({
+  active: z.boolean().optional(),
+  ownerInstructions: z.string().trim().max(2_000).optional().nullable(),
+  customName: z.string().trim().min(1).max(120).optional(),
+  customCategory: z.string().trim().max(120).optional().nullable(),
+  customDescription: z.string().trim().max(2_000).optional().nullable(),
+}).refine((value) => Object.keys(value).length > 0, { message: "At least one material field is required" });
 
 const ownerApprovalIntentRequestSchema = z.object({
   intentToken: z.string().min(32).max(256),
@@ -5113,6 +5136,191 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting location:", error);
       res.status(500).json({ message: "Failed to delete location" });
+    }
+  });
+
+  // Facility material management is owner-scoped and operational only. The
+  // material association records accepted materials; it does not set pricing,
+  // create obligations, or initiate any provider operation.
+  const resolveOwnerManagedMaterialLocation = async (req: any, res: any) => {
+    if (req.user?.role && req.user.role !== "owner") {
+      res.status(403).json({ message: "Only Facility owners may manage facility materials" });
+      return null;
+    }
+    const { owner, user, accessState } = await getOwnerLocationOperationalAccess(req.user.id);
+    if (!owner || !user) {
+      res.status(404).json({ message: "Facility account not found" });
+      return null;
+    }
+    if (!accessState.canManageLocations) {
+      res.status(403).json({ message: accessState.blockingMessage || "Your Facility is not ready for location management." });
+      return null;
+    }
+    const location = await storage.getWashoutLocation(req.params.locationId);
+    if (!location) {
+      res.status(404).json({ message: "Location not found" });
+      return null;
+    }
+    if (location.ownerId !== owner.id) {
+      res.status(403).json({ message: "Not authorized to manage materials for this location" });
+      return null;
+    }
+    return { owner, location };
+  };
+
+  app.get('/api/owners/materials/catalog', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user?.role && req.user.role !== "owner") return res.status(403).json({ message: "Only Facility owners may view the facility material catalog" });
+      const { owner, user, accessState } = await getOwnerLocationOperationalAccess(req.user.id);
+      if (!owner || !user) return res.status(404).json({ message: "Facility account not found" });
+      if (!accessState.canManageLocations) return res.status(403).json({ message: accessState.blockingMessage || "Your Facility is not ready for location management." });
+      const catalog = await storage.getAllMaterials();
+      res.json(catalog.filter((material: any) => material.isActive !== false && !material.retiredAt));
+    } catch (error) {
+      console.error("Error fetching owner material catalog:", error);
+      res.status(500).json({ message: "Failed to fetch material catalog" });
+    }
+  });
+
+  app.get('/api/owners/locations/:locationId/materials', isAuthenticated, async (req: any, res) => {
+    try {
+      const resolved = await resolveOwnerManagedMaterialLocation(req, res);
+      if (!resolved) return;
+      const [intents, catalog] = await Promise.all([
+        storage.getLocationMaterialIntents(resolved.location.id),
+        storage.getAllMaterials(),
+      ]);
+      const catalogBySlug = new Map<string, any>(catalog.map((material: any) => [material.slug, material]));
+      res.json(intents.map((intent: any) => {
+        const systemMaterial = intent.materialSlug ? catalogBySlug.get(intent.materialSlug) : undefined;
+        return {
+          ...intent,
+          materialKind: intent.materialSlug ? "system" : "custom",
+          displayName: systemMaterial?.displayName || intent.customLabel || intent.materialCustomLabel,
+          category: systemMaterial?.category || intent.customCategory || null,
+          description: systemMaterial?.description || intent.customDescription || null,
+          systemMaterial: systemMaterial ? {
+            slug: systemMaterial.slug,
+            displayName: systemMaterial.displayName,
+            category: systemMaterial.category,
+          } : null,
+        };
+      }));
+    } catch (error) {
+      console.error("Error fetching facility materials:", error);
+      res.status(500).json({ message: "Failed to fetch facility materials" });
+    }
+  });
+
+  app.post('/api/owners/locations/:locationId/materials/system', isAuthenticated, async (req: any, res) => {
+    try {
+      const resolved = await resolveOwnerManagedMaterialLocation(req, res);
+      if (!resolved) return;
+      const input = facilityMaterialSystemRequestSchema.parse(req.body);
+      const material = await storage.getMaterialBySlug(input.materialSlug);
+      if (!material || (material as any).isActive === false || (material as any).retiredAt) {
+        return res.status(409).json({ message: "This standardized material is not currently available" });
+      }
+      const existing = await storage.getLocationMaterialIntents(resolved.location.id);
+      if (existing.some((intent: any) => intent.materialSlug === input.materialSlug)) {
+        return res.status(409).json({ message: "This material is already configured for this location" });
+      }
+      const created = await storage.createLocationMaterialIntent({
+        locationId: resolved.location.id,
+        materialSlug: input.materialSlug,
+        customLabel: null,
+        unit: "per_load",
+        rateCents: 0,
+        active: input.active ?? true,
+        ownerInstructions: input.ownerInstructions || null,
+        createdByUserId: req.user.id,
+        updatedByUserId: req.user.id,
+      } as any);
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid material request", errors: error.errors });
+      console.error("Error adding system material:", error);
+      res.status(500).json({ message: "Failed to add material" });
+    }
+  });
+
+  app.post('/api/owners/locations/:locationId/materials/custom', isAuthenticated, async (req: any, res) => {
+    try {
+      const resolved = await resolveOwnerManagedMaterialLocation(req, res);
+      if (!resolved) return;
+      const input = facilityMaterialCustomRequestSchema.parse(req.body);
+      if (!isValidCustomFacilityMaterialName(input.name)) return res.status(400).json({ message: "A custom material name is required" });
+      const customLabel = normalizeFacilityMaterialLabel(input.name);
+      const existing = await storage.getLocationMaterialIntents(resolved.location.id);
+      if (existing.some((intent: any) => !intent.materialSlug && normalizeFacilityMaterialLabel(intent.customLabel || intent.materialCustomLabel || "").toLowerCase() === customLabel.toLowerCase())) {
+        return res.status(409).json({ message: "A custom material with this name is already configured for this location" });
+      }
+      const created = await storage.createLocationMaterialIntent({
+        locationId: resolved.location.id,
+        materialSlug: null,
+        customLabel,
+        materialCustomLabel: null,
+        customCategory: input.category || null,
+        customDescription: input.description || null,
+        ownerInstructions: input.ownerInstructions || null,
+        unit: "per_load",
+        rateCents: 0,
+        active: input.active ?? true,
+        createdByUserId: req.user.id,
+        updatedByUserId: req.user.id,
+      } as any);
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid custom material request", errors: error.errors });
+      console.error("Error creating custom material:", error);
+      res.status(500).json({ message: "Failed to create custom material" });
+    }
+  });
+
+  app.put('/api/owners/locations/:locationId/materials/:materialId', isAuthenticated, async (req: any, res) => {
+    try {
+      const resolved = await resolveOwnerManagedMaterialLocation(req, res);
+      if (!resolved) return;
+      const input = facilityMaterialUpdateRequestSchema.parse(req.body);
+      const intents = await storage.getLocationMaterialIntents(resolved.location.id);
+      const intent: any = intents.find((item: any) => item.id === req.params.materialId);
+      if (!intent) return res.status(404).json({ message: "Facility material not found" });
+      if (intent.materialSlug && (input.customName || input.customCategory !== undefined || input.customDescription !== undefined)) {
+        return res.status(400).json({ message: "Standardized material details are managed by CreteXchange" });
+      }
+      const updates: Record<string, unknown> = { updatedByUserId: req.user.id };
+      if (input.active !== undefined) updates.active = input.active;
+      if (input.ownerInstructions !== undefined) updates.ownerInstructions = input.ownerInstructions || null;
+      if (input.customName !== undefined) {
+        if (!isValidCustomFacilityMaterialName(input.customName)) return res.status(400).json({ message: "A custom material name is required" });
+        const customLabel = normalizeFacilityMaterialLabel(input.customName);
+        if (intents.some((item: any) => item.id !== intent.id && !item.materialSlug && normalizeFacilityMaterialLabel(item.customLabel || item.materialCustomLabel || "").toLowerCase() === customLabel.toLowerCase())) {
+          return res.status(409).json({ message: "A custom material with this name is already configured for this location" });
+        }
+        updates.customLabel = customLabel;
+      }
+      if (input.customCategory !== undefined) updates.customCategory = input.customCategory || null;
+      if (input.customDescription !== undefined) updates.customDescription = input.customDescription || null;
+      res.json(await storage.updateLocationMaterialIntent(intent.id, updates as any));
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid material update", errors: error.errors });
+      console.error("Error updating facility material:", error);
+      res.status(500).json({ message: "Failed to update facility material" });
+    }
+  });
+
+  app.delete('/api/owners/locations/:locationId/materials/:materialId', isAuthenticated, async (req: any, res) => {
+    try {
+      const resolved = await resolveOwnerManagedMaterialLocation(req, res);
+      if (!resolved) return;
+      const intents = await storage.getLocationMaterialIntents(resolved.location.id);
+      const intent = intents.find((item: any) => item.id === req.params.materialId);
+      if (!intent) return res.status(404).json({ message: "Facility material not found" });
+      // Retain the relationship for audit/history; removal means not accepted.
+      res.json(await storage.updateLocationMaterialIntent(intent.id, { active: false, updatedByUserId: req.user.id } as any));
+    } catch (error) {
+      console.error("Error deactivating facility material:", error);
+      res.status(500).json({ message: "Failed to deactivate facility material" });
     }
   });
 
@@ -17605,10 +17813,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create new intents
       const createdIntents = [];
       for (const intent of materialIntents) {
+        const customLabel = intent.customLabel || intent.materialCustomLabel || null;
+        if (!intent.materialSlug && !isValidCustomFacilityMaterialName(customLabel)) {
+          return res.status(400).json({ message: "Each material must have a system material or custom name" });
+        }
         const newIntent = await storage.createLocationMaterialIntent({
           locationId,
           materialSlug: intent.materialSlug,
-          materialCustomLabel: intent.materialCustomLabel,
+          customLabel,
+          materialCustomLabel: null,
           unit: intent.unit || 'per_load',
           driverPayCents: intent.driverPayCents,
           pricingUnit: intent.pricingUnit || 'load',
@@ -17634,6 +17847,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/locations/:locationId/material-intents', isAuthenticated, async (req: any, res) => {
     try {
       const { locationId } = req.params;
+      const resolved = await resolveOwnerManagedMaterialLocation(req, res);
+      if (!resolved) return;
       const intents = await storage.getLocationMaterialIntents(locationId);
       res.json(intents);
     } catch (error: any) {
@@ -17646,11 +17861,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/locations/:locationId/material-intents', isAuthenticated, async (req: any, res) => {
     try {
       const { locationId } = req.params;
-      const intentData = req.body;
+      const resolved = await resolveOwnerManagedMaterialLocation(req, res);
+      if (!resolved) return;
+      const intentData = req.body || {};
 
+      if (intentData.locationId && intentData.locationId !== resolved.location.id) {
+        return res.status(400).json({ message: "The location must be selected from the URL" });
+      }
+
+      const customLabel = intentData.customLabel || intentData.materialCustomLabel || null;
+      if (!intentData.materialSlug && !isValidCustomFacilityMaterialName(customLabel)) {
+        return res.status(400).json({ message: "A system material or custom name is required" });
+      }
+      if (intentData.materialSlug && customLabel) {
+        return res.status(400).json({ message: "Choose either a system material or a custom name" });
+      }
       const newIntent = await storage.createLocationMaterialIntent({
-        locationId,
+        locationId: resolved.location.id,
         ...intentData,
+        customLabel,
+        materialCustomLabel: null,
       });
 
       res.json(newIntent);
@@ -17664,7 +17894,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/locations/:locationId/material-intents', isAuthenticated, async (req: any, res) => {
     try {
       const { locationId } = req.params;
-      await storage.deleteAllLocationMaterialIntents(locationId);
+      const resolved = await resolveOwnerManagedMaterialLocation(req, res);
+      if (!resolved) return;
+      // Legacy endpoint retained for compatibility only. It now deactivates
+      // rather than destructively removing facility material history.
+      const intents = await storage.getLocationMaterialIntents(resolved.location.id);
+      await Promise.all(intents.map((intent: any) => storage.updateLocationMaterialIntent(intent.id, {
+        active: false,
+        updatedByUserId: req.user.id,
+      } as any)));
       res.json({ message: 'Material intents cleared' });
     } catch (error: any) {
       console.error('Error deleting material intents:', error);
