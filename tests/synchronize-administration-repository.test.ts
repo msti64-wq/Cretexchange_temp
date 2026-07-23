@@ -32,6 +32,9 @@ test("manual Administration Repository synchronization is staging-only, feature-
   assert.match(source, /synchronizeGovernedDocuments\(immutableCommitSha, documents\)/);
   assert.match(source, /if \(result\.status !== "completed"\)/);
   assert.match(source, /persistAdministrationRepositorySynchronization\(immutableCommitSha, result\)/);
+  assert.match(source, /import \{ pool \} from "\.\.\/server\/db"/);
+  assert.match(source, /try \{/);
+  assert.match(source, /finally \{\s*await pool\.end\(\);\s*\}/);
   assert.match(source, /administrationRepositorySourceCommit/);
   assert.match(resolver, /RAILWAY_GIT_COMMIT_SHA/);
   assert.match(resolver, /ADMIN_REPOSITORY_SOURCE_COMMIT/);
