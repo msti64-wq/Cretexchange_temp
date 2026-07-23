@@ -61,6 +61,7 @@ const FinancialOperations = lazy(() => import("@/pages/admin/financial-operation
 const FinancialOwnerDetail = lazy(() => import("@/pages/admin/financial-operations").then((module) => ({ default: module.FinancialOwnerDetail })));
 const FinancialBatchDetail = lazy(() => import("@/pages/admin/financial-operations").then((module) => ({ default: module.FinancialBatchDetail })));
 const FinancialAudit = lazy(() => import("@/pages/admin/financial-operations").then((module) => ({ default: module.FinancialAudit })));
+const AdministrationRepository = lazy(() => import("@/pages/admin/administration-repository"));
 
 // Wrapper components for Register with preselected roles
 const GeneralRegister = (props: RouteComponentProps) => <Register />;
@@ -166,6 +167,7 @@ function Router() {
             <Route path="/admin/financial-operations/owners/:ownerId" component={FinancialOwnerDetail} />
             <Route path="/admin/financial-operations/batches/:batchId" component={FinancialBatchDetail} />
             <Route path="/admin/financial-operations/audit" component={FinancialAudit} />
+            <Route path="/admin/administration-repository" component={AdministrationRepository} />
             <Route path="/batch-payments" component={AdminBatchPayments} />
             <Route path="/reconciliation" component={AdminReconciliation} />
             <Route path="/subscriptions" component={AdminSubscriptions} />

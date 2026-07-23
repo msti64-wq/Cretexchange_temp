@@ -1819,6 +1819,132 @@ export const insertFeatureFlagSchema = createInsertSchema(featureFlags).omit({
   updatedAt: true,
 });
 
+// Administration Repository: derived operational records for governed Git
+// documents. These tables intentionally never store an editable document body.
+export const governedDocuments = pgTable("governed_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentIdentifier: varchar("document_identifier").notNull().unique(),
+  repositoryPath: text("repository_path").notNull().unique(),
+  title: text("title").notNull(),
+  documentType: varchar("document_type").notNull(),
+  scope: varchar("scope"),
+  ownerReference: varchar("owner_reference"),
+  developmentState: varchar("development_state").notNull().default("draft"),
+  approvalState: varchar("approval_state").notNull().default("pending"),
+  publicationState: varchar("publication_state").notNull().default("repository_only"),
+  effectivityState: varchar("effectivity_state").notNull().default("not_effective"),
+  retentionState: varchar("retention_state").notNull().default("active_record"),
+  implementationAuthorizationState: varchar("implementation_authorization_state").notNull().default("not_applicable"),
+  productionAdoptionState: varchar("production_adoption_state").notNull().default("not_applicable"),
+  validationState: varchar("validation_state").notNull().default("valid"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_governed_documents_type_state").on(table.documentType, table.validationState),
+  index("idx_governed_documents_path").on(table.repositoryPath),
+]);
+
+export const documentSourceVersions = pgTable("document_source_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => governedDocuments.id, { onDelete: "cascade" }),
+  immutableCommitSha: varchar("immutable_commit_sha").notNull(),
+  checksumSha256: varchar("checksum_sha256").notNull(),
+  sourcePath: text("source_path").notNull(),
+  sourceMetadata: jsonb("source_metadata").notNull().default(sql`'{}'::jsonb`),
+  synchronizedAt: timestamp("synchronized_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("uniq_document_source_version_identity").on(table.documentId, table.immutableCommitSha, table.checksumSha256),
+  index("idx_document_source_versions_commit").on(table.immutableCommitSha),
+]);
+
+export const documentMetadata = pgTable("document_metadata", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => governedDocuments.id, { onDelete: "cascade" }),
+  metadataKey: varchar("metadata_key").notNull(),
+  metadataValue: text("metadata_value").notNull(),
+  provenance: varchar("provenance").notNull(),
+  validationState: varchar("validation_state").notNull().default("valid"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [uniqueIndex("uniq_document_metadata_key").on(table.documentId, table.metadataKey)]);
+
+export const documentClassifications = pgTable("document_classifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").notNull().references(() => governedDocuments.id, { onDelete: "cascade" }),
+  classification: varchar("classification").notNull().default("internal"),
+  assignedBy: varchar("assigned_by").references(() => users.id, { onDelete: "set null" }),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  provenance: varchar("provenance").notNull().default("derived"),
+}, (table) => [uniqueIndex("uniq_document_classification").on(table.documentId)]);
+
+export const publicationSets = pgTable("publication_sets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  publicationSetIdentifier: varchar("publication_set_identifier").notNull().unique(),
+  immutableCommitSha: varchar("immutable_commit_sha").notNull(),
+  targetAudience: varchar("target_audience").notNull(),
+  administrativeScope: varchar("administrative_scope").notNull(),
+  validationOutcome: varchar("validation_outcome").notNull(),
+  initiatedBy: varchar("initiated_by").references(() => users.id, { onDelete: "set null" }),
+  previousPublicationSetId: varchar("previous_publication_set_id"),
+  generatedAt: timestamp("generated_at").defaultNow(),
+});
+
+export const publicationManifestEntries = pgTable("publication_manifest_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  publicationSetId: varchar("publication_set_id").notNull().references(() => publicationSets.id, { onDelete: "cascade" }),
+  documentId: varchar("document_id").notNull().references(() => governedDocuments.id, { onDelete: "restrict" }),
+  sourceVersionId: varchar("source_version_id").notNull().references(() => documentSourceVersions.id, { onDelete: "restrict" }),
+  checksumSha256: varchar("checksum_sha256").notNull(),
+  position: integer("position").notNull(),
+}, (table) => [
+  uniqueIndex("uniq_publication_manifest_document").on(table.publicationSetId, table.documentId),
+  uniqueIndex("uniq_publication_manifest_position").on(table.publicationSetId, table.position),
+]);
+
+export const documentRelationships = pgTable("document_relationships", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceDocumentId: varchar("source_document_id").notNull().references(() => governedDocuments.id, { onDelete: "cascade" }),
+  targetDocumentIdentifier: varchar("target_document_identifier").notNull(),
+  relationshipType: varchar("relationship_type").notNull(),
+  provenance: varchar("provenance").notNull(),
+  validationState: varchar("validation_state").notNull().default("valid"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_document_relationships_source").on(table.sourceDocumentId),
+  uniqueIndex("uniq_document_relationship_identity").on(table.sourceDocumentId, table.targetDocumentIdentifier, table.relationshipType),
+]);
+
+export const synchronizationRuns = pgTable("synchronization_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  immutableCommitSha: varchar("immutable_commit_sha").notNull(),
+  initiatedBy: varchar("initiated_by").references(() => users.id, { onDelete: "set null" }),
+  status: varchar("status").notNull(),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  summary: jsonb("summary").notNull().default(sql`'{}'::jsonb`),
+});
+
+export const synchronizationResults = pgTable("synchronization_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  synchronizationRunId: varchar("synchronization_run_id").notNull().references(() => synchronizationRuns.id, { onDelete: "cascade" }),
+  documentIdentifier: varchar("document_identifier"),
+  repositoryPath: text("repository_path").notNull(),
+  status: varchar("status").notNull(),
+  errorCode: varchar("error_code"),
+  errorDetail: text("error_detail"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("idx_synchronization_results_run").on(table.synchronizationRunId)]);
+
+export const governanceAuditEvents = pgTable("governance_audit_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: varchar("event_type").notNull(),
+  documentId: varchar("document_id").references(() => governedDocuments.id, { onDelete: "set null" }),
+  publicationSetId: varchar("publication_set_id").references(() => publicationSets.id, { onDelete: "set null" }),
+  synchronizationRunId: varchar("synchronization_run_id").references(() => synchronizationRuns.id, { onDelete: "set null" }),
+  actorId: varchar("actor_id").references(() => users.id, { onDelete: "set null" }),
+  eventMetadata: jsonb("event_metadata").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [index("idx_governance_audit_events_created").on(table.createdAt)]);
+
 export const insertFeatureFlagOverrideSchema = createInsertSchema(featureFlagOverrides).omit({
   id: true,
   createdAt: true,

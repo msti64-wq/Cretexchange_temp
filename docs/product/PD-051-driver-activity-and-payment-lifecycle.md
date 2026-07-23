@@ -23,9 +23,9 @@ This decision extends and must be read with:
 - [CTX-ARCH-001 — Financial Architecture and KPI Specification](../architecture/financial-architecture-and-kpi-specification.md)
 - [CTX-ARCH-003 — Driver Operations Architecture](../architecture/driver-operations-architecture.md)
 - [CTX-ARCH-006 — Driver Incentive and Financial Settlement Architecture](../architecture/driver-incentive-and-financial-settlement-architecture.md)
-- [PD-045 — Canonical Driver Settlement Rail](./product-decisions.md#pd-045---canonical-driver-settlement-rail)
-- [PD-047 — Driver Earnings and KPI Definitions](./product-decisions.md#pd-047---driver-earnings-and-kpi-definitions)
-- [PD-049 — Financial Idempotency and Recovery Requirements](./product-decisions.md#pd-049---financial-idempotency-and-recovery-requirements)
+- [Canonical Driver Settlement Rail](./product-decisions.md#pd-045---canonical-driver-settlement-rail) (PD-045)
+- [Driver Earnings and KPI Definitions](./product-decisions.md#pd-047---driver-earnings-and-kpi-definitions) (PD-047)
+- [Financial Idempotency and Recovery Requirements](./product-decisions.md#pd-049---financial-idempotency-and-recovery-requirements) (PD-049)
 
 This document is the authoritative cross-experience lifecycle and presentation vocabulary. It does not supersede the more specific financial source-of-truth, money, settlement, and idempotency rules in CTX-ARCH-001, CTX-ARCH-006, and PD-045.
 

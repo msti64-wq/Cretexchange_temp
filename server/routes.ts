@@ -90,6 +90,8 @@ import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags"
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import { buildCanonicalObligationCreationReason, createDatabaseFinancialObligationRepository, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
 import { getFinancialSchemaCapabilities } from "./financialSchemaCapabilities";
+import { isAdministrationRepositoryEnabled } from "./administrationRepository";
+import { getAdministrationRepositoryDocument, getAdministrationRepositoryOverview, listAdministrationRepositoryDocuments, normalizeAdministrationRepositoryQuery } from "./administrationRepositoryReadModel";
 import { resolveFinancialWorkspaceSelectionToken } from "./financialWorkspaceSelection";
 import { getCanonicalFinancialVisibilitySummary } from "./canonicalFinancialVisibility";
 import {
@@ -5902,6 +5904,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       stripePaymentIntentEvidenceAvailable: capabilities.stripePaymentIntentEvidenceAvailable,
       stripeChargeEvidenceAvailable: capabilities.stripeChargeEvidenceAvailable,
     });
+  });
+
+  // Administration Repository is a derived, read-only Admin inspection surface.
+  // It is deliberately fail-closed until explicitly enabled in a non-production
+  // environment and never exposes document content or arbitrary repository files.
+  const requireAdministrationRepositoryActor = async (req: any, res: any) => {
+    const user = await requireFinancialOperationsActor(req, res);
+    if (!user) return null;
+    if (!isAdministrationRepositoryEnabled()) {
+      res.status(404).json({ message: "Administration Repository is not enabled in this environment." });
+      return null;
+    }
+    return user;
+  };
+  app.get('/api/admin/administration-repository/overview', isAuthenticated, async (req: any, res) => {
+    if (!await requireAdministrationRepositoryActor(req, res)) return;
+    try { return res.json(await getAdministrationRepositoryOverview()); }
+    catch { return res.status(503).json({ message: "Administration Repository metadata is unavailable." }); }
+  });
+  app.get('/api/admin/administration-repository/documents', isAuthenticated, async (req: any, res) => {
+    if (!await requireAdministrationRepositoryActor(req, res)) return;
+    try { return res.json(await listAdministrationRepositoryDocuments(normalizeAdministrationRepositoryQuery(req.query || {}))); }
+    catch { return res.status(503).json({ message: "Administration Repository metadata is unavailable." }); }
+  });
+  app.get('/api/admin/administration-repository/documents/:identifier', isAuthenticated, async (req: any, res) => {
+    if (!await requireAdministrationRepositoryActor(req, res)) return;
+    const identifier = String(req.params.identifier || "").trim();
+    if (!/^(?:CTX-(?:STD|ARCH|DEP|DB)-\d{3}|CTX-OPS-\d{3}|ADR-\d{3}|PD-\d{3})$/.test(identifier)) return res.status(422).json({ message: "A valid governed document identifier is required." });
+    try { const result = await getAdministrationRepositoryDocument(identifier); return result ? res.json(result) : res.status(404).json({ message: "Governed document not found." }); }
+    catch { return res.status(503).json({ message: "Administration Repository metadata is unavailable." }); }
   });
 
   // Selection tokens are opaque and short-lived: this keeps raw activity IDs
