@@ -2,7 +2,7 @@
 
 **Status:** Approved for non-executing assisted-pilot implementation
 **Authority:** Product Decision
-**Related:** [PB-001](../project/pilot/PB-001-cretexchange-pilot-baseline-v1.0.md), [PD-045](product-decisions.md), [PD-050](PD-050-facility-operational-access-and-billing-readiness.md), [PD-051](PD-051-driver-activity-and-payment-lifecycle.md), [PD-053](PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md), [CTX-ARCH-007](../architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md)
+**Related:** [PB-001](../project/pilot/PB-001-cretexchange-pilot-baseline-v1.0.md), [Canonical Driver Settlement Rail](product-decisions.md) (PD-045), [PD-050](PD-050-facility-operational-access-and-billing-readiness.md), [PD-051](PD-051-driver-activity-and-payment-lifecycle.md), [PD-053](PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md), [CTX-ARCH-007](../architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md)
 
 ## Decision
 

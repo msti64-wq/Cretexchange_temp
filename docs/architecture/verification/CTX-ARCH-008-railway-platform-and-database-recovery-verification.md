@@ -1,5 +1,6 @@
 # CTX-ARCH-008 — Railway Platform and Database Recovery Verification
 
+- **Document ID:** CTX-ARCH-008-VERIFICATION
 - **Record type:** Architecture verification evidence; not architecture, an ADR, implementation authorization, or production authorization
 - **Related architecture:** [CTX-ARCH-008 — Production Database Migration Architecture](../CTX-ARCH-008-production-database-migration-architecture.md)
 - **Related approval:** [CTX-ARCH-008 Architecture Approval Record](../approvals/CTX-ARCH-008-architecture-approval-record.md)

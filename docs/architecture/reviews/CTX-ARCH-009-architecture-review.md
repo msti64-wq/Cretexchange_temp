@@ -1,5 +1,6 @@
 # CTX-ARCH-009 Architecture Review — Operations Library and Knowledge Management
 
+- **Document ID:** CTX-ARCH-009-REVIEW
 - **Review status:** Independent architecture review; not an approval, implementation authorization, or production-adoption authorization
 - **Architecture reviewed:** [CTX-ARCH-009 — Operations Library and Knowledge Management Architecture](../CTX-ARCH-009-operations-library-and-knowledge-management-architecture.md)
 - **Supporting discovery reviewed:** [Operations Library Discovery and Requirements](../operations-library-discovery-and-requirements.md)

@@ -1,5 +1,6 @@
 # CTX-ARCH-008 Architecture Approval Record
 
+- **Document ID:** CTX-ARCH-008-APPROVAL-RECORD
 - **Record ID:** CTX-ARCH-008-AR-2026-07-22
 - **Related architecture:** [CTX-ARCH-008 — Production Database Migration Architecture](../CTX-ARCH-008-production-database-migration-architecture.md)
 - **Related discovery:** [Phase B Discovery and Requirements](../production-database-migration-discovery-and-requirements.md)

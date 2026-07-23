@@ -1,7 +1,7 @@
 # CTX-ARCH-008 — Production Database Migration Architecture
 
 - **Document owner:** V8 Laboratories
-- **Status:** **CONDITIONALLY APPROVED — NOT AUTHORIZED FOR IMPLEMENTATION**
+- **Status:** **CONDITIONALLY APPROVED — NOT YET EFFECTIVE — NOT AUTHORIZED FOR IMPLEMENTATION**
 - **Version:** 0.1
 - **Date:** July 22, 2026
 - **Intended approvers:** Architecture governance owner, release authority, security/operations owner, and business/technical approver

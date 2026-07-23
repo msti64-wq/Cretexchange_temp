@@ -130,7 +130,7 @@ This decision is consistent with:
 - [CTX-UX-003](../ux/CTX-UX-003-first-time-user-journey-and-pilot-readiness.md), which defines the first-time Facility journey and pilot-readiness boundaries;
 - [CTX-ARCH-001 — Financial Architecture and KPI Specification](../architecture/financial-architecture-and-kpi-specification.md), which governs financial lifecycle and reporting behavior;
 - [CTX-ARCH-006 — Driver Incentive and Financial Settlement Architecture](../architecture/driver-incentive-and-financial-settlement-architecture.md), which governs driver incentive, payment-obligation, wallet, payout, and settlement boundaries; and
-- [PD-045 — Canonical Driver Settlement Rail](./product-decisions.md#pd-045---canonical-driver-settlement-rail), which governs the driver settlement rail.
+- [Canonical Driver Settlement Rail](./product-decisions.md#pd-045---canonical-driver-settlement-rail) (PD-045), which governs the driver settlement rail.
 
 PD-050 complements these financial authorities. It does not replace them, alter their financial contract, or represent runtime financial remediation as complete.
 

@@ -220,7 +220,7 @@ The following invariant is approved:
 
 > A single driver incentive must create only one withdrawable economic entitlement.
 
-[PD-045](../product/product-decisions.md#pd-045---canonical-driver-settlement-rail) is Active and selects the CreteXchange Driver Wallet as the canonical settlement ledger for driver incentives.
+[Canonical Driver Settlement Rail](../product/product-decisions.md#pd-045---canonical-driver-settlement-rail) (PD-045) is Active and selects the CreteXchange Driver Wallet as the canonical settlement ledger for driver incentives.
 
 - `payments.amount` records the approved driver obligation.
 - The Driver Wallet ledger records the driver's economic entitlement.
