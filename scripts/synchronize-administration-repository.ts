@@ -26,11 +26,17 @@ async function collectMarkdown(relativeDirectory: string): Promise<SourceDocumen
 async function main() {
   try {
     if (!isAdministrationRepositoryEnabled()) fail("ADMIN_REPOSITORY_ENABLED=true is required.");
-    if (process.env.SYNCHRONIZATION_TARGET !== "staging" || process.env.RAILWAY_ENVIRONMENT_NAME !== "staging") fail("Synchronization is staging-only and requires explicit staging target guards.");
-    if (!process.env.DATABASE_URL) fail("DATABASE_URL is required inside the private staging synchronization job.");
+    if (!process.env.DATABASE_URL) fail("DATABASE_URL is required inside the private synchronization job.");
 
     const sourceCommit = resolveImmutableSourceCommit();
     const immutableCommitSha = sourceCommit.commitSha;
+    const isStagingTarget = process.env.SYNCHRONIZATION_TARGET === "staging" && process.env.RAILWAY_ENVIRONMENT_NAME === "staging";
+    const isExplicitlyAuthorizedProductionTarget = process.env.SYNCHRONIZATION_TARGET === "production"
+      && process.env.RAILWAY_ENVIRONMENT_NAME === "production"
+      && process.env.ADMIN_REPOSITORY_PRODUCTION_SYNC_AUTHORIZATION === immutableCommitSha;
+    if (!isStagingTarget && !isExplicitlyAuthorizedProductionTarget) {
+      fail("Synchronization requires the staging target guard or explicit production authorization for the immutable deployed commit.");
+    }
     console.log(`SYNCHRONIZATION_SOURCE_COMMIT variable=${sourceCommit.sourceVariable} sha=${sanitizeCommitSha(immutableCommitSha)}`);
     const documents = (await Promise.all(["docs/architecture", "docs/standards", "docs/operations", "docs/product", "docs/project", "docs/ux", "docs/business", "docs/research", "docs/vision"].map(collectMarkdown))).flat().sort((a, b) => a.path.localeCompare(b.path));
     const result = synchronizeGovernedDocuments(immutableCommitSha, documents);

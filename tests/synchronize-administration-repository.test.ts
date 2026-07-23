@@ -21,14 +21,17 @@ test("fails closed for missing, malformed, or conflicting source commits", () =>
   assert.throws(() => resolveImmutableSourceCommit({ [RAILWAY_DEPLOYMENT_COMMIT_ENV]: railwayCommit, [ADMIN_REPOSITORY_SOURCE_COMMIT_ENV]: explicitCommit }), /Conflicting/);
 });
 
-test("manual Administration Repository synchronization is staging-only, feature-gated, and source-validated before persistence", async () => {
+test("manual Administration Repository synchronization is feature-gated and allows production only with immutable-commit authorization", async () => {
   const [source, resolver] = await Promise.all([
     readFile(new URL("../scripts/synchronize-administration-repository.ts", import.meta.url), "utf8"),
     readFile(new URL("../server/administrationRepositorySourceCommit.ts", import.meta.url), "utf8"),
   ]);
   assert.match(source, /ADMIN_REPOSITORY_ENABLED=true/);
-  assert.match(source, /SYNCHRONIZATION_TARGET !== "staging"/);
-  assert.match(source, /RAILWAY_ENVIRONMENT_NAME !== "staging"/);
+  assert.match(source, /SYNCHRONIZATION_TARGET === "staging"/);
+  assert.match(source, /RAILWAY_ENVIRONMENT_NAME === "staging"/);
+  assert.match(source, /SYNCHRONIZATION_TARGET === "production"/);
+  assert.match(source, /RAILWAY_ENVIRONMENT_NAME === "production"/);
+  assert.match(source, /ADMIN_REPOSITORY_PRODUCTION_SYNC_AUTHORIZATION === immutableCommitSha/);
   assert.match(source, /synchronizeGovernedDocuments\(immutableCommitSha, documents\)/);
   assert.match(source, /if \(result\.status !== "completed"\)/);
   assert.match(source, /persistAdministrationRepositorySynchronization\(immutableCommitSha, result\)/);
