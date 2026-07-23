@@ -198,6 +198,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | CTX-ARCH-007 | [Canonical Financial Batch Architecture](./architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) | Defines canonical batch identity, frozen membership/totals, audit, discovery queues, legacy isolation, and Phase 3B non-execution. | Approved architecture direction; implementation pending |
 | CTX-ARCH-008 | [Production Database Migration Architecture](./architecture/CTX-ARCH-008-production-database-migration-architecture.md) | Proposes a controlled lifecycle, manifest, runner, ledger, reconciliation, deployment gates, recovery, and evidence model for production schema changes. | **Conditionally approved — not authorized for implementation** |
 | CTX-ARCH-009 | [Operations Library and Knowledge Management Architecture](./architecture/CTX-ARCH-009-operations-library-and-knowledge-management-architecture.md) | Proposes a repository-authoritative, Admin-only Operations Library with secure rendering, metadata, lifecycle, search, traceability, and future knowledge/evidence boundaries. | **Draft — not yet approved for implementation** |
+| CTX-ARCH-010 | [Administration Repository Architecture](./architecture/CTX-ARCH-010-administration-repository-architecture.md) | Proposes the derived publication, inventory, metadata, classification, relationship, search, audit, and effective-set boundary that supports repository-governed operational knowledge. | **Draft — not yet approved for implementation** |
 
 ## Standards Library
 

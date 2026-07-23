@@ -37,6 +37,7 @@ This section documents the technical architecture of CreteXchange.
 | CTX-ARCH-007 | [Canonical Financial Batch Architecture](./CTX-ARCH-007-canonical-financial-batch-architecture.md) | Canonical obligation versioning, batch identity, weekly periods, frozen membership/totals, append-only audit, discovery queues, legacy isolation, and Phase 3B non-execution | Approved architecture direction; implementation pending |
 | CTX-ARCH-008 | [Production Database Migration Architecture](./CTX-ARCH-008-production-database-migration-architecture.md) | Proposed controlled migration lifecycle, manifest, runner, ledger, reconciliation, release gates, recovery, and evidence model | **Conditionally approved — not authorized for implementation** |
 | CTX-ARCH-009 | [Operations Library and Knowledge Management Architecture](./CTX-ARCH-009-operations-library-and-knowledge-management-architecture.md) | Proposed Admin Operations Library, repository-authoritative publishing, metadata, lifecycle, secure rendering, search, traceability, and future AI/evidence boundaries | **Draft — not yet approved for implementation** |
+| CTX-ARCH-010 | [Administration Repository Architecture](./CTX-ARCH-010-administration-repository-architecture.md) | Proposed derived publication-manifest, inventory, metadata, classification, relationship, search, audit, and effective-set control plane for repository-governed knowledge | **Draft — not yet approved for implementation** |
 
 ## Planned Contents
 
@@ -55,6 +56,7 @@ This section documents the technical architecture of CreteXchange.
 - [CTX-ARCH-008 Railway Platform and Database Recovery Verification](./verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md) — Phase F verification evidence; not architecture, an ADR, implementation authorization, or production authorization.
 - [ADR-031 — Production Database Migration Execution Architecture](./ADR-031-production-database-migration-execution-architecture.md) — accepted decision record; implementation and production adoption remain blocked.
 - [Operations Library Discovery and Requirements](./operations-library-discovery-and-requirements.md) — repository-only discovery supporting the CTX-ARCH-009 draft; not implementation authorization.
+- [Administration Repository Discovery and Requirements](./administration-repository-discovery-and-requirements.md) — repository-only discovery supporting the CTX-ARCH-010 draft; not implementation authorization.
 
 ## Maintenance Note
 
