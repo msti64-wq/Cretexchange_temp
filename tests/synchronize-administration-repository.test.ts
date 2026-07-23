@@ -32,9 +32,10 @@ test("manual Administration Repository synchronization is feature-gated and allo
   assert.match(source, /SYNCHRONIZATION_TARGET === "production"/);
   assert.match(source, /RAILWAY_ENVIRONMENT_NAME === "production"/);
   assert.match(source, /ADMIN_REPOSITORY_PRODUCTION_SYNC_AUTHORIZATION === immutableCommitSha/);
-  assert.match(source, /synchronizeGovernedDocuments\(immutableCommitSha, documents\)/);
+  assert.match(source, /runAdministrationRepositorySynchronization/);
+  assert.match(source, /getAdministrationRepositoryInventorySnapshot/);
   assert.match(source, /if \(result\.status !== "completed"\)/);
-  assert.match(source, /persistAdministrationRepositorySynchronization\(immutableCommitSha, result\)/);
+  assert.match(source, /persistAdministrationRepositorySynchronization\(immutableCommitSha, staged\)/);
   assert.match(source, /import \{ pool \} from "\.\.\/server\/db"/);
   assert.match(source, /try \{/);
   assert.match(source, /finally \{\s*await pool\.end\(\);\s*\}/);

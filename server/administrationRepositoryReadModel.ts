@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { db } from "./db";
 import { documentClassifications, documentMetadata, documentRelationships, documentSourceVersions, governanceAuditEvents, governedDocuments, publicationManifestEntries, publicationSets, synchronizationResults, synchronizationRuns } from "../shared/schema";
-import { isEligibleGovernedDocumentPath, normalizeAdministrationRepositoryQuery, type SynchronizationResult } from "./administrationRepository";
+import { isEligibleGovernedDocumentPath, normalizeAdministrationRepositoryQuery } from "./administrationRepository";
+import type { SynchronizationEngineResult, InventorySnapshot } from "./administrationRepositorySynchronization";
 
 export const ADMINISTRATION_REPOSITORY_PAGE_SIZE_MAX = 100;
 export type AdministrationRepositoryQuery = { page: number; pageSize: number; order: "path_asc" | "updated_desc"; classification?: string; validationState?: string };
@@ -13,39 +14,80 @@ export type AdministrationRepositorySearchResult = { identifier: string; title: 
 
 export { normalizeAdministrationRepositoryQuery };
 
-/** Controlled persistence seam for a future authorized synchronizer. It stores only
- * derived metadata/provenance; callers must provide an immutable source commit. */
-export async function persistAdministrationRepositorySynchronization(immutableCommitSha: string, result: SynchronizationResult, actorId?: string) {
+export async function getAdministrationRepositoryInventorySnapshot(): Promise<InventorySnapshot[]> {
+  const rows = await db.select({ identifier: governedDocuments.documentIdentifier, path: governedDocuments.repositoryPath, checksumSha256: documentSourceVersions.checksumSha256, effectivity: governedDocuments.effectivityState, retention: governedDocuments.retentionState })
+    .from(governedDocuments)
+    .leftJoin(documentSourceVersions, eq(documentSourceVersions.documentId, governedDocuments.id))
+    .orderBy(desc(documentSourceVersions.synchronizedAt));
+  const snapshots = new Map<string, InventorySnapshot>();
+  for (const row of rows) if (!snapshots.has(row.identifier)) snapshots.set(row.identifier, { identifier: row.identifier, path: row.path, checksumSha256: row.checksumSha256 || null, lifecycle: { effectivity: row.effectivity, retention: row.retention } });
+  return Array.from(snapshots.values());
+}
+
+/** Controlled transactional publisher for a fully validated engine result. It persists
+ * derived metadata only and retains withdrawn records as historical audit evidence. */
+export async function persistAdministrationRepositorySynchronization(immutableCommitSha: string, result: SynchronizationEngineResult, actorId?: string) {
   if (result.status !== "completed" || result.errors.length) throw new Error("synchronization_result_invalid");
   return db.transaction(async (tx) => {
     const completed = await tx.select({ id: synchronizationRuns.id }).from(synchronizationRuns).where(and(eq(synchronizationRuns.immutableCommitSha, immutableCommitSha), eq(synchronizationRuns.status, "completed"))).limit(1);
-    if (completed[0]) return completed[0].id;
+    const existingPublication = await tx.select({ id: publicationSets.id }).from(publicationSets).where(eq(publicationSets.immutableCommitSha, immutableCommitSha)).limit(1);
+    if (completed[0] && existingPublication[0]) return completed[0].id;
     const [run] = await tx.insert(synchronizationRuns).values({ immutableCommitSha, initiatedBy: actorId, status: "running" }).returning();
+    const existingDocuments = await tx.select({ id: governedDocuments.id, identifier: governedDocuments.documentIdentifier, path: governedDocuments.repositoryPath }).from(governedDocuments);
+    const existingByIdentifier = new Map(existingDocuments.map((document) => [document.identifier, document]));
+    const activeIdentifiers = new Set(result.documents.map((document) => document.identifier));
+    const sourceVersions = new Map<string, { id: string; checksumSha256: string }>();
+
     for (const item of result.documents) {
-      const existing = await tx.select({ id: governedDocuments.id, repositoryPath: governedDocuments.repositoryPath }).from(governedDocuments).where(eq(governedDocuments.documentIdentifier, item.identifier)).limit(1);
-      if (existing[0] && existing[0].repositoryPath !== item.path) throw new Error("document_identity_path_conflict");
+      const existing = existingByIdentifier.get(item.identifier);
       const values = { documentIdentifier: item.identifier, repositoryPath: item.path, title: item.title, documentType: item.type, scope: item.scope, ownerReference: item.owner, developmentState: item.lifecycle.development, approvalState: item.lifecycle.approval, publicationState: item.lifecycle.publication, effectivityState: item.lifecycle.effectivity, retentionState: item.lifecycle.retention, implementationAuthorizationState: item.lifecycle.implementationAuthorization, productionAdoptionState: item.lifecycle.productionAdoption, validationState: "valid", updatedAt: new Date() };
-      const document = existing[0] ? (await tx.update(governedDocuments).set(values).where(eq(governedDocuments.id, existing[0].id)).returning())[0] : (await tx.insert(governedDocuments).values(values).returning())[0];
-      const previousSource = await tx.select({ checksumSha256: documentSourceVersions.checksumSha256 }).from(documentSourceVersions).where(and(eq(documentSourceVersions.documentId, document.id), eq(documentSourceVersions.immutableCommitSha, immutableCommitSha))).limit(1);
-      if (previousSource[0] && previousSource[0].checksumSha256 !== item.checksumSha256) throw new Error("immutable_source_checksum_conflict");
-      const source = previousSource[0] ? null : (await tx.insert(documentSourceVersions).values({ documentId: document.id, immutableCommitSha, checksumSha256: item.checksumSha256, sourcePath: item.path, sourceMetadata: item.sourceMetadata }).returning())[0];
-      await tx.insert(documentClassifications).values({ documentId: document.id, classification: item.classification, assignedBy: actorId, provenance: "derived" }).onConflictDoNothing();
-      for (const relationship of item.relationships) await tx.insert(documentRelationships).values({ sourceDocumentId: document.id, targetDocumentIdentifier: relationship.targetIdentifier, relationshipType: relationship.type, provenance: relationship.provenance, validationState: "valid" }).onConflictDoNothing();
+      const document = existing ? (await tx.update(governedDocuments).set(values).where(eq(governedDocuments.id, existing.id)).returning())[0] : (await tx.insert(governedDocuments).values(values).returning())[0];
+      const previousSource = await tx.select({ id: documentSourceVersions.id, checksumSha256: documentSourceVersions.checksumSha256, sourcePath: documentSourceVersions.sourcePath }).from(documentSourceVersions).where(and(eq(documentSourceVersions.documentId, document.id), eq(documentSourceVersions.immutableCommitSha, immutableCommitSha))).limit(1);
+      if (previousSource[0] && (previousSource[0].checksumSha256 !== item.checksumSha256 || previousSource[0].sourcePath !== item.path)) throw new Error("immutable_source_conflict");
+      const source = previousSource[0] || (await tx.insert(documentSourceVersions).values({ documentId: document.id, immutableCommitSha, checksumSha256: item.checksumSha256, sourcePath: item.path, sourceMetadata: item.sourceMetadata }).returning())[0];
+      sourceVersions.set(item.identifier, { id: source.id, checksumSha256: source.checksumSha256 });
+      await tx.insert(documentClassifications).values({ documentId: document.id, classification: item.classification, assignedBy: actorId, provenance: "derived" }).onConflictDoUpdate({ target: documentClassifications.documentId, set: { classification: item.classification, assignedBy: actorId, assignedAt: new Date(), provenance: "derived" } });
+      await tx.delete(documentRelationships).where(eq(documentRelationships.sourceDocumentId, document.id));
+      for (const relationship of item.relationships) await tx.insert(documentRelationships).values({ sourceDocumentId: document.id, targetDocumentIdentifier: relationship.targetIdentifier, relationshipType: relationship.type, provenance: relationship.provenance, validationState: "valid" });
       await tx.insert(synchronizationResults).values({ synchronizationRunId: run.id, documentIdentifier: item.identifier, repositoryPath: item.path, status: "synchronized" });
-      await tx.insert(governanceAuditEvents).values({ eventType: source ? "source_version_changed" : "document_added_to_inventory", documentId: document.id, synchronizationRunId: run.id, actorId, eventMetadata: { checksumSha256: item.checksumSha256, immutableCommitSha } });
+      await tx.insert(governanceAuditEvents).values({ eventType: existing ? "source_version_changed" : "document_added_to_inventory", documentId: document.id, synchronizationRunId: run.id, actorId, eventMetadata: { checksumSha256: item.checksumSha256, immutableCommitSha, repositoryPath: item.path } });
     }
-    await tx.update(synchronizationRuns).set({ status: "completed", completedAt: new Date(), summary: { documentCount: result.documents.length, errorCount: 0 } }).where(eq(synchronizationRuns.id, run.id));
-    await tx.insert(governanceAuditEvents).values({ eventType: "synchronization_completed", synchronizationRunId: run.id, actorId, eventMetadata: { immutableCommitSha, documentCount: result.documents.length, errorCount: 0 } });
+
+    for (const existing of existingDocuments.filter((document) => !activeIdentifiers.has(document.identifier))) {
+      await tx.update(governedDocuments).set({ publicationState: "withdrawn", effectivityState: "withdrawn", retentionState: "historical", validationState: "valid", updatedAt: new Date() }).where(eq(governedDocuments.id, existing.id));
+      await tx.delete(documentRelationships).where(eq(documentRelationships.sourceDocumentId, existing.id));
+      await tx.delete(documentRelationships).where(eq(documentRelationships.targetDocumentIdentifier, existing.identifier));
+      await tx.insert(synchronizationResults).values({ synchronizationRunId: run.id, documentIdentifier: existing.identifier, repositoryPath: existing.path, status: "withdrawn" });
+      await tx.insert(governanceAuditEvents).values({ eventType: "document_withdrawn_from_inventory", documentId: existing.id, synchronizationRunId: run.id, actorId, eventMetadata: { immutableCommitSha, repositoryPath: existing.path } });
+    }
+
+    const previousPublication = await tx.select({ id: publicationSets.id }).from(publicationSets).orderBy(desc(publicationSets.generatedAt)).limit(1);
+    const [publicationSet] = await tx.insert(publicationSets).values({ publicationSetIdentifier: `admin-repository-${immutableCommitSha}`, immutableCommitSha, targetAudience: "internal", administrativeScope: "administration_repository", validationOutcome: "valid", initiatedBy: actorId, previousPublicationSetId: previousPublication[0]?.id || null }).returning();
+    for (const [position, item] of Array.from(Array.from(result.documents).sort((left, right) => left.path.localeCompare(right.path)).entries())) {
+      const document = existingByIdentifier.get(item.identifier) || (await tx.select({ id: governedDocuments.id }).from(governedDocuments).where(eq(governedDocuments.documentIdentifier, item.identifier)).limit(1))[0];
+      const source = sourceVersions.get(item.identifier);
+      if (!document || !source) throw new Error("publication_manifest_source_missing");
+      await tx.insert(publicationManifestEntries).values({ publicationSetId: publicationSet.id, documentId: document.id, sourceVersionId: source.id, checksumSha256: source.checksumSha256, position });
+    }
+    await tx.update(synchronizationRuns).set({ status: "completed", completedAt: new Date(), summary: { documentCount: result.documents.length, warningCount: result.warnings.length, errorCount: 0, reconciliation: result.reconciliation } }).where(eq(synchronizationRuns.id, run.id));
+    await tx.insert(governanceAuditEvents).values({ eventType: "synchronization_completed", publicationSetId: publicationSet.id, synchronizationRunId: run.id, actorId, eventMetadata: { immutableCommitSha, documentCount: result.documents.length, warningCount: result.warnings.length, removedCount: result.reconciliation.removed.length } });
     return run.id;
   });
 }
 
 export async function listAdministrationRepositoryDocuments(query: AdministrationRepositoryQuery) {
-  const rows = await db.select({ id: governedDocuments.id, identifier: governedDocuments.documentIdentifier, title: governedDocuments.title, path: governedDocuments.repositoryPath, type: governedDocuments.documentType, scope: governedDocuments.scope, ownerReference: governedDocuments.ownerReference, classification: documentClassifications.classification, validationState: governedDocuments.validationState, developmentState: governedDocuments.developmentState, approvalState: governedDocuments.approvalState, publicationState: governedDocuments.publicationState, effectivityState: governedDocuments.effectivityState, retentionState: governedDocuments.retentionState, sourceCommit: documentSourceVersions.immutableCommitSha, checksum: documentSourceVersions.checksumSha256, createdAt: governedDocuments.createdAt, updatedAt: governedDocuments.updatedAt })
-    .from(governedDocuments).leftJoin(documentClassifications, eq(documentClassifications.documentId, governedDocuments.id)).leftJoin(documentSourceVersions, eq(documentSourceVersions.documentId, governedDocuments.id))
-    .orderBy(query.order === "updated_desc" ? desc(governedDocuments.updatedAt) : asc(governedDocuments.repositoryPath)).limit(query.pageSize).offset((query.page - 1) * query.pageSize);
-  const filtered = rows.filter((row) => (!query.classification || row.classification === query.classification) && (!query.validationState || row.validationState === query.validationState));
-  return { items: filtered.map((row) => ({ ...row, sourceCommit: row.sourceCommit ? String(row.sourceCommit) : null, checksum: row.checksum ? String(row.checksum) : null })), pagination: { page: query.page, pageSize: query.pageSize, total: filtered.length, hasMore: rows.length === query.pageSize } };
+  const [documents, sourceVersions] = await Promise.all([
+    db.select({ id: governedDocuments.id, identifier: governedDocuments.documentIdentifier, title: governedDocuments.title, path: governedDocuments.repositoryPath, type: governedDocuments.documentType, scope: governedDocuments.scope, ownerReference: governedDocuments.ownerReference, classification: documentClassifications.classification, validationState: governedDocuments.validationState, developmentState: governedDocuments.developmentState, approvalState: governedDocuments.approvalState, publicationState: governedDocuments.publicationState, effectivityState: governedDocuments.effectivityState, retentionState: governedDocuments.retentionState, createdAt: governedDocuments.createdAt, updatedAt: governedDocuments.updatedAt }).from(governedDocuments).leftJoin(documentClassifications, eq(documentClassifications.documentId, governedDocuments.id)).where(ne(governedDocuments.publicationState, "withdrawn")),
+    db.select({ documentId: documentSourceVersions.documentId, sourceCommit: documentSourceVersions.immutableCommitSha, checksum: documentSourceVersions.checksumSha256, synchronizedAt: documentSourceVersions.synchronizedAt }).from(documentSourceVersions).orderBy(desc(documentSourceVersions.synchronizedAt)),
+  ]);
+  const latestSourceByDocument = new Map<string, { sourceCommit: string; checksum: string }>();
+  for (const source of sourceVersions) if (!latestSourceByDocument.has(source.documentId)) latestSourceByDocument.set(source.documentId, { sourceCommit: source.sourceCommit, checksum: source.checksum });
+  const filtered = documents
+    .filter((row) => (!query.classification || row.classification === query.classification) && (!query.validationState || row.validationState === query.validationState))
+    .sort((left, right) => query.order === "updated_desc" ? Number(right.updatedAt || 0) - Number(left.updatedAt || 0) : left.path.localeCompare(right.path));
+  const offset = (query.page - 1) * query.pageSize;
+  const page = filtered.slice(offset, offset + query.pageSize);
+  return { items: page.map((row) => ({ ...row, sourceCommit: latestSourceByDocument.get(row.id)?.sourceCommit || null, checksum: latestSourceByDocument.get(row.id)?.checksum || null })), pagination: { page: query.page, pageSize: query.pageSize, total: filtered.length, hasMore: offset + page.length < filtered.length } };
 }
 
 function repositorySearchExcerpt(body: string, query: string): string {
@@ -121,7 +163,7 @@ export async function getAdministrationRepositoryStartHere() {
 }
 
 export async function getAdministrationRepositoryOverview() {
-  const [documents, runs, relationships] = await Promise.all([db.select().from(governedDocuments), db.select().from(synchronizationRuns).orderBy(desc(synchronizationRuns.startedAt)).limit(1), db.select({ id: documentRelationships.id }).from(documentRelationships)]);
+  const [documents, runs, relationships] = await Promise.all([db.select().from(governedDocuments).where(ne(governedDocuments.publicationState, "withdrawn")), db.select().from(synchronizationRuns).orderBy(desc(synchronizationRuns.startedAt)).limit(1), db.select({ id: documentRelationships.id }).from(documentRelationships)]);
   const validationConflictCount = documents.filter((document) => document.validationState !== "valid").length;
   const lastSynchronization = runs[0] || null;
   return {

@@ -1,27 +1,17 @@
-import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { isAdministrationRepositoryEnabled, isEligibleGovernedDocumentPath, synchronizeGovernedDocuments, type SourceDocument } from "../server/administrationRepository";
-import { persistAdministrationRepositorySynchronization } from "../server/administrationRepositoryReadModel";
+import { isAdministrationRepositoryEnabled } from "../server/administrationRepository";
+import { getAdministrationRepositoryInventorySnapshot, persistAdministrationRepositorySynchronization } from "../server/administrationRepositoryReadModel";
+import { runAdministrationRepositorySynchronization, type SynchronizationLogger } from "../server/administrationRepositorySynchronization";
 import { resolveImmutableSourceCommit, sanitizeCommitSha } from "../server/administrationRepositorySourceCommit";
 import { pool } from "../server/db";
 
-const DOCUMENT_MARKER = /(?:^#\s+.*\b(?:CTX-(?:STD|ARCH|DEP|DB)-\d{3}|CTX-OPS-\d{3}|ADR-\d{3}|PD-\d{3})\b|^-\s*\*\*Document ID:\*\*)/mi;
-
 function fail(message: string): never { throw new Error(message); }
 
-async function collectMarkdown(relativeDirectory: string): Promise<SourceDocument[]> {
-  const absoluteDirectory = path.resolve(relativeDirectory);
-  const entries = await readdir(absoluteDirectory, { withFileTypes: true });
-  const nested = await Promise.all(entries.sort((a, b) => a.name.localeCompare(b.name)).map(async (entry) => {
-    const relativePath = path.posix.join(relativeDirectory, entry.name);
-    if (entry.isDirectory()) return collectMarkdown(relativePath);
-    if (!entry.isFile() || !relativePath.endsWith(".md") || !isEligibleGovernedDocumentPath(relativePath)) return [];
-    const body = await readFile(path.resolve(relativePath), "utf8");
-    return DOCUMENT_MARKER.test(body) ? [{ path: relativePath, body }] : [];
-  }));
-  return nested.flat();
-}
+const logger: SynchronizationLogger = {
+  info(event, metadata) { console.log(JSON.stringify({ event, ...metadata })); },
+  error(event, metadata) { console.error(JSON.stringify({ event, ...metadata })); },
+};
 
 async function main() {
   try {
@@ -37,16 +27,28 @@ async function main() {
     if (!isStagingTarget && !isExplicitlyAuthorizedProductionTarget) {
       fail("Synchronization requires the staging target guard or explicit production authorization for the immutable deployed commit.");
     }
+
     console.log(`SYNCHRONIZATION_SOURCE_COMMIT variable=${sourceCommit.sourceVariable} sha=${sanitizeCommitSha(immutableCommitSha)}`);
-    const documents = (await Promise.all(["docs/architecture", "docs/standards", "docs/operations", "docs/product", "docs/project", "docs/ux", "docs/business", "docs/research", "docs/vision"].map(collectMarkdown))).flat().sort((a, b) => a.path.localeCompare(b.path));
-    const result = synchronizeGovernedDocuments(immutableCommitSha, documents);
-    console.log(`SYNCHRONIZATION_PLAN commit=${immutableCommitSha} candidates=${documents.length} parsed=${result.documents.length} errors=${result.errors.length}`);
+    const inventory = await getAdministrationRepositoryInventorySnapshot();
+    let runId = "";
+    const result = await runAdministrationRepositorySynchronization({
+      sourceCommit: immutableCommitSha,
+      inventory,
+      rootDirectory: process.cwd(),
+      logger,
+      publisher: {
+        async publish(staged) {
+          runId = await persistAdministrationRepositorySynchronization(immutableCommitSha, staged);
+          return { publicationId: runId, documentsPublished: staged.documents.length };
+        },
+      },
+    });
+    console.log(`SYNCHRONIZATION_PLAN commit=${immutableCommitSha} discovered=${result.report.documentsDiscovered} parsed=${result.report.documentsParsed} warnings=${result.warnings.length} errors=${result.errors.length}`);
     if (result.status !== "completed") {
       for (const error of result.errors) console.error(`SYNCHRONIZATION_VALIDATION_ERROR path=${error.path} code=${error.code}`);
-      fail("Governed-source validation failed before database persistence.");
+      fail("Governed-source validation or publication failed before a refreshed inventory could become active.");
     }
-    const runId = await persistAdministrationRepositorySynchronization(immutableCommitSha, result);
-    console.log(`SYNCHRONIZATION_COMPLETED run=${runId} documents=${result.documents.length}`);
+    console.log(`SYNCHRONIZATION_COMPLETED run=${runId} documents=${result.report.documentsPublished} duration_ms=${result.durationMs}`);
   } finally {
     await pool.end();
   }

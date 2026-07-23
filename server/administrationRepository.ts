@@ -3,12 +3,28 @@ import { createHash } from "node:crypto";
 export const ADMINISTRATION_REPOSITORY_FEATURE_ENV = "ADMIN_REPOSITORY_ENABLED";
 export const GOVERNED_DOCUMENT_ROOTS = ["docs/architecture/", "docs/standards/", "docs/operations/", "docs/product/", "docs/project/", "docs/ux/", "docs/business/", "docs/research/", "docs/vision/"] as const;
 export const ADMINISTRATION_CLASSIFICATIONS = ["internal", "restricted", "security_restricted", "legal_privileged", "investor_confidential", "public_candidate", "historical"] as const;
+export type DocumentFamily = { prefix: string; type: string };
+export const GOVERNED_DOCUMENT_FAMILIES: readonly DocumentFamily[] = [
+  { prefix: "CTX-GOV", type: "governance" },
+  { prefix: "CTX-STD", type: "standard" },
+  { prefix: "CTX-ARCH", type: "architecture" },
+  { prefix: "CTX-DEP", type: "deployment" },
+  { prefix: "CTX-DB", type: "database_governance" },
+  { prefix: "CTX-OPS", type: "operations" },
+  { prefix: "CTX-RB", type: "runbook" },
+  { prefix: "CTX-POL", type: "policy" },
+  { prefix: "CTX-UX", type: "ux" },
+  { prefix: "PD", type: "product_decision" },
+  { prefix: "ADR", type: "adr" },
+];
 export type AdministrationClassification = typeof ADMINISTRATION_CLASSIFICATIONS[number];
 export type Lifecycle = { development: string; approval: string; publication: string; effectivity: string; retention: string; implementationAuthorization: string; productionAdoption: string };
 export type ParsedGovernedDocument = { identifier: string; title: string; path: string; type: string; scope: string | null; owner: string | null; classification: AdministrationClassification; lifecycle: Lifecycle; relationships: Array<{ type: string; targetIdentifier: string; provenance: "declared" }>; checksumSha256: string; sourceMetadata: Record<string, string> };
 export type SourceDocument = { path: string; body: string };
 export type SyncError = { path: string; code: string; message: string };
-export type SynchronizationResult = { status: "completed" | "failed"; documents: ParsedGovernedDocument[]; errors: SyncError[]; auditEvents: Array<{ eventType: string; documentIdentifier?: string; metadata: Record<string, string> }> };
+export type SyncWarning = SyncError;
+export type SynchronizationReport = { documentsDiscovered: number; documentsParsed: number; documentsPublished: number; duplicateIdentifiers: string[]; relationshipWarnings: number; metadataWarnings: number; searchDocumentCount: number; publicationStatus: "not_attempted" | "published" | "failed" };
+export type SynchronizationResult = { status: "completed" | "failed"; documents: ParsedGovernedDocument[]; errors: SyncError[]; warnings: SyncWarning[]; auditEvents: Array<{ eventType: string; documentIdentifier?: string; metadata: Record<string, string> }>; report: SynchronizationReport };
 
 const stateValues = {
   development: new Set(["draft", "under_review", "finalized", "rejected"]),
@@ -48,10 +64,18 @@ function getDeclared(lines: string[], label: string): string | undefined {
 function assertNoMetadataConflict(lines: string[], label: string): void {
   if (new Set(declaredValues(lines, label).map((value) => value.toLowerCase())).size > 1) throw new Error("metadata_conflict");
 }
-function deriveType(identifier: string, path: string): string {
-  if (identifier.startsWith("CTX-STD")) return "standard";
-  if (identifier.startsWith("CTX-ARCH")) return "architecture";
-  if (identifier.startsWith("ADR")) return "adr";
+function identifierPattern(families: readonly DocumentFamily[] = GOVERNED_DOCUMENT_FAMILIES): RegExp {
+  return new RegExp(`\\b(?:${families.map((family) => `${family.prefix.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}-\\d{3}(?:-[A-Z0-9]+)*`).join("|")})\\b`, "g");
+}
+function findDocumentFamily(identifier: string, families: readonly DocumentFamily[] = GOVERNED_DOCUMENT_FAMILIES): DocumentFamily | undefined {
+  return families.find((family) => new RegExp(`^${family.prefix.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}-\\d{3}(?:-[A-Z0-9]+)*$`).test(identifier));
+}
+function declaredRelationshipTargets(body: string, families: readonly DocumentFamily[]): string[] {
+  return Array.from(body.matchAll(/\[[^\]]*\]\([^)]*\)/g)).flatMap((match) => Array.from(match[0].matchAll(identifierPattern(families))).map((identifierMatch) => identifierMatch[0]));
+}
+function deriveType(identifier: string, path: string, families: readonly DocumentFamily[] = GOVERNED_DOCUMENT_FAMILIES): string {
+  const configured = findDocumentFamily(identifier, families);
+  if (configured) return configured.type;
   if (path.includes("/reviews/")) return "architecture_review";
   if (path.includes("/approvals/")) return "approval_record";
   if (path.includes("/operations/")) return "operational_record";
@@ -78,39 +102,51 @@ export function validateLifecycle(lifecycle: Lifecycle): string | null {
   return null;
 }
 
-export function parseGovernedDocument(source: SourceDocument): ParsedGovernedDocument {
+export function parseGovernedDocument(source: SourceDocument, families: readonly DocumentFamily[] = GOVERNED_DOCUMENT_FAMILIES): ParsedGovernedDocument {
   if (!isEligibleGovernedDocumentPath(source.path)) throw new Error("unsafe_source_path");
   const lines = source.body.split(/\r?\n/); const heading = lines.find((line) => /^#\s+/.test(line))?.replace(/^#\s+/, "").trim();
   for (const label of ["Document ID", "Status", "Classification"]) assertNoMetadataConflict(lines, label);
-  const identifier = getDeclared(lines, "Document ID") || heading?.match(/\b(?:CTX-(?:STD|ARCH|DEP|DB)-\d{3}|CTX-OPS-\d{3}|ADR-\d{3}|PD-\d{3})\b/)?.[0];
+  const headingIdentifier = heading?.match(identifierPattern(families))?.[0];
+  const identifier = getDeclared(lines, "Document ID") || headingIdentifier;
   if (!heading || !identifier) throw new Error("missing_document_identity");
+  if (!findDocumentFamily(identifier, families)) throw new Error("invalid_document_identifier");
+  if (headingIdentifier && getDeclared(lines, "Document ID") && headingIdentifier !== identifier && !identifier.startsWith(`${headingIdentifier}-`)) throw new Error("document_identity_conflict");
   const status = getDeclared(lines, "Status") || "Draft";
   const lifecycle = inferLifecycle(status);
   const lifecycleError = validateLifecycle(lifecycle); if (lifecycleError) throw new Error(lifecycleError);
   const classification = (getDeclared(lines, "Classification") || "internal").toLowerCase().replace(/[ /-]+/g, "_") as AdministrationClassification;
   if (!ADMINISTRATION_CLASSIFICATIONS.includes(classification)) throw new Error("invalid_classification");
-  const relationships = Array.from(source.body.matchAll(/\[[^\]]*\b(CTX-(?:STD|ARCH|DEP|DB)-\d{3}|CTX-OPS-\d{3}|ADR-\d{3}|PD-\d{3})\b[^\]]*\]\([^)]*\)/g)).map((match) => ({ type: "references", targetIdentifier: match[1], provenance: "declared" as const }));
-  return { identifier, title: heading.replace(/^CTX-[A-Z-]+-\d{3}\s*[—-]\s*/, ""), path: source.path, type: deriveType(identifier, source.path), scope: getDeclared(lines, "Scope") || getDeclared(lines, "Product") || null, owner: getDeclared(lines, "Owner") || null, classification, lifecycle, relationships, checksumSha256: createHash("sha256").update(source.body).digest("hex"), sourceMetadata: { status } };
+  const relationships = declaredRelationshipTargets(source.body, families).map((targetIdentifier) => ({ type: "references", targetIdentifier, provenance: "declared" as const }));
+  const uniqueRelationships = Array.from(new Map(relationships.map((relationship) => [`${relationship.type}:${relationship.targetIdentifier}`, relationship])).values());
+  return { identifier, title: heading.replace(/^(?:CTX-[A-Z-]+|PD|ADR)-\d{3}\s*[—-]\s*/, ""), path: source.path, type: deriveType(identifier, source.path, families), scope: getDeclared(lines, "Scope") || getDeclared(lines, "Product") || null, owner: getDeclared(lines, "Owner") || null, classification, lifecycle, relationships: uniqueRelationships, checksumSha256: createHash("sha256").update(source.body).digest("hex"), sourceMetadata: { status } };
 }
 
-export function synchronizeGovernedDocuments(sourceCommit: string, documents: SourceDocument[]): SynchronizationResult {
-  const errors: SyncError[] = []; const parsed: ParsedGovernedDocument[] = []; const identifiers = new Set<string>();
+export function synchronizeGovernedDocuments(sourceCommit: string, documents: SourceDocument[], families: readonly DocumentFamily[] = GOVERNED_DOCUMENT_FAMILIES): SynchronizationResult {
+  const errors: SyncError[] = []; const warnings: SyncWarning[] = []; const parsed: ParsedGovernedDocument[] = []; const identifiers = new Set<string>(); const duplicateIdentifiers: string[] = [];
   for (const source of documents) {
     try {
-      const item = parseGovernedDocument(source);
-      if (identifiers.has(item.identifier)) throw new Error("duplicate_document_identifier");
+      const item = parseGovernedDocument(source, families);
+      if (identifiers.has(item.identifier)) { duplicateIdentifiers.push(item.identifier); throw new Error("duplicate_document_identifier"); }
       identifiers.add(item.identifier); parsed.push(item);
+      const lines = source.body.split(/\r?\n/);
+      for (const [label, code] of [["Document ID", "missing_document_id_metadata"], ["Status", "missing_status_metadata"], ["Owner", "missing_owner_metadata"], ["Version", "missing_version_metadata"], ["Classification", "missing_classification_metadata"]] as const) {
+        if (!getDeclared(lines, label)) warnings.push({ path: source.path, code, message: "Optional legacy metadata is absent and must be normalized before the document is treated as fully governed." });
+      }
+      const relationshipTargets = declaredRelationshipTargets(source.body, families);
+      if (new Set(relationshipTargets).size !== relationshipTargets.length) warnings.push({ path: source.path, code: "duplicate_relationship_edge", message: "Duplicate declared relationship edges were deduplicated before publication." });
+      const linkText = Array.from(source.body.matchAll(/\[[^\]]*\]\([^)]*\)/g)).map((match) => match[0]).join(" ");
+      for (const malformed of Array.from(linkText.matchAll(/\b(?:CTX|PD|ADR)-[A-Z-]*\d+\b/g))) if (!findDocumentFamily(malformed[0], families)) warnings.push({ path: source.path, code: "invalid_relationship_identifier", message: `Relationship reference ${malformed[0]} is not in a configured document family.` });
     } catch (error) { errors.push({ path: source.path, code: error instanceof Error ? error.message : "malformed_document", message: "Governed document could not be synchronized safely." }); }
   }
   for (const document of parsed) {
     for (const relationship of document.relationships) {
       if (!identifiers.has(relationship.targetIdentifier)) {
-        errors.push({ path: document.path, code: "invalid_relationship_target", message: "A declared relationship does not resolve within the governed source set." });
+        warnings.push({ path: document.path, code: "orphaned_relationship_target", message: "A declared relationship does not resolve within the governed source set." });
       }
     }
   }
-  const auditEvents = [{ eventType: errors.length ? "synchronization_failed" : "synchronization_completed", metadata: { sourceCommit, documentCount: String(parsed.length), errorCount: String(errors.length) } }, ...parsed.map((document) => ({ eventType: "document_added_to_inventory", documentIdentifier: document.identifier, metadata: { checksumSha256: document.checksumSha256, sourceCommit } }))];
-  return { status: errors.length ? "failed" : "completed", documents: parsed, errors, auditEvents };
+  const auditEvents = [{ eventType: errors.length ? "synchronization_failed" : "synchronization_completed", metadata: { sourceCommit, documentCount: String(parsed.length), errorCount: String(errors.length), warningCount: String(warnings.length) } }, ...parsed.map((document) => ({ eventType: "document_added_to_inventory", documentIdentifier: document.identifier, metadata: { checksumSha256: document.checksumSha256, sourceCommit } }))];
+  return { status: errors.length ? "failed" : "completed", documents: parsed, errors, warnings, auditEvents, report: { documentsDiscovered: documents.length, documentsParsed: parsed.length, documentsPublished: 0, duplicateIdentifiers: Array.from(new Set(duplicateIdentifiers)), relationshipWarnings: warnings.filter((warning) => warning.code.includes("relationship")).length, metadataWarnings: warnings.filter((warning) => warning.code.includes("metadata")).length, searchDocumentCount: parsed.length, publicationStatus: "not_attempted" } };
 }
 
 export function createPublicationManifest(publicationSetIdentifier: string, immutableCommitSha: string, documents: ParsedGovernedDocument[]) {

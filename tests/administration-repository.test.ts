@@ -29,14 +29,15 @@ test("parses deterministic source identity and checksum", () => {
   assert.equal(item.lifecycle.approval, "pending"); assert.equal(item.relationships[0]?.targetIdentifier, "CTX-STD-002");
 });
 
-test("unsafe paths, malformed documents, metadata conflicts, invalid relationships, and duplicate identifiers fail closed", () => {
+test("unsafe paths, malformed documents, metadata conflicts, duplicate identifiers, and orphaned relationships are classified safely", () => {
   assert.equal(isEligibleGovernedDocumentPath("docs/standards/example.md"), true); assert.equal(isEligibleGovernedDocumentPath("server/routes.ts"), false);
   assert.throws(() => parseGovernedDocument({ path: "docs/.env.md", body }), /unsafe_source_path/);
   assert.equal(synchronizeGovernedDocuments("abc1234", [{ path: "docs/standards/bad.md", body: "# Untitled" }]).errors[0]?.code, "missing_document_identity");
   const result = synchronizeGovernedDocuments("abc1234", [{ path: "docs/standards/a.md", body }, { path: "docs/architecture/b.md", body }]);
   assert.equal(result.status, "failed"); assert.equal(result.errors[0]?.code, "duplicate_document_identifier");
   assert.throws(() => parseGovernedDocument({ path: "docs/standards/conflict.md", body: `${body}\n- **Status:** Approved` }), /metadata_conflict/);
-  assert.equal(synchronizeGovernedDocuments("abc1234", [{ path: "docs/standards/a.md", body }]).errors[0]?.code, "invalid_relationship_target");
+  const orphaned = synchronizeGovernedDocuments("abc1234", [{ path: "docs/standards/a.md", body }]);
+  assert.equal(orphaned.status, "completed"); assert.equal(orphaned.warnings.some((warning) => warning.code === "orphaned_relationship_target"), true);
 });
 
 test("synchronization, lifecycle validation, and manifests are deterministic", () => {
