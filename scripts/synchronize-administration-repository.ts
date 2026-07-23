@@ -1,8 +1,9 @@
-import { execFileSync } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { isAdministrationRepositoryEnabled, isEligibleGovernedDocumentPath, synchronizeGovernedDocuments, type SourceDocument } from "../server/administrationRepository";
 import { persistAdministrationRepositorySynchronization } from "../server/administrationRepositoryReadModel";
+import { resolveImmutableSourceCommit, sanitizeCommitSha } from "../server/administrationRepositorySourceCommit";
 
 const DOCUMENT_MARKER = /(?:^#\s+.*\b(?:CTX-(?:STD|ARCH|DEP|DB)-\d{3}|CTX-OPS-\d{3}|ADR-\d{3}|PD-\d{3})\b|^-\s*\*\*Document ID:\*\*)/mi;
 
@@ -26,8 +27,9 @@ async function main() {
   if (process.env.SYNCHRONIZATION_TARGET !== "staging" || process.env.RAILWAY_ENVIRONMENT_NAME !== "staging") fail("Synchronization is staging-only and requires explicit staging target guards.");
   if (!process.env.DATABASE_URL) fail("DATABASE_URL is required inside the private staging synchronization job.");
 
-  const immutableCommitSha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-  if (!/^[a-f0-9]{40}$/i.test(immutableCommitSha)) fail("Unable to determine immutable source commit.");
+  const sourceCommit = resolveImmutableSourceCommit();
+  const immutableCommitSha = sourceCommit.commitSha;
+  console.log(`SYNCHRONIZATION_SOURCE_COMMIT variable=${sourceCommit.sourceVariable} sha=${sanitizeCommitSha(immutableCommitSha)}`);
   const documents = (await Promise.all(["docs/architecture", "docs/standards", "docs/operations", "docs/product", "docs/project", "docs/ux", "docs/business", "docs/research", "docs/vision"].map(collectMarkdown))).flat().sort((a, b) => a.path.localeCompare(b.path));
   const result = synchronizeGovernedDocuments(immutableCommitSha, documents);
   console.log(`SYNCHRONIZATION_PLAN commit=${immutableCommitSha} candidates=${documents.length} parsed=${result.documents.length} errors=${result.errors.length}`);
@@ -39,7 +41,9 @@ async function main() {
   console.log(`SYNCHRONIZATION_COMPLETED run=${runId} documents=${result.documents.length}`);
 }
 
-main().catch((error) => {
-  console.error(`ADMIN_REPOSITORY_SYNCHRONIZATION_FAILED ${error instanceof Error ? error.message : "unknown error"}`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(`ADMIN_REPOSITORY_SYNCHRONIZATION_FAILED ${error instanceof Error ? error.message : "unknown error"}`);
+    process.exitCode = 1;
+  });
+}
