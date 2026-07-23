@@ -53,11 +53,15 @@ test("feature gate defaults closed and pagination is bounded", () => {
   assert.equal(normalizeAdministrationRepositoryQuery({ page: "-2", pageSize: "999", order: "updated_desc" }).pageSize, 100);
 });
 
-test("read-only secured inspection endpoints and UI are registered", async () => {
-  const [routes, page, app] = await Promise.all([readFile(new URL("../server/routes.ts", import.meta.url), "utf8"), readFile(new URL("../client/src/pages/admin/administration-repository.tsx", import.meta.url), "utf8"), readFile(new URL("../client/src/App.tsx", import.meta.url), "utf8")]);
+test("Version 1 library is secured, discoverable, searchable, and read-only", async () => {
+  const [routes, page, app, renderer, readModel, exports] = await Promise.all([readFile(new URL("../server/routes.ts", import.meta.url), "utf8"), readFile(new URL("../client/src/pages/admin/administration-repository.tsx", import.meta.url), "utf8"), readFile(new URL("../client/src/App.tsx", import.meta.url), "utf8"), readFile(new URL("../client/src/components/administration-repository-markdown.tsx", import.meta.url), "utf8"), readFile(new URL("../server/administrationRepositoryReadModel.ts", import.meta.url), "utf8"), readFile(new URL("../client/src/lib/administrationRepositoryExport.ts", import.meta.url), "utf8")]);
   assert.match(routes, /requireAdministrationRepositoryActor/); assert.match(routes, /isAdministrationRepositoryEnabled/);
-  assert.match(routes, /\/api\/admin\/administration-repository\/documents/); assert.match(app, /admin\/administration-repository/);
-  assert.match(page, /Read-only derived governance metadata/); assert.doesNotMatch(routes, /administration-repository\/sync/); assert.doesNotMatch(routes, /administration-repository.*\.post/i);
+  assert.match(routes, /\/api\/admin\/administration-repository\/documents\/:identifier\/content/); assert.match(routes, /\/api\/admin\/administration-repository\/search/); assert.match(app, /admin\/administration-repository\/document\/:documentId/);
+  for (const feature of ["Operations Library", "Start Here", "Quick Search", "Repository browser", "Recently updated", "Recently added", "Combined PDF", "Markdown ZIP", "References", "Referenced by", "no document editing, publishing, approval, upload"]) assert.match(page, new RegExp(feature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const feature of ["repository_document_integrity_mismatch", "docs/README.md", "referencedBy", "searchAdministrationRepositoryDocuments", "latestSourceCommit"]) assert.match(readModel, new RegExp(feature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const feature of ["startsWith(\"```\")", "isDivider", "startsWith(\">\")", "list-decimal", "Image omitted for safety", "knownIdentifiers.has"]) assert.match(renderer, new RegExp(feature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const feature of ["downloadPdf", "downloadCombinedPdf", "downloadMarkdownZip", "Page", "CreteXchange"]) assert.match(exports, new RegExp(feature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(routes, /administration-repository\/sync/); assert.doesNotMatch(routes, /administration-repository.*\.post/i);
 });
 
 test("foundation migration is additive and never creates an editable document body", async () => {

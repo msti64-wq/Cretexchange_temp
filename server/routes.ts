@@ -91,7 +91,7 @@ import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables"
 import { buildCanonicalObligationCreationReason, createDatabaseFinancialObligationRepository, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
 import { getFinancialSchemaCapabilities } from "./financialSchemaCapabilities";
 import { isAdministrationRepositoryEnabled } from "./administrationRepository";
-import { getAdministrationRepositoryDocument, getAdministrationRepositoryOverview, listAdministrationRepositoryDocuments, normalizeAdministrationRepositoryQuery } from "./administrationRepositoryReadModel";
+import { ADMINISTRATION_REPOSITORY_START_HERE_IDENTIFIER, getAdministrationRepositoryDocument, getAdministrationRepositoryDocumentContent, getAdministrationRepositoryOverview, getAdministrationRepositoryStartHere, listAdministrationRepositoryDocuments, normalizeAdministrationRepositoryQuery, searchAdministrationRepositoryDocuments } from "./administrationRepositoryReadModel";
 import { resolveFinancialWorkspaceSelectionToken } from "./financialWorkspaceSelection";
 import { getCanonicalFinancialVisibilitySummary } from "./canonicalFinancialVisibility";
 import {
@@ -5927,6 +5927,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!await requireAdministrationRepositoryActor(req, res)) return;
     try { return res.json(await listAdministrationRepositoryDocuments(normalizeAdministrationRepositoryQuery(req.query || {}))); }
     catch { return res.status(503).json({ message: "Administration Repository metadata is unavailable." }); }
+  });
+  app.get('/api/admin/administration-repository/search', isAuthenticated, async (req: any, res) => {
+    if (!await requireAdministrationRepositoryActor(req, res)) return;
+    const query = typeof req.query?.q === "string" ? req.query.q : "";
+    if (query.trim().length > 120) return res.status(422).json({ message: "Search text is too long." });
+    try { return res.json({ items: await searchAdministrationRepositoryDocuments(query) }); }
+    catch { return res.status(503).json({ message: "Administration Repository search is unavailable." }); }
+  });
+  app.get('/api/admin/administration-repository/documents/:identifier/content', isAuthenticated, async (req: any, res) => {
+    if (!await requireAdministrationRepositoryActor(req, res)) return;
+    const identifier = String(req.params.identifier || "").trim();
+    if (identifier === ADMINISTRATION_REPOSITORY_START_HERE_IDENTIFIER) {
+      try { return res.json(await getAdministrationRepositoryStartHere()); }
+      catch { return res.status(503).json({ message: "Administration Repository source content is unavailable." }); }
+    }
+    if (!identifier || identifier.length > 160) return res.status(422).json({ message: "A valid governed document identifier is required." });
+    try {
+      const result = await getAdministrationRepositoryDocumentContent(identifier);
+      return result ? res.json(result) : res.status(404).json({ message: "Governed document not found." });
+    } catch (error) {
+      if (error instanceof Error && error.message === "repository_document_integrity_mismatch") return res.status(409).json({ message: "The current repository source does not match its synchronized immutable version." });
+      return res.status(503).json({ message: "Administration Repository source content is unavailable." });
+    }
   });
   app.get('/api/admin/administration-repository/documents/:identifier', isAuthenticated, async (req: any, res) => {
     if (!await requireAdministrationRepositoryActor(req, res)) return;
