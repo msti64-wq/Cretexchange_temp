@@ -15,12 +15,13 @@ For project and implementation decisions, use this reading order:
 1. [Documentation Library](./README.md)
 2. [Project Context](./project/project-context.md)
 3. [CTX-STD-001 — CreteXchange Platform Standards](./standards/cretexchange-platform-standards.md)
-4. [CTX-DB-001 — Database Migration and Schema Governance Standard](./standards/CTX-DB-001-database-migration-and-schema-governance-standard.md) when a schema or migration change is in scope
-5. Applicable [CTX-ARCH documents](./architecture/README.md)
-6. [Product Decisions](./product/product-decisions.md)
-7. [Development Protocol](./development-protocol.md)
-8. [CTX-DEP-001 — Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
-9. [CTX-OPS-001 — Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
+4. [CTX-STD-002 — Documentation Governance, Metadata, Lifecycle, Authority, and Relationship Standard](./standards/CTX-STD-002-documentation-governance-metadata-lifecycle-authority-and-relationships.md) when governed documentation, publication, metadata, lifecycle, authority, classification, or relationships are in scope
+5. [CTX-DB-001 — Database Migration and Schema Governance Standard](./standards/CTX-DB-001-database-migration-and-schema-governance-standard.md) when a schema or migration change is in scope
+6. Applicable [CTX-ARCH documents](./architecture/README.md)
+7. [Product Decisions](./product/product-decisions.md)
+8. [Development Protocol](./development-protocol.md)
+9. [CTX-DEP-001 — Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
+10. [CTX-OPS-001 — Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
 
 Earlier documents take precedence when guidance conflicts. Vision, strategy, UX specifications, runbooks, sprint plans, tests, and implementation code provide essential context within their domains, but they must not override this hierarchy.
 
@@ -72,7 +73,7 @@ Research documents define proposed hypotheses, validation plans, grant readiness
 | --- | --- |
 | Project | Current scope, active delivery context, pilot baseline, and roadmap. |
 | Product | Durable product policy, operational rules, and decision records. |
-| Standards | Mandatory engineering and platform controls, including CTX-STD-001 and CTX-DEP-001. |
+| Standards | Mandatory engineering and platform controls, including CTX-STD-001, CTX-STD-002, CTX-DB-001, and CTX-DEP-001. |
 | Architecture | Technical source-of-truth boundaries and implementation contracts. |
 | Development Protocol | Required preflight, validation, Git, and implementation workflow. |
 | Deployment | Mandatory production-release controls in CTX-DEP-001. |
@@ -93,6 +94,7 @@ Research documents define proposed hypotheses, validation plans, grant readiness
   - [Sprint 2.2 — MVP Operational Readiness](./project/sprints/sprint-2.2.md)
   - [PB-001 — CreteXchange Pilot Baseline v1.0](./project/pilot/PB-001-cretexchange-pilot-baseline-v1.0.md)
 - [Platform Standards](./standards/cretexchange-platform-standards.md)
+  - [CTX-STD-002 - Documentation Governance, Metadata, Lifecycle, Authority, and Relationship Standard](./standards/CTX-STD-002-documentation-governance-metadata-lifecycle-authority-and-relationships.md)
   - [CTX-DEP-001 - Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
 - [CTX-DB-001 - Database Migration and Schema Governance Standard](./standards/CTX-DB-001-database-migration-and-schema-governance-standard.md)
 - Production Operations
@@ -128,7 +130,7 @@ Research documents define proposed hypotheses, validation plans, grant readiness
 | --- | --- | --- | --- | --- |
 | Project Context | Current implementation state, active scope, and delivery context | All contributors | When current phase, implementation context, or approved sprint context changes | [Project Context](./project/project-context.md) |
 | Development Protocol | Required execution, preflight, source-of-truth, and validation workflow | Contributors and Codex | When the engineering workflow or validation policy changes | [Development Protocol](./development-protocol.md), [New Chat Kickoff](./project/new-chat-kickoff.md) |
-| CTX-STD | Mandatory platform engineering standards | Engineering and reviewers | When a durable engineering standard changes | [CTX-STD-001](./standards/cretexchange-platform-standards.md) |
+| CTX-STD | Mandatory platform engineering standards and cross-product documentation governance | Engineering, reviewers, and documentation owners | When a durable engineering or documentation-governance standard changes | [CTX-STD-001](./standards/cretexchange-platform-standards.md), [CTX-STD-002](./standards/CTX-STD-002-documentation-governance-metadata-lifecycle-authority-and-relationships.md) |
 | Production Release Governance | Mandatory protocol and operational record for every production deployment | Release operators, approvers, Platform Operations, and engineering | When release controls or required production evidence change | [CTX-DEP-001](./standards/CTX-DEP-001-production-deployment-protocol.md), [CTX-OPS-001](./operations/CTX-OPS-001-production-release-checklist.md) |
 | CTX-ARCH | Implementation architecture, source-of-truth boundaries, and domain contracts | Engineering, architecture, and reviewers | Before or with an approved architecture change | [Architecture Library](./architecture/README.md) |
 | PD | Durable product policy and operational rules | Product, Operations, Engineering | When a product-policy decision is made or revised | [Product Decisions](./product/product-decisions.md), [PD-050](./product/PD-050-facility-operational-access-and-billing-readiness.md) |
@@ -205,6 +207,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | Document ID | Title | Purpose |
 | --- | --- | --- |
 | CTX-STD-001 | CreteXchange Platform Standards | Defines mandatory engineering and development standards governing the platform. |
+| CTX-STD-002 | [Documentation Governance, Metadata, Lifecycle, Authority, and Relationship Standard](./standards/CTX-STD-002-documentation-governance-metadata-lifecycle-authority-and-relationships.md) | Draft shared governance requirements for repository-managed documentation, metadata, lifecycle, publication, classification, authority, and relationships; it does not authorize implementation. |
 | CTX-DEP-001 | [Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md) | Defines mandatory controls for source verification, migration discovery and execution, schema verification, deployment, health, smoke testing, reporting, and rollback. |
 | CTX-DB-001 | [Database Migration and Schema Governance Standard](./standards/CTX-DB-001-database-migration-and-schema-governance-standard.md) | Defines mandatory schema-change, migration-ledger, compatibility, verification, repair, and drift-prevention controls. |
 | CTX-OPS-001 | [Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md) | Provides the required operational checklist and durable release record for every production deployment. |
@@ -213,6 +216,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 
 - [CTX-DEP-001 — Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md): mandatory production source, migration, environment, validation, health, smoke-test, financial-safety, rollback, and completion controls.
 - [CTX-OPS-001 — Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md): the operational checklist and evidence record required to demonstrate a complete production release.
+- [CTX-STD-002 — Documentation Governance, Metadata, Lifecycle, Authority, and Relationship Standard](./standards/CTX-STD-002-documentation-governance-metadata-lifecycle-authority-and-relationships.md): draft shared rules for governed documentation; it neither approves CTX-ARCH-009/010 nor authorizes an Operations Library, Administration Repository, publication, search, or AI implementation.
 
 ## Product Decisions
 
