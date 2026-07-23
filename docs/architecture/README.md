@@ -57,6 +57,7 @@ This section documents the technical architecture of CreteXchange.
 - [ADR-031 — Production Database Migration Execution Architecture](./ADR-031-production-database-migration-execution-architecture.md) — accepted decision record; implementation and production adoption remain blocked.
 - [Operations Library Discovery and Requirements](./operations-library-discovery-and-requirements.md) — repository-only discovery supporting the CTX-ARCH-009 draft; not implementation authorization.
 - [Administration Repository Discovery and Requirements](./administration-repository-discovery-and-requirements.md) — repository-only discovery supporting the CTX-ARCH-010 draft; not implementation authorization.
+- [Administration Repository Foundation Implementation Record](./administration-repository-foundation-implementation-record.md) — local Horizon 1 derived-record foundation; not architecture approval, production authorization, or publication authorization.
 
 ## Maintenance Note
 

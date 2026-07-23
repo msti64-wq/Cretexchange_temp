@@ -53,6 +53,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/admin/financial-operations", icon: ClipboardList, label: "Financial Operations", testIdLabel: "financial-operations" },
+          { path: "/admin/administration-repository", icon: FileText, label: "Operations Library", testIdLabel: "administration-repository" },
           { path: "/profile", icon: Settings, label: "Profile" },
         ];
       case "super_admin":
@@ -62,6 +63,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/admin/financial-operations", icon: ClipboardList, label: "Financial Operations", testIdLabel: "financial-operations" },
+          { path: "/admin/administration-repository", icon: FileText, label: "Operations Library", testIdLabel: "administration-repository" },
           { path: "/lottery", icon: Trophy, label: "Rewards Program" },
           { path: "/reconciliation", icon: RefreshCw, label: "Reconcile" },
           { path: "/subscriptions", icon: Receipt, label: "Subscriptions" },

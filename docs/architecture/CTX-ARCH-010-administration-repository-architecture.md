@@ -128,7 +128,7 @@ Before implementation, governance must define a content authority owner, publica
 | 3 — Governance maturity | Restricted collections, exports, historical views, audit packages, richer relationships. | Must preserve source authority and access controls. |
 | 4 — Intelligent evidence | Separately approved AI grounding, external evidence collections, sustainability methodology references. | No autonomous action, raw telemetry storage, or unsupported claims. |
 
-No stage is authorized by this draft.
+The Horizon 1 foundation is locally implemented under a separate controlled implementation authorization. This draft remains unapproved: it does not authorize production adoption, public access, document editing, AI, search, or publication automation. Any material implementation finding requires a synchronized revision and separate review/approval decision.
 
 ## 15. Dependencies, unresolved decisions, and gates
 
