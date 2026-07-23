@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
-import { and, asc, desc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { db } from "./db";
 import { documentClassifications, documentMetadata, documentRelationships, documentSourceVersions, governanceAuditEvents, governedDocuments, publicationManifestEntries, publicationSets, synchronizationResults, synchronizationRuns } from "../shared/schema";
 import { isEligibleGovernedDocumentPath, normalizeAdministrationRepositoryQuery } from "./administrationRepository";
@@ -69,10 +69,57 @@ export async function persistAdministrationRepositorySynchronization(immutableCo
       if (!document || !source) throw new Error("publication_manifest_source_missing");
       await tx.insert(publicationManifestEntries).values({ publicationSetId: publicationSet.id, documentId: document.id, sourceVersionId: source.id, checksumSha256: source.checksumSha256, position });
     }
-    await tx.update(synchronizationRuns).set({ status: "completed", completedAt: new Date(), summary: { documentCount: result.documents.length, warningCount: result.warnings.length, errorCount: 0, reconciliation: result.reconciliation } }).where(eq(synchronizationRuns.id, run.id));
+    await tx.update(synchronizationRuns).set({ status: "completed", completedAt: new Date(), summary: {
+      documentCount: result.documents.length,
+      warningCount: result.warnings.length,
+      errorCount: 0,
+      duplicateIdentifierCount: result.report.duplicateIdentifiers.length,
+      relationshipWarningCount: result.report.relationshipWarnings,
+      metadataWarningCount: result.report.metadataWarnings,
+      searchStatus: result.search.status,
+      inventoryStatus: "published",
+      reconciliation: result.reconciliation,
+    } }).where(eq(synchronizationRuns.id, run.id));
     await tx.insert(governanceAuditEvents).values({ eventType: "synchronization_completed", publicationSetId: publicationSet.id, synchronizationRunId: run.id, actorId, eventMetadata: { immutableCommitSha, documentCount: result.documents.length, warningCount: result.warnings.length, removedCount: result.reconciliation.removed.length } });
     return run.id;
   });
+}
+
+type RefreshAuditMetadata = Record<string, string | number | boolean | null>;
+
+/** Records request-level refresh evidence without storing document bodies or internal exceptions. */
+export async function recordAdministrationRepositoryRefreshAudit(eventType: "synchronization_refresh_requested" | "synchronization_refresh_completed" | "synchronization_refresh_failed", actorId: string, eventMetadata: RefreshAuditMetadata) {
+  await db.insert(governanceAuditEvents).values({ eventType, actorId, eventMetadata });
+}
+
+export async function getAdministrationRepositoryRefreshHistory(limit = 20) {
+  const boundedLimit = Math.min(100, Math.max(1, limit));
+  const [runs, audits] = await Promise.all([
+    db.select().from(synchronizationRuns).orderBy(desc(synchronizationRuns.startedAt)).limit(boundedLimit),
+    db.select({ id: governanceAuditEvents.id, eventType: governanceAuditEvents.eventType, actorId: governanceAuditEvents.actorId, createdAt: governanceAuditEvents.createdAt, eventMetadata: governanceAuditEvents.eventMetadata })
+      .from(governanceAuditEvents)
+      .where(inArray(governanceAuditEvents.eventType, ["synchronization_refresh_requested", "synchronization_refresh_completed", "synchronization_refresh_failed"]))
+      .orderBy(desc(governanceAuditEvents.createdAt))
+      .limit(boundedLimit),
+  ]);
+  return { runs, auditEvents: audits };
+}
+
+export async function getAdministrationRepositoryDocumentationHealth() {
+  const [overview, history] = await Promise.all([getAdministrationRepositoryOverview(), getAdministrationRepositoryRefreshHistory(1)]);
+  const summary = (history.runs[0]?.summary || {}) as Record<string, unknown>;
+  return {
+    governedDocuments: overview.summary.documentCount,
+    warnings: typeof summary.warningCount === "number" ? summary.warningCount : 0,
+    blockingErrors: typeof summary.errorCount === "number" ? summary.errorCount : 0,
+    duplicateIdentifiers: typeof summary.duplicateIdentifierCount === "number" ? summary.duplicateIdentifierCount : 0,
+    brokenRelationships: typeof summary.relationshipWarningCount === "number" ? summary.relationshipWarningCount : 0,
+    missingMetadata: typeof summary.metadataWarningCount === "number" ? summary.metadataWarningCount : 0,
+    searchStatus: typeof summary.searchStatus === "string" ? summary.searchStatus : "unknown",
+    relationshipStatus: overview.summary.relationshipCount > 0 || overview.summary.documentCount === 0 ? "available" : "unknown",
+    inventoryStatus: typeof summary.inventoryStatus === "string" ? summary.inventoryStatus : "unknown",
+    latestSynchronization: overview.lastSynchronization,
+  };
 }
 
 export async function listAdministrationRepositoryDocuments(query: AdministrationRepositoryQuery) {

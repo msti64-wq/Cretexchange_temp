@@ -91,7 +91,8 @@ import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables"
 import { buildCanonicalObligationCreationReason, createDatabaseFinancialObligationRepository, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
 import { getFinancialSchemaCapabilities } from "./financialSchemaCapabilities";
 import { isAdministrationRepositoryEnabled } from "./administrationRepository";
-import { ADMINISTRATION_REPOSITORY_START_HERE_IDENTIFIER, getAdministrationRepositoryDocument, getAdministrationRepositoryDocumentContent, getAdministrationRepositoryOverview, getAdministrationRepositoryStartHere, listAdministrationRepositoryDocuments, normalizeAdministrationRepositoryQuery, searchAdministrationRepositoryDocuments } from "./administrationRepositoryReadModel";
+import { ADMINISTRATION_REPOSITORY_START_HERE_IDENTIFIER, getAdministrationRepositoryDocumentationHealth, getAdministrationRepositoryDocument, getAdministrationRepositoryDocumentContent, getAdministrationRepositoryOverview, getAdministrationRepositoryRefreshHistory, getAdministrationRepositoryStartHere, listAdministrationRepositoryDocuments, normalizeAdministrationRepositoryQuery, searchAdministrationRepositoryDocuments } from "./administrationRepositoryReadModel";
+import { administrationRepositoryRefreshService } from "./administrationRepositoryRefresh";
 import { resolveFinancialWorkspaceSelectionToken } from "./financialWorkspaceSelection";
 import { getCanonicalFinancialVisibilitySummary } from "./canonicalFinancialVisibility";
 import {
@@ -5922,6 +5923,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!await requireAdministrationRepositoryActor(req, res)) return;
     try { return res.json(await getAdministrationRepositoryOverview()); }
     catch { return res.status(503).json({ message: "Administration Repository metadata is unavailable." }); }
+  });
+  // Refresh is explicitly Admin-only, feature-gated, and serialised before any source scan begins.
+  // The reusable engine retains responsibility for validation and transactional publication.
+  app.post('/api/admin/administration-repository/refresh', isAuthenticated, async (req: any, res) => {
+    const user = await requireAdministrationRepositoryActor(req, res);
+    if (!user) return;
+    try {
+      const execution = await administrationRepositoryRefreshService.refresh(user.id);
+      if (execution.status === "conflict") return res.status(409).json({ code: "synchronization_in_progress", status: execution.snapshot });
+      // A validation or publication outcome is a completed, structured refresh request.
+      // Keep it inspectable by the UI without treating the response body as an exception;
+      // callers must use result/status to distinguish successful and failed publication.
+      return res.status(200).json({ status: execution.snapshot, result: execution.result });
+    } catch {
+      return res.status(500).json({ code: "synchronization_engine_failure", message: "Administration Repository refresh could not complete safely." });
+    }
+  });
+  app.get('/api/admin/administration-repository/refresh/status', isAuthenticated, async (req: any, res) => {
+    if (!await requireAdministrationRepositoryActor(req, res)) return;
+    try { return res.json({ current: administrationRepositoryRefreshService.getStatus(), latest: (await getAdministrationRepositoryOverview()).lastSynchronization }); }
+    catch { return res.status(503).json({ message: "Administration Repository synchronization status is unavailable." }); }
+  });
+  app.get('/api/admin/administration-repository/refresh/history', isAuthenticated, async (req: any, res) => {
+    if (!await requireAdministrationRepositoryActor(req, res)) return;
+    const parsed = Number.parseInt(String(req.query?.limit || "20"), 10);
+    try { return res.json(await getAdministrationRepositoryRefreshHistory(Number.isFinite(parsed) ? parsed : 20)); }
+    catch { return res.status(503).json({ message: "Administration Repository synchronization history is unavailable." }); }
+  });
+  app.get('/api/admin/administration-repository/refresh/health', isAuthenticated, async (req: any, res) => {
+    if (!await requireAdministrationRepositoryActor(req, res)) return;
+    try { return res.json(await getAdministrationRepositoryDocumentationHealth()); }
+    catch { return res.status(503).json({ message: "Administration Repository documentation health is unavailable." }); }
   });
   app.get('/api/admin/administration-repository/documents', isAuthenticated, async (req: any, res) => {
     if (!await requireAdministrationRepositoryActor(req, res)) return;

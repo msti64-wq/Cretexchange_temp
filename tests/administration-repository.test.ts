@@ -62,7 +62,7 @@ test("Version 1 library is secured, discoverable, searchable, and read-only", as
   for (const feature of ["repository_document_integrity_mismatch", "docs/README.md", "referencedBy", "searchAdministrationRepositoryDocuments", "latestSourceCommit"]) assert.match(readModel, new RegExp(feature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   for (const feature of ["startsWith(\"```\")", "isDivider", "startsWith(\">\")", "list-decimal", "Image omitted for safety", "knownIdentifiers.has"]) assert.match(renderer, new RegExp(feature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   for (const feature of ["downloadPdf", "downloadCombinedPdf", "downloadMarkdownZip", "Page", "CreteXchange"]) assert.match(exports, new RegExp(feature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.doesNotMatch(routes, /administration-repository\/sync/); assert.doesNotMatch(routes, /administration-repository.*\.post/i);
+  assert.doesNotMatch(routes, /administration-repository\/sync/);
 });
 
 test("foundation migration is additive and never creates an editable document body", async () => {
