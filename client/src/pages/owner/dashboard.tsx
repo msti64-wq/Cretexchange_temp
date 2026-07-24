@@ -23,11 +23,12 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { resolveOwnerMembershipState } from "@shared/ownerMembership";
 import { resolveConfiguredWashoutPlatformFeeCents } from "@shared/billingPolicy";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
-import { filterPendingWashoutApprovals, getWashoutApprovalDisplayStatus, isBillableWashoutForOwnerBilling, isPendingWashoutApproval } from "@shared/washoutApproval";
+import { filterPendingWashoutApprovals, isBillableWashoutForOwnerBilling, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { formatLocalizedCurrency, useLanguage } from "@/lib/i18n";
 import { normalizeDollarInputToCents } from "@shared/money";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { resolveWashoutOperationalStatus } from "@/lib/washoutOperationalStatus";
 
 function OwnerDashboardSkeleton() {
   return (
@@ -56,59 +57,29 @@ function OwnerDashboardSkeleton() {
 }
 
 function translateOwnerWashoutStatus(status: string | null | undefined, t: (key: string) => string) {
-  switch (status) {
-    case "verified":
-    case "approved":
-    case "completed":
-    case "paid":
-    case "settled":
-      return t("common.approved");
-    case "rejected":
-    case "declined":
-    case "cancelled":
-    case "canceled":
-      return t("common.rejected");
-    case "pending":
-    case "submitted":
-    case "photo_pending":
-    case "pending_owner_approval":
-    case "pending_photo_approval":
-    case "awaiting_approval":
-    case "awaiting_owner_approval":
-    case "awaiting_photo_approval":
-      return t("common.pending");
-    default:
-      return getWashoutApprovalDisplayStatus(status);
-  }
+  return t(resolveWashoutOperationalStatus({ status, audience: "owner" }).labelKey);
 }
 
 function bucketOwnerWashoutStatus(status: string | null | undefined): "pending" | "approved" | "rejected" {
-  switch (status) {
-    case "verified":
-    case "approved":
-    case "completed":
-    case "paid":
-    case "settled":
-      return "approved";
-    case "rejected":
-    case "declined":
-    case "cancelled":
-    case "canceled":
-      return "rejected";
-    default:
-      return "pending";
-  }
+  const state = resolveWashoutOperationalStatus({ status, audience: "owner" }).state;
+  if (state === "verified") return "approved";
+  if (state === "rejected") return "rejected";
+  return "pending";
 }
 
 function statusTone(status: string | null | undefined) {
-  switch (bucketOwnerWashoutStatus(status)) {
-    case "approved":
-      return "success";
-    case "rejected":
-      return "danger";
-    default:
-      return "warning";
-  }
+  return resolveWashoutOperationalStatus({ status, audience: "owner" }).tone;
+}
+
+function ownerActivityRecoveryMessage(activity: { status?: string | null; rejectionReason?: string | null }, t: (key: string, values?: Record<string, string | number>) => string) {
+  const operationalStatus = resolveWashoutOperationalStatus({
+    status: activity.status,
+    rejectionReason: activity.rejectionReason,
+    audience: "owner",
+  });
+  return operationalStatus.rejectionReason
+    ? t("washout.status.rejectionReason", { reason: operationalStatus.rejectionReason })
+    : t(operationalStatus.nextActionKey);
 }
 
 export default function OwnerDashboard() {
@@ -1401,6 +1372,9 @@ export default function OwnerDashboard() {
                           {translateOwnerWashoutStatus(activity.status, t)}
                         </DSStatusChip>
                       </div>
+                      <p className="text-xs text-muted-foreground" data-testid={`text-activity-recovery-${index}`}>
+                        {ownerActivityRecoveryMessage(activity, t)}
+                      </p>
                       
                       <div className="flex items-center gap-2 justify-end flex-wrap">
                         <div className="flex items-center gap-2">
@@ -1476,9 +1450,14 @@ export default function OwnerDashboard() {
                     {/* Desktop layout: Keep status and buttons side by side */}
                     <div className="hidden sm:flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <DSStatusChip tone={statusTone(activity.status)} data-testid={`badge-activity-status-${index}`}>
-                          {translateOwnerWashoutStatus(activity.status, t)}
-                        </DSStatusChip>
+                        <div>
+                          <DSStatusChip tone={statusTone(activity.status)} data-testid={`badge-activity-status-${index}`}>
+                            {translateOwnerWashoutStatus(activity.status, t)}
+                          </DSStatusChip>
+                          <p className="mt-1 text-xs text-muted-foreground" data-testid={`text-activity-recovery-desktop-${index}`}>
+                            {ownerActivityRecoveryMessage(activity, t)}
+                          </p>
+                        </div>
                       </div>
                       
                       <div className="flex items-center gap-2 flex-wrap justify-end">

@@ -1,5 +1,8 @@
+import { resolveWashoutOperationalStatus } from "@/lib/washoutOperationalStatus";
+
 export interface TrustVerificationActivityRow {
   washoutStatus?: unknown;
+  rejectionReason?: unknown;
 }
 
 export interface AutoApprovalStats {
@@ -23,13 +26,18 @@ export function buildAdminTrustVerification(
     ? null
     : activities.reduce(
       (counts, activity) => {
-        const status = String(activity.washoutStatus || "").toLowerCase();
-        if (status === "verified") counts.verified += 1;
-        if (status === "pending") counts.pending += 1;
-        if (status === "rejected") counts.rejected += 1;
+        const status = resolveWashoutOperationalStatus({
+          status: typeof activity.washoutStatus === "string" ? activity.washoutStatus : null,
+          rejectionReason: typeof activity.rejectionReason === "string" ? activity.rejectionReason : null,
+          audience: "admin",
+        });
+        if (status.state === "verified") counts.verified += 1;
+        if (status.state === "pending_review") counts.pending += 1;
+        if (status.state === "rejected") counts.rejected += 1;
+        if (status.requiresAdminAttention) counts.exceptions += 1;
         return counts;
       },
-      { verified: 0, pending: 0, rejected: 0 },
+      { verified: 0, pending: 0, rejected: 0, exceptions: 0 },
     );
 
   const pendingCounts = autoApprovalStats?.pendingCounts;
@@ -38,6 +46,7 @@ export function buildAdminTrustVerification(
     verified: statusCounts?.verified ?? null,
     pending: statusCounts?.pending ?? null,
     rejected: statusCounts?.rejected ?? null,
+    exceptions: statusCounts?.exceptions ?? null,
     reviewBacklog: statusCounts?.pending ?? null,
     olderThan24h: toOperationalCount(pendingCounts?.olderThan24h),
     olderThan48h: toOperationalCount(pendingCounts?.olderThan48h),
@@ -47,6 +56,7 @@ export function buildAdminTrustVerification(
           { label: "Verified", count: statusCounts.verified },
           { label: "Pending", count: statusCounts.pending },
           { label: "Rejected", count: statusCounts.rejected },
+          { label: "Exceptions", count: statusCounts.exceptions },
         ]
       : [],
   };

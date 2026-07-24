@@ -18,11 +18,13 @@ test("trust verification aggregates only persisted operational activity statuses
   assert.equal(result.verified, 2);
   assert.equal(result.pending, 1);
   assert.equal(result.rejected, 1);
+  assert.equal(result.exceptions, 2);
   assert.equal(result.reviewBacklog, 1);
   assert.deepEqual(result.distribution, [
     { label: "Verified", count: 2 },
     { label: "Pending", count: 1 },
     { label: "Rejected", count: 1 },
+    { label: "Exceptions", count: 2 },
   ]);
 });
 
@@ -32,6 +34,7 @@ test("trust verification preserves unavailable values for partial or missing API
   assert.equal(result.verified, null);
   assert.equal(result.pending, null);
   assert.equal(result.rejected, null);
+  assert.equal(result.exceptions, null);
   assert.equal(result.reviewBacklog, null);
   assert.equal(result.olderThan24h, 4);
   assert.equal(result.olderThan48h, null);
@@ -47,6 +50,7 @@ test("trust verification rejects malformed aging values rather than inventing co
   assert.equal(result.verified, 0);
   assert.equal(result.pending, 0);
   assert.equal(result.rejected, 0);
+  assert.equal(result.exceptions, 0);
   assert.equal(result.reviewBacklog, 0);
   assert.equal(result.olderThan24h, null);
   assert.equal(result.olderThan48h, null);
@@ -76,6 +80,6 @@ test("financial-looking fields do not affect trust verification output", () => {
 
   assert.deepEqual(withFinancialLookingFields, baseline);
   assert.deepEqual(Object.keys(withFinancialLookingFields).sort(), [
-    "distribution", "olderThan24h", "olderThan48h", "olderThan72h", "pending", "rejected", "reviewBacklog", "verified",
+    "distribution", "exceptions", "olderThan24h", "olderThan48h", "olderThan72h", "pending", "rejected", "reviewBacklog", "verified",
   ]);
 });

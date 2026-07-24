@@ -13,6 +13,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { resolveSubmittedActivityConfirmation, type SubmissionConfirmationRecord } from "@/lib/pilotOnboarding";
+import { resolveWashoutOperationalStatus } from "@/lib/washoutOperationalStatus";
 
 const SUBMISSION_CONFIRMATION_SESSION_KEY = "cretexchange.driver.submission-confirmation";
 
@@ -350,7 +351,15 @@ export default function DriverActivity() {
               </div>
             </DSCard>
           ) : (
-            filteredActivities.map((activity: any, index: number) => (
+            filteredActivities.map((activity: any, index: number) => {
+              const activityRecord = activity.washout_activities || activity;
+              const operationalStatus = resolveWashoutOperationalStatus({
+                status: activityRecord.status,
+                rejectionReason: activityRecord.rejectionReason,
+                audience: "driver",
+              });
+
+              return (
               <DSCard key={activity.washout_activities?.id || activity.id || index} className="hover:shadow-md transition-shadow" padding="md" data-testid={`card-activity-${index}`}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -394,16 +403,21 @@ export default function DriverActivity() {
                         {formatCurrency(Number(activity.washout_activities?.amount || activity.amount || 0))}
                       </div>
                       <DSStatusChip
-                        tone={
-                          (activity.washout_activities?.status || activity.status) === 'verified' ? 'success' :
-                          (activity.washout_activities?.status || activity.status) === 'pending' ? 'warning' : 'danger'
-                        }
+                        tone={operationalStatus.tone}
                         data-testid={`badge-activity-status-${index}`}
                       >
-                        {(activity.washout_activities?.status || activity.status) === 'verified' ? t("driver.activity.verified") :
-                         (activity.washout_activities?.status || activity.status) === 'pending' ? t("driver.activity.pending") : t("common.rejected")}
+                        {t(operationalStatus.labelKey)}
                       </DSStatusChip>
                     </div>
+                  </div>
+
+                  <div className="mb-3 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm text-muted-foreground" data-testid={`text-activity-recovery-${index}`}>
+                    <p>{t(operationalStatus.detailKey)}</p>
+                    {operationalStatus.rejectionReason ? (
+                      <p className="mt-1 font-medium text-foreground">{t("washout.status.rejectionReason", { reason: operationalStatus.rejectionReason })}</p>
+                    ) : (
+                      <p className="mt-1">{t(operationalStatus.nextActionKey)}</p>
+                    )}
                   </div>
 
                   {(activity.washout_activities?.notes || activity.notes) && (
@@ -440,7 +454,8 @@ export default function DriverActivity() {
                     )}
                   </div>
               </DSCard>
-            ))
+              );
+            })
           )}
         </div>
       </div>

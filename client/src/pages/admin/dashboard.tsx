@@ -936,6 +936,14 @@ export default function AdminDashboard() {
                 dataTestId="metric-trust-rejected"
               />
               <DashboardMetricCard
+                title="Exceptions Needing Support"
+                value={trustVerification.exceptions ?? "—"}
+                helper="Rejected or review-exception activity; use the existing support and operational-report workflow."
+                icon={ShieldAlert}
+                toneClassName="bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-300"
+                dataTestId="metric-trust-exceptions"
+              />
+              <DashboardMetricCard
                 title="Review Backlog"
                 value={trustVerification.reviewBacklog ?? "—"}
                 helper="Current pending operational workload"
