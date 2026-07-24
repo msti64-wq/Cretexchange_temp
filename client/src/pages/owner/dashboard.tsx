@@ -82,6 +82,24 @@ function ownerActivityRecoveryMessage(activity: { status?: string | null; reject
     : t(operationalStatus.nextActionKey);
 }
 
+function OwnerAdministrativeReviewStatus({ activity }: { activity: any }) {
+  const { t } = useLanguage();
+  const reviewUrl = `/api/owners/activities/${activity.id}/administrative-review`;
+  const { data: review } = useQuery<any>({
+    queryKey: [reviewUrl],
+    enabled: activity.status === "pending" || activity.status === "rejected",
+    retry: false,
+  });
+  if (!review) return null;
+  const label = review.resolution === "closed" ? t("adminReview.closed") : review.returnedToOwnerReview ? t("adminReview.returned") : t("adminReview.requested");
+  return <div className="mt-2 rounded-lg border border-sky-300/60 bg-sky-50/70 p-3 text-xs text-muted-foreground dark:border-sky-900/60 dark:bg-sky-950/25" data-testid={`owner-admin-review-status-${activity.id}`} aria-live="polite">
+    <p className="font-semibold text-foreground">{label}</p>
+    <p className="mt-1">{new Date(review.requestedAt).toLocaleDateString()}</p>
+    {review.rationale && <p className="mt-1">{t("adminReview.participantRationale")}: {review.rationale}</p>}
+    {review.returnedToOwnerReview && <p className="mt-1 font-medium text-foreground">{t("adminReview.ownerReturnedGuidance")}</p>}
+  </div>;
+}
+
 function OptionalDriverTipControl({
   value,
   onValueChange,
@@ -1394,6 +1412,7 @@ export default function OwnerDashboard() {
                         GPS: {Number(activity.latitude).toFixed(6)}, {Number(activity.longitude).toFixed(6)}
                       </div>
                     )}
+                    <OwnerAdministrativeReviewStatus activity={activity} />
                   </div>
                   
                   {/* Actions Row - Status and Buttons */}

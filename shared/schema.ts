@@ -420,6 +420,31 @@ export const washoutPhotos = pgTable("washout_photos", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// A facilitator-only review request. This is intentionally separate from the
+// canonical activity lifecycle: an administrator may close a request or return
+// an activity to its owner, but never verify or reject the activity directly.
+export const washoutActivityAdminReviews = pgTable("washout_activity_admin_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
+  driverId: varchar("driver_id").notNull().references(() => drivers.id, { onDelete: "restrict" }),
+  driverUserId: varchar("driver_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  ownerId: varchar("owner_id").notNull().references(() => owners.id, { onDelete: "restrict" }),
+  rejectionReasonSnapshot: text("rejection_reason_snapshot").notNull(),
+  driverExplanation: text("driver_explanation").notNull(),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  resolution: varchar("resolution"),
+  adminUserId: varchar("admin_user_id").references(() => users.id, { onDelete: "set null" }),
+  adminRationale: text("admin_rationale"),
+  decidedAt: timestamp("decided_at"),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("washout_activity_admin_reviews_activity_requested_idx").on(table.activityId, table.requestedAt),
+  index("washout_activity_admin_reviews_owner_resolution_idx").on(table.ownerId, table.resolution, table.requestedAt),
+  index("washout_activity_admin_reviews_driver_resolution_idx").on(table.driverId, table.resolution, table.requestedAt),
+]);
+
 // Rubble service: Materials catalog (presets + normalization)
 export const materials = pgTable("materials", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1502,6 +1527,18 @@ export const insertWashoutPhotoSchema = createInsertSchema(washoutPhotos).omit({
   createdAt: true,
 });
 
+export const administrativeReviewRequestSchema = z.object({
+  explanation: z.string().trim().min(10).max(1_000),
+  confirmationAcknowledged: z.literal(true),
+});
+
+export const administrativeReviewDecisionSchema = z.object({
+  resolution: z.enum(["closed", "returned_to_owner_review"]),
+  rationale: z.string().trim().min(10).max(1_000),
+  confirmationAcknowledged: z.literal(true),
+  version: z.number().int().positive(),
+});
+
 // Rubble service insert schemas
 export const insertMaterialSchema = createInsertSchema(materials).omit({
   id: true,
@@ -1727,6 +1764,7 @@ export type Driver = typeof drivers.$inferSelect;
 export type Owner = typeof owners.$inferSelect;
 export type WashoutLocation = typeof washoutLocations.$inferSelect;
 export type WashoutActivity = typeof washoutActivities.$inferSelect;
+export type WashoutActivityAdminReview = typeof washoutActivityAdminReviews.$inferSelect;
 export type WashoutPhoto = typeof washoutPhotos.$inferSelect;
 export type Payment = typeof payments.$inferSelect & {
   tipAmountCents?: number | null;

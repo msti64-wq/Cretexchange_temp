@@ -30,6 +30,9 @@ import {
 } from "@/lib/adminPlatformActivity";
 import { buildAdminMarketplaceHealth } from "@/lib/adminMarketplaceHealth";
 import { buildAdminPilotReadiness } from "@/lib/adminPilotReadiness";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/lib/i18n";
 
 function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
   return (
@@ -147,6 +150,39 @@ function MarketplaceHealthSkeleton() {
       </div>
     </DashboardSectionCard>
   );
+}
+
+function AdministrativeReviewQueue() {
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<any>(null);
+  const [resolution, setResolution] = useState<"closed" | "returned_to_owner_review" | null>(null);
+  const [rationale, setRationale] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const { data: reviews, isLoading, error } = useQuery<any[]>({ queryKey: ["/api/admin/administrative-reviews"], retry: false });
+  const decide = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/admin/administrative-reviews/${selected.id}/decision`, { resolution, rationale: rationale.trim(), confirmationAcknowledged: true, version: selected.version }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/administrative-reviews"] }); setSelected(null); setResolution(null); setRationale(""); setConfirmed(false); },
+  });
+  const items = reviews || [];
+  return <DashboardSectionCard title={t("adminReview.queueTitle")} description={t("adminReview.queueDescription")} icon={<ShieldAlert className="h-4 w-4 text-indigo-600" />} badge={<Badge variant="outline">{t("adminReview.queueCount", { count: items.length })}</Badge>} dataTestId="section-administrative-review-queue">
+    {isLoading ? <p className="text-sm text-muted-foreground">{t("common.loading")}</p> : error ? <p className="text-sm text-destructive" role="alert">{t("adminReview.queueError")}</p> : items.length === 0 ? <p className="text-sm text-muted-foreground">{t("adminReview.queueEmpty")}</p> : <div className="space-y-3">
+      {items.map((review) => <div key={review.id} className="rounded-xl border border-border p-4" data-testid={`admin-review-row-${review.id}`}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-semibold">{review.facility.name}</p><p className="text-sm text-muted-foreground">{review.driver.firstName || t("adminReview.unknownDriver")} {review.driver.lastName || ""} · {t("adminReview.age", { hours: review.reviewAgeHours })}</p></div><Button size="sm" variant="outline" onClick={() => setSelected(review)}>{t("adminReview.openReview")}</Button></div>
+        <p className="mt-2 text-sm"><span className="font-medium">{t("adminReview.rejectionReason")}: </span>{review.rejectionReason}</p>
+      </div>)}
+    </div>}
+    <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open && !decide.isPending) setSelected(null); }}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{t("adminReview.detailTitle")}</DialogTitle><DialogDescription>{t("adminReview.facilitatorOnly")}</DialogDescription></DialogHeader>
+        {selected && <div className="space-y-3 text-sm"><p><strong>{t("adminReview.facility")}:</strong> {selected.facility.name}</p><p><strong>{t("adminReview.driverExplanation")}:</strong> {selected.driverExplanation}</p><p><strong>{t("adminReview.rejectionReason")}:</strong> {selected.rejectionReason}</p><p><strong>{t("adminReview.requested")}:</strong> {new Date(selected.requestedAt).toLocaleString()}</p><p><strong>{t("adminReview.photos")}:</strong> {selected.photos.length}</p>
+          <div className="rounded-lg bg-muted/40 p-3"><p className="font-medium">{t("adminReview.operationalTimeline")}</p><ul className="mt-1 list-disc pl-5 text-muted-foreground"><li>{t("adminReview.timelineSubmitted", { date: new Date(selected.checkInTime).toLocaleString() })}</li>{selected.rejectionTimestamp && <li>{t("adminReview.timelineRejected", { date: new Date(selected.rejectionTimestamp).toLocaleString() })}</li>}<li>{t("adminReview.timelineRequested", { date: new Date(selected.requestedAt).toLocaleString() })}</li></ul></div>
+          {resolution && <><label className="grid gap-2 font-medium" htmlFor="admin-review-rationale">{t("adminReview.rationaleLabel")}<Textarea id="admin-review-rationale" value={rationale} onChange={(event) => setRationale(event.target.value)} minLength={10} maxLength={1000} /></label><label className="flex gap-2"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />{t("adminReview.decisionConfirm")}</label></>}
+          {decide.error && <p className="text-destructive" role="alert">{t("adminReview.decisionError")}</p>}
+        </div>}
+        <DialogFooter className="flex-wrap"><Button variant="outline" onClick={() => setResolution("closed")} disabled={decide.isPending}>{t("adminReview.closeAction")}</Button><Button variant="outline" onClick={() => setResolution("returned_to_owner_review")} disabled={decide.isPending}>{t("adminReview.returnAction")}</Button>{resolution && <Button onClick={() => decide.mutate()} disabled={decide.isPending || rationale.trim().length < 10 || !confirmed}>{decide.isPending ? t("common.loading") : t("adminReview.confirmDecision")}</Button>}</DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </DashboardSectionCard>;
 }
 
 export default function AdminDashboard() {
@@ -958,6 +994,8 @@ export default function AdminDashboard() {
             </div>
           </div>
         </DashboardSectionCard>
+
+        <AdministrativeReviewQueue />
 
         {trustReportLoading && autoApprovalStatsLoading ? (
           <TrustVerificationSkeleton />

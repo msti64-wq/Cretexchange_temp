@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { PhotoModal } from "@/components/PhotoModal";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Calendar, Download, MapPin, Clock, Image as ImageIcon, Filter } from "lucide-react";
 import { Calendar as DateCalendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -13,6 +15,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { resolveSubmittedActivityConfirmation, type SubmissionConfirmationRecord } from "@/lib/pilotOnboarding";
+import { apiRequest } from "@/lib/queryClient";
 import {
   calculateVerifiedOperationalActivityValue,
   matchesDriverActivityOperationalFilter,
@@ -22,6 +25,52 @@ import {
 } from "@/lib/washoutOperationalStatus";
 
 const SUBMISSION_CONFIRMATION_SESSION_KEY = "cretexchange.driver.submission-confirmation";
+
+function AdministrativeReviewPanel({ activity, index }: { activity: any; index: number }) {
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [explanation, setExplanation] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const record = activity.washout_activities || activity;
+  const activityId = record.id;
+  const eligible = record.status === "rejected" && Boolean(record.rejectedAt && record.rejectionReason);
+  const reviewUrl = `/api/drivers/activities/${activityId}/administrative-review`;
+  const { data: review } = useQuery<any>({ queryKey: [reviewUrl], enabled: eligible, retry: false });
+  const request = useMutation({
+    mutationFn: () => apiRequest("POST", reviewUrl, { explanation: explanation.trim(), confirmationAcknowledged: true }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [reviewUrl] }); setOpen(false); setExplanation(""); setConfirmed(false); },
+  });
+
+  if (!eligible) return null;
+  if (review) {
+    const statusKey = review.resolution === "closed" ? "adminReview.closed" : review.resolution === "returned_to_owner_review" ? "adminReview.returned" : "adminReview.requested";
+    return <div className="mt-3 rounded-lg border border-sky-300/60 bg-sky-50/70 p-3 text-sm dark:border-sky-900/60 dark:bg-sky-950/25" data-testid={`driver-admin-review-status-${index}`} aria-live="polite">
+      <p className="font-semibold text-foreground">{t(statusKey)}</p>
+      <p className="mt-1 text-muted-foreground">{new Date(review.requestedAt).toLocaleDateString()}</p>
+      <p className="mt-1 text-muted-foreground">{t("adminReview.driverExplanation")}: {review.driverExplanation}</p>
+      {review.rationale && <p className="mt-1 text-muted-foreground">{t("adminReview.participantRationale")}: {review.rationale}</p>}
+      <p className="mt-2 text-muted-foreground">{t(review.resolution === "closed" ? "adminReview.closedDriverGuidance" : review.resolution === "returned_to_owner_review" ? "adminReview.returnedDriverGuidance" : "adminReview.awaiting")}</p>
+    </div>;
+  }
+  return <>
+    <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setOpen(true)} data-testid={`button-request-administrative-review-${index}`}>
+      {t("adminReview.requestAction")}
+    </Button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{t("adminReview.requestTitle")}</DialogTitle><DialogDescription>{t("adminReview.requestDescription")}</DialogDescription></DialogHeader>
+        <label className="grid gap-2 text-sm font-medium" htmlFor={`admin-review-explanation-${activityId}`}>{t("adminReview.explanationLabel")}
+          <Textarea id={`admin-review-explanation-${activityId}`} value={explanation} onChange={(event) => setExplanation(event.target.value)} minLength={10} maxLength={1000} aria-describedby={`admin-review-explanation-help-${activityId}`} />
+        </label>
+        <p id={`admin-review-explanation-help-${activityId}`} className="text-xs text-muted-foreground">{t("adminReview.explanationHelp")}</p>
+        <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />{t("adminReview.requestConfirm")}</label>
+        {request.error && <p className="text-sm text-destructive" role="alert">{t("adminReview.requestError")}</p>}
+        <DialogFooter><Button type="button" onClick={() => request.mutate()} disabled={request.isPending || explanation.trim().length < 10 || !confirmed}>{request.isPending ? t("common.loading") : t("adminReview.submitRequest")}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </>;
+}
 
 function readSubmissionConfirmationRecord(): SubmissionConfirmationRecord | null {
   try {
@@ -456,6 +505,8 @@ export default function DriverActivity() {
                       </p>
                     )}
                   </div>
+
+                  <AdministrativeReviewPanel activity={activity} index={index} />
 
                   {(activity.washout_activities?.notes || activity.notes) && (
                     <p className="text-sm text-foreground/75 mb-3" data-testid={`text-activity-notes-${index}`}>

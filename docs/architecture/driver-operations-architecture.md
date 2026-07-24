@@ -453,3 +453,7 @@ Any driver operational change must:
 - include validation and migration guidance where applicable
 
 This document is the governing source for driver operations architecture until superseded by a newer approved architecture document.
+
+## 24. Pilot Administrative Review Requests
+
+After an eligible Owner rejection, a Driver MAY request an Administrative Review Request with a participant-visible explanation and explicit confirmation. Only one unresolved request may exist for an activity. A later Owner rejection after a resolved request may begin a new review round. The request is operational only: it creates no approval, payment, settlement, or other financial entitlement.

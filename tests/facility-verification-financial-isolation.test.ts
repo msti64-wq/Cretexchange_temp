@@ -65,7 +65,11 @@ async function getOwnerVerifyRoute(): Promise<Route> {
   await registerRoutes(app as never);
   const route = puts.get("/api/owners/activities/:id/verify");
   assert.equal(typeof route, "function");
-  return route!;
+  return async (req, res) => route!({
+    ...req,
+    body: req.body || { intentToken: "a".repeat(32), actionSource: "owner-dashboard-button", confirmationAcknowledged: true },
+    headers: req.headers || { authorization: "Bearer test-owner-session" },
+  }, res);
 }
 
 function pendingActivity(status = "pending") {
@@ -85,7 +89,7 @@ function ownerPatch(overrides: Record<string, unknown> = {}) {
     getWashoutActivity: async () => pendingActivity(),
     getWashoutLocation: async () => ({ id: "location_1", ownerId: "owner_1", rate: "999.00" }),
     getFeatureFlag: async () => ({ enabled: false }),
-    verifyWashoutActivity: async () => ({ ...pendingActivity(), status: "verified" }),
+    verifyWashoutActivityWithApprovalIntent: async () => ({ ...pendingActivity(), status: "verified" }),
     ...overrides,
   };
 }
@@ -228,7 +232,7 @@ test("only pending activities transition and a concurrent claimant receives conf
   try {
     await withStoragePatch(ownerPatch({
       ...spies.patch,
-      verifyWashoutActivity: async () => {
+      verifyWashoutActivityWithApprovalIntent: async () => {
         if (claimed) {
           const error = new Error("not pending") as Error & { code?: string };
           error.code = "WASHOUT_ACTIVITY_NOT_PENDING";
@@ -272,7 +276,7 @@ test("all billing cadences remain operational-only", { concurrency: false }, asy
   }
 });
 
-test("auto-approval is operational-only and a prior manual claim is safe", { concurrency: false }, async () => {
+test("automatic approval is retired and cannot create a financial side effect", { concurrency: false }, async () => {
   const source = readFileSync(new URL("../server/storage.ts", import.meta.url), "utf8");
   const autoApproval = source.slice(source.indexOf("async autoApproveExpiredActivities"), source.indexOf("async createPayment"));
   for (const forbidden of ["createPayment(", "location.rate", "platformFee", "driverTip", "ownerCharge"]) {
@@ -304,11 +308,12 @@ test("auto-approval is operational-only and a prior manual claim is safe", { con
       },
     }, async () => {
       const first = await storage.autoApproveExpiredActivities(72);
-      assert.equal(first.approved, 1);
+      assert.equal(first.approved, 0);
       assert.equal(first.failed, 0);
+      assert.match(first.errors[0] || "", /retired/i);
       const second = await storage.autoApproveExpiredActivities(72);
       assert.equal(second.approved, 0);
-      assert.equal(second.failed, 1);
+      assert.equal(second.failed, 0);
       assertNoFinancialCalls(spies.calls);
     });
   } finally {

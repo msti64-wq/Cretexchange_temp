@@ -269,3 +269,7 @@ If not, reconsider whether it belongs within Platform Operations authority.
 ## 18. Implementation Boundary
 
 Any implementation derived from this decision requires separately approved scope, source-of-truth verification, privacy and security review, authorization design, auditability controls, participant communication design, and risk-based validation under the Development Protocol. This policy changes no current implementation behavior.
+
+## 19. Pilot Administrative Review Request
+
+The approved pilot implementation is facilitator-only. A Driver may request review of a completed Owner rejection; Platform Operations may close that request or return the activity to the existing Owner review workflow. The Owner remains the sole operational approver. Administrative review has its own request lifecycle and does not add an activity status, payment outcome, settlement entitlement, or provider action. Only one unresolved request may exist per activity; a later request is permitted only after a resolved return and a subsequent Owner rejection. Runtime application and catalog validation of migration `0036` against an authorized isolated PostgreSQL database remains a release gate; local static validation is not evidence that the migration executed.

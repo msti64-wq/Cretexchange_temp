@@ -30,7 +30,7 @@ import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { getJwtSecret } from "./jwtSecret";
 import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getPhotoReadProviderSelection, getPhotoUploadProviderSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
-import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema, insertPrizeCatalogSchema, updatePrizeCatalogSchema, prizeCatalogInventoryAdjustmentTypeValues, updateLotteryDrawingFulfillmentStatusRequestSchema, updateLotteryDrawingFulfillmentNotesRequestSchema, updateLotteryDrawingFulfillmentTrackingRequestSchema, lotteryFulfillmentStatusValues } from "@shared/schema";
+import { insertDriverSchema, insertOwnerSchema, insertWashoutLocationSchema, insertWashoutActivitySchema, withdrawalRequestSchema, walletTransactionQuerySchema, adminWithdrawalUpdateSchema, updateLocationRateSchema, updateLocationStatusSchema, updateLocationSchema, insertServicePaymentAccountSchema, updateServicePaymentAccountSchema, uuidParamSchema, superAdminEmailUpdateSchema, dateRangeSchema, ownerActivitiesQuerySchema, columnOnboardingSchema, driverPayoutRequestSchema, activateMembershipSchema, insertPrizeCatalogSchema, updatePrizeCatalogSchema, prizeCatalogInventoryAdjustmentTypeValues, updateLotteryDrawingFulfillmentStatusRequestSchema, updateLotteryDrawingFulfillmentNotesRequestSchema, updateLotteryDrawingFulfillmentTrackingRequestSchema, lotteryFulfillmentStatusValues, administrativeReviewRequestSchema, administrativeReviewDecisionSchema } from "@shared/schema";
 import type { Driver, FeeLedger, FeatureFlag, LocationMaterialIntent, Notification, Owner, OwnerFundingSource, Payment, PendingWashoutPayment, User, WalletTransaction, WashoutActivity, WashoutLocation, WashoutPhoto, Withdrawal } from "@shared/schema";
 import { eq, sql, desc, and, isNotNull, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -5833,6 +5833,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
         errorCategory: error instanceof Error ? error.name : "UnknownError",
       });
       res.status(500).json({ message: "Failed to reject activity" });
+    }
+  });
+
+  const buildAdministrativeReviewAudit = (req: any, res: any, actionSource: string) => {
+    const authorization = typeof req.headers?.authorization === "string" ? req.headers.authorization.slice("Bearer ".length) : "";
+    const forwardedFor = typeof req.headers?.["x-forwarded-for"] === "string" ? req.headers["x-forwarded-for"].split(",")[0]?.trim() : undefined;
+    const requestId = randomUUID();
+    res.setHeader?.("X-Request-ID", requestId);
+    return { requestId, authSessionFingerprint: approvalAuditFingerprint(authorization) || "missing", userAgentFingerprint: approvalAuditFingerprint(req.headers?.["user-agent"]), ipFingerprint: approvalAuditFingerprint(forwardedFor || req.ip), origin: safeRequestOrigin(req.headers?.origin), referer: safeRequestOrigin(req.headers?.referer), deployedCommit: activeDeploymentCommit(), actionSource, confirmationAcknowledged: true };
+  };
+
+  app.post('/api/drivers/activities/:id/administrative-review', isAuthenticated, async (req: any, res) => {
+    const parsed = administrativeReviewRequestSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "A concise explanation and confirmation are required." });
+    if (req.user?.role !== "driver") return res.status(403).json({ message: "Only the activity's driver may request administrative review." });
+    try {
+      const [driver, activity] = await Promise.all([storage.getDriver(req.user.id), storage.getWashoutActivity(req.params.id)]);
+      if (!driver || !activity || activity.driverId !== driver.id) return res.status(404).json({ message: "Activity not found." });
+      if (activity.status !== "rejected" || !activity.rejectedAt || !activity.rejectionReason) return res.status(409).json({ message: "Only a completed owner rejection may be reviewed." });
+      const location = await storage.getWashoutLocation(activity.locationId);
+      if (!location) return res.status(404).json({ message: "Activity not found." });
+      const review = await storage.createWashoutActivityAdminReview({ activityId: activity.id, driverId: driver.id, driverUserId: req.user.id, ownerId: location.ownerId, rejectionReasonSnapshot: activity.rejectionReason, driverExplanation: parsed.data.explanation });
+      return res.status(201).json({ id: review.id, activityId: review.activityId, requestedAt: review.requestedAt, resolution: review.resolution, message: "Administrative review requested. This review does not approve the washout or create a payment entitlement." });
+    } catch (error: any) {
+      if (error?.code === "23505") return res.status(409).json({ message: "An administrative review is already open for this activity." });
+      console.error("[ADMIN_REVIEW_REQUEST_FAILED]", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      return res.status(500).json({ message: "Unable to request administrative review." });
+    }
+  });
+
+  app.get('/api/drivers/activities/:id/administrative-review', isAuthenticated, async (req: any, res) => {
+    if (req.user?.role !== "driver") return res.status(403).json({ message: "Driver access required." });
+    const [driver, activity] = await Promise.all([storage.getDriver(req.user.id), storage.getWashoutActivity(req.params.id)]);
+    if (!driver || !activity || activity.driverId !== driver.id) return res.status(404).json({ message: "Activity not found." });
+    const review = await storage.getWashoutActivityAdminReview(activity.id);
+    if (!review) return res.status(404).json({ message: "Administrative review not found." });
+    return res.json({
+      requestedAt: review.requestedAt,
+      resolution: review.resolution,
+      rationale: review.adminRationale,
+      decidedAt: review.decidedAt,
+      driverExplanation: review.driverExplanation,
+    });
+  });
+
+  app.get('/api/owners/activities/:id/administrative-review', isAuthenticated, async (req: any, res) => {
+    if (req.user?.role !== "owner") return res.status(403).json({ message: "Facility owner access required." });
+    const [owner, activity] = await Promise.all([storage.getOwner(req.user.id), storage.getWashoutActivity(req.params.id)]);
+    if (!owner || !activity) return res.status(404).json({ message: "Activity not found." });
+    const location = await storage.getWashoutLocation(activity.locationId);
+    if (!location || location.ownerId !== owner.id) return res.status(404).json({ message: "Activity not found." });
+    const review = await storage.getWashoutActivityAdminReview(activity.id);
+    if (!review) return res.status(404).json({ message: "Administrative review not found." });
+    return res.json({
+      requestedAt: review.requestedAt,
+      resolution: review.resolution,
+      rationale: review.adminRationale,
+      decidedAt: review.decidedAt,
+      returnedToOwnerReview: review.resolution === "returned_to_owner_review",
+    });
+  });
+
+  app.get('/api/admin/administrative-reviews', isAuthenticated, async (req: any, res) => {
+    const actor = await storage.getUser(req.user.id);
+    if (!actor || (actor.role !== "admin" && actor.role !== "super_admin")) return res.status(403).json({ message: "Platform Operations access required." });
+    const reviews = await storage.listOpenWashoutActivityAdminReviews();
+    const queue = await Promise.all(reviews.map(async (review: any) => {
+      const activity = await storage.getWashoutActivity(review.activityId);
+      const [location, driver, owner] = await Promise.all([
+        activity ? storage.getWashoutLocation(activity.locationId) : undefined,
+        storage.getUser(review.driverUserId),
+        storage.getOwnerById(review.ownerId),
+      ]);
+      const ownerUser = owner ? await storage.getUser(owner.userId) : undefined;
+      const photos = activity ? await storage.getPhotosByActivity(activity.id) : [];
+      return activity && location ? {
+        id: review.id,
+        version: review.version,
+        activityId: activity.id,
+        status: activity.status,
+        requestedAt: review.requestedAt,
+        reviewAgeHours: Math.max(0, Math.floor((Date.now() - review.requestedAt.getTime()) / (60 * 60 * 1000))),
+        rejectionReason: review.rejectionReasonSnapshot,
+        rejectionTimestamp: activity.rejectedAt,
+        driverExplanation: review.driverExplanation,
+        driver: { firstName: driver?.firstName || null, lastName: driver?.lastName || null, truckNumber: null },
+        owner: { companyName: owner?.companyName || null, firstName: ownerUser?.firstName || null, lastName: ownerUser?.lastName || null },
+        facility: { name: location.name, city: location.city, state: location.state },
+        checkInTime: activity.checkInTime,
+        createdAt: activity.createdAt,
+        photos: photos.map((photo: { id: string; photoTakenAt: Date; uploadedAt: Date; verificationStatus: string }) => ({ id: photo.id, photoTakenAt: photo.photoTakenAt, uploadedAt: photo.uploadedAt, verificationStatus: photo.verificationStatus })),
+      } : null;
+    }));
+    return res.json(queue.filter(Boolean));
+  });
+
+  app.post('/api/admin/administrative-reviews/:id/decision', isAuthenticated, async (req: any, res) => {
+    const parsed = administrativeReviewDecisionSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "A decision, rationale, confirmation, and current version are required." });
+    const actor = await storage.getUser(req.user.id);
+    if (!actor || (actor.role !== "admin" && actor.role !== "super_admin")) return res.status(403).json({ message: "Platform Operations access required." });
+    try {
+      const result = await storage.resolveWashoutActivityAdminReview({ reviewId: req.params.id, version: parsed.data.version, adminUserId: actor.id, resolution: parsed.data.resolution, rationale: parsed.data.rationale, audit: buildAdministrativeReviewAudit(req, res, "admin-administrative-review-decision") });
+      return res.json({ id: result.review.id, resolution: result.review.resolution, decidedAt: result.review.decidedAt, activityStatus: result.activity?.status || "rejected" });
+    } catch (error: any) {
+      if (error?.code === "ADMIN_REVIEW_NOT_OPEN" || error?.code === "WASHOUT_ACTIVITY_NOT_REJECTED") return res.status(409).json({ message: "This administrative review can no longer be decided." });
+      console.error("[ADMIN_REVIEW_DECISION_FAILED]", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      return res.status(500).json({ message: "Unable to record administrative review decision." });
     }
   });
 

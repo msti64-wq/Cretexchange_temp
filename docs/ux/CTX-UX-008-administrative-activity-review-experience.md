@@ -107,6 +107,10 @@ The following lifecycle is an experience model, not authorization to add stored 
 
 Case state must never be presented as activity payment status, wallet status, payout status, settlement status, or a substitute for the canonical persisted activity state in PD-051.
 
+### Pilot facilitator boundary
+
+For the initial pilot, this experience is limited to an Administrative Review Request for an Owner-rejected activity. The Administrator may close the request or return the activity to Owner review; the Administrator never verifies or rejects the activity. The returned activity re-enters the existing pending Owner review flow and requires the existing Owner approval-intent confirmation.
+
 ## 7. Evidence Model
 
 ### Authoritative operational evidence

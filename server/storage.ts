@@ -4,6 +4,7 @@ import {
   owners,
   washoutLocations,
   washoutActivities,
+  washoutActivityAdminReviews,
   ownerActivityApprovalIntents,
   washoutActivityReviewEvents,
   washoutPhotos,
@@ -54,6 +55,7 @@ import {
   type Owner,
   type WashoutLocation,
   type WashoutActivity,
+  type WashoutActivityAdminReview,
   type WashoutPhoto,
   type Payment,
   type Notification,
@@ -285,6 +287,16 @@ export interface IStorage {
       confirmationAcknowledged: boolean;
     };
   }): Promise<WashoutActivity | undefined>;
+  createWashoutActivityAdminReview(input: {
+    activityId: string; driverId: string; driverUserId: string; ownerId: string;
+    rejectionReasonSnapshot: string; driverExplanation: string;
+  }): Promise<WashoutActivityAdminReview>;
+  getWashoutActivityAdminReview(activityId: string): Promise<WashoutActivityAdminReview | undefined>;
+  listOpenWashoutActivityAdminReviews(): Promise<WashoutActivityAdminReview[]>;
+  resolveWashoutActivityAdminReview(input: {
+    reviewId: string; version: number; adminUserId: string; resolution: "closed" | "returned_to_owner_review";
+    rationale: string; audit: { requestId: string; authSessionFingerprint: string; userAgentFingerprint?: string | null; ipFingerprint?: string | null; origin?: string | null; referer?: string | null; deployedCommit?: string | null; actionSource: string; confirmationAcknowledged: boolean; };
+  }): Promise<{ review: WashoutActivityAdminReview; activity: WashoutActivity | null }>;
   updateWashoutActivityStatus(activityId: string, status: string): Promise<WashoutActivity>;
   getRecentActivitiesByDriver(driverId: string, limit?: number): Promise<(WashoutActivity & { location: WashoutLocation })[]>;
   getAllActivities(startDate?: Date, endDate?: Date): Promise<(WashoutActivity & { location: WashoutLocation; driver: Driver & { user: User } })[]>;
@@ -2068,6 +2080,61 @@ export class DatabaseStorage implements IStorage {
         confirmationAcknowledged: audit.confirmationAcknowledged,
       });
       return activity;
+    });
+  }
+
+  async createWashoutActivityAdminReview(input: {
+    activityId: string; driverId: string; driverUserId: string; ownerId: string;
+    rejectionReasonSnapshot: string; driverExplanation: string;
+  }): Promise<WashoutActivityAdminReview> {
+    const [review] = await db.insert(washoutActivityAdminReviews).values(input).returning();
+    return review;
+  }
+
+  async getWashoutActivityAdminReview(activityId: string): Promise<WashoutActivityAdminReview | undefined> {
+    const [review] = await db.select().from(washoutActivityAdminReviews)
+      .where(eq(washoutActivityAdminReviews.activityId, activityId))
+      .orderBy(desc(washoutActivityAdminReviews.requestedAt)).limit(1);
+    return review;
+  }
+
+  async listOpenWashoutActivityAdminReviews(): Promise<WashoutActivityAdminReview[]> {
+    return db.select().from(washoutActivityAdminReviews)
+      .where(isNull(washoutActivityAdminReviews.resolution))
+      .orderBy(asc(washoutActivityAdminReviews.requestedAt));
+  }
+
+  async resolveWashoutActivityAdminReview(input: {
+    reviewId: string; version: number; adminUserId: string; resolution: "closed" | "returned_to_owner_review";
+    rationale: string; audit: { requestId: string; authSessionFingerprint: string; userAgentFingerprint?: string | null; ipFingerprint?: string | null; origin?: string | null; referer?: string | null; deployedCommit?: string | null; actionSource: string; confirmationAcknowledged: boolean; };
+  }): Promise<{ review: WashoutActivityAdminReview; activity: WashoutActivity | null }> {
+    return db.transaction(async (tx) => {
+      const now = new Date();
+      const [review] = await tx.update(washoutActivityAdminReviews).set({
+        resolution: input.resolution, adminUserId: input.adminUserId, adminRationale: input.rationale,
+        decidedAt: now, updatedAt: now, version: sql`${washoutActivityAdminReviews.version} + 1`,
+      }).where(and(eq(washoutActivityAdminReviews.id, input.reviewId), eq(washoutActivityAdminReviews.version, input.version), isNull(washoutActivityAdminReviews.resolution))).returning();
+      if (!review) {
+        const error = new Error("Administrative review is no longer open") as Error & { code?: string };
+        error.code = "ADMIN_REVIEW_NOT_OPEN";
+        throw error;
+      }
+      if (input.resolution === "closed") return { review, activity: null };
+      const [activity] = await tx.update(washoutActivities).set({ status: "pending", updatedAt: now })
+        .where(and(eq(washoutActivities.id, review.activityId), eq(washoutActivities.status, "rejected"))).returning();
+      if (!activity) {
+        const error = new Error("Washout activity is no longer rejected") as Error & { code?: string };
+        error.code = "WASHOUT_ACTIVITY_NOT_REJECTED";
+        throw error;
+      }
+      await tx.insert(washoutActivityReviewEvents).values({
+        activityId: activity.id, previousStatus: "rejected", newStatus: "pending", actorUserId: input.adminUserId,
+        ownerId: review.ownerId, requestId: input.audit.requestId, authSessionFingerprint: input.audit.authSessionFingerprint,
+        userAgentFingerprint: input.audit.userAgentFingerprint ?? null, ipFingerprint: input.audit.ipFingerprint ?? null,
+        origin: input.audit.origin ?? null, referer: input.audit.referer ?? null, deployedCommit: input.audit.deployedCommit ?? null,
+        actionSource: input.audit.actionSource, confirmationAcknowledged: input.audit.confirmationAcknowledged,
+      });
+      return { review, activity };
     });
   }
 

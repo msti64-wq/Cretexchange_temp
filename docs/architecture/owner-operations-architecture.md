@@ -531,3 +531,7 @@ Any owner operational change must:
 - include migration guidance when required
 
 This document is the governing source for owner operations architecture until superseded by a newer approved architecture document.
+
+## 24. Pilot Administrative Review Requests
+
+The Facility Owner remains the sole operational approver. An Administrator may return a rejected activity to the existing pending Owner review flow, but cannot approve or reject it directly. The Owner retains the existing approval-intent requirement for verification and the existing rejection route for a renewed rejection. A renewed rejection may permit the Driver to request a later Administrative Review Request.

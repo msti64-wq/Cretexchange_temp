@@ -472,3 +472,7 @@ Any admin operational change must:
 - include validation and migration guidance where applicable
 
 This document is the governing source for admin operations architecture until superseded by a newer approved architecture document.
+
+## 31. Pilot Administrative Review Requests
+
+Administrative Review Requests are facilitator-only operational work. An Administrator may close a request or transactionally return the activity to the existing Owner pending-review workflow; an Administrator cannot verify or reject the activity. Decisions are auditable, participant-visible where appropriate, and financially isolated from payments, wallets, settlements, and provider execution.
