@@ -5,6 +5,8 @@ import test from "node:test";
 import { translations, translate } from "../client/src/lib/i18n";
 import {
   createSubmissionConfirmationRecord,
+  resolveDriverAccountReadiness,
+  resolveFacilityReadinessChecklist,
   resolveFacilityOperationalReadiness,
   resolveGpsPreflightStatus,
   resolvePhotoUploadRecoveryState,
@@ -40,6 +42,51 @@ test("photo upload recovery keeps partial and failed evidence ineligible until e
   assert.equal(retryStillFailed.canSubmit, false);
   assert.equal(resolvePhotoUploadRecoveryState({ successfulCount: 1, failedCount: 0, isProcessing: true }).state, "uploading");
   assert.equal(resolvePhotoUploadRecoveryState({ successfulCount: 0, failedCount: 1, isProcessing: false }).state, "failed");
+});
+
+test("driver account readiness identifies the next required pilot onboarding step without financial prerequisites", () => {
+  const incompleteProfile = resolveDriverAccountReadiness({
+    user: { firstName: "Ava", lastName: "Driver", roleData: { employerName: "Crete Co", truckNumber: "12" } },
+    termsAccepted: false,
+  });
+  assert.deepEqual(incompleteProfile, {
+    profileComplete: false,
+    termsAccepted: false,
+    ready: false,
+    nextStep: "complete_profile",
+  });
+
+  const missingTerms = resolveDriverAccountReadiness({
+    user: {
+      firstName: "Ava", lastName: "Driver", phone: "555-0100", street: "1 Main", city: "Austin", state: "TX", zip: "78701",
+      roleData: { employerName: "Crete Co", truckNumber: "12" },
+    },
+    termsAccepted: false,
+  });
+  assert.equal(missingTerms.nextStep, "accept_terms");
+  assert.equal(missingTerms.ready, false);
+
+  const ready = resolveDriverAccountReadiness({
+    user: {
+      firstName: "Ava", lastName: "Driver", phone: "555-0100", street: "1 Main", city: "Austin", state: "TX", zip: "78701",
+      roleData: { employerName: "Crete Co", truckNumber: "12" },
+    },
+    termsAccepted: true,
+  });
+  assert.deepEqual(ready, { profileComplete: true, termsAccepted: true, ready: true, nextStep: null });
+  assert.doesNotMatch(JSON.stringify(ready), /stripe|wallet|payment|settlement/i);
+
+  for (const missingName of ["firstName", "lastName"] as const) {
+    const user = {
+      firstName: "Ava", lastName: "Driver", phone: "555-0100", street: "1 Main", city: "Austin", state: "TX", zip: "78701",
+      roleData: { employerName: "Crete Co", truckNumber: "12" },
+    };
+    user[missingName] = "";
+    const incomplete = resolveDriverAccountReadiness({ user, termsAccepted: true });
+    assert.equal(incomplete.profileComplete, false);
+    assert.equal(incomplete.ready, false);
+    assert.equal(incomplete.nextStep, "complete_profile");
+  }
 });
 
 test("submission confirmation requires a fresh server-confirmed pending activity in the Driver activity rows", () => {
@@ -116,8 +163,56 @@ test("facility readiness contains only operational requirements", () => {
     hasActiveLocation: true,
     hasVisibleLocation: true,
     hasOperatingInfo: true,
+    hasDriverAvailableLocation: true,
+    hasDriverAvailableLocationWithOperatingInfo: true,
+    marketplaceReady: true,
   });
   assert.doesNotMatch(JSON.stringify(readiness), /stripe|wallet|payment|settlement/i);
+});
+
+test("facility checklist prioritizes the first blocking onboarding action", () => {
+  const profileIncomplete = resolveFacilityReadinessChecklist({
+    owner: { isApproved: false, profileCompleted: false, companyName: "", businessLicense: "", taxId: "" },
+    user: { firstName: "Ana", lastName: "Lopez" },
+  });
+  assert.equal(profileIncomplete.nextStep, "profile");
+  assert.equal(profileIncomplete.marketplaceReady, false);
+
+  const approvalPending = resolveFacilityReadinessChecklist({
+    owner: { isApproved: false, profileCompleted: true, companyName: "North Yard", businessLicense: "BL-1", taxId: "12" },
+    user: { firstName: "Ana", lastName: "Lopez", email: "ana@example.com", phone: "555", street: "1 Main", city: "Austin", state: "TX", zip: "78701" },
+  });
+  assert.equal(approvalPending.nextStep, "approval");
+
+  const missingLocation = resolveFacilityReadinessChecklist({
+    owner: { isApproved: true, profileCompleted: true, companyName: "North Yard", businessLicense: "BL-1", taxId: "12" },
+    user: { firstName: "Ana", lastName: "Lopez", email: "ana@example.com", phone: "555", street: "1 Main", city: "Austin", state: "TX", zip: "78701" },
+  });
+  assert.equal(missingLocation.nextStep, "location");
+});
+
+test("facility checklist requires a single active, visible location with operating hours before marketplace readiness", () => {
+  const input = {
+    owner: { isApproved: true, profileCompleted: true, companyName: "North Yard", businessLicense: "BL-1", taxId: "12" },
+    user: { firstName: "Ana", lastName: "Lopez", email: "ana@example.com", phone: "555", street: "1 Main", city: "Austin", state: "TX", zip: "78701" },
+  };
+  const splitAvailability = resolveFacilityReadinessChecklist({
+    ...input,
+    locations: [
+      { isActive: true, isVisible: false, operatingHours: "7am–5pm" },
+      { isActive: false, isVisible: true, operatingHours: "7am–5pm" },
+    ],
+  });
+  assert.equal(splitAvailability.nextStep, "driver_availability");
+  assert.equal(splitAvailability.marketplaceReady, false);
+
+  const ready = resolveFacilityReadinessChecklist({
+    ...input,
+    locations: [{ isActive: true, isVisible: true, operatingHours: "7am–5pm" }],
+  });
+  assert.equal(ready.marketplaceReady, true);
+  assert.equal(ready.nextStep, null);
+  assert.ok(ready.steps.every((step) => step.complete));
 });
 
 test("pilot onboarding copy exists in English and Spanish without financial promises", () => {
@@ -136,6 +231,15 @@ test("pilot onboarding copy exists in English and Spanish without financial prom
     "pilot.submission.pendingReview",
     "pilot.facility.approvalPending",
     "pilot.facility.createFirstLocation",
+    "pilot.facility.marketplaceReady",
+    "pilot.facility.marketplaceActionNeeded",
+    "pilot.facility.nextStep.profile",
+    "pilot.facility.nextStep.approval",
+    "pilot.facility.nextStep.location",
+    "pilot.facility.nextStep.driver_availability",
+    "pilot.facility.nextStep.operating_hours",
+    "pilot.facility.readyForDrivers",
+    "driver.dashboard.optionalFinancialStatusUnavailable",
   ];
 
   for (const language of ["en", "es"] as const) {
@@ -155,6 +259,7 @@ test("first-activity views provide activity-bound confirmation and GPS retry rec
   const activitySource = readFileSync(new URL("../client/src/pages/driver/activity.tsx", import.meta.url), "utf8");
   const checkInSource = readFileSync(new URL("../client/src/pages/driver/check-in.tsx", import.meta.url), "utf8");
   const profileSource = readFileSync(new URL("../client/src/pages/owner/profile.tsx", import.meta.url), "utf8");
+  const driverProfileSource = readFileSync(new URL("../client/src/pages/driver/profile.tsx", import.meta.url), "utf8");
 
   assert.match(formSource, /pilot\.gps\.required/);
   assert.match(formSource, /useEffect\(\(\) => \{\s*void ensureGpsLocation\(\);/);
@@ -177,11 +282,33 @@ test("first-activity views provide activity-bound confirmation and GPS retry rec
   assert.match(activitySource, /sessionStorage\.removeItem/);
   assert.match(activitySource, /pilot\.submission\.pendingReview/);
   assert.doesNotMatch(activitySource.match(/resolveSubmittedActivityConfirmation[\s\S]*?function getActivityStatus/)?.[0] || "", /approved|completed|submitted/);
-  assert.match(profileSource, /pilot\.facility\.approvalPending/);
+  assert.match(profileSource, /pilot\.facility\.nextStep/);
   assert.match(profileSource, /pilot\.facility\.createFirstLocation/);
+  assert.match(profileSource, /resolveFacilityReadinessChecklist/);
+  assert.match(profileSource, /facility-readiness-next-step/);
+  assert.match(profileSource, /button-configure-facility-location/);
   assert.match(profileSource, /locationAccessState\.canManageLocations/);
   assert.match(profileSource, /separateAccountSetup/);
   assert.doesNotMatch(profileSource, /payment method.*first-location|first-location.*payment method/i);
+
+  const dashboardSource = readFileSync(new URL("../client/src/pages/driver/dashboard.tsx", import.meta.url), "utf8");
+  assert.match(dashboardSource, /resolveDriverAccountReadiness/);
+  assert.match(dashboardSource, /driver-account-readiness-next-step/);
+  assert.match(dashboardSource, /driver\.dashboard\.completeProfileNext/);
+  assert.match(dashboardSource, /driver\.dashboard\.acceptTermsNext/);
+  const operationalReadinessStart = dashboardSource.indexOf('data-testid="driver-operational-readiness"');
+  const optionalFinancialStatusStart = dashboardSource.indexOf('data-testid="driver-optional-financial-status"');
+  assert.ok(operationalReadinessStart >= 0);
+  assert.ok(optionalFinancialStatusStart > operationalReadinessStart);
+  const operationalReadinessSource = dashboardSource.slice(operationalReadinessStart, optionalFinancialStatusStart);
+  assert.match(operationalReadinessSource, /authUserLoading \|\| termsStatusLoading/);
+  assert.doesNotMatch(operationalReadinessSource, /stripeAccountStatusLoading|debitCardStatusLoading|walletBalanceError/);
+  assert.match(dashboardSource.slice(optionalFinancialStatusStart), /stripeAccountStatusLoading/);
+  assert.match(dashboardSource.slice(optionalFinancialStatusStart), /debitCardStatusLoading/);
+  assert.match(driverProfileSource, /resolveDriverAccountReadiness/);
+  assert.match(driverProfileSource, /driverAccountReadiness\.ready/);
+  assert.match(driverProfileSource, /termsStatus\?\.hasAgreed \|\| user\?\.roleData\?\.hasAgreedToTerms/);
+  assert.doesNotMatch(driverProfileSource, /const isProfileComplete|const hasEssentialInfo/);
 });
 
 test("assisted-pilot runbook covers required response boundaries", () => {

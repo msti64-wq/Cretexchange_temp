@@ -23,6 +23,7 @@ import { useDriverPaymentLifecycle } from "@/hooks/useDriverPaymentLifecycle";
 import { DriverLifecycleSummary } from "@/components/driver/DriverLifecycleSummary";
 import { DriverMaterialIntentSelector } from "@/components/driver/DriverMaterialIntentSelector";
 import { formatDistanceToNow } from "date-fns";
+import { resolveDriverAccountReadiness } from "@/lib/pilotOnboarding";
 
 type DriverDashboardStatsRange = "today" | "week" | "month";
 
@@ -264,7 +265,7 @@ export default function DriverDashboard() {
     refetchInterval: 60000,
   });
 
-  const { data: debitCardStatus, isLoading: debitCardStatusLoading } = useQuery<DriverDebitCardStatus>({
+  const { data: debitCardStatus, isLoading: debitCardStatusLoading, isError: debitCardStatusError } = useQuery<DriverDebitCardStatus>({
     queryKey: ['/api/drivers/debit-card-status'],
     refetchInterval: 60000,
   });
@@ -407,18 +408,12 @@ export default function DriverDashboard() {
       || formatAddress(latestActivity.washout_locations || latestActivity.location || {}))
     : "";
   const latestActivityStatus = latestActivity ? (latestActivity.washout_activities?.status || latestActivity.status) : null;
-  const profileReady = Boolean(
-    authUser?.firstName &&
-    authUser?.lastName &&
-    authUser?.phone &&
-    authUser?.street &&
-    authUser?.city &&
-    authUser?.state &&
-    authUser?.zip &&
-    authUser?.roleData?.employerName &&
-    authUser?.roleData?.truckNumber,
-  );
-  const termsAccepted = Boolean(termsStatus?.hasAgreed || authUser?.roleData?.hasAgreedToTerms);
+  const driverAccountReadiness = resolveDriverAccountReadiness({
+    user: authUser,
+    termsAccepted: Boolean(termsStatus?.hasAgreed || authUser?.roleData?.hasAgreedToTerms),
+  });
+  const profileReady = driverAccountReadiness.profileComplete;
+  const termsAccepted = driverAccountReadiness.termsAccepted;
   const stripePresentationStatus = stripeAccountStatusError
     ? "status_unavailable"
     : getDriverPayoutStatus(stripeAccountStatus);
@@ -426,7 +421,7 @@ export default function DriverDashboard() {
   const debitCardState = debitCardStatus?.hasRequested
     ? (debitCardStatus.status || debitCardStatus.cardStatus || "requested")
     : "not requested";
-  const accountReady = profileReady && termsAccepted;
+  const accountReady = driverAccountReadiness.ready;
   const stripeStatusUnavailable = stripePresentationStatus === "status_unavailable";
   const unreadNotifications = unreadNotificationsData?.notifications || [];
   const unreadNotificationCount = unreadNotificationsData?.count ?? unreadNotifications.length;
@@ -653,54 +648,65 @@ export default function DriverDashboard() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      Account Readiness
+                      {t("driver.dashboard.accountReadiness")}
                     </p>
                     <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
-                      Ready to work
+                      {t("driver.dashboard.readyToWork")}
                     </h3>
                   </div>
                   <DSStatusChip tone={accountReady ? "success" : "warning"} size="sm">
-                    {accountReady ? "Ready" : "Action needed"}
+                    {accountReady ? t("driver.dashboard.readinessReady") : t("driver.dashboard.readinessActionNeeded")}
                   </DSStatusChip>
                 </div>
 
-                {authUserLoading || termsStatusLoading || stripeAccountStatusLoading || debitCardStatusLoading ? (
+                <div data-testid="driver-operational-readiness">
+                {authUserLoading || termsStatusLoading ? (
                   <div className="space-y-3">
                     <Skeleton className="h-4 w-40 bg-muted" />
                     <Skeleton className="h-4 w-36 bg-muted" />
-                    <Skeleton className="h-4 w-32 bg-muted" />
-                    <Skeleton className="h-4 w-28 bg-muted" />
                   </div>
-                ) : walletBalanceError ? (
-                  <div className="rounded-2xl border border-destructive/40 bg-background/70 p-4"><p className="text-sm font-medium text-foreground">Wallet balance unavailable</p><p className="mt-1 text-sm text-muted-foreground">Open Wallet to retry.</p></div>
                 ) : (
                   <div className="space-y-2 text-sm">
+                    {!accountReady ? (
+                      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-900 dark:text-amber-100" data-testid="driver-account-readiness-next-step">
+                        {driverAccountReadiness.nextStep === "complete_profile"
+                          ? t("driver.dashboard.completeProfileNext")
+                          : t("driver.dashboard.acceptTermsNext")}
+                      </div>
+                    ) : null}
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
-                      <span className="text-muted-foreground">Profile / verification</span>
+                      <span className="text-muted-foreground">{t("driver.dashboard.profileVerification")}</span>
                       <DSStatusChip tone={profileReady ? "success" : "warning"} size="sm">
-                        {profileReady ? "Complete" : "Needs info"}
+                        {profileReady ? t("driver.dashboard.readinessComplete") : t("driver.dashboard.readinessNeedsInfo")}
                       </DSStatusChip>
                     </div>
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
-                      <span className="text-muted-foreground">Terms accepted</span>
+                      <span className="text-muted-foreground">{t("driver.dashboard.termsAccepted")}</span>
                       <DSStatusChip tone={termsAccepted ? "success" : "warning"} size="sm">
-                        {termsAccepted ? "Accepted" : "Pending"}
-                      </DSStatusChip>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
-                      <span className="text-muted-foreground">Stripe payouts (optional)</span>
-                      <DSStatusChip tone={stripeStatusUnavailable ? "neutral" : stripeReady ? "success" : "warning"} size="sm">
-                        {getDriverPayoutStatusLabel(stripePresentationStatus)}
-                      </DSStatusChip>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
-                      <span className="text-muted-foreground">Debit card</span>
-                      <DSStatusChip tone={debitCardState === "active" ? "success" : "neutral"} size="sm">
-                        {debitCardState}
+                        {termsAccepted ? t("driver.dashboard.termsAcceptedStatus") : t("driver.dashboard.termsPending")}
                       </DSStatusChip>
                     </div>
                   </div>
                 )}
+                </div>
+                <div className="space-y-2 text-sm" data-testid="driver-optional-financial-status">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
+                      <span className="text-muted-foreground">Stripe payouts (optional)</span>
+                      {stripeAccountStatusLoading ? <Skeleton className="h-5 w-24 bg-muted" /> : (
+                        <DSStatusChip tone={stripeStatusUnavailable ? "neutral" : stripeReady ? "success" : "warning"} size="sm">
+                          {getDriverPayoutStatusLabel(stripePresentationStatus)}
+                        </DSStatusChip>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
+                      <span className="text-muted-foreground">Debit card</span>
+                      {debitCardStatusLoading ? <Skeleton className="h-5 w-24 bg-muted" /> : (
+                        <DSStatusChip tone={debitCardStatusError ? "neutral" : debitCardState === "active" ? "success" : "neutral"} size="sm">
+                          {debitCardStatusError ? t("driver.dashboard.optionalFinancialStatusUnavailable") : debitCardState}
+                        </DSStatusChip>
+                      )}
+                    </div>
+                </div>
 
                 <div className="mt-auto flex flex-wrap gap-2">
                   <Button

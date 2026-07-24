@@ -94,6 +94,55 @@ export function resolvePhotoUploadRecoveryState({
   };
 }
 
+export interface DriverAccountReadinessInput {
+  user?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+    street?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
+    roleData?: {
+      employerName?: string | null;
+      truckNumber?: string | null;
+    } | null;
+  } | null;
+  termsAccepted?: boolean | null;
+}
+
+export type DriverAccountReadinessNextStep = "complete_profile" | "accept_terms" | null;
+
+function hasRequiredValue(value: string | null | undefined) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export function resolveDriverAccountReadiness({ user, termsAccepted }: DriverAccountReadinessInput) {
+  const profileComplete = Boolean(
+    hasRequiredValue(user?.firstName)
+    && hasRequiredValue(user?.lastName)
+    && hasRequiredValue(user?.phone)
+    && hasRequiredValue(user?.street)
+    && hasRequiredValue(user?.city)
+    && hasRequiredValue(user?.state)
+    && hasRequiredValue(user?.zip)
+    && hasRequiredValue(user?.roleData?.employerName)
+    && hasRequiredValue(user?.roleData?.truckNumber),
+  );
+  const acceptedTerms = termsAccepted === true;
+
+  return {
+    profileComplete,
+    termsAccepted: acceptedTerms,
+    ready: profileComplete && acceptedTerms,
+    nextStep: !profileComplete
+      ? "complete_profile" as const
+      : !acceptedTerms
+        ? "accept_terms" as const
+        : null,
+  };
+}
+
 export interface FacilityOperationalReadinessInput {
   owner?: {
     isApproved?: boolean | null;
@@ -119,10 +168,23 @@ export interface FacilityOperationalReadinessInput {
   }> | null;
 }
 
+export type FacilityReadinessStepId = "profile" | "approval" | "location" | "driver_availability" | "operating_hours";
+
+export interface FacilityReadinessStep {
+  id: FacilityReadinessStepId;
+  complete: boolean;
+}
+
 export function resolveFacilityOperationalReadiness({ owner, user, locations = [] }: FacilityOperationalReadinessInput) {
   const rows = Array.isArray(locations) ? locations : [];
   const profileComplete = isOwnerProfileComplete(owner, user);
   const locationWithOperatingInfo = rows.some((location) => Boolean(location.operatingHours?.trim()));
+  const driverAvailableLocation = rows.some((location) => location.isActive === true && location.isVisible === true);
+  const driverAvailableLocationWithOperatingInfo = rows.some((location) => (
+    location.isActive === true
+    && location.isVisible === true
+    && Boolean(location.operatingHours?.trim())
+  ));
 
   return {
     accountExists: Boolean(owner),
@@ -132,5 +194,28 @@ export function resolveFacilityOperationalReadiness({ owner, user, locations = [
     hasActiveLocation: rows.some((location) => location.isActive === true),
     hasVisibleLocation: rows.some((location) => location.isVisible === true),
     hasOperatingInfo: locationWithOperatingInfo,
+    hasDriverAvailableLocation: driverAvailableLocation,
+    hasDriverAvailableLocationWithOperatingInfo: driverAvailableLocationWithOperatingInfo,
+    marketplaceReady: profileComplete
+      && owner?.isApproved === true
+      && driverAvailableLocation
+      && driverAvailableLocationWithOperatingInfo,
+  };
+}
+
+export function resolveFacilityReadinessChecklist(input: FacilityOperationalReadinessInput) {
+  const readiness = resolveFacilityOperationalReadiness(input);
+  const steps: FacilityReadinessStep[] = [
+    { id: "profile", complete: readiness.profileComplete },
+    { id: "approval", complete: readiness.approved },
+    { id: "location", complete: readiness.hasLocation },
+    { id: "driver_availability", complete: readiness.hasDriverAvailableLocation },
+    { id: "operating_hours", complete: readiness.hasDriverAvailableLocationWithOperatingInfo },
+  ];
+
+  return {
+    ...readiness,
+    steps,
+    nextStep: steps.find((step) => !step.complete)?.id ?? null,
   };
 }

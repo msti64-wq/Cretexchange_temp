@@ -19,6 +19,7 @@ import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { hasHandledInstallPromptThisSession, markInstallPromptHandledThisSession } from "@/hooks/usePWAInstall";
 import { useLanguage } from "@/lib/i18n";
 import { DSCard, DSStatusChip } from "@/components/design-system";
+import { resolveDriverAccountReadiness } from "@/lib/pilotOnboarding";
 
 export default function DriverProfile() {
   const { toast } = useToast();
@@ -35,6 +36,10 @@ export default function DriverProfile() {
   // Fetch driver terms status
   const { data: termsStatus } = useQuery<{hasAgreed: boolean; agreedAt: string | null}>({
     queryKey: [`/api/drivers/terms-status?language=${encodeURIComponent(language)}`],
+  });
+  const driverAccountReadiness = resolveDriverAccountReadiness({
+    user,
+    termsAccepted: Boolean(termsStatus?.hasAgreed || user?.roleData?.hasAgreedToTerms),
   });
 
   const {
@@ -113,46 +118,15 @@ export default function DriverProfile() {
 
   // Check if profile is complete and show install prompt for first-time completion
   useEffect(() => {
-    if (user && termsStatus && !isEditing) {
-      const userData = user as any;
-      const roleData = userData.roleData || {};
-      
-      // Profile completion criteria
-      const isProfileComplete = Boolean(
-        userData.phone &&
-        userData.street &&
-        userData.city &&
-        userData.state &&
-        userData.zip &&
-        roleData.employerName &&
-        roleData.truckNumber &&
-        termsStatus.hasAgreed
-      );
-      
-      // Only show install prompt if profile was just completed
-      // Check if this is first time being complete by seeing if essential fields were just filled
-      const hasEssentialInfo = Boolean(
-        userData.phone && userData.street && userData.city && userData.state && userData.zip && roleData.employerName && roleData.truckNumber
-      );
-      
-      console.log('🔍 Profile completion check:', {
-        isProfileComplete,
-        hasEssentialInfo,
-        termsAgreed: termsStatus.hasAgreed,
-        showInstallPrompt
-      });
-      
-      if (isProfileComplete && hasEssentialInfo && !showInstallPrompt && !hasHandledInstallPromptThisSession()) {
+    if (!isEditing && driverAccountReadiness.ready && !showInstallPrompt && !hasHandledInstallPromptThisSession()) {
         // Small delay to ensure profile save completed before showing prompt
-        const timer = setTimeout(() => {
-          console.log('✅ Profile complete! Showing install prompt...');
-          setShowInstallPrompt(true);
-        }, 1500);
-        
-        return () => clearTimeout(timer);
-      }
+      const timer = setTimeout(() => {
+        setShowInstallPrompt(true);
+      }, 1500);
+
+      return () => clearTimeout(timer);
     }
-  }, [user, termsStatus, isEditing, showInstallPrompt]);
+  }, [driverAccountReadiness.ready, isEditing, showInstallPrompt]);
 
   useEffect(() => {
     const root = document.documentElement;

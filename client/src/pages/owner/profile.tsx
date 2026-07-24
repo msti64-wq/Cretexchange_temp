@@ -17,7 +17,7 @@ import { useLocation } from "wouter";
 import StripeVerificationStatus from "@/components/StripeVerificationStatus";
 import { LogoutButton } from "@/components/LogoutButton";
 import { useLanguage } from "@/lib/i18n";
-import { resolveFacilityOperationalReadiness } from "@/lib/pilotOnboarding";
+import { resolveFacilityReadinessChecklist, type FacilityReadinessStepId } from "@/lib/pilotOnboarding";
 import { resolveOwnerLocationAccessState } from "@shared/ownerLocationAccess";
 
 export default function OwnerProfile() {
@@ -240,11 +240,21 @@ export default function OwnerProfile() {
     );
   }
 
-  const operationalReadiness = resolveFacilityOperationalReadiness({
+  const facilityReadiness = resolveFacilityReadinessChecklist({
     owner,
     user,
     locations: facilityLocations,
   });
+  const readinessStepLabels: Record<FacilityReadinessStepId, string> = {
+    profile: t("pilot.facility.checklistProfile"),
+    approval: t("pilot.facility.checklistApproval"),
+    location: t("pilot.facility.checklistLocation"),
+    driver_availability: t("pilot.facility.checklistDriverAvailability"),
+    operating_hours: t("pilot.facility.checklistOperatingHours"),
+  };
+  const nextStepIsLocationAction = facilityReadiness.nextStep === "location"
+    || facilityReadiness.nextStep === "driver_availability"
+    || facilityReadiness.nextStep === "operating_hours";
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -291,11 +301,11 @@ export default function OwnerProfile() {
               {t("pilot.facility.readinessTitle")}
             </h2>
             <Badge 
-              variant={owner?.isApproved ? "default" : "secondary"}
+              variant={facilityReadiness.marketplaceReady ? "default" : "secondary"}
               className="mb-4"
               data-testid="badge-approval-status"
             >
-              {owner?.isApproved ? t("pilot.facility.approved") : t("pilot.facility.approvalPending")}
+              {facilityReadiness.marketplaceReady ? t("pilot.facility.marketplaceReady") : t("pilot.facility.marketplaceActionNeeded")}
             </Badge>
             
             {!owner?.isApproved && (
@@ -308,29 +318,35 @@ export default function OwnerProfile() {
               </div>
             )}
 
-            {locationAccessState.canManageLocations && !operationalReadiness.hasLocation && (
-              <div className="mt-4 space-y-3">
-                <p className="text-sm text-muted-foreground">{t("pilot.facility.firstLocationHelp")}</p>
-                <Button onClick={() => setLocation('/locations')} data-testid="button-create-first-facility-location">
-                  {t("pilot.facility.createFirstLocation")}
-                </Button>
+            {!facilityReadiness.marketplaceReady && facilityReadiness.nextStep && (
+              <div className="mt-4 space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-left" data-testid="facility-readiness-next-step">
+                <p className="font-medium text-foreground">{t("pilot.facility.nextStep")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t(`pilot.facility.nextStep.${facilityReadiness.nextStep}`)}
+                </p>
+                {facilityReadiness.nextStep === "profile" ? (
+                  <Button onClick={() => setIsEditing(true)} data-testid="button-complete-facility-profile">
+                    {t("pilot.facility.completeProfile")}
+                  </Button>
+                ) : nextStepIsLocationAction ? (
+                  <Button onClick={() => setLocation('/locations')} data-testid="button-configure-facility-location">
+                    {facilityReadiness.nextStep === "location" ? t("pilot.facility.createFirstLocation") : t("pilot.facility.configureLocation")}
+                  </Button>
+                ) : null}
               </div>
             )}
-            {owner?.isApproved && (
-              <ul className="mt-5 space-y-2 text-left text-sm" data-testid="list-facility-operational-readiness">
-                {[
-                  [t("pilot.facility.profileComplete"), operationalReadiness.profileComplete],
-                  [t("pilot.facility.firstLocation"), operationalReadiness.hasLocation],
-                  [t("pilot.facility.activeLocation"), operationalReadiness.hasActiveLocation],
-                  [t("pilot.facility.visibleLocation"), operationalReadiness.hasVisibleLocation],
-                  [t("pilot.facility.operatingInfo"), operationalReadiness.hasOperatingInfo],
-                ].map(([label, complete]) => (
-                  <li key={String(label)} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
-                    <span>{label}</span>
-                    <Badge variant={complete ? "default" : "secondary"}>{complete ? t("pilot.facility.complete") : t("pilot.facility.notComplete")}</Badge>
-                  </li>
-                ))}
-              </ul>
+            <ul className="mt-5 space-y-2 text-left text-sm" data-testid="list-facility-operational-readiness">
+              {facilityReadiness.steps.map((step) => (
+                <li key={step.id} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
+                  <span>{readinessStepLabels[step.id]}</span>
+                  <Badge variant={step.complete ? "default" : "secondary"}>{step.complete ? t("pilot.facility.complete") : t("pilot.facility.notComplete")}</Badge>
+                </li>
+              ))}
+            </ul>
+            {facilityReadiness.marketplaceReady && (
+              <p className="mt-4 text-sm font-medium text-green-700" data-testid="text-facility-marketplace-ready">
+                {t("pilot.facility.readyForDrivers")}
+              </p>
             )}
           </CardContent>
         </Card>
