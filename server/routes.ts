@@ -10597,6 +10597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stripeTreasuryAccountId: d.stripeTreasuryAccountId,
           stripeIssuingCardholderId: d.stripeIssuingCardholderId,
           paymentMethod: d.paymentMethod,
+          hasAgreedToTerms: d.hasAgreedToTerms,
           createdAt: d.createdAt,
           updatedAt: d.updatedAt,
         }

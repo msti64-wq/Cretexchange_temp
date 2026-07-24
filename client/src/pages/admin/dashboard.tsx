@@ -29,6 +29,7 @@ import {
   type PlatformActivityRange,
 } from "@/lib/adminPlatformActivity";
 import { buildAdminMarketplaceHealth } from "@/lib/adminMarketplaceHealth";
+import { buildAdminPilotReadiness } from "@/lib/adminPilotReadiness";
 
 function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
   return (
@@ -453,6 +454,13 @@ export default function AdminDashboard() {
     { label: "Resolved", count: resolvedMessages },
   ];
   const supportSeverity = unreadMessages > 0 ? "Attention required" : activeMessages > 0 ? "Monitoring" : "Clear";
+  const pilotReadiness = buildAdminPilotReadiness({
+    drivers: Array.isArray(usersData?.drivers) ? usersData.drivers : undefined,
+    owners: Array.isArray(usersData?.owners) ? usersData.owners : undefined,
+    locations: locationsGrowthAvailable ? locationsData : undefined,
+    trust: trustVerification,
+    supportMessages: Array.isArray(messages) ? messages : undefined,
+  });
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -875,6 +883,81 @@ export default function AdminDashboard() {
             </div>
           </DashboardSectionCard>
         )}
+
+        <DashboardSectionCard
+          title="Pilot Operations Readiness"
+          description="Read-only launch signals from existing account, location, verification, and support records. No financial state is used."
+          icon={<PackageCheck className="h-4 w-4 text-teal-600" />}
+          badge={
+            <Badge
+              variant={pilotReadiness.currentSignal === "attention" ? "secondary" : "outline"}
+              className="rounded-full px-3 py-1 text-xs font-medium"
+              data-testid="badge-pilot-operations-signal"
+            >
+              {pilotReadiness.currentSignal === "attention" ? "Operator attention" : pilotReadiness.currentSignal === "clear" ? "Current signals clear" : "Sources unavailable"}
+            </Badge>
+          }
+          dataTestId="section-pilot-operations-readiness"
+        >
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <DashboardMetricCard
+              title="Driver Onboarding"
+              value={pilotReadiness.driversReady === null ? "—" : `${pilotReadiness.driversReady}/${pilotReadiness.driversTotal ?? 0}`}
+              helper={pilotReadiness.driversNeedingOnboarding === null ? "Profile or terms readiness data unavailable" : `${pilotReadiness.driversNeedingOnboarding} driver account(s) need an operational onboarding step`}
+              icon={UsersRound}
+              toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300"
+              dataTestId="metric-pilot-driver-onboarding"
+            />
+            <DashboardMetricCard
+              title="Facilities Ready"
+              value={pilotReadiness.facilitiesReady === null ? "—" : `${pilotReadiness.facilitiesReady}/${pilotReadiness.facilitiesTotal ?? 0}`}
+              helper={pilotReadiness.facilitiesNeedingReadiness === null ? "Facility readiness data unavailable" : `${pilotReadiness.facilitiesNeedingReadiness} facility account(s) need configuration or approval`}
+              icon={Building}
+              toneClassName="bg-teal-50 text-teal-600 dark:bg-teal-950/30 dark:text-teal-300"
+              dataTestId="metric-pilot-facility-readiness"
+            />
+            <DashboardMetricCard
+              title="Pending Review Over 24 Hours"
+              value={pilotReadiness.pendingReviewOver24h ?? "—"}
+              helper="Existing review-aging threshold; use the authorized owner queue and support path."
+              icon={Clock}
+              toneClassName="bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+              dataTestId="metric-pilot-pending-review-aging"
+            />
+            <DashboardMetricCard
+              title="Review Exceptions"
+              value={pilotReadiness.reviewExceptions ?? "—"}
+              helper="Additional review exceptions only; rejected activity is tracked separately."
+              icon={ShieldAlert}
+              toneClassName="bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-300"
+              dataTestId="metric-pilot-review-exceptions"
+            />
+            <DashboardMetricCard
+              title="Support Queue"
+              value={pilotReadiness.activeSupportMessages ?? "—"}
+              helper={pilotReadiness.unreadSupportMessages === null ? "Support data unavailable" : `${pilotReadiness.unreadSupportMessages} unread support message(s)`}
+              icon={MessageCircle}
+              toneClassName="bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300"
+              dataTestId="metric-pilot-support-queue"
+            />
+            <DashboardMetricCard
+              title="Current Review Backlog"
+              value={pilotReadiness.pendingReview ?? "—"}
+              helper="Pending activities remain operational review work, not payment or settlement work."
+              icon={Clock}
+              toneClassName="bg-slate-100 text-slate-600 dark:bg-slate-900/50 dark:text-slate-300"
+              dataTestId="metric-pilot-review-backlog"
+            />
+          </div>
+          <div className="mt-5 rounded-2xl border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
+            <p className="font-semibold text-foreground">Pilot operator guidance</p>
+            <p className="mt-1">Resolve onboarding in the existing Users view, facility configuration in Locations, pending activity through the authorized owner review queue, and participant questions through the existing support queue. Do not use payment, wallet, payout, or settlement surfaces to resolve operational blockers.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={() => { window.location.href = "/users"; }} data-testid="button-pilot-operations-users">Manage users</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => { window.location.href = "/locations"; }} data-testid="button-pilot-operations-locations">Review locations</Button>
+            </div>
+          </div>
+        </DashboardSectionCard>
 
         {trustReportLoading && autoApprovalStatsLoading ? (
           <TrustVerificationSkeleton />
