@@ -1,10 +1,15 @@
 # CTX-ARCH-009 — Operations Library and Knowledge Management Architecture
 
+- **Document ID:** CTX-ARCH-009
 - **Status:** **DRAFT — NOT YET APPROVED FOR IMPLEMENTATION**
 - **Version:** 0.1
 - **Date:** July 22, 2026
 - **Owner:** Architecture and Operations Governance
-- **Related discovery:** [Operations Library Discovery and Requirements](./operations-library-discovery-and-requirements.md)
+- **Classification:** Internal
+- **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner — approval pending
+- **Last Reviewed:** July 23, 2026 — implementation-status reconciliation
+- **Next Review:** Event-driven after architecture approval, a material library capability change, or release-readiness review
+- **Related discovery:** [CTX-GOV-002 — Documentation Program Health Assessment](../standards/CTX-GOV-002-documentation-program-health-assessment.md)
 - **Related Admin architecture:** [CTX-ARCH-004 — Admin Operations Architecture](./admin-operations-architecture.md)
 - **Related governance:** [Documentation Library](../README.md), [CTX-STD-001](../standards/cretexchange-platform-standards.md), [Development Protocol](../development-protocol.md), and [ADR-031](./ADR-031-production-database-migration-execution-architecture.md)
 - **Supersedes:** None
@@ -16,7 +21,7 @@ CreteXchange needs a governed way for trusted Platform Operations users to find 
 
 The repository remains the authoritative source. A first implementation may publish an approved, immutable document set and derived metadata/search data, but it must retain repository path, source commit, checksum, status, and freshness evidence. It must not silently make a runtime copy authoritative, present drafts as approved, execute Markdown content, edit documents in-app, or provide AI answers, GeoHaul integration, or sustainability analytics.
 
-This document is an architecture draft only. It does not authorize routes, pages, storage, synchronization, schema, search, AI, deployment, production adoption, or any other implementation.
+This document remains a draft architecture and does not itself authorize production adoption, document editing, approval workflows, scheduled or deployment-triggered refresh, relationship visualization, analytics, or AI. A controlled Version 1 implementation exists in the repository; its implementation and production-adoption evidence remain governed separately.
 
 ## 2. Business context and problem statement
 
@@ -45,7 +50,7 @@ The problem is not merely document display. The capability must preserve authori
 
 ## 4. Current-state discovery and documentation landscape
 
-The factual basis is recorded in the [supporting discovery](./operations-library-discovery-and-requirements.md). In summary, repository documentation is already the documented authority source; metadata and lifecycle terminology vary by document family; the Admin application has role-aware pages but no document capability; and there is no Markdown renderer, document package, document index, runtime repository exposure, or generic document audit model.
+The factual baseline is preserved in [CTX-GOV-002](../standards/CTX-GOV-002-documentation-program-health-assessment.md). Repository documentation remains the authority source and metadata/lifecycle terminology varies by family. The repository now contains a controlled Version 1 reader, safe Markdown rendering, derived inventory, and audit-oriented synchronization capability; it does not thereby establish an approved publication authority or a production-adoption conclusion.
 
 The existing hierarchy is decisive: a document’s path, age, or search rank cannot determine its authority by itself. Earlier authorities in [docs/README.md](../README.md) take precedence when guidance conflicts.
 
@@ -82,7 +87,7 @@ The future page should provide direct document URLs, browser-history-compatible 
 
 | Horizon | Capability boundary | Status |
 | --- | --- | --- |
-| **Horizon 1 — Initial Operations Library** | Admin-only read-only listing, categories, approved/current prioritization, safe Markdown, basic metadata/search/filtering, direct and related links, commit/path/checksum/freshness indication. | Proposed; not authorized. |
+| **Horizon 1 — Initial Operations Library** | Admin-only read-only listing, categories, safe Markdown, basic metadata/search/filtering, direct and related links, and commit/path/checksum/freshness indication. | Implemented Version 1 in repository; architecture approval and production-adoption evidence remain separate. |
 | **Horizon 2 — Governance maturity** | Restricted collections, lifecycle enrichment, relationship graph, historical versions, exports, bookmarks, audit packages, synchronization administration, review dashboards, quality validation. | Deferred. |
 | **Horizon 3 — Intelligent knowledge and evidence** | Semantic search, grounded AI, cross-document analysis, grant/investor evidence collections, sustainability methodology governance, controlled GeoHaul-related references. | Future roadmap only. |
 
@@ -152,9 +157,9 @@ The existing [Documentation Hierarchy](../README.md#documentation-hierarchy) is 
 
 ### 11.3 Freshness and synchronization behavior
 
-Future publication must be commit-based, checksum-validated, auditable, and atomic from the reader’s perspective. Build-time publication, deployment-time publication, scheduled/webhook synchronization, manual authorized publication, runtime Git retrieval, and hybrid approaches remain implementation alternatives. The UI must show the published commit and freshness state; if it cannot verify freshness or checksum, it must say so and fail closed for affected content rather than claim currentness.
+Derived inventory refresh must be commit-based, checksum-validated, auditable, and atomic from the reader’s perspective. The implemented manual refresh path is protected by one shared CLI/API production guard: production requires matching explicit target/environment identities plus an authorization value equal to the immutable deployed commit. It is serialized across service replicas with a PostgreSQL advisory lock. Build-time publication, deployment-time publication, scheduled/webhook synchronization, runtime Git retrieval, and hybrid approaches remain deferred alternatives. The UI must show the synchronized source commit and freshness state; if it cannot verify freshness or checksum, it must say so and fail closed for affected content rather than claim currentness.
 
-Rollback means selecting a prior verified published document set, not rewriting repository history. Partial indexing must either retain the last verified set with a stale warning or withhold affected documents according to approved policy.
+Rollback means selecting a prior verified inventory generation, not rewriting repository history. A successful inventory generation is not independent document publication: source-declared lifecycle remains authoritative. Partial indexing must either retain the last verified generation with a stale warning or withhold affected documents according to approved policy.
 
 ## 12. Runtime storage and derived-data boundaries
 
@@ -298,7 +303,7 @@ Production adoption is prohibited until authorized implementation, code review, 
 
 This document is review-ready as a draft, not implementation-ready. It neither changes the application nor grants implementation or production authority.
 
-- [Supporting discovery](./operations-library-discovery-and-requirements.md)
+- [CTX-GOV-002 — Documentation Program Health Assessment](../standards/CTX-GOV-002-documentation-program-health-assessment.md)
 - [Documentation Library](../README.md)
 - [Project Context](../project/project-context.md)
 - [CTX-STD-001](../standards/cretexchange-platform-standards.md)

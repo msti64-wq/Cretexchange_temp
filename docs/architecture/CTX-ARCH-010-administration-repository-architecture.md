@@ -1,12 +1,17 @@
 # CTX-ARCH-010 — Administration Repository Architecture
 
+- **Document ID:** CTX-ARCH-010
 - **Status:** **DRAFT — NOT YET APPROVED FOR IMPLEMENTATION**
 - **Version:** 0.1
 - **Date:** July 22, 2026
 - **Owner:** Architecture and Operations Governance
-- **Related discovery:** [Administration Repository Discovery and Requirements](./administration-repository-discovery-and-requirements.md)
+- **Classification:** Internal
+- **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner — approval pending
+- **Last Reviewed:** July 23, 2026 — implementation-status reconciliation
+- **Next Review:** Event-driven after architecture approval, a material repository capability change, or release-readiness review
+- **Related discovery:** [CTX-GOV-002 — Documentation Program Health Assessment](../standards/CTX-GOV-002-documentation-program-health-assessment.md)
 - **Related architecture:** [CTX-ARCH-009 — Operations Library and Knowledge Management Architecture](./CTX-ARCH-009-operations-library-and-knowledge-management-architecture.md)
-- **Dependency:** Proposed future CTX-STD-002 — Documentation Metadata, Lifecycle, Authority and Relationship Standard
+- **Dependency:** CTX-STD-002 — Documentation Governance, Metadata, Lifecycle, Authority, and Relationship Standard (approved documentation-governance standard)
 - **Supersedes:** None
 - **Superseded by:** None
 
@@ -16,7 +21,7 @@ The Administration Repository is the proposed derived operational control plane 
 
 Git remains authoritative for governed content, review history, and approved changes. The Administration Repository may later retain verified publication manifests, document inventory, derived metadata, authorization/classification metadata, relationship and search metadata, publication state, audit evidence, and effective publication-set identity. Every derived record must preserve source repository, immutable source reference, path, checksum, provenance, freshness, and lifecycle/conflict state.
 
-This draft defines responsibility boundaries and constraints only. It does not select a runtime technology, database schema, storage system, API, route, job, credential, synchronization transport, search engine, or UI.
+This draft defines responsibility boundaries and constraints. The repository now contains a controlled Version 1 implementation of derived inventory, synchronization, protected refresh, and read-only management surfaces. This draft does not retrospectively approve that implementation or authorize production adoption, document editing, publication approval, scheduled synchronization, analytics, or AI.
 
 ## 2. Context and problem statement
 
@@ -83,7 +88,7 @@ The following are conceptual records; no schema is authorized.
 
 Publication identity must be immutable and include at least repository, source ref, commit, content checksums, manifest identity, publication policy version, publisher evidence, and outcome. The exact branch, tag, signed manifest, or protected release reference remains a later decision.
 
-The Administration Repository must distinguish source presence from publication state. A document may exist in Git but not be published; be approved but not yet effective; be published but superseded; or be historical and intentionally retained. It must not decide these meanings independently. A revised CTX-ARCH-009 and future CTX-STD-002 must define the state matrix, transition authority, metadata/body conflict handling, and equal-authority conflict escalation before implementation.
+The Administration Repository must distinguish source presence, source-declared publication state, and a verified derived inventory generation. A document may remain `repository_only` in its authoritative Git lifecycle while appearing in a synchronized internal inventory; that inventory visibility is not authoritative publication. A document may be approved but not yet effective, published but superseded, or historical and intentionally retained. The repository must not decide these source meanings independently. CTX-STD-002 defines the state matrix, transition authority, metadata/body conflict handling, and equal-authority conflict escalation; any future extension requires separately governed change.
 
 For a defined audience and scope, an effective set must be either a single verified manifest or explicitly unavailable/stale. Partial synchronization cannot silently become current. Rollback selects a prior verified manifest and records the reason; it does not rewrite Git history or reclassify source content.
 
@@ -101,7 +106,7 @@ The Administration Repository may later maintain authorization-aware search meta
 
 ## 11. Audit, synchronization, backup, and disaster recovery
 
-Future publication and synchronization events require durable, redacted evidence: source reference, manifest identity, actor/release authority, timing, outcome, checksums, freshness, selected effective set, rollback/revocation, and error reference. Access to restricted content, exports, and denied attempts require security-significant audit treatment. Ordinary browsing telemetry must be minimized and separated from audit evidence.
+Refresh events require durable, redacted evidence: source reference, verified inventory-generation identity, actor/release authority, normalized target environment, timing, outcome, checksums, freshness, selected effective set, rollback/revocation, and stable error reference. The implemented manual path requires an immutable commit-bound production authorization shared by CLI and HTTP entry points, and a PostgreSQL advisory lock across replicas. Access to restricted content, exports, refresh denials, and lock rejections require security-significant audit treatment. Ordinary browsing telemetry must be minimized and separated from audit evidence.
 
 Derived records should be rebuildable from a verified Git source set plus retained manifests and approved policy/configuration evidence. Backup and disaster recovery must protect the Administration Repository’s operational evidence and restore ability, but never claim to replace Git repository backup, Git history, or source review. A future recovery procedure must cover repository unavailable, manifest corruption, partial synchronization, index loss, stale set, unauthorized classification change, emergency unpublish, and restore/rebuild verification.
 
@@ -122,7 +127,7 @@ Before implementation, governance must define a content authority owner, publica
 
 | Horizon | Intended outcome | Constraint |
 | --- | --- | --- |
-| 0 — Governance normalization | Approve CTX-STD-002, publication state matrix, source-ref contract, conflict and classification policy. | No runtime repository yet. |
+| 0 — Governance normalization | CTX-STD-002 is approved; establish any remaining source-ref contract, conflict, and classification-policy evidence through separately governed work. | No runtime-repository authority is created by this architecture. |
 | 1 — Publication foundation | Authorized manifest/inventory/derived-metadata design and controlled implementation. | No direct editing, public access, AI, or arbitrary attachments. |
 | 2 — Operations Library integration | Authorized Admin read surface, safe rendering, controlled search, collections, user preferences. | Reader cannot publish or bypass authorization. |
 | 3 — Governance maturity | Restricted collections, exports, historical views, audit packages, richer relationships. | Must preserve source authority and access controls. |
@@ -140,7 +145,7 @@ Implementation remains prohibited until architecture review/approval, the releva
 
 ## 16. References
 
-- [Administration Repository Discovery and Requirements](./administration-repository-discovery-and-requirements.md)
+- [CTX-GOV-002 — Documentation Program Health Assessment](../standards/CTX-GOV-002-documentation-program-health-assessment.md)
 - [CTX-ARCH-009](./CTX-ARCH-009-operations-library-and-knowledge-management-architecture.md)
 - [CTX-ARCH-009 Review](./reviews/CTX-ARCH-009-architecture-review.md)
 - [Documentation Library](../README.md)

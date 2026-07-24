@@ -23,7 +23,9 @@ export type ParsedGovernedDocument = { identifier: string; title: string; path: 
 export type SourceDocument = { path: string; body: string };
 export type SyncError = { path: string; code: string; message: string };
 export type SyncWarning = SyncError;
-export type SynchronizationReport = { documentsDiscovered: number; documentsParsed: number; documentsPublished: number; duplicateIdentifiers: string[]; relationshipWarnings: number; metadataWarnings: number; searchDocumentCount: number; publicationStatus: "not_attempted" | "published" | "failed" };
+/** `publicationState` remains source-controlled document lifecycle metadata. These
+ * fields report only the derived, verified inventory generation managed by this service. */
+export type SynchronizationReport = { documentsDiscovered: number; documentsParsed: number; documentsSynchronized: number; duplicateIdentifiers: string[]; relationshipWarnings: number; metadataWarnings: number; searchDocumentCount: number; inventoryGenerationStatus: "not_attempted" | "synchronized" | "failed" };
 export type SynchronizationResult = { status: "completed" | "failed"; documents: ParsedGovernedDocument[]; errors: SyncError[]; warnings: SyncWarning[]; auditEvents: Array<{ eventType: string; documentIdentifier?: string; metadata: Record<string, string> }>; report: SynchronizationReport };
 
 const stateValues = {
@@ -146,7 +148,7 @@ export function synchronizeGovernedDocuments(sourceCommit: string, documents: So
     }
   }
   const auditEvents = [{ eventType: errors.length ? "synchronization_failed" : "synchronization_completed", metadata: { sourceCommit, documentCount: String(parsed.length), errorCount: String(errors.length), warningCount: String(warnings.length) } }, ...parsed.map((document) => ({ eventType: "document_added_to_inventory", documentIdentifier: document.identifier, metadata: { checksumSha256: document.checksumSha256, sourceCommit } }))];
-  return { status: errors.length ? "failed" : "completed", documents: parsed, errors, warnings, auditEvents, report: { documentsDiscovered: documents.length, documentsParsed: parsed.length, documentsPublished: 0, duplicateIdentifiers: Array.from(new Set(duplicateIdentifiers)), relationshipWarnings: warnings.filter((warning) => warning.code.includes("relationship")).length, metadataWarnings: warnings.filter((warning) => warning.code.includes("metadata")).length, searchDocumentCount: parsed.length, publicationStatus: "not_attempted" } };
+  return { status: errors.length ? "failed" : "completed", documents: parsed, errors, warnings, auditEvents, report: { documentsDiscovered: documents.length, documentsParsed: parsed.length, documentsSynchronized: 0, duplicateIdentifiers: Array.from(new Set(duplicateIdentifiers)), relationshipWarnings: warnings.filter((warning) => warning.code.includes("relationship")).length, metadataWarnings: warnings.filter((warning) => warning.code.includes("metadata")).length, searchDocumentCount: parsed.length, inventoryGenerationStatus: "not_attempted" } };
 }
 
 export function createPublicationManifest(publicationSetIdentifier: string, immutableCommitSha: string, documents: ParsedGovernedDocument[]) {

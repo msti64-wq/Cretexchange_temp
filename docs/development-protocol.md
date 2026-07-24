@@ -156,6 +156,14 @@ Assign a validation level before work begins. Increase the level when scope or r
 
 Existing documentation that generically requires broad commands for every implementation task is interpreted through this policy: run those commands at the checkpoint required by the assigned level, not after every intermediate edit. Explicit task-specific or release-specific validation requirements remain in force and may raise, but not reduce, the required safeguards.
 
+### Engineering completion and deferred external validation
+
+Engineering governance exists to enable safe delivery. A subsystem is **Engineering Complete** when its approved architecture, required implementation and documentation, repository-local tests, available integration tests, type checking, build validation, and applicable security controls are complete, and any unavailable environment-dependent validation is explicitly recorded.
+
+When a required isolated external dependency—such as a validation PostgreSQL database, provider sandbox, or dedicated staging resource—is unavailable, record the subsystem as **Validation Pending — External Environment Required**. This is a deferred production release gate: it does not invalidate completed engineering work, reopen the same implementation sprint, or block unrelated and subsequent development.
+
+Environment-dependent validation remains mandatory before production deployment when the risk level requires it. A Validation Pending subsystem MUST NOT be represented as approved for production deployment until the documented deferred validation succeeds. Low-risk work uses normal review and applicable tests; moderate-risk work adds targeted integration or architecture review; high-risk security, authentication, financial-execution, persistent-data-integrity, or foundational-infrastructure work requires its formal environment-dependent validation before production deployment.
+
 ### Level 1 — Low-Risk Isolated Change
 
 Examples include:

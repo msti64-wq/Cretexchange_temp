@@ -37,7 +37,7 @@ export type SynchronizationEngineResult = SynchronizationResult & {
 };
 
 export type SynchronizationLogger = { info(event: string, metadata: Record<string, string | number | boolean>): void; error(event: string, metadata: Record<string, string | number | boolean>): void };
-export type SynchronizationPublisher = { publish(result: SynchronizationEngineResult): Promise<{ publicationId: string; documentsPublished: number }> };
+export type SynchronizationPublisher = { publish(result: SynchronizationEngineResult): Promise<{ inventoryGenerationId: string; documentsSynchronized: number }> };
 export type SynchronizationEngineInput = {
   sourceCommit: string;
   documents?: SourceDocument[];
@@ -102,13 +102,13 @@ export function reconcileGovernedDocumentInventory(documents: ParsedGovernedDocu
   return reconciliation;
 }
 
-function withEngineFields(result: SynchronizationResult, startedAt: number, reconciliation: InventoryReconciliation, publicationStatus: "not_attempted" | "published" | "failed" = "not_attempted", documentsPublished = 0): SynchronizationEngineResult {
+function withEngineFields(result: SynchronizationResult, startedAt: number, reconciliation: InventoryReconciliation, inventoryGenerationStatus: "not_attempted" | "synchronized" | "failed" = "not_attempted", documentsSynchronized = 0): SynchronizationEngineResult {
   return {
     ...result,
     durationMs: Date.now() - startedAt,
     reconciliation,
     search: { documentCount: result.documents.length, indexedFields: ["identifier", "title", "path", "owner", "classification", "status", "body", "relationships"], status: result.status === "completed" ? "ready" : "blocked" },
-    report: { ...result.report, documentsPublished, publicationStatus },
+    report: { ...result.report, documentsSynchronized, inventoryGenerationStatus },
   };
 }
 
@@ -147,9 +147,9 @@ export async function runAdministrationRepositorySynchronization(input: Synchron
   }
 
   try {
-    const publication = await input.publisher.publish(result);
-    result = withEngineFields(staged, startedAt, reconciliation, "published", publication.documentsPublished);
-    input.logger?.info("administration_repository_synchronization_completed", { sourceCommit: input.sourceCommit, documents: result.documents.length, published: publication.documentsPublished, warnings: result.warnings.length, durationMs: result.durationMs });
+    const inventoryGeneration = await input.publisher.publish(result);
+    result = withEngineFields(staged, startedAt, reconciliation, "synchronized", inventoryGeneration.documentsSynchronized);
+    input.logger?.info("administration_repository_synchronization_completed", { sourceCommit: input.sourceCommit, documents: result.documents.length, synchronized: inventoryGeneration.documentsSynchronized, warnings: result.warnings.length, durationMs: result.durationMs });
     return result;
   } catch (error) {
     const failed = { ...staged, status: "failed" as const, errors: [...staged.errors, { path: "publication", code: "publication_failed", message: error instanceof Error ? error.message : "Publication failed; prior inventory was preserved." }] };

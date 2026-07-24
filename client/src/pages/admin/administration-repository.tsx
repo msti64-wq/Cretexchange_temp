@@ -12,7 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { downloadCombinedPdf, downloadHtml, downloadMarkdown, downloadMarkdownZip, downloadPdf, type RepositoryExportDocument } from "@/lib/administrationRepositoryExport";
 import { isPlatformOperationsRole } from "@/lib/adminFinancialWorkspace";
 
-type Summary = { documentCount: number; relationshipCount: number; categoryCount: number; validationConflictCount: number; publishedCount: number; health: "healthy" | "attention"; latestSourceCommit: string | null };
+type Summary = { documentCount: number; relationshipCount: number; categoryCount: number; validationConflictCount: number; synchronizedInventoryDocumentCount: number; health: "healthy" | "attention"; latestSourceCommit: string | null };
 type Overview = { summary: Summary; lastSynchronization: { status?: string; startedAt?: string; completedAt?: string; immutableCommitSha?: string } | null };
 export type RepositoryDocument = { identifier: string; title: string; path: string; type: string; scope: string | null; ownerReference: string | null; classification: string | null; validationState: string; developmentState: string; approvalState: string; publicationState: string; effectivityState: string; retentionState: string; sourceCommit: string | null; checksum: string | null; createdAt?: string | null; updatedAt?: string | null };
 type DocumentList = { items: RepositoryDocument[] };

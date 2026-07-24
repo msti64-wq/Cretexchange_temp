@@ -15,11 +15,13 @@ For project and implementation decisions, use this reading order:
 1. [Documentation Library](./README.md)
 2. [Project Context](./project/project-context.md)
 3. [CTX-STD-001 — CreteXchange Platform Standards](./standards/cretexchange-platform-standards.md)
-4. Applicable [CTX-ARCH documents](./architecture/README.md)
-5. [Product Decisions](./product/product-decisions.md)
-6. [Development Protocol](./development-protocol.md)
-7. [CTX-DEP-001 — Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
-8. [CTX-OPS-001 — Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
+4. [CTX-GOV-001 — Documentation Governance Standard](./standards/CTX-GOV-001-documentation-governance-standard.md) (Approved)
+5. Applicable [CTX-ARCH documents](./architecture/README.md)
+6. [Product Decisions](./product/product-decisions.md)
+7. [Development Protocol](./development-protocol.md)
+8. [CTX-DEP-001 — Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
+9. [CTX-OPS-001 — Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
+10. [CTX-OPS-002 — Administration Operations Guide](./operations/CTX-OPS-002-administration-operations-guide.md)
 
 Earlier documents take precedence when guidance conflicts. Vision, strategy, UX specifications, runbooks, sprint plans, tests, and implementation code provide essential context within their domains, but they must not override this hierarchy.
 
@@ -75,7 +77,7 @@ Research documents define proposed hypotheses, validation plans, grant readiness
 | Architecture | Technical source-of-truth boundaries and implementation contracts. |
 | Development Protocol | Required preflight, validation, Git, and implementation workflow. |
 | Deployment | Mandatory production-release controls in CTX-DEP-001. |
-| Operations | The required production-release checklist and durable release record in CTX-OPS-001. |
+| Operations | The required production-release checklist and durable release record in CTX-OPS-001, the Draft Administration Operations Guide in CTX-OPS-002, and governed operational runbooks. |
 
 ## Documentation Navigation
 
@@ -95,6 +97,15 @@ Research documents define proposed hypotheses, validation plans, grant readiness
   - [CTX-DEP-001 - Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md)
 - Production Operations
   - [CTX-OPS-001 - Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md)
+  - [CTX-OPS-002 - Administration Operations Guide](./operations/CTX-OPS-002-administration-operations-guide.md) — Draft; current administrative operating boundaries and documentation gaps.
+  - [Operations Runbook Framework](./operations/README.md)
+  - [CTX-RB-003 - Incident Response Runbook](./operations/CTX-RB-003-incident-response-runbook.md) — Draft; evidence and escalation only.
+  - [CTX-RB-004 - Database Recovery Runbook](./operations/CTX-RB-004-database-recovery-runbook.md) — Draft; recovery evidence and decision boundaries only.
+  - [CTX-RB-005 - Financial Reconciliation Runbook](./operations/CTX-RB-005-financial-reconciliation-runbook.md) — Draft; non-executing financial review only.
+  - [CTX-RB-006 - Driver Verification Runbook](./operations/CTX-RB-006-driver-verification-runbook.md) — Draft; evidence-based verification and escalation only.
+  - [CTX-RB-007 - Administrative Photo Review Runbook](./operations/CTX-RB-007-administrative-photo-review-runbook.md) — Draft; factual activity-evidence review and escalation boundaries.
+  - [CTX-RB-008 - Marketplace Trust & Fraud Escalation Runbook](./operations/CTX-RB-008-marketplace-trust-and-fraud-escalation-runbook.md) — Draft; neutral trust escalation and evidence preservation only.
+  - [CTX-RB-009 - Daily Operations Checklist](./operations/CTX-RB-009-daily-operations-checklist.md) — Draft; daily read-only operational review and escalation boundaries.
 - [Architecture Library](./architecture/README.md)
 - [Product Decisions](./product/product-decisions.md)
 - [Product Data Strategy](./product/data-strategy.md)
@@ -126,6 +137,8 @@ Research documents define proposed hypotheses, validation plans, grant readiness
 | Project Context | Current implementation state, active scope, and delivery context | All contributors | When current phase, implementation context, or approved sprint context changes | [Project Context](./project/project-context.md) |
 | Development Protocol | Required execution, preflight, source-of-truth, and validation workflow | Contributors and Codex | When the engineering workflow or validation policy changes | [Development Protocol](./development-protocol.md), [New Chat Kickoff](./project/new-chat-kickoff.md) |
 | CTX-STD | Mandatory platform engineering standards | Engineering and reviewers | When a durable engineering standard changes | [CTX-STD-001](./standards/cretexchange-platform-standards.md) |
+| CTX-GOV | Documentation governance and library-wide authoring controls | Documentation and Operations Governance, contributors, and reviewers | When documentation governance, authority, lifecycle, or library controls change | [CTX-GOV-001](./standards/CTX-GOV-001-documentation-governance-standard.md) |
+| CTX-POL | Governance policies for operational, privacy, access, and related control boundaries | Policy owner, Operations, and reviewers | Annual and event-driven when the governed control changes | [CTX-POL-003](./standards/CTX-POL-003-data-retention-policy.md), [CTX-POL-004](./standards/CTX-POL-004-incident-response-policy.md), [CTX-POL-008](./standards/CTX-POL-008-access-control-policy.md) |
 | Production Release Governance | Mandatory protocol and operational record for every production deployment | Release operators, approvers, Platform Operations, and engineering | When release controls or required production evidence change | [CTX-DEP-001](./standards/CTX-DEP-001-production-deployment-protocol.md), [CTX-OPS-001](./operations/CTX-OPS-001-production-release-checklist.md) |
 | CTX-ARCH | Implementation architecture, source-of-truth boundaries, and domain contracts | Engineering, architecture, and reviewers | Before or with an approved architecture change | [Architecture Library](./architecture/README.md) |
 | PD | Durable product policy and operational rules | Product, Operations, Engineering | When a product-policy decision is made or revised | [Product Decisions](./product/product-decisions.md), [PD-050](./product/PD-050-facility-operational-access-and-billing-readiness.md) |
@@ -193,19 +206,47 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | CTX-ARCH-005 | Material Management Architecture | Defines material taxonomy, financial direction, settlement models, pricing, capacity, and extensibility. | Approved |
 | CTX-ARCH-006 | Driver Incentive and Financial Settlement Architecture | Defines the immutable incentive snapshot, owner charge, payment obligation, wallet-authoritative settlement, Stripe payout, idempotency, recovery, and financial reporting contract. | Approved; PD-045 Active; runtime remediation pending |
 | CTX-ARCH-007 | [Canonical Financial Batch Architecture](./architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) | Defines canonical batch identity, frozen membership/totals, audit, discovery queues, legacy isolation, and Phase 3B non-execution. | Approved architecture direction; implementation pending |
+| CTX-ARCH-011 | [Administration Repository Documentation Refresh Design](./architecture/CTX-ARCH-011-administration-repository-documentation-refresh-design.md) | Defines the proposed controlled refresh of derived documentation inventory while preserving Git authority. | Draft; implementation not authorized |
 
 ## Standards Library
 
 | Document ID | Title | Purpose |
 | --- | --- | --- |
 | CTX-STD-001 | CreteXchange Platform Standards | Defines mandatory engineering and development standards governing the platform. |
+| CTX-STD-002 | [Documentation Governance, Metadata, Lifecycle, Authority, and Relationship Standard](./standards/CTX-STD-002-documentation-governance-metadata-lifecycle-authority-and-relationships.md) | Approved detailed metadata, lifecycle, classification, authority, and relationship model for governed documentation. |
+| CTX-DB-001 | [Database Migration and Schema Governance Standard](./standards/CTX-DB-001-database-migration-and-schema-governance-standard.md) | Defines the documentation and governance requirements for controlled database migration and schema change. |
+| CTX-GOV-001 | [Documentation Governance Standard](./standards/CTX-GOV-001-documentation-governance-standard.md) | Approved library-wide standard for documentation authority, lifecycle, metadata, relationships, and authoring practice. |
+| CTX-GOV-002 | [Documentation Program Health Assessment](./standards/CTX-GOV-002-documentation-program-health-assessment.md) | Draft non-governing assessment of library health, discovery, integrity, and refresh gaps. |
+| CTX-POL-003 | [Data Retention Policy](./standards/CTX-POL-003-data-retention-policy.md) | Draft retention, preservation, archival, and disposal governance without asserted retention periods. |
+| CTX-POL-004 | [Incident Response Policy](./standards/CTX-POL-004-incident-response-policy.md) | Draft incident-management authority, evidence, communication, and review governance. |
+| CTX-POL-008 | [Access Control Policy](./standards/CTX-POL-008-access-control-policy.md) | Draft least-privilege, authorization, production-access, and financial-authority-separation governance. |
 | CTX-DEP-001 | [Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md) | Defines mandatory controls for source verification, migration discovery and execution, schema verification, deployment, health, smoke testing, reporting, and rollback. |
 | CTX-OPS-001 | [Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md) | Provides the required operational checklist and durable release record for every production deployment. |
+| CTX-OPS-002 | [Administration Operations Guide](./operations/CTX-OPS-002-administration-operations-guide.md) | Draft guide for safe, truthful operation of currently supported administrative capabilities and their boundaries. |
+| CTX-RB-009 | [Daily Operations Checklist](./operations/CTX-RB-009-daily-operations-checklist.md) | Draft daily checklist for authorized operational review, evidence preservation, and escalation without execution. |
+| CTX-RB-003 | [Incident Response Runbook](./operations/CTX-RB-003-incident-response-runbook.md) | Draft response, evidence-preservation, and escalation procedure without recovery or production-change authority. |
+| CTX-RB-004 | [Database Recovery Runbook](./operations/CTX-RB-004-database-recovery-runbook.md) | Draft recovery evidence and decision boundaries; no provider-specific recovery procedure is asserted. |
+| CTX-RB-005 | [Financial Reconciliation Runbook](./operations/CTX-RB-005-financial-reconciliation-runbook.md) | Draft non-executing financial-consistency review and escalation procedure. |
+| CTX-RB-006 | [Driver Verification Runbook](./operations/CTX-RB-006-driver-verification-runbook.md) | Draft evidence-based driver-verification and escalation procedure without account-restriction or financial-execution authority. |
+| CTX-RB-007 | [Administrative Photo Review Runbook](./operations/CTX-RB-007-administrative-photo-review-runbook.md) | Draft factual activity-evidence review procedure with authorization and escalation boundaries. |
+| CTX-RB-008 | [Marketplace Trust & Fraud Escalation Runbook](./operations/CTX-RB-008-marketplace-trust-and-fraud-escalation-runbook.md) | Draft neutral trust escalation and evidence-preservation procedure; it does not establish fraud-investigation or provider-action authority. |
+
+### Supporting architecture records
+
+- [CTX-ARCH-008-APPROVAL-RECORD — Architecture Approval Record](./architecture/approvals/CTX-ARCH-008-architecture-approval-record.md)
+- [CTX-ARCH-008-VERIFICATION — Railway Platform and Database Recovery Verification](./architecture/verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md)
+- [CTX-ARCH-009-REVIEW — Operations Library and Knowledge Management Architecture Review](./architecture/reviews/CTX-ARCH-009-architecture-review.md)
 
 ## Governance Documents
 
 - [CTX-DEP-001 — Production Deployment Protocol](./standards/CTX-DEP-001-production-deployment-protocol.md): mandatory production source, migration, environment, validation, health, smoke-test, financial-safety, rollback, and completion controls.
+- [CTX-GOV-001 — Documentation Governance Standard](./standards/CTX-GOV-001-documentation-governance-standard.md): Approved documentation-governance standard; it does not replace applicable platform, architecture, product, development, operations, or release authorities, and does not itself authorize an application release, implementation, deployment, or production adoption.
+- [CTX-POL-003 — Data Retention Policy](./standards/CTX-POL-003-data-retention-policy.md), [CTX-POL-004 — Incident Response Policy](./standards/CTX-POL-004-incident-response-policy.md), and [CTX-POL-008 — Access Control Policy](./standards/CTX-POL-008-access-control-policy.md): Draft Operational Governance Policy Package; policies establish governance and do not replace runbook procedures.
 - [CTX-OPS-001 — Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md): the operational checklist and evidence record required to demonstrate a complete production release.
+- [CTX-OPS-002 — Administration Operations Guide](./operations/CTX-OPS-002-administration-operations-guide.md): Draft guidance for authorized administration and Platform Operations; it does not replace CTX-OPS-001 or authorize production change.
+- [CTX-RB-009 — Daily Operations Checklist](./operations/CTX-RB-009-daily-operations-checklist.md): Draft recurring review procedure governed by the Operations Runbook Framework; it does not authorize production change or financial execution.
+- [CTX-RB-003 — Incident Response Runbook](./operations/CTX-RB-003-incident-response-runbook.md), [CTX-RB-004 — Database Recovery Runbook](./operations/CTX-RB-004-database-recovery-runbook.md), and [CTX-RB-005 — Financial Reconciliation Runbook](./operations/CTX-RB-005-financial-reconciliation-runbook.md): Draft Operational Resilience Package; none authorizes production change, provider action, or financial execution.
+- [CTX-RB-006 — Driver Verification Runbook](./operations/CTX-RB-006-driver-verification-runbook.md), [CTX-RB-007 — Administrative Photo Review Runbook](./operations/CTX-RB-007-administrative-photo-review-runbook.md), and [CTX-RB-008 — Marketplace Trust & Fraud Escalation Runbook](./operations/CTX-RB-008-marketplace-trust-and-fraud-escalation-runbook.md): Draft marketplace-operations procedures for evidence review and escalation; none authorizes account restriction, provider action, or financial execution.
 
 ## Product Decisions
 

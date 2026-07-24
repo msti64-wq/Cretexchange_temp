@@ -35,6 +35,17 @@ This section documents the technical architecture of CreteXchange.
 | CTX-ARCH-005 | [Material Management Architecture](./material-management-architecture.md) | Material taxonomy, financial direction, settlement models, pricing, and capacity | Approved |
 | CTX-ARCH-006 | [Driver Incentive and Financial Settlement Architecture](./driver-incentive-and-financial-settlement-architecture.md) | Incentive snapshot, financial obligation, owner charge, wallet settlement, Stripe payout, idempotency, and recovery | Approved; PD-045 Active; runtime remediation pending |
 | CTX-ARCH-007 | [Canonical Financial Batch Architecture](./CTX-ARCH-007-canonical-financial-batch-architecture.md) | Canonical obligation versioning, batch identity, weekly periods, frozen membership/totals, append-only audit, discovery queues, legacy isolation, and Phase 3B non-execution | Approved architecture direction; implementation pending |
+| CTX-ARCH-008 | [Production Database Migration Architecture](./CTX-ARCH-008-production-database-migration-architecture.md) | Production database migration governance, baseline, execution, verification, and recovery boundaries | Draft architecture; implementation adoption separately governed |
+| CTX-ARCH-009 | [Operations Library and Knowledge Management Architecture](./CTX-ARCH-009-operations-library-and-knowledge-management-architecture.md) | Operations Library source-of-truth, lifecycle, security, and publication boundaries | Draft; not approved for implementation |
+| CTX-ARCH-010 | [Administration Repository Architecture](./CTX-ARCH-010-administration-repository-architecture.md) | Repository-authoritative Administration Repository boundaries, derived metadata, and synchronization constraints | Draft; implementation adoption separately governed |
+| CTX-ARCH-011 | [Administration Repository Documentation Refresh Design](./CTX-ARCH-011-administration-repository-documentation-refresh-design.md) | Controlled refresh of derived documentation inventory and freshness state | Draft; Version 1 implementation exists in repository, while architecture approval and production adoption remain separate |
+
+## Supporting Architecture Records
+
+- [CTX-ARCH-008-APPROVAL-RECORD — Architecture Approval Record](./approvals/CTX-ARCH-008-architecture-approval-record.md) — Evidence record for the stated CTX-ARCH-008 conditional approval; it is not the architecture itself.
+- [CTX-ARCH-008-VERIFICATION — Railway Platform and Database Recovery Verification](./verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md) — Supporting verification evidence; it does not independently authorize implementation or production adoption.
+- [CTX-ARCH-009-REVIEW — Operations Library and Knowledge Management Architecture Review](./reviews/CTX-ARCH-009-architecture-review.md) — Independent review evidence; it is not an approval record.
+- [ADR-031 — Production Database Migration Execution Architecture](./ADR-031-production-database-migration-execution-architecture.md) — Accepted decision record supporting CTX-ARCH-008; it does not supersede architecture or release authority.
 
 ## Planned Contents
 

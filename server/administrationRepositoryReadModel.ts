@@ -77,7 +77,7 @@ export async function persistAdministrationRepositorySynchronization(immutableCo
       relationshipWarningCount: result.report.relationshipWarnings,
       metadataWarningCount: result.report.metadataWarnings,
       searchStatus: result.search.status,
-      inventoryStatus: "published",
+      inventoryStatus: "synchronized",
       reconciliation: result.reconciliation,
     } }).where(eq(synchronizationRuns.id, run.id));
     await tx.insert(governanceAuditEvents).values({ eventType: "synchronization_completed", publicationSetId: publicationSet.id, synchronizationRunId: run.id, actorId, eventMetadata: { immutableCommitSha, documentCount: result.documents.length, warningCount: result.warnings.length, removedCount: result.reconciliation.removed.length } });
@@ -85,10 +85,17 @@ export async function persistAdministrationRepositorySynchronization(immutableCo
   });
 }
 
+export type AdministrationRepositoryRefreshAuditEvent =
+  | "synchronization_refresh_requested"
+  | "synchronization_refresh_authorization_denied"
+  | "synchronization_refresh_lock_acquired"
+  | "synchronization_refresh_lock_rejected"
+  | "synchronization_refresh_completed"
+  | "synchronization_refresh_failed";
 type RefreshAuditMetadata = Record<string, string | number | boolean | null>;
 
 /** Records request-level refresh evidence without storing document bodies or internal exceptions. */
-export async function recordAdministrationRepositoryRefreshAudit(eventType: "synchronization_refresh_requested" | "synchronization_refresh_completed" | "synchronization_refresh_failed", actorId: string, eventMetadata: RefreshAuditMetadata) {
+export async function recordAdministrationRepositoryRefreshAudit(eventType: AdministrationRepositoryRefreshAuditEvent, actorId: string, eventMetadata: RefreshAuditMetadata) {
   await db.insert(governanceAuditEvents).values({ eventType, actorId, eventMetadata });
 }
 
@@ -98,7 +105,7 @@ export async function getAdministrationRepositoryRefreshHistory(limit = 20) {
     db.select().from(synchronizationRuns).orderBy(desc(synchronizationRuns.startedAt)).limit(boundedLimit),
     db.select({ id: governanceAuditEvents.id, eventType: governanceAuditEvents.eventType, actorId: governanceAuditEvents.actorId, createdAt: governanceAuditEvents.createdAt, eventMetadata: governanceAuditEvents.eventMetadata })
       .from(governanceAuditEvents)
-      .where(inArray(governanceAuditEvents.eventType, ["synchronization_refresh_requested", "synchronization_refresh_completed", "synchronization_refresh_failed"]))
+      .where(inArray(governanceAuditEvents.eventType, ["synchronization_refresh_requested", "synchronization_refresh_authorization_denied", "synchronization_refresh_lock_acquired", "synchronization_refresh_lock_rejected", "synchronization_refresh_completed", "synchronization_refresh_failed"]))
       .orderBy(desc(governanceAuditEvents.createdAt))
       .limit(boundedLimit),
   ]);
@@ -219,7 +226,7 @@ export async function getAdministrationRepositoryOverview() {
       relationshipCount: relationships.length,
       categoryCount: new Set(documents.map((document) => document.documentType)).size,
       validationConflictCount,
-      publishedCount: documents.filter((document) => document.publicationState === "published").length,
+      synchronizedInventoryDocumentCount: documents.length,
       health: documents.length > 0 && validationConflictCount === 0 && lastSynchronization?.status === "completed" ? "healthy" : "attention",
       latestSourceCommit: lastSynchronization?.immutableCommitSha || null,
     },

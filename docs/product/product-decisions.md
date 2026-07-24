@@ -1,5 +1,7 @@
 # Product Decisions
 
+> **Catalog governance note:** Entries in this catalog are summaries or navigation records unless they link to a standalone PD file. A standalone PD file is the independently governed and discoverable record. Embedded catalog entries retain historical traceability but are not duplicate governed documents.
+
 ## PD-010 - Operational Events Become Business Intelligence
 
 **Decision:** Every completed washout, check-in, tip, reward entry, and future rubble drop-off should generate useful insight for at least one stakeholder group.
@@ -666,7 +668,7 @@
 
 **Related Documents:** [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md), [CTX-STD-001](../standards/cretexchange-platform-standards.md).
 
-## PD-050 - Facility Operational Access and Billing Readiness
+### Facility Operational Access and Billing Readiness
 
 **Decision:** The authoritative policy is documented in [PD-050 — Facility Operational Access and Billing Readiness](./PD-050-facility-operational-access-and-billing-readiness.md). An approved, operationally complete Facility may create, edit, activate, and manage participating locations without a saved payment method. Operational authorization and financial readiness are separate lifecycle states.
 
@@ -680,7 +682,7 @@
 
 **Related Documents:** [PD-050 — Facility Operational Access and Billing Readiness](./PD-050-facility-operational-access-and-billing-readiness.md), [Project Context](../project/project-context.md), [CTX-UX-003](../ux/CTX-UX-003-first-time-user-journey-and-pilot-readiness.md), [CTX-ARCH-001](../architecture/financial-architecture-and-kpi-specification.md), [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [PD-045 — Canonical Driver Settlement Rail](#pd-045---canonical-driver-settlement-rail).
 
-## PD-053 - Canonical Financial Batch Lifecycle and Approval Policy
+### Canonical Financial Batch Lifecycle and Approval Policy
 
 **Decision:** [PD-053](./PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) governs canonical weekly Facility periods, batch construction, review, approval, cancellation, Platform Operations authority, zero-fee waivers, late obligations, exception handling, and strict Phase 3B non-execution.
 
@@ -690,7 +692,7 @@
 
 **Related Documents:** [CTX-ARCH-007](../architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md), [PD-051](./PD-051-driver-activity-and-payment-lifecycle.md), [PB-001](../project/pilot/PB-001-cretexchange-pilot-baseline-v1.0.md), and [Assisted-Pilot Operations Runbook](../project/pilot/assisted-pilot-operations-runbook.md).
 
-## PD-054 - Canonical Financial Visibility and Obligation Workflow
+### Canonical Financial Visibility and Obligation Workflow
 
 **Decision:** [PD-054](./PD-054-canonical-financial-visibility-and-obligation-workflow.md) defines the sole canonical non-executing financial destination, single verified-activity obligation model, structured creation reason, and truthful canonical visibility.
 

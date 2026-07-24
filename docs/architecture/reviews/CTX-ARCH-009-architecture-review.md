@@ -1,9 +1,9 @@
-# CTX-ARCH-009 Architecture Review — Operations Library and Knowledge Management
+# CTX-ARCH-009-REVIEW — Operations Library and Knowledge Management Architecture Review
 
 - **Document ID:** CTX-ARCH-009-REVIEW
 - **Review status:** Independent architecture review; not an approval, implementation authorization, or production-adoption authorization
 - **Architecture reviewed:** [CTX-ARCH-009 — Operations Library and Knowledge Management Architecture](../CTX-ARCH-009-operations-library-and-knowledge-management-architecture.md)
-- **Supporting discovery reviewed:** [Operations Library Discovery and Requirements](../operations-library-discovery-and-requirements.md)
+- **Supporting discovery reviewed:** [CTX-GOV-002 — Documentation Program Health Assessment](../../standards/CTX-GOV-002-documentation-program-health-assessment.md)
 - **Repository / branch / starting commit:** `cretexchange-phasea-clean` / `feature/cutoff-and-rewards-controls` / `06d7520df988f559f321ebacc2fd81ea9af9f458`
 - **Date:** July 22, 2026
 - **Review boundary:** Documentation and repository inspection only. No application, database, provider, Railway, deployment, or production action occurred.
@@ -166,7 +166,7 @@ It **does not block approval of a revised architecture draft** if CTX-ARCH-009 c
 ## References
 
 - [CTX-ARCH-009](../CTX-ARCH-009-operations-library-and-knowledge-management-architecture.md)
-- [Supporting discovery](../operations-library-discovery-and-requirements.md)
+- [CTX-GOV-002 — Documentation Program Health Assessment](../../standards/CTX-GOV-002-documentation-program-health-assessment.md)
 - [Documentation Library](../../README.md)
 - [CTX-ARCH-004 — Admin Operations Architecture](../admin-operations-architecture.md)
 - [CTX-UX-007 — Platform Operations Center Experience](../../ux/CTX-UX-007-platform-operations-center-experience.md)

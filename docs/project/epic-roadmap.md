@@ -64,7 +64,7 @@ See [Sprint 2.2](./sprints/sprint-2.2.md). This epic prioritizes successful firs
 - Stripe payout rail
 - Idempotency, reconciliation, billing, reporting, and KPI alignment
 
-[PD-045](../product/product-decisions.md#pd-045---canonical-driver-settlement-rail) and [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md) govern this epic. Current mixed settlement behavior requires remediation; documentation does not mean that implementation is complete.
+[Canonical Driver Settlement Rail (embedded catalog entry)](../product/product-decisions.md#pd-045---canonical-driver-settlement-rail) (PD-045) and [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md) govern this epic. Current mixed settlement behavior requires remediation; documentation does not mean that implementation is complete.
 
 ## Epic 6 — Recovered-Material Marketplace
 

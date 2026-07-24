@@ -1,10 +1,10 @@
-# CTX-ARCH-008 — Railway Platform and Database Recovery Verification
+# CTX-ARCH-008-VERIFICATION — Railway Platform and Database Recovery Verification
 
 - **Document ID:** CTX-ARCH-008-VERIFICATION
 - **Record type:** Architecture verification evidence; not architecture, an ADR, implementation authorization, or production authorization
 - **Related architecture:** [CTX-ARCH-008 — Production Database Migration Architecture](../CTX-ARCH-008-production-database-migration-architecture.md)
 - **Related approval:** [CTX-ARCH-008 Architecture Approval Record](../approvals/CTX-ARCH-008-architecture-approval-record.md)
-- **Related discovery:** [Production Database Migration Discovery and Requirements](../production-database-migration-discovery-and-requirements.md)
+- **Related discovery:** The supporting discovery artifact is not retained in the current repository; this verification preserves its own observed evidence boundary.
 - **Related ADR:** [ADR-031 — Production Database Migration Execution Architecture](../ADR-031-production-database-migration-execution-architecture.md) — decisions only; Phase F findings and their verification status are unchanged.
 - **Status:** **CONDITIONALLY READY FOR ADR — IMPLEMENTATION NOT AUTHORIZED — PRODUCTION ADOPTION NOT AUTHORIZED**
 - **Date:** July 22, 2026
@@ -250,7 +250,7 @@ Before an ADR selects a release mechanism, resolve the mechanism's controlled te
 
 - [CTX-ARCH-008 — Production Database Migration Architecture](../CTX-ARCH-008-production-database-migration-architecture.md)
 - [CTX-ARCH-008 Architecture Approval Record](../approvals/CTX-ARCH-008-architecture-approval-record.md)
-- [Phase B Discovery and Requirements](../production-database-migration-discovery-and-requirements.md)
+- Supporting discovery artifact not retained in the current repository
 - [CTX-DB-001 — Database Migration and Schema Governance](../../standards/CTX-DB-001-database-migration-and-schema-governance-standard.md)
 - [CTX-DEP-001 — Production Deployment Protocol](../../standards/CTX-DEP-001-production-deployment-protocol.md)
 - [CTX-OPS-001 — Production Release Checklist](../../operations/CTX-OPS-001-production-release-checklist.md)

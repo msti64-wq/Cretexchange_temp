@@ -63,15 +63,16 @@ test("invalid identities block publication while missing legacy metadata remains
   assert.equal(result.warnings.some((warning) => warning.code === "missing_owner_metadata"), true);
 });
 
-test("failed publication preserves the previous inventory and repeated successful executions are idempotent", async () => {
+test("failed inventory generation preserves the prior inventory and repeated successful executions are idempotent", async () => {
   const input = { sourceCommit: "c".repeat(40), documents: [documentSource("CTX-OPS-099", "docs/operations/guide.md")], inventory: [{ identifier: "CTX-OPS-001", path: "docs/operations/old.md", checksumSha256: "old" }] };
   let attempted = 0;
   const failed = await runAdministrationRepositorySynchronization({ ...input, publisher: { async publish() { attempted += 1; throw new Error("transaction rolled back"); } } });
-  assert.equal(attempted, 1); assert.equal(failed.status, "failed"); assert.equal(failed.report.publicationStatus, "failed"); assert.equal(failed.errors.at(-1)?.code, "publication_failed");
-  const publication = { async publish(result: Awaited<ReturnType<typeof runAdministrationRepositorySynchronization>>) { return { publicationId: "publication-1", documentsPublished: result.documents.length }; } };
+  assert.equal(attempted, 1); assert.equal(failed.status, "failed"); assert.equal(failed.report.inventoryGenerationStatus, "failed"); assert.equal(failed.errors.at(-1)?.code, "publication_failed");
+  const publication = { async publish(result: Awaited<ReturnType<typeof runAdministrationRepositorySynchronization>>) { return { inventoryGenerationId: "generation-1", documentsSynchronized: result.documents.length }; } };
   const first = await runAdministrationRepositorySynchronization({ ...input, publisher: publication });
   const second = await runAdministrationRepositorySynchronization({ ...input, publisher: publication });
   assert.equal(first.status, "completed"); assert.equal(second.status, "completed");
-  assert.equal(first.report.documentsPublished, 1); assert.equal(second.report.documentsPublished, 1);
+  assert.equal(first.report.documentsSynchronized, 1); assert.equal(second.report.documentsSynchronized, 1);
+  assert.equal(first.report.inventoryGenerationStatus, "synchronized");
   assert.deepEqual(first.reconciliation, second.reconciliation);
 });

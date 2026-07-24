@@ -73,7 +73,7 @@ The following are cautious, nonbinding directions. They require separately appro
 
 **Status:** Planned
 
-Governed by [PD-045](../product/product-decisions.md#pd-045---canonical-driver-settlement-rail) and [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md).
+Governed by [Canonical Driver Settlement Rail (embedded catalog entry)](../product/product-decisions.md#pd-045---canonical-driver-settlement-rail) (PD-045) and [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md).
 
 Expected focus includes immutable incentive snapshots, owner-approval obligations, wallet-authoritative settlement ledger behavior, Stripe payout rail integration, idempotency and recovery, billing/reporting/KPI alignment, and historical qualification.
 
@@ -106,6 +106,27 @@ Expected focus includes municipality, county, state, and federal reporting; poli
 **Status:** Future / Exploratory
 
 Expected focus includes transparent methodology, verified and modeled data classifications, regional and industry benchmarking, scorecards, reports, and research products.
+
+## Deferred Release Gates
+
+Deferred release gates are explicit production-deployment prerequisites. They do not reopen completed engineering work or block unrelated approved development.
+
+### AR-RG-001 — Administration Repository External Validation Gate
+
+**Status:** Validation Pending — External Environment Required
+
+**Engineering status:** Engineering Complete. Production hardening is complete, and repository-local focused validation recorded 19 passed, 0 failed, and 1 skipped test.
+
+**Production deployment status:** Not yet approved.
+
+**Deferred validation:**
+
+- execute real PostgreSQL advisory-lock and session-loss validation using an isolated database;
+- execute real HTTP authorization route integration tests;
+- execute PostgreSQL transactional rollback and stale-inventory preservation tests; and
+- execute isolated-database end-to-end refresh and idempotency validation.
+
+This gate requires a disposable, isolated validation environment. It is a release gate for Administration Repository production deployment only and does not block continued CreteXchange development.
 
 ## Strategic Progression
 

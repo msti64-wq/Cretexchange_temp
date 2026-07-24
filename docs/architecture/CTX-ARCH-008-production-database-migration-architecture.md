@@ -9,7 +9,7 @@
 - **Superseded by:** None
 - **Related standards:** [CTX-STD-001](../standards/cretexchange-platform-standards.md), [CTX-DB-001](../standards/CTX-DB-001-database-migration-and-schema-governance-standard.md), [CTX-DEP-001](../standards/CTX-DEP-001-production-deployment-protocol.md), and [CTX-OPS-001](../operations/CTX-OPS-001-production-release-checklist.md)
 - **Related architecture:** [CTX-ARCH-007](./CTX-ARCH-007-canonical-financial-batch-architecture.md)
-- **Related evidence:** [Phase B discovery and requirements](./production-database-migration-discovery-and-requirements.md) and the [closed 0027/0029 release record](../operations/migration-releases/2026-07-22-0027-0029-preflight/draft-release-record.md)
+- **Related evidence:** Supporting discovery and the referenced 0027/0029 release record are not retained in the current repository; this draft records the resulting architecture boundary without treating either absent artifact as current authority.
 - **Approval record:** [CTX-ARCH-008 Architecture Approval Record](./approvals/CTX-ARCH-008-architecture-approval-record.md)
 - **Verification evidence:** [Phase F Railway Platform and Database Recovery Verification](./verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md) — evidence only; it does not authorize implementation or production adoption.
 - **ADR:** [ADR-031 — Production Database Migration Execution Architecture](./ADR-031-production-database-migration-execution-architecture.md) — accepted as a decision record only; implementation and production adoption remain unauthorized.
@@ -22,7 +22,7 @@ This draft proposes a repository-owned manifest and direct ordered SQL runner, a
 
 ## 2. Context and problem statement
 
-**Verified repository facts** in the [Phase B package](./production-database-migration-discovery-and-requirements.md) establish that the migration directory has mixed generated and handwritten SQL, duplicate `0001` identifiers, gaps `0005`–`0007`, no Drizzle journal/snapshots, and no standard checksum metadata. [`package.json`](../../package.json) exposes a development-oriented Drizzle schema push and a legacy photo-specific imperative helper. Build and normal startup do not invoke numbered migrations.
+**Verified repository facts** recorded during the Phase B assessment establish that the migration directory has mixed generated and handwritten SQL, duplicate `0001` identifiers, gaps `0005`–`0007`, no Drizzle journal/snapshots, and no standard checksum metadata. [`package.json`](../../package.json) exposes a development-oriented Drizzle schema push and a legacy photo-specific imperative helper. Build and normal startup do not invoke numbered migrations.
 
 **Verified release evidence** establishes that 0027 and 0029 required controlled execution and catalog verification; 0028 was already present and deliberately not rerun. The earlier absence of required schema caused affected API paths to fail. Current standards already prohibit uncontrolled startup migration and require a durable record, but the supporting implementation does not yet exist.
 
@@ -132,7 +132,7 @@ The ledger is itself a schema addition and cannot retroactively prove its own cr
 
 ## 11. Legacy reconciliation
 
-Initial ledger adoption is a one-time controlled process under the [Legacy Schema Reconciliation Procedure](../operations/legacy-database-schema-reconciliation-procedure.md), not an automatic scan. Evidence priority is: immutable release record and checksum, approved catalog evidence, repository artifact, then explicitly recorded uncertainty. It verifies tables, columns, indexes/predicates, constraints, defaults, nullability, types, and applicable aggregate/backfill evidence.
+Initial ledger adoption is a one-time controlled process under a separately approved legacy-schema reconciliation procedure, not an automatic scan. That procedure is not retained in the current repository. Evidence priority is: immutable release record and checksum, approved catalog evidence, repository artifact, then explicitly recorded uncertainty. It verifies tables, columns, indexes/predicates, constraints, defaults, nullability, types, and applicable aggregate/backfill evidence.
 
 0027 and 0029 are reconciliation candidates with execution and catalog evidence. 0028 is a verified pre-existing effect and must never be rerun merely to restore sequencing. Earlier migrations, duplicate identifiers, and object-present/ledger-absent cases remain `reconciled`, `partial`, or `cannot_determine` until evidence supports a classification. Every reconciliation needs operator and approver identity, a report, checksum capture, and a stop condition for uncertainty; no row may silently claim ordinary automated application.
 

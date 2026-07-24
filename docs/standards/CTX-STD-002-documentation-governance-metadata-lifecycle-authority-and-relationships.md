@@ -2,23 +2,30 @@
 
 - **Document ID:** CTX-STD-002
 - **Version:** 0.1
-- **Status:** **DRAFT — NOT YET APPROVED**
+- **Status:** Approved
 - **Owner:** Documentation and Operations Governance
 - **Scope:** CreteXchange, future related V8 Laboratories products, and governed repository documentation
-- **Related discovery:** [Documentation Governance Discovery and Requirements](./documentation-governance-discovery-and-requirements.md)
+- **Classification:** Internal
+- **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
+- **Approval Date:** July 23, 2026
+- **Effective Date:** July 23, 2026
+- **Review Frequency:** Semiannual and event-driven after a material lifecycle, metadata, relationship, or Administration Repository change
+- **Last Reviewed:** July 23, 2026 — formal owner approval
+- **Next Review:** January 23, 2027, and event-driven after a material lifecycle, metadata, relationship, or Administration Repository change
+- **Related discovery:** [CTX-GOV-002 — Documentation Program Health Assessment](./CTX-GOV-002-documentation-program-health-assessment.md)
 - **Related architectures:** [CTX-ARCH-009](../architecture/CTX-ARCH-009-operations-library-and-knowledge-management-architecture.md), its [independent review](../architecture/reviews/CTX-ARCH-009-architecture-review.md), and [CTX-ARCH-010](../architecture/CTX-ARCH-010-administration-repository-architecture.md)
 - **Supersedes:** None
 - **Superseded by:** None
 
 ## 1. Purpose
 
-This draft standard establishes reusable governance requirements for repository-managed documentation. It defines how governed documents express identity, authority, lifecycle, publication, classification, relationships, history, and conformance without replacing the Git repository as the authoritative source of governed content and history.
+This approved standard establishes reusable governance requirements for repository-managed documentation. It defines how governed documents express identity, authority, lifecycle, publication, classification, relationships, history, and conformance without replacing the Git repository as the authoritative source of governed content and history.
 
 It supplies a shared policy foundation for future Operations Library, Administration Repository, search, AI-grounding, evidence, audit, grant, investor, sustainability, GeoHaul, and related-product work. It is a governance standard, not an implementation authorization.
 
 ## 2. Status, scope, and exclusions
 
-This document is **DRAFT — NOT YET APPROVED**. It does not adopt a runtime capability, approve CTX-ARCH-009 or CTX-ARCH-010, authorize implementation or production adoption, or change an existing document’s status.
+This document is **APPROVED** for documentation governance. It does not adopt a runtime capability, approve CTX-ARCH-009 or CTX-ARCH-010, authorize implementation or production adoption, or change an existing document’s status.
 
 This standard applies, where applicable, to governance documents, platform standards, architecture documents and reviews, approval records, ADRs, implementation-authorization records, production-adoption records, Product Decisions, security/privacy records, procedures, runbooks, release/deployment/incident records, verification/validation records, research, business, UX, evidence/due-diligence, and historical/archived documentation.
 
@@ -326,7 +333,7 @@ Future grant, investor, audit, release, sustainability, and operational evidence
 
 ## 19. Legacy adoption and conformance
 
-No bulk rewrite is required by this draft. Following approval, new governed documents MUST comply before required approval/publication. Materially revised current documents MUST be normalized when revised. High-authority effective documents SHOULD be prioritized. Legacy historical records MAY retain their original format if an inventory can attach derived minimum metadata without changing historical truth. Missing critical authority, classification, lifecycle, or identity facts MUST be surfaced rather than fabricated.
+No bulk rewrite is required by this standard. New governed documents MUST comply before required approval/publication. Materially revised current documents MUST be normalized when revised. High-authority effective documents SHOULD be prioritized. Legacy historical records MAY retain their original format if an inventory can attach derived minimum metadata without changing historical truth. Missing critical authority, classification, lifecycle, or identity facts MUST be surfaced rather than fabricated.
 
 | Document population | Adoption expectation |
 | --- | --- |
@@ -350,7 +357,7 @@ Validation SHOULD detect duplicate identifiers, invalid state combinations, brok
 
 ## 20. Deferred ADRs, consumers, and open questions
 
-Future ADRs are expected for repository publishing model; manifest format; metadata representation/storage; restricted-content discovery/authorization; search; rendering/sanitization; derived Administration Repository persistence; collection snapshots/evidence packages; and AI retrieval/grounding. No ADR is created or approved by this draft.
+Future ADRs are expected for repository publishing model; manifest format; metadata representation/storage; restricted-content discovery/authorization; search; rendering/sanitization; derived Administration Repository persistence; collection snapshots/evidence packages; and AI retrieval/grounding. No ADR is created or approved by this standard.
 
 Expected consumers include CTX-ARCH-009, CTX-ARCH-010, future Operations Library and Administration Repository work, future search/AI/evidence/GeoHaul/sustainability architecture, authors, reviewers, approvers, publishers, and auditors. Dependent architectures MUST be revised and reviewed separately after this standard is reviewed and approved; this standard does not amend their draft status.
 
@@ -365,4 +372,11 @@ Open questions include retention durations, signature requirements, metadata ser
 - [CTX-ARCH-009](../architecture/CTX-ARCH-009-operations-library-and-knowledge-management-architecture.md)
 - [CTX-ARCH-009 Review](../architecture/reviews/CTX-ARCH-009-architecture-review.md)
 - [CTX-ARCH-010](../architecture/CTX-ARCH-010-administration-repository-architecture.md)
-- [Documentation Governance Discovery and Requirements](./documentation-governance-discovery-and-requirements.md)
+- [CTX-GOV-002 — Documentation Program Health Assessment](./CTX-GOV-002-documentation-program-health-assessment.md)
+
+## 22. Revision History
+
+| Version | Date | Change |
+| --- | --- | --- |
+| 0.1 | July 23, 2026 | Formally approved and made effective by Michael Loren Stiger, CreteXchange Project Owner. This documentation-governance approval does not authorize an application release, implementation, deployment, or production adoption. |
+| 0.1 | July 2026 | Initial draft documentation-governance standard. |

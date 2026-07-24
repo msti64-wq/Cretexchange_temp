@@ -5,7 +5,7 @@
 - **Owners / approver:** Michael Loren Stiger — Architecture Owner, Business Owner, and Approver
 - **Operating model:** Single-Operator Startup
 - **Related architecture:** [CTX-ARCH-008 — Production Database Migration Architecture](./CTX-ARCH-008-production-database-migration-architecture.md)
-- **Related discovery:** [Phase B Discovery and Requirements](./production-database-migration-discovery-and-requirements.md)
+- **Related discovery:** The Phase B discovery artifact is not retained in the current repository; the architecture and approval record preserve the resulting evidence boundary.
 - **Related approval:** [CTX-ARCH-008 Architecture Approval Record](./approvals/CTX-ARCH-008-architecture-approval-record.md)
 - **Related platform evidence:** [Phase F Railway Platform and Database Recovery Verification](./verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md)
 - **Supersedes:** None
@@ -152,7 +152,7 @@ This ADR governs the first controlled migration-capability implementation direct
 ## References
 
 - [CTX-ARCH-008](./CTX-ARCH-008-production-database-migration-architecture.md)
-- [Phase B discovery](./production-database-migration-discovery-and-requirements.md)
+- Phase B discovery artifact not retained in the current repository
 - [Phase E approval record](./approvals/CTX-ARCH-008-architecture-approval-record.md)
 - [Phase F verification record](./verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md)
 - [CTX-DB-001](../standards/CTX-DB-001-database-migration-and-schema-governance-standard.md)

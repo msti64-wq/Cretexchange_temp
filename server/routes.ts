@@ -91,8 +91,9 @@ import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables"
 import { buildCanonicalObligationCreationReason, createDatabaseFinancialObligationRepository, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
 import { getFinancialSchemaCapabilities } from "./financialSchemaCapabilities";
 import { isAdministrationRepositoryEnabled } from "./administrationRepository";
-import { ADMINISTRATION_REPOSITORY_START_HERE_IDENTIFIER, getAdministrationRepositoryDocumentationHealth, getAdministrationRepositoryDocument, getAdministrationRepositoryDocumentContent, getAdministrationRepositoryOverview, getAdministrationRepositoryRefreshHistory, getAdministrationRepositoryStartHere, listAdministrationRepositoryDocuments, normalizeAdministrationRepositoryQuery, searchAdministrationRepositoryDocuments } from "./administrationRepositoryReadModel";
+import { ADMINISTRATION_REPOSITORY_START_HERE_IDENTIFIER, getAdministrationRepositoryDocumentationHealth, getAdministrationRepositoryDocument, getAdministrationRepositoryDocumentContent, getAdministrationRepositoryOverview, getAdministrationRepositoryRefreshHistory, getAdministrationRepositoryStartHere, listAdministrationRepositoryDocuments, normalizeAdministrationRepositoryQuery, recordAdministrationRepositoryRefreshAudit, searchAdministrationRepositoryDocuments } from "./administrationRepositoryReadModel";
 import { administrationRepositoryRefreshService } from "./administrationRepositoryRefresh";
+import { authorizeAdministrationRepositoryRefresh } from "./administrationRepositoryRefreshAuthorization";
 import { resolveFinancialWorkspaceSelectionToken } from "./financialWorkspaceSelection";
 import { getCanonicalFinancialVisibilitySummary } from "./canonicalFinancialVisibility";
 import {
@@ -5929,8 +5930,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/administration-repository/refresh', isAuthenticated, async (req: any, res) => {
     const user = await requireAdministrationRepositoryActor(req, res);
     if (!user) return;
+    const authorization = authorizeAdministrationRepositoryRefresh(process.env, { allowedNonProductionEnvironments: ["staging", "development", "test", "local"] });
+    if (!authorization.allowed) {
+      try {
+        await recordAdministrationRepositoryRefreshAudit("synchronization_refresh_authorization_denied", user.id, {
+          environment: authorization.environment,
+          denialCode: authorization.code,
+        });
+      } catch { /* Preserve fail-closed authorization if optional audit persistence is unavailable. */ }
+      return res.status(403).json({
+        code: authorization.code,
+        message: "Administration Repository refresh is not authorized for this environment.",
+      });
+    }
     try {
-      const execution = await administrationRepositoryRefreshService.refresh(user.id);
+      const execution = await administrationRepositoryRefreshService.refresh(user.id, {
+        sourceCommit: authorization.sourceCommit.commitSha,
+        environment: authorization.environment,
+      });
       if (execution.status === "conflict") return res.status(409).json({ code: "synchronization_in_progress", status: execution.snapshot });
       // A validation or publication outcome is a completed, structured refresh request.
       // Keep it inspectable by the UI without treating the response body as an exception;

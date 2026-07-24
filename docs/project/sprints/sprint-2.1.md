@@ -115,7 +115,7 @@ Sprint 2.1.3 delivered Owner Operational Intelligence in four completed phases:
 
 ### Architecture and Data Boundaries Preserved
 
-This milestone follows [Platform Vision](../../vision/platform-vision.md), [Project Context](../project-context.md), [Data Strategy](../../product/data-strategy.md), [PD-045](../../product/product-decisions.md#pd-045---canonical-driver-settlement-rail), and [CTX-ARCH-006](../../architecture/driver-incentive-and-financial-settlement-architecture.md).
+This milestone follows [Platform Vision](../../vision/platform-vision.md), [Project Context](../project-context.md), [Data Strategy](../../product/data-strategy.md), [Canonical Driver Settlement Rail (embedded catalog entry)](../../product/product-decisions.md#pd-045---canonical-driver-settlement-rail) (PD-045), and [CTX-ARCH-006](../../architecture/driver-incentive-and-financial-settlement-architecture.md).
 
 - **Operational metrics** derive from owner activity rows and use canonical activity-status presentation; `verified` is operationally approved, not paid or settled.
 - **Configuration metrics** use current location-rate configuration and are labeled as configured incentives, never as earned, paid, wallet, or settlement value.

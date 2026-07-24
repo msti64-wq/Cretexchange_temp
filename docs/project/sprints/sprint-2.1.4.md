@@ -12,7 +12,7 @@ This is an operational intelligence sprint. It is not a financial implementation
 
 ## 2. Objectives
 
-Develop the Platform Operations Center foundation for monitoring platform health while preserving the financial architecture defined by [PD-045](../../product/product-decisions.md#pd-045---canonical-driver-settlement-rail) and [CTX-ARCH-006](../../architecture/driver-incentive-and-financial-settlement-architecture.md).
+Develop the Platform Operations Center foundation for monitoring platform health while preserving the financial architecture defined by [Canonical Driver Settlement Rail (embedded catalog entry)](../../product/product-decisions.md#pd-045---canonical-driver-settlement-rail) (PD-045) and [CTX-ARCH-006](../../architecture/driver-incentive-and-financial-settlement-architecture.md).
 
 The foundation should:
 
@@ -59,7 +59,7 @@ This sprint is governed by:
 - [Project Context](../project-context.md)
 - [Data Strategy](../../product/data-strategy.md)
 - [Product Decisions](../../product/product-decisions.md)
-- [PD-045 — Canonical Driver Settlement Rail](../../product/product-decisions.md#pd-045---canonical-driver-settlement-rail)
+- [Canonical Driver Settlement Rail (embedded catalog entry)](../../product/product-decisions.md#pd-045---canonical-driver-settlement-rail) (PD-045)
 - [CTX-ARCH-004 — Admin Operations Architecture](../../architecture/admin-operations-architecture.md)
 - [CTX-ARCH-006 — Driver Incentive and Financial Settlement Architecture](../../architecture/driver-incentive-and-financial-settlement-architecture.md)
 
