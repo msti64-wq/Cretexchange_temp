@@ -82,6 +82,39 @@ function ownerActivityRecoveryMessage(activity: { status?: string | null; reject
     : t(operationalStatus.nextActionKey);
 }
 
+function OptionalDriverTipControl({
+  value,
+  onValueChange,
+  compact,
+  testId,
+  t,
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  compact: boolean;
+  testId: string;
+  t: (key: string) => string;
+}) {
+  return (
+    <div className="mt-3 border-t border-border/50 pt-3" data-testid={`${testId}-section`}>
+      <p className="text-xs font-medium text-foreground">{t("owner.dashboard.optionalDriverTip")}</p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">{t("owner.dashboard.driverTipSeparateReview")}</p>
+      <div className="mt-2 flex items-center gap-2">
+        <Input
+          type="number"
+          inputMode="decimal"
+          min="0"
+          step="0.01"
+          className={`${compact ? "h-8" : "h-9"} w-24 text-right text-xs`}
+          value={value}
+          onChange={(event) => onValueChange(event.target.value)}
+          data-testid={testId}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function OwnerDashboard() {
   const [, setLocation] = useLocation();
   const { user, logout } = useAuth();
@@ -1377,24 +1410,6 @@ export default function OwnerDashboard() {
                       </p>
                       
                       <div className="flex items-center gap-2 justify-end flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                            Driver Tip
-                          </span>
-                          <Input
-                            type="number"
-                            inputMode="decimal"
-                            min="0"
-                            step="0.01"
-                            className="h-9 w-24 text-right text-xs"
-                            value={driverTipDisplay}
-                            onChange={(event) => setApprovalDriverTipDrafts((current) => ({
-                              ...current,
-                              [activity.id]: event.target.value,
-                            }))}
-                            data-testid={`input-driver-tip-${index}`}
-                          />
-                        </div>
                         <Button
                           variant="outline"
                           size="sm"
@@ -1445,6 +1460,13 @@ export default function OwnerDashboard() {
                           </>
                         )}
                       </div>
+                      <OptionalDriverTipControl
+                        value={driverTipDisplay}
+                        onValueChange={(value) => setApprovalDriverTipDrafts((current) => ({ ...current, [activity.id]: value }))}
+                        compact={false}
+                        testId={`input-driver-tip-${index}`}
+                        t={t}
+                      />
                     </div>
                     
                     {/* Desktop layout: Keep status and buttons side by side */}
@@ -1460,25 +1482,8 @@ export default function OwnerDashboard() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2 flex-wrap justify-end">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                            Driver Tip
-                          </span>
-                          <Input
-                            type="number"
-                            inputMode="decimal"
-                            min="0"
-                            step="0.01"
-                            className="h-8 w-24 text-right text-xs"
-                            value={driverTipDisplay}
-                            onChange={(event) => setApprovalDriverTipDrafts((current) => ({
-                              ...current,
-                              [activity.id]: event.target.value,
-                            }))}
-                            data-testid={`input-driver-tip-desktop-${index}`}
-                          />
-                        </div>
+                      <div className="flex flex-col items-end">
+                        <div className="flex items-center gap-2 flex-wrap justify-end">
                         <Button
                           variant="outline"
                           size="sm"
@@ -1528,6 +1533,16 @@ export default function OwnerDashboard() {
                             </Button>
                           </>
                         )}
+                        </div>
+                        <div className="w-full min-w-[260px]">
+                          <OptionalDriverTipControl
+                            value={driverTipDisplay}
+                            onValueChange={(value) => setApprovalDriverTipDrafts((current) => ({ ...current, [activity.id]: value }))}
+                            compact
+                            testId={`input-driver-tip-desktop-${index}`}
+                            t={t}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>

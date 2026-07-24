@@ -18,13 +18,13 @@ test("trust verification aggregates only persisted operational activity statuses
   assert.equal(result.verified, 2);
   assert.equal(result.pending, 1);
   assert.equal(result.rejected, 1);
-  assert.equal(result.exceptions, 2);
+  assert.equal(result.exceptions, 1);
   assert.equal(result.reviewBacklog, 1);
   assert.deepEqual(result.distribution, [
     { label: "Verified", count: 2 },
     { label: "Pending", count: 1 },
     { label: "Rejected", count: 1 },
-    { label: "Exceptions", count: 2 },
+    { label: "Review exceptions", count: 1 },
   ]);
 });
 

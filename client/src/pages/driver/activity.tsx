@@ -13,7 +13,13 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { resolveSubmittedActivityConfirmation, type SubmissionConfirmationRecord } from "@/lib/pilotOnboarding";
-import { resolveWashoutOperationalStatus } from "@/lib/washoutOperationalStatus";
+import {
+  calculateVerifiedOperationalActivityValue,
+  matchesDriverActivityOperationalFilter,
+  resolvePendingReviewSupportGuidance,
+  resolveWashoutOperationalStatus,
+  type DriverActivityOperationalFilter,
+} from "@/lib/washoutOperationalStatus";
 
 const SUBMISSION_CONFIRMATION_SESSION_KEY = "cretexchange.driver.submission-confirmation";
 
@@ -99,7 +105,7 @@ export default function DriverActivity() {
   const [currentPath, setLocation] = useLocation();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<DriverActivityOperationalFilter>("all");
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isSubmissionConfirmationDismissed, setIsSubmissionConfirmationDismissed] = useState(false);
@@ -156,8 +162,11 @@ export default function DriverActivity() {
   }, []);
 
   const filteredActivities = activities?.filter((activity: any) => {
-    if (filterStatus === "all") return true;
-    return (activity.washout_activities?.status || activity.status) === filterStatus;
+    const record = activity.washout_activities || activity;
+    return matchesDriverActivityOperationalFilter({
+      status: record.status,
+      rejectionReason: record.rejectionReason,
+    }, filterStatus);
   }) || [];
 
   const handleExport = async () => {
@@ -190,9 +199,15 @@ export default function DriverActivity() {
 
   const stats = {
     totalActivities: filteredActivities.length,
-    totalEarnings: filteredActivities.reduce((sum: number, activity: any) => sum + Number(activity.washout_activities?.amount || activity.amount || 0), 0),
-    verifiedCount: filteredActivities.filter((a: any) => (a.washout_activities?.status || a.status) === 'verified').length,
-    pendingCount: filteredActivities.filter((a: any) => (a.washout_activities?.status || a.status) === 'pending').length,
+    verifiedActivityValue: calculateVerifiedOperationalActivityValue(filteredActivities),
+    verifiedCount: filteredActivities.filter((activity: any) => {
+      const record = activity.washout_activities || activity;
+      return resolveWashoutOperationalStatus({ status: record.status, audience: "driver" }).state === "verified";
+    }).length,
+    pendingCount: filteredActivities.filter((activity: any) => {
+      const record = activity.washout_activities || activity;
+      return resolveWashoutOperationalStatus({ status: record.status, audience: "driver" }).state === "pending_review";
+    }).length,
   };
 
   if (isLoading) {
@@ -246,7 +261,7 @@ export default function DriverActivity() {
         {/* Stats Summary */}
         <div className="grid grid-cols-2 gap-3">
           <DSKpiCard label={t("driver.activity.totalWashouts")} value={stats.totalActivities} detail={t("driver.activity.totalWashouts")} accentTone="info" data-testid="text-total-activities" />
-          <DSKpiCard label={t("driver.activity.totalEarned")} value={formatCurrency(stats.totalEarnings)} detail={t("driver.activity.totalEarned")} accentTone="success" data-testid="text-total-earnings" />
+          <DSKpiCard label={t("driver.activity.verifiedActivityValue")} value={formatCurrency(stats.verifiedActivityValue)} detail={t("driver.activity.verifiedActivityValueDetail")} accentTone="success" data-testid="text-verified-activity-value" />
           <DSKpiCard label={t("driver.activity.verified")} value={stats.verifiedCount} detail={t("driver.activity.verified")} accentTone="success" data-testid="text-verified-count" />
           <DSKpiCard label={t("driver.activity.pending")} value={stats.pendingCount} detail={t("driver.activity.pending")} accentTone="warning" data-testid="text-pending-count" />
         </div>
@@ -258,7 +273,7 @@ export default function DriverActivity() {
             title={t("common.filters")}
             description={t("driver.activity.activityHistory")}
             actions={
-                <Button 
+              <Button
                   variant="default" 
                   size="sm"
                   onClick={handleExport}
@@ -332,6 +347,19 @@ export default function DriverActivity() {
                 >
                 {t("driver.activity.pending")}
               </Button>
+              <Button
+                size="sm"
+                variant={filterStatus === "needs_action" ? "default" : "outline"}
+                onClick={() => setFilterStatus("needs_action")}
+                className={
+                  filterStatus === "needs_action"
+                    ? "border-border bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                    : "border-border bg-card/80 text-foreground hover:bg-card hover:text-foreground"
+                }
+                data-testid="button-filter-needs-action"
+              >
+                {t("driver.activity.needsAction")}
+              </Button>
             </div>
           </div>
         </DSCard>
@@ -357,6 +385,10 @@ export default function DriverActivity() {
                 status: activityRecord.status,
                 rejectionReason: activityRecord.rejectionReason,
                 audience: "driver",
+              });
+              const pendingReviewGuidance = resolvePendingReviewSupportGuidance({
+                status: activityRecord.status,
+                submittedAt: activityRecord.checkInTime ?? activityRecord.createdAt,
               });
 
               return (
@@ -417,6 +449,11 @@ export default function DriverActivity() {
                       <p className="mt-1 font-medium text-foreground">{t("washout.status.rejectionReason", { reason: operationalStatus.rejectionReason })}</p>
                     ) : (
                       <p className="mt-1">{t(operationalStatus.nextActionKey)}</p>
+                    )}
+                    {pendingReviewGuidance.isOverdue && (
+                      <p className="mt-1 font-medium text-foreground" data-testid={`text-pending-review-support-${index}`}>
+                        {t("washout.recovery.pending_review.driverOverdue")}
+                      </p>
                     )}
                   </div>
 

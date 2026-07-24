@@ -34,7 +34,9 @@ export function buildAdminTrustVerification(
         if (status.state === "verified") counts.verified += 1;
         if (status.state === "pending_review") counts.pending += 1;
         if (status.state === "rejected") counts.rejected += 1;
-        if (status.requiresAdminAttention) counts.exceptions += 1;
+        // Rejections have their own persisted-status metric. Exceptions are
+        // only additional review cases so the dashboard never double-counts.
+        if (status.requiresAdminAttention && status.state !== "rejected") counts.exceptions += 1;
         return counts;
       },
       { verified: 0, pending: 0, rejected: 0, exceptions: 0 },
@@ -56,7 +58,7 @@ export function buildAdminTrustVerification(
           { label: "Verified", count: statusCounts.verified },
           { label: "Pending", count: statusCounts.pending },
           { label: "Rejected", count: statusCounts.rejected },
-          { label: "Exceptions", count: statusCounts.exceptions },
+          { label: "Review exceptions", count: statusCounts.exceptions },
         ]
       : [],
   };

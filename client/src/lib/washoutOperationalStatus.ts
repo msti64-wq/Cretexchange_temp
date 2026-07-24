@@ -6,6 +6,12 @@ import {
 
 export type WashoutOperationalAudience = "driver" | "owner" | "admin";
 export type WashoutOperationalState = "pending_review" | "verified" | "rejected" | "incomplete" | "requires_review";
+export type DriverActivityOperationalFilter = "all" | "verified" | "pending" | "needs_action";
+
+// The existing operational support dashboard begins aging pending activity at
+// 24 hours. Keep the driver-facing prompt on that same boundary without
+// introducing a persisted escalation state or background work.
+export const PENDING_REVIEW_SUPPORT_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 export interface WashoutOperationalStatus {
   state: WashoutOperationalState;
@@ -131,4 +137,61 @@ export function resolveWashoutOperationalStatus(input: {
     requiresOwnerAction: false,
     requiresAdminAttention: true,
   };
+}
+
+export function matchesDriverActivityOperationalFilter(
+  input: { status?: string | null; rejectionReason?: string | null },
+  filter: DriverActivityOperationalFilter,
+): boolean {
+  if (filter === "all") return true;
+
+  const status = resolveWashoutOperationalStatus({ ...input, audience: "driver" });
+  if (filter === "verified") return status.state === "verified";
+  if (filter === "pending") return status.state === "pending_review";
+
+  return status.state === "rejected" || status.state === "incomplete" || status.state === "requires_review";
+}
+
+export function resolvePendingReviewSupportGuidance({
+  status,
+  submittedAt,
+  now = Date.now(),
+}: {
+  status?: string | null;
+  submittedAt?: string | Date | null;
+  now?: number;
+}) {
+  const operationalStatus = resolveWashoutOperationalStatus({ status, audience: "driver" });
+  const submittedAtMs = submittedAt instanceof Date ? submittedAt.getTime() : Date.parse(submittedAt ?? "");
+  const ageMs = Number.isFinite(submittedAtMs) && Number.isFinite(now) ? Math.max(0, now - submittedAtMs) : null;
+
+  return {
+    isOverdue: operationalStatus.state === "pending_review"
+      && ageMs !== null
+      && ageMs >= PENDING_REVIEW_SUPPORT_THRESHOLD_MS,
+    ageMs,
+  };
+}
+
+export function calculateVerifiedOperationalActivityValue(activities: Array<{
+  status?: string | null;
+  rejectionReason?: string | null;
+  amount?: string | number | null;
+  washout_activities?: {
+    status?: string | null;
+    rejectionReason?: string | null;
+    amount?: string | number | null;
+  } | null;
+}>): number {
+  return activities.reduce((total, activity) => {
+    const record = activity.washout_activities ?? activity;
+    if (resolveWashoutOperationalStatus({
+      status: record.status,
+      rejectionReason: record.rejectionReason,
+      audience: "driver",
+    }).state !== "verified") return total;
+
+    const amount = Number(record.amount ?? 0);
+    return total + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
 }
