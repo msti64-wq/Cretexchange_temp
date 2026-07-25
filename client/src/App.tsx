@@ -64,6 +64,7 @@ const FinancialAudit = lazy(() => import("@/pages/admin/financial-operations").t
 const AdministrationRepository = lazy(() => import("@/pages/admin/administration-repository"));
 const AdministrationRepositoryDocument = lazy(() => import("@/pages/admin/administration-repository").then((module) => ({ default: module.AdministrationRepositoryDocument })));
 const AdministrationRepositoryManagement = lazy(() => import("@/pages/admin/administration-repository-management"));
+const AdminPhotoReview = lazy(() => import("@/pages/admin/photo-review"));
 
 // Wrapper components for Register with preselected roles
 const GeneralRegister = (props: RouteComponentProps) => <Register />;
@@ -172,6 +173,7 @@ function Router() {
             <Route path="/admin/administration-repository/manage" component={AdministrationRepositoryManagement} />
             <Route path="/admin/administration-repository/document/:documentId" component={AdministrationRepositoryDocument} />
             <Route path="/admin/administration-repository" component={AdministrationRepository} />
+            <Route path="/admin/photo-review" component={AdminPhotoReview} />
             <Route path="/batch-payments" component={AdminBatchPayments} />
             <Route path="/reconciliation" component={AdminReconciliation} />
             <Route path="/subscriptions" component={AdminSubscriptions} />

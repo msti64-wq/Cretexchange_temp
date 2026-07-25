@@ -8,6 +8,7 @@ import {
   ownerActivityApprovalIntents,
   washoutActivityReviewEvents,
   washoutPhotos,
+  washoutPhotoReviewEvents,
   payments,
   notifications,
   termsVersions,
@@ -57,6 +58,7 @@ import {
   type WashoutActivity,
   type WashoutActivityAdminReview,
   type WashoutPhoto,
+  type WashoutPhotoReviewEvent,
   type Payment,
   type Notification,
   type TermsVersion,
@@ -153,6 +155,29 @@ import { formatAddress } from "@shared/addressUtils";
 import type { PhotoFingerprintCandidate } from "@shared/photoFingerprint";
 
 type IdentityDocument = typeof identityDocuments.$inferSelect;
+
+export type AdminPhotoReviewFilter = {
+  state: "pending" | "approved" | "rejected" | "all";
+  photoId?: string;
+  driverId?: string;
+  facilityId?: string;
+  from?: Date;
+  to?: Date;
+  page: number;
+  pageSize: number;
+};
+
+export type AdminPhotoReviewItem = {
+  photo: WashoutPhoto;
+  activity: WashoutActivity;
+  location: WashoutLocation;
+  driver: Driver | null;
+  driverUser: User | null;
+  owner: Owner | null;
+  ownerUser: User | null;
+  administrativeReview: WashoutActivityAdminReview | null;
+  history: WashoutPhotoReviewEvent[];
+};
 
 export interface IStorage {
   // User operations - local authentication
@@ -309,6 +334,15 @@ export interface IStorage {
   createWashoutPhoto(photo: InsertWashoutPhoto): Promise<WashoutPhoto>;
   getPhotosByActivity(activityId: string): Promise<WashoutPhoto[]>;
   getPhotoById(photoId: string): Promise<WashoutPhoto | undefined>;
+  listAdminPhotoReviewItems(filter: AdminPhotoReviewFilter): Promise<{ items: AdminPhotoReviewItem[]; total: number }>;
+  resolveWashoutPhotoReview(input: {
+    photoId: string;
+    expectedStatus: "warning" | "needs_review";
+    nextStatus: "verified" | "failed";
+    actorUserId: string;
+    reason?: string | null;
+    actionSource: string;
+  }): Promise<AdminPhotoReviewItem>;
   getRecentWashoutPhotoDuplicateCandidates(since: Date): Promise<PhotoFingerprintCandidate[]>;
   deletePhoto(photoId: string): Promise<boolean>;
   // Transactional operation: create activity with photos atomically
@@ -1789,6 +1823,82 @@ export class DatabaseStorage implements IStorage {
       .from(washoutPhotos)
       .where(eq(washoutPhotos.id, photoId));
     return photo;
+  }
+
+  async listAdminPhotoReviewItems(filter: AdminPhotoReviewFilter): Promise<{ items: AdminPhotoReviewItem[]; total: number }> {
+    const conditions = [];
+    if (filter.state === "pending") conditions.push(inArray(washoutPhotos.verificationStatus, ["needs_review", "warning"]));
+    if (filter.state === "approved") conditions.push(eq(washoutPhotos.verificationStatus, "verified"));
+    if (filter.state === "rejected") conditions.push(eq(washoutPhotos.verificationStatus, "failed"));
+    if (filter.photoId) conditions.push(eq(washoutPhotos.id, filter.photoId));
+    if (filter.driverId) conditions.push(eq(washoutPhotos.driverId, filter.driverId));
+    if (filter.facilityId) conditions.push(eq(washoutPhotos.locationId, filter.facilityId));
+    if (filter.from) conditions.push(gte(washoutPhotos.uploadedAt, filter.from));
+    if (filter.to) conditions.push(lte(washoutPhotos.uploadedAt, filter.to));
+    const predicate = conditions.length ? and(...conditions) : undefined;
+    const [{ total }] = await db.select({ total: count() }).from(washoutPhotos).where(predicate);
+    const photos = await db.select().from(washoutPhotos).where(predicate)
+      .orderBy(desc(washoutPhotos.uploadedAt)).limit(filter.pageSize).offset((filter.page - 1) * filter.pageSize);
+    const items = (await Promise.all(photos.map(async (photo) => {
+      const [activity, location, driver] = await Promise.all([
+        this.getWashoutActivity(photo.activityId),
+        this.getWashoutLocation(photo.locationId),
+        this.getDriverById(photo.driverId),
+      ]);
+      if (!activity || !location) return null;
+      const [driverUser, owner, history, administrativeReview] = await Promise.all([
+        driver ? this.getUser(driver.userId) : Promise.resolve(undefined),
+        this.getOwnerById(location.ownerId),
+        db.select().from(washoutPhotoReviewEvents).where(eq(washoutPhotoReviewEvents.photoId, photo.id)).orderBy(desc(washoutPhotoReviewEvents.createdAt)),
+        this.getWashoutActivityAdminReview(activity.id),
+      ]);
+      const ownerUser = owner ? await this.getUser(owner.userId) : undefined;
+      return { photo, activity, location, driver: driver || null, driverUser: driverUser || null, owner: owner || null, ownerUser: ownerUser || null, administrativeReview: administrativeReview || null, history } satisfies AdminPhotoReviewItem;
+    }))).filter((item): item is AdminPhotoReviewItem => item !== null);
+    return { items, total: Number(total) };
+  }
+
+  async resolveWashoutPhotoReview(input: {
+    photoId: string;
+    expectedStatus: "warning" | "needs_review";
+    nextStatus: "verified" | "failed";
+    actorUserId: string;
+    reason?: string | null;
+    actionSource: string;
+  }): Promise<AdminPhotoReviewItem> {
+    const photo = await db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(washoutPhotos).where(eq(washoutPhotos.id, input.photoId)).limit(1);
+      if (!existing) {
+        const error = new Error("Photo review item not found") as Error & { code?: string };
+        error.code = "PHOTO_REVIEW_NOT_FOUND";
+        throw error;
+      }
+      const [updated] = await tx.update(washoutPhotos).set({ verificationStatus: input.nextStatus })
+        .where(and(eq(washoutPhotos.id, input.photoId), eq(washoutPhotos.verificationStatus, input.expectedStatus))).returning();
+      if (!updated) {
+        const error = new Error("Photo review item is no longer in the expected state") as Error & { code?: string };
+        error.code = "PHOTO_REVIEW_STALE";
+        throw error;
+      }
+      await tx.insert(washoutPhotoReviewEvents).values({
+        photoId: updated.id,
+        activityId: updated.activityId,
+        previousVerificationStatus: existing.verificationStatus,
+        newVerificationStatus: updated.verificationStatus,
+        actorUserId: input.actorUserId,
+        reason: input.reason || null,
+        actionSource: input.actionSource,
+      });
+      return updated;
+    });
+    const result = await this.listAdminPhotoReviewItems({ state: "all", page: 1, pageSize: 1, photoId: photo.id });
+    const resolved = result.items.find((item) => item.photo.id === photo.id);
+    if (!resolved) {
+      const error = new Error("Photo review projection is unavailable") as Error & { code?: string };
+      error.code = "PHOTO_REVIEW_PROJECTION_UNAVAILABLE";
+      throw error;
+    }
+    return resolved;
   }
 
   async getRecentWashoutPhotoDuplicateCandidates(since: Date): Promise<PhotoFingerprintCandidate[]> {

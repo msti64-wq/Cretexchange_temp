@@ -1,4 +1,4 @@
-import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy, ClipboardList } from "lucide-react";
+import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy, ClipboardList, Images } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,6 +54,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/admin/financial-operations", icon: ClipboardList, label: "Financial Operations", testIdLabel: "financial-operations" },
           { path: "/admin/administration-repository", icon: FileText, label: "Operations Library", testIdLabel: "administration-repository" },
+          { path: "/admin/photo-review", icon: Images, label: "Photo Review", testIdLabel: "photo-review" },
           { path: "/profile", icon: Settings, label: "Profile" },
         ];
       case "super_admin":
@@ -64,6 +65,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/admin/financial-operations", icon: ClipboardList, label: "Financial Operations", testIdLabel: "financial-operations" },
           { path: "/admin/administration-repository", icon: FileText, label: "Operations Library", testIdLabel: "administration-repository" },
+          { path: "/admin/photo-review", icon: Images, label: "Photo Review", testIdLabel: "photo-review" },
           { path: "/lottery", icon: Trophy, label: "Rewards Program" },
           { path: "/reconciliation", icon: RefreshCw, label: "Reconcile" },
           { path: "/subscriptions", icon: Receipt, label: "Subscriptions" },

@@ -206,6 +206,27 @@ const prizeCatalogStatusSchema = z.object({
   isActive: z.boolean(),
 });
 
+const adminPhotoReviewListSchema = z.object({
+  state: z.enum(["pending", "approved", "rejected", "all"]).default("pending"),
+  driverId: z.string().trim().min(1).max(120).optional(),
+  facilityId: z.string().trim().min(1).max(120).optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+const adminPhotoReviewDecisionSchema = z.object({
+  decision: z.enum(["approve", "reject"]),
+  expectedStatus: z.enum(["warning", "needs_review"]),
+  reason: z.string().trim().max(1_000).optional(),
+  confirmationAcknowledged: z.literal(true),
+}).superRefine((value, context) => {
+  if (value.decision === "reject" && !value.reason) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["reason"], message: "A rejection reason is required." });
+  }
+});
+
 const prizeCatalogInventoryAdjustmentSchema = z.object({
   quantityDelta: z.coerce.number().int().refine((value) => value !== 0, "Quantity delta must be non-zero"),
   reason: z.string().trim().min(1, "Reason is required"),
@@ -5941,6 +5962,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error?.code === "ADMIN_REVIEW_NOT_OPEN" || error?.code === "WASHOUT_ACTIVITY_NOT_REJECTED") return res.status(409).json({ message: "This administrative review can no longer be decided." });
       console.error("[ADMIN_REVIEW_DECISION_FAILED]", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
       return res.status(500).json({ message: "Unable to record administrative review decision." });
+    }
+  });
+
+  // Administrative Photo Review is an evidence-only operator queue. A photo
+  // decision updates only its verification signal; the owner remains the sole
+  // operational approver of a washout and Administrative Review remains the
+  // facilitator-only path for a disputed rejection.
+  const requireAdminPhotoReviewActor = async (req: any, res: any) => {
+    const actor = await storage.getUser(req.user?.id);
+    if (!actor || (actor.role !== "admin" && actor.role !== "super_admin")) {
+      res.status(403).json({ message: "Platform Operations access required." });
+      return null;
+    }
+    return actor;
+  };
+  const projectAdminPhotoReviewItem = (item: Awaited<ReturnType<typeof storage.resolveWashoutPhotoReview>>) => ({
+    photo: {
+      id: item.photo.id,
+      activityId: item.photo.activityId,
+      verificationStatus: item.photo.verificationStatus,
+      verificationReason: item.photo.verificationReason,
+      photoTakenAt: item.photo.photoTakenAt,
+      uploadedAt: item.photo.uploadedAt,
+      contentType: item.photo.contentType,
+    },
+    submission: {
+      id: item.activity.id,
+      status: item.activity.status,
+      checkInTime: item.activity.checkInTime,
+      submittedAt: item.activity.createdAt,
+      rejectionReason: item.activity.rejectionReason,
+    },
+    driver: {
+      id: item.driver?.id || null,
+      firstName: item.driverUser?.firstName || null,
+      lastName: item.driverUser?.lastName || null,
+      truckNumber: item.driver?.truckNumber || null,
+    },
+    facility: {
+      id: item.location.id,
+      name: item.location.name,
+      city: item.location.city,
+      state: item.location.state,
+      ownerName: item.owner?.companyName || [item.ownerUser?.firstName, item.ownerUser?.lastName].filter(Boolean).join(" ") || null,
+    },
+    administrativeReview: item.administrativeReview ? {
+      id: item.administrativeReview.id,
+      requestedAt: item.administrativeReview.requestedAt,
+      resolution: item.administrativeReview.resolution,
+      decidedAt: item.administrativeReview.decidedAt,
+      rationale: item.administrativeReview.adminRationale,
+    } : null,
+    history: item.history.map((event: typeof item.history[number]) => ({
+      id: event.id,
+      actorUserId: event.actorUserId,
+      previousStatus: event.previousVerificationStatus,
+      newStatus: event.newVerificationStatus,
+      reason: event.reason,
+      actionSource: event.actionSource,
+      createdAt: event.createdAt,
+    })),
+  });
+  app.get('/api/admin/photo-review', isAuthenticated, async (req: any, res) => {
+    const actor = await requireAdminPhotoReviewActor(req, res);
+    if (!actor) return;
+    const parsed = adminPhotoReviewListSchema.safeParse(req.query || {});
+    if (!parsed.success || (parsed.data.from && parsed.data.to && parsed.data.from > parsed.data.to)) {
+      return res.status(400).json({ message: "Photo review filters are invalid." });
+    }
+    try {
+      const result = await storage.listAdminPhotoReviewItems(parsed.data);
+      return res.json({
+        items: result.items.map(projectAdminPhotoReviewItem),
+        pagination: { page: parsed.data.page, pageSize: parsed.data.pageSize, total: result.total, hasMore: parsed.data.page * parsed.data.pageSize < result.total },
+      });
+    } catch (error) {
+      console.error("[ADMIN_PHOTO_REVIEW_LIST_FAILED]", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      return res.status(500).json({ message: "Photo review queue is unavailable." });
+    }
+  });
+  app.post('/api/admin/photo-review/:photoId/decision', isAuthenticated, async (req: any, res) => {
+    const actor = await requireAdminPhotoReviewActor(req, res);
+    if (!actor) return;
+    const parsed = adminPhotoReviewDecisionSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "A valid decision, current status, confirmation, and rejection reason when rejecting are required." });
+    try {
+      const item = await storage.resolveWashoutPhotoReview({
+        photoId: req.params.photoId,
+        expectedStatus: parsed.data.expectedStatus,
+        nextStatus: parsed.data.decision === "approve" ? "verified" : "failed",
+        actorUserId: actor.id,
+        reason: parsed.data.reason || null,
+        actionSource: `admin-photo-review-${parsed.data.decision}`,
+      });
+      return res.json({ item: projectAdminPhotoReviewItem(item), message: "Photo evidence review recorded. The washout operational status was not changed." });
+    } catch (error: any) {
+      if (error?.code === "PHOTO_REVIEW_NOT_FOUND") return res.status(404).json({ message: "Photo review item not found." });
+      if (error?.code === "PHOTO_REVIEW_STALE") return res.status(409).json({ message: "Photo review item has changed. Refresh the queue before deciding." });
+      console.error("[ADMIN_PHOTO_REVIEW_DECISION_FAILED]", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      return res.status(500).json({ message: "Unable to record photo evidence review." });
     }
   });
 

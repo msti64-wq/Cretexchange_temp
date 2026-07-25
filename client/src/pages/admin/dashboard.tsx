@@ -165,6 +165,12 @@ function AdministrativeReviewQueue() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/administrative-reviews"] }); setSelected(null); setResolution(null); setRationale(""); setConfirmed(false); },
   });
   const items = reviews || [];
+  useEffect(() => {
+    const reviewId = new URLSearchParams(window.location.search).get("reviewId");
+    if (!reviewId || !reviews) return;
+    const requested = reviews.find((review) => review.id === reviewId);
+    if (requested) setSelected(requested);
+  }, [reviews]);
   return <DashboardSectionCard title={t("adminReview.queueTitle")} description={t("adminReview.queueDescription")} icon={<ShieldAlert className="h-4 w-4 text-indigo-600" />} badge={<Badge variant="outline">{t("adminReview.queueCount", { count: items.length })}</Badge>} dataTestId="section-administrative-review-queue">
     {isLoading ? <p className="text-sm text-muted-foreground">{t("common.loading")}</p> : error ? <p className="text-sm text-destructive" role="alert">{t("adminReview.queueError")}</p> : items.length === 0 ? <p className="text-sm text-muted-foreground">{t("adminReview.queueEmpty")}</p> : <div className="space-y-3">
       {items.map((review) => <div key={review.id} className="rounded-xl border border-border p-4" data-testid={`admin-review-row-${review.id}`}>

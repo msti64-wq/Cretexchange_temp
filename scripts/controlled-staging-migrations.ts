@@ -12,6 +12,7 @@ const releaseMigrations: Migration[] = [
   { id: "0034", file: "migrations/0034_add_driver_active_material_intent.sql", sha256: "100ef11493eb9898378de0dc3d669765429090db0d6388cfedcfb503a9f02a0d", verify: verify0034 },
   { id: "0035", file: "migrations/0035_add_administration_repository_foundation.sql", sha256: "e7d9a17933c7bdaf8783948a7e146a5978a941a55ac56a089c326fa3ce40a18f", verify: verify0035 },
   { id: "0036", file: "migrations/0036_add_washout_activity_admin_reviews.sql", sha256: "81c8c5dbceb87ed0aa024d3a34b432a72825722703e53574af785cbc8a08fdb0", verify: verify0036 },
+  { id: "0037", file: "migrations/0037_add_washout_photo_review_audit.sql", sha256: "5714306b60592c536dc9d1e5dbe71e20392faedde97fd06d2d4b180fb58c7e5b", verify: verify0037 },
 ];
 
 function fail(message: string): never { throw new Error(message); }
@@ -19,7 +20,7 @@ function arg(name: string): string | undefined { const index = process.argv.inde
 function selectedMigrations(from: string | undefined, to: string | undefined): Migration[] {
   const first = releaseMigrations.findIndex((migration) => migration.id === from);
   const last = releaseMigrations.findIndex((migration) => migration.id === to);
-  if (first < 0 || last < first) fail("Only the ordered 0031 through 0036 release allowlist is permitted.");
+  if (first < 0 || last < first) fail("Only the ordered 0031 through 0037 release allowlist is permitted.");
   return releaseMigrations.slice(first, last + 1);
 }
 async function assertChecksums(migrations: Migration[]) {
@@ -68,6 +69,11 @@ async function verify0036(client: pg.Client) {
   await requireCount(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema='public' AND table_name='washout_activity_admin_reviews'", 1, "0036 table");
   await requireCount(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname='public' AND indexname IN ('uniq_washout_activity_admin_reviews_unresolved','idx_washout_activity_admin_reviews_activity_requested','idx_washout_activity_admin_reviews_owner_resolution','idx_washout_activity_admin_reviews_driver_resolution')", 4, "0036 indexes");
   await requireCount(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid='washout_activity_admin_reviews'::regclass AND conname IN ('washout_activity_admin_reviews_resolution_check','washout_activity_admin_reviews_decision_check')", 2, "0036 check constraints");
+}
+async function verify0037(client: pg.Client) {
+  await requireCount(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema='public' AND table_name='washout_photo_review_events'", 1, "0037 table");
+  await requireCount(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname='public' AND indexname IN ('washout_photo_review_events_photo_created_idx','washout_photo_review_events_activity_created_idx')", 2, "0037 indexes");
+  await requireCount(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid='washout_photo_review_events'::regclass AND conname='washout_photo_review_events_rejection_reason_check'", 1, "0037 rejection-reason constraint");
 }
 
 async function main() {

@@ -420,6 +420,24 @@ export const washoutPhotos = pgTable("washout_photos", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Append-only evidence-review history. These events intentionally describe a
+// photo verification decision only; they never change the canonical washout
+// activity lifecycle or create a financial entitlement.
+export const washoutPhotoReviewEvents = pgTable("washout_photo_review_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  photoId: varchar("photo_id").notNull().references(() => washoutPhotos.id, { onDelete: "cascade" }),
+  activityId: varchar("activity_id").notNull().references(() => washoutActivities.id, { onDelete: "cascade" }),
+  previousVerificationStatus: photoVerificationStatusEnum("previous_verification_status").notNull(),
+  newVerificationStatus: photoVerificationStatusEnum("new_verification_status").notNull(),
+  actorUserId: varchar("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  reason: text("reason"),
+  actionSource: varchar("action_source").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("washout_photo_review_events_photo_created_idx").on(table.photoId, table.createdAt),
+  index("washout_photo_review_events_activity_created_idx").on(table.activityId, table.createdAt),
+]);
+
 // A facilitator-only review request. This is intentionally separate from the
 // canonical activity lifecycle: an administrator may close a request or return
 // an activity to its owner, but never verify or reject the activity directly.
@@ -1766,6 +1784,7 @@ export type WashoutLocation = typeof washoutLocations.$inferSelect;
 export type WashoutActivity = typeof washoutActivities.$inferSelect;
 export type WashoutActivityAdminReview = typeof washoutActivityAdminReviews.$inferSelect;
 export type WashoutPhoto = typeof washoutPhotos.$inferSelect;
+export type WashoutPhotoReviewEvent = typeof washoutPhotoReviewEvents.$inferSelect;
 export type Payment = typeof payments.$inferSelect & {
   tipAmountCents?: number | null;
   washoutServiceFee?: string;
