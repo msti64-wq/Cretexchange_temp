@@ -46,6 +46,7 @@ This section documents the technical architecture of CreteXchange.
 - [CTX-ARCH-008-VERIFICATION — Railway Platform and Database Recovery Verification](./verification/CTX-ARCH-008-railway-platform-and-database-recovery-verification.md) — Supporting verification evidence; it does not independently authorize implementation or production adoption.
 - [CTX-ARCH-009-REVIEW — Operations Library and Knowledge Management Architecture Review](./reviews/CTX-ARCH-009-architecture-review.md) — Independent review evidence; it is not an approval record.
 - [ADR-031 — Production Database Migration Execution Architecture](./ADR-031-production-database-migration-execution-architecture.md) — Accepted decision record supporting CTX-ARCH-008; it does not supersede architecture or release authority.
+- [ADR-032 — Pilot Billing and Driver Tip Settlement Architecture](./ADR-032-pilot-billing-and-driver-tip-settlement-architecture.md) — Draft record of superseding CEO initial-launch billing direction; it requires architecture, compliance, implementation, and release approval before financial execution.
 
 ## Planned Contents
 
