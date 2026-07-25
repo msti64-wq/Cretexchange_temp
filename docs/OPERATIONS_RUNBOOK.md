@@ -60,6 +60,10 @@ Required / commonly used env vars:
 - `REPLIT_DEPLOYMENT`
 - `REPLIT`
 
+### Object Storage Path Convention
+
+Photo uploads use the configured S3-compatible bucket; they do not use a Railway Volume. Every deployed environment that enables photo upload MUST set `PRIVATE_OBJECT_DIR` to `/<S3_BUCKET>/private` (for example, when `S3_BUCKET` is `example-bucket`, use `/example-bucket/private`). The application stores uploaded photos beneath `private/photos/` and creates object keys during upload; no mounted directory, startup directory creation, or filesystem permission configuration is required. Railway must provide the variable to the application service.
+
 ## Build and Test Commands
 
 - `npm run check`
