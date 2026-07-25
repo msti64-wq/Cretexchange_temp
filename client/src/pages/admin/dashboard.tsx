@@ -1957,11 +1957,11 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                    <span className="text-sm font-medium">Payment Processing</span>
+                    <span className="text-sm font-medium">Financial Execution</span>
                   </div>
-                  <Badge variant="default" data-testid="badge-payment-status">Active</Badge>
+                  <Badge variant="secondary" data-testid="badge-payment-status">Disabled</Badge>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">Stripe and payout flows remain live.</p>
+                <p className="mt-2 text-xs text-muted-foreground">Payment, collection, and payout execution are disabled for this pilot release.</p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
                 <div className="flex items-center justify-between gap-3">

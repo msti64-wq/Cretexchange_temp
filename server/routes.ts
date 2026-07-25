@@ -27,6 +27,7 @@ import {
 } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
+import { isFinancialExecutionEnabled, resolveRuntimeEnvironment } from "./runtimeEnvironment";
 import { getJwtSecret } from "./jwtSecret";
 import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getPhotoReadProviderSelection, getPhotoUploadProviderSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
 import { ObjectPermission, setObjectAclPolicy, getObjectAclPolicy, ObjectAclPolicy, ObjectAccessGroupType, canAccessObject } from "./objectAcl";
@@ -2313,9 +2314,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
+      environment: resolveRuntimeEnvironment(),
       database: 'connected',
-      stripe: !!process.env.STRIPE_SECRET_KEY ? 'configured' : 'disabled'
+      stripe: !!process.env.STRIPE_SECRET_KEY ? 'configured' : 'disabled',
+      financialExecution: isFinancialExecutionEnabled() ? 'enabled' : 'disabled',
     });
   });
 
