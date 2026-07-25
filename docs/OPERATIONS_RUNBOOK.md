@@ -72,6 +72,10 @@ Photo uploads use the configured S3-compatible bucket; they do not use a Railway
 - `npm run build`
   - Frontend and backend production build
 
+## Controlled Staging Admin Bootstrap
+
+The general `create:superadmin` utility is not a release-validation provisioning path because it is not environment-scoped. For a controlled staging acceptance account, use `npm run bootstrap:staging-admin` only from a Railway staging pre-deploy job or service shell after all of these non-secret controls are present: `ADMIN_BOOTSTRAP_TARGET=staging`, `RAILWAY_ENVIRONMENT_NAME=staging`, `STAGING_ADMIN_BOOTSTRAP_CONFIRM=bootstrap-staging-admin`, `STAGING_ADMIN_EMAIL`, and `STAGING_ADMIN_BOOTSTRAP_OPERATOR`. A new account additionally requires a password supplied through the staging secret store as `STAGING_ADMIN_PASSWORD`; it is never logged. The runner refuses every target other than Railway `staging`, creates only an ordinary `admin` account, never repurposes a Driver or Owner, is idempotent for an existing Admin or Super Admin, and writes a sanitized `staging_admin_bootstrap` audit event. Remove the temporary password variable and restore the normal governed migration pre-deploy command after successful provisioning.
+
 - `npm run test`
   - Full test suite with test JWT/session secrets
 
