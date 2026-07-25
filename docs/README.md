@@ -174,6 +174,14 @@ Product Decisions define durable business policy and operational rules. They do 
 | [PD-052](./product/PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md) | Governs evidence-based, neutral, least-privilege administrative review and marketplace-trust policy. |
 | [PD-053](./product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) | Governs canonical weekly financial-batch review, approval, exceptions, and Phase 3B non-execution. |
 
+## Approved Future Product Directions
+
+Future directions are not current implementation or approved sprint scope. They require separate architecture, compliance, privacy, and implementation authorization.
+
+| Decision | Direction summary |
+| --- | --- |
+| [PD-056](./product/PD-056-driver-achievement-rewards-and-leaderboard-future-direction.md) | Defines the future direction for a separate Driver Achievement Center, auditable reward-ledger model, and privacy-preserving opt-in shared leaderboard; it is not authorized for the Pilot Release. |
+
 ## Archived References
 
 - [Archived Governance Documents](./archive/governance/README.md)
@@ -334,6 +342,7 @@ Near-term implementation should follow approved sprint scope and the applicable 
 - Platform Operations Center — [CTX-UX-007](./ux/CTX-UX-007-platform-operations-center-experience.md)
 - Administrative Activity Review — [CTX-UX-008](./ux/CTX-UX-008-administrative-activity-review-experience.md)
 - Marketplace Trust — [PD-052](./product/PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md)
+- Driver achievement, reward, and leaderboard future direction — [PD-056](./product/PD-056-driver-achievement-rewards-and-leaderboard-future-direction.md) (not authorized for the Pilot Release)
 - Pilot completion and operational readiness — [Sprint 2.2](./project/sprints/sprint-2.2.md)
 
 These documents guide planning; they do not independently authorize implementation or expand current sprint scope.

@@ -720,3 +720,13 @@ the server.
   wallet value, settlement, or provider execution.
 
 **Related Documents:** [CTX-ARCH-003](../architecture/driver-operations-architecture.md), [CTX-ARCH-005](../architecture/material-management-architecture.md), and [PD-015](#pd-015---owner-material-acceptance).
+
+## PD-056 - Driver Achievement, Rewards, and Shared Leaderboard Future Direction
+
+**Decision:** [PD-056](./PD-056-driver-achievement-rewards-and-leaderboard-future-direction.md) records the approved future direction for a separate Driver Achievement Center, related Driver Rewards Center, and opt-in shared Driver Leaderboard. It preserves operational and financial separation, auditable future reward-ledger requirements, privacy boundaries, and qualification-integrity rules.
+
+**Status:** Approved Future Product Direction — Not Authorized for Pilot Implementation
+
+**Current Scope:** Documentation only. This decision does not alter current Driver Rewards, drawing eligibility, Driver Dashboard, Driver Earnings Center, operational verification, financial behavior, or Pilot Release scope.
+
+**Related Documents:** [CTX-ARCH-003](../architecture/driver-operations-architecture.md), [CTX-ARCH-004](../architecture/admin-operations-architecture.md), [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [PD-051](./PD-051-driver-activity-and-payment-lifecycle.md), and [PD-052](./PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md).

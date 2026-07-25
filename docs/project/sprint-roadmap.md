@@ -83,6 +83,12 @@ Expected focus includes immutable incentive snapshots, owner-approval obligation
 
 Expected focus includes broader material categories, listings, buyers and sellers, inventory and availability, matching and discovery, marketplace trust and verification, and approved transaction or reservation workflows.
 
+### Driver Achievement, Rewards, and Shared Leaderboard
+
+**Status:** Future / Exploratory
+
+The future direction is governed by [PD-056](../product/PD-056-driver-achievement-rewards-and-leaderboard-future-direction.md). It may later provide a separate Driver Achievement Center, auditable reward-ledger model, and opt-in privacy-preserving leaderboard. It is not part of the current Pilot Release and requires separate architecture, compliance, promotional-law, privacy, and implementation approval.
+
 ### Enterprise and Contractor Intelligence
 
 **Status:** Planned
