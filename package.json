@@ -17,7 +17,8 @@
     "verify:washout-billing-counts": "node --import tsx scripts/verify-washout-billing-counts.ts",
     "verify:driver-stripe-connect": "node --import tsx scripts/verify-driver-stripe-connect.ts",
     "create:superadmin": "node --import tsx scripts/create-superadmin.ts",
-    "bootstrap:staging-admin": "node --import tsx scripts/bootstrap-staging-admin.ts"
+    "bootstrap:staging-admin": "node --import tsx scripts/bootstrap-staging-admin.ts",
+    "bootstrap:staging-pilot-acceptance": "node --import tsx scripts/bootstrap-staging-pilot-acceptance.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.812.0",
