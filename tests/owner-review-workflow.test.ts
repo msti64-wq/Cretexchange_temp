@@ -52,10 +52,15 @@ async function withStoragePatch(patch: Record<string, unknown>, run: () => Promi
 
 test("a submitted washout and its uploaded photo remain pending until owner review", () => {
   const routes = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
-  const checkin = routes.slice(routes.indexOf("app.post('/api/drivers/checkin'"));
+  const checkin = routes.slice(
+    routes.indexOf("app.post('/api/drivers/checkin'"),
+    routes.indexOf("app.get('/api/drivers/activities'"),
+  );
   const createWithPhotos = routes.slice(routes.indexOf("app.post('/api/activities/create-with-photos'"));
 
   assert.match(checkin, /status:\s*'pending' as const/);
+  assert.match(checkin, /checkInTime:\s*new Date\(\)\.toISOString\(\)/);
+  assert.doesNotMatch(checkin, /checkInTime:\s*new Date\(\)\s*,/);
   assert.match(createWithPhotos, /activityResult\.data\.status !== "pending"/);
   assert.match(createWithPhotos, /storage\.createWashoutActivityWithPhotos\(/);
   assert.doesNotMatch(createWithPhotos, /verifyWashoutActivity\(/);

@@ -4125,7 +4125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         driverId: driver.id,
         locationId: location.id,
         amount: location.rate.toString(),
-        checkInTime: new Date(),
+        checkInTime: new Date().toISOString(),
         latitude: req.body.latitude ? req.body.latitude.toString() : null,
         longitude: req.body.longitude ? req.body.longitude.toString() : null,
         photoUrls: req.body.photoUrls || [],
