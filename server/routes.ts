@@ -133,6 +133,15 @@ import {
   type ReportQueryInput,
 } from "./reportService";
 import {
+  AdminActivityReportExportLimitError,
+  AdminActivityReportInputError,
+  buildAdminActivityReport,
+  buildBoundedAdminActivityCsv,
+  canAccessAdminActivityReports,
+  parseAdminActivityReportQuery,
+  type AdminActivityReportKind,
+} from "./adminActivityReporting";
+import {
   buildBillingAuditReport,
   billingAuditReportToCsv,
   billingAuditReportToJson,
@@ -14139,6 +14148,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to backfill ACL policies" });
     }
   });
+
+  const serveAdminActivityReport = (kind: AdminActivityReportKind) => async (req: any, res: any) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || !canAccessAdminActivityReports(user.role)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const query = parseAdminActivityReportQuery(req.query || {}, kind);
+      if (req.query.format === "csv") {
+        const csv = await buildBoundedAdminActivityCsv(db, query);
+        const filename = `${kind}-activity-report-${new Date().toISOString().slice(0, 10)}.csv`;
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return res.send(csv);
+      }
+
+      return res.json(await buildAdminActivityReport(db, query));
+    } catch (error: any) {
+      if (error instanceof AdminActivityReportInputError) {
+        return res.status(400).json({ message: error.message });
+      }
+      if (error instanceof AdminActivityReportExportLimitError) {
+        return res.status(413).json({ message: error.message });
+      }
+      console.error(`Error generating admin ${kind} activity report:`, error);
+      return res.status(500).json({ message: "Failed to generate activity report" });
+    }
+  };
+
+  // These reports aggregate the canonical washout activity lifecycle server-side.
+  // They intentionally do not join photos or payments, so a photo count or financial
+  // record can never create duplicate operational activity rows.
+  app.get("/api/admin/activity-reports/drivers", isAuthenticated, serveAdminActivityReport("driver"));
+  app.get("/api/admin/activity-reports/facilities", isAuthenticated, serveAdminActivityReport("facility"));
 
   app.get("/api/reports/owner", isAuthenticated, async (req: any, res) => {
     try {

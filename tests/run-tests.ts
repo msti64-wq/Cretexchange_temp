@@ -78,6 +78,7 @@ process.env.PUBLIC_OBJECT_SEARCH_PATHS = "public";
 const restoreDeterministicNetworkGuard = installDeterministicNetworkGuard();
 
 await import("./reports.test.ts");
+await import("./admin-activity-reporting.test.ts");
 await import("./owner-access.test.ts");
 
 test("billing policy resolver treats blank and null as defaults and zero as an override", () => {
