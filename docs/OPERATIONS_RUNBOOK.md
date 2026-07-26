@@ -64,6 +64,10 @@ Required / commonly used env vars:
 
 Photo uploads use the configured S3-compatible bucket; they do not use a Railway Volume. Every deployed environment that enables photo upload MUST set `PRIVATE_OBJECT_DIR` to `/<S3_BUCKET>/private` (for example, when `S3_BUCKET` is `example-bucket`, use `/example-bucket/private`). The application stores uploaded photos beneath `private/photos/` and creates object keys during upload; no mounted directory, startup directory creation, or filesystem permission configuration is required. Railway must provide the variable to the application service.
 
+### Controlled Production Migration Procedure
+
+Migrations `0036` and `0037` must run only as a Railway Production pre-deploy step through `npm run db:migrate:production:controlled -- apply --from 0036 --to 0037 --confirm-production --deployed-sha "$RAILWAY_GIT_COMMIT_SHA"`. The runner is separate from the staging-only runner and fails closed unless `MIGRATION_TARGET=production`, `RAILWAY_ENVIRONMENT_NAME=production`, and `PRODUCTION_MIGRATION_AUTHORIZATION` all match the immutable `RAILWAY_GIT_COMMIT_SHA`. It validates committed SQL SHA-256 values, holds a PostgreSQL advisory lock, determines pending versus already-applied migrations from the PostgreSQL catalog, and stops on partial catalog state. Each migration is transactional, additive, and catalog-verified before the deployment may continue. Recovery is by the approved pre-migration Neon snapshot or point-in-time restore; do not rerun a partially applied migration or perform manual SQL repair.
+
 ## Build and Test Commands
 
 - `npm run check`
