@@ -75,6 +75,16 @@ interface DriverDebitCardStatus {
   activatedAt?: string | Date | null;
 }
 
+interface DriverLotteryStatus {
+  enabled: boolean;
+  driverEntryCount?: number | null;
+  currentDrawing?: {
+    monthName?: string | null;
+    lotteryYear?: number | null;
+  } | null;
+  currentDrawingMessage?: string | null;
+}
+
 interface UnreadNotification {
   id: string;
   title: string;
@@ -241,14 +251,30 @@ export default function DriverDashboard() {
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isSupportDialogOpen, setIsSupportDialogOpen] = useState(false);
   const [showLotteryEntries, setShowLotteryEntries] = useState(false);
+  const [deferredDashboardWidgetsEnabled, setDeferredDashboardWidgetsEnabled] = useState(false);
   const [statsRange, setStatsRange] = useState<DriverDashboardStatsRange>("today");
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const { data: dashboardData, isLoading, refetch } = useQuery({
-    queryKey: [`/api/drivers/dashboard?statsRange=${statsRange}`],
+    queryKey: [`/api/drivers/dashboard?statsRange=${statsRange}&includeSecondary=false`],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
+
+  // Let the operational dashboard commit before beginning secondary financial,
+  // rewards, lifecycle, and notification work. Two animation frames ensure the
+  // first usable view has an opportunity to paint on mobile browsers.
+  useEffect(() => {
+    if (!dashboardData || deferredDashboardWidgetsEnabled) return;
+    let secondFrame: number | undefined;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => setDeferredDashboardWidgetsEnabled(true));
+    });
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== undefined) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [dashboardData, deferredDashboardWidgetsEnabled]);
 
   const { data: authUser, isLoading: authUserLoading } = useQuery<DriverAuthUser>({
     queryKey: ['/api/auth/user'],
@@ -263,11 +289,13 @@ export default function DriverDashboard() {
   const { data: stripeAccountStatus, isLoading: stripeAccountStatusLoading, isError: stripeAccountStatusError } = useQuery<DriverStripeAccountStatus>({
     queryKey: ['/api/drivers/stripe-status'],
     refetchInterval: 60000,
+    enabled: deferredDashboardWidgetsEnabled,
   });
 
   const { data: debitCardStatus, isLoading: debitCardStatusLoading, isError: debitCardStatusError } = useQuery<DriverDebitCardStatus>({
     queryKey: ['/api/drivers/debit-card-status'],
     refetchInterval: 60000,
+    enabled: deferredDashboardWidgetsEnabled,
   });
 
   const { data: unreadNotificationsData, isLoading: unreadNotificationsLoading } = useQuery<{
@@ -276,6 +304,7 @@ export default function DriverDashboard() {
   }>({
     queryKey: ['/api/notifications/unread'],
     refetchInterval: 30000,
+    enabled: deferredDashboardWidgetsEnabled,
   });
 
   const { data: driverLocations, isLoading: driverLocationsLoading } = useQuery<any[]>({
@@ -287,17 +316,27 @@ export default function DriverDashboard() {
     refetchInterval: 300000,
   });
 
-  const driverLifecycle = useDriverPaymentLifecycle();
+  const driverLifecycle = useDriverPaymentLifecycle({ enabled: deferredDashboardWidgetsEnabled });
 
   const { data: walletBalance, isLoading: walletBalanceLoading, isError: walletBalanceError, refetch: refetchWalletBalance } = useQuery<DriverWalletBalance>({
     queryKey: ['/api/wallet/balance'],
     refetchInterval: 30000,
+    enabled: deferredDashboardWidgetsEnabled,
+  });
+
+  const { data: lotteryStatus, isLoading: lotteryStatusLoading } = useQuery<DriverLotteryStatus>({
+    queryKey: ['/api/lottery/status'],
+    queryFn: async () => (await apiRequest("GET", "/api/lottery/status")).json(),
+    refetchInterval: 60000,
+    enabled: deferredDashboardWidgetsEnabled,
   });
 
   const refreshDashboardData = () => {
     void refetch();
-    driverLifecycle.refresh();
-    void refetchWalletBalance();
+    if (deferredDashboardWidgetsEnabled) {
+      driverLifecycle.refresh();
+      void refetchWalletBalance();
+    }
   };
 
   const { data: lotteryEntries, isLoading: lotteryEntriesLoading, error: lotteryEntriesError } = useQuery<any[]>({
@@ -306,7 +345,7 @@ export default function DriverDashboard() {
       const response = await apiRequest("GET", "/api/drivers/lottery-entries");
       return response.json();
     },
-    enabled: showLotteryEntries,
+    enabled: deferredDashboardWidgetsEnabled && showLotteryEntries,
   });
 
   useEffect(() => {
@@ -392,9 +431,8 @@ export default function DriverDashboard() {
   // Extract data with proper null checks and type annotation
   const dailyStats = (dashboardData as any)?.dailyStats || null;
   const recentActivities = (dashboardData as any)?.recentActivities || null;
-  const lotteryStatus = (dashboardData as any)?.lotteryStatus || null;
-  const lotteryEntryCount = lotteryStatus?.driverEntryCount ?? ((dashboardData as any)?.lotteryEntryCount || 0);
-  const lotteryActive = lotteryStatus?.enabled ?? ((dashboardData as any)?.lotteryActive ?? true);
+  const lotteryEntryCount = lotteryStatus?.driverEntryCount ?? 0;
+  const lotteryActive = lotteryStatus?.enabled ?? false;
   const currentDrawing = lotteryStatus?.currentDrawing || null;
   const currentDrawingLabel = currentDrawing?.monthName
     ? `${currentDrawing.monthName} ${currentDrawing.lotteryYear}`
@@ -427,6 +465,11 @@ export default function DriverDashboard() {
   const unreadNotificationCount = unreadNotificationsData?.count ?? unreadNotifications.length;
   const topUnreadNotifications = unreadNotifications.slice(0, 3);
   const currentDrawingText = currentDrawingLabel || "Awaiting drawing";
+  const optionalFinancialLoading = !deferredDashboardWidgetsEnabled || stripeAccountStatusLoading;
+  const optionalDebitCardLoading = !deferredDashboardWidgetsEnabled || debitCardStatusLoading;
+  const optionalNotificationsLoading = !deferredDashboardWidgetsEnabled || unreadNotificationsLoading;
+  const optionalWalletLoading = !deferredDashboardWidgetsEnabled || walletBalanceLoading;
+  const optionalLotteryLoading = !deferredDashboardWidgetsEnabled || lotteryStatusLoading;
 
   const rankedDriverLocations: RankedDashboardLocation[] = Array.isArray(driverLocations)
     ? driverLocations
@@ -599,7 +642,7 @@ export default function DriverDashboard() {
                   </div>
                 </div>
 
-              {lotteryActive && (
+              {!optionalLotteryLoading && lotteryActive && (
                 <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card px-3 py-2">
                   <div className="min-w-0">
                     <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.16em]">
@@ -642,7 +685,7 @@ export default function DriverDashboard() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-4">
-            <DriverLifecycleSummary lifecycle={driverLifecycle.lifecycle} isLoading={driverLifecycle.isLoading} paymentError={driverLifecycle.paymentError} onViewActivity={() => setLocation('/activity')} variant="dashboard" />
+            <DriverLifecycleSummary lifecycle={driverLifecycle.lifecycle} isLoading={!deferredDashboardWidgetsEnabled || driverLifecycle.isLoading} paymentError={driverLifecycle.paymentError} onViewActivity={() => setLocation('/activity')} variant="dashboard" />
             <DSCard padding="md" elevated className="min-h-[260px] border-border/70">
               <div className="flex h-full flex-col gap-4">
                 <div className="flex items-start justify-between gap-3">
@@ -692,7 +735,7 @@ export default function DriverDashboard() {
                 <div className="space-y-2 text-sm" data-testid="driver-optional-financial-status">
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
                       <span className="text-muted-foreground">Stripe payouts (optional)</span>
-                      {stripeAccountStatusLoading ? <Skeleton className="h-5 w-24 bg-muted" /> : (
+                      {optionalFinancialLoading ? <Skeleton className="h-5 w-24 bg-muted" /> : (
                         <DSStatusChip tone={stripeStatusUnavailable ? "neutral" : stripeReady ? "success" : "warning"} size="sm">
                           {getDriverPayoutStatusLabel(stripePresentationStatus)}
                         </DSStatusChip>
@@ -700,7 +743,7 @@ export default function DriverDashboard() {
                     </div>
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
                       <span className="text-muted-foreground">Debit card</span>
-                      {debitCardStatusLoading ? <Skeleton className="h-5 w-24 bg-muted" /> : (
+                      {optionalDebitCardLoading ? <Skeleton className="h-5 w-24 bg-muted" /> : (
                         <DSStatusChip tone={debitCardStatusError ? "neutral" : debitCardState === "active" ? "success" : "neutral"} size="sm">
                           {debitCardStatusError ? t("driver.dashboard.optionalFinancialStatusUnavailable") : debitCardState}
                         </DSStatusChip>
@@ -743,11 +786,11 @@ export default function DriverDashboard() {
                     </h3>
                   </div>
                   <DSStatusChip tone={unreadNotificationCount > 0 ? "warning" : "neutral"} size="sm">
-                    {unreadNotificationsLoading ? "…" : unreadNotificationCount}
+                    {optionalNotificationsLoading ? "…" : unreadNotificationCount}
                   </DSStatusChip>
                 </div>
 
-                {unreadNotificationsLoading ? (
+                {optionalNotificationsLoading ? (
                   <div className="space-y-3">
                     <Skeleton className="h-16 rounded-2xl bg-muted" />
                     <Skeleton className="h-16 rounded-2xl bg-muted" />
@@ -809,7 +852,7 @@ export default function DriverDashboard() {
                   <Wallet className="h-5 w-5 shrink-0 text-primary" />
                 </div>
 
-                {walletBalanceLoading ? (
+                {optionalWalletLoading ? (
                   <div className="space-y-3">
                     <Skeleton className="h-8 w-32 bg-muted" />
                     <Skeleton className="h-4 w-40 bg-muted" />
@@ -854,11 +897,17 @@ export default function DriverDashboard() {
                       Monthly ticket progress
                     </h3>
                   </div>
-                  <DSStatusChip tone={lotteryActive ? "success" : "warning"} size="sm">
-                    {lotteryActive ? "Active" : "Paused"}
+                  <DSStatusChip tone={optionalLotteryLoading ? "neutral" : lotteryActive ? "success" : "warning"} size="sm">
+                    {optionalLotteryLoading ? "…" : lotteryActive ? "Active" : "Paused"}
                   </DSStatusChip>
                 </div>
 
+                {optionalLotteryLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-20 rounded-2xl bg-muted" />
+                    <Skeleton className="h-20 rounded-2xl bg-muted" />
+                  </div>
+                ) : (
                 <div className="space-y-2 text-sm">
                   <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -877,6 +926,7 @@ export default function DriverDashboard() {
                     </p>
                   </div>
                 </div>
+                )}
 
                 <div className="mt-auto flex flex-wrap gap-2">
                   <Button

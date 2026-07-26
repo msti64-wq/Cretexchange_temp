@@ -4763,6 +4763,66 @@ test("driver dashboard statsRange=month returns current month totals and range",
   });
 });
 
+test("driver dashboard critical-path response skips deferred financial and rewards reads and starts operational reads together", async () => {
+  const { app, gets } = createRouteRegistry();
+  const started = new Set<string>();
+  let releaseReads: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => {
+    releaseReads = resolve;
+  });
+
+  await withPatchedStorage(
+    {
+      getDriver: async () => ({ id: "driver_row_1", userId: "driver_user_1", truckNumber: "Truck 1" }),
+      getActivitiesByDriver: async () => {
+        started.add("activities");
+        await gate;
+        return [];
+      },
+      getDriverStats: async () => {
+        started.add("stats");
+        await gate;
+        return { totalEarnings: 0, totalWashouts: 0, avgPerWashout: 0, paidTransferCents: 0, tipTotalCents: 0 };
+      },
+      getRecentActivitiesByDriver: async () => {
+        started.add("recent");
+        await gate;
+        return [];
+      },
+      getUser: async () => {
+        started.add("user");
+        await gate;
+        return { id: "driver_user_1", username: "driver1", firstName: "Driver", lastName: "One" };
+      },
+      getPaymentsAwaitingDriverStripeByDriver: async () => {
+        throw new Error("secondary financial read must not run on the critical path");
+      },
+      getFeatureFlag: async () => {
+        throw new Error("lottery status must not run on the critical path");
+      },
+    },
+    async () => {
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(app as never);
+      const route = gets.get("/api/drivers/dashboard");
+      assert.equal(typeof route, "function");
+
+      const res = createResponse();
+      const request = route!({ user: { id: "driver_user_1" }, query: { includeSecondary: "false" } }, res);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      try {
+        assert.deepEqual(new Set(started), new Set(["activities", "stats", "recent", "user"]));
+      } finally {
+        releaseReads?.();
+      }
+      await request;
+      assert.equal(res.statusCode, 200);
+      assert.equal((res.body as { awaitingDriverStripeCount?: number }).awaitingDriverStripeCount, 0);
+      assert.equal((res.body as { lotteryStatus?: unknown }).lotteryStatus, null);
+    },
+  );
+});
+
 test("driver locations endpoint returns active visible owner locations", async () => {
   const { app, gets } = createRouteRegistry();
 

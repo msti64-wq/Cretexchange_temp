@@ -303,8 +303,8 @@ test("first-activity views provide activity-bound confirmation and GPS retry rec
   const operationalReadinessSource = dashboardSource.slice(operationalReadinessStart, optionalFinancialStatusStart);
   assert.match(operationalReadinessSource, /authUserLoading \|\| termsStatusLoading/);
   assert.doesNotMatch(operationalReadinessSource, /stripeAccountStatusLoading|debitCardStatusLoading|walletBalanceError/);
-  assert.match(dashboardSource.slice(optionalFinancialStatusStart), /stripeAccountStatusLoading/);
-  assert.match(dashboardSource.slice(optionalFinancialStatusStart), /debitCardStatusLoading/);
+  assert.match(dashboardSource.slice(optionalFinancialStatusStart), /optionalFinancialLoading/);
+  assert.match(dashboardSource.slice(optionalFinancialStatusStart), /optionalDebitCardLoading/);
   assert.match(driverProfileSource, /resolveDriverAccountReadiness/);
   assert.match(driverProfileSource, /driverAccountReadiness\.ready/);
   assert.match(driverProfileSource, /termsStatus\?\.hasAgreed \|\| user\?\.roleData\?\.hasAgreedToTerms/);

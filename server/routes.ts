@@ -435,14 +435,14 @@ function buildLotteryWinnerGroupMessage(
 }
 
 async function buildLotteryStatusSnapshot(driverId?: string): Promise<LotteryStatusSnapshot> {
-  const resolution = await resolveLotteryEnabled(storage);
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
-  const currentDrawing = await storage.getLotteryDrawingByMonthYear(currentMonth, currentYear);
-  const driverEntryCount = driverId
-    ? await storage.getDriverLotteryEntryCount(driverId)
-    : undefined;
+  const [resolution, currentDrawing, driverEntryCount] = await Promise.all([
+    resolveLotteryEnabled(storage),
+    storage.getLotteryDrawingByMonthYear(currentMonth, currentYear),
+    driverId ? storage.getDriverLotteryEntryCount(driverId) : Promise.resolve(undefined),
+  ]);
 
   return {
     enabled: resolution.enabled,
@@ -3843,26 +3843,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const todayRange = buildDriverDashboardStatsRange("today");
       const selectedRange = buildDriverDashboardStatsRange(statsRange);
 
-      // Get today's activities
-      const todayActivities = await storage.getActivitiesByDriver(
+      // The operational dashboard depends on these reads, but they do not depend
+      // on each other once the driver has been resolved. Start them together so a
+      // mobile driver does not wait for a serial database waterfall.
+      const todayActivitiesPromise = storage.getActivitiesByDriver(
         driver.id,
         todayRange.startDate,
         todayRange.endDate,
-      ) as Array<WashoutActivity & { washout_activities?: { amount?: string | number | null } }>;
-      const selectedActivities = statsRange === "today"
-        ? todayActivities
-        : await storage.getActivitiesByDriver(
+      ) as Promise<Array<WashoutActivity & { washout_activities?: { amount?: string | number | null } }>>;
+      const selectedActivitiesPromise = statsRange === "today"
+        ? todayActivitiesPromise
+        : storage.getActivitiesByDriver(
             driver.id,
             selectedRange.startDate,
             selectedRange.endDate,
-          ) as Array<WashoutActivity & { washout_activities?: { amount?: string | number | null } }>;
-      
-      // Get 7-day stats
-      const weekStats = await storage.getDriverStats(driver.id, 7);
-      
-      // Get recent activities
-      const recentActivities = await storage.getRecentActivitiesByDriver(driver.id, 5);
-      const awaitingDriverStripePayments = await storage.getPaymentsAwaitingDriverStripeByDriver(driver.id);
+          ) as Promise<Array<WashoutActivity & { washout_activities?: { amount?: string | number | null } }>>;
+      const [todayActivities, selectedActivities, weekStats, recentActivities, user] = await Promise.all([
+        todayActivitiesPromise,
+        selectedActivitiesPromise,
+        storage.getDriverStats(driver.id, 7),
+        storage.getRecentActivitiesByDriver(driver.id, 5),
+        storage.getUser(userId),
+      ]);
 
       const dailyEarnings = todayActivities.reduce((sum, activity) => {
         // Handle both possible data structures from Drizzle joins
@@ -3870,20 +3872,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return sum + amount;
       }, 0);
 
-      // Get user data for profile completion checks
-      const user = await storage.getUser(userId);
-
-      // Get driver lottery entry count and current draw status
+      // Preserve the established full response for callers that have not opted
+      // into the critical-path view. The Driver Dashboard requests false and
+      // loads these financial and rewards details after its operational view is
+      // painted.
+      const includeSecondary = req.query?.includeSecondary !== "false";
       let lotteryActive = true;
       let lotteryEntryCount = 0;
       let lotteryStatus: LotteryStatusSnapshot | null = null;
-      try {
-        lotteryStatus = await buildLotteryStatusSnapshot(driver.id);
-        lotteryActive = lotteryStatus.enabled;
-        lotteryEntryCount = lotteryStatus.driverEntryCount ?? 0;
-      } catch (e) {
-        console.log('Lottery status unavailable:', e);
-        lotteryActive = true;
+      let awaitingDriverStripePayments: Awaited<ReturnType<typeof storage.getPaymentsAwaitingDriverStripeByDriver>> = [];
+      if (includeSecondary) {
+        const [awaitingPayments, status] = await Promise.all([
+          storage.getPaymentsAwaitingDriverStripeByDriver(driver.id),
+          buildLotteryStatusSnapshot(driver.id).catch((error) => {
+            console.log('Lottery status unavailable:', error);
+            return null;
+          }),
+        ]);
+        awaitingDriverStripePayments = awaitingPayments;
+        lotteryStatus = status;
+        lotteryActive = lotteryStatus?.enabled ?? true;
+        lotteryEntryCount = lotteryStatus?.driverEntryCount ?? 0;
       }
       
       // Combine user data with driver-specific data for profile completion checks

@@ -5,14 +5,16 @@ import {
   type DriverLifecyclePayment,
 } from "@/lib/driverPaymentLifecycle";
 
-export function useDriverPaymentLifecycle() {
+export function useDriverPaymentLifecycle({ enabled = true }: { enabled?: boolean } = {}) {
   const activities = useQuery<DriverLifecycleActivity[]>({
     queryKey: ["/api/drivers/activities"],
     refetchInterval: 30000,
+    enabled,
   });
   const payments = useQuery<DriverLifecyclePayment[]>({
     queryKey: ["/api/drivers/payments"],
     refetchInterval: 30000,
+    enabled,
   });
 
   return {
@@ -21,6 +23,7 @@ export function useDriverPaymentLifecycle() {
     activityError: activities.isError,
     paymentError: payments.isError,
     refresh: () => {
+      if (!enabled) return;
       void activities.refetch();
       void payments.refetch();
     },
