@@ -1,0 +1,12 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "environments": {
+    "production": {
+      "deploy": {
+        "preDeployCommand": [
+          "npm run db:migrate:production:controlled -- apply --from 0036 --to 0037 --confirm-production --deployed-sha $RAILWAY_GIT_COMMIT_SHA"
+        ]
+      }
+    }
+  }
+}
