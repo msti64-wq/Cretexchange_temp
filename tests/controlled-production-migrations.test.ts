@@ -31,4 +31,5 @@ test("controlled production migration runner allowlists and catalog-verifies mig
   assert.match(script, /platform_analytics_events_event_type_valid/);
   assert.match(script, /platform_analytics_events_source_event_key_unique/);
   assert.match(script, /contype='f'/);
+  assert.match(script, /to_regclass\(\$1\)/);
 });

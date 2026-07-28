@@ -52,7 +52,10 @@ async function migrationObjectCount(client: pg.Client, migration: Migration): Pr
     const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name=$2", ["public", "platform_analytics_events"]);
     const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{platform_analytics_events_type_occurred_idx,platform_analytics_events_activity_occurred_idx,platform_analytics_events_driver_occurred_idx,platform_analytics_events_location_occurred_idx}"]);
     const constraints = await count(client, "SELECT count(*)::int AS value FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname=$1 AND t.relname=$2 AND c.conname = ANY($3::text[])", ["public", "platform_analytics_events", "{platform_analytics_events_event_type_valid,platform_analytics_events_source_record_type_valid,platform_analytics_events_source_event_key_unique,platform_analytics_events_version_positive}"]);
-    const foreignKeys = await count(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid=$1::regclass AND contype='f'", ["platform_analytics_events"]);
+    // to_regclass returns NULL when this new table has not yet been created;
+    // an explicit ::regclass cast would throw before the runner can classify
+    // the catalog state as pending and apply the governed migration.
+    const foreignKeys = await count(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid=to_regclass($1) AND contype='f'", ["public.platform_analytics_events"]);
     return tables + indexes + constraints + foreignKeys;
   }
   const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name=$2", ["public", "washout_photo_review_events"]);
