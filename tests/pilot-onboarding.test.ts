@@ -46,7 +46,7 @@ test("photo upload recovery keeps partial and failed evidence ineligible until e
 
 test("driver account readiness identifies the next required pilot onboarding step without financial prerequisites", () => {
   const incompleteProfile = resolveDriverAccountReadiness({
-    user: { firstName: "Ava", lastName: "Driver", roleData: { employerName: "Crete Co", truckNumber: "12" } },
+    user: { firstName: "Ava", lastName: "Driver", email: "ava@example.com", roleData: { employerName: "Crete Co", truckNumber: "12" } },
     termsAccepted: false,
   });
   assert.deepEqual(incompleteProfile, {
@@ -58,7 +58,7 @@ test("driver account readiness identifies the next required pilot onboarding ste
 
   const missingTerms = resolveDriverAccountReadiness({
     user: {
-      firstName: "Ava", lastName: "Driver", phone: "555-0100", street: "1 Main", city: "Austin", state: "TX", zip: "78701",
+      firstName: "Ava", lastName: "Driver", email: "ava@example.com", phone: "555-0100", street: "1 Main", city: "Austin", state: "TX", zip: "78701",
       roleData: { employerName: "Crete Co", truckNumber: "12" },
     },
     termsAccepted: false,
@@ -68,7 +68,7 @@ test("driver account readiness identifies the next required pilot onboarding ste
 
   const ready = resolveDriverAccountReadiness({
     user: {
-      firstName: "Ava", lastName: "Driver", phone: "555-0100", street: "1 Main", city: "Austin", state: "TX", zip: "78701",
+      firstName: "Ava", lastName: "Driver", email: "ava@example.com", phone: "555-0100", street: "1 Main", city: "Austin", state: "TX", zip: "78701",
       roleData: { employerName: "Crete Co", truckNumber: "12" },
     },
     termsAccepted: true,
@@ -78,7 +78,7 @@ test("driver account readiness identifies the next required pilot onboarding ste
 
   for (const missingName of ["firstName", "lastName"] as const) {
     const user = {
-      firstName: "Ava", lastName: "Driver", phone: "555-0100", street: "1 Main", city: "Austin", state: "TX", zip: "78701",
+      firstName: "Ava", lastName: "Driver", email: "ava@example.com", phone: "555-0100", street: "1 Main", city: "Austin", state: "TX", zip: "78701",
       roleData: { employerName: "Crete Co", truckNumber: "12" },
     };
     user[missingName] = "";

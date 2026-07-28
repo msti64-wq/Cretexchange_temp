@@ -1,4 +1,5 @@
 import { isOwnerProfileComplete } from "@shared/ownerLocationAccess";
+import { resolveDriverProfileReadiness } from "@shared/driverOperationalReadiness";
 
 export type GpsPreflightStatus = "required" | "checking" | "retrying" | "ready" | "permission_denied" | "unavailable";
 
@@ -98,6 +99,7 @@ export interface DriverAccountReadinessInput {
   user?: {
     firstName?: string | null;
     lastName?: string | null;
+    email?: string | null;
     phone?: string | null;
     street?: string | null;
     city?: string | null;
@@ -113,22 +115,15 @@ export interface DriverAccountReadinessInput {
 
 export type DriverAccountReadinessNextStep = "complete_profile" | "accept_terms" | null;
 
-function hasRequiredValue(value: string | null | undefined) {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
 export function resolveDriverAccountReadiness({ user, termsAccepted }: DriverAccountReadinessInput) {
-  const profileComplete = Boolean(
-    hasRequiredValue(user?.firstName)
-    && hasRequiredValue(user?.lastName)
-    && hasRequiredValue(user?.phone)
-    && hasRequiredValue(user?.street)
-    && hasRequiredValue(user?.city)
-    && hasRequiredValue(user?.state)
-    && hasRequiredValue(user?.zip)
-    && hasRequiredValue(user?.roleData?.employerName)
-    && hasRequiredValue(user?.roleData?.truckNumber),
-  );
+  const profileReadiness = resolveDriverProfileReadiness({
+    user,
+    profile: user?.roleData ? {
+      employerName: user.roleData.employerName,
+      truckNumber: user.roleData.truckNumber,
+    } : null,
+  });
+  const profileComplete = profileReadiness.complete;
   const acceptedTerms = termsAccepted === true;
 
   return {

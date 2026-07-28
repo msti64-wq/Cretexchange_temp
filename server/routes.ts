@@ -54,6 +54,7 @@ import {
   requireCurrentTerms,
   type UserTermsState,
 } from "./terms";
+import { driverOperationalReadinessMiddleware, driverRoleMiddleware } from "./driverOperationalReadiness";
 import { normalizeLegalLanguage } from "@shared/legalDocuments";
 import {
   resolveOwnerBillingPolicy,
@@ -3854,7 +3855,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Driver endpoints
-  app.get('/api/drivers/dashboard', isAuthenticated, async (req: any, res) => {
+  app.get('/api/drivers/dashboard', isAuthenticated, driverRoleMiddleware, async (req: any, res) => {
     try {
       setBillingNoCacheHeaders(res);
       const userId = req.user.id;
@@ -4103,7 +4104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/drivers/location', isAuthenticated, async (req: any, res) => {
+  app.post('/api/drivers/location', isAuthenticated, driverOperationalReadinessMiddleware, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const driver = await storage.getDriver(userId);
@@ -4122,7 +4123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/drivers/checkin', isAuthenticated, async (req: any, res) => {
+  app.post('/api/drivers/checkin', isAuthenticated, driverOperationalReadinessMiddleware, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const driver = await storage.getDriver(userId);
@@ -4209,7 +4210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/drivers/activities', isAuthenticated, async (req: any, res) => {
+  app.get('/api/drivers/activities', isAuthenticated, driverRoleMiddleware, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const driver = await storage.getDriver(userId);
@@ -4253,7 +4254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/drivers/profile', isAuthenticated, async (req: any, res) => {
+  app.put('/api/drivers/profile', isAuthenticated, driverRoleMiddleware, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const body = req.body || {};
@@ -7036,7 +7037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Driver terms agreement endpoints
   // Check driver terms agreement status
-  app.get('/api/drivers/terms-status', isAuthenticated, async (req: any, res) => {
+  app.get('/api/drivers/terms-status', isAuthenticated, driverRoleMiddleware, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const language = normalizeLegalLanguage(req.query?.language);
@@ -16711,7 +16712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create activity with photos (transactional)
-  app.post('/api/activities/create-with-photos', isAuthenticated, async (req: any, res) => {
+  app.post('/api/activities/create-with-photos', isAuthenticated, driverOperationalReadinessMiddleware, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const { activityData, photoData } = req.body;
@@ -18489,7 +18490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a rubble visit
-  app.post('/api/rubble/visits', isAuthenticated, async (req: any, res) => {
+  app.post('/api/rubble/visits', isAuthenticated, driverOperationalReadinessMiddleware, async (req: any, res) => {
     try {
       const { locationId, materialSlug, materialCustomLabel, hasRebar, hasTrash, hasWood } = req.body;
 
@@ -18555,7 +18556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Arrive at rubble location
-  app.post('/api/rubble/visits/:visitId/arrive', isAuthenticated, async (req: any, res) => {
+  app.post('/api/rubble/visits/:visitId/arrive', isAuthenticated, driverOperationalReadinessMiddleware, async (req: any, res) => {
     try {
       const { visitId } = req.params;
       const { latitude, longitude } = req.body;
@@ -18621,7 +18622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Complete rubble visit with photos
-  app.post('/api/rubble/visits/:visitId/complete', isAuthenticated, async (req: any, res) => {
+  app.post('/api/rubble/visits/:visitId/complete', isAuthenticated, driverOperationalReadinessMiddleware, async (req: any, res) => {
     try {
       const { visitId } = req.params;
       const { beforePhotoUrl, afterPhotoUrl, latitude, longitude } = req.body;
