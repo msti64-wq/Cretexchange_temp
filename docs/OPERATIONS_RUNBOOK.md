@@ -66,7 +66,11 @@ Photo uploads use the configured S3-compatible bucket; they do not use a Railway
 
 ### Controlled Production Migration Procedure
 
-Migrations `0036` and `0037` must run only as a Railway Production pre-deploy step through `npm run db:migrate:production:controlled -- apply --from 0036 --to 0037 --confirm-production --deployed-sha "$RAILWAY_GIT_COMMIT_SHA"`. The runner is separate from the staging-only runner and fails closed unless `MIGRATION_TARGET=production`, `RAILWAY_ENVIRONMENT_NAME=production`, and `PRODUCTION_MIGRATION_AUTHORIZATION` all match the immutable `RAILWAY_GIT_COMMIT_SHA`. It validates committed SQL SHA-256 values, holds a PostgreSQL advisory lock, determines pending versus already-applied migrations from the PostgreSQL catalog, and stops on partial catalog state. Each migration is transactional, additive, and catalog-verified before the deployment may continue. Recovery is by the approved pre-migration Neon snapshot or point-in-time restore; do not rerun a partially applied migration or perform manual SQL repair.
+Migrations `0036` through `0038` were completed and catalog-verified as a governed production release operation. They are not a recurring Railway pre-deploy requirement for ordinary application or documentation deployments.
+
+The production runner remains separate from the staging-only runner and fails closed unless `MIGRATION_TARGET=production`, `RAILWAY_ENVIRONMENT_NAME=production`, and `PRODUCTION_MIGRATION_AUTHORIZATION` all match the immutable `RAILWAY_GIT_COMMIT_SHA`. It validates committed SQL SHA-256 values, holds a PostgreSQL advisory lock, determines pending versus already-applied migrations from the PostgreSQL catalog, and stops on partial catalog state. Each migration is transactional, additive, and catalog-verified before the deployment may continue.
+
+Any future production migration requires a separately authorized, release-specific controlled invocation. Do not reuse the completed `0036` through `0038` operation as an ordinary deployment hook. Record the approval, selected migration allowlist, checksum verification, execution result, catalog verification, and recovery posture in the production release record. Recovery is by the approved pre-migration Neon snapshot or point-in-time restore; do not rerun a partially applied migration or perform manual SQL repair.
 
 ## Build and Test Commands
 

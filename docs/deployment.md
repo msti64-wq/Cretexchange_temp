@@ -9,9 +9,9 @@
 
 ## Release Checklist
 
-1. Commit the change to `railway-repo/main`.
-2. Push to `msti64-wq/Cretexchange_temp` `main`.
-3. Redeploy Railway.
+1. Commit the reviewed change on the canonical `main` branch.
+2. Verify `origin` resolves to `msti64-wq/Cretexchange_temp`, then push `origin/main`.
+3. Confirm Railway deploys from that repository and branch.
 4. Verify startup logs show the latest `gitCommitShort`.
 5. Do not test production behavior until the runtime commit hash matches the commit you just shipped.
 
