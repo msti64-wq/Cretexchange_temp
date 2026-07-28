@@ -12,9 +12,11 @@ import { useLocation, Link } from "wouter";
 import { ArrowLeft, Building2, User, Truck } from "lucide-react";
 import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { useLanguage } from "@/lib/i18n";
 
 export default function Register({ preselectedRole }: { preselectedRole?: 'driver' | 'owner' }) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [registeredUserType, setRegisteredUserType] = useState<'driver' | 'owner' | null>(null);
@@ -50,7 +52,7 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
   const registerMutation = useMutation({
     mutationFn: async (data: any) => {
       if (data.password !== data.confirmPassword) {
-        throw new Error("Passwords do not match");
+        throw new Error(t("auth.register.passwordMismatch"));
       }
       
       const { confirmPassword, ...registerData } = data;
@@ -62,8 +64,8 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
       localStorage.setItem('authToken', data.token);
       
       toast({
-        title: "Registration Successful",
-        description: "Your account has been created successfully!",
+        title: t("auth.register.successTitle"),
+        description: t("auth.register.successDescription"),
       });
       
       // Invalidate auth query to refetch user data
@@ -85,8 +87,8 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
     },
     onError: (error: any) => {
       toast({
-        title: "Registration Failed",
-        description: error.message,
+        title: t("auth.register.failedTitle"),
+        description: t("auth.register.failedDescription"),
         variant: "destructive",
       });
     },
@@ -98,8 +100,8 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
     // Validate that role is selected
     if (!formData.role) {
       toast({
-        title: "Please select a role",
-        description: "You must choose whether you're a driver or location owner.",
+        title: t("auth.register.roleRequiredTitle"),
+        description: t("auth.register.roleRequiredDescription"),
         variant: "destructive",
       });
       return;
@@ -116,7 +118,7 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
           <Link href="/">
             <Button variant="ghost" size="sm" className="p-2" data-testid="button-back">
               <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Home
+              {t("auth.backHome")}
             </Button>
           </Link>
           <BrandHeaderLogo alt="CreteXchange" />
@@ -127,12 +129,12 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
       <main className="container mx-auto px-6 py-12 flex items-center justify-center">
         <Card className="w-full max-w-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Create Account</CardTitle>
+            <CardTitle className="text-2xl">{t("auth.register.title")}</CardTitle>
             <p className="text-muted-foreground">
               {formData.role ? (
-                `Complete your registration as a ${formData.role === 'driver' ? 'Concrete Truck Driver' : 'Location Owner'}.`
+                t("auth.register.roleIntroduction", { role: formData.role === "driver" ? t("auth.register.driver") : t("auth.register.owner") })
               ) : (
-                'Join CreteXchange to get started as a driver or location owner.'
+                t("auth.register.introduction")
               )}
             </p>
           </CardHeader>
@@ -140,11 +142,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">{t("auth.register.firstName")}</Label>
                   <Input
                     id="firstName"
                     type="text"
-                    placeholder="First name"
+                    placeholder={t("auth.register.firstNamePlaceholder")}
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                     required
@@ -153,11 +155,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">{t("auth.register.lastName")}</Label>
                   <Input
                     id="lastName"
                     type="text"
-                    placeholder="Last name"
+                    placeholder={t("auth.register.lastNamePlaceholder")}
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                     required
@@ -167,11 +169,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">{t("auth.register.username")}</Label>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Choose a username"
+                  placeholder={t("auth.register.usernamePlaceholder")}
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   required
@@ -180,11 +182,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("common.email")}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder={t("auth.register.emailPlaceholder")}
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
@@ -193,11 +195,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">{t("auth.register.phone")}</Label>
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="(555) 123-4567"
+                  placeholder={t("auth.register.phonePlaceholder")}
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   required
@@ -206,11 +208,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="street">Street Address</Label>
+                <Label htmlFor="street">{t("auth.register.street")}</Label>
                 <Input
                   id="street"
                   type="text"
-                  placeholder="123 Main St"
+                  placeholder={t("auth.register.streetPlaceholder")}
                   value={formData.street}
                   onChange={(e) => setFormData({ ...formData, street: e.target.value })}
                   required
@@ -220,11 +222,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
+                  <Label htmlFor="city">{t("common.city")}</Label>
                   <Input
                     id="city"
                     type="text"
-                    placeholder="City"
+                    placeholder={t("auth.register.cityPlaceholder")}
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     required
@@ -233,11 +235,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
+                  <Label htmlFor="state">{t("common.state")}</Label>
                   <Input
                     id="state"
                     type="text"
-                    placeholder="CA"
+                    placeholder={t("auth.register.statePlaceholder")}
                     value={formData.state}
                     onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                     required
@@ -248,11 +250,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="zip">ZIP Code</Label>
+                <Label htmlFor="zip">{t("auth.register.zip")}</Label>
                 <Input
                   id="zip"
                   type="text"
-                  placeholder="12345"
+                  placeholder={t("auth.register.zipPlaceholder")}
                   value={formData.zip}
                   onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
                   required
@@ -263,26 +265,26 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               {/* Only show role selector if role isn't already set */}
               {!formData.role && (
                 <div className="space-y-2">
-                  <Label htmlFor="role">I am a...</Label>
+                  <Label htmlFor="role">{t("auth.register.role")}</Label>
                   <Select 
                     value={formData.role} 
                     onValueChange={(value) => setFormData({ ...formData, role: value })}
                     required
                   >
                     <SelectTrigger data-testid="select-role">
-                      <SelectValue placeholder="Select your role" />
+                      <SelectValue placeholder={t("auth.register.rolePlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="driver">
                         <div className="flex items-center">
                           <Truck className="w-4 h-4 mr-2" />
-                          Concrete Truck Driver
+                          {t("auth.register.driver")}
                         </div>
                       </SelectItem>
                       <SelectItem value="owner">
                         <div className="flex items-center">
                           <Building2 className="w-4 h-4 mr-2" />
-                          Location Owner
+                          {t("auth.register.owner")}
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -297,12 +299,12 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
                     {formData.role === 'driver' ? (
                       <>
                         <Truck className="w-5 h-5 text-primary" />
-                        <span className="font-medium text-primary">Registering as Concrete Truck Driver</span>
+                        <span className="font-medium text-primary">{t("auth.register.registeringAs", { role: t("auth.register.driver") })}</span>
                       </>
                     ) : (
                       <>
                         <Building2 className="w-5 h-5 text-primary" />
-                        <span className="font-medium text-primary">Registering as Location Owner</span>
+                        <span className="font-medium text-primary">{t("auth.register.registeringAs", { role: t("auth.register.owner") })}</span>
                       </>
                     )}
                   </div>
@@ -313,16 +315,16 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
                     className="w-full mt-2 text-xs text-muted-foreground"
                     onClick={() => setFormData({ ...formData, role: '' })}
                   >
-                    Change role
+                    {t("auth.register.changeRole")}
                   </Button>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t("auth.register.password")}</Label>
                 <PasswordInput
                   id="password"
-                  placeholder="Create a password"
+                  placeholder={t("auth.register.passwordPlaceholder")}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
@@ -331,10 +333,10 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">{t("auth.register.confirmPassword")}</Label>
                 <PasswordInput
                   id="confirmPassword"
-                  placeholder="Confirm your password"
+                  placeholder={t("auth.register.confirmPasswordPlaceholder")}
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
@@ -348,14 +350,14 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
                 disabled={registerMutation.isPending}
                 data-testid="button-register"
               >
-                {registerMutation.isPending ? "Creating Account..." : "Create Account"}
+                {registerMutation.isPending ? t("auth.register.creating") : t("auth.register.submit")}
               </Button>
             </form>
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">Already have an account? </span>
+              <span className="text-muted-foreground">{t("auth.register.existing")} </span>
               <Link href="/login" className="text-primary hover:underline" data-testid="link-login">
-                Sign in here
+                {t("auth.register.signInHere")}
               </Link>
             </div>
           </CardContent>

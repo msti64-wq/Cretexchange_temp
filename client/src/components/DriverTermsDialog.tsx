@@ -67,7 +67,7 @@ export function DriverTermsDialog({ open, onOpenChange, onAccepted, readOnly = f
               </span>
             </div>
             <p className="text-xs text-slate-300">
-              {readOnly ? t("legal.readOnlyDescription") : t("legal.driverRequiredDescription")}
+              {readOnly ? t("legal.readOnlyDescription") : t("legal.driverOperationalReadinessDescription")}
             </p>
           </div>
 

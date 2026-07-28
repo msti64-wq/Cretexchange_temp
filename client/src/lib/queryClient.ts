@@ -1,5 +1,55 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export interface SafeApiErrorDetails {
+  status: number;
+  code?: string;
+  reason?: string;
+  readinessReasonCodes?: string[];
+}
+
+export class ApiRequestError extends Error {
+  readonly details: SafeApiErrorDetails;
+
+  constructor(message: string, details: SafeApiErrorDetails) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.details = details;
+  }
+}
+
+function asSafeCode(value: unknown) {
+  return typeof value === "string" && /^[A-Z][A-Z0-9_]{1,96}$/.test(value) ? value : undefined;
+}
+
+function asSafeReason(value: unknown) {
+  return typeof value === "string" && /^[a-z][a-z0-9_]{1,96}$/.test(value) ? value : undefined;
+}
+
+export function getSafeApiErrorDetails(status: number, text: string): SafeApiErrorDetails {
+  const details: SafeApiErrorDetails = { status };
+
+  try {
+    const payload = JSON.parse(text || "{}") as {
+      code?: unknown;
+      reason?: unknown;
+      readiness?: { reasons?: Array<{ code?: unknown }> };
+    };
+    const code = asSafeCode(payload.code);
+    const reason = asSafeReason(payload.reason);
+    const readinessReasonCodes = Array.isArray(payload.readiness?.reasons)
+      ? payload.readiness.reasons.map((item) => asSafeReason(item?.code)).filter((item): item is string => Boolean(item))
+      : [];
+
+    if (code) details.code = code;
+    if (reason) details.reason = reason;
+    if (readinessReasonCodes.length) details.readinessReasonCodes = readinessReasonCodes;
+  } catch {
+    // Non-JSON failures intentionally expose no additional response details.
+  }
+
+  return details;
+}
+
 export function formatApiErrorMessage(status: number, statusText: string, text: string) {
   let message = text || statusText;
   let reason = "";
@@ -52,7 +102,10 @@ export function formatApiErrorMessage(status: number, statusText: string, text: 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    throw new Error(formatApiErrorMessage(res.status, res.statusText, text));
+    throw new ApiRequestError(
+      formatApiErrorMessage(res.status, res.statusText, text),
+      getSafeApiErrorDetails(res.status, text),
+    );
   }
 }
 

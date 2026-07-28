@@ -11,9 +11,11 @@ import { useLocation, Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
+import { useLanguage } from "@/lib/i18n";
 
 export default function Login() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const [formData, setFormData] = useState({
     username: "",
@@ -35,8 +37,8 @@ export default function Login() {
       localStorage.setItem('authToken', data.token);
       
       toast({
-        title: "Login Successful",
-        description: "Welcome back!",
+        title: t("auth.login.successTitle"),
+        description: t("auth.login.successDescription"),
       });
       
       // Invalidate auth query to refetch user data
@@ -47,8 +49,8 @@ export default function Login() {
     },
     onError: (error: any) => {
       toast({
-        title: "Login Failed",
-        description: error.message,
+        title: t("auth.login.failedTitle"),
+        description: t("auth.login.failedDescription"),
         variant: "destructive",
       });
     },
@@ -61,16 +63,16 @@ export default function Login() {
     },
     onSuccess: () => {
       toast({
-        title: "Reset Email Sent",
-        description: "If an account exists with this email, you'll receive password reset instructions.",
+        title: t("auth.login.resetSentTitle"),
+        description: t("auth.login.resetSentDescription"),
       });
       setShowForgotPassword(false);
       setForgotPasswordEmail("");
     },
     onError: (error: any) => {
       toast({
-        title: "Request Failed",
-        description: error.message,
+        title: t("auth.login.requestFailedTitle"),
+        description: t("auth.login.requestFailedDescription"),
         variant: "destructive",
       });
     },
@@ -85,8 +87,8 @@ export default function Login() {
     e.preventDefault();
     if (!forgotPasswordEmail) {
       toast({
-        title: "Email Required",
-        description: "Please enter your email address.",
+        title: t("auth.login.emailRequiredTitle"),
+        description: t("auth.login.emailRequiredDescription"),
         variant: "destructive",
       });
       return;
@@ -102,7 +104,7 @@ export default function Login() {
           <Link href="/">
             <Button variant="ghost" size="sm" className="p-2" data-testid="button-back">
               <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to Home
+              {t("auth.backHome")}
             </Button>
           </Link>
           <BrandHeaderLogo alt="CreteXchange" />
@@ -113,19 +115,19 @@ export default function Login() {
       <main className="container mx-auto px-6 py-16 flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Sign In</CardTitle>
+            <CardTitle className="text-2xl">{t("auth.login.title")}</CardTitle>
             <p className="text-muted-foreground">
-              Welcome back! Please sign in to your account.
+              {t("auth.login.introduction")}
             </p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">{t("auth.login.username")}</Label>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Enter your username"
+                  placeholder={t("auth.login.usernamePlaceholder")}
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   required
@@ -134,11 +136,11 @@ export default function Login() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t("auth.login.password")}</Label>
                 <PasswordInput
                   id="password"
                   autoComplete="current-password"
-                  placeholder="Enter your password"
+                  placeholder={t("auth.login.passwordPlaceholder")}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
@@ -147,7 +149,7 @@ export default function Login() {
               </div>
 
               <div className="text-xs text-muted-foreground text-center mb-2">
-                Note: Password is case sensitive
+                {t("auth.login.passwordCaseSensitive")}
               </div>
 
               <Button 
@@ -156,7 +158,7 @@ export default function Login() {
                 disabled={loginMutation.isPending}
                 data-testid="button-login"
               >
-                {loginMutation.isPending ? "Signing In..." : "Sign In"}
+                {loginMutation.isPending ? t("auth.login.signingIn") : t("auth.login.submit")}
               </Button>
             </form>
 
@@ -164,20 +166,20 @@ export default function Login() {
               <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
                 <DialogTrigger asChild>
                   <Button variant="link" size="sm" className="text-primary hover:underline" data-testid="button-forgot-password">
-                    Forgot your password?
+                    {t("auth.login.forgotPassword")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Reset Password</DialogTitle>
+                    <DialogTitle>{t("auth.login.resetTitle")}</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleForgotPassword} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="reset-email">Email Address</Label>
+                      <Label htmlFor="reset-email">{t("auth.login.resetEmail")}</Label>
                       <Input
                         id="reset-email"
                         type="email"
-                        placeholder="Enter your email address"
+                        placeholder={t("auth.login.resetEmailPlaceholder")}
                         value={forgotPasswordEmail}
                         onChange={(e) => setForgotPasswordEmail(e.target.value)}
                         required
@@ -185,7 +187,7 @@ export default function Login() {
                       />
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      We'll send you a link to reset your password if an account exists with this email.
+                      {t("auth.login.resetHelp")}
                     </p>
                     <Button 
                       type="submit" 
@@ -193,7 +195,7 @@ export default function Login() {
                       disabled={forgotPasswordMutation.isPending}
                       data-testid="button-send-reset"
                     >
-                      {forgotPasswordMutation.isPending ? "Sending..." : "Send Reset Link"}
+                      {forgotPasswordMutation.isPending ? t("auth.login.sending") : t("auth.login.sendReset")}
                     </Button>
                   </form>
                 </DialogContent>
@@ -201,9 +203,9 @@ export default function Login() {
             </div>
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">Don't have an account? </span>
+              <span className="text-muted-foreground">{t("auth.login.newAccount")} </span>
               <Link href="/register" className="text-primary hover:underline" data-testid="link-register">
-                Sign up here
+                {t("auth.login.signUpHere")}
               </Link>
             </div>
           </CardContent>

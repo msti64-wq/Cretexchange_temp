@@ -166,9 +166,9 @@ function parseLocationCoordinate(value: string | number | null | undefined): num
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatDistanceMiles(distance: number | null | undefined): string {
+function formatDistanceMiles(distance: number | null | undefined, unavailableText: string): string {
   if (distance === null || distance === undefined || !Number.isFinite(distance)) {
-    return "Distance unavailable";
+    return unavailableText;
   }
 
   if (distance < 1) {
@@ -182,6 +182,18 @@ function formatDashboardLocationAddress(location: DriverDashboardLocation): stri
   return location.street || location.city || location.state || location.zip
     ? formatAddress(location as Record<string, unknown>)
     : "";
+}
+
+function DriverDashboardErrorFallback() {
+  const { t } = useLanguage();
+  return (
+    <div className="dark min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background text-foreground">
+      <div className="w-full border-b border-border/70 bg-card/95 px-3 py-3 shadow-sm sm:px-4">
+        <div className="mx-auto w-full max-w-6xl min-w-0 text-sm text-muted-foreground">{t("driver.dashboard.errorTitle")}</div>
+      </div>
+      <div className="mx-auto w-full max-w-6xl px-3 py-4 text-sm text-muted-foreground sm:px-4">{t("driver.dashboard.errorDescription")}</div>
+    </div>
+  );
 }
 
 class DriverDashboardErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -200,18 +212,7 @@ class DriverDashboardErrorBoundary extends Component<{ children: ReactNode }, { 
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="dark min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background text-foreground">
-          <div className="w-full border-b border-border/70 bg-card/95 px-3 py-3 shadow-sm sm:px-4">
-            <div className="mx-auto w-full max-w-6xl min-w-0 text-sm text-muted-foreground">
-              Driver dashboard
-            </div>
-          </div>
-          <div className="mx-auto w-full max-w-6xl px-3 py-4 text-sm text-muted-foreground sm:px-4">
-            The dashboard hit a render error and was recovered with a safe fallback.
-          </div>
-        </div>
-      );
+      return <DriverDashboardErrorFallback />;
     }
 
     return this.props.children;
@@ -423,7 +424,7 @@ export default function DriverDashboard() {
         setLocationError(null);
       } catch (error) {
         if (cancelled) return;
-        const message = error instanceof Error ? error.message : "Unable to get location";
+        const message = error instanceof Error ? error.message : t("pilot.gps.unavailable");
         setLocationError(message);
         setCurrentLocation(null);
       } finally {
@@ -728,10 +729,10 @@ export default function DriverDashboard() {
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0">
               <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.16em]">
-                Operational Intelligence
+                {t("driver.dashboard.operationalIntelligence")}
               </p>
               <h3 className="break-words text-sm font-semibold tracking-tight text-foreground">
-                Account, wallet, notifications, and rewards at a glance
+                {t("driver.dashboard.operationalIntelligenceDescription")}
               </h3>
             </div>
           </div>
@@ -799,7 +800,7 @@ export default function DriverDashboard() {
                 </div>
                 <div className="space-y-2 text-sm" data-testid="driver-optional-financial-status">
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
-                      <span className="text-muted-foreground">Stripe payouts (optional)</span>
+                      <span className="text-muted-foreground">{t("driver.dashboard.optionalStripe")}</span>
                       {optionalFinancialLoading ? <Skeleton className="h-5 w-24 bg-muted" /> : (
                         <DSStatusChip tone={stripeStatusUnavailable ? "neutral" : stripeReady ? "success" : "warning"} size="sm">
                           {getDriverPayoutStatusLabel(stripePresentationStatus)}
@@ -807,7 +808,7 @@ export default function DriverDashboard() {
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
-                      <span className="text-muted-foreground">Debit card</span>
+                      <span className="text-muted-foreground">{t("driver.dashboard.optionalDebitCard")}</span>
                       {optionalDebitCardLoading ? <Skeleton className="h-5 w-24 bg-muted" /> : (
                         <DSStatusChip tone={debitCardStatusError ? "neutral" : debitCardState === "active" ? "success" : "neutral"} size="sm">
                           {debitCardStatusError ? t("driver.dashboard.optionalFinancialStatusUnavailable") : debitCardState}
@@ -887,10 +888,8 @@ export default function DriverDashboard() {
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
-                    <p className="text-sm font-medium text-foreground">All caught up</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      No unread messages right now.
-                    </p>
+                    <p className="text-sm font-medium text-foreground">{t("driver.dashboard.allCaughtUp")}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{t("driver.dashboard.noUnreadNotifications")}</p>
                   </div>
                 )}
 
@@ -901,7 +900,7 @@ export default function DriverDashboard() {
                     className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
                     onClick={() => setLocation('/notifications')}
                   >
-                    Notifications
+                    {t("driver.dashboard.notifications")}
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
@@ -913,10 +912,10 @@ export default function DriverDashboard() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      Wallet Preview
+                      {t("driver.dashboard.walletPreview")}
                     </p>
                     <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
-                      Available funds
+                      {t("driver.dashboard.availableFunds")}
                     </h3>
                   </div>
                   <Wallet className="h-5 w-5 shrink-0 text-primary" />
@@ -938,13 +937,13 @@ export default function DriverDashboard() {
                   <>
                     <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Wallet Balance
+                        {t("driver.dashboard.walletBalance")}
                       </p>
                       <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-dashboard-available-balance">
                         {formatCurrency(walletBalance?.availableBalance ?? 0)}
                       </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">Wallet balance is shown separately from activity review and payment status.</p>
+                    <p className="text-sm text-muted-foreground">{t("driver.dashboard.walletSeparation")}</p>
                   </>
                 )}
 
@@ -955,7 +954,7 @@ export default function DriverDashboard() {
                     className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
                     onClick={() => setLocation('/wallet')}
                   >
-                    View Wallet
+                    {t("driver.dashboard.viewWallet")}
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
@@ -1098,8 +1097,8 @@ export default function DriverDashboard() {
                   </div>
                 ) : !hasLocationData ? (
                   <DashboardEmptyState
-                    title="No driver locations"
-                    description="No active locations are available right now."
+                    title={t("driver.dashboard.noLocations")}
+                    description={t("driver.dashboard.noLocationsDescription")}
                     icon={MapPin}
                     toneClassName="bg-card text-foreground"
                   />
@@ -1109,7 +1108,7 @@ export default function DriverDashboard() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="break-words text-base font-semibold text-foreground">
-                            {recommendedLocation.name || "Nearby location"}
+                            {recommendedLocation.name || t("driver.dashboard.nearbyLocation")}
                           </p>
                           {formatDashboardLocationAddress(recommendedLocation) && (
                             <p className="mt-1 break-words text-sm text-muted-foreground">
@@ -1117,10 +1116,10 @@ export default function DriverDashboard() {
                             </p>
                           )}
                         </div>
-                        <DSStatusChip tone="success" size="sm">Recommended</DSStatusChip>
+                        <DSStatusChip tone="success" size="sm">{t("driver.dashboard.recommended")}</DSStatusChip>
                       </div>
                       <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                        <span>{formatDistanceMiles(recommendedLocation.distanceMiles)}</span>
+                        <span>{formatDistanceMiles(recommendedLocation.distanceMiles, t("driver.dashboard.distanceUnavailable"))}</span>
                         <span>•</span>
                         <span>
                           {recommendedLocation.configuredIncentiveCents > 0
@@ -1131,7 +1130,7 @@ export default function DriverDashboard() {
                       <p className="text-xs text-muted-foreground">{t("driver.dashboard.configuredIncentiveQualification")}</p>
                       {recommendedLocation.operatingHours && (
                         <p className="text-sm text-muted-foreground">
-                          Hours: {recommendedLocation.operatingHours}
+                          {t("driver.dashboard.hours", { hours: recommendedLocation.operatingHours })}
                         </p>
                       )}
                     </div>
@@ -1149,8 +1148,8 @@ export default function DriverDashboard() {
                   </>
                 ) : (
                   <DashboardEmptyState
-                    title="No ranked location"
-                    description="No nearby stop could be ranked from the current location data."
+                    title={t("driver.dashboard.noRankedLocation")}
+                    description={t("driver.dashboard.noRankedLocationDescription")}
                     icon={MapPin}
                     toneClassName="bg-card text-foreground"
                   />
@@ -1185,7 +1184,7 @@ export default function DriverDashboard() {
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <DSKpiCard
-              label="Site Visits Today"
+              label={t("driver.dashboard.siteVisitsToday")}
               value={dailyStats?.visits || 0}
               detail={t("driver.dashboard.completedToday")}
               accentTone="info"
@@ -1197,8 +1196,8 @@ export default function DriverDashboard() {
         {/* Today's Activity */}
         <DSCard padding="sm" elevated>
           <DSSectionHeader
-            title="Today's Activity"
-            description="Today's operational activity at a glance."
+            title={t("driver.dashboard.todaysActivity")}
+            description={t("driver.dashboard.todaysActivityDescription")}
             actions={
               <Button
                 variant="outline"
@@ -1215,7 +1214,7 @@ export default function DriverDashboard() {
           <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="grid min-w-0 flex-1 grid-cols-1 gap-2">
               <div className="min-w-0 rounded-2xl border border-border/70 bg-card px-3 py-2">
-                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Site Visits Today</p>
+                <p className="break-words text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{t("driver.dashboard.siteVisitsToday")}</p>
                 <p className="break-words text-xl font-semibold text-foreground" data-testid="text-today-visits">{dailyStats?.visits || 0}</p>
               </div>
             </div>

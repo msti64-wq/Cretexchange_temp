@@ -9,12 +9,14 @@ import { createSubmissionConfirmationRecord } from "@/lib/pilotOnboarding";
 import { apiRequest } from "@/lib/queryClient";
 import { driverMaterialIntentKey, type DriverMaterialIntent } from "@/components/driver/DriverMaterialIntentSelector";
 import { resolveDriverCheckInRecoveryState } from "@/lib/driverCheckInRecovery";
+import { useLanguage } from "@/lib/i18n";
 
 const SUBMISSION_CONFIRMATION_SESSION_KEY = "cretexchange.driver.submission-confirmation";
 
 export default function DriverCheckIn() {
   const { locationId } = useParams();
   const [, setLocation] = useLocation();
+  const { t } = useLanguage();
 
   const { data: materialIntent, isLoading: materialIntentLoading } = useQuery<DriverMaterialIntent>({
     queryKey: driverMaterialIntentKey,
@@ -78,10 +80,10 @@ export default function DriverCheckIn() {
         <DriverHeader />
         <div className="p-4"><Card><CardContent className="text-center py-8">
           <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-lg font-semibold mb-2">Select Your Material</h2>
-          <p className="text-muted-foreground mb-4">Select the material you are hauling before checking in.</p>
+          <h2 className="text-lg font-semibold mb-2">{t("driver.checkIn.selectMaterialTitle")}</h2>
+          <p className="text-muted-foreground mb-4">{t("driver.checkIn.selectMaterialDescription")}</p>
           <Button onClick={() => setLocation('/locations')} data-testid="button-select-material">
-            <MapPin className="w-4 h-4 mr-2" />Select Material
+            <MapPin className="w-4 h-4 mr-2" />{t("driver.checkIn.selectMaterialAction")}
           </Button>
         </CardContent></Card></div>
       </div>
@@ -94,9 +96,9 @@ export default function DriverCheckIn() {
         <DriverHeader />
         <div className="p-4"><Card><CardContent className="text-center py-8">
           <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-lg font-semibold mb-2">Location Unavailable</h2>
-          <p className="text-muted-foreground mb-4">We could not load this location right now. Please try again.</p>
-          <Button onClick={() => void refetch()} data-testid="button-retry-location">Try Again</Button>
+          <h2 className="text-lg font-semibold mb-2">{t("driver.checkIn.locationUnavailableTitle")}</h2>
+          <p className="text-muted-foreground mb-4">{t("driver.checkIn.locationUnavailableDescription")}</p>
+          <Button onClick={() => void refetch()} data-testid="button-retry-location">{t("common.retry")}</Button>
         </CardContent></Card></div>
       </div>
     );
@@ -110,11 +112,11 @@ export default function DriverCheckIn() {
           <Card>
             <CardContent className="text-center py-8">
               <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h2 className="text-lg font-semibold mb-2">Location Not Found</h2>
-              <p className="text-muted-foreground mb-4">The washout location you're looking for doesn't exist or is no longer available.</p>
+              <h2 className="text-lg font-semibold mb-2">{t("driver.checkIn.locationNotFoundTitle")}</h2>
+              <p className="text-muted-foreground mb-4">{t("driver.checkIn.locationNotFoundDescription")}</p>
               <Button onClick={() => setLocation('/locations')} data-testid="button-back-to-locations">
                 <MapPin className="w-4 h-4 mr-2" />
-                Browse Locations
+                {t("driver.checkIn.browseLocations")}
               </Button>
             </CardContent>
           </Card>
@@ -136,7 +138,7 @@ export default function DriverCheckIn() {
           data-testid="button-back"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Locations
+          {t("driver.checkIn.backToLocations")}
         </Button>
 
         {/* Check-in Form */}

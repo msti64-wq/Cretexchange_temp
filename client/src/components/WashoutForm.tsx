@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,40 +13,8 @@ import { getCurrentLocation } from "@/lib/gps";
 import { computePhotoFingerprint } from "@/lib/photoFingerprint";
 import { useLanguage } from "@/lib/i18n";
 import { resolveGpsPreflightStatus, resolvePhotoUploadRecoveryState, type GpsPreflightStatus } from "@/lib/pilotOnboarding";
-
-function extractServerErrorMessage(error: unknown): string {
-  const fallback = "Complete washout failed. Please try again.";
-
-  if (!(error instanceof Error)) {
-    return fallback;
-  }
-
-  const rawMessage = error.message?.trim();
-  if (!rawMessage) {
-    return fallback;
-  }
-
-  const prefixedStatusMatch = rawMessage.match(/^\d+:\s*([\s\S]*)$/);
-  const responseText = (prefixedStatusMatch?.[1] || rawMessage).trim();
-
-  if (!responseText) {
-    return fallback;
-  }
-
-  try {
-    const parsed = JSON.parse(responseText);
-    if (parsed && typeof parsed === "object") {
-      const message = (parsed as { message?: unknown }).message;
-      if (typeof message === "string" && message.trim()) {
-        return message.trim();
-      }
-    }
-  } catch {
-    // The response body may already be plain text.
-  }
-
-  return responseText;
-}
+import { presentDriverOperationalError } from "@/lib/driverOperationalErrorPresentation";
+import type { DriverOperationalErrorPresentation } from "@/lib/driverOperationalErrorPresentation";
 
 const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
 const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
@@ -72,6 +41,7 @@ interface WashoutFormProps {
 export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   const { toast } = useToast();
   const { t } = useLanguage();
+  const [, setLocation] = useLocation();
   const [notes, setNotes] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]); // Keep for compatibility
   const [photoData, setPhotoData] = useState<Array<{
@@ -92,6 +62,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
   const [failedPhotoFiles, setFailedPhotoFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ total: number; current: number; completed: number; failed: number } | null>(null);
+  const [submissionError, setSubmissionError] = useState<DriverOperationalErrorPresentation | null>(null);
   const uploadInFlightRef = useRef(false);
   const uploadedPhotoCount = Math.max(photoData.length, photoUrls.length);
   const uploadRecovery = resolvePhotoUploadRecoveryState({
@@ -114,12 +85,9 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       setGpsWarning(null);
       return nextLocation;
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Location access unavailable.";
+      const message = error instanceof Error ? error.message : "";
       setGpsStatus(resolveGpsPreflightStatus(error));
-      setGpsWarning(message);
+      setGpsWarning(/denied/i.test(message) ? t("pilot.gps.permissionDenied") : t("pilot.gps.unavailable"));
       toast({
         title: t("pilot.gps.title"),
         description: /denied/i.test(message) ? t("pilot.gps.permissionDenied") : t("pilot.gps.unavailable"),
@@ -144,6 +112,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       return result;
     },
     onSuccess: (result) => {
+      setSubmissionError(null);
       // Invalidate all relevant caches
       queryClient.invalidateQueries({ queryKey: ['/api/drivers/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/drivers/activities'] });
@@ -154,16 +123,22 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
       
       toast({
-        title: "Check-in Successful",
-        description: "Your washout has been recorded successfully.",
+        title: t("driver.washout.successTitle"),
+        description: t("driver.washout.successDescription"),
       });
       onSuccess?.(typeof result?.activity?.id === "string" ? result.activity.id : undefined);
     },
     onError: (error) => {
-      const errorMessage = extractServerErrorMessage(error);
+      const presentation = presentDriverOperationalError(error, () => {
+        void queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      });
+      setSubmissionError(presentation);
+      // Reuse the root authentication flow for an expired or invalid session.
+      // It removes the invalid token and switches the route set to sign-in; a
+      // protected operational mutation must not leave a stale session in place.
       toast({
-        title: "Check-in Failed",
-        description: errorMessage,
+        title: t(presentation.titleKey),
+        description: t(presentation.descriptionKey),
         variant: "destructive",
       });
     },
@@ -176,13 +151,13 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     const contentType = file.type || "image/jpeg";
     if (!SUPPORTED_PHOTO_CONTENT_TYPES.has(contentType)) {
       throw new Error(
-        `Unsupported photo format: ${contentType || "unknown"}. Please use JPEG, PNG, WebP, HEIC, or HEIF.`,
+        t("driver.washout.photoFormatUnsupported"),
       );
     }
 
     if (file.size > MAX_PHOTO_UPLOAD_BYTES) {
       throw new Error(
-        `Photo is too large (${Math.ceil(file.size / (1024 * 1024))} MB). Please use a photo under ${Math.floor(MAX_PHOTO_UPLOAD_BYTES / (1024 * 1024))} MB.`,
+        t("driver.washout.photoTooLarge", { limit: Math.floor(MAX_PHOTO_UPLOAD_BYTES / (1024 * 1024)) }),
       );
     }
 
@@ -197,7 +172,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       });
       
       if (!uploadUrlResponse.ok) {
-        throw new Error("Unable to prepare the photo upload. Please try again.");
+        throw new Error(t("driver.washout.uploadPreparationFailed"));
       }
       
       const { uploadUrl, storageKey, contentType: responseContentType } = await uploadUrlResponse.json();
@@ -212,11 +187,11 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
           },
         });
           } catch {
-        throw new Error("Photo upload could not be completed. Check your connection and try again.");
+        throw new Error(t("driver.washout.uploadTransferFailed"));
       }
       
       if (!uploadResponse.ok) {
-        throw new Error("Photo upload was not accepted. Please try again.");
+        throw new Error(t("driver.washout.uploadRejected"));
           }
       
       // Store photo metadata for later submission
@@ -268,7 +243,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
           failedFiles.push(file);
           setUploadProgress({ total: files.length, current: index + 1, completed: newUrls.length, failed: failedFiles.length });
     toast({
-            title: "Photo Upload Failed",
+            title: t("driver.washout.photoUploadFailedTitle"),
             description: t("pilot.upload.failed"),
             variant: "destructive",
     });
@@ -283,8 +258,10 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
         
       if (newUrls.length > 0) {
         toast({
-          title: "Photos Added",
-          description: `${newUrls.length} photo(s) uploaded successfully.${failedFiles.length ? ` ${failedFiles.length} need to be retried.` : ""}`,
+          title: t("driver.washout.photosAddedTitle"),
+          description: failedFiles.length
+            ? t("pilot.upload.partial", { count: failedFiles.length })
+            : t("pilot.upload.complete", { count: newUrls.length }),
           });
           }
     } finally {
@@ -352,12 +329,13 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmissionError(null);
     
     // NEW: Check if photos are required and present
     if (photoData.length === 0 && photoUrls.length === 0) {
       toast({
-        title: "Photos Required",
-        description: "Please upload at least one photo before checking in.",
+        title: t("driver.washout.photosRequiredTitle"),
+        description: t("driver.washout.photosRequiredDescription"),
         variant: "destructive",
       });
       return;
@@ -384,8 +362,8 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     // CRITICAL FIX: Validate all photos are server-backed before submission
     if (isProcessingPhotos) {
       toast({
-        title: "Photos Still Processing",
-        description: "Please wait for photo uploads to complete before submitting.",
+        title: t("driver.washout.photosProcessingTitle"),
+        description: t("driver.washout.photosProcessingDescription"),
         variant: "destructive",
       });
       return;
@@ -393,8 +371,8 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
 
     if (hasTempOrInvalidUrls()) {
       toast({
-        title: "Invalid Photo URLs",
-        description: "Some photos failed to upload properly. Please remove and re-upload them.",
+        title: t("driver.washout.invalidPhotoUrlsTitle"),
+        description: t("driver.washout.invalidPhotoUrlsDescription"),
         variant: "destructive",
       });
       return;
@@ -402,8 +380,8 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
 
     if (!areAllPhotosServerBacked()) {
       toast({
-        title: "Photo Upload Incomplete",
-        description: "Photos must be uploaded to server to be visible on all devices. Please wait or re-upload.",
+        title: t("driver.washout.uploadIncompleteTitle"),
+        description: t("driver.washout.uploadIncompleteDescription"),
         variant: "destructive",
       });
       return;
@@ -434,7 +412,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       <CardHeader>
         <CardTitle className="flex items-center">
           <MapPin className="w-5 h-5 mr-2" />
-          Check-in at {location.name}
+          {t("driver.washout.title", { location: location.name })}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
           {formatAddress({
@@ -450,7 +428,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
           {/* Location Info */}
           <div className="p-3 bg-muted/50 rounded-lg">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-muted-foreground">Washout Rate</span>
+              <span className="text-sm text-muted-foreground">{t("driver.washout.configuredIncentive")}</span>
               <span className="text-lg font-semibold text-accent" data-testid="text-rate">
                 ${location.rate}
               </span>
@@ -462,6 +440,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
               </span>
             </div>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">{t("driver.washout.configuredIncentiveQualification")}</p>
 
           {/* GPS Status */}
           {gpsStatus === "ready" && gpsLocation && (
@@ -518,7 +497,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
           <div className="space-y-2">
             <Label htmlFor="photo-input" className="flex items-center">
               <Camera className="w-4 h-4 mr-2" />
-              Upload Photos (Required)
+              {t("driver.washout.uploadPhotos")}
             </Label>
             <p className="text-xs text-muted-foreground">{t("pilot.upload.requirement")}</p>
             <div className="space-y-2">
@@ -542,7 +521,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
                 disabled={isProcessingPhotos}
               >
                 <Camera className="w-5 h-5 mr-2" />
-                Take Photos ({Math.max(photoData.length, photoUrls.length)}/5)
+                {t("driver.washout.takePhotos", { count: Math.max(photoData.length, photoUrls.length) })}
               </Button>
             </div>
             
@@ -583,10 +562,10 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
 
           {/* Notes */}
           <div>
-            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Label htmlFor="notes">{t("driver.washout.notes")}</Label>
             <Textarea
               id="notes"
-              placeholder="Add any additional notes about this washout..."
+              placeholder={t("driver.washout.notesPlaceholder")}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               data-testid="textarea-notes"
@@ -600,15 +579,27 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
             disabled={isSubmitting || photoUrls.length === 0 || failedPhotoFiles.length > 0 || !uploadRecovery.canSubmit || isProcessingPhotos || hasTempOrInvalidUrls()}
             data-testid="button-complete-checkin"
           >
-            {isSubmitting ? "Processing..." : 
-             isProcessingPhotos ? "Processing Photos..." :
-             photoUrls.length === 0 ? "Upload Photos to Continue" :
-             hasTempOrInvalidUrls() ? "Photo Upload Failed - Re-upload Required" :
-             "Complete Washout"}
+            {isSubmitting ? t("driver.washout.processing") :
+             isProcessingPhotos ? t("driver.washout.processingPhotos") :
+             photoUrls.length === 0 ? t("driver.washout.uploadToContinue") :
+             hasTempOrInvalidUrls() ? t("driver.washout.reuploadRequired") :
+             t("driver.washout.complete")}
           </Button>
 
+          {submissionError && submissionError.action !== "none" && submissionError.action !== "reauthenticate" && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950" role="alert" data-testid="driver-operational-recovery">
+              <p className="font-medium">{t(submissionError.titleKey)}</p>
+              <p className="mt-1">{t(submissionError.descriptionKey)}</p>
+              {submissionError.action === "retry" ? <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setSubmissionError(null)}>{t("common.retry")}</Button> : (
+                <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setLocation(submissionError.action === "profile" || submissionError.action === "terms" ? "/profile" : submissionError.action === "locations" ? "/locations" : "/")}>
+                  {submissionError.action === "profile" || submissionError.action === "terms" ? t("driver.error.openProfile") : submissionError.action === "locations" ? t("driver.error.browseLocations") : t("driver.error.chooseMaterial")}
+                </Button>
+              )}
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground text-center">
-            By checking in, you confirm completion of the washout service
+            {t("driver.washout.confirmation")}
           </p>
         </form>
       </CardContent>

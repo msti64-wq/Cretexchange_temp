@@ -64,7 +64,7 @@ export default function DriverProfile() {
     onError: (error) => {
       toast({
         title: t("driver.profile.updateFailed"),
-        description: error.message,
+        description: t("driver.profile.updateFailedDescription"),
         variant: "destructive",
       });
     },
@@ -396,7 +396,7 @@ export default function DriverProfile() {
                 <Label htmlFor="truckNumber">{t("driver.profile.truckNumber")}</Label>
                 <Input
                   id="truckNumber"
-                  placeholder="e.g., Truck #123, Unit A5"
+                  placeholder={t("driver.profile.truckPlaceholder")}
                   value={formData.truckNumber}
                   onChange={(e) => setFormData({...formData, truckNumber: e.target.value})}
                   disabled={!isEditing}
@@ -448,7 +448,7 @@ export default function DriverProfile() {
                   <Label htmlFor="payoutPreferenceNote">{t("driver.profile.tellUsMore")}</Label>
                 <Input
                   id="payoutPreferenceNote"
-                  placeholder="e.g., merchandise, restaurant gift card, tool store credit..."
+                  placeholder={t("driver.profile.prizePlaceholder")}
                   value={formData.payoutPreferenceNote}
                   onChange={(e) => setFormData({ ...formData, payoutPreferenceNote: e.target.value })}
                   disabled={!isEditing}
