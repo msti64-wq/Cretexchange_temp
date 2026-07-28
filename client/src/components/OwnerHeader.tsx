@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { User, Plus, CreditCard } from "lucide-react";
+import { BarChart3, User, Plus, CreditCard } from "lucide-react";
 import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -40,7 +40,17 @@ export function OwnerHeader() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLocation('/intelligence')}
+            data-testid="button-facility-intelligence"
+            className="h-11 border-border bg-card text-foreground hover:bg-muted sm:h-10"
+          >
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Intelligence
+          </Button>
           <Button
             variant="outline"
             size="sm"

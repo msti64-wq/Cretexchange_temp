@@ -14,7 +14,7 @@ const CLIENT_CLOSE_TIMEOUT_MS = 5_000;
 const migrations: readonly Migration[] = [
   { id: "0036", file: "migrations/0036_add_washout_activity_admin_reviews.sql", sha256: "81c8c5dbceb87ed0aa024d3a34b432a72825722703e53574af785cbc8a08fdb0", expectedObjects: 7 },
   { id: "0037", file: "migrations/0037_add_washout_photo_review_audit.sql", sha256: "5714306b60592c536dc9d1e5dbe71e20392faedde97fd06d2d4b180fb58c7e5b", expectedObjects: 4 },
-  { id: "0038", file: "migrations/0038_add_platform_analytics_events.sql", sha256: "eb0a977b9853cca5f6b42c18a24d18ccb37a53baca8e5100ce0a51852e4fc747", expectedObjects: 13 },
+  { id: "0038", file: "migrations/0038_add_platform_analytics_events.sql", sha256: "684a072dac88a16515118bfd7eb3e9208570b375f4dff3a3c632c6426fbee667", expectedObjects: 13 },
 ] as const;
 
 function fail(message: string): never { throw new Error(message); }

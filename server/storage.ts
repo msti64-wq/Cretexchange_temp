@@ -2130,6 +2130,11 @@ export class DatabaseStorage implements IStorage {
         throw error;
       }
       await recordPlatformAnalyticsEvent(tx, {
+        eventType: "activity.owner_reviewed", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
+        sourceEventKey: `activity:${activity.id}:owner-review:${now.toISOString()}`, occurredAt: now,
+        activityId: activity.id, driverId: activity.driverId, locationId: activity.locationId,
+      });
+      await recordPlatformAnalyticsEvent(tx, {
         eventType: "activity.verified", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
         sourceEventKey: `activity:${activity.id}:verified:${now.toISOString()}`, occurredAt: now,
         activityId: activity.id, driverId: activity.driverId, locationId: activity.locationId,
@@ -2235,6 +2240,11 @@ export class DatabaseStorage implements IStorage {
         confirmationAcknowledged: input.confirmationAcknowledged,
       });
       await recordPlatformAnalyticsEvent(tx, {
+        eventType: "activity.owner_reviewed", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
+        sourceEventKey: `activity:${activity.id}:owner-review:${now.toISOString()}`, occurredAt: now,
+        activityId: activity.id, driverId: activity.driverId, ownerId: input.ownerId, locationId: activity.locationId,
+      });
+      await recordPlatformAnalyticsEvent(tx, {
         eventType: "activity.verified", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
         sourceEventKey: `activity:${activity.id}:verified:${now.toISOString()}`, occurredAt: now,
         activityId: activity.id, driverId: activity.driverId, ownerId: input.ownerId, locationId: activity.locationId,
@@ -2297,7 +2307,19 @@ export class DatabaseStorage implements IStorage {
           )`,
         ))
         .returning();
-      if (!activity || !audit) return activity;
+      if (!activity) return activity;
+
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "activity.owner_reviewed", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
+        sourceEventKey: `activity:${activity.id}:owner-review:${now.toISOString()}`, occurredAt: now,
+        activityId: activity.id, driverId: activity.driverId, ownerId, locationId: activity.locationId,
+      });
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "activity.rejected", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
+        sourceEventKey: `activity:${activity.id}:rejected:${now.toISOString()}`, occurredAt: now,
+        activityId: activity.id, driverId: activity.driverId, ownerId, locationId: activity.locationId,
+      });
+      if (!audit) return activity;
 
       await tx.insert(washoutActivityReviewEvents).values({
         activityId,
@@ -2314,11 +2336,6 @@ export class DatabaseStorage implements IStorage {
         deployedCommit: audit.deployedCommit ?? null,
         actionSource: audit.actionSource,
         confirmationAcknowledged: audit.confirmationAcknowledged,
-      });
-      await recordPlatformAnalyticsEvent(tx, {
-        eventType: "activity.rejected", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
-        sourceEventKey: `activity:${activity.id}:rejected:${now.toISOString()}`, occurredAt: now,
-        activityId: activity.id, driverId: activity.driverId, ownerId, locationId: activity.locationId,
       });
       return activity;
     });

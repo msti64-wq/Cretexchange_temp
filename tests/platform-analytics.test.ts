@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   calculateJourneyReport,
+  calculateFacilityHealthScore,
+  buildFacilityOwnerIndicators,
   canAccessFacilityOperationalIntelligence,
   PLATFORM_JOURNEYS_BY_KEY,
   PLATFORM_ANALYTICS_EVENT_TYPES,
@@ -9,6 +11,7 @@ import {
   PlatformAnalyticsQueryError,
   canAccessPlatformAnalytics,
   parsePlatformAnalyticsQuery,
+  parseFacilityIntelligenceQuery,
   recordPlatformAnalyticsEvent,
 } from "../server/platformAnalytics";
 import { registerRoutes } from "../server/routes";
@@ -18,6 +21,7 @@ test("platform analytics has a bounded operational vocabulary without financial 
   assert.ok(PLATFORM_ANALYTICS_EVENT_TYPES.includes("driver.registered"));
   assert.ok(PLATFORM_ANALYTICS_EVENT_TYPES.includes("photo.uploaded"));
   assert.ok(PLATFORM_ANALYTICS_EVENT_TYPES.includes("facility.first_verified"));
+  assert.ok(PLATFORM_ANALYTICS_EVENT_TYPES.includes("activity.owner_reviewed"));
   assert.ok(PLATFORM_ANALYTICS_EVENT_TYPES.includes("admin_review.returned_to_owner_review"));
   assert.equal(PLATFORM_ANALYTICS_EVENT_TYPES.some((event) => /payment|wallet|stripe|payout/i.test(event)), false);
 });
@@ -55,8 +59,40 @@ test("journey calculations use recorded facts for conversion, drop-off, and dura
   assert.equal(report.abandonmentRate, 0.5);
   assert.equal(report.averageDurationMs, 360_000);
   assert.equal(report.medianDurationMs, 360_000);
-  assert.equal(report.stages[1].abandonmentFromPrevious, 0);
+  assert.equal(report.stages[1].abandonmentFromPrevious, 0.5);
   assert.equal(report.stages.at(-1)?.reachedCount, 1);
+});
+
+test("washout journey records Owner Review and leaves Administrative Review optional", () => {
+  const report = calculateJourneyReport(PLATFORM_JOURNEYS_BY_KEY.washout, [
+    { eventType: "activity.checked_in", activityId: "activity-1", occurredAt: new Date("2026-07-01T00:00:00Z") },
+    { eventType: "photo.uploaded", activityId: "activity-1", occurredAt: new Date("2026-07-01T00:02:00Z") },
+    { eventType: "activity.owner_reviewed", activityId: "activity-1", occurredAt: new Date("2026-07-01T00:03:00Z") },
+    { eventType: "activity.verified", activityId: "activity-1", occurredAt: new Date("2026-07-01T00:04:00Z") },
+  ]);
+  assert.equal(report.entryCount, 1);
+  assert.equal(report.exitCount, 1);
+  assert.equal(report.stages.find((stage) => stage.key === "owner_review")?.reachedCount, 1);
+  assert.equal(report.stages.find((stage) => stage.key === "administrative_review")?.optional, true);
+});
+
+test("Facility Health Score is advisory, bounded, and omits internal weighting", () => {
+  const health = calculateFacilityHealthScore({
+    activityVolume: 12, finalDecisionCount: 10, verificationRate: 0.9,
+    repeatDriverPercentage: 0.6, administrativeReviewRate: 0.05,
+    operationalConsistency: 0.8, profileComplete: true,
+  });
+  assert.equal(health.state, "strong");
+  assert.ok(health.score && health.score <= 100);
+  assert.deepEqual(Object.keys(health).sort(), ["score", "state"]);
+  assert.deepEqual(calculateFacilityHealthScore({ activityVolume: 0, finalDecisionCount: 0, verificationRate: null, repeatDriverPercentage: null, administrativeReviewRate: null, operationalConsistency: null, profileComplete: false }), { score: null, state: "insufficient_data" });
+});
+
+test("facility date parser stays bounded and owner indicators provide direct operational guidance", () => {
+  const parsed = parseFacilityIntelligenceQuery({ start: "2026-07-01T00:00:00.000Z", end: "2026-07-31T00:00:00.000Z" });
+  assert.equal(parsed.start.toISOString(), "2026-07-01T00:00:00.000Z");
+  assert.throws(() => parseFacilityIntelligenceQuery({ start: "2026-01-01T00:00:00.000Z", end: "2026-07-31T00:00:00.000Z" }), PlatformAnalyticsQueryError);
+  assert.deepEqual(buildFacilityOwnerIndicators({ context: { profileComplete: false, hasOperatingHours: false }, finalDecisionCount: 2, verificationRate: 0.5, activityVolume: 3, administrativeReviewRate: 0.5 }).map((indicator) => indicator.code), ["profile_incomplete", "operating_hours_missing", "verification_rate_low", "administrative_review_rate_high"]);
 });
 
 test("analytics query parser bounds pagination and rejects unsupported inputs", () => {
@@ -109,11 +145,15 @@ test("analytics APIs are registered and deny non-admin callers before analytics 
   const metricsRoute = gets.get("/api/admin/analytics/metrics/operational");
   const journeyRoute = gets.get("/api/admin/analytics/journeys");
   const facilityRoute = gets.get("/api/owners/facilities/:locationId/intelligence");
+  const facilityDashboardRoute = gets.get("/api/owners/facilities/:locationId/intelligence/dashboard");
   assert.equal(typeof eventsRoute, "function");
   assert.equal(typeof metricsRoute, "function");
   assert.equal(typeof journeyRoute, "function");
   assert.equal(typeof facilityRoute, "function");
+  assert.equal(typeof facilityDashboardRoute, "function");
   const originalGetUser = storage.getUser;
+  const originalGetOwner = storage.getOwner;
+  const originalGetWashoutLocation = storage.getWashoutLocation;
   try {
     (storage as any).getUser = async () => ({ id: "driver-user", role: "driver" });
     let statusCode = 200;
@@ -124,7 +164,22 @@ test("analytics APIs are registered and deny non-admin callers before analytics 
     assert.deepEqual(payload, { message: "Admin access required" });
     await metricsRoute!({ user: { id: "driver-user" }, query: {} }, response);
     assert.equal(statusCode, 403);
+    statusCode = 200;
+    payload = undefined;
+    await facilityDashboardRoute!({ user: { id: "driver-user" }, params: { locationId: "location-1" }, query: {} }, response);
+    assert.equal(statusCode, 403);
+    assert.deepEqual(payload, { message: "Facility intelligence access required" });
+    (storage as any).getUser = async () => ({ id: "owner-user", role: "owner" });
+    (storage as any).getOwner = async () => ({ id: "owner-a" });
+    (storage as any).getWashoutLocation = async () => ({ id: "location-1", ownerId: "owner-b" });
+    statusCode = 200;
+    payload = undefined;
+    await facilityDashboardRoute!({ user: { id: "owner-user" }, params: { locationId: "location-1" }, query: {} }, response);
+    assert.equal(statusCode, 403);
+    assert.deepEqual(payload, { message: "Facility intelligence access required" });
   } finally {
     (storage as any).getUser = originalGetUser;
+    (storage as any).getOwner = originalGetOwner;
+    (storage as any).getWashoutLocation = originalGetWashoutLocation;
   }
 });

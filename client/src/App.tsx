@@ -37,6 +37,7 @@ const OwnerPaymentMethods = lazy(() => import("@/pages/owner/payment-methods"));
 const OwnerWallet = lazy(() => import("@/pages/owner/wallet"));
 const OwnerNotifications = lazy(() => import("@/pages/owner/notifications"));
 const OwnerReports = lazy(() => import("@/pages/owner/reports"));
+const OwnerFacilityIntelligence = lazy(() => import("@/pages/owner/facility-intelligence"));
 
 // Admin pages
 const AdminDashboard = lazy(() => import("@/pages/admin/dashboard"));
@@ -149,6 +150,7 @@ function Router() {
             <Route path="/subscribe" component={OwnerSubscribe} />
             <Route path="/payment-methods" component={OwnerPaymentMethods} />
             <Route path="/reports" component={OwnerReports} />
+            <Route path="/intelligence" component={OwnerFacilityIntelligence} />
             <Route component={NotFound} />
           </Switch>
         </OwnerWorkspace>

@@ -1,5 +1,5 @@
-import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
-import { platformAnalyticsEvents } from "@shared/schema";
+import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { drivers, platformAnalyticsEvents, users } from "@shared/schema";
 
 /**
  * The platform vocabulary intentionally contains operational facts only. A
@@ -21,6 +21,7 @@ export const PLATFORM_ANALYTICS_EVENT_TYPES = [
   "facility.recurring_usage",
   "activity.verified",
   "activity.rejected",
+  "activity.owner_reviewed",
   "admin_review.requested",
   "admin_review.closed",
   "admin_review.returned_to_owner_review",
@@ -71,7 +72,7 @@ export const PLATFORM_METRIC_REGISTRY: readonly PlatformMetricDefinition[] = [
     key: "rejected_activity", name: "Rejected Activity", description: "Count of canonical owner-rejected activities.", businessPurpose: "Measures operational exceptions requiring recovery or support.", sourceEvents: ["activity.rejected"], sourceOperationalTables: ["washout_activities", "washout_activity_review_events"], calculation: "COUNT(activity.rejected)", inclusionRules: "Only committed pending-to-rejected owner decisions.", exclusionRules: "Open facilitator reviews and rejections outside the selected time window.", timeAttribution: "rejection occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner"],
   },
   {
-    key: "administrative_review_requested", name: "Administrative Review Requested", description: "Count of Driver requests for neutral administrative facilitation.", businessPurpose: "Measures review demand without reclassifying activities.", sourceEvents: ["admin_review.requested"], sourceOperationalTables: ["washout_activity_admin_reviews"], calculation: "COUNT(admin_review.requested)", inclusionRules: "One event per committed review round.", exclusionRules: "Owner review decisions, financial disputes, and closed-only counts.", timeAttribution: "request occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin"],
+    key: "administrative_review_requested", name: "Administrative Review Requested", description: "Count of Driver requests for neutral administrative facilitation.", businessPurpose: "Measures review demand without reclassifying activities.", sourceEvents: ["admin_review.requested"], sourceOperationalTables: ["washout_activity_admin_reviews"], calculation: "COUNT(admin_review.requested)", inclusionRules: "One event per committed review round.", exclusionRules: "Owner review decisions, financial disputes, and closed-only counts.", timeAttribution: "request occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner"],
   },
   {
     key: "administrative_review_completed", name: "Administrative Review Completed", description: "Count of closed or returned-to-owner-review administrative requests.", businessPurpose: "Measures facilitator throughput.", sourceEvents: ["admin_review.closed", "admin_review.returned_to_owner_review"], sourceOperationalTables: ["washout_activity_admin_reviews", "washout_activity_review_events"], calculation: "COUNT(admin_review.closed) + COUNT(admin_review.returned_to_owner_review)", inclusionRules: "A terminal facilitator decision for a request round.", exclusionRules: "Open requests and any financial result.", timeAttribution: "facilitator decision occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin"],
@@ -101,7 +102,6 @@ export type PlatformJourneyDefinition = { key: "driver" | "facility" | "washout"
 export const PLATFORM_JOURNEYS: readonly PlatformJourneyDefinition[] = [
   { key: "driver", name: "Driver Journey", entity: "driver", stages: [
     { key: "registration", name: "Registration", sourceEventTypes: ["driver.registered"] },
-    { key: "profile_completed", name: "Profile Completed", sourceEventTypes: ["driver.profile_completed"] },
     { key: "first_login", name: "First Login", sourceEventTypes: ["driver.first_logged_in"] },
     { key: "check_in", name: "Check-In", sourceEventTypes: ["activity.checked_in"] },
     { key: "photo_upload", name: "Photo Upload", sourceEventTypes: ["photo.uploaded"] },
@@ -118,6 +118,7 @@ export const PLATFORM_JOURNEYS: readonly PlatformJourneyDefinition[] = [
   { key: "washout", name: "Washout Journey", entity: "activity", stages: [
     { key: "check_in", name: "Check-In", sourceEventTypes: ["activity.checked_in"] },
     { key: "photo_upload", name: "Photo Upload", sourceEventTypes: ["photo.uploaded"] },
+    { key: "owner_review", name: "Owner Review", sourceEventTypes: ["activity.owner_reviewed"] },
     { key: "administrative_review", name: "Administrative Review", sourceEventTypes: ["admin_review.requested"], optional: true },
     { key: "verification", name: "Verification", sourceEventTypes: ["activity.verified"] },
     // Completion is the canonical verified lifecycle terminal. It deliberately
@@ -186,6 +187,16 @@ export function parsePlatformJourneyQuery(query: Record<string, unknown>) {
   if (!start || !end) throw new PlatformAnalyticsQueryError("Journey analytics require start and end dates");
   if (end < start || end.getTime() - start.getTime() > 93 * 24 * 60 * 60 * 1000) throw new PlatformAnalyticsQueryError("Journey date range must be between zero and 93 days");
   return { journey, start, end };
+}
+
+export function parseFacilityIntelligenceQuery(query: Record<string, unknown>, now = new Date()) {
+  const parsed = parsePlatformAnalyticsQuery(query);
+  const end = parsed.end ?? now;
+  const start = parsed.start ?? new Date(end.getTime() - 29 * 24 * 60 * 60 * 1000);
+  if (end < start || end.getTime() - start.getTime() > 93 * 24 * 60 * 60 * 1000) {
+    throw new PlatformAnalyticsQueryError("Facility intelligence date range must be between zero and 93 days");
+  }
+  return { start, end };
 }
 
 function whereForDateRange(query: Pick<ReturnType<typeof parsePlatformAnalyticsQuery>, "start" | "end">) {
@@ -311,6 +322,59 @@ export async function buildPlatformJourneyReport(executor: any, query: ReturnTyp
   return { window: { start: query.start.toISOString(), end: query.end.toISOString() }, ...calculateJourneyReport(query.journey, rows as JourneyEvent[]) };
 }
 
+/**
+ * Builds the two facility-safe drop-off views. The Driver funnel is a cohort
+ * of drivers who submitted at this facility in the selected window; activity
+ * stages are then limited to this facility, while registration/login remain
+ * the recorded account facts for that cohort. This avoids cross-facility
+ * activity leakage without inventing a facility-specific registration event.
+ */
+export async function buildFacilityDropoffIntelligence(
+  executor: any,
+  locationId: string,
+  query: Pick<ReturnType<typeof parseFacilityIntelligenceQuery>, "start" | "end">,
+) {
+  const facilityWhere = facilityEventWindow(locationId, query.start, query.end);
+  const [washoutEvents, cohortRows] = await Promise.all([
+    executor.select({ eventType: platformAnalyticsEvents.eventType, occurredAt: platformAnalyticsEvents.occurredAt, driverId: platformAnalyticsEvents.driverId, locationId: platformAnalyticsEvents.locationId, activityId: platformAnalyticsEvents.activityId })
+      .from(platformAnalyticsEvents)
+      .where(facilityWhere)
+      .orderBy(asc(platformAnalyticsEvents.occurredAt), asc(platformAnalyticsEvents.id))
+      .limit(10_001),
+    executor.select({ driverId: platformAnalyticsEvents.driverId })
+      .from(platformAnalyticsEvents)
+      .where(and(facilityWhere, eq(platformAnalyticsEvents.eventType, "activity.submitted")))
+      .groupBy(platformAnalyticsEvents.driverId)
+      .limit(10_001),
+  ]);
+  if (washoutEvents.length > 10_000 || cohortRows.length > 10_000) {
+    throw new PlatformAnalyticsQueryError("Facility journey result exceeds 10,000 records; use a narrower date range");
+  }
+  const driverIds = cohortRows.map((row: any) => row.driverId).filter((driverId: unknown): driverId is string => Boolean(driverId));
+  let driverEvents: JourneyEvent[] = [];
+  if (driverIds.length) {
+    const cohortEvents = await executor.select({ eventType: platformAnalyticsEvents.eventType, occurredAt: platformAnalyticsEvents.occurredAt, driverId: platformAnalyticsEvents.driverId, locationId: platformAnalyticsEvents.locationId, activityId: platformAnalyticsEvents.activityId })
+      .from(platformAnalyticsEvents)
+      .where(and(
+        inArray(platformAnalyticsEvents.driverId, driverIds),
+        gte(platformAnalyticsEvents.occurredAt, query.start),
+        lte(platformAnalyticsEvents.occurredAt, query.end),
+      ))
+      .orderBy(asc(platformAnalyticsEvents.occurredAt), asc(platformAnalyticsEvents.id))
+      .limit(10_001);
+    if (cohortEvents.length > 10_000) {
+      throw new PlatformAnalyticsQueryError("Driver cohort journey exceeds 10,000 records; use a narrower date range");
+    }
+    const accountEventTypes = new Set<PlatformAnalyticsEventType>(["driver.registered", "driver.first_logged_in"]);
+    driverEvents = cohortEvents.filter((event: JourneyEvent) => accountEventTypes.has(event.eventType) || event.locationId === locationId) as JourneyEvent[];
+  }
+  return {
+    window: { start: query.start.toISOString(), end: query.end.toISOString(), timezone: "UTC" },
+    driverJourney: calculateJourneyReport(PLATFORM_JOURNEYS_BY_KEY.driver, driverEvents),
+    washoutJourney: calculateJourneyReport(PLATFORM_JOURNEYS_BY_KEY.washout, washoutEvents as JourneyEvent[]),
+  };
+}
+
 export async function buildFacilityOperationalIntelligence(executor: any, locationId: string, query: Pick<ReturnType<typeof parsePlatformAnalyticsQuery>, "start" | "end">) {
   const conditions: any[] = [eq(platformAnalyticsEvents.locationId, locationId)];
   if (query.start) conditions.push(gte(platformAnalyticsEvents.occurredAt, query.start));
@@ -338,6 +402,199 @@ export async function buildFacilityOperationalIntelligence(executor: any, locati
     window: { start: query.start?.toISOString() ?? null, end: query.end?.toISOString() ?? null },
     metrics: { ...metrics, verificationRate, rejectionRate, averageDailyVolume: dayCount ? metrics.activityVolume / dayCount : null, facilityHealthScore: healthScore },
     peakOperatingPeriods: peakRows.map((row: any) => ({ hour: row.hour, volume: Number(row.volume || 0) })),
+    calculationVersion: 1,
+  };
+}
+
+export type FacilityHealthScoreInput = {
+  activityVolume: number;
+  finalDecisionCount: number;
+  verificationRate: number | null;
+  repeatDriverPercentage: number | null;
+  administrativeReviewRate: number | null;
+  operationalConsistency: number | null;
+  profileComplete: boolean;
+};
+
+export type FacilityHealthScore = { score: number | null; state: "insufficient_data" | "needs_attention" | "stable" | "strong" };
+
+/**
+ * Internal operational score. The public owner projection deliberately emits
+ * only the score and state; individual internal weights are not exposed.
+ */
+export function calculateFacilityHealthScore(input: FacilityHealthScoreInput): FacilityHealthScore {
+  if (input.activityVolume < 1 || input.finalDecisionCount < 1 || input.verificationRate === null) {
+    return { score: null, state: "insufficient_data" };
+  }
+  const score = Math.round(Math.min(100, Math.max(0,
+    (input.verificationRate * 35)
+    + ((input.repeatDriverPercentage ?? 0) * 20)
+    + ((1 - (input.administrativeReviewRate ?? 0)) * 15)
+    + ((input.operationalConsistency ?? 0) * 20)
+    + (input.profileComplete ? 10 : 0),
+  )));
+  return { score, state: score >= 80 ? "strong" : score >= 60 ? "stable" : "needs_attention" };
+}
+
+export type FacilityOwnerIntelligenceContext = {
+  profileComplete: boolean;
+  hasOperatingHours: boolean;
+};
+
+export function buildFacilityOwnerIndicators(input: {
+  context: FacilityOwnerIntelligenceContext;
+  finalDecisionCount: number;
+  verificationRate: number | null;
+  activityVolume: number;
+  administrativeReviewRate: number | null;
+}) {
+  const indicators: Array<{ code: string; severity: "attention" | "info" }> = [];
+  if (!input.context.profileComplete) indicators.push({ code: "profile_incomplete", severity: "attention" });
+  if (!input.context.hasOperatingHours) indicators.push({ code: "operating_hours_missing", severity: "attention" });
+  if (input.finalDecisionCount > 0 && (input.verificationRate ?? 1) < 0.8) indicators.push({ code: "verification_rate_low", severity: "attention" });
+  if (input.activityVolume > 0 && (input.administrativeReviewRate ?? 0) > 0.1) indicators.push({ code: "administrative_review_rate_high", severity: "attention" });
+  if (!indicators.length) indicators.push({ code: "operational_data_healthy", severity: "info" });
+  return indicators;
+}
+
+type FacilityTrendRow = { bucket: string; submittedCount: number; verifiedCount: number; rejectedCount: number };
+
+function facilityEventWindow(locationId: string, start: Date, end: Date) {
+  return and(
+    eq(platformAnalyticsEvents.locationId, locationId),
+    gte(platformAnalyticsEvents.occurredAt, start),
+    lte(platformAnalyticsEvents.occurredAt, end),
+  );
+}
+
+async function buildFacilityTrend(executor: any, where: any, bucket: any): Promise<FacilityTrendRow[]> {
+  const rows = await executor.select({
+    bucket,
+    submittedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.submitted')`,
+    verifiedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified')`,
+    rejectedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.rejected')`,
+  }).from(platformAnalyticsEvents)
+    .where(where)
+    .groupBy(bucket)
+    .orderBy(asc(bucket));
+  return rows.map((row: any) => ({
+    bucket: String(row.bucket),
+    submittedCount: Number(row.submittedCount || 0),
+    verifiedCount: Number(row.verifiedCount || 0),
+    rejectedCount: Number(row.rejectedCount || 0),
+  }));
+}
+
+/**
+ * Owner-scoped dashboard projection. It uses aggregation over the immutable
+ * event table, limits driver rows to ten, and returns no contact, financial,
+ * object-storage, or free-form event metadata.
+ */
+export async function buildFacilityIntelligenceDashboard(
+  executor: any,
+  locationId: string,
+  query: ReturnType<typeof parseFacilityIntelligenceQuery>,
+  context: FacilityOwnerIntelligenceContext,
+) {
+  const where = facilityEventWindow(locationId, query.start, query.end);
+  const dailyBucket = sql<string>`to_char(date_trunc('day', ${platformAnalyticsEvents.occurredAt}), 'YYYY-MM-DD')`;
+  const weeklyBucket = sql<string>`to_char(date_trunc('week', ${platformAnalyticsEvents.occurredAt}), 'IYYY-"W"IW')`;
+  const monthlyBucket = sql<string>`to_char(date_trunc('month', ${platformAnalyticsEvents.occurredAt}), 'YYYY-MM')`;
+  const peakHour = sql<string>`to_char(${platformAnalyticsEvents.occurredAt}, 'HH24:00')`;
+  const peakDay = sql<string>`trim(to_char(${platformAnalyticsEvents.occurredAt}, 'Day'))`;
+  const submittedWhere = and(where, eq(platformAnalyticsEvents.eventType, "activity.submitted"));
+
+  const driverHistoryWhere = and(
+    eq(platformAnalyticsEvents.locationId, locationId),
+    lte(platformAnalyticsEvents.occurredAt, query.end),
+  );
+  const selectedSubmitted = sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.submitted' and ${platformAnalyticsEvents.occurredAt} >= ${query.start})`;
+  const selectedRepeat = sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.repeat_submitted' and ${platformAnalyticsEvents.occurredAt} >= ${query.start})`;
+  const firstFacilitySubmission = sql<Date>`min(${platformAnalyticsEvents.occurredAt}) filter (where ${platformAnalyticsEvents.eventType} = 'activity.submitted')`;
+  const latestSelectedSubmission = sql<Date>`max(${platformAnalyticsEvents.occurredAt}) filter (where ${platformAnalyticsEvents.eventType} = 'activity.submitted' and ${platformAnalyticsEvents.occurredAt} >= ${query.start})`;
+
+  const [summaryRows, dailyActivity, weeklyActivity, monthlyActivity, peakHours, peakDays, driverRows] = await Promise.all([
+    executor.select({
+      submittedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.submitted')`,
+      verifiedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified')`,
+      rejectedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.rejected')`,
+      administrativeReviewCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'admin_review.requested')`,
+      activeDriverCount: sql<number>`count(distinct ${platformAnalyticsEvents.driverId}) filter (where ${platformAnalyticsEvents.eventType} = 'activity.submitted')`,
+      repeatDriverCount: sql<number>`count(distinct ${platformAnalyticsEvents.driverId}) filter (where ${platformAnalyticsEvents.eventType} = 'activity.repeat_submitted')`,
+    }).from(platformAnalyticsEvents).where(where),
+    buildFacilityTrend(executor, where, dailyBucket),
+    buildFacilityTrend(executor, where, weeklyBucket),
+    buildFacilityTrend(executor, where, monthlyBucket),
+    executor.select({ label: peakHour, volume: sql<number>`count(*)` }).from(platformAnalyticsEvents)
+      .where(submittedWhere).groupBy(peakHour).orderBy(desc(sql`count(*)`), asc(peakHour)).limit(3),
+    executor.select({ label: peakDay, volume: sql<number>`count(*)` }).from(platformAnalyticsEvents)
+      .where(submittedWhere).groupBy(peakDay).orderBy(desc(sql`count(*)`), asc(peakDay)).limit(3),
+    executor.select({
+      driverId: platformAnalyticsEvents.driverId,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      submittedCount: selectedSubmitted,
+      repeatCount: selectedRepeat,
+      firstActivityAt: firstFacilitySubmission,
+      latestActivityAt: latestSelectedSubmission,
+    }).from(platformAnalyticsEvents)
+      .innerJoin(drivers, eq(platformAnalyticsEvents.driverId, drivers.id))
+      .innerJoin(users, eq(drivers.userId, users.id))
+      .where(driverHistoryWhere)
+      .groupBy(platformAnalyticsEvents.driverId, users.firstName, users.lastName)
+      .having(sql`${selectedSubmitted} > 0`)
+      .orderBy(desc(selectedSubmitted), asc(users.firstName), asc(users.lastName))
+      .limit(10),
+  ]);
+
+  const summary = Object.fromEntries(Object.entries(summaryRows[0] || {}).map(([key, value]) => [key, Number(value || 0)])) as Record<string, number>;
+  const finalDecisionCount = summary.verifiedCount + summary.rejectedCount;
+  const verificationRate = finalDecisionCount ? summary.verifiedCount / finalDecisionCount : null;
+  const rejectionRate = finalDecisionCount ? summary.rejectedCount / finalDecisionCount : null;
+  const repeatDriverPercentage = summary.activeDriverCount ? summary.repeatDriverCount / summary.activeDriverCount : null;
+  const administrativeReviewRate = summary.submittedCount ? summary.administrativeReviewCount / summary.submittedCount : null;
+  const daysInWindow = Math.max(1, Math.ceil((query.end.getTime() - query.start.getTime()) / 86_400_000));
+  const activeDays = dailyActivity.filter((row) => row.submittedCount > 0).length;
+  const operationalConsistency = activeDays / daysInWindow;
+  const health = calculateFacilityHealthScore({
+    activityVolume: summary.submittedCount,
+    finalDecisionCount,
+    verificationRate,
+    repeatDriverPercentage,
+    administrativeReviewRate,
+    operationalConsistency,
+    profileComplete: context.profileComplete,
+  });
+  const indicators = buildFacilityOwnerIndicators({
+    context,
+    finalDecisionCount,
+    verificationRate,
+    activityVolume: summary.submittedCount,
+    administrativeReviewRate,
+  });
+
+  return {
+    locationId,
+    window: { start: query.start.toISOString(), end: query.end.toISOString(), timezone: "UTC" },
+    overview: { ...summary, verificationRate, rejectionRate, repeatDriverPercentage },
+    trends: { dailyActivity, weeklyActivity, monthlyActivity },
+    drivers: driverRows.map((row: any) => ({
+      driverId: row.driverId,
+      displayName: `${String(row.firstName || "Driver").trim()} ${String(row.lastName || "").trim().slice(0, 1)}.`.trim(),
+      submittedCount: Number(row.submittedCount || 0),
+      classification: row.firstActivityAt && new Date(row.firstActivityAt) >= query.start ? "new_to_facility" : "returning",
+      firstActivityAt: row.firstActivityAt ? new Date(row.firstActivityAt).toISOString() : null,
+      latestActivityAt: row.latestActivityAt ? new Date(row.latestActivityAt).toISOString() : null,
+    })),
+    facility: {
+      peakOperatingHours: peakHours.map((row: any) => ({ label: String(row.label), volume: Number(row.volume || 0) })),
+      peakOperatingDays: peakDays.map((row: any) => ({ label: String(row.label), volume: Number(row.volume || 0) })),
+      averageDailyVolume: summary.submittedCount / daysInWindow,
+      verificationRate,
+      rejectionRate,
+    },
+    health,
+    indicators,
     calculationVersion: 1,
   };
 }

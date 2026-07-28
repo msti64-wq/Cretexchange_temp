@@ -78,7 +78,7 @@ import {
   type RewardsPeriodStatus,
 } from "./rewardsPeriods";
 import { resolveOwnerMembershipState } from "../shared/ownerMembership";
-import { resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
+import { isOwnerProfileComplete, resolveOwnerLocationAccessState } from "../shared/ownerLocationAccess";
 import { isValidCustomFacilityMaterialName, normalizeFacilityMaterialLabel } from "../shared/facilityMaterials";
 import { getWashoutApprovalDisplayStatus } from "../shared/washoutApproval";
 import { isAwaitingDriverStripePaymentStatus, getDriverStripeSetupMessage } from "../shared/driverPaymentStatus";
@@ -142,6 +142,8 @@ import {
   type AdminActivityReportKind,
 } from "./adminActivityReporting";
 import {
+  buildFacilityDropoffIntelligence,
+  buildFacilityIntelligenceDashboard,
   buildFacilityOperationalIntelligence,
   buildPlatformJourneyReport,
   buildPlatformOperationalMetrics,
@@ -149,6 +151,7 @@ import {
   canAccessPlatformAnalytics,
   listPlatformAnalyticsEvents,
   parsePlatformAnalyticsQuery,
+  parseFacilityIntelligenceQuery,
   parsePlatformJourneyQuery,
   PlatformAnalyticsQueryError,
 } from "./platformAnalytics";
@@ -14253,6 +14256,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       if (error instanceof PlatformAnalyticsQueryError) return res.status(400).json({ message: error.message });
       console.error("Error aggregating facility operational intelligence:", error);
+      return res.status(500).json({ message: "Failed to aggregate facility intelligence" });
+    }
+  });
+
+  // This customer-facing projection is deliberately owner-only. Global Admin
+  // analytics remain separate so an Owner can never enumerate another
+  // facility's activity, Drivers, or operational profile.
+  app.get("/api/owners/facilities/:locationId/intelligence/dashboard", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== "owner") return res.status(403).json({ message: "Facility intelligence access required" });
+      const owner = await storage.getOwner(user.id);
+      const location = await storage.getWashoutLocation(req.params.locationId);
+      if (!owner || !location || owner.id !== location.ownerId) return res.status(403).json({ message: "Facility intelligence access required" });
+      const operatingHours = location.operatingHours;
+      const hasOperatingHours = Array.isArray(operatingHours)
+        ? operatingHours.length > 0
+        : Boolean(operatingHours && typeof operatingHours === "object" && Object.keys(operatingHours as object).length > 0);
+      const query = parseFacilityIntelligenceQuery(req.query || {});
+      const context = { profileComplete: isOwnerProfileComplete(owner, user), hasOperatingHours };
+      const [dashboard, dropoff] = await Promise.all([
+        buildFacilityIntelligenceDashboard(db, location.id, query, context),
+        buildFacilityDropoffIntelligence(db, location.id, query),
+      ]);
+      return res.json({ ...dashboard, dropoff });
+    } catch (error) {
+      if (error instanceof PlatformAnalyticsQueryError) return res.status(400).json({ message: error.message });
+      console.error("Error aggregating owner facility intelligence dashboard:", error);
       return res.status(500).json({ message: "Failed to aggregate facility intelligence" });
     }
   });

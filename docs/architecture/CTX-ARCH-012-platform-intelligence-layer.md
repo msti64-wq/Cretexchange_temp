@@ -1,8 +1,8 @@
 # CTX-ARCH-012 — Platform Intelligence Layer
 
-**Status:** Approved for Phase 2 Sprint 2 foundation implementation
+**Status:** Approved through Phase 2 Sprint 3 Facility Intelligence
 **Owner:** V8 Laboratories
-**Scope:** Immutable operational analytics, governed metrics, journeys, and role-scoped read APIs. No dashboard, ranking, environmental claim, AI inference, or financial-execution change is authorized.
+**Scope:** Immutable operational analytics, governed metrics, journeys, role-scoped read APIs, and owner-scoped Facility Intelligence. No ranking, environmental claim, AI inference, or financial-execution change is authorized.
 
 ## Purpose and source of truth
 
@@ -30,6 +30,7 @@ Each instrumented operational mutation records its event inside the same Postgre
 | `facility.recurring_usage` | submitted activity sequence | Facility reached repeat submitted use. |
 | `activity.verified` | Owner review audit | Canonical Owner pending-to-verified decision. |
 | `activity.rejected` | Owner review audit | Canonical Owner pending-to-rejected decision. |
+| `activity.owner_reviewed` | Owner review audit | A committed Owner pending-to-verified or pending-to-rejected decision. |
 | `admin_review.requested` | Administrative Review request | Driver requested neutral facilitation. |
 | `admin_review.closed` | Administrative Review resolution | Facilitator closed a request without lifecycle mutation. |
 | `admin_review.returned_to_owner_review` | Administrative Review resolution | Facilitator returned an activity to Owner pending review. |
@@ -44,15 +45,17 @@ All event timestamps are stored and queried in UTC. A consuming report may rende
 
 ## Journeys and drop-off
 
-The reusable Driver, Facility, and Washout journeys are defined in CTX-MET-001 and represented by `PLATFORM_JOURNEYS`. A journey is calculated only from recorded event facts in a bounded UTC window. It returns entry count, exit count, conversion rate, abandonment rate, average duration, median duration, and stage-by-stage conversion/drop-off. Optional Administrative Review is reported as an actual conditional Washout stage; it is not treated as mandatory abandonment.
+The reusable Driver, Facility, and Washout journeys are defined in CTX-MET-001 and represented by `PLATFORM_JOURNEYS`. A journey is calculated only from recorded event facts in a bounded UTC window. It returns entry count, exit count, conversion rate, abandonment rate, average duration, median duration, and stage-by-stage conversion/drop-off. Owner Review is a recorded Washout stage. Optional Administrative Review is reported as an actual conditional stage; it is not treated as mandatory abandonment.
 
 There is no inferred, estimated, sampled, or backfilled journey progress. Historic records that predate instrumentation have no journey-event coverage and must not be presented as if they did.
 
 ## APIs, authorization, and performance
 
-Admin and Super Admin may use bounded event, metric, and journey APIs. Facility Owners may use only the ownership-checked, aggregate Facility intelligence API for their own location. Drivers, anonymous callers, and public callers receive no analytics event data. Event projections exclude metadata by default.
+Admin and Super Admin may use bounded event, metric, and journey APIs. Facility Owners may use only the ownership-checked, aggregate Facility intelligence APIs for their own location. The Facility Intelligence dashboard returns aggregate overview counts, bounded trend series, a maximum of ten pseudonymous operational Driver rows, peak operating periods, data-quality indicators, a Facility Health Score, and facility-scoped drop-off reports. It never returns global Admin totals, another Owner's Facility data, contact data, image/object references, financial data, or event metadata. Drivers, anonymous callers, and public callers receive no analytics event data. Event projections exclude metadata by default.
 
-All list queries use server-side pagination; journey reports require a bounded 93-day range and reject result sets over 10,000 events. Facility aggregation uses grouped database queries, not per-event or per-driver query loops. The migration indexes event type/time and source dimensions used by these queries.
+The Facility Health Score is an internal operational calculation over verification quality, repeat Driver participation, Administrative Review demand, operational consistency, and profile completeness. Its public Owner projection returns only score and state; factor weights are internal and are not exposed outside Admin operations. It is advisory and never changes Facility approval, Owner authority, billing, or a lifecycle status.
+
+All list queries use server-side pagination; journey reports require a bounded 93-day range and reject result sets over 10,000 events. Facility aggregation uses grouped database queries, not per-event or per-driver query loops; the dashboard caps the Driver list at ten rows. A Facility Driver Journey is explicitly a cohort of Drivers that submitted at that Facility in the selected window. Account stages are recorded account facts for that cohort, while activity stages are constrained to the selected Facility. The migration indexes event type/time and source dimensions used by these queries.
 
 ## Validation and migration posture
 

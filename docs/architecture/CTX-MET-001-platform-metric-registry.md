@@ -1,6 +1,6 @@
 # CTX-MET-001 — Platform Metric Registry
 
-**Status:** Approved for Phase 2 Sprint 2 foundation implementation
+**Status:** Approved through Phase 2 Sprint 3 Facility Intelligence
 **Owner:** V8 Laboratories
 **Classification:** Internal operational analytics; no financial, payment, private-storage, contact, GPS, or sensitive metadata is included.
 
@@ -13,7 +13,7 @@ This is the authoritative registry for platform metrics. `server/platformAnalyti
 | Submitted Activity | Measure activity entering Owner review. | `activity.submitted`; `washout_activities` | Count submitted events. | One committed submission. | Payments, wallets, failures, duplicates. | Submission time; Admin, Super Admin, Owner. |
 | Verified Activity | Measure completed operational verification. | `activity.verified`; `washout_activities`, review audit | Count verified events. | Canonical Owner pending-to-verified decisions. | Facilitator actions, payment success, pending records. | Verification time; Admin, Super Admin, Owner. |
 | Rejected Activity | Measure operational exceptions. | `activity.rejected`; `washout_activities`, review audit | Count rejected events. | Canonical Owner pending-to-rejected decisions. | Open review requests and non-final records. | Rejection time; Admin, Super Admin, Owner. |
-| Administrative Review Requested | Measure neutral facilitation demand. | `admin_review.requested`; `washout_activity_admin_reviews` | Count request events. | One committed review round. | Owner decisions and finance. | Request time; Admin, Super Admin. |
+| Administrative Review Requested | Measure neutral facilitation demand. | `admin_review.requested`; `washout_activity_admin_reviews` | Count request events. | One committed review round. | Owner decisions and finance. | Request time; Admin, Super Admin, scoped Owner. |
 | Administrative Review Completed | Measure facilitator throughput. | `admin_review.closed`, `admin_review.returned_to_owner_review`; review tables | Count either terminal facilitator event. | A completed facilitator decision. | Open requests and payment outcomes. | Decision time; Admin, Super Admin. |
 | Active Drivers | Measure active operational supply. | activity submitted/verified/rejected; `drivers`, `washout_activities` | Distinct `driver_id`. | Non-null Driver on qualifying activity event. | Registration-only and financial data. | Event time; Admin, Super Admin. |
 | Active Facilities | Measure active demand locations. | `activity.submitted`; `washout_locations`, `washout_activities` | Distinct `location_id`. | Submitted activity at a location. | Unused or inactive-only locations and billing data. | Submission time; Admin, Super Admin. |
@@ -25,9 +25,9 @@ This is the authoritative registry for platform metrics. `server/platformAnalyti
 
 | Journey | Ordered stages | Entity key |
 | --- | --- | --- |
-| Driver | Registration → Profile Completed → First Login → Check-In → Photo Upload → Verification → Repeat Activity | `driver_id` |
+| Driver | Registration → First Login → Check-In → Photo Upload → Verification → Repeat Activity | `driver_id` |
 | Facility | Registration → Approval → First Driver → First Verified Washout → Recurring Usage | `location_id` |
-| Washout | Check-In → Photo Upload → Administrative Review (optional) → Verification → Completion | `activity_id` |
+| Washout | Check-In → Photo Upload → Owner Review → Administrative Review (optional) → Verification → Completion | `activity_id` |
 
 Completion is the actual canonical `activity.verified` terminal fact; no synthetic completion event is created. Administrative Review is optional because it applies only to a rejected activity that enters facilitation.
 
@@ -43,3 +43,11 @@ For each bounded reporting window, the intelligence layer groups recorded events
 - **Average/median duration:** first-stage to final-stage elapsed milliseconds for entities that reached both.
 
 The methodology does not estimate missing stages, infer progress from mutable status, or claim coverage before instrumentation. Queries are UTC and bounded to 93 days/10,000 events. Any later cohort or local-business-time policy requires a separately versioned metric definition.
+
+## Facility Intelligence projection
+
+The Owner Facility Intelligence dashboard reuses this registry and journey model; it does not create client-side calculations or a parallel reporting store. Its owner-scoped overview includes submitted, verified, rejected, and Administrative Review request counts; active and repeat Driver counts; daily, weekly, and monthly trend series; peak operating hours/days; average daily volume; verification/rejection rates; and a bounded most-active Driver list.
+
+The Facility Health Score is an advisory internal operational score. It considers verification rate, repeat Driver percentage, Administrative Review rate, operational consistency, and profile completeness. Only its score and state are shown to Owners; internal weights are intentionally not published. Data-quality indicators are direct advisories for missing operating hours/profile data, low verification rate, or high Administrative Review demand. None of these values affects approval authority, status, billability, or financial execution.
+
+Facility drop-off reports are facts only. The Washout Journey uses activity events for the selected Facility. The Driver Journey is a cohort of Drivers with a submitted activity at that Facility within the selected period; account stages are their recorded account facts, and activity stages are constrained to the Facility. This scope prevents cross-facility activity disclosure while avoiding an invented Facility registration stage.

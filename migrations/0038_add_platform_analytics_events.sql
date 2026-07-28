@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS platform_analytics_events (
     'activity.checked_in', 'photo.uploaded', 'activity.submitted', 'activity.repeat_submitted',
     'facility.first_driver', 'facility.first_verified', 'facility.recurring_usage',
     'activity.verified', 'activity.rejected',
-    'admin_review.requested', 'admin_review.closed', 'admin_review.returned_to_owner_review'
+    'activity.owner_reviewed', 'admin_review.requested', 'admin_review.closed', 'admin_review.returned_to_owner_review'
   )),
   CONSTRAINT platform_analytics_events_source_record_type_valid CHECK (source_record_type IN (
     'driver', 'facility_owner', 'washout_activity', 'washout_photo', 'administrative_review'
