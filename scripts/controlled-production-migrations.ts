@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import pg from "pg";
 
 type Migration = { id: "0036" | "0037"; file: string; sha256: string; expectedObjects: number };
 type MigrationState = "pending" | "applied";
+const CLIENT_CLOSE_TIMEOUT_MS = 5_000;
 
 // This is deliberately separate from the staging-only runner. It has a smaller,
 // production-authorized allowlist and refuses every environment other than the
@@ -58,6 +60,31 @@ async function state(client: pg.Client, migration: Migration): Promise<Migration
   fail(`Catalog state for ${migration.id} is partial (${actual}/${migration.expectedObjects}); no repair is authorized.`);
 }
 
+/**
+ * node-postgres waits for PostgreSQL to close its half of the socket after a
+ * graceful Terminate packet. A proxy that leaves that socket half-open would
+ * otherwise keep Railway's pre-deploy process alive indefinitely. At this
+ * point all migration work and the advisory-lock release have already been
+ * awaited, so closing the session is safe; PostgreSQL also releases any
+ * session-scoped advisory lock when the connection closes.
+ */
+export async function closeClient(client: pg.Client, timeoutMs = CLIENT_CLOSE_TIMEOUT_MS) {
+  let closing = false;
+  const timeout = setTimeout(() => {
+    if (!closing) {
+      console.error("CONTROLLED_PRODUCTION_MIGRATION_CLOSE_TIMEOUT forcing database session close");
+      client.connection.stream.destroy();
+    }
+  }, timeoutMs);
+  timeout.unref();
+  try {
+    await client.end();
+  } finally {
+    closing = true;
+    clearTimeout(timeout);
+  }
+}
+
 function assertProductionAuthorization() {
   if (process.env.MIGRATION_TARGET !== "production") fail("MIGRATION_TARGET=production is required.");
   if (process.env.RAILWAY_ENVIRONMENT_NAME !== "production") fail("Railway environment must be explicitly identified as production.");
@@ -100,8 +127,10 @@ async function main() {
     }
   } finally {
     try { await client.query("SELECT pg_advisory_unlock(hashtext('cretexchange:controlled-production-migrations'))"); } catch {}
-    await client.end();
+    await closeClient(client);
   }
 }
 
-main().catch((error) => { console.error(`CONTROLLED_PRODUCTION_MIGRATION_FAILED ${error instanceof Error ? error.message : "unknown error"}`); process.exitCode = 1; });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => { console.error(`CONTROLLED_PRODUCTION_MIGRATION_FAILED ${error instanceof Error ? error.message : "unknown error"}`); process.exitCode = 1; });
+}
