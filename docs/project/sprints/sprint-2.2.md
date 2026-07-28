@@ -47,6 +47,23 @@ Sprint 2.2 is complete when the approved readiness work demonstrates that:
 
 Audit and strengthen the existing driver registration, login, profile, required acknowledgements, and account-readiness experience for pilot clarity and recoverability. This phase does not authorize Stripe, wallet, or settlement redesign.
 
+#### Engineering Closeout — Pilot Visual Validation Pending
+
+**Disposition:** Engineering Complete — Pilot Visual Validation Pending.
+
+Phase 1 engineering is complete. The internal implementation work packages used to deliver this existing phase established the following evidence without creating additional governing sprint phases:
+
+- **Server-authoritative Driver readiness** — protected operational submissions require the Driver role, an owned Driver profile, required profile completeness, current terms acceptance, and a valid active system material. Commit: `93a07912637a42bfbe3cbf532346d1b1d2059421`.
+- **Server-authoritative facility submission eligibility** — current and legacy submission paths enforce active and visible facility eligibility, the Driver's persisted material association, stale/direct facility-ID denial, and a safe non-disclosing recovery contract. Commit: `657186cc7ccc64d25d4612b8547d79c2b307524b`.
+- **Truthful onboarding and readiness UX** — the Driver experience provides action-specific readiness CTAs, evidence-based GPS presentation, material-filtered recommendations, distinct unavailable versus valid zero/empty states, and operational-first configured-incentive presentation. Commit: `74db2e7a5a13f52606bdbaf717900ab899ddac46`.
+- **English/Spanish onboarding and recovery parity** — registration, login, readiness, terms guidance, material recovery, Check-In, photo/upload, and submission recovery are localized. Driver errors use structured safe presentation; HTTP 401 revalidates root authentication. Legal-document content and acceptance behavior remain unchanged. Commit: `0cdd5e5fe5ea39ab1f131089cc062b86ec492080`.
+
+Validation evidence for the completed Phase 1 engineering work includes focused tests across the internal work packages, non-incremental TypeScript validation, Production builds, a full suite with 119 passing tests, and Production health confirmation after each release. The database remained connected and financial execution remained disabled. No schema, migration, financial-calculation, legal-document, or Production-data change was introduced by this Phase 1 work.
+
+**Remaining pilot/release checkpoint:** authenticated Driver visual validation remains outstanding because no controlled authenticated Driver account was available. No uncontrolled Production identity was used. Phase 1 must not be represented as fully pilot-validated or fully complete until that evidence is obtained.
+
+Phase 2 — Facility Onboarding and Marketplace Readiness may begin because Phase 1 engineering is complete. The pending authenticated visual validation remains tracked as a pilot/release checkpoint.
+
 ### Phase 2 — Facility Onboarding and Marketplace Readiness
 
 Audit and strengthen the existing owner/facility configuration, active/visible state, discovery eligibility, and operational instructions needed for a facility to be ready for pilot use.
