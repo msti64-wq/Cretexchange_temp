@@ -69,7 +69,7 @@ git remote -v
 git rev-parse --show-toplevel
 git rev-parse HEAD
 git branch --show-current
-CANONICAL_REMOTE="$(git remote -v | awk '/\(fetch\)$/ && tolower($2) ~ /msti64-wq[/:]cretexchange_temp(\.git)?$/ { print $1; exit }')"
+CANONICAL_REMOTE="$(git remote -v | awk '/\(fetch\)$/ { url = tolower($2); if (index(url, "msti64-wq/cretexchange_temp") || index(url, "msti64-wq:cretexchange_temp")) { print $1; exit } }')"
 test -n "$CANONICAL_REMOTE"
 git rev-parse "${CANONICAL_REMOTE}/main"
 ```
