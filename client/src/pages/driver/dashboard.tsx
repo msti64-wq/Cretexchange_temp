@@ -1,4 +1,4 @@
-import { Component, useEffect, useState, type ReactNode } from "react";
+import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,10 +21,11 @@ import { apiRequest } from "@/lib/queryClient";
 import { getDriverPayoutStatus, getDriverPayoutStatusLabel } from "@/lib/driverPayoutSettings";
 import { useDriverPaymentLifecycle } from "@/hooks/useDriverPaymentLifecycle";
 import { DriverLifecycleSummary } from "@/components/driver/DriverLifecycleSummary";
-import { DriverMaterialIntentSelector } from "@/components/driver/DriverMaterialIntentSelector";
+import { DriverMaterialIntentSelector, driverMaterialIntentKey, type DriverMaterialIntent } from "@/components/driver/DriverMaterialIntentSelector";
 import { DriverIntelligenceSummary } from "@/components/driver/DriverIntelligenceSummary";
 import { formatDistanceToNow } from "date-fns";
-import { resolveDriverAccountReadiness } from "@/lib/pilotOnboarding";
+import { resolveDriverOperationalReadiness } from "@shared/driverOperationalReadiness";
+import { resolveDriverDashboardGpsState, resolveDriverDashboardReadinessPresentation } from "@/lib/driverDashboardReadiness";
 
 type DriverDashboardStatsRange = "today" | "week" | "month";
 
@@ -35,6 +36,8 @@ interface DriverWalletBalance {
 }
 
 interface DriverAuthUser {
+  id?: string;
+  role?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
@@ -112,7 +115,7 @@ interface DriverDashboardLocation {
 
 interface RankedDashboardLocation extends DriverDashboardLocation {
   distanceMiles?: number | null;
-  driverIncentiveCents: number;
+  configuredIncentiveCents: number;
 }
 
 const DRIVER_STATS_RANGE_OPTIONS: Array<{ value: DriverDashboardStatsRange; labelKey: string }> = [
@@ -256,8 +259,11 @@ export default function DriverDashboard() {
   const [statsRange, setStatsRange] = useState<DriverDashboardStatsRange>("today");
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [gpsChecking, setGpsChecking] = useState(true);
+  const [gpsRetryCount, setGpsRetryCount] = useState(0);
+  const materialSelectorRef = useRef<HTMLDivElement>(null);
 
-  const { data: dashboardData, isLoading, refetch } = useQuery({
+  const { data: dashboardData, isLoading, isError: dashboardDataError, refetch } = useQuery({
     queryKey: [`/api/drivers/dashboard?statsRange=${statsRange}&includeSecondary=false`],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
@@ -277,12 +283,12 @@ export default function DriverDashboard() {
     };
   }, [dashboardData, deferredDashboardWidgetsEnabled]);
 
-  const { data: authUser, isLoading: authUserLoading } = useQuery<DriverAuthUser>({
+  const { data: authUser, isLoading: authUserLoading, isError: authUserError, refetch: refetchAuthUser } = useQuery<DriverAuthUser>({
     queryKey: ['/api/auth/user'],
     refetchInterval: 60000,
   });
 
-  const { data: termsStatus, isLoading: termsStatusLoading } = useQuery<DriverTermsStatus>({
+  const { data: termsStatus, isLoading: termsStatusLoading, isError: termsStatusError, refetch: refetchTermsStatus } = useQuery<DriverTermsStatus>({
     queryKey: [`/api/drivers/terms-status?language=${encodeURIComponent(language)}`],
     refetchInterval: 60000,
   });
@@ -299,7 +305,7 @@ export default function DriverDashboard() {
     enabled: deferredDashboardWidgetsEnabled,
   });
 
-  const { data: unreadNotificationsData, isLoading: unreadNotificationsLoading } = useQuery<{
+  const { data: unreadNotificationsData, isLoading: unreadNotificationsLoading, isError: unreadNotificationsError, refetch: refetchUnreadNotifications } = useQuery<{
     count: number;
     notifications: UnreadNotification[];
   }>({
@@ -308,12 +314,16 @@ export default function DriverDashboard() {
     enabled: deferredDashboardWidgetsEnabled,
   });
 
-  const { data: driverLocations, isLoading: driverLocationsLoading } = useQuery<any[]>({
-    queryKey: ['/api/drivers/locations'],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/drivers/locations");
-      return response.json();
-    },
+  const { data: materialIntent, isLoading: materialIntentLoading, isError: materialIntentError, refetch: refetchMaterialIntent } = useQuery<DriverMaterialIntent>({
+    queryKey: driverMaterialIntentKey,
+    queryFn: async () => (await apiRequest("GET", "/api/drivers/material-intent")).json(),
+  });
+  const activeMaterialSlug = materialIntent?.materialSlug || null;
+  const hasValidActiveMaterial = Boolean(activeMaterialSlug && materialIntent?.material);
+  const { data: driverLocations, isLoading: driverLocationsLoading, isError: driverLocationsError, refetch: refetchDriverLocations } = useQuery<any[]>({
+    queryKey: ['/api/drivers/locations', activeMaterialSlug],
+    queryFn: async () => (await apiRequest("GET", `/api/drivers/locations?materialSlug=${encodeURIComponent(activeMaterialSlug!)}`)).json(),
+    enabled: hasValidActiveMaterial,
     refetchInterval: 300000,
   });
 
@@ -405,6 +415,7 @@ export default function DriverDashboard() {
     let cancelled = false;
 
     const loadCurrentLocation = async () => {
+      setGpsChecking(true);
       try {
         const coords = await getCurrentLocation();
         if (cancelled) return;
@@ -415,6 +426,8 @@ export default function DriverDashboard() {
         const message = error instanceof Error ? error.message : "Unable to get location";
         setLocationError(message);
         setCurrentLocation(null);
+      } finally {
+        if (!cancelled) setGpsChecking(false);
       }
     };
 
@@ -423,10 +436,29 @@ export default function DriverDashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [gpsRetryCount]);
 
   if (isLoading) {
     return <DriverDashboardSkeleton />;
+  }
+
+  if (dashboardDataError) {
+    return (
+      <div className="dark min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20 text-foreground">
+        <DriverHeader />
+        <main className="mx-auto w-full max-w-2xl px-3 py-8 sm:px-4">
+          <DSCard padding="lg" elevated>
+            <h1 className="text-xl font-semibold">{t("driver.dashboard.operationalDataUnavailable")}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">{t("driver.dashboard.operationalDataUnavailableHelp")}</p>
+            <Button className="mt-4" onClick={() => void refetch()} data-testid="button-retry-dashboard-data">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {t("common.retry")}
+            </Button>
+          </DSCard>
+        </main>
+        <MobileNav role="driver" />
+      </div>
+    );
   }
 
   // Extract data with proper null checks and type annotation
@@ -447,12 +479,27 @@ export default function DriverDashboard() {
       || formatAddress(latestActivity.washout_locations || latestActivity.location || {}))
     : "";
   const latestActivityStatus = latestActivity ? (latestActivity.washout_activities?.status || latestActivity.status) : null;
-  const driverAccountReadiness = resolveDriverAccountReadiness({
+  const driverOperationalReadiness = resolveDriverOperationalReadiness({
     user: authUser,
-    termsAccepted: Boolean(termsStatus?.hasAgreed || authUser?.roleData?.hasAgreedToTerms),
+    profile: authUser?.roleData ? {
+      userId: authUser.id,
+      employerName: authUser.roleData.employerName,
+      truckNumber: authUser.roleData.truckNumber,
+      activeMaterialSlug,
+    } : null,
+    termsAccepted: termsStatus?.hasAgreed,
+    activeMaterial: materialIntent?.material,
   });
-  const profileReady = driverAccountReadiness.profileComplete;
-  const termsAccepted = driverAccountReadiness.termsAccepted;
+  const dashboardReadiness = resolveDriverDashboardReadinessPresentation(driverOperationalReadiness, {
+    authenticationLoading: authUserLoading,
+    termsLoading: termsStatusLoading,
+    materialLoading: materialIntentLoading,
+    authenticationUnavailable: authUserError,
+    termsUnavailable: termsStatusError,
+    materialUnavailable: materialIntentError,
+  });
+  const profileReady = driverOperationalReadiness.profileComplete;
+  const termsAccepted = driverOperationalReadiness.termsAccepted;
   const stripePresentationStatus = stripeAccountStatusError
     ? "status_unavailable"
     : getDriverPayoutStatus(stripeAccountStatus);
@@ -460,7 +507,26 @@ export default function DriverDashboard() {
   const debitCardState = debitCardStatus?.hasRequested
     ? (debitCardStatus.status || debitCardStatus.cardStatus || "requested")
     : "not requested";
-  const accountReady = driverAccountReadiness.ready;
+  const accountReady = dashboardReadiness.state === "ready";
+  const gpsState = resolveDriverDashboardGpsState({
+    checking: gpsChecking,
+    hasCurrentLocation: Boolean(currentLocation),
+    error: locationError,
+  });
+  const handleDashboardReadinessAction = () => {
+    if (!dashboardReadiness.action) return;
+    if (dashboardReadiness.action === "retry_readiness") {
+      if (dashboardReadiness.unavailableSource === "authentication") void refetchAuthUser();
+      if (dashboardReadiness.unavailableSource === "terms") void refetchTermsStatus();
+      if (dashboardReadiness.unavailableSource === "material") void refetchMaterialIntent();
+      return;
+    }
+    if (dashboardReadiness.action === "select_material") {
+      materialSelectorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (dashboardReadiness.route) setLocation(dashboardReadiness.route);
+  };
   const stripeStatusUnavailable = stripePresentationStatus === "status_unavailable";
   const unreadNotifications = unreadNotificationsData?.notifications || [];
   const unreadNotificationCount = unreadNotificationsData?.count ?? unreadNotifications.length;
@@ -478,7 +544,7 @@ export default function DriverDashboard() {
           const location = normalizeDashboardLocation(item);
           const latitude = parseLocationCoordinate(location.latitude);
           const longitude = parseLocationCoordinate(location.longitude);
-          const driverIncentiveCents = resolveLocationDriverTipRateCents(location.rate);
+          const configuredIncentiveCents = resolveLocationDriverTipRateCents(location.rate);
 
           const distanceMiles = currentLocation && latitude !== null && longitude !== null
             ? calculateDistance(currentLocation.lat, currentLocation.lng, latitude, longitude)
@@ -487,7 +553,7 @@ export default function DriverDashboard() {
           return {
             ...location,
             distanceMiles,
-            driverIncentiveCents,
+            configuredIncentiveCents,
           } as RankedDashboardLocation;
         })
         .filter((location) => location.isActive !== false && location.isVisible !== false)
@@ -495,28 +561,7 @@ export default function DriverDashboard() {
 
   const recommendedLocation = rankedDriverLocations
     .filter((location) => location.distanceMiles !== null)
-    .sort((a, b) => {
-      const distanceDelta = (a.distanceMiles || 0) - (b.distanceMiles || 0);
-      if (Math.abs(distanceDelta) <= 0.1) {
-        const incentiveDelta = (b.driverIncentiveCents || 0) - (a.driverIncentiveCents || 0);
-        if (incentiveDelta !== 0) {
-          return incentiveDelta;
-        }
-      }
-
-      return distanceDelta;
-    })[0] || null;
-
-  const highestNearbyIncentiveLocation = rankedDriverLocations
-    .filter((location) => location.distanceMiles !== null)
-    .sort((a, b) => {
-      const incentiveDelta = (b.driverIncentiveCents || 0) - (a.driverIncentiveCents || 0);
-      if (incentiveDelta !== 0) {
-        return incentiveDelta;
-      }
-
-      return (a.distanceMiles || 0) - (b.distanceMiles || 0);
-    })[0] || null;
+    .sort((a, b) => (a.distanceMiles || 0) - (b.distanceMiles || 0))[0] || null;
 
   const hasLocationData = Array.isArray(driverLocations) && driverLocations.length > 0;
   const locationRankingUnavailable = Boolean(locationError) || !currentLocation;
@@ -526,16 +571,17 @@ export default function DriverDashboard() {
       <div className="dark min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-background pb-20 text-foreground">
         <DriverHeader />
 
-        {/* GPS Status Bar */}
+        {/* GPS is a contextual browser capability, not account readiness. */}
         <DSCard className="w-full max-w-full rounded-none border-x-0 border-t-0 px-3 py-3 sm:px-4" padding="sm" elevated>
           <div className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
             <div className="flex min-w-0 items-center gap-2">
-              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.15)] animate-pulse" />
-              <span className="min-w-0 truncate text-sm font-semibold tracking-tight" data-testid="text-gps-status">{t("driver.dashboard.gpsActive")}</span>
+              <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${gpsState === "available" ? "bg-emerald-500" : gpsState === "checking" ? "bg-amber-500 animate-pulse" : "bg-muted-foreground"}`} />
+              <span className="min-w-0 truncate text-sm font-semibold tracking-tight" data-testid="text-gps-status">{t(`driver.dashboard.gps.${gpsState}`)}</span>
             </div>
-            <div className="flex max-w-full min-w-0 items-center gap-2 self-start rounded-full border border-emerald-500/30 bg-card px-3 py-1 text-sm font-medium text-emerald-400">
+            <div className="flex max-w-full min-w-0 items-center gap-2 self-start rounded-full border border-border/70 bg-card px-3 py-1 text-sm font-medium text-muted-foreground">
               <MapPin className="h-4 w-4 shrink-0" />
-              <span className="min-w-0 truncate" data-testid="text-current-location">{t("driver.dashboard.locationEnabled")}</span>
+              <span className="min-w-0 truncate" data-testid="text-current-location">{t(`driver.dashboard.gpsHelp.${gpsState}`)}</span>
+              {(gpsState === "permission_needed" || gpsState === "unavailable") && <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setGpsRetryCount((count) => count + 1)} data-testid="button-retry-gps">{t("common.retry")}</Button>}
             </div>
           </div>
         </DSCard>
@@ -547,8 +593,8 @@ export default function DriverDashboard() {
               <span className="max-w-full break-words rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
                 {t("driver.dashboard.fieldOps")}
               </span>
-              <span className="max-w-full break-words rounded-full border border-emerald-500/30 bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-400 sm:tracking-[0.16em]">
-                {t("driver.dashboard.gpsReady")}
+              <span className="max-w-full break-words rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
+                {t(`driver.dashboard.gps.${gpsState}`)}
               </span>
               <span className="max-w-full break-words rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.16em]">
                 {t("driver.dashboard.siteStopsToday", { count: dailyStats?.visits || 0 })}
@@ -563,19 +609,22 @@ export default function DriverDashboard() {
                 {t("driver.dashboard.description")}
               </p>
             </div>
-            <DriverMaterialIntentSelector />
+            <div ref={materialSelectorRef}>
+              <DriverMaterialIntentSelector />
+            </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Button
                 variant="default"
                 className="h-auto min-h-24 w-full max-w-full min-w-0 flex-col items-start justify-start gap-1.5 !whitespace-normal rounded-2xl border border-primary/30 bg-primary px-4 py-4 text-left text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary/90 active:translate-y-0 focus-visible:ring-primary/50"
-                onClick={() => setLocation('/locations')}
+                onClick={handleDashboardReadinessAction}
+                disabled={dashboardReadiness.state === "loading"}
                 data-testid="button-find-location-hero"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white">
                   <MapPin className="h-4 w-4" />
                 </div>
-                <span className="break-words text-sm font-semibold tracking-tight">{t("driver.dashboard.findLocation")}</span>
-                <span className="break-words text-xs text-primary-foreground/85">{t("driver.dashboard.findLocationHelp")}</span>
+                <span className="break-words text-sm font-semibold tracking-tight">{dashboardReadiness.action ? t(`driver.dashboard.readinessAction.${dashboardReadiness.action}`) : t("common.loading")}</span>
+                <span className="break-words text-xs text-primary-foreground/85">{dashboardReadiness.action ? t(`driver.dashboard.readinessActionHelp.${dashboardReadiness.action}`) : t("driver.dashboard.readinessLoadingHelp")}</span>
               </Button>
               <Button
                 variant="outline"
@@ -700,24 +749,31 @@ export default function DriverDashboard() {
                       {t("driver.dashboard.readyToWork")}
                     </h3>
                   </div>
-                  <DSStatusChip tone={accountReady ? "success" : "warning"} size="sm">
-                    {accountReady ? t("driver.dashboard.readinessReady") : t("driver.dashboard.readinessActionNeeded")}
+                  <DSStatusChip tone={dashboardReadiness.state === "loading" || dashboardReadiness.state === "unavailable" ? "neutral" : accountReady ? "success" : "warning"} size="sm">
+                    {dashboardReadiness.state === "loading"
+                      ? t("common.loading")
+                      : dashboardReadiness.state === "unavailable"
+                      ? t("driver.dashboard.readinessStatusUnavailable")
+                      : accountReady ? t("driver.dashboard.readinessReady") : t("driver.dashboard.readinessActionNeeded")}
                   </DSStatusChip>
                 </div>
 
                 <div data-testid="driver-operational-readiness">
-                {authUserLoading || termsStatusLoading ? (
+                {dashboardReadiness.state === "loading" ? (
                   <div className="space-y-3">
                     <Skeleton className="h-4 w-40 bg-muted" />
                     <Skeleton className="h-4 w-36 bg-muted" />
                   </div>
                 ) : (
                   <div className="space-y-2 text-sm">
-                    {!accountReady ? (
+                    {dashboardReadiness.state === "unavailable" ? (
+                      <div className="rounded-2xl border border-border/70 bg-background/70 px-3 py-2" data-testid="driver-account-readiness-unavailable">
+                        <p className="text-sm font-medium">{t("driver.dashboard.readinessUnavailable")}</p>
+                        <Button variant="link" className="h-auto px-0 py-1" onClick={handleDashboardReadinessAction}>{t("common.retry")}</Button>
+                      </div>
+                    ) : !accountReady ? (
                       <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-900 dark:text-amber-100" data-testid="driver-account-readiness-next-step">
-                        {driverAccountReadiness.nextStep === "complete_profile"
-                          ? t("driver.dashboard.completeProfileNext")
-                          : t("driver.dashboard.acceptTermsNext")}
+                        {t(`driver.dashboard.readinessActionHelp.${dashboardReadiness.action}`)}
                       </div>
                     ) : null}
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
@@ -730,6 +786,12 @@ export default function DriverDashboard() {
                       <span className="text-muted-foreground">{t("driver.dashboard.termsAccepted")}</span>
                       <DSStatusChip tone={termsAccepted ? "success" : "warning"} size="sm">
                         {termsAccepted ? t("driver.dashboard.termsAcceptedStatus") : t("driver.dashboard.termsPending")}
+                      </DSStatusChip>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/70 px-3 py-2">
+                      <span className="text-muted-foreground">{t("driver.dashboard.activeMaterial")}</span>
+                      <DSStatusChip tone={driverOperationalReadiness.activeMaterialState === "valid" ? "success" : "warning"} size="sm">
+                        {driverOperationalReadiness.activeMaterialState === "valid" ? t("driver.dashboard.readinessComplete") : t("driver.dashboard.readinessNeedsInfo")}
                       </DSStatusChip>
                     </div>
                   </div>
@@ -759,9 +821,9 @@ export default function DriverDashboard() {
                     variant="outline"
                     size="sm"
                     className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
-                    onClick={() => setLocation('/profile')}
+                    onClick={handleDashboardReadinessAction}
                   >
-                    Profile
+                    {dashboardReadiness.action === "find_locations" ? t("driver.dashboard.findLocation") : dashboardReadiness.action ? t(`driver.dashboard.readinessAction.${dashboardReadiness.action}`) : t("common.loading")}
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                   <Button
@@ -798,6 +860,11 @@ export default function DriverDashboard() {
                     <Skeleton className="h-16 rounded-2xl bg-muted" />
                     <Skeleton className="h-16 rounded-2xl bg-muted" />
                     <Skeleton className="h-16 rounded-2xl bg-muted" />
+                  </div>
+                ) : unreadNotificationsError ? (
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4" data-testid="driver-notifications-unavailable">
+                    <p className="text-sm font-medium text-foreground">{t("driver.dashboard.notificationsUnavailable")}</p>
+                    <Button variant="link" className="h-auto px-0 py-1" onClick={() => void refetchUnreadNotifications()}>{t("common.retry")}</Button>
                   </div>
                 ) : topUnreadNotifications.length > 0 ? (
                   <div className="space-y-2">
@@ -861,6 +928,12 @@ export default function DriverDashboard() {
                     <Skeleton className="h-4 w-40 bg-muted" />
                     <Skeleton className="h-4 w-32 bg-muted" />
                   </div>
+                ) : walletBalanceError ? (
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-3" data-testid="driver-wallet-unavailable">
+                    <p className="text-sm font-medium text-foreground">{t("driver.dashboard.walletUnavailable")}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{t("driver.dashboard.walletUnavailableHelp")}</p>
+                    <Button variant="link" className="h-auto px-0 py-1" onClick={() => void refetchWalletBalance()}>{t("common.retry")}</Button>
+                  </div>
                 ) : (
                   <>
                     <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
@@ -868,7 +941,7 @@ export default function DriverDashboard() {
                         Wallet Balance
                       </p>
                       <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground" data-testid="text-dashboard-available-balance">
-                        {formatCurrency(walletBalance?.availableBalance || 0)}
+                        {formatCurrency(walletBalance?.availableBalance ?? 0)}
                       </p>
                     </div>
                     <p className="text-sm text-muted-foreground">Wallet balance is shown separately from activity review and payment status.</p>
@@ -954,12 +1027,12 @@ export default function DriverDashboard() {
                 Location Intelligence
               </p>
               <h3 className="break-words text-sm font-semibold tracking-tight text-foreground">
-                Nearby locations and incentive focus
+                {t("driver.dashboard.locationDiscovery")}
               </h3>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3">
             <DSCard padding="md" elevated className="min-h-[240px] border-border/70">
               <div className="flex h-full flex-col gap-4">
                 <div className="flex items-start justify-between gap-3">
@@ -974,19 +1047,54 @@ export default function DriverDashboard() {
                   <MapPin className="h-5 w-5 shrink-0 text-primary" />
                 </div>
 
-                {driverLocationsLoading ? (
+                {materialIntentError ? (
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4" data-testid="driver-material-unavailable">
+                    <p className="text-sm font-medium text-foreground">{t("driver.dashboard.materialUnavailable")}</p>
+                    <Button variant="link" className="h-auto px-0 py-1" onClick={() => void refetchMaterialIntent()}>{t("common.retry")}</Button>
+                  </div>
+                ) : materialIntentLoading ? (
+                  <div className="space-y-3" data-testid="driver-material-loading">
+                    <Skeleton className="h-4 w-36 bg-muted" />
+                    <Skeleton className="h-8 w-52 bg-muted" />
+                    <Skeleton className="h-4 w-40 bg-muted" />
+                  </div>
+                ) : !hasValidActiveMaterial ? (
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                    <p className="text-sm font-medium text-foreground">{t("driver.dashboard.materialSelectionNeeded")}</p>
+                    <Button variant="link" className="h-auto px-0 py-1" onClick={handleDashboardReadinessAction}>{t("driver.dashboard.readinessAction.select_material")}</Button>
+                  </div>
+                ) : driverLocationsLoading ? (
                   <div className="space-y-3">
                     <Skeleton className="h-4 w-36 bg-muted" />
                     <Skeleton className="h-8 w-52 bg-muted" />
                     <Skeleton className="h-4 w-40 bg-muted" />
                     <Skeleton className="h-4 w-32 bg-muted" />
                   </div>
+                ) : driverLocationsError ? (
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4" data-testid="driver-locations-unavailable">
+                    <p className="text-sm font-medium text-foreground">{t("driver.dashboard.locationsUnavailable")}</p>
+                    <Button variant="link" className="h-auto px-0 py-1" onClick={() => void refetchDriverLocations()}>{t("common.retry")}</Button>
+                  </div>
+                ) : gpsState === "checking" ? (
+                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4" data-testid="driver-location-ranking-checking">
+                    <p className="text-sm font-medium text-foreground">{t("driver.dashboard.locationAccessNeeded")}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{t("driver.dashboard.locationAccessChecking")}</p>
+                  </div>
                 ) : locationRankingUnavailable ? (
                   <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
-                    <p className="text-sm font-medium text-foreground">Location access needed</p>
+                    <p className="text-sm font-medium text-foreground">{t("driver.dashboard.locationAccessNeeded")}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Turn on location access to rank nearby stops from your current position.
+                      {t("driver.dashboard.locationAccessUnavailable")}
                     </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setLocation('/locations')}>
+                        {t("driver.dashboard.viewLocations")}
+                        <ArrowRight className="ml-1 h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setGpsRetryCount((count) => count + 1)}>
+                        {t("common.retry")}
+                      </Button>
+                    </div>
                   </div>
                 ) : !hasLocationData ? (
                   <DashboardEmptyState
@@ -1015,11 +1123,12 @@ export default function DriverDashboard() {
                         <span>{formatDistanceMiles(recommendedLocation.distanceMiles)}</span>
                         <span>•</span>
                         <span>
-                          {recommendedLocation.driverIncentiveCents > 0
-                            ? formatCurrency(recommendedLocation.driverIncentiveCents / 100)
-                            : "Incentive unavailable"}
+                          {recommendedLocation.configuredIncentiveCents > 0
+                            ? t("driver.dashboard.configuredIncentiveValue", { amount: formatCurrency(recommendedLocation.configuredIncentiveCents / 100) })
+                            : t("driver.dashboard.configuredIncentiveUnavailable")}
                         </span>
                       </div>
+                      <p className="text-xs text-muted-foreground">{t("driver.dashboard.configuredIncentiveQualification")}</p>
                       {recommendedLocation.operatingHours && (
                         <p className="text-sm text-muted-foreground">
                           Hours: {recommendedLocation.operatingHours}
@@ -1033,7 +1142,7 @@ export default function DriverDashboard() {
                         className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
                         onClick={() => setLocation('/locations')}
                       >
-                        View Locations
+                        {t("driver.dashboard.viewLocations")}
                         <ArrowRight className="ml-1 h-4 w-4" />
                       </Button>
                     </div>
@@ -1049,94 +1158,6 @@ export default function DriverDashboard() {
               </div>
             </DSCard>
 
-            <DSCard padding="md" elevated className="min-h-[240px] border-border/70">
-              <div className="flex h-full flex-col gap-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 space-y-1">
-                    <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      Highest Nearby Driver Incentive
-                    </p>
-                    <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
-                      Best nearby payout focus
-                    </h3>
-                  </div>
-                  <Ticket className="h-5 w-5 shrink-0 text-primary" />
-                </div>
-
-                {driverLocationsLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-4 w-36 bg-muted" />
-                    <Skeleton className="h-8 w-52 bg-muted" />
-                    <Skeleton className="h-4 w-40 bg-muted" />
-                    <Skeleton className="h-4 w-32 bg-muted" />
-                  </div>
-                ) : locationRankingUnavailable ? (
-                  <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
-                    <p className="text-sm font-medium text-foreground">Location access needed</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Allow location access to rank the highest nearby driver incentive.
-                    </p>
-                  </div>
-                ) : !hasLocationData ? (
-                  <DashboardEmptyState
-                    title="No driver locations"
-                    description="No active locations are available right now."
-                    icon={Ticket}
-                    toneClassName="bg-card text-foreground"
-                  />
-                ) : highestNearbyIncentiveLocation ? (
-                  <>
-                    <div className="rounded-2xl border border-border/70 bg-background/70 p-3 space-y-2">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="break-words text-base font-semibold text-foreground">
-                            {highestNearbyIncentiveLocation.name || "Nearby location"}
-                          </p>
-                          {formatDashboardLocationAddress(highestNearbyIncentiveLocation) && (
-                            <p className="mt-1 break-words text-sm text-muted-foreground">
-                              {formatDashboardLocationAddress(highestNearbyIncentiveLocation)}
-                            </p>
-                          )}
-                        </div>
-                        <DSStatusChip tone="accent" size="sm">Highest incentive</DSStatusChip>
-                      </div>
-                      <p className="text-2xl font-semibold tracking-tight text-foreground">
-                        {highestNearbyIncentiveLocation.driverIncentiveCents > 0
-                          ? formatCurrency(highestNearbyIncentiveLocation.driverIncentiveCents / 100)
-                          : "Incentive unavailable"}
-                      </p>
-                      <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                        <span>{formatDistanceMiles(highestNearbyIncentiveLocation.distanceMiles)}</span>
-                        {highestNearbyIncentiveLocation.operatingHours && (
-                          <>
-                            <span>•</span>
-                            <span>Hours: {highestNearbyIncentiveLocation.operatingHours}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-auto flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
-                        onClick={() => setLocation('/locations')}
-                      >
-                        View Locations
-                        <ArrowRight className="ml-1 h-4 w-4" />
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <DashboardEmptyState
-                    title="No ranked location"
-                    description="No nearby incentive could be ranked from the current location data."
-                    icon={Ticket}
-                    toneClassName="bg-card text-foreground"
-                  />
-                )}
-              </div>
-            </DSCard>
           </div>
         </section>
 

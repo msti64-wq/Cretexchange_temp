@@ -14,7 +14,6 @@ import { getCurrentLocation } from "@/lib/gps";
 import { formatAddress } from "@shared/addressUtils";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
-import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { useLanguage } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { DriverMaterialIntentSelector, driverMaterialIntentKey, type DriverMaterialIntent } from "@/components/driver/DriverMaterialIntentSelector";
@@ -264,10 +263,7 @@ export default function DriverLocations() {
                       <div className="text-2xl font-bold text-accent mb-1" data-testid={`text-location-rate-${index}`}>
                         {formatCurrency(Number(location.rate))}
                       </div>
-                      <div className="text-xs text-foreground/65">{t("driver.locations.driverPayoutPerWashout")}</div>
-                      <div className="text-xs text-foreground/65">
-                        {t("driver.locations.driverTip", { amount: formatCurrency(resolveLocationDriverTipRateCents(location.rate) / 100) })}
-                      </div>
+                      <div className="text-xs text-foreground/65">{t("driver.locations.configuredIncentive")}</div>
                     </div>
                   </div>
 
@@ -317,6 +313,7 @@ export default function DriverLocations() {
                     </div>
                   )}
                   {item.matchedMaterial && <Badge variant="secondary" className="mb-3">{t("driver.material.accepts", { material: item.matchedMaterial.displayName })}</Badge>}
+                  <p className="mb-3 text-xs text-muted-foreground">{t("driver.locations.configuredIncentiveQualification")}</p>
 
                   <div className="flex gap-2">
                     <Button 

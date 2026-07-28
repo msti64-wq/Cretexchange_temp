@@ -292,16 +292,16 @@ test("first-activity views provide activity-bound confirmation and GPS retry rec
   assert.doesNotMatch(profileSource, /payment method.*first-location|first-location.*payment method/i);
 
   const dashboardSource = readFileSync(new URL("../client/src/pages/driver/dashboard.tsx", import.meta.url), "utf8");
-  assert.match(dashboardSource, /resolveDriverAccountReadiness/);
+  assert.match(dashboardSource, /resolveDriverOperationalReadiness/);
+  assert.match(dashboardSource, /resolveDriverDashboardReadinessPresentation/);
   assert.match(dashboardSource, /driver-account-readiness-next-step/);
-  assert.match(dashboardSource, /driver\.dashboard\.completeProfileNext/);
-  assert.match(dashboardSource, /driver\.dashboard\.acceptTermsNext/);
+  assert.match(dashboardSource, /driver\.dashboard\.readinessAction/);
   const operationalReadinessStart = dashboardSource.indexOf('data-testid="driver-operational-readiness"');
   const optionalFinancialStatusStart = dashboardSource.indexOf('data-testid="driver-optional-financial-status"');
   assert.ok(operationalReadinessStart >= 0);
   assert.ok(optionalFinancialStatusStart > operationalReadinessStart);
   const operationalReadinessSource = dashboardSource.slice(operationalReadinessStart, optionalFinancialStatusStart);
-  assert.match(operationalReadinessSource, /authUserLoading \|\| termsStatusLoading/);
+  assert.match(operationalReadinessSource, /dashboardReadiness\.state === "loading"/);
   assert.doesNotMatch(operationalReadinessSource, /stripeAccountStatusLoading|debitCardStatusLoading|walletBalanceError/);
   assert.match(dashboardSource.slice(optionalFinancialStatusStart), /optionalFinancialLoading/);
   assert.match(dashboardSource.slice(optionalFinancialStatusStart), /optionalDebitCardLoading/);
