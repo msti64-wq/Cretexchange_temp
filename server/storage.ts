@@ -9,6 +9,7 @@ import {
   washoutActivityReviewEvents,
   washoutPhotos,
   washoutPhotoReviewEvents,
+  platformAnalyticsEvents,
   payments,
   notifications,
   termsVersions,
@@ -153,6 +154,7 @@ import { eq, and, gt, gte, lte, asc, desc, sql, count, ne, or, getTableColumns, 
 import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
 import type { PhotoFingerprintCandidate } from "@shared/photoFingerprint";
+import { recordPlatformAnalyticsEvent } from "./platformAnalytics";
 
 type IdentityDocument = typeof identityDocuments.$inferSelect;
 
@@ -210,6 +212,7 @@ export interface IStorage {
   // Driver operations
   createDriver(driver: InsertDriver): Promise<Driver>;
   getDriver(userId: string): Promise<Driver | undefined>;
+  recordDriverFirstLogin(userId: string): Promise<void>;
   getDriverByUserId(userId: string): Promise<Driver | undefined>;
   getDriverById(id: string): Promise<Driver | undefined>;
   getDriverByConnectedAccountId(connectedAccountId: string): Promise<Driver | undefined>;
@@ -903,13 +906,31 @@ export class DatabaseStorage implements IStorage {
 
   // Driver operations
   async createDriver(driver: InsertDriver): Promise<Driver> {
-    const [newDriver] = await db.insert(drivers).values(driver).returning();
-    return newDriver;
+    return db.transaction(async (tx) => {
+      const [newDriver] = await tx.insert(drivers).values(driver).returning();
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "driver.registered", sourceRecordType: "driver", sourceRecordId: newDriver.id,
+        sourceEventKey: `driver:${newDriver.id}:registered`, occurredAt: newDriver.createdAt || new Date(),
+        driverId: newDriver.id,
+      });
+      return newDriver;
+    });
   }
 
   async getDriver(userId: string): Promise<Driver | undefined> {
     const [driver] = await db.select().from(drivers).where(eq(drivers.userId, userId));
     return driver;
+  }
+
+  async recordDriverFirstLogin(userId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      const [driver] = await tx.select({ id: drivers.id }).from(drivers).where(eq(drivers.userId, userId)).limit(1);
+      if (!driver) return;
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "driver.first_logged_in", sourceRecordType: "driver", sourceRecordId: driver.id,
+        sourceEventKey: `driver:${driver.id}:first-login`, occurredAt: new Date(), driverId: driver.id,
+      });
+    });
   }
 
   async getDriverByUserId(userId: string): Promise<Driver | undefined> {
@@ -1156,7 +1177,7 @@ export class DatabaseStorage implements IStorage {
       // Update owner balance
       await tx
         .update(owners)
-        .set({ 
+        .set({
           walletBalance: newBalance.toFixed(2),
           updatedAt: new Date() 
         })
@@ -1226,12 +1247,23 @@ export class DatabaseStorage implements IStorage {
   // Removed: getOwnerSubscriptionStatus - replaced by getOwnerWalletBalance
 
   async approveOwner(ownerId: string): Promise<Owner> {
-    const [owner] = await db
-      .update(owners)
-      .set({ isApproved: true, updatedAt: new Date() })
-      .where(eq(owners.id, ownerId))
-      .returning();
-    return owner;
+    return db.transaction(async (tx) => {
+      const now = new Date();
+      const [owner] = await tx
+        .update(owners)
+        .set({ isApproved: true, updatedAt: now })
+        .where(eq(owners.id, ownerId))
+        .returning();
+      const locations = await tx.select({ id: washoutLocations.id }).from(washoutLocations).where(eq(washoutLocations.ownerId, ownerId));
+      for (const location of locations) {
+        await recordPlatformAnalyticsEvent(tx, {
+          eventType: "facility.approved", sourceRecordType: "facility_owner", sourceRecordId: owner.id,
+          sourceEventKey: `facility:${location.id}:approved`, occurredAt: now,
+          ownerId, locationId: location.id,
+        });
+      }
+      return owner;
+    });
   }
 
   async activateMembership(ownerId: string, paymentMethod: string, paymentNotes: string | undefined, activatedBy: string): Promise<Owner> {
@@ -1390,8 +1422,23 @@ export class DatabaseStorage implements IStorage {
       latitude: location.latitude,
       longitude: location.longitude,
     };
-    const [newLocation] = await db.insert(washoutLocations).values(locationValues).returning();
-    return newLocation;
+    return db.transaction(async (tx) => {
+      const [newLocation] = await tx.insert(washoutLocations).values(locationValues).returning();
+      const [owner] = await tx.select({ isApproved: owners.isApproved }).from(owners).where(eq(owners.id, newLocation.ownerId)).limit(1);
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "facility.registered", sourceRecordType: "facility_owner", sourceRecordId: newLocation.id,
+        sourceEventKey: `facility:${newLocation.id}:registered`, occurredAt: newLocation.createdAt || new Date(),
+        ownerId: newLocation.ownerId, locationId: newLocation.id,
+      });
+      if (owner?.isApproved) {
+        await recordPlatformAnalyticsEvent(tx, {
+          eventType: "facility.approved", sourceRecordType: "facility_owner", sourceRecordId: newLocation.ownerId,
+          sourceEventKey: `facility:${newLocation.id}:approved`, occurredAt: newLocation.createdAt || new Date(),
+          ownerId: newLocation.ownerId, locationId: newLocation.id,
+        });
+      }
+      return newLocation;
+    });
   }
 
   async getWashoutLocation(id: string): Promise<WashoutLocation | undefined> {
@@ -1805,8 +1852,15 @@ export class DatabaseStorage implements IStorage {
 
   // Photo operations - NEW clean photo system
   async createWashoutPhoto(photo: InsertWashoutPhoto): Promise<WashoutPhoto> {
-    const [newPhoto] = await db.insert(washoutPhotos).values(photo).returning();
-    return newPhoto;
+    return db.transaction(async (tx) => {
+      const [newPhoto] = await tx.insert(washoutPhotos).values(photo).returning();
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "photo.uploaded", sourceRecordType: "washout_photo", sourceRecordId: newPhoto.id,
+        sourceEventKey: `photo:${newPhoto.id}:uploaded`, occurredAt: newPhoto.uploadedAt || new Date(),
+        activityId: newPhoto.activityId, driverId: newPhoto.driverId, locationId: newPhoto.locationId,
+      });
+      return newPhoto;
+    });
   }
 
   async getPhotosByActivity(activityId: string): Promise<WashoutPhoto[]> {
@@ -2001,6 +2055,48 @@ export class DatabaseStorage implements IStorage {
         }));
         throw error;
       }
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "activity.checked_in", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+        sourceEventKey: `activity:${newActivity.id}:checked-in`, occurredAt: newActivity.checkInTime,
+        activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
+      });
+      for (const photo of newPhotos) {
+        await recordPlatformAnalyticsEvent(tx, {
+          eventType: "photo.uploaded", sourceRecordType: "washout_photo", sourceRecordId: photo.id,
+          sourceEventKey: `photo:${photo.id}:uploaded`, occurredAt: photo.uploadedAt || newActivity.createdAt || new Date(),
+          activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
+        });
+      }
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "activity.submitted", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+        sourceEventKey: `activity:${newActivity.id}:submitted`, occurredAt: newActivity.createdAt || new Date(),
+        activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
+      });
+      const [driverSubmissionCount] = await tx.select({ total: sql<number>`count(*)` }).from(platformAnalyticsEvents)
+        .where(and(eq(platformAnalyticsEvents.eventType, "activity.submitted"), eq(platformAnalyticsEvents.driverId, newActivity.driverId)));
+      if (Number(driverSubmissionCount?.total || 0) >= 2) {
+        await recordPlatformAnalyticsEvent(tx, {
+          eventType: "activity.repeat_submitted", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+          sourceEventKey: `activity:${newActivity.id}:repeat-submitted`, occurredAt: newActivity.createdAt || new Date(),
+          activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
+        });
+      }
+      const [locationSubmissionCounts] = await tx.select({ total: sql<number>`count(*)`, drivers: sql<number>`count(distinct ${platformAnalyticsEvents.driverId})` }).from(platformAnalyticsEvents)
+        .where(and(eq(platformAnalyticsEvents.eventType, "activity.submitted"), eq(platformAnalyticsEvents.locationId, newActivity.locationId)));
+      if (Number(locationSubmissionCounts?.drivers || 0) === 1) {
+        await recordPlatformAnalyticsEvent(tx, {
+          eventType: "facility.first_driver", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+          sourceEventKey: `facility:${newActivity.locationId}:first-driver`, occurredAt: newActivity.createdAt || new Date(),
+          activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
+        });
+      }
+      if (Number(locationSubmissionCounts?.total || 0) >= 2) {
+        await recordPlatformAnalyticsEvent(tx, {
+          eventType: "facility.recurring_usage", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+          sourceEventKey: `facility:${newActivity.locationId}:recurring-usage`, occurredAt: newActivity.createdAt || new Date(),
+          activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
+        });
+      }
       
       return {
         activity: newActivity,
@@ -2010,29 +2106,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async verifyWashoutActivity(activityId: string, verifiedBy: string): Promise<WashoutActivity> {
-    const [activity] = await db
-      .update(washoutActivities)
-      .set({ 
-        status: "verified",
-        verifiedBy,
-        verifiedAt: new Date(),
-        updatedAt: new Date()
-      })
-      // Compare-and-set prevents concurrent owner/manual/auto verification from
-      // producing duplicate downstream side effects.
-      .where(and(
-        eq(washoutActivities.id, activityId),
-        eq(washoutActivities.status, "pending"),
-      ))
-      .returning();
+    return db.transaction(async (tx) => {
+      const now = new Date();
+      const [activity] = await tx
+        .update(washoutActivities)
+        .set({
+          status: "verified",
+          verifiedBy,
+          verifiedAt: now,
+          updatedAt: now,
+        })
+        // Compare-and-set prevents concurrent owner/manual/auto verification from
+        // producing duplicate downstream side effects.
+        .where(and(
+          eq(washoutActivities.id, activityId),
+          eq(washoutActivities.status, "pending"),
+        ))
+        .returning();
 
-    if (!activity) {
-      const error = new Error("Washout activity is no longer pending") as Error & { code?: string };
-      error.code = "WASHOUT_ACTIVITY_NOT_PENDING";
-      throw error;
-    }
-
-    return activity;
+      if (!activity) {
+        const error = new Error("Washout activity is no longer pending") as Error & { code?: string };
+        error.code = "WASHOUT_ACTIVITY_NOT_PENDING";
+        throw error;
+      }
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "activity.verified", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
+        sourceEventKey: `activity:${activity.id}:verified:${now.toISOString()}`, occurredAt: now,
+        activityId: activity.id, driverId: activity.driverId, locationId: activity.locationId,
+      });
+      const [verifiedAtLocation] = await tx.select({ total: sql<number>`count(*)` }).from(platformAnalyticsEvents)
+        .where(and(eq(platformAnalyticsEvents.eventType, "activity.verified"), eq(platformAnalyticsEvents.locationId, activity.locationId)));
+      if (Number(verifiedAtLocation?.total || 0) === 1) {
+        await recordPlatformAnalyticsEvent(tx, {
+          eventType: "facility.first_verified", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
+          sourceEventKey: `facility:${activity.locationId}:first-verified`, occurredAt: now,
+          activityId: activity.id, driverId: activity.driverId, locationId: activity.locationId,
+        });
+      }
+      return activity;
+    });
   }
 
   async createOwnerActivityApprovalIntent(input: {
@@ -2122,6 +2234,20 @@ export class DatabaseStorage implements IStorage {
         actionSource: input.actionSource,
         confirmationAcknowledged: input.confirmationAcknowledged,
       });
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "activity.verified", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
+        sourceEventKey: `activity:${activity.id}:verified:${now.toISOString()}`, occurredAt: now,
+        activityId: activity.id, driverId: activity.driverId, ownerId: input.ownerId, locationId: activity.locationId,
+      });
+      const [verifiedAtLocation] = await tx.select({ total: sql<number>`count(*)` }).from(platformAnalyticsEvents)
+        .where(and(eq(platformAnalyticsEvents.eventType, "activity.verified"), eq(platformAnalyticsEvents.locationId, activity.locationId)));
+      if (Number(verifiedAtLocation?.total || 0) === 1) {
+        await recordPlatformAnalyticsEvent(tx, {
+          eventType: "facility.first_verified", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
+          sourceEventKey: `facility:${activity.locationId}:first-verified`, occurredAt: now,
+          activityId: activity.id, driverId: activity.driverId, ownerId: input.ownerId, locationId: activity.locationId,
+        });
+      }
 
       return activity;
     });
@@ -2189,6 +2315,11 @@ export class DatabaseStorage implements IStorage {
         actionSource: audit.actionSource,
         confirmationAcknowledged: audit.confirmationAcknowledged,
       });
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "activity.rejected", sourceRecordType: "washout_activity", sourceRecordId: activity.id,
+        sourceEventKey: `activity:${activity.id}:rejected:${now.toISOString()}`, occurredAt: now,
+        activityId: activity.id, driverId: activity.driverId, ownerId, locationId: activity.locationId,
+      });
       return activity;
     });
   }
@@ -2197,8 +2328,16 @@ export class DatabaseStorage implements IStorage {
     activityId: string; driverId: string; driverUserId: string; ownerId: string;
     rejectionReasonSnapshot: string; driverExplanation: string;
   }): Promise<WashoutActivityAdminReview> {
-    const [review] = await db.insert(washoutActivityAdminReviews).values(input).returning();
-    return review;
+    return db.transaction(async (tx) => {
+      const [review] = await tx.insert(washoutActivityAdminReviews).values(input).returning();
+      const [activity] = await tx.select({ locationId: washoutActivities.locationId }).from(washoutActivities).where(eq(washoutActivities.id, input.activityId)).limit(1);
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "admin_review.requested", sourceRecordType: "administrative_review", sourceRecordId: review.id,
+        sourceEventKey: `admin-review:${review.id}:requested`, occurredAt: review.requestedAt,
+        activityId: review.activityId, driverId: review.driverId, ownerId: review.ownerId, locationId: activity?.locationId ?? null,
+      });
+      return review;
+    });
   }
 
   async getWashoutActivityAdminReview(activityId: string): Promise<WashoutActivityAdminReview | undefined> {
@@ -2229,7 +2368,14 @@ export class DatabaseStorage implements IStorage {
         error.code = "ADMIN_REVIEW_NOT_OPEN";
         throw error;
       }
-      if (input.resolution === "closed") return { review, activity: null };
+      if (input.resolution === "closed") {
+        await recordPlatformAnalyticsEvent(tx, {
+          eventType: "admin_review.closed", sourceRecordType: "administrative_review", sourceRecordId: review.id,
+          sourceEventKey: `admin-review:${review.id}:closed`, occurredAt: now,
+          activityId: review.activityId, driverId: review.driverId, ownerId: review.ownerId,
+        });
+        return { review, activity: null };
+      }
       const [activity] = await tx.update(washoutActivities).set({ status: "pending", updatedAt: now })
         .where(and(eq(washoutActivities.id, review.activityId), eq(washoutActivities.status, "rejected"))).returning();
       if (!activity) {
@@ -2243,6 +2389,11 @@ export class DatabaseStorage implements IStorage {
         userAgentFingerprint: input.audit.userAgentFingerprint ?? null, ipFingerprint: input.audit.ipFingerprint ?? null,
         origin: input.audit.origin ?? null, referer: input.audit.referer ?? null, deployedCommit: input.audit.deployedCommit ?? null,
         actionSource: input.audit.actionSource, confirmationAcknowledged: input.audit.confirmationAcknowledged,
+      });
+      await recordPlatformAnalyticsEvent(tx, {
+        eventType: "admin_review.returned_to_owner_review", sourceRecordType: "administrative_review", sourceRecordId: review.id,
+        sourceEventKey: `admin-review:${review.id}:returned-to-owner-review`, occurredAt: now,
+        activityId: activity.id, driverId: review.driverId, ownerId: review.ownerId, locationId: activity.locationId,
       });
       return { review, activity };
     });

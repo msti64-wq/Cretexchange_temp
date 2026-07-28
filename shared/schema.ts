@@ -479,6 +479,29 @@ export const materials = pgTable("materials", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Immutable analytical facts reference, but never replace, operational records.
+// Metadata is deliberately restricted to safe, non-financial dimensions.
+export const platformAnalyticsEvents = pgTable("platform_analytics_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: varchar("event_type").notNull(),
+  eventVersion: integer("event_version").notNull().default(1),
+  sourceRecordType: varchar("source_record_type").notNull(),
+  sourceRecordId: varchar("source_record_id").notNull(),
+  sourceEventKey: varchar("source_event_key").notNull().unique(),
+  activityId: varchar("activity_id").references(() => washoutActivities.id, { onDelete: "set null" }),
+  driverId: varchar("driver_id").references(() => drivers.id, { onDelete: "set null" }),
+  ownerId: varchar("owner_id").references(() => owners.id, { onDelete: "set null" }),
+  locationId: varchar("location_id").references(() => washoutLocations.id, { onDelete: "set null" }),
+  occurredAt: timestamp("occurred_at").notNull(),
+  recordedAt: timestamp("recorded_at").notNull().defaultNow(),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+}, (table) => [
+  index("platform_analytics_events_type_occurred_idx").on(table.eventType, table.occurredAt),
+  index("platform_analytics_events_activity_occurred_idx").on(table.activityId, table.occurredAt),
+  index("platform_analytics_events_driver_occurred_idx").on(table.driverId, table.occurredAt),
+  index("platform_analytics_events_location_occurred_idx").on(table.locationId, table.occurredAt),
+]);
+
 // Rubble service: Location material intents (what materials each location accepts)
 export const locationMaterialIntents = pgTable("location_material_intents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

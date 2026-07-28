@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 
-type Migration = { id: "0036" | "0037"; file: string; sha256: string; expectedObjects: number };
+type Migration = { id: "0036" | "0037" | "0038"; file: string; sha256: string; expectedObjects: number };
 type MigrationState = "pending" | "applied";
 const CLIENT_CLOSE_TIMEOUT_MS = 5_000;
 
@@ -14,6 +14,7 @@ const CLIENT_CLOSE_TIMEOUT_MS = 5_000;
 const migrations: readonly Migration[] = [
   { id: "0036", file: "migrations/0036_add_washout_activity_admin_reviews.sql", sha256: "81c8c5dbceb87ed0aa024d3a34b432a72825722703e53574af785cbc8a08fdb0", expectedObjects: 7 },
   { id: "0037", file: "migrations/0037_add_washout_photo_review_audit.sql", sha256: "5714306b60592c536dc9d1e5dbe71e20392faedde97fd06d2d4b180fb58c7e5b", expectedObjects: 4 },
+  { id: "0038", file: "migrations/0038_add_platform_analytics_events.sql", sha256: "eb0a977b9853cca5f6b42c18a24d18ccb37a53baca8e5100ce0a51852e4fc747", expectedObjects: 13 },
 ] as const;
 
 function fail(message: string): never { throw new Error(message); }
@@ -23,7 +24,7 @@ function sha(value: string | undefined): string | null { return value && /^[a-f0
 function selectMigrations(from: string | undefined, to: string | undefined): readonly Migration[] {
   const first = migrations.findIndex((migration) => migration.id === from);
   const last = migrations.findIndex((migration) => migration.id === to);
-  if (first < 0 || last < first) fail("Only the ordered 0036 through 0037 production allowlist is permitted.");
+  if (first < 0 || last < first) fail("Only the ordered 0036 through 0038 production allowlist is permitted.");
   return migrations.slice(first, last + 1);
 }
 
@@ -46,6 +47,13 @@ async function migrationObjectCount(client: pg.Client, migration: Migration): Pr
     const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{uniq_washout_activity_admin_reviews_unresolved,idx_washout_activity_admin_reviews_activity_requested,idx_washout_activity_admin_reviews_owner_resolution,idx_washout_activity_admin_reviews_driver_resolution}"]);
     const constraints = await count(client, "SELECT count(*)::int AS value FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname=$1 AND t.relname=$2 AND c.conname = ANY($3::text[])", ["public", "washout_activity_admin_reviews", "{washout_activity_admin_reviews_resolution_check,washout_activity_admin_reviews_decision_check}"]);
     return tables + indexes + constraints;
+  }
+  if (migration.id === "0038") {
+    const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name=$2", ["public", "platform_analytics_events"]);
+    const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{platform_analytics_events_type_occurred_idx,platform_analytics_events_activity_occurred_idx,platform_analytics_events_driver_occurred_idx,platform_analytics_events_location_occurred_idx}"]);
+    const constraints = await count(client, "SELECT count(*)::int AS value FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname=$1 AND t.relname=$2 AND c.conname = ANY($3::text[])", ["public", "platform_analytics_events", "{platform_analytics_events_event_type_valid,platform_analytics_events_source_record_type_valid,platform_analytics_events_source_event_key_unique,platform_analytics_events_version_positive}"]);
+    const foreignKeys = await count(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid=$1::regclass AND contype='f'", ["platform_analytics_events"]);
+    return tables + indexes + constraints + foreignKeys;
   }
   const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name=$2", ["public", "washout_photo_review_events"]);
   const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{washout_photo_review_events_photo_created_idx,washout_photo_review_events_activity_created_idx}"]);

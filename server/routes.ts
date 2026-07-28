@@ -142,6 +142,17 @@ import {
   type AdminActivityReportKind,
 } from "./adminActivityReporting";
 import {
+  buildFacilityOperationalIntelligence,
+  buildPlatformJourneyReport,
+  buildPlatformOperationalMetrics,
+  canAccessFacilityOperationalIntelligence,
+  canAccessPlatformAnalytics,
+  listPlatformAnalyticsEvents,
+  parsePlatformAnalyticsQuery,
+  parsePlatformJourneyQuery,
+  PlatformAnalyticsQueryError,
+} from "./platformAnalytics";
+import {
   buildBillingAuditReport,
   billingAuditReportToCsv,
   billingAuditReportToJson,
@@ -14183,6 +14194,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // record can never create duplicate operational activity rows.
   app.get("/api/admin/activity-reports/drivers", isAuthenticated, serveAdminActivityReport("driver"));
   app.get("/api/admin/activity-reports/facilities", isAuthenticated, serveAdminActivityReport("facility"));
+
+  const requireAnalyticsAdmin = async (req: any, res: any) => {
+    const user = await storage.getUser(req.user.id);
+    if (!user || !canAccessPlatformAnalytics(user.role)) {
+      res.status(403).json({ message: "Admin access required" });
+      return false;
+    }
+    return true;
+  };
+
+  app.get("/api/admin/analytics/events", isAuthenticated, async (req: any, res: any) => {
+    try {
+      if (!await requireAnalyticsAdmin(req, res)) return;
+      return res.json(await listPlatformAnalyticsEvents(db, parsePlatformAnalyticsQuery(req.query || {})));
+    } catch (error) {
+      if (error instanceof PlatformAnalyticsQueryError) return res.status(400).json({ message: error.message });
+      console.error("Error listing platform analytics events:", error);
+      return res.status(500).json({ message: "Failed to list analytics events" });
+    }
+  });
+
+  app.get("/api/admin/analytics/metrics/operational", isAuthenticated, async (req: any, res: any) => {
+    try {
+      if (!await requireAnalyticsAdmin(req, res)) return;
+      const query = parsePlatformAnalyticsQuery(req.query || {});
+      return res.json(await buildPlatformOperationalMetrics(db, query));
+    } catch (error) {
+      if (error instanceof PlatformAnalyticsQueryError) return res.status(400).json({ message: error.message });
+      console.error("Error aggregating platform analytics metrics:", error);
+      return res.status(500).json({ message: "Failed to aggregate analytics metrics" });
+    }
+  });
+
+  app.get("/api/admin/analytics/journeys", isAuthenticated, async (req: any, res: any) => {
+    try {
+      if (!await requireAnalyticsAdmin(req, res)) return;
+      return res.json(await buildPlatformJourneyReport(db, parsePlatformJourneyQuery(req.query || {})));
+    } catch (error) {
+      if (error instanceof PlatformAnalyticsQueryError) return res.status(400).json({ message: error.message });
+      console.error("Error aggregating platform analytics journey:", error);
+      return res.status(500).json({ message: "Failed to aggregate analytics journey" });
+    }
+  });
+
+  app.get("/api/owners/facilities/:locationId/intelligence", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || !canAccessFacilityOperationalIntelligence(user.role)) return res.status(403).json({ message: "Facility intelligence access required" });
+      const location = await storage.getWashoutLocation(req.params.locationId);
+      if (!location) return res.status(404).json({ message: "Facility not found" });
+      if (!canAccessPlatformAnalytics(user.role)) {
+        const owner = await storage.getOwner(user.id);
+        if (!owner || owner.id !== location.ownerId) return res.status(403).json({ message: "Facility intelligence access required" });
+      }
+      const query = parsePlatformAnalyticsQuery(req.query || {});
+      return res.json(await buildFacilityOperationalIntelligence(db, location.id, query));
+    } catch (error) {
+      if (error instanceof PlatformAnalyticsQueryError) return res.status(400).json({ message: error.message });
+      console.error("Error aggregating facility operational intelligence:", error);
+      return res.status(500).json({ message: "Failed to aggregate facility intelligence" });
+    }
+  });
 
   app.get("/api/reports/owner", isAuthenticated, async (req: any, res) => {
     try {

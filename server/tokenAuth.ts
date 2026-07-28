@@ -31,6 +31,10 @@ export async function setupAuth(app: Express) {
         return res.status(403).json({ message: "Account is inactive" });
       }
 
+      // Registration is not a substitute for a successful authenticated login.
+      // The source-event key makes later logins a no-op for this first-login fact.
+      await storage.recordDriverFirstLogin(user.id);
+
       // Create JWT token
       const token = jwt.sign(
         { userId: user.id, username: user.username, authTokenVersion: user.authTokenVersion ?? 0 },
