@@ -1996,6 +1996,27 @@ async function withPatchedStorage(
     ...patch,
   };
 
+  // Legacy direct-route fixtures predate Driver material intent. Where they
+  // already provide a concrete location fixture, model the same ready Driver
+  // and material-filtered discovery result that production now requires.
+  if (typeof patch.getWashoutLocation === "function" && !patch.getActiveLocationsAcceptingMaterial) {
+    const getFixtureDriver = patch.getDriver as ((userId: string) => Promise<Record<string, unknown> | undefined>) | undefined;
+    const getFixtureLocation = patch.getWashoutLocation as ((locationId: string) => Promise<Record<string, unknown> | undefined>);
+    effectivePatch.getDriver = async (userId: string) => {
+      const driver = await getFixtureDriver?.(userId);
+      return driver && driver.activeMaterialSlug === undefined
+        ? { ...driver, activeMaterialSlug: "concrete-washout" }
+        : driver;
+    };
+    effectivePatch.getMaterialBySlug = async (slug: string) => slug === "concrete-washout"
+      ? { slug, isActive: true, retiredAt: null }
+      : undefined;
+    effectivePatch.getActiveLocationsAcceptingMaterial = async () => {
+      const location = await getFixtureLocation("location_1");
+      return location ? [{ ...location, materialIntent: { id: "fixture-intent", locationId: location.id, materialSlug: "concrete-washout", active: true } }] : [];
+    };
+  }
+
   for (const [key, value] of Object.entries(effectivePatch)) {
     original.set(key, storage[key]);
     storage[key] = value;

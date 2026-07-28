@@ -55,6 +55,7 @@ import {
   type UserTermsState,
 } from "./terms";
 import { driverOperationalReadinessMiddleware, driverRoleMiddleware } from "./driverOperationalReadiness";
+import { requireDriverLocationEligibility, requireDriverLocationEligibilityWithMaterial } from "./driverLocationEligibility";
 import { normalizeLegalLanguage } from "@shared/legalDocuments";
 import {
   resolveOwnerBillingPolicy,
@@ -4132,6 +4133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver not found" });
       }
 
+      if (!await requireDriverLocationEligibility(req, res, req.body?.locationId)) return;
       const location: any = await storage.getWashoutLocation(req.body.locationId);
       if (!location) {
         return res.status(404).json({ message: "Location not found" });
@@ -16754,6 +16756,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errors: activityResult.error.issues 
         });
       }
+
+      if (!await requireDriverLocationEligibility(req, res, activityResult.data.locationId)) return;
       
       const location = await storage.getWashoutLocation(activityResult.data.locationId);
       console.info("Create-with-photos location lookup result:", {
@@ -18500,6 +18504,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Only drivers can create rubble visits' });
       }
 
+      const eligibility = await requireDriverLocationEligibilityWithMaterial(req, res, locationId, materialSlug);
+      if (!eligibility) return;
+
       // Verify location exists
       const location: any = await storage.getWashoutLocation(locationId);
       if (!location) {
@@ -18508,14 +18515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify location has matching material intent
       const intents = await storage.getLocationMaterialIntents(locationId) as LocationMaterialIntent[];
-      const matchingIntent = intents.find((intent) => {
-        if (materialSlug) {
-          return intent.materialSlug === materialSlug;
-        } else if (materialCustomLabel) {
-          return intent.materialCustomLabel?.toLowerCase() === materialCustomLabel.toLowerCase();
-        }
-        return false;
-      });
+      const matchingIntent = intents.find((intent) => intent.materialSlug === eligibility.materialSlug);
 
       if (!matchingIntent) {
         return res.status(400).json({ message: 'This location does not accept this material' });
@@ -18580,6 +18580,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (visit.serviceType !== 'rubble_dropoff') {
         return res.status(400).json({ message: 'This is not a rubble visit' });
       }
+
+      if (!await requireDriverLocationEligibility(req, res, visit.locationId)) return;
 
       if (visit.status !== 'pending') {
         return res.status(400).json({ message: 'Visit is not in pending state' });
@@ -18660,6 +18662,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (visit.status !== 'in_progress') {
         return res.status(400).json({ message: 'Visit is not in progress' });
       }
+
+      if (!await requireDriverLocationEligibility(req, res, visit.locationId)) return;
 
       // Get location for geofence check
       const location: any = await storage.getWashoutLocation(visit.locationId);

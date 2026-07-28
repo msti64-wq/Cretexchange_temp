@@ -6,6 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MapPin, AlertCircle } from "lucide-react";
 import { createSubmissionConfirmationRecord } from "@/lib/pilotOnboarding";
+import { apiRequest } from "@/lib/queryClient";
+import { driverMaterialIntentKey, type DriverMaterialIntent } from "@/components/driver/DriverMaterialIntentSelector";
+import { resolveDriverCheckInRecoveryState } from "@/lib/driverCheckInRecovery";
 
 const SUBMISSION_CONFIRMATION_SESSION_KEY = "cretexchange.driver.submission-confirmation";
 
@@ -13,8 +16,14 @@ export default function DriverCheckIn() {
   const { locationId } = useParams();
   const [, setLocation] = useLocation();
 
-  const { data: location, isLoading } = useQuery({
-    queryKey: ['/api/drivers/locations'],
+  const { data: materialIntent, isLoading: materialIntentLoading } = useQuery<DriverMaterialIntent>({
+    queryKey: driverMaterialIntentKey,
+    queryFn: async () => (await apiRequest("GET", "/api/drivers/material-intent")).json(),
+  });
+  const activeMaterialSlug = materialIntent?.materialSlug || null;
+  const { data: location, isLoading, isError, refetch } = useQuery({
+    queryKey: ['/api/drivers/locations', activeMaterialSlug],
+    queryFn: async () => activeMaterialSlug ? (await apiRequest("GET", `/api/drivers/locations?materialSlug=${encodeURIComponent(activeMaterialSlug)}`)).json() : [],
     select: (data: any[]) => {
       const item = data.find((item: any) => {
         const loc = item.washout_locations || item;
@@ -22,7 +31,14 @@ export default function DriverCheckIn() {
       });
       return item ? (item.washout_locations || item) : null;
     },
-    enabled: !!locationId,
+    enabled: !!locationId && !materialIntentLoading,
+  });
+  const recoveryState = resolveDriverCheckInRecoveryState({
+    materialIntentLoading,
+    activeMaterialSlug,
+    locationLoading: isLoading,
+    locationError: isError,
+    hasLocation: Boolean(location),
   });
 
   const handleSuccess = (activityId?: string) => {
@@ -42,7 +58,7 @@ export default function DriverCheckIn() {
     setLocation(`/activity?submittedActivityId=${encodeURIComponent(record.activityId)}`);
   };
 
-  if (isLoading) {
+  if (recoveryState === "loading") {
     return (
       <div className="min-h-screen bg-background">
         <DriverHeader />
@@ -56,7 +72,37 @@ export default function DriverCheckIn() {
     );
   }
 
-  if (!location) {
+  if (recoveryState === "missing_material") {
+    return (
+      <div className="min-h-screen bg-background">
+        <DriverHeader />
+        <div className="p-4"><Card><CardContent className="text-center py-8">
+          <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Select Your Material</h2>
+          <p className="text-muted-foreground mb-4">Select the material you are hauling before checking in.</p>
+          <Button onClick={() => setLocation('/locations')} data-testid="button-select-material">
+            <MapPin className="w-4 h-4 mr-2" />Select Material
+          </Button>
+        </CardContent></Card></div>
+      </div>
+    );
+  }
+
+  if (recoveryState === "location_unavailable") {
+    return (
+      <div className="min-h-screen bg-background">
+        <DriverHeader />
+        <div className="p-4"><Card><CardContent className="text-center py-8">
+          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Location Unavailable</h2>
+          <p className="text-muted-foreground mb-4">We could not load this location right now. Please try again.</p>
+          <Button onClick={() => void refetch()} data-testid="button-retry-location">Try Again</Button>
+        </CardContent></Card></div>
+      </div>
+    );
+  }
+
+  if (recoveryState === "location_missing_or_ineligible") {
     return (
       <div className="min-h-screen bg-background">
         <DriverHeader />
