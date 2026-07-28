@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { drivers, platformAnalyticsEvents, users } from "@shared/schema";
+import { drivers, platformAnalyticsEvents, users, washoutLocations } from "@shared/schema";
 
 /**
  * The platform vocabulary intentionally contains operational facts only. A
@@ -57,22 +57,22 @@ export type PlatformMetricDefinition = {
   timeAttribution: string;
   timezonePolicy: string;
   securityClassification: MetricSecurityClassification;
-  visibleRoles: readonly ("admin" | "super_admin" | "owner")[];
+  visibleRoles: readonly ("admin" | "super_admin" | "owner" | "driver")[];
 };
 
 /** The one canonical registry consumed by API consumers and documentation. */
 export const PLATFORM_METRIC_REGISTRY: readonly PlatformMetricDefinition[] = [
   {
-    key: "submitted_activity", name: "Submitted Activity", description: "Count of submitted operational washout activities.", businessPurpose: "Measures marketplace activity entering owner review.", sourceEvents: ["activity.submitted"], sourceOperationalTables: ["washout_activities"], calculation: "COUNT(activity.submitted)", inclusionRules: "One immutable event for each successfully committed submission.", exclusionRules: "No payment, wallet, duplicate, or failed transaction records.", timeAttribution: "submission occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner"],
+    key: "submitted_activity", name: "Submitted Activity", description: "Count of submitted operational washout activities.", businessPurpose: "Measures marketplace activity entering owner review.", sourceEvents: ["activity.submitted"], sourceOperationalTables: ["washout_activities"], calculation: "COUNT(activity.submitted)", inclusionRules: "One immutable event for each successfully committed submission.", exclusionRules: "No payment, wallet, duplicate, or failed transaction records.", timeAttribution: "submission occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner", "driver"],
   },
   {
-    key: "verified_activity", name: "Verified Activity", description: "Count of canonical owner-verified activities.", businessPurpose: "Measures completed operational verification.", sourceEvents: ["activity.verified"], sourceOperationalTables: ["washout_activities", "washout_activity_review_events"], calculation: "COUNT(activity.verified)", inclusionRules: "Only the pending-to-verified owner decision.", exclusionRules: "Administrative facilitator actions, payment success, and non-final activity.", timeAttribution: "verification occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner"],
+    key: "verified_activity", name: "Verified Activity", description: "Count of canonical owner-verified activities.", businessPurpose: "Measures completed operational verification.", sourceEvents: ["activity.verified"], sourceOperationalTables: ["washout_activities", "washout_activity_review_events"], calculation: "COUNT(activity.verified)", inclusionRules: "Only the pending-to-verified owner decision.", exclusionRules: "Administrative facilitator actions, payment success, and non-final activity.", timeAttribution: "verification occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner", "driver"],
   },
   {
-    key: "rejected_activity", name: "Rejected Activity", description: "Count of canonical owner-rejected activities.", businessPurpose: "Measures operational exceptions requiring recovery or support.", sourceEvents: ["activity.rejected"], sourceOperationalTables: ["washout_activities", "washout_activity_review_events"], calculation: "COUNT(activity.rejected)", inclusionRules: "Only committed pending-to-rejected owner decisions.", exclusionRules: "Open facilitator reviews and rejections outside the selected time window.", timeAttribution: "rejection occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner"],
+    key: "rejected_activity", name: "Rejected Activity", description: "Count of canonical owner-rejected activities.", businessPurpose: "Measures operational exceptions requiring recovery or support.", sourceEvents: ["activity.rejected"], sourceOperationalTables: ["washout_activities", "washout_activity_review_events"], calculation: "COUNT(activity.rejected)", inclusionRules: "Only committed pending-to-rejected owner decisions.", exclusionRules: "Open facilitator reviews and rejections outside the selected time window.", timeAttribution: "rejection occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner", "driver"],
   },
   {
-    key: "administrative_review_requested", name: "Administrative Review Requested", description: "Count of Driver requests for neutral administrative facilitation.", businessPurpose: "Measures review demand without reclassifying activities.", sourceEvents: ["admin_review.requested"], sourceOperationalTables: ["washout_activity_admin_reviews"], calculation: "COUNT(admin_review.requested)", inclusionRules: "One event per committed review round.", exclusionRules: "Owner review decisions, financial disputes, and closed-only counts.", timeAttribution: "request occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner"],
+    key: "administrative_review_requested", name: "Administrative Review Requested", description: "Count of Driver requests for neutral administrative facilitation.", businessPurpose: "Measures review demand without reclassifying activities.", sourceEvents: ["admin_review.requested"], sourceOperationalTables: ["washout_activity_admin_reviews"], calculation: "COUNT(admin_review.requested)", inclusionRules: "One event per committed review round.", exclusionRules: "Owner review decisions, financial disputes, and closed-only counts.", timeAttribution: "request occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner", "driver"],
   },
   {
     key: "administrative_review_completed", name: "Administrative Review Completed", description: "Count of closed or returned-to-owner-review administrative requests.", businessPurpose: "Measures facilitator throughput.", sourceEvents: ["admin_review.closed", "admin_review.returned_to_owner_review"], sourceOperationalTables: ["washout_activity_admin_reviews", "washout_activity_review_events"], calculation: "COUNT(admin_review.closed) + COUNT(admin_review.returned_to_owner_review)", inclusionRules: "A terminal facilitator decision for a request round.", exclusionRules: "Open requests and any financial result.", timeAttribution: "facilitator decision occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin"],
@@ -90,7 +90,7 @@ export const PLATFORM_METRIC_REGISTRY: readonly PlatformMetricDefinition[] = [
     key: "facility_utilization", name: "Facility Utilization", description: "Average submitted activities per active Facility in the selected window.", businessPurpose: "Measures operational use of active locations.", sourceEvents: ["activity.submitted"], sourceOperationalTables: ["washout_locations", "washout_activities"], calculation: "COUNT(activity.submitted) / COUNT(DISTINCT location_id)", inclusionRules: "Submitted activities with a non-null location.", exclusionRules: "Unapproved, inactive, or unused locations; billing and payment records.", timeAttribution: "submission occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner"],
   },
   {
-    key: "verification_rate", name: "Verification Rate", description: "Share of final owner decisions that are verified.", businessPurpose: "Measures operational evidence acceptance quality.", sourceEvents: ["activity.verified", "activity.rejected"], sourceOperationalTables: ["washout_activities", "washout_activity_review_events"], calculation: "COUNT(activity.verified) / (COUNT(activity.verified) + COUNT(activity.rejected)) × 100", inclusionRules: "Final owner verification and rejection decisions.", exclusionRules: "Pending activities, Administrative Review facilitator actions, payments, and duplicates.", timeAttribution: "owner decision occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner"],
+    key: "verification_rate", name: "Verification Rate", description: "Share of final owner decisions that are verified.", businessPurpose: "Measures operational evidence acceptance quality.", sourceEvents: ["activity.verified", "activity.rejected"], sourceOperationalTables: ["washout_activities", "washout_activity_review_events"], calculation: "COUNT(activity.verified) / (COUNT(activity.verified) + COUNT(activity.rejected)) × 100", inclusionRules: "Final owner verification and rejection decisions.", exclusionRules: "Pending activities, Administrative Review facilitator actions, payments, and duplicates.", timeAttribution: "owner decision occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner", "driver"],
   },
 ] as const;
 
@@ -195,6 +195,21 @@ export function parseFacilityIntelligenceQuery(query: Record<string, unknown>, n
   const start = parsed.start ?? new Date(end.getTime() - 29 * 24 * 60 * 60 * 1000);
   if (end < start || end.getTime() - start.getTime() > 93 * 24 * 60 * 60 * 1000) {
     throw new PlatformAnalyticsQueryError("Facility intelligence date range must be between zero and 93 days");
+  }
+  return { start, end };
+}
+
+/**
+ * Driver Intelligence uses one bounded event window for trends and journey
+ * metrics. Lifetime summary values remain explicitly labelled as lifetime so
+ * the dashboard never presents a partial period as a cumulative total.
+ */
+export function parseDriverIntelligenceQuery(query: Record<string, unknown>, now = new Date()) {
+  const parsed = parsePlatformAnalyticsQuery(query);
+  const end = parsed.end ?? now;
+  const start = parsed.start ?? new Date(end.getTime() - 29 * 24 * 60 * 60 * 1000);
+  if (end < start || end.getTime() - start.getTime() > 93 * 24 * 60 * 60 * 1000) {
+    throw new PlatformAnalyticsQueryError("Driver intelligence date range must be between zero and 93 days");
   }
   return { start, end };
 }
@@ -595,6 +610,175 @@ export async function buildFacilityIntelligenceDashboard(
     },
     health,
     indicators,
+    calculationVersion: 1,
+  };
+}
+
+type DriverTrendRow = { bucket: string; submittedCount: number; verifiedCount: number; rejectedCount: number };
+
+function driverEventWindow(driverId: string, start: Date, end: Date) {
+  return and(
+    eq(platformAnalyticsEvents.driverId, driverId),
+    gte(platformAnalyticsEvents.occurredAt, start),
+    lte(platformAnalyticsEvents.occurredAt, end),
+  );
+}
+
+async function buildDriverTrend(executor: any, where: any, bucket: any): Promise<DriverTrendRow[]> {
+  const rows = await executor.select({
+    bucket,
+    submittedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.submitted')`,
+    verifiedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified')`,
+    rejectedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.rejected')`,
+  }).from(platformAnalyticsEvents).where(where).groupBy(bucket).orderBy(asc(bucket));
+  return rows.map((row: any) => ({
+    bucket: String(row.bucket),
+    submittedCount: Number(row.submittedCount || 0),
+    verifiedCount: Number(row.verifiedCount || 0),
+    rejectedCount: Number(row.rejectedCount || 0),
+  }));
+}
+
+function utcDayStart(value: Date) {
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+}
+
+/**
+ * A driver's current streak ends on their most recent recorded submitted
+ * activity day. This avoids calling a prior, non-active calendar day an
+ * active streak while preserving an auditable definition from event facts.
+ */
+export function calculateDriverActivityStreaks(activeDates: readonly Date[]) {
+  const days = Array.from(new Set(activeDates.map((date) => utcDayStart(date).getTime()))).sort((left, right) => left - right);
+  if (!days.length) return { consecutiveActiveDays: 0, longestActivityStreak: 0 };
+  let longest = 1;
+  let currentRun = 1;
+  for (let index = 1; index < days.length; index += 1) {
+    if (days[index] - days[index - 1] === 86_400_000) currentRun += 1;
+    else currentRun = 1;
+    longest = Math.max(longest, currentRun);
+  }
+  let consecutive = 1;
+  for (let index = days.length - 1; index > 0 && days[index] - days[index - 1] === 86_400_000; index -= 1) {
+    consecutive += 1;
+  }
+  return { consecutiveActiveDays: consecutive, longestActivityStreak: longest };
+}
+
+/** Driver-visible funnel values derived from the canonical Washout journey. */
+export function deriveDriverJourneyMetrics(journey: JourneyReport) {
+  const byKey = new Map(journey.stages.map((stage) => [stage.key, stage]));
+  const checkIn = byKey.get("check_in")?.reachedCount || 0;
+  const upload = byKey.get("photo_upload")?.reachedCount || 0;
+  const verification = byKey.get("verification")?.reachedCount || 0;
+  return {
+    checkInToUploadRate: checkIn ? upload / checkIn : null,
+    uploadToVerificationRate: upload ? verification / upload : null,
+    overallCompletionRate: journey.conversionRate,
+    averageCompletionDurationMs: journey.averageDurationMs,
+    medianCompletionDurationMs: journey.medianDurationMs,
+  };
+}
+
+/**
+ * Driver-scoped intelligence projection. Every value comes from immutable
+ * operational events, and all driver identity selection occurs in the route
+ * from the authenticated account rather than a caller-supplied identifier.
+ */
+export async function buildDriverIntelligenceDashboard(
+  executor: any,
+  driverId: string,
+  query: ReturnType<typeof parseDriverIntelligenceQuery>,
+  now = new Date(),
+) {
+  const windowWhere = driverEventWindow(driverId, query.start, query.end);
+  const lifetimeWhere = eq(platformAnalyticsEvents.driverId, driverId);
+  const today = utcDayStart(now);
+  const weekStart = new Date(today);
+  weekStart.setUTCDate(weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7));
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const yearStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  const dailyBucket = sql<string>`to_char(date_trunc('day', ${platformAnalyticsEvents.occurredAt}), 'YYYY-MM-DD')`;
+  const weeklyBucket = sql<string>`to_char(date_trunc('week', ${platformAnalyticsEvents.occurredAt}), 'IYYY-"W"IW')`;
+  const monthlyBucket = sql<string>`to_char(date_trunc('month', ${platformAnalyticsEvents.occurredAt}), 'YYYY-MM')`;
+  const peakHour = sql<string>`to_char(${platformAnalyticsEvents.occurredAt}, 'HH24:00')`;
+  const peakDay = sql<string>`trim(to_char(${platformAnalyticsEvents.occurredAt}, 'Day'))`;
+  const submittedLifetimeWhere = and(lifetimeWhere, eq(platformAnalyticsEvents.eventType, "activity.submitted"));
+
+  const [summaryRows, dailyActivity, weeklyActivity, monthlyActivity, favoriteRows, visitedRows, peakHours, peakDays, activeDayRows, journeyEvents] = await Promise.all([
+    executor.select({
+      lifetimeVerifiedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified')`,
+      verifiedThisYear: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified' and ${platformAnalyticsEvents.occurredAt} >= ${yearStart})`,
+      verifiedThisMonth: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified' and ${platformAnalyticsEvents.occurredAt} >= ${monthStart})`,
+      verifiedThisWeek: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified' and ${platformAnalyticsEvents.occurredAt} >= ${weekStart})`,
+      verifiedToday: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified' and ${platformAnalyticsEvents.occurredAt} >= ${today})`,
+      verifiedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified')`,
+      rejectedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.rejected')`,
+      submittedCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'activity.submitted')`,
+      administrativeReviewCount: sql<number>`count(*) filter (where ${platformAnalyticsEvents.eventType} = 'admin_review.requested')`,
+      firstVerifiedAt: sql<Date>`min(${platformAnalyticsEvents.occurredAt}) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified')`,
+      mostRecentVerifiedAt: sql<Date>`max(${platformAnalyticsEvents.occurredAt}) filter (where ${platformAnalyticsEvents.eventType} = 'activity.verified')`,
+    }).from(platformAnalyticsEvents).where(lifetimeWhere),
+    buildDriverTrend(executor, windowWhere, dailyBucket),
+    buildDriverTrend(executor, windowWhere, weeklyBucket),
+    buildDriverTrend(executor, windowWhere, monthlyBucket),
+    executor.select({ locationId: platformAnalyticsEvents.locationId, name: washoutLocations.name, submittedCount: sql<number>`count(*)` })
+      .from(platformAnalyticsEvents).leftJoin(washoutLocations, eq(platformAnalyticsEvents.locationId, washoutLocations.id))
+      .where(submittedLifetimeWhere).groupBy(platformAnalyticsEvents.locationId, washoutLocations.name)
+      .orderBy(desc(sql`count(*)`), asc(washoutLocations.name)).limit(1),
+    executor.select({ visitedCount: sql<number>`count(distinct ${platformAnalyticsEvents.locationId})` })
+      .from(platformAnalyticsEvents).where(submittedLifetimeWhere),
+    executor.select({ label: peakHour, volume: sql<number>`count(*)` }).from(platformAnalyticsEvents)
+      .where(submittedLifetimeWhere).groupBy(peakHour).orderBy(desc(sql`count(*)`), asc(peakHour)).limit(1),
+    executor.select({ label: peakDay, volume: sql<number>`count(*)` }).from(platformAnalyticsEvents)
+      .where(submittedLifetimeWhere).groupBy(peakDay).orderBy(desc(sql`count(*)`), asc(peakDay)).limit(1),
+    executor.select({ day: sql<Date>`date_trunc('day', ${platformAnalyticsEvents.occurredAt})` }).from(platformAnalyticsEvents)
+      .where(submittedLifetimeWhere).groupBy(sql`date_trunc('day', ${platformAnalyticsEvents.occurredAt})`).orderBy(asc(sql`date_trunc('day', ${platformAnalyticsEvents.occurredAt})`)).limit(10_001),
+    executor.select({ eventType: platformAnalyticsEvents.eventType, occurredAt: platformAnalyticsEvents.occurredAt, driverId: platformAnalyticsEvents.driverId, locationId: platformAnalyticsEvents.locationId, activityId: platformAnalyticsEvents.activityId })
+      .from(platformAnalyticsEvents).where(windowWhere).orderBy(asc(platformAnalyticsEvents.occurredAt), asc(platformAnalyticsEvents.id)).limit(10_001),
+  ]);
+  if (activeDayRows.length > 10_000 || journeyEvents.length > 10_000) {
+    throw new PlatformAnalyticsQueryError("Driver intelligence result exceeds 10,000 records; use a narrower date range");
+  }
+  const summary = Object.fromEntries(Object.entries(summaryRows[0] || {}).map(([key, value]) => [key, value instanceof Date ? value : Number(value || 0)])) as Record<string, number | Date | null>;
+  const verifiedCount = Number(summary.verifiedCount || 0);
+  const rejectedCount = Number(summary.rejectedCount || 0);
+  const submittedCount = Number(summary.submittedCount || 0);
+  const administrativeReviewCount = Number(summary.administrativeReviewCount || 0);
+  const finalDecisionCount = verifiedCount + rejectedCount;
+  const journey = calculateJourneyReport(PLATFORM_JOURNEYS_BY_KEY.washout, journeyEvents as JourneyEvent[]);
+  const favorite = favoriteRows[0] as any;
+  const peakHourRow = peakHours[0] as any;
+  const peakDayRow = peakDays[0] as any;
+  return {
+    driverId,
+    window: { start: query.start.toISOString(), end: query.end.toISOString(), timezone: "UTC" },
+    activity: {
+      lifetimeVerifiedWashouts: Number(summary.lifetimeVerifiedCount || 0),
+      verifiedThisYear: Number(summary.verifiedThisYear || 0),
+      verifiedThisMonth: Number(summary.verifiedThisMonth || 0),
+      verifiedThisWeek: Number(summary.verifiedThisWeek || 0),
+      verifiedToday: Number(summary.verifiedToday || 0),
+    },
+    performance: {
+      verificationRate: finalDecisionCount ? verifiedCount / finalDecisionCount : null,
+      administrativeReviewRate: submittedCount ? administrativeReviewCount / submittedCount : null,
+      rejectionRate: finalDecisionCount ? rejectedCount / finalDecisionCount : null,
+      averageWashoutsPerActiveDay: activeDayRows.length ? submittedCount / activeDayRows.length : null,
+    },
+    history: {
+      firstVerifiedWashoutAt: summary.firstVerifiedAt instanceof Date ? summary.firstVerifiedAt.toISOString() : null,
+      mostRecentVerifiedWashoutAt: summary.mostRecentVerifiedAt instanceof Date ? summary.mostRecentVerifiedAt.toISOString() : null,
+      ...calculateDriverActivityStreaks(activeDayRows.map((row: any) => new Date(row.day))),
+    },
+    facility: {
+      favoriteFacility: favorite?.locationId ? { id: String(favorite.locationId), name: String(favorite.name || "Facility"), submittedCount: Number(favorite.submittedCount || 0) } : null,
+      facilitiesVisited: Number((visitedRows[0] as any)?.visitedCount || 0),
+      mostActiveDayOfWeek: peakDayRow ? String(peakDayRow.label) : null,
+      mostActiveHour: peakHourRow ? String(peakHourRow.label) : null,
+    },
+    trends: { dailyActivity, weeklyActivity, monthlyActivity },
+    journey: { ...deriveDriverJourneyMetrics(journey), stages: journey.stages },
     calculationVersion: 1,
   };
 }

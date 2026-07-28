@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   calculateJourneyReport,
+  calculateDriverActivityStreaks,
   calculateFacilityHealthScore,
+  deriveDriverJourneyMetrics,
   buildFacilityOwnerIndicators,
   canAccessFacilityOperationalIntelligence,
   PLATFORM_JOURNEYS_BY_KEY,
@@ -12,6 +14,7 @@ import {
   canAccessPlatformAnalytics,
   parsePlatformAnalyticsQuery,
   parseFacilityIntelligenceQuery,
+  parseDriverIntelligenceQuery,
   recordPlatformAnalyticsEvent,
 } from "../server/platformAnalytics";
 import { registerRoutes } from "../server/routes";
@@ -95,6 +98,32 @@ test("facility date parser stays bounded and owner indicators provide direct ope
   assert.deepEqual(buildFacilityOwnerIndicators({ context: { profileComplete: false, hasOperatingHours: false }, finalDecisionCount: 2, verificationRate: 0.5, activityVolume: 3, administrativeReviewRate: 0.5 }).map((indicator) => indicator.code), ["profile_incomplete", "operating_hours_missing", "verification_rate_low", "administrative_review_rate_high"]);
 });
 
+test("driver intelligence bounds its trend window and defines UTC activity streaks from submitted days", () => {
+  const parsed = parseDriverIntelligenceQuery({ start: "2026-07-01T00:00:00.000Z", end: "2026-07-31T00:00:00.000Z" });
+  assert.equal(parsed.start.toISOString(), "2026-07-01T00:00:00.000Z");
+  assert.throws(() => parseDriverIntelligenceQuery({ start: "2026-01-01T00:00:00.000Z", end: "2026-07-31T00:00:00.000Z" }), PlatformAnalyticsQueryError);
+  assert.deepEqual(calculateDriverActivityStreaks([
+    new Date("2026-07-01T08:00:00.000Z"), new Date("2026-07-02T21:00:00.000Z"),
+    new Date("2026-07-04T08:00:00.000Z"), new Date("2026-07-05T08:00:00.000Z"), new Date("2026-07-06T08:00:00.000Z"),
+  ]), { consecutiveActiveDays: 3, longestActivityStreak: 3 });
+});
+
+test("driver journey metrics derive direct conversions from the canonical Washout journey", () => {
+  const journey = calculateJourneyReport(PLATFORM_JOURNEYS_BY_KEY.washout, [
+    { eventType: "activity.checked_in", activityId: "one", occurredAt: new Date("2026-07-01T00:00:00Z") },
+    { eventType: "photo.uploaded", activityId: "one", occurredAt: new Date("2026-07-01T00:01:00Z") },
+    { eventType: "activity.owner_reviewed", activityId: "one", occurredAt: new Date("2026-07-01T00:02:00Z") },
+    { eventType: "activity.verified", activityId: "one", occurredAt: new Date("2026-07-01T00:03:00Z") },
+    { eventType: "activity.checked_in", activityId: "two", occurredAt: new Date("2026-07-01T00:00:00Z") },
+    { eventType: "photo.uploaded", activityId: "two", occurredAt: new Date("2026-07-01T00:01:00Z") },
+  ]);
+  const metrics = deriveDriverJourneyMetrics(journey);
+  assert.equal(metrics.checkInToUploadRate, 1);
+  assert.equal(metrics.uploadToVerificationRate, 0.5);
+  assert.equal(metrics.overallCompletionRate, 0.5);
+  assert.equal(metrics.averageCompletionDurationMs, 180_000);
+});
+
 test("analytics query parser bounds pagination and rejects unsupported inputs", () => {
   const parsed = parsePlatformAnalyticsQuery({ eventType: "activity.verified", page: "4", pageSize: "1000", start: "2026-07-01T00:00:00.000Z" });
   assert.equal(parsed.page, 4);
@@ -146,11 +175,13 @@ test("analytics APIs are registered and deny non-admin callers before analytics 
   const journeyRoute = gets.get("/api/admin/analytics/journeys");
   const facilityRoute = gets.get("/api/owners/facilities/:locationId/intelligence");
   const facilityDashboardRoute = gets.get("/api/owners/facilities/:locationId/intelligence/dashboard");
+  const driverDashboardRoute = gets.get("/api/drivers/intelligence/dashboard");
   assert.equal(typeof eventsRoute, "function");
   assert.equal(typeof metricsRoute, "function");
   assert.equal(typeof journeyRoute, "function");
   assert.equal(typeof facilityRoute, "function");
   assert.equal(typeof facilityDashboardRoute, "function");
+  assert.equal(typeof driverDashboardRoute, "function");
   const originalGetUser = storage.getUser;
   const originalGetOwner = storage.getOwner;
   const originalGetWashoutLocation = storage.getWashoutLocation;
@@ -169,7 +200,12 @@ test("analytics APIs are registered and deny non-admin callers before analytics 
     await facilityDashboardRoute!({ user: { id: "driver-user" }, params: { locationId: "location-1" }, query: {} }, response);
     assert.equal(statusCode, 403);
     assert.deepEqual(payload, { message: "Facility intelligence access required" });
+    statusCode = 200;
+    payload = undefined;
     (storage as any).getUser = async () => ({ id: "owner-user", role: "owner" });
+    await driverDashboardRoute!({ user: { id: "owner-user" }, query: {} }, response);
+    assert.equal(statusCode, 403);
+    assert.deepEqual(payload, { message: "Driver intelligence access required" });
     (storage as any).getOwner = async () => ({ id: "owner-a" });
     (storage as any).getWashoutLocation = async () => ({ id: "location-1", ownerId: "owner-b" });
     statusCode = 200;

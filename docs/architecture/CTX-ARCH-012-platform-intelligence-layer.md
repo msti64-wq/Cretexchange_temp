@@ -1,8 +1,8 @@
 # CTX-ARCH-012 — Platform Intelligence Layer
 
-**Status:** Approved through Phase 2 Sprint 3 Facility Intelligence
+**Status:** Approved through Phase 3 Sprint 1 Driver Intelligence
 **Owner:** V8 Laboratories
-**Scope:** Immutable operational analytics, governed metrics, journeys, role-scoped read APIs, and owner-scoped Facility Intelligence. No ranking, environmental claim, AI inference, or financial-execution change is authorized.
+**Scope:** Immutable operational analytics, governed metrics, journeys, role-scoped read APIs, owner-scoped Facility Intelligence, and Driver-scoped personal intelligence. No ranking, environmental claim, AI inference, or financial-execution change is authorized.
 
 ## Purpose and source of truth
 
@@ -54,6 +54,8 @@ There is no inferred, estimated, sampled, or backfilled journey progress. Histor
 Admin and Super Admin may use bounded event, metric, and journey APIs. Facility Owners may use only the ownership-checked, aggregate Facility intelligence APIs for their own location. The Facility Intelligence dashboard returns aggregate overview counts, bounded trend series, a maximum of ten pseudonymous operational Driver rows, peak operating periods, data-quality indicators, a Facility Health Score, and facility-scoped drop-off reports. It never returns global Admin totals, another Owner's Facility data, contact data, image/object references, financial data, or event metadata. Drivers, anonymous callers, and public callers receive no analytics event data. Event projections exclude metadata by default.
 
 The Facility Health Score is an internal operational calculation over verification quality, repeat Driver participation, Administrative Review demand, operational consistency, and profile completeness. Its public Owner projection returns only score and state; factor weights are internal and are not exposed outside Admin operations. It is advisory and never changes Facility approval, Owner authority, billing, or a lifecycle status.
+
+The Driver Intelligence projection is bound only to the authenticated Driver profile. It contains that Driver's verified activity periods, final-decision quality rates, submitted-activity days and streaks, facility usage, a bounded activity trend, and a Washout Journey derived from the same immutable event stream. It returns no other Driver's activity, ranking, reward, wallet, payout, payment, Stripe, or private-storage data. Its trend and journey query window is bounded to 93 days; cumulative values are explicitly labelled lifetime or calendar period.
 
 All list queries use server-side pagination; journey reports require a bounded 93-day range and reject result sets over 10,000 events. Facility aggregation uses grouped database queries, not per-event or per-driver query loops; the dashboard caps the Driver list at ten rows. A Facility Driver Journey is explicitly a cohort of Drivers that submitted at that Facility in the selected window. Account stages are recorded account facts for that cohort, while activity stages are constrained to the selected Facility. The migration indexes event type/time and source dimensions used by these queries.
 

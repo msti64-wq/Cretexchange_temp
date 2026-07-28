@@ -144,6 +144,7 @@ import {
 import {
   buildFacilityDropoffIntelligence,
   buildFacilityIntelligenceDashboard,
+  buildDriverIntelligenceDashboard,
   buildFacilityOperationalIntelligence,
   buildPlatformJourneyReport,
   buildPlatformOperationalMetrics,
@@ -151,6 +152,7 @@ import {
   canAccessPlatformAnalytics,
   listPlatformAnalyticsEvents,
   parsePlatformAnalyticsQuery,
+  parseDriverIntelligenceQuery,
   parseFacilityIntelligenceQuery,
   parsePlatformJourneyQuery,
   PlatformAnalyticsQueryError,
@@ -14238,6 +14240,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof PlatformAnalyticsQueryError) return res.status(400).json({ message: error.message });
       console.error("Error aggregating platform analytics journey:", error);
       return res.status(500).json({ message: "Failed to aggregate analytics journey" });
+    }
+  });
+
+  // A Driver never supplies an identifier for this projection: it is bound to
+  // the authenticated Driver profile and returns only their operational facts.
+  app.get("/api/drivers/intelligence/dashboard", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== "driver") return res.status(403).json({ message: "Driver intelligence access required" });
+      const driver = await storage.getDriver(user.id);
+      if (!driver) return res.status(404).json({ message: "Driver profile not found" });
+      return res.json(await buildDriverIntelligenceDashboard(db, driver.id, parseDriverIntelligenceQuery(req.query || {})));
+    } catch (error) {
+      if (error instanceof PlatformAnalyticsQueryError) return res.status(400).json({ message: error.message });
+      console.error("Error aggregating driver intelligence dashboard:", error);
+      return res.status(500).json({ message: "Failed to aggregate driver intelligence" });
     }
   });
 

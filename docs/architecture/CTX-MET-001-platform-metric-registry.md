@@ -1,6 +1,6 @@
 # CTX-MET-001 — Platform Metric Registry
 
-**Status:** Approved through Phase 2 Sprint 3 Facility Intelligence
+**Status:** Approved through Phase 3 Sprint 1 Driver Intelligence
 **Owner:** V8 Laboratories
 **Classification:** Internal operational analytics; no financial, payment, private-storage, contact, GPS, or sensitive metadata is included.
 
@@ -10,16 +10,16 @@ This is the authoritative registry for platform metrics. `server/platformAnalyti
 
 | Metric | Purpose | Source events / tables | Calculation | Include | Exclude | Time / visible roles |
 | --- | --- | --- | --- | --- | --- | --- |
-| Submitted Activity | Measure activity entering Owner review. | `activity.submitted`; `washout_activities` | Count submitted events. | One committed submission. | Payments, wallets, failures, duplicates. | Submission time; Admin, Super Admin, Owner. |
-| Verified Activity | Measure completed operational verification. | `activity.verified`; `washout_activities`, review audit | Count verified events. | Canonical Owner pending-to-verified decisions. | Facilitator actions, payment success, pending records. | Verification time; Admin, Super Admin, Owner. |
-| Rejected Activity | Measure operational exceptions. | `activity.rejected`; `washout_activities`, review audit | Count rejected events. | Canonical Owner pending-to-rejected decisions. | Open review requests and non-final records. | Rejection time; Admin, Super Admin, Owner. |
-| Administrative Review Requested | Measure neutral facilitation demand. | `admin_review.requested`; `washout_activity_admin_reviews` | Count request events. | One committed review round. | Owner decisions and finance. | Request time; Admin, Super Admin, scoped Owner. |
+| Submitted Activity | Measure activity entering Owner review. | `activity.submitted`; `washout_activities` | Count submitted events. | One committed submission. | Payments, wallets, failures, duplicates. | Submission time; Admin, Super Admin, Owner, scoped Driver. |
+| Verified Activity | Measure completed operational verification. | `activity.verified`; `washout_activities`, review audit | Count verified events. | Canonical Owner pending-to-verified decisions. | Facilitator actions, payment success, pending records. | Verification time; Admin, Super Admin, Owner, scoped Driver. |
+| Rejected Activity | Measure operational exceptions. | `activity.rejected`; `washout_activities`, review audit | Count rejected events. | Canonical Owner pending-to-rejected decisions. | Open review requests and non-final records. | Rejection time; Admin, Super Admin, Owner, scoped Driver. |
+| Administrative Review Requested | Measure neutral facilitation demand. | `admin_review.requested`; `washout_activity_admin_reviews` | Count request events. | One committed review round. | Owner decisions and finance. | Request time; Admin, Super Admin, scoped Owner, scoped Driver. |
 | Administrative Review Completed | Measure facilitator throughput. | `admin_review.closed`, `admin_review.returned_to_owner_review`; review tables | Count either terminal facilitator event. | A completed facilitator decision. | Open requests and payment outcomes. | Decision time; Admin, Super Admin. |
 | Active Drivers | Measure active operational supply. | activity submitted/verified/rejected; `drivers`, `washout_activities` | Distinct `driver_id`. | Non-null Driver on qualifying activity event. | Registration-only and financial data. | Event time; Admin, Super Admin. |
 | Active Facilities | Measure active demand locations. | `activity.submitted`; `washout_locations`, `washout_activities` | Distinct `location_id`. | Submitted activity at a location. | Unused or inactive-only locations and billing data. | Submission time; Admin, Super Admin. |
 | Driver Retention | Measure repeat participation. | `activity.submitted`, `activity.repeat_submitted`; `drivers`, `washout_activities` | Distinct repeat Drivers / distinct submitted Drivers × 100. | Drivers with actual first and repeat submissions. | Accounts without activity and finance. | Repeat-submission time; Admin, Super Admin. |
 | Facility Utilization | Measure operational use of active locations. | `activity.submitted`; `washout_locations`, `washout_activities` | Submitted activity / active Facilities. | Submitted events with location. | Billing and financial configuration. | Submission time; Admin, Super Admin, Owner. |
-| Verification Rate | Measure evidence acceptance quality. | `activity.verified`, `activity.rejected`; activity/review audit | Verified / (verified + rejected) × 100. | Final Owner decisions. | Pending records, facilitator-only actions, finance. | Owner decision time; Admin, Super Admin, Owner. |
+| Verification Rate | Measure evidence acceptance quality. | `activity.verified`, `activity.rejected`; activity/review audit | Verified / (verified + rejected) × 100. | Final Owner decisions. | Pending records, facilitator-only actions, finance. | Owner decision time; Admin, Super Admin, Owner, scoped Driver. |
 
 ## Reusable journeys
 
@@ -51,3 +51,9 @@ The Owner Facility Intelligence dashboard reuses this registry and journey model
 The Facility Health Score is an advisory internal operational score. It considers verification rate, repeat Driver percentage, Administrative Review rate, operational consistency, and profile completeness. Only its score and state are shown to Owners; internal weights are intentionally not published. Data-quality indicators are direct advisories for missing operating hours/profile data, low verification rate, or high Administrative Review demand. None of these values affects approval authority, status, billability, or financial execution.
 
 Facility drop-off reports are facts only. The Washout Journey uses activity events for the selected Facility. The Driver Journey is a cohort of Drivers with a submitted activity at that Facility within the selected period; account stages are their recorded account facts, and activity stages are constrained to the Facility. This scope prevents cross-facility activity disclosure while avoiding an invented Facility registration stage.
+
+## Driver Intelligence projection
+
+The Driver Intelligence dashboard uses the existing Submitted, Verified, Rejected, Administrative Review Requested, and Verification Rate definitions, scoped to the authenticated Driver's `driver_id`. Lifetime verified activity is the count of `activity.verified`; calendar values use UTC year, month, week (Monday start), and day boundaries. Administrative Review rate is requested review rounds ÷ submitted activity. Average washouts per active day is submitted activity ÷ distinct UTC submitted-activity days. The consecutive streak ends on the most recent active day; the longest streak is the maximum sequence of consecutive recorded submitted-activity days.
+
+Favorite Facility, visited-Facility count, and peak day/hour use only the Driver's submitted facts. Driver Journey metrics use the Washout journey scoped to the Driver's events in the selected bounded window: Check-In → Upload is uploaded entities ÷ checked-in entities; Upload → Verification is verified entities ÷ uploaded entities; overall completion and durations use the canonical journey definition. These are personal operational metrics, not rankings, rewards, or financial performance measures.

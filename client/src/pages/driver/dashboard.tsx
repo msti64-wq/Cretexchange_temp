@@ -22,6 +22,7 @@ import { getDriverPayoutStatus, getDriverPayoutStatusLabel } from "@/lib/driverP
 import { useDriverPaymentLifecycle } from "@/hooks/useDriverPaymentLifecycle";
 import { DriverLifecycleSummary } from "@/components/driver/DriverLifecycleSummary";
 import { DriverMaterialIntentSelector } from "@/components/driver/DriverMaterialIntentSelector";
+import { DriverIntelligenceSummary } from "@/components/driver/DriverIntelligenceSummary";
 import { formatDistanceToNow } from "date-fns";
 import { resolveDriverAccountReadiness } from "@/lib/pilotOnboarding";
 
@@ -671,6 +672,8 @@ export default function DriverDashboard() {
             )}
           </div>
         </DSCard>
+
+        <DriverIntelligenceSummary enabled={Boolean(dashboardData)} />
 
         <section className="space-y-2">
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
