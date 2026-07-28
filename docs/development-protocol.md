@@ -68,14 +68,19 @@ git status --short --branch
 git remote -v
 git rev-parse --show-toplevel
 git rev-parse HEAD
-git rev-parse railway-repo/main
+git branch --show-current
+CANONICAL_REMOTE="$(git remote -v | awk '/\(fetch\)$/ && tolower($2) ~ /msti64-wq[/:]cretexchange_temp(\.git)?$/ { print $1; exit }')"
+test -n "$CANONICAL_REMOTE"
+git rev-parse "${CANONICAL_REMOTE}/main"
 ```
 
-Expected values:
+Repository identity requirements:
 
-- Repository path: `/Users/michaelstiger/cretexchange-railway-main`
-- Remote: `railway-repo`
-- Branch target: `railway-repo/main`
+- A configured fetch and push remote URL MUST identify the canonical GitHub repository `msti64-wq/cretexchange_temp` (case-insensitive `.git` suffix and URL transport differences are acceptable).
+- The remote alias is not itself authoritative. `origin`, or another safely configured alias, is valid when it points to the canonical repository.
+- The checkout MUST be on the canonical branch `main` for work that targets the canonical branch.
+- Local `HEAD` MUST equal the configured canonical remote's `main` ref before implementation begins, unless the task is explicitly to inspect or reconcile a documented divergence.
+- The local filesystem path is not authoritative. A safe checkout may reside at any absolute path when the repository identity, canonical branch, remote ref, and landmarks all pass.
 
 Required landmarks:
 
@@ -90,7 +95,9 @@ Required landmarks:
 
 Stop condition:
 
-If the repository path, remote, or landmarks do not match, stop immediately.
+Stop immediately if the repository identity is not `msti64-wq/cretexchange_temp`, the canonical branch is not `main`, the canonical remote `main` ref is unavailable, local `HEAD` materially differs from that ref without explicit reconciliation authority, or a required landmark is missing.
+
+Do not stop solely because a safe checkout uses a different local filesystem path or because the valid configured remote has an alias other than a historical name.
 
 Do not:
 
