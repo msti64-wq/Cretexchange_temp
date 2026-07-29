@@ -23,6 +23,20 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/lib/i18n";
 import { FacilityMaterialsManager } from "@/components/owner/FacilityMaterialsManager";
 
+const OWNER_PROFILE_FIELD_LABEL_KEYS: Record<string, string> = {
+  firstName: "owner.locations.profileField.firstName",
+  lastName: "owner.locations.profileField.lastName",
+  email: "owner.locations.profileField.email",
+  phone: "owner.locations.profileField.phone",
+  street: "owner.locations.profileField.street",
+  city: "owner.locations.profileField.city",
+  state: "owner.locations.profileField.state",
+  zip: "owner.locations.profileField.zip",
+  companyName: "owner.locations.profileField.companyName",
+  businessLicense: "owner.locations.profileField.businessLicense",
+  taxId: "owner.locations.profileField.taxId",
+};
+
 export default function OwnerLocations() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -128,6 +142,18 @@ export default function OwnerLocations() {
 
   const ownerRecord = (user as any)?.roleData || {};
   const locationAccessState = resolveOwnerLocationAccessState(ownerRecord, user as any);
+  const locationAccessMessage = locationAccessState.accessStatus === "profile_incomplete"
+    ? t("owner.locations.access.profileIncomplete")
+    : locationAccessState.accessStatus === "approval_pending"
+      ? t("owner.locations.access.approvalPending")
+      : locationAccessState.accessStatus === "membership_blocked"
+        ? t("owner.locations.access.unavailable")
+        : locationAccessState.accessStatus === "access_denied"
+          ? t("owner.locations.access.signInRequired")
+          : "";
+  const localizedMissingProfileFieldLabels = locationAccessState.missingProfileFields.map(
+    (field) => t(OWNER_PROFILE_FIELD_LABEL_KEYS[field] ?? "common.notSet"),
+  );
 
   const { data: locations, isLoading, isError: isLocationsError } = useQuery<any[]>({
     queryKey: ['/api/owners/locations'],
@@ -472,13 +498,13 @@ export default function OwnerLocations() {
                 className="bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
                 disabled={!locationAccessState.canManageLocations}
                 title={!locationAccessState.canManageLocations
-                  ? locationAccessState.blockingMessage || t("owner.dashboard.accountPendingReview")
+                  ? locationAccessMessage || t("owner.dashboard.accountPendingReview")
                   : ""}
                 onClick={() => {
                   if (!locationAccessState.canManageLocations) {
                     toast({
                       title: t("owner.locations.accountReviewRequired"),
-                      description: locationAccessState.blockingMessage || t("owner.dashboard.accountPendingReview"),
+                      description: locationAccessMessage || t("owner.dashboard.accountPendingReview"),
                       variant: "destructive",
                     });
                   }
@@ -762,10 +788,10 @@ export default function OwnerLocations() {
       <main className="p-4 space-y-4">
         {!locationAccessState.canManageLocations && locationAccessState.blockingMessage && (
           <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm dark:border-sky-900/40 dark:bg-sky-950/20">
-            <p className="text-sm text-sky-800 dark:text-sky-200">{locationAccessState.blockingMessage}</p>
-            {locationAccessState.missingProfileFieldLabels.length > 0 && (
+            <p className="text-sm text-sky-800 dark:text-sky-200">{locationAccessMessage}</p>
+            {localizedMissingProfileFieldLabels.length > 0 && (
               <p className="mt-2 text-xs text-sky-700 dark:text-sky-300">
-                Missing profile fields: {locationAccessState.missingProfileFieldLabels.join(", ")}
+                {t("owner.locations.access.missingProfileFields", { fields: localizedMissingProfileFieldLabels.join(", ") })}
               </p>
             )}
           </div>

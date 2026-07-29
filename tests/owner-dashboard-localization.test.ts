@@ -75,3 +75,25 @@ test("Owner dashboard shared labels use the active language catalog", () => {
   assert.match(emptyState, /t\("common\.workspace"\)/);
   assert.equal((catalog.match(/"common\.workspace":/g) || []).length, 2);
 });
+
+test("Owner location recovery uses localized access guidance instead of server text", () => {
+  const locations = readFileSync(new URL("../client/src/pages/owner/locations.tsx", import.meta.url), "utf8");
+  const catalog = readFileSync(new URL("../client/src/lib/i18n.ts", import.meta.url), "utf8");
+  const keys = [
+    "owner.locations.access.profileIncomplete",
+    "owner.locations.access.approvalPending",
+    "owner.locations.access.unavailable",
+    "owner.locations.access.signInRequired",
+    "owner.locations.access.missingProfileFields",
+    "owner.locations.profileField.phone",
+    "owner.locations.profileField.taxId",
+  ];
+
+  assert.match(locations, /const locationAccessMessage/);
+  assert.match(locations, /localizedMissingProfileFieldLabels/);
+  assert.doesNotMatch(locations, />\{locationAccessState\.blockingMessage\}</);
+  assert.doesNotMatch(locations, /Missing profile fields: \{locationAccessState\.missingProfileFieldLabels/);
+  for (const key of keys) {
+    assert.equal((catalog.match(new RegExp(`"${key}":`, "g")) || []).length, 2, `${key} must exist in English and Spanish`);
+  }
+});
