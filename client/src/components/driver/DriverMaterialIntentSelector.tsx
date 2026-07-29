@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/lib/i18n";
@@ -26,11 +27,26 @@ function localizedMaterialCategory(category: string | null | undefined, t: (key:
   return translated === categoryKey ? category : translated;
 }
 
-export function DriverMaterialIntentSelector({ compact = false }: { compact?: boolean }) {
+type DriverMaterialIntentSelectorProps = {
+  compact?: boolean;
+  presentation?: "inline" | "dialog";
+  dialogOpen?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
+};
+
+export function DriverMaterialIntentSelector({
+  compact = false,
+  presentation = "inline",
+  dialogOpen: controlledDialogOpen,
+  onDialogOpenChange,
+}: DriverMaterialIntentSelectorProps) {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(!compact);
+  const [uncontrolledDialogOpen, setUncontrolledDialogOpen] = useState(false);
+  const dialogOpen = controlledDialogOpen ?? uncontrolledDialogOpen;
+  const setDialogOpen = onDialogOpenChange ?? setUncontrolledDialogOpen;
   const catalog = useQuery<DriverMaterial[]>({ queryKey: driverMaterialCatalogKey, queryFn: async () => (await apiRequest("GET", "/api/drivers/materials/catalog")).json() });
   const intent = useQuery<DriverMaterialIntent>({ queryKey: driverMaterialIntentKey, queryFn: async () => (await apiRequest("GET", "/api/drivers/material-intent")).json() });
   const save = useMutation({
@@ -39,13 +55,38 @@ export function DriverMaterialIntentSelector({ compact = false }: { compact?: bo
       queryClient.setQueryData(driverMaterialIntentKey, value);
       queryClient.removeQueries({ queryKey: ["/api/drivers/locations"] });
       setExpanded(false);
+      setDialogOpen(false);
     },
   });
   const visible = useMemo(() => (catalog.data || []).filter((material) => `${localizedMaterialName(material, t)} ${localizedMaterialCategory(material.category, t) || ""}`.toLowerCase().includes(search.toLowerCase())), [catalog.data, search, t]);
   const active = intent.data?.material;
   const activeName = active ? localizedMaterialName(active, t) : null;
 
+  const selectionContent = <>
+    {catalog.isLoading ? <p className="text-sm text-muted-foreground" data-testid="driver-material-catalog-loading">{t("driver.material.catalogLoading")}</p> : catalog.isError ? <div className="space-y-2" data-testid="driver-material-catalog-unavailable"><p className="text-sm text-destructive">{t("driver.material.catalogUnavailable")}</p><Button type="button" variant="outline" size="sm" onClick={() => void catalog.refetch()}>{t("driver.material.retryCatalog")}</Button></div> : intent.isLoading ? <p className="text-sm text-muted-foreground" data-testid="driver-material-intent-loading">{t("driver.material.intentLoading")}</p> : intent.isError ? <div className="space-y-2" data-testid="driver-material-intent-unavailable"><p className="text-sm text-destructive">{t("driver.material.intentUnavailable")}</p><Button type="button" variant="outline" size="sm" onClick={() => void intent.refetch()}>{t("driver.material.retryIntent")}</Button></div> : <><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("driver.material.search")} data-testid="input-driver-material-search" /></div>{visible.length === 0 && catalog.data?.length === 0 ? <p className="text-sm text-muted-foreground" data-testid="driver-material-catalog-empty">{t("driver.material.emptyCatalog")}</p> : <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">{visible.map((material) => <Button key={material.slug} type="button" variant={active?.slug === material.slug ? "default" : "outline"} className="h-auto justify-start whitespace-normal p-3 text-left" disabled={save.isPending} onClick={() => save.mutate(material.slug)} data-testid={`button-driver-material-${material.slug}`}><span className="flex w-full items-start justify-between gap-2"><span><span className="block font-semibold">{localizedMaterialName(material, t)}</span>{material.category && <span className="block text-xs opacity-75">{localizedMaterialCategory(material.category, t)}</span>}</span>{active?.slug === material.slug && <Check className="h-4 w-4 shrink-0" />}</span></Button>)}</div>}{visible.length === 0 && (catalog.data?.length || 0) > 0 && <p className="text-sm text-muted-foreground">{t("driver.material.noMatches")}</p>}{save.isError && <p className="text-sm text-destructive">{t("driver.material.saveFailed")}</p>}{save.isSuccess && <p className="text-sm text-emerald-600">{t("driver.material.saved")}</p>}</>}</>;
+
+  if (presentation === "dialog") return <>
+    <Card className="border-border/70 bg-card/90" data-testid="driver-material-intent-selector">
+      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3 sm:flex-nowrap">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">{t("driver.material.active")}</p>
+          <p className="truncate font-medium">{intent.isLoading ? t("driver.material.intentLoading") : intent.isError ? t("driver.material.intentUnavailable") : activeName || t("driver.material.none")}</p>
+        </div>
+        {intent.isError ? <Button variant="outline" size="sm" onClick={() => void intent.refetch()} data-testid="button-retry-active-material">{t("driver.material.retryIntent")}</Button> : <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)} data-testid="button-open-active-material-dialog">{activeName ? t("driver.material.change") : t("driver.material.none")}</Button>}
+      </CardContent>
+    </Card>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl" data-testid="dialog-driver-material-intent">
+        <DialogHeader>
+          <DialogTitle>{t("driver.material.question")}</DialogTitle>
+          <DialogDescription>{t("driver.material.help")}</DialogDescription>
+        </DialogHeader>
+        {selectionContent}
+      </DialogContent>
+    </Dialog>
+  </>;
+
   if (compact && !expanded) return <Card className="border-border/70 bg-card/90"><CardContent className="flex items-center justify-between gap-3 p-3"><div><p className="text-xs font-semibold uppercase text-muted-foreground">{t("driver.material.active")}</p><p className="font-medium">{intent.isLoading ? t("driver.material.intentLoading") : intent.isError ? t("driver.material.intentUnavailable") : activeName || t("driver.material.none")}</p></div>{intent.isError ? <Button variant="outline" size="sm" onClick={() => void intent.refetch()} data-testid="button-retry-active-material">{t("driver.material.retryIntent")}</Button> : <Button variant="outline" size="sm" onClick={() => setExpanded(true)} data-testid="button-change-active-material">{t("driver.material.change")}</Button>}</CardContent></Card>;
 
-  return <Card className="border-border/70 bg-card/90" data-testid="driver-material-intent-selector"><CardContent className="space-y-3 p-4"><div><p className="font-semibold">{t("driver.material.question")}</p><p className="text-sm text-muted-foreground">{t("driver.material.help")}</p></div>{catalog.isLoading ? <p className="text-sm text-muted-foreground" data-testid="driver-material-catalog-loading">{t("driver.material.catalogLoading")}</p> : catalog.isError ? <div className="space-y-2" data-testid="driver-material-catalog-unavailable"><p className="text-sm text-destructive">{t("driver.material.catalogUnavailable")}</p><Button type="button" variant="outline" size="sm" onClick={() => void catalog.refetch()}>{t("driver.material.retryCatalog")}</Button></div> : intent.isLoading ? <p className="text-sm text-muted-foreground" data-testid="driver-material-intent-loading">{t("driver.material.intentLoading")}</p> : intent.isError ? <div className="space-y-2" data-testid="driver-material-intent-unavailable"><p className="text-sm text-destructive">{t("driver.material.intentUnavailable")}</p><Button type="button" variant="outline" size="sm" onClick={() => void intent.refetch()}>{t("driver.material.retryIntent")}</Button></div> : <><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("driver.material.search")} data-testid="input-driver-material-search" /></div>{visible.length === 0 && catalog.data?.length === 0 ? <p className="text-sm text-muted-foreground" data-testid="driver-material-catalog-empty">{t("driver.material.emptyCatalog")}</p> : <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">{visible.map((material) => <Button key={material.slug} type="button" variant={active?.slug === material.slug ? "default" : "outline"} className="h-auto justify-start whitespace-normal p-3 text-left" disabled={save.isPending} onClick={() => save.mutate(material.slug)} data-testid={`button-driver-material-${material.slug}`}><span className="flex w-full items-start justify-between gap-2"><span><span className="block font-semibold">{localizedMaterialName(material, t)}</span>{material.category && <span className="block text-xs opacity-75">{localizedMaterialCategory(material.category, t)}</span>}</span>{active?.slug === material.slug && <Check className="h-4 w-4 shrink-0" />}</span></Button>)}</div>}{visible.length === 0 && (catalog.data?.length || 0) > 0 && <p className="text-sm text-muted-foreground">{t("driver.material.noMatches")}</p>}{save.isError && <p className="text-sm text-destructive">{t("driver.material.saveFailed")}</p>}{save.isSuccess && <p className="text-sm text-emerald-600">{t("driver.material.saved")}</p>}</>}</CardContent></Card>;
+  return <Card className="border-border/70 bg-card/90" data-testid="driver-material-intent-selector"><CardContent className="space-y-3 p-4"><div><p className="font-semibold">{t("driver.material.question")}</p><p className="text-sm text-muted-foreground">{t("driver.material.help")}</p></div>{selectionContent}</CardContent></Card>;
 }

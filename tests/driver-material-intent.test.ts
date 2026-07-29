@@ -110,14 +110,19 @@ test("selected driver material filters locations through active facility accepta
   });
 });
 
-test("dashboard and locations share the persisted material selector without legacy job-type defaults", () => {
+test("dashboard opens the persisted material selector in a dialog while locations retain the compact selector", () => {
   const dashboard = readFileSync(new URL("../client/src/pages/driver/dashboard.tsx", import.meta.url), "utf8");
   const locations = readFileSync(new URL("../client/src/pages/driver/locations.tsx", import.meta.url), "utf8");
   const selector = readFileSync(new URL("../client/src/components/driver/DriverMaterialIntentSelector.tsx", import.meta.url), "utf8");
   assert.match(dashboard, /DriverMaterialIntentSelector/);
+  assert.match(dashboard, /presentation="dialog"/);
+  assert.match(dashboard, /setMaterialDialogOpen\(true\)/);
   assert.match(locations, /DriverMaterialIntentSelector compact/);
   assert.match(locations, /materialSlug=/);
   assert.match(selector, /\/api\/drivers\/material-intent/);
+  assert.match(selector, /DialogContent/);
+  assert.match(selector, /data-testid="dialog-driver-material-intent"/);
+  assert.match(selector, /data-testid="button-open-active-material-dialog"/);
   assert.doesNotMatch(dashboard, /DRIVER_JOB_TYPE_OPTIONS|ready-mix-washout|material-recovery/);
   assert.doesNotMatch(locations, /selectedMaterials/);
 });

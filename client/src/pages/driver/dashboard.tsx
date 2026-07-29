@@ -262,6 +262,7 @@ export default function DriverDashboard() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [gpsChecking, setGpsChecking] = useState(true);
   const [gpsRetryCount, setGpsRetryCount] = useState(0);
+  const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
   const materialSelectorRef = useRef<HTMLDivElement>(null);
 
   const { data: dashboardData, isLoading, isError: dashboardDataError, refetch } = useQuery({
@@ -524,6 +525,7 @@ export default function DriverDashboard() {
     }
     if (dashboardReadiness.action === "select_material") {
       materialSelectorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setMaterialDialogOpen(true);
       return;
     }
     if (dashboardReadiness.route) setLocation(dashboardReadiness.route);
@@ -611,7 +613,11 @@ export default function DriverDashboard() {
               </p>
             </div>
             <div ref={materialSelectorRef}>
-              <DriverMaterialIntentSelector />
+              <DriverMaterialIntentSelector
+                presentation="dialog"
+                dialogOpen={materialDialogOpen}
+                onDialogOpenChange={setMaterialDialogOpen}
+              />
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <Button
