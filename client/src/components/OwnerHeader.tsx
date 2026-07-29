@@ -32,7 +32,7 @@ export function OwnerHeader() {
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <LanguageToggle />
-            <LogoutButton onClick={logout} dataTestId="button-logout" tone="neutral" />
+            <LogoutButton onClick={logout} dataTestId="button-logout" tone="neutral" label={t("common.logout")} />
           </div>
         </div>
       </div>

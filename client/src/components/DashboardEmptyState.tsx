@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 interface DashboardEmptyStateProps {
@@ -26,6 +27,8 @@ export function DashboardEmptyState({
   titleClassName,
   dataTestId,
 }: DashboardEmptyStateProps) {
+  const { t } = useLanguage();
+
   return (
     <Card
       className={cn("w-full max-w-full min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/95 text-slate-100 shadow-sm [overflow-wrap:anywhere]", className)}
@@ -48,7 +51,7 @@ export function DashboardEmptyState({
         </div>
         <div className="flex min-w-0 flex-col justify-between gap-4">
           <div className="space-y-2">
-            <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-400 sm:tracking-[0.18em]">CreteXchange workspace</p>
+            <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-400 sm:tracking-[0.18em]">{t("common.workspace")}</p>
             <h3 className={cn("break-words text-lg font-semibold tracking-tight text-sky-400", titleClassName)}>{title}</h3>
             <div className="max-w-xl break-words text-sm text-slate-300">{description}</div>
           </div>

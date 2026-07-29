@@ -56,3 +56,15 @@ test("Owner bottom navigation preserves the canonical profile route", () => {
     /case "owner":[\s\S]*?\{ path: "\/profile", icon: User, label: t\("nav\.profile"\), testIdLabel: "profile" \}/,
   );
 });
+
+test("Owner dashboard shared labels use the active language catalog", () => {
+  const mobileNav = readFileSync(new URL("../client/src/components/MobileNav.tsx", import.meta.url), "utf8");
+  const header = readFileSync(new URL("../client/src/components/OwnerHeader.tsx", import.meta.url), "utf8");
+  const emptyState = readFileSync(new URL("../client/src/components/DashboardEmptyState.tsx", import.meta.url), "utf8");
+  const catalog = readFileSync(new URL("../client/src/lib/i18n.ts", import.meta.url), "utf8");
+
+  assert.match(mobileNav, /label: t\("header\.intelligence"\)/);
+  assert.match(header, /label=\{t\("common\.logout"\)\}/);
+  assert.match(emptyState, /t\("common\.workspace"\)/);
+  assert.equal((catalog.match(/"common\.workspace":/g) || []).length, 2);
+});
