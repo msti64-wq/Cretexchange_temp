@@ -1,15 +1,11 @@
 import { useAuth } from "@/hooks/useAuth";
-import { BarChart3, User, Plus, CreditCard } from "lucide-react";
 import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
-import { Button } from "@/components/ui/button";
-import { useLocation } from "wouter";
 import { LogoutButton } from "@/components/LogoutButton";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/lib/i18n";
 
 export function OwnerHeader() {
   const { user, logout } = useAuth();
-  const [, setLocation] = useLocation();
   const { t } = useLanguage();
   const ownerName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
 
@@ -38,49 +34,6 @@ export function OwnerHeader() {
             <LanguageToggle />
             <LogoutButton onClick={logout} dataTestId="button-logout" tone="neutral" />
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLocation('/intelligence')}
-            data-testid="button-facility-intelligence"
-            className="h-11 border-border bg-card text-foreground hover:bg-muted sm:h-10"
-          >
-            <BarChart3 className="mr-2 h-4 w-4" />
-            {t("header.intelligence")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLocation('/profile')}
-            data-testid="button-profile"
-            className="h-11 border-border bg-card text-foreground hover:bg-muted sm:h-10"
-          >
-            <User className="mr-2 h-4 w-4" />
-            {t("common.profile")}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setLocation('/locations')}
-            data-testid="button-add-location"
-            className="h-11 border border-border bg-primary text-primary-foreground hover:bg-primary/90 sm:h-10"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            {t("header.addLocation")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLocation('/payment-methods')}
-            data-testid="button-payment-methods"
-            className="h-11 border-border bg-card text-foreground hover:bg-muted sm:h-10"
-          >
-            <CreditCard className="mr-2 h-4 w-4" />
-            {t("header.optionalPaymentMethods")}
-          </Button>
         </div>
       </div>
     </header>

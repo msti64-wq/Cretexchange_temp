@@ -39,9 +39,10 @@ test("English and Spanish catalogs provide every owner dashboard localization ke
   }
 });
 
-test("Owner dashboard header localizes intelligence and does not present financial navigation as primary readiness", () => {
+test("Owner dashboard header leaves duplicated route navigation to the canonical bottom navigation", () => {
   const source = readFileSync(new URL("../client/src/components/OwnerHeader.tsx", import.meta.url), "utf8");
-  assert.match(source, /t\("header\.intelligence"\)/);
-  assert.match(source, /t\("header\.optionalPaymentMethods"\)/);
-  assert.doesNotMatch(source, />\s*Intelligence\s*</);
+  assert.doesNotMatch(source, /button-facility-intelligence|button-profile|button-add-location|button-payment-methods/);
+  assert.doesNotMatch(source, /useLocation|setLocation\(/);
+  assert.match(source, /<LanguageToggle(?:\s+[^>]*)?\s\/>/);
+  assert.match(source, /<LogoutButton/);
 });
