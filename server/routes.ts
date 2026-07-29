@@ -11180,7 +11180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id } = req.params;
-      const owner = await storage.approveOwner(id);
+      const owner = await storage.approveOwner(id, user.id);
       res.json(owner);
     } catch (error) {
       console.error("Error approving owner:", error);

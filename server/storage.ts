@@ -122,6 +122,7 @@ import {
   type InsertLotteryNotification,
   lotteryDrawingWinners,
   lotteryDrawings,
+  governanceAuditEvents,
 } from "@shared/schema";
 import { db } from "./db";
 import { summarizeDatabaseError } from "./dbErrors";
@@ -234,7 +235,7 @@ export interface IStorage {
   getOwnerWalletBalance(ownerId: string): Promise<{ balance: string; status: string } | undefined>;
   updateOwnerWalletBalance(ownerId: string, amount: string, type: string, description?: string): Promise<void>;
   getOwnerWalletTransactions(ownerId: string, startDate?: Date, endDate?: Date): Promise<any[]>;
-  approveOwner(ownerId: string): Promise<Owner>;
+  approveOwner(ownerId: string, actorId: string): Promise<Owner>;
   activateMembership(ownerId: string, paymentMethod: string, paymentNotes: string | undefined, activatedBy: string): Promise<Owner>;
   updateOwnerCustomPlatformFee(ownerId: string, customFee: string | null): Promise<Owner>;
   updateOwnerCustomBillingSettings(ownerId: string, useCustomBillingModel: boolean, customWashoutRate: string | null): Promise<Owner>;
@@ -1251,14 +1252,38 @@ export class DatabaseStorage implements IStorage {
 
   // Removed: getOwnerSubscriptionStatus - replaced by getOwnerWalletBalance
 
-  async approveOwner(ownerId: string): Promise<Owner> {
+  async approveOwner(ownerId: string, actorId: string): Promise<Owner> {
     return db.transaction(async (tx) => {
       const now = new Date();
       const [owner] = await tx
         .update(owners)
         .set({ isApproved: true, updatedAt: now })
-        .where(eq(owners.id, ownerId))
+        .where(and(eq(owners.id, ownerId), eq(owners.isApproved, false)))
         .returning();
+      if (!owner) {
+        const [existing] = await tx.select().from(owners).where(eq(owners.id, ownerId)).limit(1);
+        if (!existing) throw new Error("owner_not_found");
+        // An already-approved Owner has no new approval transition. Do not
+        // create a duplicate audit record or repeat downstream event work.
+        return existing;
+      }
+
+      // Governance audit is the authoritative actor-attributed evidence for
+      // this administrative approval. It intentionally occurs in the same
+      // transaction as the state change, so an audit failure rolls back the
+      // approval instead of creating an unaudited operational transition.
+      await tx.insert(governanceAuditEvents).values({
+        eventType: "facility_owner_approved",
+        actorId,
+        eventMetadata: {
+          action: "facility_owner_approved",
+          targetOwnerId: owner.id,
+          priorApprovalState: false,
+          resultingApprovalState: true,
+          occurredAt: now.toISOString(),
+        },
+      });
+
       const locations = await tx.select({ id: washoutLocations.id }).from(washoutLocations).where(eq(washoutLocations.ownerId, ownerId));
       for (const location of locations) {
         await recordPlatformAnalyticsEvent(tx, {
