@@ -15,6 +15,7 @@ test("owner dashboard routes visible intelligence and summary copy through trans
     "owner.dashboard.ownerChargeAwaitingCollection",
     "owner.dashboard.repeatDriverDefinition",
     "owner.dashboard.noApprovedDriversMatch",
+    "owner.dashboard.pendingReviewDescription",
   ]) assert.match(source, new RegExp(`t\\("${key}"`));
   assert.doesNotMatch(source, />Platform Fees</);
   assert.doesNotMatch(source, />Owner Intelligence</);
@@ -34,6 +35,7 @@ test("English and Spanish catalogs provide every owner dashboard localization ke
     "owner.dashboard.ownerChargeAwaitingCollection",
     "owner.dashboard.repeatDriverDefinition",
     "owner.dashboard.noApprovedDriversMatch",
+    "owner.dashboard.pendingReviewDescription",
   ]) {
     assert.equal((source.match(new RegExp(`"${key}":`, "g")) || []).length, 2, `${key} must exist in English and Spanish`);
   }

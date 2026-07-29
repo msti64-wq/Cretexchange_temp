@@ -692,7 +692,9 @@ export default function OwnerDashboard() {
                   {membershipState.membershipStatus === "pending_review" ? t("owner.dashboard.accountPendingReview") : t("owner.dashboard.accountStatus")}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {membershipState.accountStatusMessage}
+                  {membershipState.membershipStatus === "pending_review"
+                    ? t("owner.dashboard.pendingReviewDescription")
+                    : membershipState.accountStatusMessage}
                 </p>
               </div>
             </div>
