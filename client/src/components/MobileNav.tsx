@@ -46,6 +46,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/intelligence", icon: BarChart3, label: "Intelligence", testIdLabel: "facility-intelligence" },
           { path: "/wallet", icon: Wallet, label: t("nav.wallet"), testIdLabel: "wallet" },
           { path: "/notifications", icon: Bell, label: t("nav.alerts"), testIdLabel: "alerts" },
+          { path: "/profile", icon: User, label: t("nav.profile"), testIdLabel: "profile" },
         ];
       case "admin":
         // Regular admins only see Dashboard, Users, and Locations

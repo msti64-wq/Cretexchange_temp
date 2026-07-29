@@ -46,3 +46,11 @@ test("Owner dashboard header leaves duplicated route navigation to the canonical
   assert.match(source, /<LanguageToggle(?:\s+[^>]*)?\s\/>/);
   assert.match(source, /<LogoutButton/);
 });
+
+test("Owner bottom navigation preserves the canonical profile route", () => {
+  const source = readFileSync(new URL("../client/src/components/MobileNav.tsx", import.meta.url), "utf8");
+  assert.match(
+    source,
+    /case "owner":[\s\S]*?\{ path: "\/profile", icon: User, label: t\("nav\.profile"\), testIdLabel: "profile" \}/,
+  );
+});
