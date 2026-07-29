@@ -772,7 +772,7 @@ export default function OwnerDashboard() {
               value={pendingReviewCount}
               detail={
                 <div className="space-y-0.5">
-                  <div>{`${pendingReviewCount} Washout${pendingReviewCount === 1 ? "" : "s"}`}</div>
+                  <div>{t("owner.dashboard.washoutCount", { count: pendingReviewCount })}</div>
                   <div>{t("owner.dashboard.potentialCharges", { amount: formatLocalizedCurrency(pendingReviewPotentialChargesCents / 100, language) })}</div>
                 </div>
               }
@@ -784,8 +784,8 @@ export default function OwnerDashboard() {
               value={formatLocalizedCurrency(currentReceivablesCents / 100, language)}
               detail={
                 <div className="space-y-0.5">
-                  <div>{`${approvedCount} Approved Washouts`}</div>
-                  <div>Owner charge awaiting collection</div>
+                  <div>{t("owner.dashboard.approvedWashoutCount", { count: approvedCount })}</div>
+                  <div>{t("owner.dashboard.ownerChargeAwaitingCollection")}</div>
                 </div>
               }
               accentTone="success"
@@ -839,8 +839,8 @@ export default function OwnerDashboard() {
                 value={ownerActivityCount}
                 detail={
                   <div className="space-y-0.5">
-                    <div>{`${ownerActivityUniqueDriverCount} unique driver${ownerActivityUniqueDriverCount === 1 ? "" : "s"}`}</div>
-                    <div>{`Recent activity: ${recentActivityCount}`}</div>
+                    <div>{t("owner.dashboard.uniqueDriverCount", { count: ownerActivityUniqueDriverCount })}</div>
+                    <div>{t("owner.dashboard.recentActivityCount", { count: recentActivityCount })}</div>
                     <div className="text-xs text-muted-foreground">{t("owner.dashboard.derivedFromOwnerActivity")}</div>
                   </div>
                 }
@@ -852,8 +852,8 @@ export default function OwnerDashboard() {
                 value={repeatDriverCount}
                 detail={
                   <div className="space-y-0.5">
-                    <div>{`${repeatVisitCount} repeat visit${repeatVisitCount === 1 ? "" : "s"}`}</div>
-                    <div>A repeat driver has more than one activity in the selected data set</div>
+                    <div>{t("owner.dashboard.repeatVisitCount", { count: repeatVisitCount })}</div>
+                    <div>{t("owner.dashboard.repeatDriverDefinition")}</div>
                   </div>
                 }
                 accentTone="warning"
@@ -865,7 +865,7 @@ export default function OwnerDashboard() {
                 detail={
                   <div className="space-y-0.5">
                     <div>{configuredLocationTipValues.length > 0
-                      ? `${configuredLocationTipValues.length} configured location${configuredLocationTipValues.length === 1 ? "" : "s"}`
+                      ? t("owner.dashboard.configuredLocationCount", { count: configuredLocationTipValues.length })
                       : t("owner.dashboard.noConfiguredRates")}
                     </div>
                     <div className="text-xs text-muted-foreground">{t("owner.dashboard.derivedFromLocationRates")}</div>
@@ -879,8 +879,8 @@ export default function OwnerDashboard() {
                 value={ownerActivityCount}
                 detail={
                   <div className="space-y-0.5">
-                    <div>{`${ownerWashoutStatusCounts.approved} approved / ${ownerWashoutStatusCounts.pending} pending / ${ownerWashoutStatusCounts.rejected} rejected`}</div>
-                    <div>{`Selected range washouts: ${billableWashoutCount}`}</div>
+                    <div>{t("owner.dashboard.statusCounts", ownerWashoutStatusCounts)}</div>
+                    <div>{t("owner.dashboard.selectedRangeWashouts", { count: billableWashoutCount })}</div>
                     <div className="text-xs text-muted-foreground">{t("owner.dashboard.derivedFromOwnerActivity")}</div>
                   </div>
                 }
@@ -892,9 +892,9 @@ export default function OwnerDashboard() {
                 value={activeVisibleLocationCount}
                 detail={
                   <div className="space-y-0.5">
-                    <div>{`${recentLocationCount} location${recentLocationCount === 1 ? "" : "s"} with recent activity`}</div>
+                    <div>{t("owner.dashboard.recentLocationCount", { count: recentLocationCount })}</div>
                     <div>{topLocationByActivity
-                      ? `Top location: ${topLocationByActivity.name} (${topLocationByActivity.count})`
+                      ? t("owner.dashboard.topLocation", { name: topLocationByActivity.name, count: topLocationByActivity.count })
                       : t("owner.dashboard.noActivityRanked")}
                     </div>
                     <div className="text-xs text-muted-foreground">{t("owner.dashboard.totalLocationsConfigured", { count: ownerLocationRows.length })}</div>
@@ -932,7 +932,7 @@ export default function OwnerDashboard() {
               toneClassName="bg-slate-50 text-foreground dark:bg-slate-950/30 dark:text-foreground"
               action={
                 <Button variant="outline" size="sm" onClick={() => setDateRange("30days")}>
-                  View 30 days
+                  {t("owner.dashboard.viewThirtyDays")}
                 </Button>
               }
               dataTestId="empty-driver-intelligence"
@@ -964,7 +964,7 @@ export default function OwnerDashboard() {
                 <DSKpiCard
                   label={t("owner.dashboard.visitsPerDriver")}
                   value={visitsPerDriver.toFixed(1)}
-                  detail={`${selectedRangeApprovedActivities.length} approved activity visit${selectedRangeApprovedActivities.length === 1 ? "" : "s"}`}
+                  detail={t("owner.dashboard.approvedActivityVisitCount", { count: selectedRangeApprovedActivities.length })}
                   accentTone="accent"
                   data-testid="text-driver-intelligence-visits-per-driver"
                 />
@@ -993,7 +993,7 @@ export default function OwnerDashboard() {
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }} />
                       <YAxis hide />
                       <ChartTooltip
-                        content={<ChartTooltipContent hideLabel formatter={(value) => `${Number(value)} approved visit${Number(value) === 1 ? "" : "s"}`} />}
+                        content={<ChartTooltipContent hideLabel formatter={(value) => t("owner.dashboard.approvedVisitCount", { count: Number(value) })} />}
                       />
                       <Bar dataKey="visits" fill="#0EA5E9" radius={[8, 8, 0, 0]} />
                     </BarChart>
@@ -1044,8 +1044,8 @@ export default function OwnerDashboard() {
                   <Select value={driverFilter} onValueChange={(value) => setDriverFilter(value as typeof driverFilter)}>
                     <SelectTrigger data-testid="select-driver-intelligence-filter"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All drivers</SelectItem>
-                      <SelectItem value="new">New drivers</SelectItem>
+                      <SelectItem value="all">{t("owner.dashboard.allDrivers")}</SelectItem>
+                      <SelectItem value="new">{t("owner.dashboard.newDrivers")}</SelectItem>
                       <SelectItem value="repeat">{t("owner.dashboard.repeatDrivers")}</SelectItem>
                       <SelectItem value="recent">{t("owner.dashboard.recentDrivers")}</SelectItem>
                     </SelectContent>
@@ -1055,14 +1055,14 @@ export default function OwnerDashboard() {
                     <SelectContent>
                       <SelectItem value="most_active">{t("owner.dashboard.mostActive")}</SelectItem>
                       <SelectItem value="recent_visit">{t("owner.dashboard.latestVisit")}</SelectItem>
-                      <SelectItem value="name">Driver name</SelectItem>
+                      <SelectItem value="name">{t("owner.dashboard.driverName")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {filteredDriverIntelligenceRows.length === 0 ? (
                   <div className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                    No approved drivers match the current search and filters.
+                    {t("owner.dashboard.noApprovedDriversMatch")}
                   </div>
                 ) : (
                   <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
@@ -1087,7 +1087,7 @@ export default function OwnerDashboard() {
                               <div className="flex flex-wrap gap-1.5">
                                 {driver.isNew && <DSStatusChip tone="success">{t("owner.dashboard.new")}</DSStatusChip>}
                                 {driver.isRepeat && <DSStatusChip tone="warning">{t("owner.dashboard.repeat")}</DSStatusChip>}
-                                {driver.isRecent && <DSStatusChip tone="info">Recent</DSStatusChip>}
+                                {driver.isRecent && <DSStatusChip tone="info">{t("owner.dashboard.recentDrivers")}</DSStatusChip>}
                               </div>
                             </td>
                           </tr>
@@ -1097,7 +1097,7 @@ export default function OwnerDashboard() {
                   </div>
                 )}
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Showing up to 25 of {filteredDriverIntelligenceRows.length} approved driver record{filteredDriverIntelligenceRows.length === 1 ? "" : "s"} in the selected range.
+                  {t("owner.dashboard.showingDriverRecords", { count: filteredDriverIntelligenceRows.length })}
                 </p>
               </DSCard>
             </>

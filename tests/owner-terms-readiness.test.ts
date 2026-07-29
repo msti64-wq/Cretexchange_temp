@@ -19,6 +19,9 @@ test("Owner profile exposes an actionable terms path independently of approval a
   assert.match(source, /button-retry-owner-terms/);
   assert.match(source, /readOnly=\{ownerTermsReadiness === "accepted"\}/);
   assert.match(source, /enabled: Boolean\(user\?\.id\)/);
+  assert.ok(source.indexOf('card-owner-terms-readiness') < source.indexOf('card-owner-optional-financial-setup'));
+  assert.match(source, /t\("owner\.profile\.optionalFinancialSetupDescription"\)/);
+  assert.match(source, /t\("owner\.profile\.paymentSettingsHelp"\)/);
 });
 
 test("Owner consent recovery copy has English and Spanish parity", () => {
@@ -38,6 +41,31 @@ test("Owner consent recovery copy has English and Spanish parity", () => {
     assert.ok(translations.en[key], `missing English ${key}`);
     assert.ok(translations.es[key], `missing Spanish ${key}`);
   }
+});
+
+test("Owner profile localization covers Spanish consent, readiness recovery, and optional financial setup", () => {
+  for (const key of [
+    "owner.terms.required",
+    "owner.terms.reviewAndAccept",
+    "owner.terms.unavailableDescription",
+    "owner.profile.optionalFinancialSetup",
+    "owner.profile.optionalFinancialSetupDescription",
+    "owner.profile.paymentSettings",
+    "owner.profile.paymentSettingsHelp",
+  ]) {
+    assert.ok(translations.en[key], `missing English ${key}`);
+    assert.ok(translations.es[key], `missing Spanish ${key}`);
+  }
+  assert.match(translations.es["owner.profile.optionalFinancialSetupDescription"], /independiente de la preparación operativa/i);
+  assert.match(translations.es["owner.terms.reviewAndAccept"], /Revisar y aceptar/i);
+});
+
+test("Owner profile keeps optional financial setup visually and semantically separate from readiness", () => {
+  const profile = readFileSync(new URL("../client/src/pages/owner/profile.tsx", import.meta.url), "utf8");
+  assert.match(profile, /Optional Stripe verification information is not operational readiness/);
+  assert.match(profile, /Optional payment settings remain separate from operational readiness/);
+  assert.doesNotMatch(profile, /StripeVerificationStatus/);
+  assert.match(profile, /t\("owner\.profile\.optionalFinancialSetupDescription"\)/);
 });
 
 test("Owner terms dialog retains retryable, localized ledger-unavailable feedback", () => {

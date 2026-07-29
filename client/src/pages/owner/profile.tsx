@@ -14,7 +14,6 @@ import { Building2, CreditCard, Save, AlertCircle, Crown, Lock, Eye, EyeOff, Ext
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ApiRequestError, apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import StripeVerificationStatus from "@/components/StripeVerificationStatus";
 import { LogoutButton } from "@/components/LogoutButton";
 import { useLanguage } from "@/lib/i18n";
 import { resolveFacilityReadinessChecklist, type FacilityReadinessStepId } from "@/lib/pilotOnboarding";
@@ -133,8 +132,8 @@ export default function OwnerProfile() {
     },
     onSuccess: (data) => {
       if (data.onboardingComplete) {
-        toast({
-          title: "Onboarding Complete",
+      toast({
+        title: t("owner.profile.updated"),
           description: data.message,
         });
         refetchStripeRequirements();
@@ -145,7 +144,7 @@ export default function OwnerProfile() {
     },
     onError: (error: any) => {
       toast({
-        title: "Onboarding Error",
+        title: t("common.error"),
         description: error.message,
         variant: "destructive",
       });
@@ -166,8 +165,8 @@ export default function OwnerProfile() {
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate account link. Please ensure your profile is complete.",
+        title: t("common.error"),
+        description: error.message || t("owner.profile.updateFailed"),
         variant: "destructive",
       });
     },
@@ -229,8 +228,8 @@ export default function OwnerProfile() {
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
-        title: "Password Mismatch",
-        description: "New password and confirmation password don't match.",
+        title: t("owner.profile.passwordMismatch"),
+        description: t("owner.profile.passwordMismatchDescription"),
         variant: "destructive",
       });
       return;
@@ -238,8 +237,8 @@ export default function OwnerProfile() {
 
     if (passwordData.newPassword.length < 6) {
       toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters long.",
+        title: t("owner.profile.passwordTooShort"),
+        description: t("owner.profile.passwordTooShortDescription"),
         variant: "destructive",
       });
       return;
@@ -428,17 +427,14 @@ export default function OwnerProfile() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="card-owner-optional-financial-setup">
           <CardHeader>
-            <CardTitle>{t("pilot.facility.separateAccountSetup")}</CardTitle>
+            <CardTitle>{t("owner.profile.optionalFinancialSetup")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">{t("pilot.facility.separateAccountSetupHelp")}</p>
+            <p className="text-sm text-muted-foreground">{t("owner.profile.optionalFinancialSetupDescription")}</p>
           </CardContent>
         </Card>
-
-        {/* Financial account setup remains separate from operational readiness. */}
-        <StripeVerificationStatus userRole="owner" />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Personal Information */}
@@ -447,7 +443,7 @@ export default function OwnerProfile() {
               <CardTitle className="text-center">
                 <div className="flex items-center justify-center mb-3">
                   <Building2 className="w-5 h-5 mr-2" />
-                  Personal Information
+                  {t("owner.profile.personalInformation")}
                 </div>
                 <div className="flex justify-center">
                   <Button 
@@ -558,21 +554,21 @@ export default function OwnerProfile() {
             </CardContent>
           </Card>
 
-          {/* Stripe Verification Information */}
+          {/* Optional Stripe verification information is not operational readiness. */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <CreditCard className="w-5 h-5 mr-2" />
-                Stripe Verification Information
+                {t("owner.profile.stripeVerificationInformation")}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                Required for Stripe Connect account verification
+                {t("owner.profile.stripeVerificationOptional")}
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  This information is securely sent to Stripe for account verification only. It's never stored or shared elsewhere.
+                  {t("owner.profile.stripeVerificationSecurity")}
                 </p>
               </div>
 
@@ -587,7 +583,7 @@ export default function OwnerProfile() {
                   data-testid="input-date-of-birth"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Stripe verification requirement (YYYY-MM-DD format)
+                  {t("owner.profile.stripeVerificationDateHelp")}
                 </p>
               </div>
 
@@ -604,7 +600,7 @@ export default function OwnerProfile() {
                   data-testid="input-ssn-last4"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Only last 4 digits required for security
+                  {t("owner.profile.stripeVerificationSsnHelp")}
                 </p>
               </div>
 
@@ -620,7 +616,7 @@ export default function OwnerProfile() {
                   data-testid="input-business-website"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Your business website for Stripe verification
+                  {t("owner.profile.stripeVerificationWebsiteHelp")}
                 </p>
               </div>
             </CardContent>
@@ -632,12 +628,12 @@ export default function OwnerProfile() {
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Lock className="w-5 h-5 mr-2" />
-                  Security Settings
+                  {t("owner.profile.securitySettings")}
                 </div>
                 <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
                   <DialogTrigger asChild>
                     <Button className="bg-slate-800 hover:bg-slate-900 text-white" size="sm" data-testid="button-change-password">
-                      Change Password
+                      {t("owner.profile.changePassword")}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
@@ -691,7 +687,7 @@ export default function OwnerProfile() {
                           </Button>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Must be at least 6 characters long
+                          {t("owner.profile.minimumPasswordLength")}
                         </p>
                       </div>
 
@@ -728,7 +724,7 @@ export default function OwnerProfile() {
                           }}
                           data-testid="button-cancel-password"
                         >
-                          Cancel
+                          {t("common.cancel")}
                         </Button>
                         <Button 
                           type="submit"
@@ -756,7 +752,7 @@ export default function OwnerProfile() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Building2 className="w-5 h-5 mr-2" />
-                Business Information
+                {t("owner.profile.businessInformation")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -795,12 +791,12 @@ export default function OwnerProfile() {
             </CardContent>
           </Card>
 
-          {/* Payment Settings */}
+          {/* Optional payment settings remain separate from operational readiness. */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <CreditCard className="w-5 h-5 mr-2" />
-                Payment Settings
+                {t("owner.profile.paymentSettings")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -820,7 +816,7 @@ export default function OwnerProfile() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  How you will pay drivers for completed washouts
+                  {t("owner.profile.paymentSettingsHelp")}
                 </p>
               </div>
             </CardContent>
