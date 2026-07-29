@@ -1,8 +1,8 @@
 # CTX-ARCH-012 — Platform Intelligence Layer
 
-**Status:** Approved through Phase 3 Sprint 1 Driver Intelligence
+**Status:** Approved through Phase 3 Sprint 2 Driver Achievements & Recognition
 **Owner:** V8 Laboratories
-**Scope:** Immutable operational analytics, governed metrics, journeys, role-scoped read APIs, owner-scoped Facility Intelligence, and Driver-scoped personal intelligence. No ranking, environmental claim, AI inference, or financial-execution change is authorized.
+**Scope:** Immutable operational analytics, governed metrics, journeys, role-scoped read APIs, owner-scoped Facility Intelligence, Driver-scoped personal intelligence, and private Driver achievements. No public profile, ranking, competition, reward, prize, point, financial incentive, environmental claim, AI inference, or financial-execution change is authorized.
 
 ## Purpose and source of truth
 
@@ -56,6 +56,22 @@ Admin and Super Admin may use bounded event, metric, and journey APIs. Facility 
 The Facility Health Score is an internal operational calculation over verification quality, repeat Driver participation, Administrative Review demand, operational consistency, and profile completeness. Its public Owner projection returns only score and state; factor weights are internal and are not exposed outside Admin operations. It is advisory and never changes Facility approval, Owner authority, billing, or a lifecycle status.
 
 The Driver Intelligence projection is bound only to the authenticated Driver profile. It contains that Driver's verified activity periods, final-decision quality rates, submitted-activity days and streaks, facility usage, a bounded activity trend, and a Washout Journey derived from the same immutable event stream. It returns no other Driver's activity, ranking, reward, wallet, payout, payment, Stripe, or private-storage data. Its trend and journey query window is bounded to 93 days; cumulative values are explicitly labelled lifetime or calendar period.
+
+## Private Driver achievements
+
+The Driver Achievement service is a read-only projection over the existing immutable Platform Intelligence stream. It does not create an achievement table, duplicate an analytics event, mutate operational state, or establish a reward ledger. `server/driverAchievements.ts` owns the versioned achievement definitions and calculation rules; the existing Platform Intelligence event table remains the only runtime fact source.
+
+Only these existing canonical event types participate:
+
+- `activity.verified` for verified-washout milestones;
+- `activity.submitted` for submitted-day consistency and distinct-Facility participation; and
+- `activity.verified` plus `activity.rejected` for final-decision quality sequences.
+
+The projection returns earned achievements, earned dates, bounded progress, the next overall achievement, and the next milestone in each category. Earned dates are the canonical `occurred_at` timestamp of the event that first satisfied a milestone; submitted-day streak dates use the UTC start of the qualifying day. Progress is capped at the milestone threshold and does not create points or another unit of value.
+
+`GET /api/drivers/achievements` resolves the Driver profile exclusively from the authenticated account. It accepts no Driver identifier and returns only that Driver's private projection. Owners, Admins acting through this Driver route, other Drivers, anonymous users, and public callers cannot retrieve the projection. Future competition, rewards, public recognition, or comparative use requires separately governed APIs and authorization; this endpoint does not provide cross-Driver inputs.
+
+Achievement calculation is performed from a maximum of 10,000 qualifying canonical events in chronological order. A larger result fails closed rather than silently truncating recognition. Historical coverage begins with Platform Intelligence instrumentation; the service does not infer or backfill unrecorded activity from mutable status.
 
 All list queries use server-side pagination; journey reports require a bounded 93-day range and reject result sets over 10,000 events. Facility aggregation uses grouped database queries, not per-event or per-driver query loops; the dashboard caps the Driver list at ten rows. A Facility Driver Journey is explicitly a cohort of Drivers that submitted at that Facility in the selected window. Account stages are recorded account facts for that cohort, while activity stages are constrained to the selected Facility. The migration indexes event type/time and source dimensions used by these queries.
 

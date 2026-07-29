@@ -14,6 +14,11 @@ test("Driver Intelligence is dashboard-scoped, self-service, and operational onl
   assert.match(page, /Lifetime verified/);
   assert.match(page, /Check-In → Upload/);
   assert.match(page, /Activity trends/);
+  assert.match(page, /Achievements/);
+  assert.match(page, /\/api\/drivers\/achievements/);
+  assert.match(page, /Next achievement/);
+  assert.match(page, /Earned achievements/);
+  assert.match(page, /earnedAt/);
   assert.doesNotMatch(page, /wallet|stripe|payout|payment/i);
   assert.match(route, /app\.get\("\/api\/drivers\/intelligence\/dashboard"/);
   assert.match(route, /user\.role !== "driver"/);

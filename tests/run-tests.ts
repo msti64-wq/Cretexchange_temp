@@ -80,6 +80,7 @@ const restoreDeterministicNetworkGuard = installDeterministicNetworkGuard();
 await import("./reports.test.ts");
 await import("./admin-activity-reporting.test.ts");
 await import("./owner-access.test.ts");
+await import("./driver-achievements.test.ts");
 
 test("billing policy resolver treats blank and null as defaults and zero as an override", () => {
   const platform = {

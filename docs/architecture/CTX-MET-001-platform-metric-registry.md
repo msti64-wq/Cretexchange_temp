@@ -1,6 +1,6 @@
 # CTX-MET-001 — Platform Metric Registry
 
-**Status:** Approved through Phase 3 Sprint 1 Driver Intelligence
+**Status:** Approved through Phase 3 Sprint 2 Driver Achievements & Recognition
 **Owner:** V8 Laboratories
 **Classification:** Internal operational analytics; no financial, payment, private-storage, contact, GPS, or sensitive metadata is included.
 
@@ -57,3 +57,22 @@ Facility drop-off reports are facts only. The Washout Journey uses activity even
 The Driver Intelligence dashboard uses the existing Submitted, Verified, Rejected, Administrative Review Requested, and Verification Rate definitions, scoped to the authenticated Driver's `driver_id`. Lifetime verified activity is the count of `activity.verified`; calendar values use UTC year, month, week (Monday start), and day boundaries. Administrative Review rate is requested review rounds ÷ submitted activity. Average washouts per active day is submitted activity ÷ distinct UTC submitted-activity days. The consecutive streak ends on the most recent active day; the longest streak is the maximum sequence of consecutive recorded submitted-activity days.
 
 Favorite Facility, visited-Facility count, and peak day/hour use only the Driver's submitted facts. Driver Journey metrics use the Washout journey scoped to the Driver's events in the selected bounded window: Check-In → Upload is uploaded entities ÷ checked-in entities; Upload → Verification is verified entities ÷ uploaded entities; overall completion and durations use the canonical journey definition. These are personal operational metrics, not rankings, rewards, or financial performance measures.
+
+## Driver achievement definitions
+
+`DRIVER_ACHIEVEMENT_DEFINITIONS` is the implementation counterpart for this registry. Achievements are private recognition projections over the canonical metrics and event facts above; they are not additional Platform Intelligence events, public metrics, ranks, points, rewards, prizes, or financial incentives.
+
+| Category | Achievements | Canonical source | Calculation and earned date |
+| --- | --- | --- | --- |
+| Verified washouts | First; 10; 25; 50; 100; 500; 1,000 Verified Washouts | `activity.verified` | Lifetime verified-event count. Earned on the `occurred_at` timestamp of the threshold event. |
+| Consistency | 3-day; 7-day; 30-day streak | `activity.submitted` | Longest sequence of distinct consecutive UTC submitted-activity days, reusing the Driver Intelligence streak definition. Earned on the UTC day that first completes the threshold. |
+| Quality | 25; 100 verified without rejection | `activity.verified`, `activity.rejected` | Longest chronological sequence of final verified decisions. A rejection resets the current sequence. Earned on the verifying event that first completes the threshold. |
+| Participation | First Facility; Five Facilities Visited; Ten Facilities Visited | `activity.submitted` with non-null `location_id` | Lifetime count of distinct submitted-activity Facilities. Earned when the threshold distinct Facility is first observed. |
+
+### Milestone progression
+
+Each definition is evaluated independently and remains earned after its threshold is reached. Current progress is the applicable lifetime count or historical maximum, capped at the threshold for display. Remaining progress is `max(0, threshold − current)`, and percentage progress is the rounded ratio capped at 100%.
+
+The next milestone for a category is its lowest unearned threshold. The overall next achievement is the category-next milestone with the highest completion percentage; ties use the smallest remaining count and then the stable definition order above. When all current definitions are earned, no next achievement is returned.
+
+Achievement timestamps and ordering use UTC. No status, payment, wallet, payout, Stripe, reward-entry, drawing, public-profile, leaderboard, or cross-Driver data participates. Later reversal or disqualification semantics require a separately governed canonical correction event; the current engine never invents a correction from mutable state.

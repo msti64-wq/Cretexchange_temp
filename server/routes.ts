@@ -159,6 +159,7 @@ import {
   parsePlatformJourneyQuery,
   PlatformAnalyticsQueryError,
 } from "./platformAnalytics";
+import { buildDriverAchievementProjection } from "./driverAchievements";
 import {
   buildBillingAuditReport,
   billingAuditReportToCsv,
@@ -14259,6 +14260,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof PlatformAnalyticsQueryError) return res.status(400).json({ message: error.message });
       console.error("Error aggregating driver intelligence dashboard:", error);
       return res.status(500).json({ message: "Failed to aggregate driver intelligence" });
+    }
+  });
+
+  // Private recognition projection. Driver identity is resolved from the
+  // authenticated account and is never accepted from params or query input.
+  app.get("/api/drivers/achievements", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== "driver") return res.status(403).json({ message: "Driver achievement access required" });
+      const driver = await storage.getDriver(user.id);
+      if (!driver) return res.status(404).json({ message: "Driver profile not found" });
+      return res.json(await buildDriverAchievementProjection(db, driver.id));
+    } catch (error) {
+      console.error("Error aggregating driver achievements:", error);
+      return res.status(500).json({ message: "Failed to aggregate driver achievements" });
     }
   });
 
