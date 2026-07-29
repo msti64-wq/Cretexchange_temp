@@ -67,7 +67,7 @@ interface ColumnOnboardingStatus {
 export default function DriverWallet() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const driverLifecycle = useDriverPaymentLifecycle();
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -139,8 +139,8 @@ export default function DriverWallet() {
     },
     onSuccess: () => {
       toast({
-        title: "Withdrawal Requested",
-        description: "Your withdrawal request has been submitted and will be processed within 1-2 business days.",
+        title: t("driver.wallet.withdrawalRequested"),
+        description: t("driver.wallet.withdrawalRequestedDescription"),
       });
       setWithdrawalAmount("");
       refetchBalance();
@@ -148,8 +148,8 @@ export default function DriverWallet() {
     },
     onError: (error: any) => {
       toast({
-        title: "Withdrawal Failed",
-        description: error.message || "Failed to process withdrawal request",
+        title: t("driver.wallet.withdrawalFailed"),
+        description: error.message || t("driver.wallet.withdrawalFailedDescription"),
         variant: "destructive",
       });
     },
@@ -164,8 +164,8 @@ export default function DriverWallet() {
       
     if (previousIsOnboarded === false && currentIsOnboarded === true) {
       toast({
-        title: "Account Connected! 🎉",
-        description: "Your bank account is now ready for withdrawals.",
+        title: t("driver.wallet.accountConnected"),
+        description: t("driver.wallet.accountConnectedDescription"),
       });
     }
     
@@ -174,7 +174,7 @@ export default function DriverWallet() {
     } else {
       setPreviousIsOnboarded(currentIsOnboarded);
     }
-  }, [columnStatus, toast, previousIsOnboarded]);
+  }, [columnStatus, toast, previousIsOnboarded, t]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -192,16 +192,16 @@ export default function DriverWallet() {
     // Handle terms status loading and error states
     if (termsLoading) {
       toast({
-        title: "Loading Terms Status",
-        description: "Please wait while we verify your account status",
+        title: t("driver.wallet.termsLoading"),
+        description: t("driver.wallet.termsLoadingDescription"),
       });
       return;
     }
 
     if (termsError) {
       toast({
-        title: "Terms Status Error",
-        description: "Unable to verify terms status. Please try again.",
+        title: t("driver.wallet.termsError"),
+        description: t("driver.wallet.termsErrorDescription"),
         variant: "destructive",
       });
       return;
@@ -210,8 +210,8 @@ export default function DriverWallet() {
     const amount = parseFloat(withdrawalAmount);
     if (isNaN(amount) || amount < 5) {
       toast({
-        title: "Invalid Amount",
-        description: "Minimum withdrawal amount is $5.00",
+        title: t("driver.wallet.invalidAmount"),
+        description: t("driver.wallet.minimumWithdrawal"),
         variant: "destructive",
       });
       return;
@@ -219,8 +219,8 @@ export default function DriverWallet() {
 
     if (amount > (walletBalance?.availableBalance || 0)) {
       toast({
-        title: "Insufficient Funds",
-        description: "Withdrawal amount exceeds available balance",
+        title: t("driver.wallet.insufficientFunds"),
+        description: t("driver.wallet.insufficientFundsDescription"),
         variant: "destructive",
       });
       return;
@@ -241,8 +241,8 @@ export default function DriverWallet() {
     
     if (isNaN(amount) || amount < 5) {
       toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid withdrawal amount of at least $5.00",
+        title: t("driver.wallet.invalidAmount"),
+        description: t("driver.wallet.validWithdrawalAmount"),
         variant: "destructive",
       });
       return;
@@ -250,8 +250,8 @@ export default function DriverWallet() {
 
     if (amount > (walletBalance?.availableBalance || 0)) {
       toast({
-        title: "Insufficient Funds",
-        description: "Withdrawal amount exceeds available balance",
+        title: t("driver.wallet.insufficientFunds"),
+        description: t("driver.wallet.insufficientFundsDescription"),
         variant: "destructive",
       });
       return;
@@ -266,8 +266,8 @@ export default function DriverWallet() {
     driverLifecycle.refresh();
     refetchColumnStatus();
     toast({
-      title: "Data Refreshed",
-      description: "Wallet information has been updated",
+      title: t("driver.wallet.refreshed"),
+      description: t("driver.wallet.refreshedDescription"),
     });
   };
 
@@ -325,8 +325,8 @@ export default function DriverWallet() {
       <div className="p-4 space-y-6">
         {/* Page Header */}
         <DSSectionHeader
-          title="My Wallet"
-          description="Manage your wallet and withdrawal settings"
+          title={t("driver.wallet.title")}
+          description={t("driver.wallet.description")}
           actions={
             <Button
               variant="outline"
@@ -336,64 +336,64 @@ export default function DriverWallet() {
               data-testid="button-refresh-wallet"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Refresh</span>
+              <span>{t("common.retry")}</span>
             </Button>
           }
         />
 
         <DriverLifecycleSummary lifecycle={driverLifecycle.lifecycle} isLoading={driverLifecycle.isLoading} paymentError={driverLifecycle.paymentError} onViewActivity={() => setLocation('/activity')} variant="wallet" />
         <div className="grid grid-cols-1 gap-3">
-          <DSKpiCard label="Wallet Balance" value={formatCurrency(walletBalance?.availableBalance || 0)} detail="Shown separately from activity and payment status" accentTone="success" data-testid="text-available-balance" />
+          <DSKpiCard label={t("driver.wallet.balance")} value={formatCurrency(walletBalance?.availableBalance || 0)} detail={t("driver.wallet.balanceDetail")} accentTone="success" data-testid="text-available-balance" />
         </div>
 
         {/* Bank Account Status */}
         <DSCard padding="lg">
           <DSSectionHeader
-            title="Payment Account Status"
+            title={t("driver.wallet.paymentAccountStatus")}
             eyebrow={<CreditCard className="inline-block h-4 w-4 align-[-2px]" />}
           />
           <div className="mt-4">
             {!columnStatus?.isOnboarded ? (
               <div className="text-center py-6">
                 <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-                <h3 className="font-semibold mb-2">Payment Account Setup Required</h3>
+                <h3 className="font-semibold mb-2">{t("driver.wallet.paymentSetupRequired")}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Complete your payment account setup on your Profile page to receive washout payments
+                  {t("driver.wallet.paymentSetupDescription")}
                 </p>
                 <Button
                   onClick={() => window.location.href = '/driver/profile'}
                   data-testid="button-go-to-profile"
                 >
                   <User className="w-4 h-4 mr-2" />
-                  Go to Profile & Set Up Account
+                  {t("driver.wallet.goToProfile")}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-3">
-                  You'll need to complete a one-time account verification to start earning
+                  {t("driver.wallet.paymentSetupHelp")}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Account Status</span>
+                  <span className="text-muted-foreground">{t("driver.wallet.accountStatus")}</span>
                   <DSStatusChip tone="success" data-testid="badge-account-status">
-                    Connected & Ready
+                    {t("driver.wallet.connectedReady")}
                   </DSStatusChip>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-muted-foreground">Bank Account Connected</span>
+                    <span className="text-muted-foreground">{t("driver.wallet.bankAccountConnected")}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-muted-foreground">Identity Verified</span>
+                    <span className="text-muted-foreground">{t("driver.wallet.identityVerified")}</span>
                   </div>
                   {columnStatus?.accountLast4 && (
                     <div className="flex items-center space-x-2 col-span-2">
                       <Banknote className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">
-                        Account ending in {columnStatus.accountLast4}
+                        {t("driver.wallet.accountEnding", { last4: columnStatus.accountLast4 })}
                       </span>
                     </div>
                   )}
@@ -403,7 +403,7 @@ export default function DriverWallet() {
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500 mt-0.5" />
                     <p className="text-sm text-foreground/85">
-                      Your bank account is ready to receive payments
+                      {t("driver.wallet.accountReadyForPayments")}
                     </p>
                   </div>
                 </div>
@@ -415,23 +415,23 @@ export default function DriverWallet() {
         {/* Withdrawal Request Form */}
         <DSCard padding="lg">
           <DSSectionHeader
-            title="Request Withdrawal"
+            title={t("driver.wallet.requestWithdrawal")}
             description={
               !termsStatus?.hasAgreed 
-                ? "$1 fee under $10, then 10% • ACH transfer to your bank (1-2 business days)"
-                : "ACH transfer to your bank (1-2 business days)"
+                ? t("driver.wallet.withdrawalFeeDescription")
+                : t("driver.wallet.withdrawalDescription")
             }
           />
           <div className="mt-4 space-y-4">
             {!canWithdraw ? (
               <div className="text-center py-6 text-muted-foreground">
                 <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>Complete account verification to enable withdrawals</p>
+                <p>{t("driver.wallet.completeVerification")}</p>
               </div>
             ) : (
               <>
                 <div>
-                  <Label htmlFor="withdrawal-amount">Withdrawal Amount</Label>
+                  <Label htmlFor="withdrawal-amount">{t("driver.wallet.withdrawalAmount")}</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -447,24 +447,24 @@ export default function DriverWallet() {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Minimum withdrawal: $5.00
+                    {t("driver.wallet.minimumWithdrawal")}
                   </p>
                 </div>
 
                 {withdrawAmount > 0 && (
                   <DSCard padding="sm" elevated={false} className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Withdrawal Amount:</span>
+                      <span>{t("driver.wallet.withdrawalAmount")}</span>
                       <span data-testid="text-withdrawal-amount">{formatCurrency(withdrawAmount)}</span>
                     </div>
                     {!termsStatus?.hasAgreed && (
                       <div className="flex justify-between text-sm text-amber-600">
-                        <span>Processing Fee ({withdrawAmount < 10 ? '$1 flat fee' : '10%'}):</span>
+                        <span>{t("driver.wallet.processingFee", { fee: withdrawAmount < 10 ? "$1" : "10%" })}</span>
                         <span data-testid="text-fee-amount">-{formatCurrency(feeAmount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between border-t pt-2 font-semibold">
-                      <span>You'll Receive:</span>
+                      <span>{t("driver.wallet.youWillReceive")}</span>
                       <span className="text-green-600" data-testid="text-net-amount">
                         {formatCurrency(netAmount)}
                       </span>
@@ -489,7 +489,7 @@ export default function DriverWallet() {
                   ) : (
                     <Banknote className="w-4 h-4 mr-2" />
                   )}
-                  Request Withdrawal
+                  {t("driver.wallet.requestWithdrawal")}
                 </Button>
 
                 <div className="rounded-2xl border border-border/70 bg-card/90 p-4">
@@ -497,7 +497,7 @@ export default function DriverWallet() {
                     <Clock className="h-4 w-4 shrink-0 text-primary mt-0.5" />
                     <div className="space-y-2">
                       <p className="font-medium text-foreground/90">
-                        ACH withdrawals to your bank account typically arrive in 1-2 business days
+                        {t("driver.wallet.withdrawalArrival")}
                       </p>
                       
                       {issuingEnabled && debitCardStatus?.hasCard ? (
@@ -601,8 +601,8 @@ export default function DriverWallet() {
 
         {/* Transaction History */}
         <DSTableShell
-          title="Transaction History"
-          description={(transactionsData as any)?.total > 0 ? `${(transactionsData as any).total} total transactions` : undefined}
+          title={t("driver.wallet.transactionHistory")}
+          description={(transactionsData as any)?.total > 0 ? t("driver.wallet.totalTransactions", { count: (transactionsData as any).total }) : undefined}
         >
           <div className="space-y-3">
             {transactionsLoading ? (
@@ -619,8 +619,8 @@ export default function DriverWallet() {
             ) : !(transactionsData as any)?.transactions?.length ? (
                 <div className="text-center py-8 text-foreground/75">
                   <Receipt className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>No transactions yet</p>
-                  <p className="text-sm">Your transaction history will appear here</p>
+                  <p>{t("driver.wallet.noTransactions")}</p>
+                  <p className="text-sm">{t("driver.wallet.noTransactionsDescription")}</p>
                 </div>
               ) : (
                 <>
@@ -646,7 +646,7 @@ export default function DriverWallet() {
                             {transaction.status}
                           </DSStatusChip>
                           <span className="text-xs text-foreground/65">
-                            Balance: {formatCurrency(transaction.balanceAfter)}
+                            {t("driver.wallet.transactionBalance", { amount: formatCurrency(transaction.balanceAfter) })}
                           </span>
                         </div>
                       </div>

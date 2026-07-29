@@ -8,6 +8,7 @@ import {
   markInstallPromptHandledThisSession,
   usePWAInstall,
 } from "@/hooks/usePWAInstall";
+import { useLanguage } from "@/lib/i18n";
 
 interface InstallPromptProps {
   userType: "driver" | "owner";
@@ -17,6 +18,7 @@ interface InstallPromptProps {
 
 export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptProps) {
   const { isIOS, install } = usePWAInstall();
+  const { t } = useLanguage();
   const [visible, setVisible] = useState(true);
 
   if (!visible || hasHandledInstallPromptThisSession()) return null;
@@ -39,24 +41,23 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
   const messaging =
     userType === "driver"
       ? {
-          title: "Add CreteXchange to Your Phone",
-          description:
-            "Get one-tap access while driving — find washout locations instantly.",
+          title: t("install.title"),
+          description: t("install.driver.description"),
           benefits: [
-            "One tap from your home screen",
-            "Works even with spotty cell service",
-            "Faster loading, no typing URLs",
-            "Full-screen experience",
+            t("install.driver.benefit1"),
+            t("install.driver.benefit2"),
+            t("install.driver.benefit3"),
+            t("install.driver.benefit4"),
           ],
         }
       : {
-          title: "Add CreteXchange to Your Phone",
-          description: "Manage your washout locations with instant access from your phone.",
+          title: t("install.title"),
+          description: t("install.owner.description"),
           benefits: [
-            "Quick access to manage your locations",
-            "Monitor driver activity on-the-go",
-            "Instant notifications for new washouts",
-            "Professional app experience",
+            t("install.owner.benefit1"),
+            t("install.owner.benefit2"),
+            t("install.owner.benefit3"),
+            t("install.owner.benefit4"),
           ],
         };
 
@@ -93,23 +94,23 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
 
         {isIOS ? (
           <div className="space-y-3">
-            <p className="text-sm font-medium">To install on iPhone/iPad:</p>
+            <p className="text-sm font-medium">{t("install.ios.title")}</p>
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-start gap-2">
                 <span className="font-bold text-blue-600">1.</span>
-                <span>Tap the <Share className="w-4 h-4 inline mx-0.5 text-blue-600" /> <strong>Share</strong> button in Safari</span>
+                <span>{t("install.ios.step1Before")} <Share className="w-4 h-4 inline mx-0.5 text-blue-600" /> <strong>{t("install.ios.share")}</strong> {t("install.ios.step1After")}</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-blue-600">2.</span>
-                <span>Tap <strong>"Add to Home Screen"</strong></span>
+                <span>{t("install.ios.step2Before")} <strong>"{t("install.addToHomeScreen")}"</strong></span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="font-bold text-blue-600">3.</span>
-                <span>Tap <strong>"Add"</strong> to confirm</span>
+                <span>{t("install.ios.step3Before")} <strong>"{t("install.ios.add")}"</strong> {t("install.ios.step3After")}</span>
               </div>
             </div>
             <Button onClick={handleDismiss} className="w-full" data-testid="button-ios-understand">
-              Got it!
+              {t("install.gotIt")}
             </Button>
           </div>
         ) : (
@@ -120,10 +121,10 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
               data-testid="button-install-app"
             >
               <Download className="w-4 h-4 mr-2" />
-              Add to Home Screen
+              {t("install.addToHomeScreen")}
             </Button>
             <Button variant="outline" onClick={handleDismiss} data-testid="button-not-now">
-              Not Now
+              {t("install.notNow")}
             </Button>
           </div>
         )}

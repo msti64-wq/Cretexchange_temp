@@ -8,9 +8,9 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { formatDistanceToNow } from "date-fns";
 import { MobileNav } from "@/components/MobileNav";
 import { DSCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
+import { formatLocalizedDate, useLanguage } from "@/lib/i18n";
 
 function getNotificationIcon(type: string) {
   switch (type) {
@@ -75,6 +75,7 @@ function getNotificationColor(type: string, isRead: boolean) {
 
 export default function DriverNotifications() {
   const [, setLocation] = useLocation();
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -126,9 +127,9 @@ export default function DriverNotifications() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="font-semibold text-lg text-foreground">Message Center</h1>
+              <h1 className="font-semibold text-lg text-foreground">{t("driver.notifications.title")}</h1>
               <p className="text-sm text-foreground/75">
-                {unreadCount > 0 ? `${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}` : 'All caught up'}
+                {unreadCount > 0 ? t("driver.notifications.unreadCount", { count: unreadCount }) : t("driver.notifications.allCaughtUp")}
               </p>
             </div>
           </div>
@@ -142,7 +143,7 @@ export default function DriverNotifications() {
                 disabled={markAllReadMutation.isPending}
               >
                 <CheckCheck className="w-4 h-4" />
-                Mark all read
+                {t("driver.notifications.markAllRead")}
               </Button>
             )}
             <Bell className="w-6 h-6" />
@@ -152,8 +153,8 @@ export default function DriverNotifications() {
 
       <main className="p-4 max-w-2xl mx-auto space-y-3">
         <DSSectionHeader
-          title="Message Center"
-          description={unreadCount > 0 ? `${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}` : 'All caught up'}
+          title={t("driver.notifications.title")}
+          description={unreadCount > 0 ? t("driver.notifications.unreadCount", { count: unreadCount }) : t("driver.notifications.allCaughtUp")}
         />
         {isLoading ? (
           [1, 2, 3].map(i => (
@@ -168,10 +169,10 @@ export default function DriverNotifications() {
             <CardContent className="p-12 text-center">
               <Bell className="w-12 h-12 text-foreground/65 mx-auto mb-4" />
               <h3 className="mb-2 text-lg font-medium text-foreground">
-                No messages yet
+                {t("driver.notifications.emptyTitle")}
               </h3>
               <p className="text-sm text-foreground/70">
-                You'll see notifications here about lottery results, payments, and account updates.
+                {t("driver.notifications.emptyDescription")}
               </p>
             </CardContent>
           </DSCard>
@@ -193,7 +194,7 @@ export default function DriverNotifications() {
                       </h3>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {!notification.isRead && (
-                          <DSStatusChip tone="warning" className="text-xs">New</DSStatusChip>
+                          <DSStatusChip tone="warning" className="text-xs">{t("driver.notifications.new")}</DSStatusChip>
                         )}
                       </div>
                     </div>
@@ -202,7 +203,7 @@ export default function DriverNotifications() {
                     </p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-foreground/65">
-                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                        {formatLocalizedDate(notification.createdAt, language, { dateStyle: "medium", timeStyle: "short" })}
                       </span>
                       {!notification.isRead && (
                         <Button
@@ -213,7 +214,7 @@ export default function DriverNotifications() {
                           className="h-7 border-border/70 bg-background/60 text-xs text-foreground hover:bg-background hover:text-foreground"
                         >
                           <Check className="w-3 h-3 mr-1" />
-                          Mark read
+                          {t("driver.notifications.markRead")}
                         </Button>
                       )}
                     </div>
