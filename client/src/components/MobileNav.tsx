@@ -1,4 +1,4 @@
-import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy, ClipboardList, Images } from "lucide-react";
+import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy, ClipboardList, Images, Globe2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -54,6 +54,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/reports", icon: BarChart3, label: "Activity Reports", testIdLabel: "activity-reports" },
+          { path: "/network-intelligence", icon: Globe2, label: t("network.nav"), testIdLabel: "network-intelligence" },
           { path: "/admin/financial-operations", icon: ClipboardList, label: "Financial Operations", testIdLabel: "financial-operations" },
           { path: "/admin/administration-repository", icon: FileText, label: "Operations Library", testIdLabel: "administration-repository" },
           { path: "/admin/photo-review", icon: Images, label: "Photo Review", testIdLabel: "photo-review" },
@@ -66,6 +67,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/users", icon: Users, label: "Users" },
           { path: "/locations", icon: Building, label: "Locations" },
           { path: "/reports", icon: BarChart3, label: "Activity Reports", testIdLabel: "activity-reports" },
+          { path: "/network-intelligence", icon: Globe2, label: t("network.nav"), testIdLabel: "network-intelligence" },
           { path: "/admin/financial-operations", icon: ClipboardList, label: "Financial Operations", testIdLabel: "financial-operations" },
           { path: "/admin/administration-repository", icon: FileText, label: "Operations Library", testIdLabel: "administration-repository" },
           { path: "/admin/photo-review", icon: Images, label: "Photo Review", testIdLabel: "photo-review" },

@@ -1,6 +1,6 @@
 # CTX-MET-001 — Platform Metric Registry
 
-**Status:** Approved through Phase 3 Sprint 2 Driver Achievements & Recognition
+**Status:** Approved through Phase 3 Sprint 3 Network Intelligence Foundation
 **Owner:** V8 Laboratories
 **Classification:** Internal operational analytics; no financial, payment, private-storage, contact, GPS, or sensitive metadata is included.
 
@@ -76,3 +76,26 @@ Each definition is evaluated independently and remains earned after its threshol
 The next milestone for a category is its lowest unearned threshold. The overall next achievement is the category-next milestone with the highest completion percentage; ties use the smallest remaining count and then the stable definition order above. When all current definitions are earned, no next achievement is returned.
 
 Achievement timestamps and ordering use UTC. No status, payment, wallet, payout, Stripe, reward-entry, drawing, public-profile, leaderboard, or cross-Driver data participates. Later reversal or disqualification semantics require a separately governed canonical correction event; the current engine never invents a correction from mutable state.
+
+## Network Intelligence definitions
+
+All Network Intelligence windows use inclusive UTC timestamps. The default window is 30 days and the maximum is 366 days. The immediately preceding equal-length window is the comparison period. Year-over-year is returned only when the earliest recorded Platform Intelligence event precedes the shifted comparison start; otherwise the state is `insufficient_history`.
+
+| Term | Canonical definition |
+| --- | --- |
+| New Driver | Driver account `created_at` falls inside the selected window. |
+| Activated Driver | Driver has a first recorded `activity.verified` on or before the window end. |
+| Active Driver | Distinct Driver with submitted, verified, or rejected activity in the selected window. |
+| Returning Driver | Active Driver in the selected window with qualifying activity before the window start. |
+| Retained Driver | Driver active in the immediately preceding equal-length cohort and active again in the selected window. The denominator contains only prior-window Drivers that had an opportunity to return. |
+| New Facility | Active Facility owned by an approved Owner whose canonical location `created_at` falls in the window. |
+| Activated Facility | Facility with a first recorded verified activity on or before the window end. |
+| Active Facility | Distinct Facility with submitted activity in the selected window. |
+| Recurring Facility | Facility with at least two recorded verified activities through the window end. |
+| Repeat-driver rate | Drivers with `activity.repeat_submitted` in the window ÷ Active Drivers. |
+| Facility reuse rate | active Facilities with at least two verified activities through the window end ÷ Active Facilities. |
+| Journey completion | distinct checked-in activities also reaching verified ÷ distinct checked-in activities. |
+
+Network density is reported as active Drivers per active Facility, verified washouts per active Facility, verified washouts per active Driver, and repeat participation by state. State is derived only from the canonical Facility address. Metro/market and operating-region aggregation remain unavailable because no authoritative model exists. Activity volume and average daily verified activity are utilization indicators; physical capacity percentages are prohibited without an authoritative capacity source.
+
+Metrics based on Platform Intelligence events are explicitly partial when operational account or Facility records predate the earliest event. No mutable status backfill or estimated historic value is mixed into an event metric.

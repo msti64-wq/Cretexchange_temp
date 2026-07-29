@@ -730,3 +730,11 @@ the server.
 **Current Scope:** Documentation only. This decision does not alter current Driver Rewards, drawing eligibility, Driver Dashboard, Driver Earnings Center, operational verification, financial behavior, or Pilot Release scope.
 
 **Related Documents:** [CTX-ARCH-003](../architecture/driver-operations-architecture.md), [CTX-ARCH-004](../architecture/admin-operations-architecture.md), [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [PD-051](./PD-051-driver-activity-and-payment-lifecycle.md), and [PD-052](./PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md).
+
+## PD-057 - Administrative Network Intelligence Foundation
+
+**Decision:** Network health, growth, adoption, retention, density, quality, and state-level geography are an authorized Admin-only Platform Intelligence projection. It reuses canonical operational records and immutable events and may not expose rankings, public profiles, financial data, private contacts, precise GPS, or inferred physical capacity.
+
+**Status:** Active — Phase 3 Sprint 3
+
+**Implications:** UTC cohort rules and definitions live in CTX-MET-001; the implementation lives in the shared Network Intelligence service. State and Facility are the only authorized geographic dimensions until a separately governed market model exists. Future competition, grant, investor, environmental, or municipality experiences must consume separately authorized contracts rather than treating this internal screen as public.

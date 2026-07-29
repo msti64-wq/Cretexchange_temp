@@ -2,7 +2,7 @@
 
 **Status:** Approved through Phase 3 Sprint 2 Driver Achievements & Recognition
 **Owner:** V8 Laboratories
-**Scope:** Immutable operational analytics, governed metrics, journeys, role-scoped read APIs, owner-scoped Facility Intelligence, Driver-scoped personal intelligence, and private Driver achievements. No public profile, ranking, competition, reward, prize, point, financial incentive, environmental claim, AI inference, or financial-execution change is authorized.
+**Scope:** Immutable operational analytics, governed metrics, journeys, role-scoped read APIs, owner-scoped Facility Intelligence, Driver-scoped personal intelligence, private Driver achievements, and Admin-only Network Intelligence. No public profile, ranking, competition, reward, prize, point, financial incentive, environmental claim, AI inference, or financial-execution change is authorized.
 
 ## Purpose and source of truth
 
@@ -72,6 +72,14 @@ The projection returns earned achievements, earned dates, bounded progress, the 
 `GET /api/drivers/achievements` resolves the Driver profile exclusively from the authenticated account. It accepts no Driver identifier and returns only that Driver's private projection. Owners, Admins acting through this Driver route, other Drivers, anonymous users, and public callers cannot retrieve the projection. Future competition, rewards, public recognition, or comparative use requires separately governed APIs and authorization; this endpoint does not provide cross-Driver inputs.
 
 Achievement calculation is performed from a maximum of 10,000 qualifying canonical events in chronological order. A larger result fails closed rather than silently truncating recognition. Historical coverage begins with Platform Intelligence instrumentation; the service does not infer or backfill unrecorded activity from mutable status.
+
+## Network Intelligence extension
+
+`server/networkIntelligence.ts` is the reusable Admin-only network projection. It combines safe account and Facility lifecycle fields from canonical operational tables with immutable Platform Intelligence events; it does not create a second event stream or client-side formulas. `GET /api/admin/analytics/network/overview` accepts a bounded UTC range of at most 366 days plus optional state and Facility filters. Geography rows are sorted and paginated on the server.
+
+The only trustworthy network geography currently available is Facility state and Facility identity. The repository has no canonical metro, market, or defined operating-region entity, so the service does not invent one. Driver adoption by state is attributed only through recorded activity at a state-known Facility; Driver profile/GPS coordinates are never used. No precise coordinates, contact fields, Owner identity, event metadata, media paths, or financial fields are selected or returned.
+
+The projection caps each source set at 10,000 rows and fails closed at the cap. Existing `platform_analytics_events` indexes cover event type/time, Driver/time, and Facility/time paths. Queries run as three parallel bounded set reads with no per-row lookup. Pre-aggregation is not authorized because present evidence does not establish a need. Activity-per-Facility, activity-per-Driver, and active-Driver-per-active-Facility values are network-utilization indicators only; they do not claim physical capacity, service coverage, or geographic capacity.
 
 All list queries use server-side pagination; journey reports require a bounded 93-day range and reject result sets over 10,000 events. Facility aggregation uses grouped database queries, not per-event or per-driver query loops; the dashboard caps the Driver list at ten rows. A Facility Driver Journey is explicitly a cohort of Drivers that submitted at that Facility in the selected window. Account stages are recorded account facts for that cohort, while activity stages are constrained to the selected Facility. The migration indexes event type/time and source dimensions used by these queries.
 
