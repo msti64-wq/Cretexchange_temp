@@ -49,9 +49,9 @@ Audit and strengthen the existing driver registration, login, profile, required 
 
 #### Engineering Closeout — Pilot Visual Validation Pending
 
-**Disposition:** Engineering Complete — Pilot Visual Validation Pending.
+**Disposition:** Engineering Complete — Release Blocked: Terms-Ledger Remediation and Pilot Visual Validation Pending.
 
-Phase 1 engineering is complete. The internal implementation work packages used to deliver this existing phase established the following evidence without creating additional governing sprint phases:
+Phase 1 engineering is complete, but pilot release is blocked until controlled adoption of immutable migration `0013` restores the versioned terms ledger and validates ledger-only current acceptance under PD-057. Current acceptance requires a complete English or Spanish role bundle; mixed-language partial evidence and legacy flags are not proof. The internal implementation work packages used to deliver this existing phase established the following evidence without creating additional governing sprint phases:
 
 - **Server-authoritative Driver readiness** — protected operational submissions require the Driver role, an owned Driver profile, required profile completeness, current terms acceptance, and a valid active system material. Commit: `93a07912637a42bfbe3cbf532346d1b1d2059421`.
 - **Server-authoritative facility submission eligibility** — current and legacy submission paths enforce active and visible facility eligibility, the Driver's persisted material association, stale/direct facility-ID denial, and a safe non-disclosing recovery contract. Commit: `657186cc7ccc64d25d4612b8547d79c2b307524b`.

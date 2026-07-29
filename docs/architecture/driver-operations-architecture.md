@@ -50,6 +50,7 @@ Drivers use the platform to:
 - Offline/poor-signal tolerance as future goal
 - Earnings, receivables, wallet balance, and paid history must remain separate
 - Rewards are additive, not a replacement for driver incentives
+- Current Driver terms readiness is proven only by a complete current English or Spanish acceptance bundle under PD-057. Each ledger row remains exact-language evidence with canonicalization-v1 SHA-256 content proof, but interface language never selects or revokes readiness; legacy terms flags are not readiness proof. The acceptance registry and bundle are transactional, and missing or incompatible ledger schema fails closed.
 
 ## 4. Driver Operational State Machine
 

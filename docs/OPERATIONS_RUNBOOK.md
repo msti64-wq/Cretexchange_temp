@@ -72,6 +72,12 @@ The production runner remains separate from the staging-only runner and fails cl
 
 Any future production migration requires a separately authorized, release-specific controlled invocation. Do not reuse the completed `0036` through `0038` operation as an ordinary deployment hook. Record the approval, selected migration allowlist, checksum verification, execution result, catalog verification, and recovery posture in the production release record. Recovery is by the approved pre-migration Neon snapshot or point-in-time restore; do not rerun a partially applied migration or perform manual SQL repair.
 
+### One-Time Terms Ledger Adoption Procedure
+
+Migration `0013_add_localized_terms_acceptance.sql` is immutable and must be adopted only through `npm run db:migrate:terms-ledger:controlled`. The runner permits only `0013`, verifies SHA-256 `21c04112cae0901781c0dfb572c3de88e4e8a3ff1bf09bdaeae6633d191dc22f`, requires an explicit Railway target and immutable deployed SHA, takes its own advisory lock, and stops on any partial catalog state. Its shared structural verifier checks the exact tables, 12 named columns per table, PostgreSQL types, nullability, governed defaults, primary-key columns, unique/index definitions and order, and the cascading `terms_acceptances.user_id → users.id` foreign key. It performs no acceptance backfill or other record mutation. Health uses the same bounded verifier and fails closed when the catalog is absent, partial, incompatible, or inaccessible.
+
+For Production, set `TERMS_LEDGER_MIGRATION_AUTHORIZATION` only to the approved immutable deployment SHA and invoke the runner through a temporary, environment-specific pre-deploy binding. Record the CTX-OPS-001 evidence, validate the catalog and terms health, then remove that binding and prove an ordinary deployment does not invoke it. Do not add a recurring binding to `railway.json`.
+
 ## Build and Test Commands
 
 - `npm run check`

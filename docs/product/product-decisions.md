@@ -730,3 +730,9 @@ the server.
 **Current Scope:** Documentation only. This decision does not alter current Driver Rewards, drawing eligibility, Driver Dashboard, Driver Earnings Center, operational verification, financial behavior, or Pilot Release scope.
 
 **Related Documents:** [CTX-ARCH-003](../architecture/driver-operations-architecture.md), [CTX-ARCH-004](../architecture/admin-operations-architecture.md), [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [PD-051](./PD-051-driver-activity-and-payment-lifecycle.md), and [PD-052](./PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md).
+
+## PD-057 - Versioned Terms Acceptance and Consent Evidence Policy
+
+**Decision:** [PD-057](./PD-057-versioned-terms-acceptance-and-consent-evidence-policy.md) governs ledger-only current legal acceptance through complete supported-language bundles and cryptographic content evidence. Legacy terms flags are not current-consent proof.
+
+**Status:** Active
