@@ -16,10 +16,17 @@ test("owner dashboard routes visible intelligence and summary copy through trans
     "owner.dashboard.repeatDriverDefinition",
     "owner.dashboard.noApprovedDriversMatch",
     "owner.dashboard.pendingReviewDescription",
+    "owner.dashboard.today",
+    "owner.dashboard.yesterday",
+    "owner.dashboard.last7Days",
+    "owner.dashboard.last30Days",
+    "owner.dashboard.last90Days",
+    "owner.dashboard.allTime",
   ]) assert.match(source, new RegExp(`t\\("${key}"`));
   assert.doesNotMatch(source, />Platform Fees</);
   assert.doesNotMatch(source, />Owner Intelligence</);
   assert.doesNotMatch(source, />Driver Intelligence</);
+  assert.doesNotMatch(source, /<DSStatusChip tone="neutral">\{dateRange\}<\/DSStatusChip>/);
 });
 
 test("English and Spanish catalogs provide every owner dashboard localization key introduced by Phase 2", () => {

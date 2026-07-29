@@ -153,6 +153,14 @@ export default function OwnerDashboard() {
   } | null>(null);
   const approvalIntentRequestRef = useRef(false);
   const [dateRange, setDateRange] = useState<'today' | 'yesterday' | '7days' | '30days' | '90days' | 'all'>('today');
+  const dateRangeLabels: Record<typeof dateRange, string> = {
+    today: t("owner.dashboard.today"),
+    yesterday: t("owner.dashboard.yesterday"),
+    "7days": t("owner.dashboard.last7Days"),
+    "30days": t("owner.dashboard.last30Days"),
+    "90days": t("owner.dashboard.last90Days"),
+    all: t("owner.dashboard.allTime"),
+  };
   const [driverSearch, setDriverSearch] = useState("");
   const [driverFilter, setDriverFilter] = useState<'all' | 'new' | 'repeat' | 'recent'>('all');
   const [driverSort, setDriverSort] = useState<'most_active' | 'recent_visit' | 'name'>('most_active');
@@ -914,7 +922,7 @@ export default function OwnerDashboard() {
           <DSSectionHeader
             title={t("owner.dashboard.driverIntelligence")}
             description={t("owner.dashboard.driverIntelligenceDescription")}
-            actions={<DSStatusChip tone="neutral">{dateRange}</DSStatusChip>}
+            actions={<DSStatusChip tone="neutral">{dateRangeLabels[dateRange]}</DSStatusChip>}
           />
           {isAllActivitiesLoading ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -1112,7 +1120,7 @@ export default function OwnerDashboard() {
             <DSSectionHeader
               title={t("owner.dashboard.washoutStatusMix")}
               description={t("owner.dashboard.washoutStatusMixDescription")}
-              actions={<DSStatusChip tone="neutral">{dateRange}</DSStatusChip>}
+              actions={<DSStatusChip tone="neutral">{dateRangeLabels[dateRange]}</DSStatusChip>}
             />
             <div className="pt-0">
               <ChartContainer
