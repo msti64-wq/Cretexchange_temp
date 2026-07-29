@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertCircle, Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { ApiRequestError, apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/lib/i18n";
 import { LegalDocumentViewer } from "@/components/LegalDocumentViewer";
 
@@ -21,6 +21,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
   const queryClient = useQueryClient();
   const { language, t } = useLanguage();
   const [hasReadTerms, setHasReadTerms] = useState(false);
+  const [acceptanceErrorCode, setAcceptanceErrorCode] = useState<string | null>(null);
 
   const termsStatusUrl = `/api/owners/terms-status?language=${encodeURIComponent(language)}`;
 
@@ -30,6 +31,7 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
       return response.json();
     },
     onSuccess: (data) => {
+      setAcceptanceErrorCode(null);
       toast({ title: t("legal.acceptedToast") });
       queryClient.setQueryData([termsStatusUrl], data);
       queryClient.invalidateQueries({ queryKey: [termsStatusUrl] });
@@ -38,10 +40,12 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
       setHasReadTerms(false);
       onAccepted?.();
     },
-    onError: () => {
+    onError: (error) => {
+      const code = error instanceof ApiRequestError ? error.details.code : undefined;
+      setAcceptanceErrorCode(code || "TERMS_ACCEPTANCE_FAILED");
       toast({
-        title: t("legal.acceptFailedToast"),
-        description: t("legal.acceptFailedDescription"),
+        title: code === "TERMS_LEDGER_UNAVAILABLE" ? t("owner.terms.unavailable") : t("legal.acceptFailedToast"),
+        description: code === "TERMS_LEDGER_UNAVAILABLE" ? t("owner.terms.unavailableDescription") : t("legal.acceptFailedDescription"),
         variant: "destructive",
       });
     },
@@ -100,6 +104,14 @@ export function OwnerTermsDialog({ open, onOpenChange, onAccepted, readOnly = fa
                   <span>{t("legal.iAgree")}</span>
                 </label>
               </div>
+
+              {acceptanceErrorCode && (
+                <p role="alert" className="text-sm text-destructive" data-testid="text-owner-terms-acceptance-error">
+                  {acceptanceErrorCode === "TERMS_LEDGER_UNAVAILABLE"
+                    ? t("owner.terms.unavailableDescription")
+                    : t("owner.terms.acceptanceFailed")}
+                </p>
+              )}
 
               <div className="flex items-center justify-between pt-4 border-t">
                 <Button

@@ -12,17 +12,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { MobileNav } from "@/components/MobileNav";
 import { Building2, CreditCard, Save, AlertCircle, Crown, Lock, Eye, EyeOff, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ApiRequestError, apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import StripeVerificationStatus from "@/components/StripeVerificationStatus";
 import { LogoutButton } from "@/components/LogoutButton";
 import { useLanguage } from "@/lib/i18n";
 import { resolveFacilityReadinessChecklist, type FacilityReadinessStepId } from "@/lib/pilotOnboarding";
 import { resolveOwnerLocationAccessState } from "@shared/ownerLocationAccess";
+import { OwnerTermsDialog } from "@/components/OwnerTermsDialog";
+import { resolveOwnerTermsReadiness, type OwnerTermsStatus } from "@/lib/ownerTermsReadiness";
 
 export default function OwnerProfile() {
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { logout } = useAuth();
   const [, setLocation] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
@@ -30,6 +32,7 @@ export default function OwnerProfile() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showOwnerTerms, setShowOwnerTerms] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -44,6 +47,27 @@ export default function OwnerProfile() {
   const { data: facilityLocations = [] } = useQuery<any[]>({
     queryKey: ['/api/owners/locations'],
     enabled: locationAccessState.canManageLocations,
+  });
+  const ownerTermsStatusUrl = `/api/owners/terms-status?language=${encodeURIComponent(language)}`;
+  const {
+    data: ownerTermsStatus,
+    isLoading: ownerTermsStatusLoading,
+    isError: ownerTermsStatusError,
+    error: ownerTermsStatusQueryError,
+    refetch: refetchOwnerTermsStatus,
+  } = useQuery<OwnerTermsStatus>({
+    queryKey: [ownerTermsStatusUrl],
+    enabled: Boolean(user?.id),
+    retry: false,
+  });
+  const ownerTermsErrorCode = ownerTermsStatusQueryError instanceof ApiRequestError
+    ? ownerTermsStatusQueryError.details.code
+    : undefined;
+  const ownerTermsReadiness = resolveOwnerTermsReadiness({
+    status: ownerTermsStatus,
+    isLoading: ownerTermsStatusLoading,
+    isError: ownerTermsStatusError,
+    errorCode: ownerTermsErrorCode,
   });
 
   // Fetch Stripe requirements
@@ -347,6 +371,59 @@ export default function OwnerProfile() {
               <p className="mt-4 text-sm font-medium text-green-700" data-testid="text-facility-marketplace-ready">
                 {t("pilot.facility.readyForDrivers")}
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-owner-terms-readiness">
+          <CardHeader>
+            <CardTitle>{t("owner.terms.title")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {ownerTermsReadiness === "loading" && (
+              <p role="status" className="text-sm text-muted-foreground" data-testid="text-owner-terms-loading">
+                {t("owner.terms.loading")}
+              </p>
+            )}
+            {ownerTermsReadiness === "accepted" && (
+              <>
+                <p className="text-sm text-muted-foreground" data-testid="text-owner-terms-accepted">
+                  {t("owner.terms.accepted")}
+                </p>
+                <Button type="button" variant="outline" onClick={() => setShowOwnerTerms(true)} data-testid="button-review-owner-terms">
+                  {t("owner.terms.review")}
+                </Button>
+              </>
+            )}
+            {ownerTermsReadiness === "required" && (
+              <>
+                <p className="text-sm text-muted-foreground" data-testid="text-owner-terms-required">
+                  {t("owner.terms.required")}
+                </p>
+                <Button type="button" onClick={() => setShowOwnerTerms(true)} data-testid="button-accept-owner-terms">
+                  {t("owner.terms.reviewAndAccept")}
+                </Button>
+              </>
+            )}
+            {ownerTermsReadiness === "unavailable" && (
+              <>
+                <p role="alert" className="text-sm text-destructive" data-testid="text-owner-terms-unavailable">
+                  {t("owner.terms.unavailableDescription")}
+                </p>
+                <Button type="button" variant="outline" onClick={() => void refetchOwnerTermsStatus()} data-testid="button-retry-owner-terms">
+                  {t("common.retry")}
+                </Button>
+              </>
+            )}
+            {ownerTermsReadiness === "error" && (
+              <>
+                <p role="alert" className="text-sm text-destructive" data-testid="text-owner-terms-error">
+                  {t("owner.terms.errorDescription")}
+                </p>
+                <Button type="button" variant="outline" onClick={() => void refetchOwnerTermsStatus()} data-testid="button-retry-owner-terms">
+                  {t("common.retry")}
+                </Button>
+              </>
             )}
           </CardContent>
         </Card>
@@ -762,6 +839,13 @@ export default function OwnerProfile() {
           )}
         </form>
       </div>
+
+      <OwnerTermsDialog
+        open={showOwnerTerms}
+        onOpenChange={setShowOwnerTerms}
+        readOnly={ownerTermsReadiness === "accepted"}
+        onAccepted={() => void refetchOwnerTermsStatus()}
+      />
 
       <MobileNav role="owner" />
     </div>
